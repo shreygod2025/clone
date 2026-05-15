@@ -186,57 +186,115 @@ def email_wrap(color, icon_char, title, date_str, body_html):
 # ─────────────────────────────────────────────
 
 async def fetch_support_data(start, end):
-    query = {"created_at": {"$gte": start, "$lt": end}}
-    today = await db.support_queries.find(query, {"_id": 0}).to_list(2000)
-    all_open = await db.support_queries.find(
-        {"status": {"$in": ["open", "in_progress", "new"]}}, {"_id": 0}
-    ).to_list(2000)
-    overdue = await db.support_queries.find({
-        "status": {"$in": ["open", "in_progress", "new"]},
-        "created_at": {"$lt": (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()}
-    }, {"_id": 0}).to_list(500)
-    solved_today = [q for q in today if q.get("status") == "resolved"]
+    """Aggregate support queries from all 3 sources used by Admin Support Center:
+       - inquiry_queries  (Need Help popup, team inquiry form)
+       - support_queries  (SupportFlow.jsx, Educator queries)
+       - support_tickets  (FAQ + School tracking page tickets)
+    """
+    overdue_cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+    open_statuses = ["open", "in_progress", "new"]
+    resolved_statuses = ["resolved", "closed"]
 
-    # Avg resolution time — use resolved_at, fall back to updated_at
-    res_times = []
-    for q in solved_today:
-        c = q.get("created_at") or ""
-        r = q.get("resolved_at") or q.get("updated_at") or ""
-        if c and r:
-            try:
-                dt_c = datetime.fromisoformat(c.replace("Z", "+00:00"))
-                dt_r = datetime.fromisoformat(r.replace("Z", "+00:00"))
-                diff = (dt_r - dt_c).total_seconds() / 3600
-                if diff >= 0:
-                    res_times.append(diff)
-            except Exception:
-                pass
-    avg_res = round(sum(res_times) / len(res_times), 1) if res_times else None
+    async def _fetch(col):
+        today_q = await db[col].find({"created_at": {"$gte": start, "$lt": end}}, {"_id": 0}).to_list(2000)
+        all_open = await db[col].count_documents({"status": {"$in": open_statuses}})
+        overdue = await db[col].count_documents({
+            "status": {"$in": open_statuses},
+            "created_at": {"$lt": overdue_cutoff}
+        })
+        # Resolved today (resolved_at if present, else updated_at falls within day window)
+        resolved_today_docs = await db[col].find({
+            "status": {"$in": resolved_statuses},
+            "$or": [
+                {"resolved_at": {"$gte": start, "$lt": end}},
+                {"updated_at": {"$gte": start, "$lt": end}, "resolved_at": {"$exists": False}},
+            ]
+        }, {"_id": 0}).to_list(2000)
+        # All-time counts for resolution rate
+        all_total = await db[col].count_documents({})
+        all_resolved = await db[col].count_documents({"status": {"$in": resolved_statuses}})
+        return today_q, all_open, overdue, resolved_today_docs, all_total, all_resolved
 
-    # Resolution rate = resolved / total all-time
-    all_resolved = await db.support_queries.count_documents({"status": "resolved"})
-    all_total = await db.support_queries.count_documents({})
+    # Run 3 collection fetches in parallel
+    (sq, iq, st) = await asyncio.gather(
+        _fetch("support_queries"),
+        _fetch("inquiry_queries"),
+        _fetch("support_tickets"),
+    )
+
+    today = sq[0] + iq[0] + st[0]
+    open_total = sq[1] + iq[1] + st[1]
+    overdue = sq[2] + iq[2] + st[2]
+    solved_today = sq[3] + iq[3] + st[3]
+    all_total = sq[4] + iq[4] + st[4]
+    all_resolved = sq[5] + iq[5] + st[5]
+
+    # Avg resolution time across all sources (resolved today)
+    def _calc_avg_res(docs):
+        times = []
+        for q in docs:
+            cv = q.get("created_at") or ""
+            rv = q.get("resolved_at") or q.get("updated_at") or ""
+            if cv and rv:
+                try:
+                    dt_c = datetime.fromisoformat(str(cv).replace("Z", "+00:00"))
+                    dt_r = datetime.fromisoformat(str(rv).replace("Z", "+00:00"))
+                    diff = (dt_r - dt_c).total_seconds() / 3600
+                    if diff >= 0:
+                        times.append(diff)
+                except Exception:
+                    pass
+        return round(sum(times) / len(times), 1) if times else None
+
+    avg_res = _calc_avg_res(solved_today)
+    avg_res_label = "Today"
+    # Fallback: 30-day rolling avg if no resolutions today
+    if avg_res is None:
+        cutoff_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        rolling_q = {
+            "status": {"$in": resolved_statuses},
+            "$or": [
+                {"resolved_at": {"$gte": cutoff_30d}},
+                {"updated_at": {"$gte": cutoff_30d}, "resolved_at": {"$exists": False}},
+            ]
+        }
+        rs1, rs2, rs3 = await asyncio.gather(
+            db.support_queries.find(rolling_q, {"_id": 0}).to_list(2000),
+            db.inquiry_queries.find(rolling_q, {"_id": 0}).to_list(2000),
+            db.support_tickets.find(rolling_q, {"_id": 0}).to_list(2000),
+        )
+        avg_res = _calc_avg_res(rs1 + rs2 + rs3)
+        avg_res_label = "Last 30 Days"
+
     resolution_rate = pct(all_resolved, all_total)
 
-    # For breakdown tables: use today's data if available, else fall back to 7-day rolling window
+    # Breakdown source — today if available, else 7-day rolling fallback across all sources
     breakdown_source = today
     breakdown_label = "Today"
     if not today:
         week_start = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        breakdown_source = await db.support_queries.find(
-            {"created_at": {"$gte": week_start}}, {"_id": 0}
-        ).to_list(5000)
+        week_q = {"created_at": {"$gte": week_start}}
+        bs1 = await db.support_queries.find(week_q, {"_id": 0}).to_list(5000)
+        bs2 = await db.inquiry_queries.find(week_q, {"_id": 0}).to_list(5000)
+        bs3 = await db.support_tickets.find(week_q, {"_id": 0}).to_list(5000)
+        breakdown_source = bs1 + bs2 + bs3
         breakdown_label = "Last 7 Days"
 
-    # User type division from inquiry_type field (student / school / educator / etc.)
+    # Normalize query_type for support_tickets where the field may be named 'query_type' too
+    # and inquiry_type for FAQ/tracking tickets where it may be missing
+    for q in breakdown_source:
+        if not q.get("inquiry_type"):
+            q["inquiry_type"] = q.get("user_type") or ("school" if q.get("source") == "tracking_page" else "student")
+
     user_types = count_by_labeled(breakdown_source, "inquiry_type", _INQUIRY_TYPE_LABELS)
 
     return dict(
         new_queries=len(today),
-        open_total=len(all_open),
-        overdue=len(overdue),
+        open_total=open_total,
+        overdue=overdue,
         solved_today=len(solved_today),
         avg_resolution_hrs=avg_res,
+        avg_resolution_label=avg_res_label,
         resolution_rate=resolution_rate,
         breakdown_label=breakdown_label,
         categories=count_by_labeled(breakdown_source, "query_type", _QUERY_TYPE_LABELS),
@@ -380,6 +438,7 @@ async def fetch_educator_data(start, end):
 
 def build_support_email(d, date_str):
     avg_res = f"{d['avg_resolution_hrs']}h" if d['avg_resolution_hrs'] else "—"
+    avg_lbl = d.get('avg_resolution_label', 'Today')
     lbl = d.get('breakdown_label', 'Today')
     body = f"""
     <div class="kpi-grid">
@@ -387,7 +446,7 @@ def build_support_email(d, date_str):
       {kpi(d['open_total'], "Open Queries", "All Time")}
       {kpi(d['overdue'], "Overdue", "> 48h open")}
       {kpi(d['solved_today'], "Resolved Today")}
-      {kpi(avg_res, "Avg Resolution Time")}
+      {kpi(avg_res, "Avg Resolution Time", avg_lbl)}
       {kpi(d['resolution_rate'], "Overall Resolution Rate")}
     </div>
     <hr class="divider">
