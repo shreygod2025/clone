@@ -691,13 +691,16 @@ async def fetch_accounts_data():
         # The actual payment status lives in school["payments"] (what the Orders UI reads),
         # keyed by tranche_index — NOT in the tranche definition itself.
         recorded_payments = school.get("payments") or []
-        paid_indices = {
-            p.get("tranche_index")
+        # Map tranche_index → payment record so we can subtract partial paid_amount
+        payment_by_idx = {
+            p.get("tranche_index"): p
             for p in recorded_payments
+            if p.get("tranche_index") is not None
+        }
+        paid_indices = {
+            idx for idx, p in payment_by_idx.items()
             if (p.get("status") or "").lower() in ("paid", "verified")
         }
-        # Also check if tranche_index is None (payment without index) → skip by status field
-        # For any unindexed legacy payment, fall back to tranche "status" field
         total_amount_raw = od.get("total_amount") or od.get("total_value") or 0
         total_amount = float(str(total_amount_raw).replace(",", "") or 0)
 
@@ -715,8 +718,20 @@ async def fetch_accounts_data():
             if not amount and t.get("percentage") and total_amount:
                 amount = round(total_amount * float(t.get("percentage") or 0) / 100, 2)
 
+            # ── Subtract partial paid_amount if a partial payment exists ──
+            existing_payment = payment_by_idx.get(idx) or {}
+            paid_so_far = float(str(existing_payment.get("paid_amount") or 0).replace(",", "") or 0)
+            outstanding = max(0.0, amount - paid_so_far)
+            is_partial = paid_so_far > 0 and outstanding > 0
+
+            # Fully covered by partial payment → treat as paid
+            if outstanding <= 0:
+                continue
+
             due_date = t.get("due_date") or t.get("date") or "—"
             label = t.get("label") or t.get("description") or "Tranche"
+            if is_partial:
+                label = f"{label} (Partial — paid ₹{int(paid_so_far):,})"
             is_overdue = False
             if due_date != "—":
                 try:
@@ -727,13 +742,13 @@ async def fetch_accounts_data():
             rows.append({
                 "school": name,
                 "label": label,
-                "amount": amount,
+                "amount": outstanding,
                 "due_date": due_date,
                 "status": flag,
             })
-            total_pending += amount
+            total_pending += outstanding
             if is_overdue:
-                total_overdue += amount
+                total_overdue += outstanding
 
     rows.sort(key=lambda x: (x["status"] != "overdue", x["due_date"]))
     return dict(rows=rows, total_pending=total_pending, total_overdue=total_overdue)
