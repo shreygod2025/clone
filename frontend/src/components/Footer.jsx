@@ -379,6 +379,41 @@ const Footer = ({ variant = 'full' }) => {
         </div>
       </div>
 
+      {/* Flagship Programs */}
+      <div className="border-t border-slate-800 bg-slate-950/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-[#3B82F6] font-semibold text-sm uppercase tracking-wider">Flagship Programs</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link
+              to="/ai-foundations"
+              className="group block bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-blue-500/40 rounded-xl p-5 transition-all"
+              data-testid="footer-prog-aifoundations">
+              <span className="inline-block bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">New · Online</span>
+              <h5 className="text-white font-bold mt-2 group-hover:text-blue-300 transition-colors">AI Foundations</h5>
+              <p className="text-xs text-slate-400 mt-1">10-day live course · Grades 6–12 · max 10 students per cohort</p>
+            </Link>
+            <Link
+              to="/social-media-intern"
+              className="group block bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-purple-500/40 rounded-xl p-5 transition-all"
+              data-testid="footer-prog-internship">
+              <span className="inline-block bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">Real Internship</span>
+              <h5 className="text-white font-bold mt-2 group-hover:text-purple-300 transition-colors">Summer Internship Program</h5>
+              <p className="text-xs text-slate-400 mt-1">Social Media internship · Real portfolio · Stipend on completion</p>
+            </Link>
+            <Link
+              to="/future-skills"
+              className="group block bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-red-500/40 rounded-xl p-5 transition-all"
+              data-testid="footer-prog-continuous">
+              <span className="inline-block bg-red-500/10 text-red-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">Flagship · Offline</span>
+              <h5 className="text-white font-bold mt-2 group-hover:text-red-300 transition-colors">Continuous Learning Program</h5>
+              <p className="text-xs text-slate-400 mt-1">Robotics · Coding · AI · 3D Design · Grades 1–10 · once a week</p>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Bottom Bar */}
       <div className="border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

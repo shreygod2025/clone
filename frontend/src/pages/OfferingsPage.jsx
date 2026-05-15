@@ -699,13 +699,16 @@ const OfferingsPage = () => {
                   position: 'relative',
                   background: 'linear-gradient(135deg, #FFFFFF 0%, #F0F7FF 50%, #FFFFFF 100%)',
                   border: '2px solid rgba(30,58,95,0.25)',
-                  borderRadius: '1.25rem',
-                  padding: '1.25rem',
+                  borderRadius: '1rem',
+                  padding: '0.9rem',
                   cursor: 'pointer',
                   overflow: 'hidden',
                   transition: 'all 0.4s',
-                  boxShadow: '0 8px 30px rgba(15,30,51,0.08)',
-                  marginTop: '1rem',
+                  boxShadow: '0 6px 20px rgba(15,30,51,0.06)',
+                  marginTop: '0.75rem',
+                  maxWidth: 920,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.boxShadow = '0 0 50px rgba(30,58,95,0.18), 0 8px 30px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,58,95,0.25)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -805,13 +808,16 @@ const OfferingsPage = () => {
                   position: 'relative',
                   background: 'linear-gradient(135deg, #FFFFFF 0%, #F0F7FF 50%, #FFFFFF 100%)',
                   border: '2px solid rgba(37,99,235,0.2)',
-                  borderRadius: '1.5rem',
-                  padding: '1.75rem',
+                  borderRadius: '1rem',
+                  padding: '0.95rem',
                   cursor: 'pointer',
                   overflow: 'hidden',
                   transition: 'all 0.4s',
-                  boxShadow: '0 8px 40px rgba(15,30,51,0.08)',
-                  marginTop: '1.25rem',
+                  boxShadow: '0 6px 24px rgba(15,30,51,0.06)',
+                  marginTop: '0.75rem',
+                  maxWidth: 920,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 0 60px rgba(37,99,235,0.18), 0 8px 40px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(37,99,235,0.2)'; e.currentTarget.style.boxShadow = '0 8px 40px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -823,32 +829,32 @@ const OfferingsPage = () => {
                 <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-                <div className="relative grid md:grid-cols-[1.6fr_1fr] gap-5 items-center">
+                <div className="relative grid md:grid-cols-[1.7fr_1fr] gap-3 items-center">
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.85rem', flexWrap: 'wrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: '999px', background: 'rgba(37,99,235,0.1)', border: '1px solid #2563EB', color: '#1D4ED8', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2563EB', display: 'inline-block' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: '999px', background: 'rgba(37,99,235,0.1)', border: '1px solid #2563EB', color: '#1D4ED8', fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.13em' }}>
+                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2563EB', display: 'inline-block' }} />
                         New · Online Live
                       </span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: '999px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', color: '#4F46E5', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: '999px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', color: '#4F46E5', fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.13em' }}>
                         Grades 6–12
                       </span>
                     </div>
-                    <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.1rem, 2.6vw, 1.6rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.2, marginBottom: '0.5rem' }}>
-                      AI Foundations<br />
-                      <span style={{ background: 'linear-gradient(90deg, #2563EB, #38BDF8, #6366F1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>10-Day Online Course</span>
+                    <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1rem, 2.1vw, 1.25rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.2, marginBottom: '0.35rem' }}>
+                      AI Foundations ·{' '}
+                      <span style={{ background: 'linear-gradient(90deg, #2563EB, #38BDF8, #6366F1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>10-Day Online</span>
                     </h3>
-                    <p style={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.55, marginBottom: '0.85rem', fontFamily: 'Nunito Sans, sans-serif', maxWidth: 380 }}>
-                      Hands-on AI for Grades 6–12. ChatGPT, Midjourney, Suno, Runway & Vibe Coding — 7+ portfolio projects, zero code. Taught live by OLL Expert Vrishank Mistry.
+                    <p style={{ color: '#475569', fontSize: '0.78rem', lineHeight: 1.5, marginBottom: '0.6rem', fontFamily: 'Nunito Sans, sans-serif' }}>
+                      Hands-on AI for Grades 6–12. ChatGPT, Midjourney, Suno, Runway &amp; Vibe Coding — 7+ portfolio projects, taught live by OLL Expert Vrishank Mistry.
                     </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.7rem' }}>
                       {[
                         { icon: '🤖', text: 'AI Tools' },
                         { icon: '🎬', text: 'Video & Music' },
                         { icon: '💻', text: 'Vibe Coding' },
                         { icon: '🎓', text: 'Certificate' },
                       ].map(f => (
-                        <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: '999px', background: 'rgba(37,99,235,0.06)', color: '#1E3A5F', border: '1px solid rgba(37,99,235,0.15)', fontSize: '0.72rem', fontFamily: 'Nunito Sans, sans-serif', fontWeight: 600 }}>
+                        <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: '999px', background: 'rgba(37,99,235,0.06)', color: '#1E3A5F', border: '1px solid rgba(37,99,235,0.15)', fontSize: '0.65rem', fontFamily: 'Nunito Sans, sans-serif', fontWeight: 600 }}>
                           {f.icon} {f.text}
                         </span>
                       ))}
@@ -857,48 +863,48 @@ const OfferingsPage = () => {
                       data-testid="ai-foundations-cta-btn"
                       onClick={(e) => { e.stopPropagation(); navigate('/ai-foundations'); }}
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '0.65rem 1.5rem', borderRadius: '999px',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '0.5rem 1.1rem', borderRadius: '999px',
                         background: '#1E3A5F', color: '#fff',
-                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.78rem',
+                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.7rem',
                         border: 'none', cursor: 'pointer',
-                        boxShadow: '0 8px 22px rgba(30,58,95,0.25)',
-                        letterSpacing: '0.05em',
+                        boxShadow: '0 6px 18px rgba(30,58,95,0.25)',
+                        letterSpacing: '0.04em',
                         transition: 'all 0.3s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#0F1E33'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(30,58,95,0.35)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#1E3A5F'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(30,58,95,0.25)'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#0F1E33'; e.currentTarget.style.boxShadow = '0 10px 26px rgba(30,58,95,0.35)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#1E3A5F'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(30,58,95,0.25)'; }}
                     >
                       See Curriculum
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
 
-                  {/* Right: track preview */}
+                  {/* Right: track preview — compact */}
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { ages: 'Gr 6–8',  label: 'Explorer Track', sub: 'Fun + curiosity', color: '#3B82F6', icon: '🚀' },
-                      { ages: 'Gr 9–12', label: 'Creator Track',  sub: 'Portfolio-grade', color: '#1E3A5F', icon: '🎯' },
+                      { ages: 'Gr 6–8',  label: 'Explorer', sub: 'Fun + curiosity', color: '#3B82F6', icon: '🚀' },
+                      { ages: 'Gr 9–12', label: 'Creator',  sub: 'Portfolio-grade', color: '#1E3A5F', icon: '🎯' },
                     ].map(g => (
                       <div
                         key={g.ages}
                         style={{
                           background: 'rgba(37,99,235,0.04)',
-                          border: `2px solid ${g.color}33`,
-                          borderRadius: '0.75rem',
-                          padding: '0.75rem 0.5rem',
+                          border: `1.5px solid ${g.color}33`,
+                          borderRadius: '0.55rem',
+                          padding: '0.5rem 0.4rem',
                           textAlign: 'center',
                         }}
                       >
-                        <div style={{ fontSize: '1.3rem', marginBottom: '0.25rem' }}>{g.icon}</div>
-                        <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.7rem', color: g.color, marginBottom: '0.1rem' }}>{g.ages}</div>
-                        <div style={{ fontSize: '0.7rem', color: '#0F1E33', fontFamily: 'Outfit, sans-serif', fontWeight: 700, marginBottom: '0.05rem' }}>{g.label}</div>
-                        <div style={{ fontSize: '0.6rem', color: '#64748B', fontFamily: 'Outfit, sans-serif' }}>{g.sub}</div>
+                        <div style={{ fontSize: '1rem', marginBottom: '0.15rem' }}>{g.icon}</div>
+                        <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.62rem', color: g.color, marginBottom: '0.05rem' }}>{g.ages}</div>
+                        <div style={{ fontSize: '0.62rem', color: '#0F1E33', fontFamily: 'Outfit, sans-serif', fontWeight: 700 }}>{g.label}</div>
+                        <div style={{ fontSize: '0.55rem', color: '#64748B', fontFamily: 'Outfit, sans-serif' }}>{g.sub}</div>
                       </div>
                     ))}
-                    <div style={{ gridColumn: '1 / -1', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: '0.5rem', padding: '0.5rem', textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.75rem', color: '#1D4ED8' }}>10 Days · Online Live</div>
-                      <div style={{ fontSize: '0.6rem', color: '#475569', fontFamily: 'Outfit, sans-serif' }}>Cohort of 12 · OLL Certificate (UNESCO-linked)</div>
+                    <div style={{ gridColumn: '1 / -1', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: '0.5rem', padding: '0.4rem', textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.65rem', color: '#1D4ED8' }}>10 Days · Live Online</div>
+                      <div style={{ fontSize: '0.55rem', color: '#475569', fontFamily: 'Outfit, sans-serif' }}>Max 10 students · small cohort · OLL Certificate</div>
                     </div>
                   </div>
                 </div>
