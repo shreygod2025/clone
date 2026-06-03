@@ -151,6 +151,27 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = user.get("email", "admin")
 
+    # ── Hold lifecycle: pause resolution timer ─────────────────────────────
+    # When status → on_hold: stamp hold_started_at + hold_reason.
+    # When status → away from on_hold: accumulate (now - hold_started_at) into paused_seconds.
+    new_status = data.get("status")
+    if new_status is not None:
+        existing = await db.support_queries.find_one({"id": query_id}, {"_id": 0}) or {}
+        prev_status = existing.get("status")
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        if new_status == "on_hold" and prev_status != "on_hold":
+            update_data["hold_started_at"] = now_iso
+            update_data["hold_reason"] = data.get("hold_reason") or existing.get("hold_reason") or "Other"
+        elif prev_status == "on_hold" and new_status != "on_hold":
+            try:
+                if existing.get("hold_started_at"):
+                    held = (datetime.now(timezone.utc) - datetime.fromisoformat(existing["hold_started_at"].replace("Z", "+00:00"))).total_seconds()
+                    update_data["paused_seconds"] = int(existing.get("paused_seconds", 0) + max(0, held))
+            except Exception:
+                pass
+            update_data["hold_started_at"] = None  # clear
+
     # Auto-set resolved_at when status → resolved/closed (if not already set)
     if data.get("status") in ("resolved", "closed"):
         existing = await db.support_queries.find_one({"id": query_id}, {"_id": 0, "resolved_at": 1})
@@ -168,6 +189,8 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
             "by": user.get("name", user.get("email", "admin")),
             "date": datetime.now(timezone.utc).isoformat()
         }
+        if data.get("status") == "on_hold" and data.get("hold_reason"):
+            activity["hold_reason"] = data["hold_reason"]
         await db.support_queries.update_one(
             {"id": query_id},
             {"$set": update_data, "$push": {"activity_history": activity}}
@@ -196,16 +219,9 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         )
         return {"message": "Query unassigned"}
     
-    # Get the user being assigned
-    assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
-    if not assignee:
-        assignee = await db.center_users.find_one({"id": assigned_to}, {"_id": 0})
-    if not assignee:
-        assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
-    
+    assignee = await _resolve_assignee(assigned_to)
     assignee_name = assignee.get("name", "Team Member") if assignee else "Unknown"
-    
-    # Update the query with assignment and activity history
+
     update_data = {
         "assigned_to": assigned_to,
         "assigned_to_name": assignee_name,
@@ -214,7 +230,6 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         "deadline": deadline,
         "status": "in_progress" if query.get("status") == "open" else query.get("status")
     }
-    
     activity = {
         "type": "assigned",
         "assigned_to": assigned_to,
@@ -222,99 +237,104 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         "by": user.get("name", user.get("email", "admin")),
         "date": datetime.now(timezone.utc).isoformat()
     }
-    
     await db.support_queries.update_one(
         {"id": query_id}, 
         {"$set": update_data, "$push": {"activity_history": activity}}
     )
-    
-    # Send notifications to the assignee
-    if assignee:
-        assignee_phone = assignee.get("phone", "")
-        assignee_email = assignee.get("email", "")
-        
-        query_type = query.get("query_type", query.get("type", "Support Request"))
-        query_details = query.get("message", query.get("query", ""))[:100]
-        deadline_str = deadline if deadline else "As soon as possible"
-        
-        print(f"[ASSIGN] Attempting to notify {assignee_name} (phone: {assignee_phone}, email: {assignee_email})")
-        
-        # Send WhatsApp notification
-        # The support_ticket_added template expects: [Name, TicketID, Subject, Priority, CustomerName]
-        if assignee_phone and assignee_phone not in ['None', '', 'null']:
-            try:
-                ticket_id = query_id[:8].upper()
-                subject = query.get("query_type", "Support Request")
-                priority = query.get("priority", "normal").upper()
-                customer_name = query.get("name", "Customer")
-                
-                print(f"[ASSIGN] Sending WhatsApp to {assignee_phone} with params: [{assignee_name}, {ticket_id}, {subject}, {priority}, {customer_name}]")
-                
-                result = await send_whatsapp_notification(
-                    assignee_phone,
-                    "ticket_assigned",
-                    params=[assignee_name, ticket_id, subject, priority, customer_name],
+
+    await send_assignment_notifications(query, assignee, assignee_name, query_id, deadline)
+    return {"message": "Query assigned successfully", "assigned_to": assigned_to}
+
+
+async def _resolve_assignee(user_id: str):
+    assignee = await db.team_users.find_one({"id": user_id}, {"_id": 0})
+    if not assignee:
+        assignee = await db.center_users.find_one({"id": user_id}, {"_id": 0})
+    if not assignee:
+        assignee = await db.admins.find_one({"id": user_id}, {"_id": 0})
+    return assignee
+
+
+async def send_assignment_notifications(query: dict, assignee: dict, assignee_name: str, query_id: str, deadline):
+    """Shared helper — fires WhatsApp + Email when a query is assigned.
+
+    Used by both /support/queries/{id}/assign and /inquiry/queries/{id}/assign so
+    the Need Help popup queries also notify the assignee.
+    """
+    if not assignee:
+        return
+
+    assignee_phone = assignee.get("phone", "")
+    assignee_email = assignee.get("email", "")
+    query_type = query.get("query_type", query.get("type", "Support Request"))
+    query_details = (query.get("message") or query.get("query") or query.get("query_details") or "")[:100]
+    deadline_str = deadline if deadline else "As soon as possible"
+
+    print(f"[ASSIGN] Notify {assignee_name} (phone={assignee_phone}, email={assignee_email})")
+
+    # WhatsApp notification (template: ticket_assigned)
+    if assignee_phone and str(assignee_phone).strip() not in ['None', '', 'null']:
+        try:
+            ticket_id = (query.get("ticket_number") or query_id[:8]).upper()
+            subject = query.get("query_type", "Support Request")
+            priority = (query.get("priority") or "normal").upper()
+            customer_name = query.get("name", "Customer")
+            result = await send_whatsapp_notification(
+                assignee_phone, "ticket_assigned",
+                params=[assignee_name, ticket_id, subject, priority, customer_name],
+                user_name="Clone Futura Live Solutions Ltd"
+            )
+            print(f"[ASSIGN] WhatsApp → {assignee_phone}: {result}")
+        except Exception as e:
+            print(f"[ASSIGN] WhatsApp failed: {e}")
+    else:
+        # Fallback: notify admin phones
+        try:
+            admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
+            admin_phones = admin_phones_doc.get("value", []) if admin_phones_doc else []
+            ticket_id_short = (query.get("ticket_number") or query_id[:8]).upper()
+            subject = query.get("query_type", "Support Request")
+            priority = (query.get("priority") or "normal").upper()
+            customer_name = query.get("name", "Customer")
+            for phone in admin_phones:
+                await send_whatsapp_notification(
+                    phone, "ticket_assigned",
+                    params=[assignee_name, ticket_id_short, subject, priority, customer_name],
                     user_name="Clone Futura Live Solutions Ltd"
                 )
-                print(f"[ASSIGN] WhatsApp result: {result}")
-            except Exception as e:
-                print(f"[ASSIGN] Failed to send WhatsApp: {e}")
-                import traceback
-                traceback.print_exc()
-        else:
-            print(f"[ASSIGN] Skipping WhatsApp - no phone for {assignee_name} (phone={assignee_phone})")
-            # Fallback: notify admin phones that an assignment was made (so someone with a phone is aware)
-            try:
-                admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
-                admin_phones = admin_phones_doc.get("value", []) if admin_phones_doc else []
-                if not admin_phones:
-                    fallback_users = await db.team_users.find(
-                        {"is_active": True, "phone": {"$nin": [None, "", "None", "null"]}},
-                        {"_id": 0, "phone": 1}
-                    ).to_list(10)
-                    admin_phones = [u["phone"] for u in fallback_users if u.get("phone") and str(u["phone"]).strip() not in ['', 'None']]
-                ticket_id_short = query_id[:8].upper()
-                subject = query.get("query_type", "Support Request")
-                priority = query.get("priority", "normal").upper()
-                customer_name = query.get("name", "Customer")
-                for phone in admin_phones:
-                    await send_whatsapp_notification(
-                        phone, "ticket_assigned",
-                        params=[assignee_name, ticket_id_short, subject, priority, customer_name],
-                        user_name="Clone Futura Live Solutions Ltd"
-                    )
-            except Exception as e:
-                print(f"[ASSIGN] Admin fallback notification failed: {e}")
-        
-        # Send Email notification using resend
-        resend_ready = await ensure_resend_api_key()
-        if assignee_email and resend_ready:
-            try:
-                email_params = {
-                    "from": SENDER_EMAIL,
-                    "to": [assignee_email],
-                    "subject": f"New Support Ticket Assigned - {query_type}",
-                    "html": f"""
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #1E3A5F;">New Support Ticket Assigned</h2>
-                        <p>Hi {assignee_name},</p>
-                        <p>A new support ticket has been assigned to you:</p>
-                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p><strong>Type:</strong> {query_type}</p>
-                            <p><strong>Details:</strong> {query_details}...</p>
-                            <p><strong>Customer:</strong> {query.get("name", "Customer")} ({query.get("phone", "N/A")})</p>
-                            <p><strong>Deadline:</strong> {deadline_str}</p>
-                        </div>
-                        <p>Please resolve this ticket before the deadline.</p>
-                        <p>Best regards,<br>OLL Team</p>
+        except Exception as e:
+            print(f"[ASSIGN] Admin fallback WhatsApp failed: {e}")
+
+    # Email via Resend
+    resend_ready = await ensure_resend_api_key()
+    if assignee_email and resend_ready:
+        try:
+            ticket_id_full = (query.get("ticket_number") or query_id[:8]).upper()
+            email_params = {
+                "from": SENDER_EMAIL,
+                "to": [assignee_email],
+                "subject": f"New Support Ticket Assigned — #{ticket_id_full} ({query_type})",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #1E3A5F;">New Support Ticket Assigned</h2>
+                    <p>Hi {assignee_name},</p>
+                    <p>A new support ticket has been assigned to you:</p>
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>Ticket #:</strong> {ticket_id_full}</p>
+                        <p><strong>Type:</strong> {query_type}</p>
+                        <p><strong>Details:</strong> {query_details}...</p>
+                        <p><strong>Customer:</strong> {query.get("name", "Customer")} ({query.get("phone", "N/A")})</p>
+                        <p><strong>Deadline:</strong> {deadline_str}</p>
                     </div>
-                    """
-                }
-                await asyncio.to_thread(resend.Emails.send, email_params)
-            except Exception as e:
-                print(f"Failed to send email: {e}")
-    
-    return {"message": "Query assigned successfully", "assigned_to": assigned_to}
+                    <p>Please resolve this ticket before the deadline.</p>
+                    <p>Best regards,<br>OLL Team</p>
+                </div>
+                """
+            }
+            await asyncio.to_thread(resend.Emails.send, email_params)
+            print(f"[ASSIGN] Email sent to {assignee_email}")
+        except Exception as e:
+            print(f"[ASSIGN] Email failed: {e}")
 
 @router.post("/support/queries/{query_id}/notes")
 async def add_query_note(query_id: str, data: dict, user: dict = Depends(get_current_user)):

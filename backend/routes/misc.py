@@ -1255,6 +1255,24 @@ async def update_inquiry_query(query_id: str, data: dict, user: dict = Depends(g
     update_data = {k: v for k, v in data.items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
+    # Hold lifecycle: pause resolution timer
+    new_status = data.get("status")
+    if new_status is not None:
+        existing = await db.inquiry_queries.find_one({"id": query_id}, {"_id": 0}) or {}
+        prev_status = existing.get("status")
+        now_iso = datetime.now(timezone.utc).isoformat()
+        if new_status == "on_hold" and prev_status != "on_hold":
+            update_data["hold_started_at"] = now_iso
+            update_data["hold_reason"] = data.get("hold_reason") or existing.get("hold_reason") or "Other"
+        elif prev_status == "on_hold" and new_status != "on_hold":
+            try:
+                if existing.get("hold_started_at"):
+                    held = (datetime.now(timezone.utc) - datetime.fromisoformat(existing["hold_started_at"].replace("Z", "+00:00"))).total_seconds()
+                    update_data["paused_seconds"] = int(existing.get("paused_seconds", 0) + max(0, held))
+            except Exception:
+                pass
+            update_data["hold_started_at"] = None
+
     # Auto-set resolved_at when status → resolved/closed (if not already set)
     if data.get("status") in ("resolved", "closed"):
         existing = await db.inquiry_queries.find_one({"id": query_id}, {"_id": 0, "resolved_at": 1})
@@ -1316,7 +1334,14 @@ async def assign_inquiry_query(query_id: str, data: dict, user: dict = Depends(g
         {"id": query_id}, 
         {"$set": update_data, "$push": {"activity_history": activity}}
     )
-    
+
+    # Fire WhatsApp + Email notifications (shared with /support/queries)
+    try:
+        from .support import send_assignment_notifications
+        await send_assignment_notifications(query, assignee, assignee_name, query_id, deadline)
+    except Exception as e:
+        print(f"[InquiryAssign] notification error: {e}")
+
     return {"message": "Query assigned successfully", "assigned_to": assignee_name}
 
 @router.delete("/inquiry/queries/{query_id}")

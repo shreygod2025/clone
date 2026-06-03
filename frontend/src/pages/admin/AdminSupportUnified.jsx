@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
@@ -162,14 +162,26 @@ const INQUIRY_TYPES = [
 const QUERY_TABS = [
   { value: 'new', label: 'New', icon: MessageSquare, color: 'bg-blue-500' },
   { value: 'overdue', label: 'Overdue', icon: AlertTriangle, color: 'bg-red-500' },
+  { value: 'on_hold', label: 'On Hold', icon: Clock, color: 'bg-amber-500' },
   { value: 'closed', label: 'Closed', icon: CheckCircle, color: 'bg-green-500' },
 ];
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
+  { value: 'on_hold', label: 'On Hold' },
   { value: 'resolved', label: 'Resolved' },
   { value: 'closed', label: 'Closed' },
+];
+
+const HOLD_REASONS = [
+  'Awaiting customer reply',
+  'Awaiting internal team input',
+  'Awaiting third-party / vendor',
+  'Scheduled follow-up',
+  'Customer requested pause',
+  'Awaiting payment / refund',
+  'Other',
 ];
 
 const AdminSupportUnified = () => {
@@ -198,6 +210,9 @@ const AdminSupportUnified = () => {
   const [showNotesModal, setShowNotesModal] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(null);
+  const [showHoldModal, setShowHoldModal] = useState(null);   // { query }
+  const [holdReason, setHoldReason] = useState('');
+  const [holdReasonOther, setHoldReasonOther] = useState('');
   const [showViewersModal, setShowViewersModal] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [editForm, setEditForm] = useState({});
@@ -631,26 +646,34 @@ const AdminSupportUnified = () => {
     }
   };
 
-  const updateStatus = async (query, newStatus) => {
+  const updateStatus = async (query, newStatus, holdReason = null) => {
+    // If user picked On Hold, prompt for reason via modal (unless already supplied)
+    if (newStatus === 'on_hold' && !holdReason) {
+      setShowHoldModal({ query });
+      return;
+    }
     try {
+      const payload = { status: newStatus };
+      if (newStatus === 'on_hold') payload.hold_reason = holdReason;
       if (query._source === 'inquiry') {
-        await axios.patch(`${API}/inquiry/queries/${query.id}`, { status: newStatus }, {
+        await axios.patch(`${API}/inquiry/queries/${query.id}`, payload, {
           headers: getAuthHeaders()
         });
       } else if (query._source === 'user_support') {
-        await axios.patch(`${API}/support/queries/${query.id}`, { status: newStatus }, {
+        await axios.patch(`${API}/support/queries/${query.id}`, payload, {
           headers: getAuthHeaders()
         });
       } else if (query._source === 'tracking_page') {
-        await axios.patch(`${API}/support/tracking-tickets/${query.id}`, { status: newStatus }, {
+        await axios.patch(`${API}/support/tracking-tickets/${query.id}`, payload, {
           headers: getAuthHeaders()
         });
       } else {
-        await axios.patch(`${API}/support/tickets/${query.id}`, { status: newStatus }, {
+        await axios.patch(`${API}/support/tickets/${query.id}`, payload, {
           headers: getAuthHeaders()
         });
       }
-      toast.success('Status updated');
+      toast.success(newStatus === 'on_hold' ? `Query put on hold — ${holdReason}` : 'Status updated');
+      setShowHoldModal(null);
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to update status');
@@ -874,20 +897,24 @@ const AdminSupportUnified = () => {
     return <span className={`badge-status ${typeObj.color}`}>{typeObj.label}</span>;
   };
 
-  // Check if query is overdue (>24 hours and not resolved/closed)
+  // Check if query is overdue (>24 hours and not resolved/closed/on_hold)
+  // Subtracts paused_seconds (time spent on hold) — held queries never go overdue.
   const isOverdue = (query) => {
-    if (['resolved', 'closed'].includes(query.status)) return false;
+    if (['resolved', 'closed', 'on_hold'].includes(query.status)) return false;
     if (!query.created_at) return false;
-    const hoursSinceCreation = differenceInHours(new Date(), new Date(query.created_at));
-    return hoursSinceCreation > 24;
+    const elapsedHours = differenceInHours(new Date(), new Date(query.created_at));
+    const pausedHours = (Number(query.paused_seconds) || 0) / 3600;
+    return (elapsedHours - pausedHours) > 24;
   };
 
-  // Human-friendly resolution duration (created → resolved_at)
+  // Human-friendly resolution duration (created → resolved_at, minus paused time)
   const formatResolutionTime = (query) => {
     if (!['resolved', 'closed'].includes(query.status)) return null;
     const resolvedAt = query.resolved_at || query.updated_at;
     if (!query.created_at || !resolvedAt) return null;
-    const mins = Math.max(0, Math.round((new Date(resolvedAt) - new Date(query.created_at)) / 60000));
+    const totalMs = new Date(resolvedAt) - new Date(query.created_at);
+    const pausedMs = (Number(query.paused_seconds) || 0) * 1000;
+    const mins = Math.max(0, Math.round((totalMs - pausedMs) / 60000));
     if (mins < 60) return `${mins} min`;
     const hrs = Math.floor(mins / 60);
     const remMins = mins % 60;
@@ -1094,6 +1121,7 @@ const AdminSupportUnified = () => {
   // Calculate tab counts
   const newCount = allQueries.filter(q => ['open', 'in_progress'].includes(q.status) && !isOverdue(q)).length;
   const overdueCount = allQueries.filter(q => isOverdue(q)).length;
+  const onHoldCount = allQueries.filter(q => q.status === 'on_hold').length;
   const closedCount = allQueries.filter(q => ['resolved', 'closed'].includes(q.status)).length;
   
   const filteredQueries = allQueries.filter(query => {
@@ -1103,6 +1131,8 @@ const AdminSupportUnified = () => {
       if (isOverdue(query)) return false;
     } else if (activeTab === 'overdue') {
       if (!isOverdue(query)) return false;
+    } else if (activeTab === 'on_hold') {
+      if (query.status !== 'on_hold') return false;
     } else if (activeTab === 'closed') {
       if (!['resolved', 'closed'].includes(query.status)) return false;
     }
@@ -1179,6 +1209,21 @@ const AdminSupportUnified = () => {
           Overdue
           <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'overdue' ? 'bg-white/20' : 'bg-red-100 text-red-700'}`}>
             {overdueCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('on_hold')}
+          className={`px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-all ${
+            activeTab === 'on_hold'
+              ? 'bg-amber-500 text-white shadow-lg'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+          data-testid="tab-on-hold"
+        >
+          <Clock className="w-4 h-4" />
+          On Hold
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'on_hold' ? 'bg-white/20' : 'bg-amber-100 text-amber-700'}`}>
+            {onHoldCount}
           </span>
         </button>
         <button
@@ -1393,6 +1438,7 @@ const AdminSupportUnified = () => {
           <p className="text-slate-500">
             {activeTab === 'new' && 'No new queries'}
             {activeTab === 'overdue' && 'No overdue queries - Great job!'}
+            {activeTab === 'on_hold' && 'No queries on hold'}
             {activeTab === 'closed' && 'No closed queries'}
           </p>
         </div>
@@ -1401,7 +1447,7 @@ const AdminSupportUnified = () => {
           {filteredQueries.map((query) => (
             <div 
               key={`${query._source}-${query.id}`} 
-              className={`bg-white rounded-2xl border p-6 ${isOverdue(query) ? 'border-red-300 bg-red-50/30' : 'border-slate-100'}`}
+              className={`bg-white rounded-2xl border p-6 ${isOverdue(query) ? 'border-red-300 bg-red-50/30' : query.status === 'on_hold' ? 'border-amber-300 bg-amber-50/30' : 'border-slate-100'}`}
               data-testid={`query-card-${query.id}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
@@ -1418,9 +1464,15 @@ const AdminSupportUnified = () => {
                       Overdue
                     </span>
                   )}
-                  <span className={`badge-status ${query.status === 'open' ? 'bg-blue-100 text-blue-700' : query.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : query.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`badge-status ${query.status === 'open' ? 'bg-blue-100 text-blue-700' : query.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : query.status === 'on_hold' ? 'bg-amber-100 text-amber-700' : query.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                     {query.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </span>
+                  {query.status === 'on_hold' && query.hold_reason && (
+                    <span className="text-xs px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1" title="Resolution timer paused" data-testid={`hold-reason-${query.id}`}>
+                      <Clock className="w-3 h-3" />
+                      Hold: {query.hold_reason}
+                    </span>
+                  )}
                   {formatResolutionTime(query) && (
                     <span
                       className="badge-status bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"
@@ -1710,6 +1762,63 @@ const AdminSupportUnified = () => {
       )}
 
       {/* Reply Modal - Chat Style */}
+      <Dialog open={!!showHoldModal} onOpenChange={(o) => { if (!o) { setShowHoldModal(null); setHoldReason(''); setHoldReasonOther(''); } }}>
+        <DialogContent className="sm:max-w-md" data-testid="hold-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-500" />
+              Put query on hold
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <p className="text-sm text-slate-600">
+              Resolution timer will be paused until you move this query out of On Hold. Pick the reason:
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {HOLD_REASONS.map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setHoldReason(r)}
+                  className={`text-left text-sm px-4 py-2.5 rounded-lg border-2 transition-all ${holdReason === r ? 'border-amber-500 bg-amber-50 font-semibold text-amber-900' : 'border-slate-200 bg-white hover:border-amber-200 hover:bg-amber-50/40 text-slate-700'}`}
+                  data-testid={`hold-reason-opt-${r.replace(/\s+/g, '-').toLowerCase()}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            {holdReason === 'Other' && (
+              <Input
+                placeholder="Specify the reason…"
+                value={holdReasonOther}
+                onChange={(e) => setHoldReasonOther(e.target.value)}
+                data-testid="hold-reason-other-input"
+                autoFocus
+              />
+            )}
+          </div>
+          <DialogFooter className="mt-4 gap-2">
+            <Button variant="outline" onClick={() => { setShowHoldModal(null); setHoldReason(''); setHoldReasonOther(''); }} data-testid="hold-cancel">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const finalReason = holdReason === 'Other' ? (holdReasonOther.trim() || 'Other') : holdReason;
+                if (!finalReason) { toast.error('Please pick a reason'); return; }
+                updateStatus(showHoldModal.query, 'on_hold', finalReason);
+                setHoldReason('');
+                setHoldReasonOther('');
+              }}
+              className="bg-amber-500 hover:bg-amber-600"
+              disabled={!holdReason || (holdReason === 'Other' && !holdReasonOther.trim())}
+              data-testid="hold-confirm"
+            >
+              Put on Hold
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); setReplyAttachment(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0" preventClose>
           <DialogHeader className="flex-shrink-0 p-6 pb-0">
