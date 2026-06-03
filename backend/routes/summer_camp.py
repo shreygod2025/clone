@@ -191,6 +191,10 @@ class PartialLeadCapture(BaseModel):
     mode: str
     center: str
     ref: Optional[str] = None          # tracking link slug
+    # Broadcast-only leads (Summer Camp 2026 closed — collecting waitlist)
+    is_broadcast_lead: Optional[bool] = False
+    crm_status: Optional[str] = None
+    broadcast_tag: Optional[str] = None
 
 
 class CompleteLead(BaseModel):
@@ -325,6 +329,14 @@ async def capture_lead(data: PartialLeadCapture):
                 refresh["return_count"] = existing.get("return_count", 1) + 1
                 refresh["last_returned_at"] = now_iso
 
+            # Mark as broadcast lead if this submission is from the closed-camps flow
+            if data.is_broadcast_lead:
+                refresh["is_broadcast_lead"] = True
+                refresh["broadcast_tag"] = data.broadcast_tag or "summer_camp_2026_closed_waitlist"
+                # Only switch crm_status if the existing one is still in pre-conversion stages
+                if existing.get("crm_status") in (None, "", "phone_captured", "lead"):
+                    refresh["crm_status"] = data.crm_status or "broadcast_only"
+
             if len(refresh) > 1:  # more than just updated_at
                 await db.summer_camp_bookings.update_one(
                     {"id": existing["id"]},
@@ -370,7 +382,9 @@ async def capture_lead(data: PartialLeadCapture):
         "payment_mode": "cashfree",
         "amount": camp_price_for_center(data.center),
         "payment_status": "pending",
-        "crm_status": "phone_captured",
+        "crm_status": data.crm_status or ("broadcast_only" if data.is_broadcast_lead else "phone_captured"),
+        "is_broadcast_lead": bool(data.is_broadcast_lead),
+        "broadcast_tag": data.broadcast_tag or ("summer_camp_2026_closed_waitlist" if data.is_broadcast_lead else ""),
         "source_ref": data.ref or "",
         "source_name": source_name,
         "created_at": datetime.now(timezone.utc).isoformat(),

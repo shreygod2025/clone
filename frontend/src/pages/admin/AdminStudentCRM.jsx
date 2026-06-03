@@ -1528,6 +1528,7 @@ const AdminStudentCRM = () => {
                     { label: 'Form Filled', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, filterVal: 'phone_captured', color: 'bg-orange-50 border-orange-200 text-orange-700', activeColor: 'bg-orange-500 border-orange-500 text-white' },
                     { label: 'Leads', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, filterVal: 'lead', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', activeColor: 'bg-yellow-500 border-yellow-500 text-white' },
                     { label: 'Hot Lead', value: summerCampBookings.filter(b => b.crm_status === 'hot_lead').length, filterVal: 'hot_lead', color: 'bg-purple-50 border-purple-200 text-purple-700', activeColor: 'bg-purple-600 border-purple-600 text-white' },
+                    { label: 'Broadcast', value: summerCampBookings.filter(b => b.crm_status === 'broadcast_only' || b.is_broadcast_lead).length, filterVal: 'broadcast_only', color: 'bg-cyan-50 border-cyan-200 text-cyan-700', activeColor: 'bg-cyan-600 border-cyan-600 text-white' },
                     { label: '₹500 Reserved', value: summerCampBookings.filter(b => b.crm_status === 'seat_reserved').length, filterVal: 'seat_reserved', color: 'bg-amber-50 border-amber-200 text-amber-700', activeColor: 'bg-amber-500 border-amber-500 text-white' },
                     { label: 'Converted', value: summerCampBookings.filter(b => b.crm_status === 'converted' || b.crm_status === 'payment_offline').length, filterVal: 'converted_all', color: 'bg-green-50 border-green-200 text-green-700', activeColor: 'bg-green-600 border-green-600 text-white' },
                     { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, filterVal: 'lost_lead', color: 'bg-red-50 border-red-200 text-red-700', activeColor: 'bg-red-500 border-red-500 text-white' },
@@ -1683,6 +1684,7 @@ const AdminStudentCRM = () => {
                           <option value="phone_captured">Form Filled</option>
                           <option value="lead">Lead</option>
                           <option value="hot_lead">Hot Lead</option>
+                          <option value="broadcast_only">Broadcast Waitlist</option>
                           <option value="converted_all">Converted (All)</option>
                       <option value="seat_reserved">₹500 Reserved</option>
                           <option value="converted">Paid Online</option>
@@ -1778,6 +1780,7 @@ const AdminStudentCRM = () => {
                                       booking.crm_status === 'seat_reserved' ? 'bg-amber-50 text-amber-700' :
                                       booking.crm_status === 'payment_offline' ? 'bg-teal-50 text-teal-700' :
                                       booking.crm_status === 'hot_lead' ? 'bg-purple-50 text-purple-700' :
+                                      booking.crm_status === 'broadcast_only' ? 'bg-cyan-50 text-cyan-700' :
                                       booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
                                       booking.crm_status === 'lost_lead' ? 'bg-red-50 text-red-700' :
                                       'bg-yellow-50 text-yellow-700'
@@ -1787,6 +1790,7 @@ const AdminStudentCRM = () => {
                                      booking.crm_status === 'seat_reserved' ? '₹500 Reserved' :
                                      booking.crm_status === 'payment_offline' ? 'Pay at Center' :
                                      booking.crm_status === 'hot_lead' ? 'Hot Lead' :
+                                     booking.crm_status === 'broadcast_only' ? 'Broadcast' :
                                      booking.crm_status === 'phone_captured' ? 'Form Filled' :
                                      booking.crm_status === 'lost_lead' ? 'Lost' : 'Lead'}
                                   </button>

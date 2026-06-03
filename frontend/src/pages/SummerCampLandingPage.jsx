@@ -142,13 +142,6 @@ const CAMP_FAQS = [
   },
 ];
 
-const BATCH_DATES = [
-  { id: 'week1', date: 'May 4–8, 2026',   label: 'Batch 1' },
-  { id: 'week2', date: 'May 11–15, 2026',  label: 'Batch 2' },
-  { id: 'week3', date: 'May 18–22, 2026',  label: 'Batch 3' },
-  { id: 'week4', date: 'May 25–29, 2026',  label: 'Batch 4' },
-];
-
 const TESTIMONIALS = [
   { quote: 'My 6-year-old came home and said "Mom, I built a robot today!" — I couldn\'t believe it.', author: 'Priya Mehta', location: 'Mira Road', camp: 'Little Explorers' },
   { quote: 'He didn\'t want to leave the camp. He was debugging his robot at 6pm and refused to stop.', author: 'Rahul Sharma', location: 'Dombivli', camp: 'Tech Creators' },
@@ -1168,23 +1161,10 @@ export default function SummerCampLandingPage() {
         <section data-testid="camp-schedule" style={{ padding: '6rem 0', background: 'rgba(8,15,30,0.78)', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
             <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3rem' }}>
-              <p className="sec-label">Batches & Locations</p>
-              <h2 className="sec-title">Choose Your Schedule</h2>
+              <p className="sec-label">Camp Hours</p>
+              <h2 className="sec-title">Timings by Age Group</h2>
             </div>
 
-            {/* Batch cards */}
-            <div className="sr-scale sr-d2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.85rem', marginBottom: '2rem' }}>
-              {BATCH_DATES.map(b => (
-                <div key={b.id} className="camp-card" style={{ padding: '1.25rem' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
-                >
-                  <div style={{ fontSize: '0.6rem', color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700, marginBottom: '0.4rem' }}>{b.label}</div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b.date}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#7A9AB8', marginTop: '0.4rem' }}>Mon–Fri · 10 seats only</div>
-                </div>
-              ))}
-            </div>
             {/* Timings by age group */}
             <div className="sr sr-d3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.7rem', marginBottom: '3rem' }}>
               {AGE_GROUPS.map(g => (

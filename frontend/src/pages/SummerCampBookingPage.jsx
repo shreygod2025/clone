@@ -1,30 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ArrowRight, Check, MapPin, CreditCard, Banknote, Lock, Laptop, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, MapPin, Bell, Sparkles } from 'lucide-react';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const CASHFREE_ENV = 'production';
 
 const JB = "'JetBrains Mono', monospace";
 const NU = "'Nunito Sans', sans-serif";
 
-// Steps: 0-Age | 1-Center | 2-Batch | 3-Phone | 4-Details+Pay
-const TOTAL = 5;
+// Steps: 0-Age | 1-Center | 2-Phone | 3-Confirmation
+const TOTAL = 4;
 
 const AGE_GROUPS = [
-  { slug: 'explorers',  label: 'Little Explorers',  ages: '4 – 8',   icon: '🚀', tagline: 'First steps into robotics & coding',  color: '#00E5FF', laptop: false, timing: '12:00 PM – 2:00 PM' },
-  { slug: 'creators',   label: 'Tech Creators',      ages: '9 – 12',  icon: '⚙️', tagline: 'Build robots and write real code',     color: '#D63031', laptop: true,  timing: '2:30 PM – 4:30 PM' },
-  { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED', laptop: true,  timing: '5:00 PM – 7:00 PM' },
+  { slug: 'explorers',  label: 'Little Explorers',  ages: '4 – 8',   icon: '🚀', tagline: 'First steps into robotics & coding',  color: '#00E5FF' },
+  { slug: 'creators',   label: 'Tech Creators',      ages: '9 – 12',  icon: '⚙️', tagline: 'Build robots and write real code',     color: '#D63031' },
+  { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED' },
 ];
 
-const BATCH_WEEKS = [
-  { id: 'week1', label: 'Batch 1', date: 'May 4–8, 2026' },
-  { id: 'week2', label: 'Batch 2', date: 'May 11–15, 2026' },
-  { id: 'week3', label: 'Batch 3', date: 'May 18–22, 2026' },
-  { id: 'week4', label: 'Batch 4', date: 'May 25–29, 2026' },
-];
+const NSCI_CENTER = {
+  id: 'oll_nsci_south_mumbai',
+  name: 'OLL x NSCI — South Mumbai',
+  address_line1: 'Lala Lajpatrai Marg, Lotus Colony, Worli',
+  city: 'Mumbai',
+  area: 'Worli',
+  is_active: true,
+  is_partner: true,
+};
 
 function ProgressBar({ step }) {
   const pct = Math.round(((step + 1) / TOTAL) * 100);
@@ -43,26 +45,24 @@ function BackBtn({ onClick }) {
   );
 }
 
-function ChoiceCard({ selected, onClick, children, disabled }) {
+function ChoiceCard({ selected, onClick, children }) {
   return (
     <button
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
+      onClick={onClick}
       style={{
         width: '100%',
-        background: disabled ? 'rgba(255,255,255,0.01)' : selected ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.03)',
-        border: disabled ? '1px solid rgba(255,255,255,0.04)' : selected ? '2px solid #00E5FF' : '1px solid rgba(255,255,255,0.09)',
-        borderRadius: '1rem', padding: '1.35rem 1.5rem', cursor: disabled ? 'not-allowed' : 'pointer',
+        background: selected ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.03)',
+        border: selected ? '2px solid #00E5FF' : '1px solid rgba(255,255,255,0.09)',
+        borderRadius: '1rem', padding: '1.35rem 1.5rem', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         transition: 'all 0.2s', textAlign: 'left', boxSizing: 'border-box',
         boxShadow: selected ? '0 0 30px rgba(0,229,255,0.08)' : 'none',
-        opacity: disabled ? 0.5 : 1,
       }}
-      onMouseEnter={e => { if (!selected && !disabled) e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
-      onMouseLeave={e => { if (!selected && !disabled) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
+      onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
+      onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
     >
       {children}
-      {selected && !disabled && (
+      {selected && (
         <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#00E5FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
           <Check style={{ width: 12, height: 12, color: '#080C16' }} />
         </div>
@@ -79,116 +79,70 @@ function InputField({ label, id, type = 'text', value, onChange, placeholder, re
       </label>
       <input
         id={id} type={type} value={value} onChange={onChange} placeholder={placeholder} required={required} autoFocus={autoFocus}
-        style={{ width: '100%', padding: '1rem 1.15rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.875rem', color: '#F8FAFC', fontSize: '1.05rem', fontFamily: NU, fontWeight: 600, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
-        onFocus={e => { e.target.style.borderColor = '#00E5FF'; e.target.style.background = 'rgba(0,229,255,0.05)'; }}
-        onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.background = 'rgba(255,255,255,0.04)'; }}
+        style={{ width: '100%', padding: '0.95rem 1.1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.875rem', color: '#F8FAFC', fontSize: '1rem', outline: 'none', fontFamily: NU, transition: 'all 0.2s', boxSizing: 'border-box' }}
+        onFocus={e => { e.currentTarget.style.borderColor = '#00E5FF'; e.currentTarget.style.background = 'rgba(0,229,255,0.04)'; }}
+        onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
       />
     </div>
   );
 }
 
-function StepHeader({ stepNum, title, sub }) {
-  return (
-    <div style={{ marginBottom: '2.25rem' }}>
-      <p style={{ fontFamily: JB, fontSize: '0.62rem', letterSpacing: '0.22em', color: '#00E5FF', textTransform: 'uppercase', marginBottom: '0.6rem', fontWeight: 700 }}>
-        Step {stepNum} of {TOTAL}
-      </p>
-      <h2 style={{ fontFamily: JB, fontSize: 'clamp(1.4rem, 5vw, 2rem)', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.2, marginBottom: sub ? '0.6rem' : 0 }}>
-        {title}
-      </h2>
-      {sub && <p style={{ color: '#64748B', fontSize: '1rem', fontFamily: NU, fontWeight: 500, lineHeight: 1.5 }}>{sub}</p>}
-    </div>
-  );
-}
-
-function PrimaryBtn({ onClick, disabled, children, type = 'button' }) {
+function PrimaryBtn({ disabled, onClick, children, type = 'button' }) {
   return (
     <button
-      type={type} onClick={onClick} disabled={disabled}
-      style={{ width: '100%', background: disabled ? '#1E293B' : '#D63031', color: disabled ? '#475569' : '#fff', fontFamily: JB, fontWeight: 700, fontSize: '1rem', padding: '1.1rem', borderRadius: '12px', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: disabled ? 'none' : '0 0 28px rgba(214,48,49,0.3)', transition: 'all 0.25s' }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = '#e8353f'; }}
-      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = '#D63031'; }}
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        width: '100%', background: disabled ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg,#D63031,#FF6B6B)',
+        color: disabled ? '#475569' : '#fff', fontWeight: 800, fontSize: '1rem',
+        padding: '1rem 1.5rem', border: 'none', borderRadius: '0.875rem',
+        cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        fontFamily: JB, letterSpacing: '0.04em',
+        boxShadow: disabled ? 'none' : '0 12px 30px rgba(214,48,49,0.3)',
+        transition: 'all 0.2s',
+      }}
     >
       {children}
     </button>
   );
 }
 
+function StepHeader({ stepNum, title, sub }) {
+  return (
+    <div style={{ marginBottom: '2rem' }}>
+      <div style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: '#00E5FF', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Step {stepNum} of {TOTAL}</div>
+      <h1 style={{ fontFamily: JB, fontSize: 'clamp(1.5rem, 3.5vw, 1.85rem)', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.55rem' }}>{title}</h1>
+      <p style={{ fontSize: '1rem', color: '#64748B', fontFamily: NU, lineHeight: 1.55 }}>{sub}</p>
+    </div>
+  );
+}
+
 export default function SummerCampBookingPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const preAge = searchParams.get('age') || '';
 
-  // If preAge is set, skip age step (0) and go to center step (1)
   const [step, setStep] = useState(preAge ? 1 : 0);
-  const [capturedBookingId, setCapturedBookingId] = useState(null);
   const [centers, setCenters] = useState([]);
-  const [availability, setAvailability] = useState({});
-
-  const [form, setForm] = useState({
-    age_group: preAge || '',
-    mode: 'offline',
-    center: '',
-    batch_week: '',
-    batch_type: 'weekday',
-    parent_phone: '',
-    child_name: '',
-    parent_email: '',
-    payment_mode: 'cashfree',
-  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Hardcoded partner center — premium pricing, online-payment only
-  const NSCI_CENTER = {
-    id: 'oll_nsci_south_mumbai',
-    name: 'OLL x NSCI — South Mumbai',
-    address_line1: 'Lala Lajpatrai Marg, Lotus Colony, Worli',
-    city: 'Mumbai',
-    area: 'Worli',
-    pincode: '400018',
-    is_active: true,
-    is_partner: true,
-    price: 8500,
-  };
-  const REGULAR_PRICE = 1999;
-  const isPartnerCenter = form.center === NSCI_CENTER.id;
-  const selectedPrice = isPartnerCenter ? NSCI_CENTER.price : REGULAR_PRICE;
+  const [form, setForm] = useState({
+    age_group: preAge || '',
+    center: '',
+    parent_phone: '',
+  });
 
   useEffect(() => {
-    // Load Cashfree JS SDK
-    if (!window.Cashfree) {
-      const script = document.createElement('script');
-      script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-      script.async = true;
-      document.head.appendChild(script);
-    }
-    // Fetch active offline centers only; prepend the hardcoded partner center
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/centers`)
+    fetch(`${API}/centers`)
       .then(r => r.json())
       .then(data => {
-        const regular = data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online'));
+        const regular = (data || []).filter(c => c.is_active && !c.name?.toLowerCase().includes('online'));
         setCenters([NSCI_CENTER, ...regular]);
       })
       .catch(() => setCenters([NSCI_CENTER]));
   }, []);
-
-  // Force payment mode to cashfree when partner center is selected (cash-at-center disabled there)
-  useEffect(() => {
-    if (isPartnerCenter && form.payment_mode === 'cash') {
-      setForm(prev => ({ ...prev, payment_mode: 'cashfree' }));
-    }
-  }, [isPartnerCenter, form.payment_mode]);
-
-  // Fetch availability when entering batch step
-  useEffect(() => {
-    if (step === 2 && form.age_group && form.center) {
-      fetch(`${API}/summer-camp/availability?age_group=${form.age_group}&center=${form.center}`)
-        .then(r => r.json())
-        .then(data => setAvailability(data))
-        .catch(() => {});
-    }
-  }, [step, form.age_group, form.center]);
 
   const update = (field) => (val) => setForm(prev => ({ ...prev, [field]: val }));
 
@@ -198,84 +152,28 @@ export default function SummerCampBookingPage() {
     setStep(s => s - 1);
   };
 
-  const goNext = () => {
-    setError('');
-    setStep(s => s + 1);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    // Validate required fields (email optional — backend generates placeholder)
-    if (!form.child_name || !form.parent_phone) {
-      setError('Please fill in all required fields.');
+  const submitBroadcastLead = async () => {
+    if (!/^\d{10,15}$/.test(form.parent_phone.replace(/\D/g, ''))) {
+      setError('Please enter a valid phone number.');
       return;
     }
     setSubmitting(true);
     setError('');
     try {
-      let bid = capturedBookingId;
-
-      if (bid) {
-        const upd = await axios.patch(`${API}/summer-camp/complete-lead/${bid}`, {
-          child_name: form.child_name,
-          parent_email: form.parent_email,
-          payment_mode: form.payment_mode,
-        });
-        bid = upd.data.booking_id;
-      } else {
-        const reg = await axios.post(`${API}/summer-camp/register`, {
-          child_name: form.child_name,
-          parent_name: '',
-          parent_phone: form.parent_phone,
-          parent_email: form.parent_email,
-          age_group: form.age_group,
-          batch_type: 'weekday',
-          batch_week: form.batch_week,
-          mode: 'offline',
-          center: form.center,
-          payment_mode: form.payment_mode,
-        });
-        bid = reg.data.booking_id;
-      }
-
-      if (form.payment_mode === 'cash') {
-        navigate(`/summer-camp/success?booking_id=${bid}&payment_mode=cash`);
-        return;
-      }
-
-      const pay = await axios.post(`${API}/summer-camp/initiate-payment`, {
-        booking_id: bid,
-        frontend_url: window.location.origin,
-        amount: selectedPrice,
+      const campRef = sessionStorage.getItem('camp_ref') || '';
+      await axios.post(`${API}/summer-camp/capture-lead`, {
+        parent_phone: form.parent_phone,
+        age_group: form.age_group,
+        batch_type: 'weekday',
+        batch_week: '',
+        mode: 'offline',
+        center: form.center,
+        is_broadcast_lead: true,
+        crm_status: 'broadcast_only',
+        broadcast_tag: 'summer_camp_2026_closed_waitlist',
+        ref: campRef || undefined,
       });
-      if (!pay.data.payment_session_id) {
-        setError('Could not initiate payment. Please try again.');
-        return;
-      }
-
-      if (!window.Cashfree) {
-        setError('Payment gateway is still loading. Please try again in a moment.');
-        return;
-      }
-      const cashfree_instance = window.Cashfree({ mode: CASHFREE_ENV });
-      const result = await cashfree_instance.checkout({
-        paymentSessionId: pay.data.payment_session_id,
-        redirectTarget: '_modal',
-      });
-
-      if (result?.error) {
-        setError(result.error.message || 'Payment failed. Please try again.');
-        return;
-      }
-
-      // Payment completed inside modal — navigate to success page so verify runs
-      if (result?.paymentDetails || result?.redirect) {
-        navigate(`/summer-camp/success?booking_id=${bid}&order_id=${pay.data.order_id}`);
-        return;
-      }
-
-      // Fallback: navigate anyway (Cashfree sometimes closes modal without result)
-      navigate(`/summer-camp/success?booking_id=${bid}&order_id=${pay.data.order_id}`);
+      setStep(3);
     } catch (err) {
       setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
     } finally {
@@ -284,14 +182,13 @@ export default function SummerCampBookingPage() {
   };
 
   const selectedAge = AGE_GROUPS.find(g => g.slug === form.age_group);
-  const selectedBatch = BATCH_WEEKS.find(b => b.id === form.batch_week);
   const selectedCenter = centers.find(c => c.id === form.center);
 
   return (
     <>
-      <Helmet><title>Book — Future Skills Summer Camp 2026 | OLL</title></Helmet>
+      <Helmet><title>Join Broadcast — Future Skills Summer Camp | OLL</title></Helmet>
 
-      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: NU }}>
+      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: NU }} data-testid="summer-camp-booking-page">
 
         {/* Header */}
         <div style={{ borderBottom: '1px solid rgba(0,229,255,0.1)', padding: '0.9rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 40, background: 'rgba(8,12,22,0.92)' }}>
@@ -299,15 +196,15 @@ export default function SummerCampBookingPage() {
             <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ArrowLeft style={{ width: 14, height: 14 }} />
             </span>
-            Summer Camp 2026
+            Summer Camp
           </button>
           <span style={{ fontSize: '0.82rem', color: '#475569', fontFamily: NU, fontWeight: 600 }}>
-            {selectedAge ? `${selectedAge.icon}  ${selectedAge.label}` : 'Booking'}
+            {selectedAge ? `${selectedAge.icon}  ${selectedAge.label}` : 'Join Broadcast'}
           </span>
         </div>
 
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '2.5rem 1.5rem 5rem' }}>
-          <ProgressBar step={step} />
+          {step < 3 && <ProgressBar step={step} />}
 
           {error && (
             <div style={{ background: 'rgba(214,48,49,0.1)', border: '1px solid rgba(214,48,49,0.3)', borderRadius: '0.875rem', padding: '0.85rem 1.1rem', color: '#FF6B6B', fontSize: '0.95rem', fontFamily: NU, fontWeight: 500, marginBottom: '1.5rem' }}>
@@ -324,10 +221,7 @@ export default function SummerCampBookingPage() {
                   <ChoiceCard
                     key={g.slug}
                     selected={form.age_group === g.slug}
-                    onClick={() => {
-                      update('age_group')(g.slug);
-                      setTimeout(goNext, 200);
-                    }}
+                    onClick={() => { update('age_group')(g.slug); setTimeout(() => setStep(1), 200); }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <span style={{ fontSize: '2.25rem', lineHeight: 1, flexShrink: 0 }}>{g.icon}</span>
@@ -339,7 +233,6 @@ export default function SummerCampBookingPage() {
                   </ChoiceCard>
                 ))}
               </div>
-
             </div>
           )}
 
@@ -350,7 +243,7 @@ export default function SummerCampBookingPage() {
               <StepHeader stepNum={2} title="Choose your center" sub={centers.length ? `Available in ${[...new Set(centers.map(c => c.city))].join(' · ')}` : 'Loading centers...'} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                 {centers.map(c => (
-                  <ChoiceCard key={c.id} selected={form.center === c.id} onClick={() => { update('center')(c.id); setTimeout(goNext, 200); }}>
+                  <ChoiceCard key={c.id} selected={form.center === c.id} onClick={() => { update('center')(c.id); setTimeout(() => setStep(2), 200); }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <div style={{ width: 46, height: 46, borderRadius: '0.875rem', background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <MapPin style={{ width: 20, height: 20, color: '#00E5FF' }} />
@@ -366,173 +259,77 @@ export default function SummerCampBookingPage() {
             </div>
           )}
 
-          {/* ── STEP 2: Batch + Spots ── */}
+          {/* ── STEP 2: Phone ── */}
           {step === 2 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={3} title="Pick your batch" sub={`Mon–Fri · 5 days · ${AGE_GROUPS.find(g => g.slug === form.age_group)?.timing || '2 hours per day'}`} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {BATCH_WEEKS.map((b) => {
-                  const avail = availability[b.id];
-                  const isFull = avail?.full === true;
-                  const spotsLeft = avail?.spots_left;
-                  const showWarning = spotsLeft !== undefined && spotsLeft <= 3 && !isFull;
-                  return (
-                    <ChoiceCard
-                      key={b.id}
-                      selected={form.batch_week === b.id}
-                      disabled={isFull}
-                      onClick={() => { update('batch_week')(b.id); update('batch_type')('weekday'); setTimeout(goNext, 220); }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>{b.label}</div>
-                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: isFull ? '#475569' : '#F8FAFC', marginBottom: '0.3rem' }}>{b.date}</div>
-                        <div style={{ fontSize: '0.68rem', color: '#00E5FF', fontFamily: JB, fontWeight: 600, letterSpacing: '0.04em', opacity: isFull ? 0.4 : 0.9 }}>
-                          ⏰ {AGE_GROUPS.find(g => g.slug === form.age_group)?.timing || ''}
-                        </div>
-                      </div>
-                      {/* Spots badge */}
-                      {avail && (
-                        <div style={{ marginLeft: 12, flexShrink: 0 }}>
-                          {isFull ? (
-                            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: '#D63031', background: 'rgba(214,48,49,0.1)', border: '1px solid rgba(214,48,49,0.25)', borderRadius: '0.5rem', padding: '0.3rem 0.7rem', letterSpacing: '0.08em' }}>FULL</span>
-                          ) : showWarning ? (
-                            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '0.5rem', padding: '0.3rem 0.7rem', letterSpacing: '0.06em' }}>{spotsLeft} left</span>
-                          ) : (
-                            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 600, color: '#22C55E', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '0.5rem', padding: '0.3rem 0.7rem', letterSpacing: '0.06em' }}>{spotsLeft} spots</span>
-                          )}
-                        </div>
-                      )}
-                    </ChoiceCard>
-                  );
-                })}
-              </div>
-              <p style={{ marginTop: '1rem', fontSize: '0.76rem', color: '#334155', fontFamily: JB, textAlign: 'center', letterSpacing: '0.04em' }}>
-                Max 10 students per batch
-              </p>
-            </div>
-          )}
-
-          {/* ── STEP 3: Phone ── */}
-          {step === 3 && (
-            <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
-              <BackBtn onClick={goBack} />
-              <StepHeader stepNum={4} title="What's your phone number?" sub="We'll send your booking confirmation on WhatsApp." />
+              <StepHeader stepNum={3} title="Last step — your phone number" sub="We'll add you to our broadcast list for the upcoming workshops & annual classes." />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <InputField label="Parent's Phone" id="parent_phone" type="tel" value={form.parent_phone} onChange={e => update('parent_phone')(e.target.value)} placeholder="e.g. 9876543210" required autoFocus />
                 <PrimaryBtn
-                  disabled={form.parent_phone.trim().length < 10}
-                  onClick={async () => {
-                    try {
-                      const campRef = sessionStorage.getItem('camp_ref') || '';
-                      const res = await axios.post(`${API}/summer-camp/capture-lead`, {
-                        parent_phone: form.parent_phone,
-                        age_group: form.age_group,
-                        batch_type: 'weekday',
-                        batch_week: form.batch_week,
-                        mode: 'offline',
-                        center: form.center,
-                        ref: campRef || undefined,
-                      });
-                      setCapturedBookingId(res.data.booking_id);
-                    } catch (err) {
-                      console.warn('Partial lead capture failed', err);
-                    }
-                    goNext();
-                  }}
+                  disabled={submitting || form.parent_phone.trim().length < 10}
+                  onClick={submitBroadcastLead}
                 >
-                  Continue <ArrowRight style={{ width: 18, height: 18 }} />
+                  {submitting ? 'Submitting...' : <>Join Broadcast <ArrowRight style={{ width: 18, height: 18 }} /></>}
                 </PrimaryBtn>
+                <p style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'center', fontFamily: NU }}>
+                  We'll only message you about new programs. No spam, ever.
+                </p>
               </div>
             </div>
           )}
 
-          {/* ── STEP 4: Details + Pay ── */}
-          {step === 4 && (
-            <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
-              <BackBtn onClick={goBack} />
-              <StepHeader stepNum={5} title="Almost there!" sub="Just a few more details to confirm your spot." />
+          {/* ── STEP 3: Broadcast confirmation ── */}
+          {step === 3 && (
+            <div style={{ animation: 'fadeSlide 0.45s ease both', textAlign: 'center', paddingTop: '1.5rem' }} data-testid="broadcast-confirmation">
+              <div style={{ display: 'inline-flex', width: 72, height: 72, borderRadius: '50%', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                <Bell style={{ width: 32, height: 32, color: '#00E5FF' }} />
+              </div>
+              <h1 style={{ fontFamily: JB, fontSize: 'clamp(1.45rem, 3.5vw, 1.85rem)', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.25, marginBottom: '0.85rem' }}>
+                Summer Camps 2026 are over
+              </h1>
+              <p style={{ fontSize: '1.02rem', color: '#94A3B8', fontFamily: NU, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 2rem' }}>
+                Thank you for your interest! We've added <span style={{ color: '#00E5FF', fontWeight: 700 }}>{form.parent_phone}</span> to our broadcast list. You'll be the first to hear about upcoming workshops and our annual classes — including our flagship <span style={{ color: '#F8FAFC', fontWeight: 700 }}>Continuous Learning Program</span>.
+              </p>
 
-              {/* Order summary */}
-              <div style={{ background: isPartnerCenter ? 'rgba(204,255,0,0.06)' : 'rgba(0,229,255,0.05)', border: `1px solid ${isPartnerCenter ? 'rgba(204,255,0,0.25)' : 'rgba(0,229,255,0.15)'}`, borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedAge?.icon} {selectedAge?.label} · Ages {selectedAge?.ages}</span>
-                {selectedBatch && <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedBatch.date}</span>}
-                <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>🏢 {selectedCenter?.name || ''}</span>
-                <span style={{ fontFamily: JB, fontWeight: 900, color: isPartnerCenter ? '#CCFF00' : '#00E5FF', fontSize: '1.1rem' }}>₹{selectedPrice.toLocaleString('en-IN')}</span>
+              <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '1rem', padding: '1.25rem 1.5rem', marginBottom: '1.5rem', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.85rem' }}>
+                  <Sparkles style={{ width: 18, height: 18, color: '#00E5FF' }} />
+                  <span style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC' }}>What's next?</span>
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {[
+                    'Upcoming weekend workshops & holiday camps',
+                    'Annual Continuous Learning Program (Robotics, Coding, AI, 3D Design)',
+                    'Early-bird discounts & priority slot allocation',
+                  ].map(t => (
+                    <li key={t} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '0.92rem', color: '#94A3B8', fontFamily: NU, lineHeight: 1.5 }}>
+                      <Check style={{ width: 16, height: 16, color: '#22C55E', flexShrink: 0, marginTop: 2 }} />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {isPartnerCenter && (
-                <div style={{ background: 'rgba(204,255,0,0.06)', border: '1px solid rgba(204,255,0,0.25)', borderRadius: '0.875rem', padding: '0.85rem 1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <MapPin style={{ width: 18, height: 18, color: '#CCFF00', flexShrink: 0, marginTop: 2 }} />
-                  <div>
-                    <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', color: '#CCFF00', marginBottom: '0.2rem' }}>Premium Partner Center · Online Payment Only</p>
-                    <p style={{ fontFamily: NU, fontSize: '0.84rem', color: '#94A3B8', lineHeight: 1.5, fontWeight: 500 }}>
-                      NSCI Worli · Lala Lajpatrai Marg, Lotus Colony, Worli, Mumbai 400018. Includes premium facilities & NSCI access.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Laptop reminder — informational only, no action needed */}
-              {selectedAge?.laptop && (
-                <div style={{ background: 'rgba(214,48,49,0.07)', border: '1px solid rgba(214,48,49,0.22)', borderRadius: '0.875rem', padding: '0.9rem 1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <Laptop style={{ width: 18, height: 18, color: '#D63031', flexShrink: 0, marginTop: 2 }} />
-                  <div>
-                    <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', color: '#D63031', marginBottom: '0.2rem' }}>Laptop Required</p>
-                    <p style={{ fontFamily: NU, fontSize: '0.84rem', color: '#94A3B8', lineHeight: 1.5, fontWeight: 500 }}>
-                      Please ensure your child brings their own laptop to every session.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
-                <InputField label="Child's Name"   id="child_name"   value={form.child_name}   onChange={e => update('child_name')(e.target.value)}   placeholder="e.g. Aryan Kumar"    required autoFocus />
-
-                {/* Payment method */}
-                <div>
-                  <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '0.85rem', fontFamily: JB }}>Payment Method</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-
-                    {/* ── Pay Full Online (DEFAULT) ── */}
-                    <ChoiceCard selected={form.payment_mode === 'cashfree'} onClick={() => update('payment_mode')('cashfree')}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cashfree' ? 'rgba(0,229,255,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cashfree' ? 'rgba(0,229,255,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <CreditCard style={{ width: 20, height: 20, color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#64748B' }} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Online — ₹{selectedPrice.toLocaleString('en-IN')}</div>
-                          <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>UPI, Card, Net Banking via Cashfree</div>
-                        </div>
-                      </div>
-                    </ChoiceCard>
-
-                    {/* ── Pay Cash at Center — hidden for premium partner center ── */}
-                    {!isPartnerCenter && (
-                      <ChoiceCard selected={form.payment_mode === 'cash'} onClick={() => update('payment_mode')('cash')}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                          <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cash' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cash' ? 'rgba(34,197,94,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <Banknote style={{ width: 20, height: 20, color: form.payment_mode === 'cash' ? '#22C55E' : '#64748B' }} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cash' ? '#22C55E' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Cash at Center</div>
-                            <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>Pay ₹{selectedPrice.toLocaleString('en-IN')} in cash on Day 1 at the center</div>
-                          </div>
-                        </div>
-                      </ChoiceCard>
-                    )}
-
-                  </div>
-                </div>
-
-                <PrimaryBtn type="submit" disabled={submitting}>
-                  <Lock style={{ width: 15, height: 15 }} />
-                  {submitting ? 'Processing...' : form.payment_mode === 'cash' ? 'Confirm Booking — Pay at Center' : `Pay ₹${selectedPrice.toLocaleString('en-IN')} — Complete Enrollment`}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <PrimaryBtn onClick={() => navigate('/future-skills')}>
+                  Explore Continuous Learning Program <ArrowRight style={{ width: 18, height: 18 }} />
                 </PrimaryBtn>
-                <p style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'center', fontFamily: NU }}>
-                  Secured by Cashfree · SSL encrypted · No hidden charges
+                <button
+                  onClick={() => navigate('/')}
+                  style={{ width: '100%', padding: '0.85rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.875rem', color: '#94A3B8', fontFamily: JB, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', letterSpacing: '0.04em' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = '#F8FAFC'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94A3B8'; }}
+                >
+                  Back to Home
+                </button>
+              </div>
+
+              {selectedCenter && (
+                <p style={{ marginTop: '2rem', fontSize: '0.76rem', color: '#334155', fontFamily: JB, letterSpacing: '0.04em' }}>
+                  Tagged for: {selectedAge?.label || ''} · {selectedCenter.name}
                 </p>
-              </form>
+              )}
             </div>
           )}
         </div>
@@ -544,13 +341,6 @@ export default function SummerCampBookingPage() {
           from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes seatGlow {
-          0%, 100% { box-shadow: 0 0 0 0px rgba(245,158,11,0.4), 0 0 18px rgba(245,158,11,0.12); }
-          50%       { box-shadow: 0 0 0 3px rgba(245,158,11,0.3), 0 0 32px rgba(245,158,11,0.28); }
-        }
-        .seat-reserve-card        { animation: seatGlow 2.4s ease-in-out infinite; }
-        .seat-reserve-card-active { animation: seatGlow 1.6s ease-in-out infinite; }
-        .seat-reserve-card:hover  { background: rgba(245,158,11,0.06) !important; }
         input::placeholder { color: #334155; }
       `}</style>
     </>
