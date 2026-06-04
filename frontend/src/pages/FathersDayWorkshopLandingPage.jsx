@@ -26,10 +26,6 @@ const NAVY_DEEP = '#0F2960';
 const SKY = '#A8DCF0';
 const CORAL = '#FF7B6B';
 
-// "I ♥ DAD" coloring-book style — soft watermark behind the photoframe carousel
-const LOVE_DAD_BG = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/jiy1sry4_image.png';
-// Hand silhouette with "BEST DAD" lettering
-const HAND_VECTOR = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/id8md3w8_image.png';
 // Carousel — real workshop images (more to be added by client)
 const CAROUSEL = [
   'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/b27p9fpm_IMG_20260525_105021.jpg',
@@ -131,7 +127,7 @@ export default function FathersDayWorkshopLandingPage() {
       <Navbar variant="workshop" />
 
       {/* ── HERO ─────────────────────────────────────────── */}
-      <section style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, paddingBottom: '4rem', position: 'relative', overflow: 'hidden' }}>
+      <section className="pb-12 sm:pb-16 lg:pb-16" style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, position: 'relative', overflow: 'hidden' }}>
         {/* keyframes for ambient hero animations */}
         <style>{`
           @keyframes fd-sun-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -142,10 +138,23 @@ export default function FathersDayWorkshopLandingPage() {
           .fd-sun-pulser  { animation: fd-sun-pulse 3.2s ease-in-out infinite; transform-origin: 50% 50%; }
           .fd-pinwheel    { animation: fd-pinwheel-spin 2.4s linear infinite; transform-origin: 50% 50%; }
           .fd-pinwheel-wrap { animation: fd-pinwheel-bob 3.6s ease-in-out infinite; }
+          .fd-hero-sun {
+            position: absolute; top: 8px; right: 10px; width: 64px; height: 64px;
+            pointer-events: none; z-index: 1;
+          }
+          @media (min-width: 640px) {
+            .fd-hero-sun { top: 12px; right: 14px; width: 88px; height: 88px; }
+          }
+          @media (min-width: 1024px) {
+            .fd-hero-sun { top: 14px; right: 18px; width: 120px; height: 120px; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .fd-sun-rotor, .fd-sun-pulser, .fd-pinwheel, .fd-pinwheel-wrap { animation: none; }
+          }
         `}</style>
 
-        {/* Decorative animated sun — top-right corner of hero */}
-        <div aria-hidden="true" style={{ position: 'absolute', top: 14, right: 18, width: 110, height: 110, pointerEvents: 'none', zIndex: 1 }} data-testid="hero-sun">
+        {/* Decorative animated sun — top-right corner of hero (shrinks on mobile) */}
+        <div aria-hidden="true" className="fd-hero-sun" data-testid="hero-sun">
           <svg viewBox="0 0 100 100" className="fd-sun-pulser" style={{ width: '100%', height: '100%' }}>
             <g className="fd-sun-rotor">
               {Array.from({ length: 12 }).map((_, i) => (
@@ -154,63 +163,54 @@ export default function FathersDayWorkshopLandingPage() {
               ))}
             </g>
             <circle cx="50" cy="50" r="22" fill={SUN} stroke={YELLOW_DEEP} strokeWidth="2" />
-            {/* friendly face */}
             <circle cx="43" cy="47" r="2" fill={NAVY_DEEP} />
             <circle cx="57" cy="47" r="2" fill={NAVY_DEEP} />
             <path d="M 43 56 Q 50 61 57 56" stroke={NAVY_DEEP} strokeWidth="1.8" fill="none" strokeLinecap="round" />
           </svg>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-14 relative" style={{ zIndex: 2 }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10 lg:pt-14 relative" style={{ zIndex: 2 }}>
           <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
-            {/* Left — headline only (superhero image removed) */}
+            {/* Left — headline only */}
             <div className="text-center lg:text-left">
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', background: '#FFFFFF', border: `2px solid ${NAVY}`, borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: NAVY }}>
                 <Heart className="w-3.5 h-3.5" style={{ color: CORAL }} /> Father's Day · 1-Day Event
               </span>
-              <h1 className="mt-4 leading-[1.06]" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 700, fontSize: 'clamp(2rem, 4.8vw, 3.6rem)' }}>
+              <h1 className="mt-4 leading-[1.06]" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 700, fontSize: 'clamp(1.85rem, 4.8vw, 3.6rem)' }}>
                 This Father&apos;s Day,<br />
                 <span style={{ display: 'inline-block', position: 'relative' }}>
                   Bond over Learning
                   <span style={{ display: 'inline-block', position: 'absolute', bottom: -6, left: 0, right: 0, height: 6, background: SUN, borderRadius: 999, opacity: 0.6 }} />
                 </span>
               </h1>
-              <p className="mt-5" style={{ fontFamily: '"Caveat", cursive', color: CORAL, fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', fontWeight: 700, lineHeight: 1.2 }}>
+              <p className="mt-5" style={{ fontFamily: '"Caveat", cursive', color: CORAL, fontSize: 'clamp(1.35rem, 3vw, 2.1rem)', fontWeight: 700, lineHeight: 1.2 }}>
                 Father&apos;s Day Screen-Free Robotics Workshop
               </p>
-              <p className="mt-3 text-base sm:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed" style={{ color: '#1F2937' }}>
+              <p className="mt-3 text-sm sm:text-base lg:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed" style={{ color: '#1F2937' }}>
                 3 hours of zero screens, full smiles. Bond with your child while you build a real robot — and walk home with a photoframe to remember it.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-2.5">
+              <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-2.5">
                 <Pill icon={Calendar} text="Sunday, 21 June" />
                 <Pill icon={Clock}    text="3 – 6 PM" />
+                <Pill icon={Sparkles} text="Ages 8 – 12" />
                 <Pill icon={MapPin}   text="Kandivali / Mira Road" />
               </div>
               <div className="mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-4">
                 <button onClick={openEnroll} data-testid="hero-enroll-btn"
-                  className="px-8 py-4 rounded-full text-base font-bold inline-flex items-center gap-2 shadow-xl hover:scale-[1.03] transition-transform"
+                  className="px-7 sm:px-8 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-bold inline-flex items-center gap-2 shadow-xl hover:scale-[1.03] transition-transform"
                   style={{ background: NAVY, color: '#fff', fontFamily: '"Fredoka", sans-serif' }}>
                   Enroll Now <ArrowRight className="w-5 h-5" />
                 </button>
-                <div className="text-sm font-semibold" style={{ color: NAVY }}>Limited seats per center</div>
+                <div className="text-xs sm:text-sm font-semibold" style={{ color: NAVY }}>Limited seats per center</div>
               </div>
             </div>
 
-            {/* Right — Photoframe with I♥DAD watermark behind + pinwheel toy */}
-            <div className="relative" style={{ minHeight: 460 }}>
-              {/* I ♥ DAD coloring-book watermark behind the photoframe */}
-              <div aria-hidden="true" data-testid="love-dad-watermark"
-                style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
-                <img src={LOVE_DAD_BG} alt=""
-                  style={{ width: '108%', maxWidth: 540, opacity: 0.18, mixBlendMode: 'multiply', transform: 'rotate(-3deg)' }} />
-              </div>
-
-              {/* Spinning pinwheel toy — bottom-left of photoframe */}
-              <div aria-hidden="true" className="fd-pinwheel-wrap" data-testid="hero-pinwheel"
+            {/* Right — Photoframe + pinwheel (pinwheel hidden on mobile) */}
+            <div className="relative" style={{ minHeight: 'auto' }}>
+              {/* Spinning pinwheel toy — bottom-left of photoframe, desktop only */}
+              <div aria-hidden="true" className="fd-pinwheel-wrap hidden lg:block" data-testid="hero-pinwheel"
                 style={{ position: 'absolute', bottom: -6, left: -8, width: 92, height: 120, zIndex: 3, pointerEvents: 'none' }}>
-                {/* stick */}
                 <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 4, height: 78, background: '#8B5A2B', borderRadius: 2 }} />
-                {/* pinwheel head */}
                 <div style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', width: 72, height: 72 }}>
                   <svg viewBox="0 0 100 100" className="fd-pinwheel" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 3px 6px rgba(15,30,80,0.25))' }}>
                     <path d="M50 50 L50 6 Q72 14 50 50 Z"  fill={CORAL} />
@@ -292,7 +292,7 @@ export default function FathersDayWorkshopLandingPage() {
       </Section>
 
       {/* ── HOW THE DAY RUNS ─────────────────────────── */}
-      <section style={{ background: NAVY_DEEP, color: '#fff' }} className="py-20">
+      <section style={{ background: NAVY_DEEP, color: '#fff' }} className="py-12 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionLabel light>3-hour session</SectionLabel>
           <H2 light>How the day runs</H2>
@@ -309,7 +309,7 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── WHAT WILL CHILD LEARN ─────────────────────────── */}
-      <section style={{ background: NAVY }} className="text-white py-20">
+      <section style={{ background: NAVY }} className="text-white py-12 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionLabel light>The Learning</SectionLabel>
           <H2 light>What will your child learn?</H2>
@@ -348,7 +348,7 @@ export default function FathersDayWorkshopLandingPage() {
       </Section>
 
       {/* ── PRICING ─────────────────────────── */}
-      <section style={{ background: YELLOW }} className="pb-20">
+      <section style={{ background: YELLOW }} className="pb-12 sm:pb-16 lg:pb-20">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <SectionLabel>Pricing</SectionLabel>
           <H2>One price. Everything included.</H2>
@@ -364,34 +364,6 @@ export default function FathersDayWorkshopLandingPage() {
               className="mt-7 px-8 py-4 rounded-full font-bold text-base inline-flex items-center gap-2 shadow-xl hover:scale-[1.03] transition-transform"
               style={{ background: SUN, color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
               Book your Father&apos;s Day session <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── DAD HAND SECTION (after pricing) ─────────────────────────── */}
-      <section style={{ background: NAVY }} className="py-16 sm:py-20 relative overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.2fr] gap-10 items-center">
-          <div className="flex justify-center">
-            <img
-              src={HAND_VECTOR}
-              alt="Best Dad — handwritten lettering inside a hand silhouette"
-              style={{ width: '100%', maxWidth: 360, height: 'auto', filter: 'brightness(0) invert(1)', opacity: 0.95 }}
-              data-testid="hand-vector"
-            />
-          </div>
-          <div className="text-white text-center lg:text-left">
-            <p style={{ fontFamily: '"Caveat", cursive', fontSize: 'clamp(1.7rem, 3.5vw, 2.4rem)', color: SUN, lineHeight: 1.1, fontWeight: 700 }}>To the hand that held mine</p>
-            <h3 className="mt-3 font-bold" style={{ fontFamily: '"Fredoka", sans-serif', fontSize: 'clamp(1.8rem, 4vw, 2.6rem)' }}>
-              The same one that&apos;ll<br />build with me this Sunday.
-            </h3>
-            <p className="mt-4 text-base sm:text-lg" style={{ color: 'rgba(255,255,255,0.82)' }}>
-              Spend three hours building, laughing, and learning together. Walk out with a robot, a photoframe, and the kind of memory that lives on a shelf for years.
-            </p>
-            <button onClick={openEnroll}
-              className="mt-6 px-7 py-3.5 rounded-full font-bold text-base inline-flex items-center gap-2 shadow-xl hover:scale-[1.03] transition-transform"
-              style={{ background: SUN, color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
-              Book the moment <ArrowRight className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -425,10 +397,11 @@ export default function FathersDayWorkshopLandingPage() {
 }
 
 const Photoframe = ({ imgSrc }) => (
-  <div style={{ width: '100%', maxWidth: 460, margin: '0 auto', position: 'relative' }} data-testid="photoframe-carousel">
-    <div style={{
-      background: NAVY, borderRadius: 24, padding: '60px 28px 90px',
-      boxShadow: '0 24px 60px rgba(15,30,80,0.35)', position: 'relative', overflow: 'hidden',
+  <div className="w-full mx-auto relative px-2 sm:px-0" style={{ maxWidth: 460 }} data-testid="photoframe-carousel">
+    <div className="rounded-2xl sm:rounded-3xl relative overflow-hidden" style={{
+      background: NAVY,
+      padding: 'clamp(36px, 8vw, 60px) clamp(16px, 5vw, 28px) clamp(54px, 12vw, 90px)',
+      boxShadow: '0 16px 40px rgba(15,30,80,0.3)',
     }}>
       {/* Yellow bunting at top */}
       <svg viewBox="0 0 400 60" style={{ position: 'absolute', top: 12, left: 0, right: 0, width: '100%' }} aria-hidden="true">
@@ -476,7 +449,7 @@ const H2 = ({ children, light }) => (
 );
 
 const Section = ({ bg, children }) => (
-  <section style={{ background: bg }} className="py-20">
+  <section style={{ background: bg }} className="py-12 sm:py-16 lg:py-20">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
   </section>
 );
