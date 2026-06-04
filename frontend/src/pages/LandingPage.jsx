@@ -313,21 +313,48 @@ const LandingPage = () => {
 
       {/* ── 1-DAY WORKSHOPS ─────────────────────────────── */}
       <section data-testid="homepage-workshops-section" style={{
-        background: 'linear-gradient(to bottom, #ffffff 0%, #FFF8F0 30%, #FFF8F0 100%)',
+        background: 'linear-gradient(180deg, #FCE899 0%, #FCE899 60%, #A8DCF0 100%)',
         position: 'relative',
         paddingTop: '5rem',
         paddingBottom: '5rem',
         overflow: 'hidden',
       }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem' }}>
+        {/* Decorative animated sun — top right corner */}
+        <style>{`
+          @keyframes hp-sun-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes hp-sun-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+          .hp-sun-rotor  { animation: hp-sun-spin 22s linear infinite; transform-origin: 50% 50%; }
+          .hp-sun-pulser { animation: hp-sun-pulse 3.2s ease-in-out infinite; transform-origin: 50% 50%; }
+          @keyframes hp-card-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+          .hp-cta-btn { animation: hp-card-bob 3s ease-in-out infinite; }
+          @media (prefers-reduced-motion: reduce) {
+            .hp-sun-rotor, .hp-sun-pulser, .hp-cta-btn { animation: none; }
+          }
+        `}</style>
+        <div aria-hidden="true" style={{ position: 'absolute', top: 16, right: 18, width: 84, height: 84, pointerEvents: 'none', zIndex: 0 }}>
+          <svg viewBox="0 0 100 100" className="hp-sun-pulser" style={{ width: '100%', height: '100%' }}>
+            <g className="hp-sun-rotor">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <rect key={i} x="48" y="4" width="4" height="14" rx="2" fill="#FFB627"
+                  transform={`rotate(${i * 30} 50 50)`} />
+              ))}
+            </g>
+            <circle cx="50" cy="50" r="22" fill="#FFB627" stroke="#F9D162" strokeWidth="2" />
+            <circle cx="43" cy="47" r="2" fill="#0F2960" />
+            <circle cx="57" cy="47" r="2" fill="#0F2960" />
+            <path d="M 43 56 Q 50 61 57 56" stroke="#0F2960" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+          </svg>
+        </div>
+
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D63031', marginBottom: '0.6rem', fontFamily: "'Nunito Sans', sans-serif" }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#FF7B6B', marginBottom: '0.6rem', fontFamily: "'Fredoka', sans-serif" }}>
               ONE-DAY EVENTS
             </p>
-            <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0F1E33', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', lineHeight: 1.15, marginBottom: '0.75rem' }}>
+            <h2 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, color: '#0F2960', fontSize: 'clamp(1.8rem, 4.2vw, 2.6rem)', lineHeight: 1.1, marginBottom: '0.75rem' }}>
               Workshops &amp; Events
             </h2>
-            <p style={{ fontSize: '0.95rem', color: '#475569', fontFamily: "'Nunito Sans', sans-serif", maxWidth: 580, margin: '0 auto', lineHeight: 1.55 }}>
+            <p style={{ fontSize: '0.95rem', color: '#1F2937', fontFamily: "'Fredoka', sans-serif", maxWidth: 580, margin: '0 auto', lineHeight: 1.55 }}>
               Hands-on Sunday workshops where parents and kids build something real — together.
             </p>
           </div>
@@ -339,33 +366,33 @@ const LandingPage = () => {
               cursor: 'pointer',
               borderRadius: '1.5rem',
               overflow: 'hidden',
-              background: 'linear-gradient(135deg,#D63031 0%,#F97316 100%)',
-              boxShadow: '0 24px 60px rgba(214,48,49,0.22)',
-              border: '1px solid rgba(255,255,255,0.15)',
+              background: '#FFFEF7',
+              boxShadow: '0 24px 60px rgba(15,30,80,0.18)',
+              border: `3px solid #1E40AF`,
               transition: 'transform 0.3s ease, box-shadow 0.3s ease',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 32px 80px rgba(214,48,49,0.3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 24px 60px rgba(214,48,49,0.22)'; }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 32px 80px rgba(15,30,80,0.28)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 24px 60px rgba(15,30,80,0.18)'; }}
           >
             <div className="workshop-card-grid">
-              <div style={{ padding: '2rem 1.75rem 2rem 2rem', color: '#fff' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '0.85rem' }}>
-                  ❤️ Father's Day · 1-Day Event
+              <div style={{ padding: '2rem 1.75rem 2rem 2rem', color: '#0F2960', fontFamily: "'Fredoka', sans-serif" }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, background: '#FFFFFF', border: '2px solid #1E40AF', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#1E40AF', marginBottom: '1rem' }}>
+                  Father's Day · 1-Day Event
                 </span>
-                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, fontSize: 'clamp(1.45rem, 3.4vw, 1.95rem)', lineHeight: 1.15, marginBottom: '0.55rem' }}>
+                <h3 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, color: '#0F2960', fontSize: 'clamp(1.45rem, 3.4vw, 1.95rem)', lineHeight: 1.15, marginBottom: '0.55rem' }}>
                   Father's Day Robotics Workshop
                 </h3>
-                <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '1rem', maxWidth: 480 }}>
-                  Bond with your child building a real robot together. 3 hours · zero screens · take-home memories.
+                <p style={{ color: '#475569', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '1rem', maxWidth: 480 }}>
+                  Bond with your child building a real robot together. Screen-free · take-home memories.
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
                   {[
                     { icon: '📅', text: 'Sun, 21 June' },
-                    { icon: '⏰', text: '3 – 6 PM' },
+                    { icon: '⏰', text: '2 hours' },
                     { icon: '📍', text: 'Mumbai' },
                     { icon: '👨‍👦', text: 'Ages 4 – 12' },
                   ].map(p => (
-                    <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: '#FFFFFF', border: '2px solid rgba(30,64,175,0.20)', fontSize: '0.78rem', fontWeight: 600, color: '#1E40AF' }}>
                       <span>{p.icon}</span>{p.text}
                     </span>
                   ))}
@@ -373,14 +400,23 @@ const LandingPage = () => {
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate('/workshops/fathers-day-robotics'); }}
-                    style={{ background: '#fff', color: '#D63031', fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, padding: '0.7rem 1.4rem', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.15)' }}
+                    className="hp-cta-btn"
+                    style={{ background: '#1E40AF', color: '#fff', fontFamily: "'Fredoka', sans-serif", fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(30,64,175,0.35)' }}
                   >
                     Enroll Now →
                   </button>
-                  <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.85)' }}>Limited seats per center</div>
+                  <div style={{ fontSize: '0.72rem', color: '#1E40AF', fontWeight: 600 }}>Limited seats</div>
                 </div>
               </div>
-              <div style={{ minHeight: 240, background: '#FFE5D1', backgroundImage: 'url(https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=900&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              {/* Right side — real workshop photo */}
+              <div style={{
+                minHeight: 240,
+                backgroundColor: '#0F2960',
+                backgroundImage: 'url(https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2t1vu6l9_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_50_47%20PM.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              }} />
             </div>
           </div>
           <style>{`.workshop-card-grid{display:grid;grid-template-columns:1fr;gap:0}@media(min-width:900px){.workshop-card-grid{grid-template-columns:1.25fr 1fr}.workshop-card-grid>div:last-child{min-height:100% !important}}`}</style>
@@ -388,9 +424,9 @@ const LandingPage = () => {
       </section>
 
       {/* ── Social Media Internship Readiness Program (Ages 12-18) ── */}
-      {/* Gradient continues from Summer Camp's #0f172a downward into deep void */}
+      {/* Gradient continues from Workshop's #A8DCF0 (sky) downward into deep void */}
       <section style={{
-        background: 'linear-gradient(to bottom, #FFF8F0 0%, #0f172a 12%, #0a0d18 50%, #050505 100%)',
+        background: 'linear-gradient(to bottom, #A8DCF0 0%, #0f172a 12%, #0a0d18 50%, #050505 100%)',
         position: 'relative',
         overflow: 'hidden',
         paddingTop: '4rem',

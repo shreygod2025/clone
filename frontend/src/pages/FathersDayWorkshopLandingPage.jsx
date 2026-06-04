@@ -1,7 +1,7 @@
 /**
  * Father's Day Robotics Workshop landing page.
  * Hero: headline + photoframe carousel with I♥DAD watermark · rotating sun · spinning pinwheel
- * + How-the-day-runs · Pricing (+999 per extra child) · FAQ · Hand silhouette
+ * + How-the-day-runs · Pricing (+1499 per extra child) · FAQ · Hand silhouette
  */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -27,9 +27,12 @@ const NAVY_DEEP = '#0F2960';
 const SKY = '#A8DCF0';
 const CORAL = '#FF7B6B';
 
-// Carousel — real workshop images (more to be added by client)
+// Carousel — new workshop photos from real Father's Day sessions
 const CAROUSEL = [
-  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/b27p9fpm_IMG_20260525_105021.jpg',
+  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2t1vu6l9_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_50_47%20PM.png',
+  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/guo8nycx_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_52_07%20PM.png',
+  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gs8rqk64_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_57_50%20PM.png',
+  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yor077gl_ChatGPT%20Image%20Jun%204%2C%202026%2C%2001_00_05%20PM.png',
 ];
 
 const AGE_GROUPS = [
@@ -46,10 +49,10 @@ const AGE_GROUPS = [
     builds: ['Edge Avoiding Robot 🚗', 'Circle Drawing Robot ⭕'],
     learns: ['Build a robot chassis', 'Add sensors', 'Wire motors', 'Power up & test'],
     images: [
-      // Image 3 — large, overflow more, tilt right
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Edge Avoiding Robot build', large: true,  rotate: 5, overflow: 'extra' },
-      // Image 4 — smaller, tilt left
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Circle Drawing Robot build', large: false, rotate: -4 },
+      // Image 3 — smaller, slight left tilt
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Edge Avoiding Robot build', large: false, rotate: -3 },
+      // Image 4 — large, overflow more, tilt right
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Circle Drawing Robot build', large: true, rotate: 4, overflow: 'extra' },
     ] },
 ];
 
@@ -70,7 +73,7 @@ const DAY_RUNS = [
 const FAQS = [
   { q: 'Do I need any technical background?', a: 'No. The session is built for complete beginners, adults and kids alike. Your instructor guides every step.' },
   { q: 'What ages is this for?', a: 'Designed for children aged 4 to 12. Younger kids (4–8) build hands-on circuits with more parent involvement; older kids (9–12) build a working robot. Everyone goes home happy.' },
-  { q: 'Can I bring more than one child?', a: 'Yes! Add a second child for ₹999. Both kids get a build station with the parent guiding them.' },
+  { q: 'Can I bring more than one child?', a: 'Yes! Add a second child for ₹1,499. Both kids get a build station with the parent guiding them.' },
   { q: 'Do we keep the robot?', a: 'The robot stays at OLL — but a printed photoframe of you and your child with the robot is yours to take home.' },
   { q: 'Is this online or in person?', a: 'In person at OLL Center, Kandivali or Mira Road. No kits shipped — everything is provided.' },
 ];
@@ -168,7 +171,7 @@ export default function FathersDayWorkshopLandingPage() {
     }
   };
 
-  const total = 1999 + (Number(form.additional_children) || 0) * 999;
+  const total = 1999 + (Number(form.additional_children) || 0) * 1499;
 
   return (
     <div data-testid="fathers-day-landing" style={{ minHeight: '100vh', fontFamily: '"Fredoka", "Nunito", sans-serif', background: YELLOW }}>
@@ -660,7 +663,7 @@ export default function FathersDayWorkshopLandingPage() {
             <div className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.78)' }}>per father-and-child duo</div>
             <p className="mt-5 max-w-md mx-auto text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>Includes everything: robot kit, materials, photoframe, refreshments — hardware yours to keep where applicable.</p>
             <div className="mt-5 inline-block rounded-full px-4 py-2 text-sm font-bold" style={{ background: 'rgba(252,232,153,0.18)', color: SUN, border: `1px solid ${SUN}55` }}>
-              + ₹999 for each additional child
+              + ₹1,499 for each additional child
             </div>
             <button onClick={openEnroll} data-testid="pricing-cta-btn"
               className="mt-7 px-8 py-4 rounded-full font-bold text-base inline-flex items-center gap-2 shadow-xl hover:scale-[1.03] transition-transform"
@@ -889,7 +892,7 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="font-bold text-sm" style={{ color: NAVY_DEEP }}>Additional children</div>
-                  <div className="text-xs text-slate-600 mt-0.5">₹999 per extra child</div>
+                  <div className="text-xs text-slate-600 mt-0.5">₹1,499 per extra child</div>
                 </div>
                 <div className="inline-flex items-center gap-2">
                   <button onClick={() => setExtras((form.additional_children || 0) - 1)}
@@ -915,7 +918,7 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
               <Row k="Date"      v="Sunday, 21 June · 2 hours" />
               <Row k="Base"      v="₹1,999" />
               {form.additional_children > 0 && (
-                <Row k={`+${form.additional_children} extra child${form.additional_children > 1 ? 'ren' : ''}`} v={`₹${(form.additional_children * 999).toLocaleString()}`} />
+                <Row k={`+${form.additional_children} extra child${form.additional_children > 1 ? 'ren' : ''}`} v={`₹${(form.additional_children * 1499).toLocaleString()}`} />
               )}
               <div className="border-t mt-3 pt-3 flex justify-between text-base font-bold" style={{ borderColor: SKY, color: NAVY_DEEP }}>
                 <span>Total</span><span data-testid="modal-total">₹{total.toLocaleString()}</span>
