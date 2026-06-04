@@ -102,13 +102,25 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
       }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 62 }}>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12 }} data-testid="workshop-nav-logo">
               <img
                 src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
                 alt="OLL Logo"
-                style={{ height: 44, width: 'auto' }}
+                style={{ height: 40, width: 'auto' }}
               />
             </Link>
+
+            {/* Section breadcrumb — "Father's Day Workshop" */}
+            <div className="hidden sm:flex items-center gap-2" data-testid="workshop-nav-section">
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#FF7B6B', display: 'inline-block' }} />
+              <span style={{ fontFamily: '"Fredoka", "Nunito", sans-serif', color: '#0F2960', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.01em' }}>
+                Father&apos;s Day Workshop
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#FFFFFF', border: '1.5px solid #FCE899', fontSize: '0.62rem', fontWeight: 700, color: '#C97A00', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+                Sun 21 June
+              </span>
+            </div>
+
             <button
               onClick={() => {
                 const el = document.querySelector('[data-testid="hero-enroll-btn"]');

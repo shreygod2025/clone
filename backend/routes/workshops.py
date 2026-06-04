@@ -13,7 +13,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 try:
@@ -27,7 +28,7 @@ except ImportError:
     Cashfree = None
     CashfreeCustomerDetails = None
 
-from .shared import db
+from .shared import db, get_current_user
 
 router = APIRouter()
 
@@ -280,3 +281,166 @@ async def workshop_webhook(request: Request):
     except Exception as e:
         logging.warning(f"[workshop] webhook error: {e}")
         return {"ok": False}
+
+
+
+# ───────────────────────── ADMIN CRM ENDPOINTS ─────────────────────────
+
+class WorkshopBookingPatch(BaseModel):
+    crm_status: Optional[str] = None
+    payment_status: Optional[str] = None
+    notes: Optional[str] = None
+    parent_name: Optional[str] = None
+    child_name: Optional[str] = None
+    parent_email: Optional[str] = None
+
+
+def _serialize_booking(b: dict) -> dict:
+    """Strip _id, ensure JSON-safe fields."""
+    out = {k: v for k, v in b.items() if k != "_id"}
+    return out
+
+
+@router.get("/workshops/admin/bookings")
+async def admin_list_workshop_bookings(
+    workshop_key: Optional[str] = None,
+    status: Optional[str] = None,            # "all" | "lead" | "paid"
+    age_group: Optional[str] = None,
+    center: Optional[str] = None,
+    search: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Admin: list all workshop bookings.
+    - `lead`   = phone captured, payment_status != paid
+    - `paid`   = payment_status == paid
+    - `all`    = everything
+    """
+    q: dict = {}
+    if workshop_key:
+        q["workshop_key"] = workshop_key
+
+    if status == "lead":
+        q["payment_status"] = {"$ne": "paid"}
+    elif status == "paid":
+        q["payment_status"] = "paid"
+
+    if age_group:
+        q["age_group"] = age_group
+    if center:
+        q["center"] = center
+    if search:
+        q["$or"] = [
+            {"parent_phone": {"$regex": re.escape(search), "$options": "i"}},
+            {"parent_name":  {"$regex": re.escape(search), "$options": "i"}},
+            {"parent_email": {"$regex": re.escape(search), "$options": "i"}},
+            {"child_name":   {"$regex": re.escape(search), "$options": "i"}},
+        ]
+
+    cursor = db.workshop_bookings.find(q, {"_id": 0}).sort("created_at", -1)
+    rows = await cursor.to_list(length=2000)
+
+    # Stats
+    total = len(rows)
+    paid_count = sum(1 for r in rows if r.get("payment_status") == "paid")
+    lead_count = total - paid_count
+    revenue = sum(int(r.get("amount") or 0) for r in rows if r.get("payment_status") == "paid")
+
+    return {
+        "bookings": rows,
+        "stats": {
+            "total":   total,
+            "leads":   lead_count,
+            "paid":    paid_count,
+            "revenue": revenue,
+        },
+    }
+
+
+@router.patch("/workshops/admin/bookings/{booking_id}")
+async def admin_update_workshop_booking(
+    booking_id: str,
+    data: WorkshopBookingPatch,
+    user: dict = Depends(get_current_user),
+):
+    updates = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(400, detail="No fields to update")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.workshop_bookings.update_one({"id": booking_id}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(404, detail="Booking not found")
+    doc = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+    return {"booking": doc}
+
+
+@router.delete("/workshops/admin/bookings/{booking_id}")
+async def admin_delete_workshop_booking(
+    booking_id: str,
+    user: dict = Depends(get_current_user),
+):
+    res = await db.workshop_bookings.delete_one({"id": booking_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, detail="Booking not found")
+    return {"ok": True}
+
+
+@router.get("/workshops/admin/bookings.csv")
+async def admin_export_workshop_bookings_csv(
+    workshop_key: Optional[str] = None,
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Export all (filtered) workshop bookings as CSV."""
+    q: dict = {}
+    if workshop_key:
+        q["workshop_key"] = workshop_key
+    if status == "lead":
+        q["payment_status"] = {"$ne": "paid"}
+    elif status == "paid":
+        q["payment_status"] = "paid"
+
+    cursor = db.workshop_bookings.find(q, {"_id": 0}).sort("created_at", -1)
+    rows = await cursor.to_list(length=10000)
+
+    header = [
+        "Status", "Workshop", "Created", "Parent Name", "Parent Phone", "Parent Email",
+        "Child Name", "Age Group", "Center", "Extra Children", "Amount (₹)",
+        "Payment Status", "CRM Status", "Order ID", "Paid At", "Source",
+    ]
+
+    def fmt(v):
+        if v is None:
+            return ""
+        s = str(v).replace('"', '""').replace("\n", " ")
+        return f'"{s}"'
+
+    lines = [",".join(header)]
+    for r in rows:
+        is_paid = r.get("payment_status") == "paid"
+        lines.append(",".join([
+            fmt("Paid Enrollment" if is_paid else "Lead"),
+            fmt(r.get("workshop_title") or r.get("workshop_key")),
+            fmt(r.get("created_at", "")[:19].replace("T", " ")),
+            fmt(r.get("parent_name")),
+            fmt(r.get("parent_phone")),
+            fmt(r.get("parent_email")),
+            fmt(r.get("child_name")),
+            fmt(r.get("age_group_label") or r.get("age_group")),
+            fmt(r.get("center_label")    or r.get("center")),
+            fmt(r.get("additional_children") or 0),
+            fmt(r.get("amount") or 0),
+            fmt(r.get("payment_status")),
+            fmt(r.get("crm_status")),
+            fmt(r.get("order_id")),
+            fmt((r.get("paid_at") or "")[:19].replace("T", " ")),
+            fmt(r.get("source_ref")),
+        ]))
+
+    body = "\n".join(lines)
+    filename = f"workshop-bookings-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv"
+    return StreamingResponse(
+        iter([body]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
