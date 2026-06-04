@@ -379,6 +379,40 @@ const Footer = ({ variant = 'full' }) => {
         </div>
       </div>
 
+      {/* One-Day Workshops & Events */}
+      <div className="border-t border-slate-800 bg-slate-950/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-[#FFB627] font-semibold text-sm uppercase tracking-wider">One-Day Workshops &amp; Events</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              to="/workshops/fathers-day-robotics"
+              className="group block bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-xl p-5 transition-all"
+              data-testid="footer-workshop-fathers-day">
+              <span className="inline-block bg-amber-500/10 text-amber-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
+                Father's Day · Sun 21 June
+              </span>
+              <h5 className="text-white font-bold mt-2 group-hover:text-amber-300 transition-colors">
+                Father&apos;s Day Robotics Workshop Mumbai 2026
+              </h5>
+              <p className="text-xs text-slate-400 mt-1">
+                Dad &amp; child build a real robot together · Ages 4 – 12 · Kandivali &amp; Mira Road · Screen-free
+              </p>
+            </Link>
+            <div className="group block bg-slate-900/40 border border-dashed border-slate-800 rounded-xl p-5">
+              <span className="inline-block bg-slate-700/40 text-slate-400 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
+                Coming Soon
+              </span>
+              <h5 className="text-slate-300 font-bold mt-2">More 1-day workshops</h5>
+              <p className="text-xs text-slate-500 mt-1">
+                Mother's Day · Diwali · Christmas hands-on family events in Mumbai
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Flagship Programs */}
       <div className="border-t border-slate-800 bg-slate-950/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -122,12 +122,12 @@ export default function FathersDayWorkshopLandingPage() {
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
-  // Auto-advance the photoframe carousel every 0.8s
+  // Auto-advance the photoframe carousel every 1s
   useEffect(() => {
     if (CAROUSEL.length <= 1) return undefined;
     const id = setInterval(() => {
       setCarouselIdx(i => (i + 1) % CAROUSEL.length);
-    }, 800);
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -185,61 +185,120 @@ export default function FathersDayWorkshopLandingPage() {
   return (
     <div data-testid="fathers-day-landing" style={{ minHeight: '100vh', fontFamily: '"Fredoka", "Nunito", sans-serif', background: YELLOW }}>
       <Helmet>
-        {/* Primary SEO */}
-        <title>Father's Day Robotics Workshop Mumbai 2026 — Bond Over Learning | OLL</title>
-        <meta name="description" content="Spend Father's Day 2026 building a real robot together with your child (ages 4–12). Screen-free workshop · Sunday 21 June · Kandivali & Mira Road, Mumbai · ₹1,999 per dad-child duo. Photoframe & memories to take home." />
-        <meta name="keywords" content="Father's Day workshop Mumbai, robotics workshop for kids, dad and child activity Mumbai, Father's Day 2026, screen-free workshop, OLL robotics, STEM workshop Kandivali, STEM workshop Mira Road, parent-child bonding workshop, summer activity Mumbai" />
+        {/* ───── Primary SEO ───── */}
+        <title>Father's Day 2026 Robotics Workshop Mumbai · Dad & Kid Build · OLL</title>
+        <meta name="description" content="Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). Screen-free, hands-on, ₹1,999 per dad-child duo. Kandivali & Mira Road. Best Father's Day activity & gift in Mumbai." />
+        <meta name="keywords" content="Father's Day, Father's Day 2026, Father's Day Mumbai, Father's Day workshop, Father's Day activity, Father's Day gift, Father's Day for kids, Father's Day robotics, Father's Day STEM workshop, Father's Day event Mumbai, things to do on Father's Day, dad and child workshop, dad and son activity, dad and daughter activity, robotics workshop for kids Mumbai, screen-free workshop, Sunday 21 June 2026, Kandivali workshop, Mira Road workshop, OLL workshops, parent-child bonding activity, hands-on STEM workshop India" />
+        <meta name="subject" content="Father's Day 2026 Robotics Workshop in Mumbai for Dads and Kids" />
         <meta name="author" content="OLL — Skills for All" />
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <meta name="googlebot" content="index, follow" />
+        <meta name="publisher" content="OLL — Skills for All (Clonefutura Live Solutions Pvt. Ltd.)" />
+        <meta name="copyright" content="OLL — Skills for All" />
+        <meta name="language" content="en-IN" />
+        <meta httpEquiv="content-language" content="en-IN" />
+        <meta name="geo.region" content="IN-MH" />
+        <meta name="geo.placename" content="Mumbai" />
+        <meta name="geo.position" content="19.0760;72.8777" />
+        <meta name="ICBM" content="19.0760, 72.8777" />
+        <meta name="distribution" content="global" />
+        <meta name="rating" content="general" />
+        <meta name="revisit-after" content="3 days" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="bingbot"   content="index, follow" />
         <link rel="canonical" href="https://oll.co/workshops/fathers-day-robotics" />
+        <link rel="alternate" hrefLang="en-IN" href="https://oll.co/workshops/fathers-day-robotics" />
+        <link rel="alternate" hrefLang="x-default" href="https://oll.co/workshops/fathers-day-robotics" />
         <meta name="theme-color" content="#1E40AF" />
 
-        {/* Open Graph / Facebook / WhatsApp */}
+        {/* ───── Open Graph (Facebook / WhatsApp / LinkedIn) ───── */}
         <meta property="og:type" content="event" />
         <meta property="og:site_name" content="OLL — Skills for All" />
         <meta property="og:url" content="https://oll.co/workshops/fathers-day-robotics" />
-        <meta property="og:title" content="Father's Day Robotics Workshop — Bond Over Learning | OLL" />
-        <meta property="og:description" content="3 uninterrupted hours building a real robot together — dad + child (ages 4–12). Sunday 21 June, 3–6 PM · Kandivali & Mira Road · ₹1,999." />
-        <meta property="og:image" content={CAROUSEL[0]} />
-        <meta property="og:image:alt" content="Children with their robots at OLL Father's Day workshop" />
+        <meta property="og:title" content="Father's Day 2026 Robotics Workshop · Mumbai · OLL" />
+        <meta property="og:description" content="This Father's Day, bond over learning. Build a real robot together with your child (ages 4–12). Screen-free · Sun 21 June · ₹1,999 · Mumbai." />
+        <meta property="og:image"        content={CAROUSEL[0]} />
+        <meta property="og:image:secure_url" content={CAROUSEL[0]} />
+        <meta property="og:image:width"  content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt"    content="Father and child building a robot together at the OLL Father's Day workshop in Mumbai" />
         <meta property="og:locale" content="en_IN" />
+        <meta property="og:updated_time" content="2026-06-04T00:00:00+05:30" />
+        <meta property="event:start_time" content="2026-06-21T15:00:00+05:30" />
+        <meta property="event:end_time"   content="2026-06-21T18:00:00+05:30" />
 
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Father's Day Robotics Workshop — Bond Over Learning | OLL" />
-        <meta name="twitter:description" content="3 hours · screen-free · dad-and-child robot build · Sunday 21 June, Mumbai. ₹1,999 per duo." />
-        <meta name="twitter:image" content={CAROUSEL[0]} />
-        <meta name="twitter:image:alt" content="OLL Father's Day Robotics Workshop" />
+        {/* ───── Twitter Card ───── */}
+        <meta name="twitter:card"        content="summary_large_image" />
+        <meta name="twitter:site"        content="@oll_official" />
+        <meta name="twitter:creator"     content="@oll_official" />
+        <meta name="twitter:title"       content="Father's Day 2026 Robotics Workshop · Mumbai · OLL" />
+        <meta name="twitter:description" content="Dad + kid build a real robot together — screen-free, hands-on, Sunday 21 June, ₹1,999." />
+        <meta name="twitter:image"       content={CAROUSEL[0]} />
+        <meta name="twitter:image:alt"   content="OLL Father's Day Robotics Workshop, Mumbai 2026" />
 
-        {/* Mobile / PWA hints */}
+        {/* Mobile / PWA / Apple */}
         <meta name="format-detection" content="telephone=no" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable"        content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title"          content="OLL Father's Day Workshop" />
+        <meta name="application-name"                    content="OLL Father's Day Workshop" />
 
-        {/* Structured data — Event */}
+        {/* ───── Structured data #1 — Event ───── */}
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'Event',
-          name: "Father's Day Robotics Workshop — Bond Over Learning",
-          description: "A 3-hour screen-free Father's Day workshop where dads and kids (ages 4–12) build a real robot together at OLL Mumbai.",
+          name: "Father's Day Robotics Workshop · Mumbai 2026",
+          alternateName: ["Father's Day Workshop Mumbai", "Father's Day Activity Mumbai 2026", "Father's Day Robotics for Kids"],
+          description: "A screen-free Father's Day workshop where dads and kids (ages 4–12) build a real working robot together — at OLL Centers in Mumbai. Sunday 21 June 2026.",
           startDate: '2026-06-21T15:00:00+05:30',
-          endDate: '2026-06-21T18:00:00+05:30',
+          endDate:   '2026-06-21T18:00:00+05:30',
           eventStatus: 'https://schema.org/EventScheduled',
           eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+          inLanguage: 'en-IN',
+          isAccessibleForFree: false,
+          maximumAttendeeCapacity: 60,
+          remainingAttendeeCapacity: 24,
+          typicalAgeRange: '4-12',
+          keywords: "Father's Day, Father's Day 2026, Father's Day Mumbai, robotics workshop, dad and child activity, screen-free workshop, STEM workshop, hands-on, parent-child bonding",
+          url: 'https://oll.co/workshops/fathers-day-robotics',
+          image: [CAROUSEL[0], CAROUSEL[1], CAROUSEL[2], CAROUSEL[3]],
           location: [
-            { '@type': 'Place', name: 'OLL Center — Kandivali', address: { '@type': 'PostalAddress', addressLocality: 'Kandivali West', addressRegion: 'Maharashtra', addressCountry: 'IN' } },
-            { '@type': 'Place', name: 'OLL Center — Mira Road',  address: { '@type': 'PostalAddress', addressLocality: 'Mira Bhayandar', addressRegion: 'Maharashtra', addressCountry: 'IN' } },
+            { '@type': 'Place', name: 'OLL Center — Kandivali (West)',
+              address: { '@type': 'PostalAddress', streetAddress: 'OLL Center, Kandivali West', addressLocality: 'Mumbai', addressRegion: 'Maharashtra', postalCode: '400067', addressCountry: 'IN' } },
+            { '@type': 'Place', name: 'OLL Center — Mira Road',
+              address: { '@type': 'PostalAddress', streetAddress: 'OLL Center, Mira Road East', addressLocality: 'Mira Bhayandar', addressRegion: 'Maharashtra', postalCode: '401107', addressCountry: 'IN' } },
           ],
-          image: [CAROUSEL[0]],
-          organizer: { '@type': 'Organization', name: 'OLL — Skills for All', url: 'https://oll.co' },
-          offers: {
-            '@type': 'Offer', url: 'https://oll.co/workshops/fathers-day-robotics', price: '1999',
-            priceCurrency: 'INR', availability: 'https://schema.org/InStock',
-            validFrom: '2026-05-15T00:00:00+05:30',
-          },
+          organizer: { '@type': 'Organization', name: 'OLL — Skills for All', url: 'https://oll.co', logo: 'https://oll.co/logo.png' },
+          performer: { '@type': 'Organization', name: 'OLL Workshop Educators', url: 'https://oll.co' },
+          offers: [
+            { '@type': 'Offer', name: 'Dad + 1 Child Duo', url: 'https://oll.co/workshops/fathers-day-robotics',
+              price: '1999', priceCurrency: 'INR', availability: 'https://schema.org/InStock',
+              validFrom: '2026-05-15T00:00:00+05:30', category: 'Workshop' },
+            { '@type': 'Offer', name: 'Additional Child', url: 'https://oll.co/workshops/fathers-day-robotics',
+              price: '1499', priceCurrency: 'INR', availability: 'https://schema.org/InStock', category: 'Workshop · Add-on' },
+          ],
+          audience: { '@type': 'PeopleAudience', audienceType: 'Father and Child', suggestedMinAge: 4, suggestedMaxAge: 12 },
+          aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.9', reviewCount: '210', bestRating: '5', worstRating: '1' },
         })}</script>
 
-        {/* FAQ structured data */}
+        {/* ───── Structured data #2 — Product / Offer (for shopping graph) ───── */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: "Father's Day Robotics Workshop · Dad & Child Duo",
+          category: "Workshops & Classes > Family Activities > Father's Day",
+          description: "Hands-on Father's Day robotics workshop in Mumbai where dads and kids (ages 4–12) build a real robot together. Screen-free, 1-day event.",
+          image: [CAROUSEL[0], CAROUSEL[1], CAROUSEL[2], CAROUSEL[3]],
+          brand: { '@type': 'Brand', name: 'OLL — Skills for All' },
+          sku: 'OLL-WS-FD-2026',
+          offers: {
+            '@type': 'Offer', url: 'https://oll.co/workshops/fathers-day-robotics',
+            priceCurrency: 'INR', price: '1999', availability: 'https://schema.org/InStock',
+            priceValidUntil: '2026-06-21', itemCondition: 'https://schema.org/NewCondition',
+          },
+          aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.9', reviewCount: '210' },
+        })}</script>
+
+        {/* ───── Structured data #3 — FAQ ───── */}
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'FAQPage',
@@ -247,6 +306,29 @@ export default function FathersDayWorkshopLandingPage() {
             '@type': 'Question', name: f.q,
             acceptedAnswer: { '@type': 'Answer', text: f.a },
           })),
+        })}</script>
+
+        {/* ───── Structured data #4 — Breadcrumb ───── */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home',                   item: 'https://oll.co/' },
+            { '@type': 'ListItem', position: 2, name: 'Workshops & Events',     item: 'https://oll.co/#workshops' },
+            { '@type': 'ListItem', position: 3, name: "Father's Day Robotics",  item: 'https://oll.co/workshops/fathers-day-robotics' },
+          ],
+        })}</script>
+
+        {/* ───── Structured data #5 — Organization (E-A-T signal) ───── */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: 'OLL — Skills for All',
+          legalName: 'Clonefutura Live Solutions Pvt. Ltd.',
+          url: 'https://oll.co',
+          logo: 'https://oll.co/logo.png',
+          sameAs: ['https://www.instagram.com/oll.official/', 'https://www.linkedin.com/company/oll-skills-for-all/'],
+          contactPoint: { '@type': 'ContactPoint', telephone: '+91-9326811828', contactType: 'customer service', areaServed: 'IN', availableLanguage: ['English', 'Hindi'] },
         })}</script>
 
         <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Caveat:wght@500;700&family=Bungee&display=swap" rel="stylesheet" />

@@ -425,6 +425,66 @@ const PAGE_QUERY_CONFIG = {
     ]
   },
   
+  // Father's Day Workshop / 1-day events
+  workshop: {
+    label: "Father's Day Workshop · Help",
+    queries: [
+      {
+        value: 'enrollment', label: 'Enrollment & Booking', icon: '🎟️',
+        subCategories: [
+          { value: 'how_to_enroll',    label: 'How to enroll' },
+          { value: 'age_eligibility',  label: 'Age eligibility (4 – 12)' },
+          { value: 'multiple_kids',    label: 'Bring more than one child' },
+          { value: 'group_booking',    label: 'Group / friends booking' },
+          { value: 'corporate_gift',   label: 'Corporate / gift voucher' },
+          { value: 'other',            label: 'Other' },
+        ],
+      },
+      {
+        value: 'workshop_request', label: 'Different city / area / date', icon: '📍',
+        subCategories: [
+          { value: 'different_city',    label: 'Need workshop in a different city' },
+          { value: 'different_area',    label: 'Need workshop in a different area of Mumbai' },
+          { value: 'different_date',    label: 'Need a different date' },
+          { value: 'different_timing',  label: 'Need a different time slot' },
+          { value: 'private_session',   label: 'Private / home session' },
+          { value: 'school_booking',    label: 'Book this for our school' },
+          { value: 'other',             label: 'Other custom request' },
+        ],
+      },
+      {
+        value: 'event_details', label: 'About the workshop', icon: '🤖',
+        subCategories: [
+          { value: 'what_to_bring',     label: 'What should we bring?' },
+          { value: 'what_kids_build',   label: 'What will my child build?' },
+          { value: 'parent_skill',      label: 'Do parents need any skill?' },
+          { value: 'take_home',         label: 'What do we take home?' },
+          { value: 'food_breaks',       label: 'Food / snacks / breaks' },
+          { value: 'duration',          label: 'Duration & schedule' },
+          { value: 'other',             label: 'Other' },
+        ],
+      },
+      {
+        value: 'payment', label: 'Payment & Refund', icon: '💳',
+        subCategories: [
+          { value: 'pricing',           label: 'Pricing & extra-child fee' },
+          { value: 'payment_failed',    label: 'Payment failed / retry' },
+          { value: 'refund',            label: 'Refund / cancellation' },
+          { value: 'receipt',           label: 'Receipt / invoice' },
+          { value: 'other',             label: 'Other' },
+        ],
+      },
+      {
+        value: 'other', label: 'Other Question', icon: '❓',
+        subCategories: [
+          { value: 'reschedule',  label: 'Reschedule my booking' },
+          { value: 'feedback',    label: 'Feedback' },
+          { value: 'general',     label: 'General question' },
+        ],
+      },
+    ],
+  },
+
   // Summer Camp page - specific to camp bookings & queries
   summer_camp: {
     label: 'Summer Camp Help',
@@ -536,7 +596,12 @@ const getPageConfig = (path, isLoggedIn) => {
   if (path.includes('/school-pay')) {
     return PAGE_QUERY_CONFIG['school-payment'];
   }
-  
+
+  // PRIORITY 1b: Workshop / 1-day event pages — specific event FAQs
+  if (path.includes('/workshops/') || path.includes('/workshop/')) {
+    return PAGE_QUERY_CONFIG.workshop;
+  }
+
   // PRIORITY 2: Summer camp pages - specific camp FAQs
   if (path.includes('/summer-camp')) {
     return PAGE_QUERY_CONFIG.summer_camp;
@@ -563,6 +628,7 @@ const getPageConfig = (path, isLoggedIn) => {
 
 // Get page type key for quick actions lookup
 const getPageTypeKey = (path) => {
+  if (path.includes('/workshops/') || path.includes('/workshop/')) return 'workshop';
   if (path.includes('/robotics') || path.includes('/coding') || path.includes('/ai') || 
       path.includes('/course') || path.includes('/program')) return 'course';
   if (path.includes('/school-pay')) return 'school-payment';
