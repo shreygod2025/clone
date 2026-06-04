@@ -87,6 +87,46 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
     );
   }
 
+  // Workshop variant — Father's Day style (yellow + blue, single Enroll CTA)
+  if (variant === 'workshop') {
+    return (
+      <nav style={{
+        background: 'rgba(255,248,224,0.94)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(30,58,95,0.08)',
+        boxShadow: '0 1px 0 rgba(30,58,95,0.04)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 62 }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+              <img
+                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
+                alt="OLL Logo"
+                style={{ height: 44, width: 'auto' }}
+              />
+            </Link>
+            <button
+              onClick={() => {
+                const el = document.querySelector('[data-testid="hero-enroll-btn"]');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                window.dispatchEvent(new CustomEvent('open-workshop-enroll'));
+              }}
+              data-testid="workshop-nav-enroll-btn"
+              className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-bold px-5 sm:px-6 py-2.5 rounded-full shadow-lg shadow-blue-900/20 transition-all text-sm sm:text-base"
+              style={{ fontFamily: '"Fredoka", "Nunito", sans-serif' }}
+            >
+              Enroll Now
+            </button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   // AI Foundations variant — clean nav with sticky Book Now, login hidden
   if (variant === 'aifoundations') {
     return (

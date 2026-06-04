@@ -375,7 +375,7 @@ const LandingPage = () => {
                     onClick={(e) => { e.stopPropagation(); navigate('/workshops/fathers-day-robotics'); }}
                     style={{ background: '#fff', color: '#D63031', fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, padding: '0.7rem 1.4rem', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.15)' }}
                   >
-                    Enroll Now · ₹1,999 →
+                    Enroll Now →
                   </button>
                   <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.85)' }}>Limited seats per center</div>
                 </div>
