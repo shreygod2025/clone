@@ -362,7 +362,7 @@ const LandingPage = () => {
                   {[
                     { icon: '📅', text: 'Sun, 21 June' },
                     { icon: '⏰', text: '3 – 6 PM' },
-                    { icon: '📍', text: 'Kandivali / Mira Road' },
+                    { icon: '📍', text: 'Mumbai' },
                     { icon: '👨‍👦', text: 'Ages 4 – 12' },
                   ].map(p => (
                     <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.78rem', fontWeight: 600 }}>

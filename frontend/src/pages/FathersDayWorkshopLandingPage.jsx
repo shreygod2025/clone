@@ -189,7 +189,7 @@ export default function FathersDayWorkshopLandingPage() {
       <Navbar variant="workshop" />
 
       {/* ── HERO ─────────────────────────────────────────── */}
-      <section className="pb-12 sm:pb-16 lg:pb-16" style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, position: 'relative', overflow: 'hidden' }}>
+      <section className="pb-12 sm:pb-16 lg:pb-20" style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, position: 'relative', overflow: 'hidden' }}>
         {/* keyframes for ambient hero animations */}
         <style>{`
           @keyframes fd-sun-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -238,27 +238,27 @@ export default function FathersDayWorkshopLandingPage() {
           <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
             {/* Left — headline only */}
             <div className="text-center lg:text-left">
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', background: '#FFFFFF', border: `2px solid ${NAVY}`, borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: NAVY }}>
-                <Heart className="w-3.5 h-3.5" style={{ color: CORAL }} /> Father's Day · 1-Day Event
+              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 14px', background: '#FFFFFF', border: `2px solid ${NAVY}`, borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: NAVY }}>
+                Father's Day · 1-Day Event
               </span>
-              <h1 className="mt-4 leading-[1.04]" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 700, fontSize: 'clamp(2.1rem, 5.2vw, 4rem)', letterSpacing: '-0.01em' }}>
+              <h1 className="mt-6 leading-[1.04]" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 700, fontSize: 'clamp(2.1rem, 5.2vw, 4rem)', letterSpacing: '-0.01em' }}>
                 This Father&apos;s Day,<br />
                 <span style={{ display: 'inline-block', position: 'relative' }}>
                   Bond over Learning
                   <span style={{ display: 'inline-block', position: 'absolute', bottom: -6, left: 0, right: 0, height: 8, background: SUN, borderRadius: 999, opacity: 0.6 }} />
                 </span>
               </h1>
-              <p className="mt-5" style={{ fontFamily: '"Caveat", cursive', color: CORAL, fontSize: 'clamp(1.35rem, 3vw, 2.1rem)', fontWeight: 700, lineHeight: 1.2 }}>
+              <p className="mt-7" style={{ fontFamily: '"Caveat", cursive', color: CORAL, fontSize: 'clamp(1.35rem, 3vw, 2.1rem)', fontWeight: 700, lineHeight: 1.2 }}>
                 Father&apos;s Day Screen-Free Robotics Workshop
               </p>
-              <p className="mt-3 text-sm sm:text-base lg:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed" style={{ color: '#1F2937' }}>
-                3 hours of zero screens, full smiles. Bond with your child while you build a real robot — and walk home with a photoframe to remember it.
+              <p className="mt-4 text-sm sm:text-base lg:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed" style={{ color: '#1F2937' }}>
+                3 hours of zero screens, full smiles. Bond with your child while you build a real robot.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-2.5">
+              <div className="mt-7 flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-2.5">
                 <Pill icon={Calendar} text="Sunday, 21 June" />
                 <Pill icon={Clock}    text="3 – 6 PM" />
                 <Pill icon={Sparkles} text="Ages 4 – 12" />
-                <Pill icon={MapPin}   text="Kandivali / Mira Road" />
+                <Pill icon={MapPin}   text="Mumbai" />
               </div>
               <div className="mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-4">
                 <button onClick={openEnroll} data-testid="hero-enroll-btn"
@@ -270,21 +270,18 @@ export default function FathersDayWorkshopLandingPage() {
               </div>
             </div>
 
-            {/* Right — Photoframe + pinwheel (pinwheel hidden on mobile) */}
+            {/* Right — Photoframe + pinwheel (smaller on mobile) */}
             <div className="relative" style={{ minHeight: 'auto' }}>
-              {/* Spinning pinwheel toy — bottom-left of photoframe, desktop only */}
-              <div aria-hidden="true" className="fd-pinwheel-wrap hidden lg:block" data-testid="hero-pinwheel"
-                style={{ position: 'absolute', bottom: -6, left: -8, width: 92, height: 120, zIndex: 3, pointerEvents: 'none' }}>
-                <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 4, height: 78, background: '#8B5A2B', borderRadius: 2 }} />
-                <div style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', width: 72, height: 72 }}>
-                  <svg viewBox="0 0 100 100" className="fd-pinwheel" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 3px 6px rgba(15,30,80,0.25))' }}>
-                    <path d="M50 50 L50 6 Q72 14 50 50 Z"  fill={CORAL} />
-                    <path d="M50 50 L94 50 Q86 72 50 50 Z" fill={SUN} />
-                    <path d="M50 50 L50 94 Q28 86 50 50 Z" fill={NAVY} />
-                    <path d="M50 50 L6 50  Q14 28 50 50 Z" fill="#FFFFFF" stroke={NAVY} strokeWidth="1" />
-                    <circle cx="50" cy="50" r="6" fill={NAVY_DEEP} />
-                  </svg>
-                </div>
+              {/* Spinning pinwheel — peeks out from below the photoframe */}
+              <div aria-hidden="true" className="fd-pinwheel-wrap" data-testid="hero-pinwheel"
+                style={{ position: 'absolute', bottom: 'clamp(-44px, -10vw, -36px)', left: 'clamp(10px, 4vw, 24px)', width: 'clamp(58px, 14vw, 78px)', height: 'clamp(58px, 14vw, 78px)', zIndex: 3, pointerEvents: 'none' }}>
+                <svg viewBox="0 0 100 100" className="fd-pinwheel" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 4px 8px rgba(15,30,80,0.35))' }}>
+                  <path d="M50 50 L50 6 Q72 14 50 50 Z"  fill={CORAL} />
+                  <path d="M50 50 L94 50 Q86 72 50 50 Z" fill={SUN} />
+                  <path d="M50 50 L50 94 Q28 86 50 50 Z" fill={NAVY} />
+                  <path d="M50 50 L6 50  Q14 28 50 50 Z" fill="#FFFFFF" stroke={NAVY} strokeWidth="1" />
+                  <circle cx="50" cy="50" r="6" fill={NAVY_DEEP} />
+                </svg>
               </div>
 
               <div style={{ position: 'relative', zIndex: 2 }}>
@@ -306,7 +303,7 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── USP STRIP ───────────────────────────────────── */}
-      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="-mt-8 pt-12 pb-16">
+      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
         <Doodles preset="usp" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 gap-4 relative" style={{ zIndex: 1 }}>
           <FeatureCard color={CORAL} icon={Heart}  title="Bonding time, no screens" sub="3 hours of fully present, hands-on time — building together." />
@@ -315,7 +312,7 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── WHY THIS MATTERS (callout) ─────────────────── */}
-      <section style={{ background: '#FFFEF7', position: 'relative', overflow: 'hidden' }} className="py-14 sm:py-20">
+      <section style={{ background: '#FFFEF7', position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
         <Doodles preset="why" />
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center" style={{ zIndex: 1 }}>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] sm:text-xs uppercase tracking-[0.16em] font-bold" style={{ background: `${CORAL}18`, color: CORAL, border: `1.5px solid ${CORAL}50` }}>
@@ -435,9 +432,9 @@ export default function FathersDayWorkshopLandingPage() {
       </Section>
 
       {/* ── PRICING ─────────────────────────── */}
-      <section style={{ background: YELLOW, position: 'relative', overflow: 'hidden' }} className="pb-12 sm:pb-16 lg:pb-20">
+      <section style={{ background: YELLOW, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
         <Doodles preset="warm" />
-        <div className="max-w-3xl mx-auto px-4 text-center relative" style={{ zIndex: 1 }}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative" style={{ zIndex: 1 }}>
           <SectionLabel>Pricing</SectionLabel>
           <H2>One price. Everything included.</H2>
           <div className="mt-8 rounded-3xl p-8 sm:p-10 shadow-2xl text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)` }} data-testid="pricing-card">
@@ -459,9 +456,11 @@ export default function FathersDayWorkshopLandingPage() {
 
       {/* ── FAQ ─────────────────────────── */}
       <Section bg={YELLOW} decor="warm">
-        <SectionLabel>FAQ</SectionLabel>
-        <H2>Quick answers</H2>
-        <div className="mt-6 max-w-3xl space-y-3" data-testid="faq-section">
+        <div className="text-center">
+          <SectionLabel>FAQ</SectionLabel>
+          <H2>Quick answers</H2>
+        </div>
+        <div className="mt-8 max-w-3xl mx-auto space-y-3" data-testid="faq-section">
           {FAQS.map((f, i) => (
             <div key={f.q} className="rounded-2xl overflow-hidden" style={{ background: '#FFFEF7', border: `2px solid ${SKY}` }}>
               <button onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
@@ -748,51 +747,45 @@ const Doodles = ({ preset = 'usp' }) => {
   const p = palettes[preset] || palettes.usp;
   const dim = preset === 'dark' ? 0.18 : 0.6;
 
-  // Pre-set positions — keeps doodles outside text reading paths
+  // Pre-set positions — kept to corner/edge zones to avoid overlapping reading text
   const items = {
     hero: [
-      { top: '6%',  left: '4%',  el: <HeartDoodle size={20} color={p.primary} rotate={-12} /> },
-      { top: '38%', left: '2%',  el: <SparkleDoodle size={14} color={p.accent} /> },
-      { top: '70%', left: '6%',  el: <HeartDoodle size={14} color={p.primary} filled={false} rotate={18} /> },
-      { top: '12%', left: '46%', el: <CurvyLine width={120} color={p.secondary} dashed /> },
-      { top: '55%', right: '8%', el: <SparkleDoodle size={18} color={p.primary} /> },
+      { top: '4%',   left: '2%',  el: <HeartDoodle size={18} color={p.primary} rotate={-12} /> },
+      { bottom: '6%', left: '2%', el: <HeartDoodle size={14} color={p.primary} filled={false} rotate={18} /> },
+      { top: '46%',  left: '0.5%', el: <SparkleDoodle size={12} color={p.accent} /> },
+      { top: '8%',   right: '1%',  el: <SparkleDoodle size={14} color={p.accent} /> },
     ],
     usp: [
-      { top: '12%', left: '4%',  el: <HeartDoodle size={22} color={p.primary} rotate={-10} /> },
-      { top: '60%', left: '8%',  el: <CurvyLine width={110} color={p.secondary} /> },
-      { top: '20%', right: '6%', el: <SparkleDoodle size={20} color={p.accent} /> },
-      { bottom: '14%', right: '4%', el: <HeartDoodle size={16} color={p.primary} filled={false} rotate={20} /> },
-      { top: '46%', right: '20%', el: <DottedArc color={p.primary} /> },
+      { top: '14%',    left: '2%',  el: <HeartDoodle size={20} color={p.primary} rotate={-10} /> },
+      { bottom: '14%', left: '3%',  el: <CurvyLine width={90} color={p.secondary} /> },
+      { top: '18%',    right: '3%', el: <SparkleDoodle size={18} color={p.accent} /> },
+      { bottom: '14%', right: '2%', el: <HeartDoodle size={14} color={p.primary} filled={false} rotate={20} /> },
     ],
     why: [
-      { top: '8%',  left: '6%',  el: <HeartDoodle size={26} color={p.primary} rotate={-15} /> },
-      { top: '20%', left: '12%', el: <SparkleDoodle size={14} color={p.accent} /> },
-      { top: '70%', left: '5%',  el: <CurvyLine width={130} color={p.secondary} dashed /> },
-      { top: '12%', right: '5%', el: <DottedArc color={p.primary} rotate={20} /> },
-      { top: '60%', right: '6%', el: <HeartDoodle size={22} color={p.primary} rotate={14} /> },
-      { bottom: '8%', right: '20%', el: <SparkleDoodle size={18} color={p.accent} /> },
-      { bottom: '10%', left: '20%', el: <HeartDoodle size={12} color={p.primary} filled={false} /> },
+      { top: '8%',    left: '3%',  el: <HeartDoodle size={22} color={p.primary} rotate={-15} /> },
+      { bottom: '10%', left: '4%', el: <CurvyLine width={110} color={p.secondary} dashed /> },
+      { top: '10%',   right: '3%', el: <DottedArc color={p.primary} rotate={20} /> },
+      { bottom: '10%', right: '3%', el: <HeartDoodle size={18} color={p.primary} rotate={14} /> },
+      { top: '52%',   right: '1.5%', el: <SparkleDoodle size={16} color={p.accent} /> },
+      { top: '52%',   left: '1.5%',  el: <SparkleDoodle size={14} color={p.accent} /> },
     ],
     build: [
-      { top: '6%',  left: '3%',  el: <SparkleDoodle size={20} color={p.accent} /> },
-      { top: '30%', left: '1%',  el: <HeartDoodle size={20} color={p.primary} rotate={-8} /> },
-      { top: '8%',  right: '4%', el: <CurvyLine width={120} color={p.secondary} dashed /> },
-      { bottom: '12%', right: '3%', el: <HeartDoodle size={18} color={p.primary} rotate={18} /> },
-      { bottom: '8%', left: '6%', el: <SparkleDoodle size={14} color={p.accent} /> },
+      { top: '4%',    left: '2%',  el: <SparkleDoodle size={18} color={p.accent} /> },
+      { bottom: '8%', left: '2%',  el: <HeartDoodle size={18} color={p.primary} rotate={-8} /> },
+      { top: '6%',    right: '3%', el: <CurvyLine width={100} color={p.secondary} dashed /> },
+      { bottom: '8%', right: '2%', el: <HeartDoodle size={16} color={p.primary} rotate={18} /> },
     ],
     warm: [
-      { top: '8%',  left: '4%',  el: <HeartDoodle size={22} color={p.primary} rotate={-12} /> },
-      { top: '40%', left: '2%',  el: <CurvyLine width={100} color={p.secondary} /> },
-      { top: '14%', right: '4%', el: <SparkleDoodle size={20} color={p.accent} /> },
-      { bottom: '10%', right: '8%', el: <HeartDoodle size={16} color={p.primary} filled={false} rotate={16} /> },
-      { bottom: '14%', left: '14%', el: <DottedArc color={p.primary} rotate={180} /> },
+      { top: '6%',    left: '2%',  el: <HeartDoodle size={20} color={p.primary} rotate={-12} /> },
+      { bottom: '8%', left: '3%',  el: <DottedArc color={p.primary} rotate={180} /> },
+      { top: '10%',   right: '3%', el: <SparkleDoodle size={18} color={p.accent} /> },
+      { bottom: '8%', right: '2%', el: <HeartDoodle size={14} color={p.primary} filled={false} rotate={16} /> },
     ],
     dark: [
-      { top: '8%',  left: '3%',  el: <HeartDoodle size={20} color={p.primary} rotate={-12} /> },
-      { top: '40%', left: '2%',  el: <SparkleDoodle size={18} color={p.accent} /> },
-      { top: '14%', right: '5%', el: <CurvyLine width={110} color={p.secondary} dashed /> },
-      { bottom: '12%', right: '6%', el: <HeartDoodle size={18} color={p.primary} rotate={14} /> },
-      { bottom: '10%', left: '12%', el: <SparkleDoodle size={14} color={p.accent} /> },
+      { top: '6%',    left: '2%',  el: <HeartDoodle size={18} color={p.primary} rotate={-12} /> },
+      { bottom: '8%', left: '3%',  el: <SparkleDoodle size={14} color={p.accent} /> },
+      { top: '8%',    right: '3%', el: <CurvyLine width={90} color={p.secondary} dashed /> },
+      { bottom: '8%', right: '2%', el: <HeartDoodle size={16} color={p.primary} rotate={14} /> },
     ],
   };
   const list = items[preset] || items.usp;
