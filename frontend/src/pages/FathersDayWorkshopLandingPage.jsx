@@ -508,8 +508,8 @@ export default function FathersDayWorkshopLandingPage() {
             <Heart className="w-3 h-3" /> Why this Father&apos;s Day matters
           </div>
           <p className="mt-5 sm:mt-6" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 500, fontSize: 'clamp(1.15rem, 2.2vw, 1.6rem)', lineHeight: 1.5 }} data-testid="why-paragraph">
-            Most Father&apos;s Day plans are a meal and a card.<br className="hidden sm:inline" />
-            This one gives you a few uninterrupted hours with your child, working on the same thing, side by side. You build a real robot together, from parts. They walk away knowing how the machines around them actually work. You walk away having spent the day as a team.
+            Children may not remember every toy they receive, but they never forget the moments they share with their parents.<br className="hidden sm:inline" />
+            This workshop is more than building a robot. It&apos;s about spending meaningful time together, working as a team, celebrating small victories, and creating memories that last long after the day is over.
           </p>
           <div className="mt-7 flex items-center justify-center gap-3">
             <SquigglyLine width={60} />
