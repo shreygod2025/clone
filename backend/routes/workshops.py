@@ -117,7 +117,9 @@ async def register_workshop(data: WorkshopRegister):
         sort=[("created_at", -1)],
     )
     if existing and existing.get("payment_status") != "paid":
-        # Refresh with the latest age/center selection
+        # Refresh with the latest age/center/extras selection
+        extras = int(data.additional_children or 0)
+        new_amount = ws["price"] + (extras * 999)
         await db.workshop_bookings.update_one(
             {"id": existing["id"]},
             {"$set": {
@@ -125,10 +127,12 @@ async def register_workshop(data: WorkshopRegister):
                 "center": data.center,
                 "center_label": ws["centers"][data.center],
                 "age_group_label": ws["age_groups"][data.age_group],
+                "additional_children": extras,
+                "amount": new_amount,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        return {"booking_id": existing["id"], "amount": ws["price"]}
+        return {"booking_id": existing["id"], "amount": new_amount}
 
     booking_id = str(uuid.uuid4())
     doc = {
@@ -272,3 +276,4 @@ async def workshop_webhook(request: Request):
     except Exception as e:
         logging.warning(f"[workshop] webhook error: {e}")
         return {"ok": False}
+return {"ok": False}
