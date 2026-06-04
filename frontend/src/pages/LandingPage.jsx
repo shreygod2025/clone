@@ -309,10 +309,86 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ── 1-DAY WORKSHOPS ─────────────────────────────── */}
+      <section data-testid="homepage-workshops-section" style={{
+        background: 'linear-gradient(to bottom, #0f172a 0%, #FFF8F0 30%, #FFF8F0 100%)',
+        position: 'relative',
+        paddingTop: '5rem',
+        paddingBottom: '5rem',
+        overflow: 'hidden',
+      }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D63031', marginBottom: '0.6rem', fontFamily: "'Nunito Sans', sans-serif" }}>
+              ONE-DAY EVENTS
+            </p>
+            <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0F1E33', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', lineHeight: 1.15, marginBottom: '0.75rem' }}>
+              Workshops &amp; Events
+            </h2>
+            <p style={{ fontSize: '0.95rem', color: '#475569', fontFamily: "'Nunito Sans', sans-serif", maxWidth: 580, margin: '0 auto', lineHeight: 1.55 }}>
+              Hands-on Sunday workshops where parents and kids build something real — together.
+            </p>
+          </div>
+
+          <div
+            onClick={() => navigate('/workshops/fathers-day-robotics')}
+            data-testid="workshop-card-fathers-day"
+            style={{
+              cursor: 'pointer',
+              borderRadius: '1.5rem',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg,#D63031 0%,#F97316 100%)',
+              boxShadow: '0 24px 60px rgba(214,48,49,0.22)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 32px 80px rgba(214,48,49,0.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 24px 60px rgba(214,48,49,0.22)'; }}
+          >
+            <div className="workshop-card-grid">
+              <div style={{ padding: '2rem 1.75rem 2rem 2rem', color: '#fff' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '0.85rem' }}>
+                  ❤️ Father's Day · 1-Day Event
+                </span>
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, fontSize: 'clamp(1.45rem, 3.4vw, 1.95rem)', lineHeight: 1.15, marginBottom: '0.55rem' }}>
+                  Father's Day Robotics Workshop
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '1rem', maxWidth: 480 }}>
+                  Bond with your child building a real robot together. 3 hours · zero screens · take-home memories.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
+                  {[
+                    { icon: '📅', text: 'Sun, 21 June' },
+                    { icon: '⏰', text: '3 – 6 PM' },
+                    { icon: '📍', text: 'Kandivali / Mira Road' },
+                    { icon: '👨‍👦', text: 'Ages 4 – 12' },
+                  ].map(p => (
+                    <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', fontSize: '0.78rem', fontWeight: 600 }}>
+                      <span>{p.icon}</span>{p.text}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate('/workshops/fathers-day-robotics'); }}
+                    style={{ background: '#fff', color: '#D63031', fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, padding: '0.7rem 1.4rem', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.15)' }}
+                  >
+                    Enroll Now · ₹1,999 →
+                  </button>
+                  <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.85)' }}>Limited seats per center</div>
+                </div>
+              </div>
+              <div style={{ minHeight: 240, background: '#FFE5D1', backgroundImage: 'url(https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=900&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            </div>
+          </div>
+          <style>{`.workshop-card-grid{display:grid;grid-template-columns:1fr;gap:0}@media(min-width:900px){.workshop-card-grid{grid-template-columns:1.25fr 1fr}.workshop-card-grid>div:last-child{min-height:100% !important}}`}</style>
+        </div>
+      </section>
+
       {/* ── Social Media Internship Readiness Program (Ages 12-18) ── */}
       {/* Gradient continues from Summer Camp's #0f172a downward into deep void */}
       <section style={{
-        background: 'linear-gradient(to bottom, #0f172a 0%, #0a0d18 40%, #050505 100%)',
+        background: 'linear-gradient(to bottom, #FFF8F0 0%, #0f172a 12%, #0a0d18 50%, #050505 100%)',
         position: 'relative',
         overflow: 'hidden',
         paddingTop: '4rem',

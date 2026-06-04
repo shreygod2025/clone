@@ -78,6 +78,8 @@ const AiFoundationsSuccessPage = lazy(() => import("./pages/AiFoundationsSuccess
 
 // Future Skills Continuous Learning Program
 const FutureSkillsLandingPage = lazy(() => import("./pages/FutureSkillsLandingPage"));
+const FathersDayWorkshopLandingPage = lazy(() => import("./pages/FathersDayWorkshopLandingPage"));
+const WorkshopSuccessPage = lazy(() => import("./pages/WorkshopSuccessPage"));
 const FutureSkillsBookingPage = lazy(() => import("./pages/FutureSkillsBookingPage"));
 const FutureSkillsSuccessPage = lazy(() => import("./pages/FutureSkillsSuccessPage"));
 
@@ -231,6 +233,8 @@ function App() {
 
               {/* Future Skills Continuous Learning Program */}
               <Route path="/future-skills" element={<FutureSkillsLandingPage />} />
+              <Route path="/workshops/fathers-day-robotics" element={<FathersDayWorkshopLandingPage />} />
+              <Route path="/workshops/:slug/success" element={<WorkshopSuccessPage />} />
               <Route path="/future-skills/book" element={<FutureSkillsBookingPage />} />
               <Route path="/future-skills/success" element={<FutureSkillsSuccessPage />} />
 
