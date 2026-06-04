@@ -122,6 +122,15 @@ export default function FathersDayWorkshopLandingPage() {
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
+  // Auto-advance the photoframe carousel every 0.8s
+  useEffect(() => {
+    if (CAROUSEL.length <= 1) return undefined;
+    const id = setInterval(() => {
+      setCarouselIdx(i => (i + 1) % CAROUSEL.length);
+    }, 800);
+    return () => clearInterval(id);
+  }, []);
+
   // Close modals on Esc
   useEffect(() => {
     if (!videoOpen && !mediaOpen) return undefined;
