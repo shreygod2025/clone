@@ -168,7 +168,8 @@ const LandingPage = () => {
         </div>
       </main>
 
-      {/* Summer Camp — Offerings-style section */}
+      {/* Summer Camp section — HIDDEN (2026 camps closed; broadcast list flow only) */}
+      {false && (
       <section style={{
         background: 'linear-gradient(to bottom, #ffffff 0%, #edf2f8 18%, #c2d4e8 38%, #4a7aaa 55%, #1e3a5f 72%, #0f172a 100%)',
         position: 'relative',
@@ -308,10 +309,11 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* ── 1-DAY WORKSHOPS ─────────────────────────────── */}
       <section data-testid="homepage-workshops-section" style={{
-        background: 'linear-gradient(to bottom, #0f172a 0%, #FFF8F0 30%, #FFF8F0 100%)',
+        background: 'linear-gradient(to bottom, #ffffff 0%, #FFF8F0 30%, #FFF8F0 100%)',
         position: 'relative',
         paddingTop: '5rem',
         paddingBottom: '5rem',
