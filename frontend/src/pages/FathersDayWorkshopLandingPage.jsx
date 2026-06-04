@@ -11,6 +11,7 @@ import { Helmet } from 'react-helmet-async';
 import {
   Calendar, Clock, MapPin, Heart, Shield, Sparkles, ArrowRight, ArrowLeft,
   Camera, Cpu, Zap, Wrench, X, Loader2, Phone, Plus, Minus, ChevronDown,
+  Play, Video, Quote, Star,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { openCashfreeCheckout } from '../utils/cashfreeCheckout';
@@ -36,19 +37,19 @@ const AGE_GROUPS = [
     builds: ['Manual Swing 🛝', 'Motorised Merry-go-Round 🎠'],
     learns: ['Engineering basics', 'Electricity 101', 'How a motor works'],
     images: [
-      // Image 3 — Manual Swing (taller, slight tilt left)
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Manual Swing build', large: true,  rotate: -4 },
-      // Image 4 — Motorised Merry-go-Round (shorter, tilt right)
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Motorised Merry-go-Round build', large: false, rotate: 3 },
+      // Image 1 — large, slight left tilt
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wus3ar3y_1.png', alt: 'Manual Swing build', large: true,  rotate: -4 },
+      // Image 2 — smaller, right tilt
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/y01nt59y_2.png', alt: 'Motorised Merry-go-Round build', large: false, rotate: 3 },
     ] },
   { slug: '9-12', label: 'Ages 9 – 12', tagline: 'Build a real working robot.',   color: NAVY, emoji: '🤖',
     builds: ['Edge Avoiding Robot 🚗', 'Circle Drawing Robot ⭕'],
     learns: ['Build a robot chassis', 'Add sensors', 'Wire motors', 'Power up & test'],
     images: [
-      // Image 1 — Edge Avoiding Robot (large, tilt right)
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wus3ar3y_1.png', alt: 'Edge Avoiding Robot build', large: true,  rotate: 4 },
-      // Image 2 — Circle Drawing Robot (smaller, tilt left)
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/y01nt59y_2.png', alt: 'Circle Drawing Robot build', large: false, rotate: -3 },
+      // Image 3 — large, tilt right
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Edge Avoiding Robot build', large: true,  rotate: 4 },
+      // Image 4 — smaller, tilt left
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Circle Drawing Robot build', large: false, rotate: -3 },
     ] },
 ];
 
@@ -74,6 +75,37 @@ const FAQS = [
   { q: 'Is this online or in person?', a: 'In person at OLL Center, Kandivali or Mira Road. No kits shipped — everything is provided.' },
 ];
 
+// ── Video testimonials (parents + students) ───────────────────────────────
+const VIDEO_TESTIMONIALS = [
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4',
+    role: 'Parent',  name: 'OLL Parents',          line: '"Our kids come home buzzing about what they built."', accent: CORAL },
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yl1ydmda_IMG_7029.MOV',
+    role: 'Student', name: 'Young Builder · Grade 5', line: '"I made a robot that follows a line!"',           accent: NAVY },
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4boxtvd2_IMG_7035.MOV',
+    role: 'Student', name: 'Young Coder · Grade 7',   line: '"I wrote my first Python game in class."',       accent: SUN },
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/vo8r3dzk_IMG_7045.MOV',
+    role: 'Student', name: 'Young Creator · Grade 9', line: '"3D-printed my own phone stand this week!"',     accent: CORAL },
+];
+
+// ── Real classroom media (images + videos) ───────────────────────────────
+const CLASS_MEDIA = [
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/5h69is60_20260504_122331.mp4', label: 'Hands-on build',     caption: 'Kids assembling their first IoT & AI lab kit' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg', label: 'Live class',         caption: 'Working through a circuit module step by step' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gwljm6r9_20260504_122607.jpg', label: 'Build station',      caption: 'Pair-builds with the OLL IoT & AI Lab Kit' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/04pgqymv_20260504_123958.mp4', label: 'In action',          caption: 'Real class footage — what a session feels like' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tqatbciw_20260504_124243.jpg', label: 'Manipulative station', caption: 'Kids exploring components together' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9p89o2y6_20260504_154936.mp4', label: 'Class showcase',     caption: 'Students presenting what they built today' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rhwyg94z_20260504_163950.jpg', label: 'Batch of builders',  caption: 'End-of-class group photo — the whole crew' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/geb6vgey_VID20260504135039.mp4', label: 'Build moment',      caption: 'Mid-class hands-on — heads-down focus' },
+];
+
+// ── Written testimonials ──────────────────────────────────────────────────
+const TEXT_TESTIMONIALS = [
+  { name: 'Anita S., Grade 5 parent',  quote: 'My son went from gaming all weekend to spending Saturdays designing his own game. The shift in 3 months has been unreal.' },
+  { name: 'Rajesh M., Grade 8 parent', quote: 'He builds robots at home now with parts he saves up for. The class lit a fire we didn\'t know was there.' },
+  { name: 'Priya K., Grade 3 parent',  quote: 'Best investment beyond her academics. She actually looks forward to Saturdays.' },
+];
+
 export default function FathersDayWorkshopLandingPage() {
   const navigate = useNavigate();
   const [showEnroll, setShowEnroll] = useState(false);
@@ -82,8 +114,18 @@ export default function FathersDayWorkshopLandingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
+  const [videoOpen, setVideoOpen] = useState(null);
+  const [mediaOpen, setMediaOpen] = useState(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  // Close modals on Esc
+  useEffect(() => {
+    if (!videoOpen && !mediaOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') { setVideoOpen(null); setMediaOpen(null); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [videoOpen, mediaOpen]);
 
   // Auto-rotate carousel every 4s
   useEffect(() => {
@@ -346,38 +388,33 @@ export default function FathersDayWorkshopLandingPage() {
       <Section bg={SKY} decor="build">
         <SectionLabel>The Build</SectionLabel>
         <H2>What will you build together?</H2>
-        <div className="grid lg:grid-cols-2 gap-5 mt-6">
+        <div className="grid lg:grid-cols-2 gap-y-12 gap-x-5 mt-16 sm:mt-20 lg:mt-24">
           {AGE_GROUPS.map(g => (
-            <div key={g.slug} className="rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${g.color}` }} data-testid={`age-card-${g.slug}`}>
-              {/* ── Project image collage — staggered sizes for organic feel ── */}
+            <div key={g.slug} className="rounded-3xl p-6 sm:p-8 pt-0 sm:pt-0 shadow-lg relative" style={{ background: '#FFFEF7', border: `3px solid ${g.color}` }} data-testid={`age-card-${g.slug}`}>
+              {/* ── Project image collage — transparent, overflowing the card top ── */}
               {g.images && (
-                <div className="mb-6 grid grid-cols-5 gap-3 items-end" data-testid={`age-images-${g.slug}`}>
+                <div className="-mt-12 sm:-mt-16 lg:-mt-20 mb-4 grid grid-cols-5 gap-2 sm:gap-4 items-end pointer-events-none select-none" data-testid={`age-images-${g.slug}`}>
                   {g.images.map((im, i) => (
                     <div key={i}
                       className={im.large ? 'col-span-3' : 'col-span-2'}
                       style={{
-                        background: g.color,
-                        borderRadius: 18,
-                        padding: 6,
                         transform: `rotate(${im.rotate}deg)`,
-                        boxShadow: '0 10px 24px rgba(15,30,80,0.18)',
+                        filter: 'drop-shadow(0 12px 24px rgba(15,30,80,0.22))',
                         aspectRatio: im.large ? '1 / 1' : '4 / 5',
                       }}>
-                      <div style={{ width: '100%', height: '100%', background: '#FFFEF7', borderRadius: 14, overflow: 'hidden' }}>
-                        <img src={im.src} alt={im.alt}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#0B1020' }}
-                          loading="lazy" />
-                      </div>
+                      <img src={im.src} alt={im.alt}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', background: 'transparent', mixBlendMode: 'multiply' }}
+                        loading="lazy" />
                     </div>
                   ))}
                 </div>
               )}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
-                  <div className="text-xs uppercase tracking-widest font-bold" style={{ color: g.color }}>{g.label}</div>
-                  <div className="text-xl font-bold mt-1" style={{ color: NAVY_DEEP }}>{g.tagline}</div>
+                  <div className="font-black uppercase leading-none" style={{ color: g.color, fontFamily: '"Fredoka", sans-serif', fontSize: 'clamp(1.6rem, 3.4vw, 2.4rem)', letterSpacing: '0.02em' }}>{g.label}</div>
+                  <div className="text-xs sm:text-sm mt-2 font-semibold" style={{ color: '#475569' }}>{g.tagline}</div>
                 </div>
-                <div className="text-4xl">{g.emoji}</div>
+                <div className="text-3xl sm:text-4xl flex-shrink-0">{g.emoji}</div>
               </div>
               <div className="mt-3">
                 <div className="text-xs font-bold uppercase tracking-wider mb-2 text-slate-500">You&apos;ll Build</div>
@@ -466,6 +503,111 @@ export default function FathersDayWorkshopLandingPage() {
         </div>
       </Section>
 
+      {/* ── CLASS MOMENTS GALLERY ─────────────────── */}
+      <section style={{ background: '#FFFEF7', position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
+        <Doodles preset="warm" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
+          <div className="text-center mb-8">
+            <SectionLabel>Real moments · Real builds</SectionLabel>
+            <H2>Inside an OLL classroom</H2>
+            <p className="text-sm text-slate-500 mt-2 italic">Tap any tile to play / view</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" data-testid="fd-class-gallery">
+            {CLASS_MEDIA.map((m, i) => (
+              <button key={i} onClick={() => setMediaOpen(m)}
+                className="group relative aspect-square rounded-2xl overflow-hidden shadow-lg transition-all hover:scale-[1.02] hover:shadow-2xl"
+                style={{ border: `2px solid ${SKY}`, background: NAVY_DEEP }}
+                data-testid={`fd-gallery-${i}`}
+                aria-label={`View ${m.label}`}>
+                {m.type === 'video' ? (
+                  <video src={m.src} preload="metadata" muted playsInline
+                    className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100"
+                    style={{ pointerEvents: 'none' }} />
+                ) : (
+                  <img src={m.src} alt={m.label} loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F2960] via-[#0F2960]/30 to-transparent" />
+                <div className="absolute top-2.5 left-2.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase text-white backdrop-blur-sm border"
+                    style={{ background: m.type === 'video' ? `${CORAL}cc` : `${NAVY}cc`, borderColor: m.type === 'video' ? CORAL : SKY }}>
+                    {m.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
+                    {m.type === 'video' ? 'Video' : 'Photo'}
+                  </span>
+                </div>
+                {m.type === 'video' && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/50 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#FF7B6B] group-hover:border-[#FF7B6B] transition-all shadow-2xl">
+                      <Play className="w-5 h-5 text-white fill-white translate-x-0.5" />
+                    </div>
+                  </div>
+                )}
+                <div className="absolute bottom-0 inset-x-0 p-3 text-left">
+                  <div className="text-xs font-black text-white leading-tight">{m.label}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS (Video + Text) ─────────────────── */}
+      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
+        <Doodles preset="usp" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
+          <div className="text-center mb-8">
+            <SectionLabel>Loved by families</SectionLabel>
+            <H2>Hear from our parents &amp; students</H2>
+          </div>
+
+          {/* Video testimonials */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-10" data-testid="fd-video-testimonials">
+            {VIDEO_TESTIMONIALS.map((v, i) => (
+              <button key={i} onClick={() => setVideoOpen(v)}
+                className="group relative aspect-[3/4] rounded-2xl overflow-hidden shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
+                style={{ border: `2px solid ${v.accent}`, background: NAVY_DEEP }}
+                data-testid={`fd-video-testimonial-${i}`}
+                aria-label={`Play ${v.role} testimonial`}>
+                <video src={v.src} preload="metadata" muted playsInline
+                  className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100"
+                  style={{ pointerEvents: 'none' }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F2960] via-[#0F2960]/40 to-[#0F2960]/20" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 transition-all shadow-2xl"
+                    style={{ '--hover-bg': v.accent }}>
+                    <Play className="w-6 h-6 text-white fill-white translate-x-0.5" />
+                  </div>
+                </div>
+                <div className="absolute top-3 left-3">
+                  <span className="text-[9px] font-black tracking-widest uppercase text-white px-2 py-1 rounded-full backdrop-blur-sm border"
+                    style={{ background: `${v.accent}cc`, borderColor: v.accent }}>
+                    {v.role}
+                  </span>
+                </div>
+                <div className="absolute bottom-0 inset-x-0 p-3 text-left">
+                  <div className="text-xs font-black text-white leading-tight">{v.name}</div>
+                  <div className="text-[10px] mt-1 leading-snug line-clamp-2" style={{ color: '#A8DCF0' }}>{v.line}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Text testimonials */}
+          <div className="grid md:grid-cols-3 gap-4" data-testid="fd-text-testimonials">
+            {TEXT_TESTIMONIALS.map((t, i) => (
+              <div key={i} className="rounded-2xl p-6 shadow-md" style={{ background: '#FFFEF7', border: `2px solid ${SKY}` }} data-testid={`fd-testimonial-${i}`}>
+                <Quote className="w-6 h-6 mb-3" style={{ color: `${CORAL}99` }} />
+                <p className="text-sm leading-relaxed italic" style={{ color: '#475569' }}>"{t.quote}"</p>
+                <div className="flex items-center gap-1 mt-3 mb-1">
+                  {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5" style={{ color: CORAL, fill: CORAL }} />)}
+                </div>
+                <div className="text-xs font-bold" style={{ color: NAVY_DEEP }}>{t.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── PRICING ─────────────────────────── */}
       <section style={{ background: YELLOW, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
         <Doodles preset="warm" />
@@ -513,6 +655,60 @@ export default function FathersDayWorkshopLandingPage() {
 
       {showEnroll && (
         <EnrollModal step={step} setStep={setStep} form={form} setForm={setForm} total={total} submitting={submitting} onPay={handlePay} onClose={() => setShowEnroll(false)} />
+      )}
+
+      {/* ── Class media modal ───────────────────────── */}
+      {mediaOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setMediaOpen(null); }}
+          data-testid="fd-media-modal">
+          <button onClick={(e) => { e.stopPropagation(); setMediaOpen(null); }}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-[#FF7B6B] border border-white/30 flex items-center justify-center text-white transition-all backdrop-blur-sm z-10"
+            aria-label="Close">
+            <X className="w-5 h-5 pointer-events-none" />
+          </button>
+          <div className="w-full max-w-2xl">
+            <div className="rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl shadow-black/60" style={{ background: NAVY_DEEP }}>
+              {mediaOpen.type === 'video' ? (
+                <video src={mediaOpen.src} controls autoPlay playsInline className="w-full max-h-[75vh] bg-black">
+                  Your browser doesn't support inline video.
+                </video>
+              ) : (
+                <img src={mediaOpen.src} alt={mediaOpen.label} className="w-full max-h-[80vh] object-contain bg-black" />
+              )}
+              <div className="p-4 sm:p-5">
+                <div className="text-[10px] font-black tracking-widest uppercase" style={{ color: SUN }}>{mediaOpen.type === 'video' ? 'Class footage' : 'Class moment'}</div>
+                <div className="text-base sm:text-lg font-black text-white mt-1">{mediaOpen.label}</div>
+                <p className="text-sm mt-1" style={{ color: '#A8DCF0' }}>{mediaOpen.caption}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Video testimonial modal ─────────────────────────── */}
+      {videoOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setVideoOpen(null); }}
+          data-testid="fd-video-modal">
+          <button onClick={(e) => { e.stopPropagation(); setVideoOpen(null); }}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-[#FF7B6B] border border-white/30 flex items-center justify-center text-white transition-all backdrop-blur-sm z-10"
+            aria-label="Close video">
+            <X className="w-5 h-5 pointer-events-none" />
+          </button>
+          <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl">
+            <div className="rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl shadow-black/60" style={{ background: NAVY_DEEP }}>
+              <video src={videoOpen.src} controls autoPlay playsInline className="w-full max-h-[75vh] bg-black">
+                Your browser doesn't support inline video.
+              </video>
+              <div className="p-4 sm:p-5">
+                <div className="text-[10px] font-black tracking-widest uppercase" style={{ color: SUN }}>{videoOpen.role}</div>
+                <div className="text-base sm:text-lg font-black text-white mt-1">{videoOpen.name}</div>
+                <p className="text-sm mt-1 italic" style={{ color: '#A8DCF0' }}>{videoOpen.line}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
