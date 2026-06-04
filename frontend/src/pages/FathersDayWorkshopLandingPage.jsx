@@ -3,7 +3,7 @@
  * Hero: headline + photoframe carousel with I♥DAD watermark · rotating sun · spinning pinwheel
  * + How-the-day-runs · Pricing (+999 per extra child) · FAQ · Hand silhouette
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -46,10 +46,10 @@ const AGE_GROUPS = [
     builds: ['Edge Avoiding Robot 🚗', 'Circle Drawing Robot ⭕'],
     learns: ['Build a robot chassis', 'Add sensors', 'Wire motors', 'Power up & test'],
     images: [
-      // Image 3 — large, tilt right
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Edge Avoiding Robot build', large: true,  rotate: 4 },
+      // Image 3 — large, overflow more, tilt right
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Edge Avoiding Robot build', large: true,  rotate: 5, overflow: 'extra' },
       // Image 4 — smaller, tilt left
-      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Circle Drawing Robot build', large: false, rotate: -3 },
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Circle Drawing Robot build', large: false, rotate: -4 },
     ] },
 ];
 
@@ -175,7 +175,7 @@ export default function FathersDayWorkshopLandingPage() {
       <Helmet>
         {/* Primary SEO */}
         <title>Father's Day Robotics Workshop Mumbai 2026 — Bond Over Learning | OLL</title>
-        <meta name="description" content="Spend Father's Day 2026 building a real robot together with your child (ages 4–12). 3-hour screen-free workshop · Sunday 21 June, 3–6 PM · Kandivali & Mira Road, Mumbai · ₹1,999 per dad-child duo. Photoframe & memories to take home." />
+        <meta name="description" content="Spend Father's Day 2026 building a real robot together with your child (ages 4–12). Screen-free workshop · Sunday 21 June · Kandivali & Mira Road, Mumbai · ₹1,999 per dad-child duo. Photoframe & memories to take home." />
         <meta name="keywords" content="Father's Day workshop Mumbai, robotics workshop for kids, dad and child activity Mumbai, Father's Day 2026, screen-free workshop, OLL robotics, STEM workshop Kandivali, STEM workshop Mira Road, parent-child bonding workshop, summer activity Mumbai" />
         <meta name="author" content="OLL — Skills for All" />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
@@ -264,8 +264,42 @@ export default function FathersDayWorkshopLandingPage() {
           @media (min-width: 1024px) {
             .fd-hero-sun { top: 14px; right: 18px; width: 120px; height: 120px; }
           }
+
+          /* Animated hand-drawn underline — strokes in once on load */
+          @keyframes fd-draw-underline { to { stroke-dashoffset: 0; } }
+          .fd-underline-path {
+            stroke-dasharray: 700;
+            stroke-dashoffset: 700;
+            animation: fd-draw-underline 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
+          }
+
+          /* Enroll button — diagonal bouncy wiggle to grab the eye */
+          @keyframes fd-enroll-wiggle {
+            0%, 100%    { transform: translateY(0) rotate(0deg); }
+            18%         { transform: translateY(-6px) rotate(-2deg); }
+            36%         { transform: translateY(0)    rotate(0deg); }
+            54%         { transform: translateY(-4px) rotate(2deg); }
+            72%         { transform: translateY(0)    rotate(0deg); }
+          }
+          @keyframes fd-arrow-nudge {
+            0%, 100% { transform: translateX(0); }
+            50%      { transform: translateX(4px); }
+          }
+          .fd-enroll-btn {
+            animation: fd-enroll-wiggle 3.4s ease-in-out 1.4s infinite;
+            transform-origin: center;
+            transition: transform 0.15s ease;
+          }
+          .fd-enroll-btn:hover {
+            animation-play-state: paused;
+            transform: scale(1.05) rotate(-1.5deg);
+          }
+          .fd-enroll-arrow { animation: fd-arrow-nudge 1.6s ease-in-out infinite; }
+
           @media (prefers-reduced-motion: reduce) {
-            .fd-sun-rotor, .fd-sun-pulser, .fd-pinwheel, .fd-pinwheel-wrap { animation: none; }
+            .fd-sun-rotor, .fd-sun-pulser, .fd-pinwheel, .fd-pinwheel-wrap,
+            .fd-enroll-btn, .fd-enroll-arrow { animation: none; }
+            .fd-underline-path { stroke-dashoffset: 0; animation: none; }
           }
         `}</style>
 
@@ -299,7 +333,14 @@ export default function FathersDayWorkshopLandingPage() {
                 This Father&apos;s Day,<br />
                 <span style={{ display: 'inline-block', position: 'relative' }}>
                   Bond over Learning
-                  <span style={{ display: 'inline-block', position: 'absolute', bottom: -6, left: 0, right: 0, height: 8, background: SUN, borderRadius: 999, opacity: 0.6 }} />
+                  {/* Animated hand-drawn curvy underline */}
+                  <svg viewBox="0 0 320 22" preserveAspectRatio="none"
+                    style={{ position: 'absolute', left: 0, right: 0, bottom: -14, width: '100%', height: 22, pointerEvents: 'none', overflow: 'visible' }}
+                    aria-hidden="true">
+                    <path className="fd-underline-path"
+                      d="M 4 14 Q 50 4, 96 12 T 188 12 T 280 9 Q 305 7, 316 14"
+                      stroke={SUN} strokeWidth="6" strokeLinecap="round" fill="none" />
+                  </svg>
                 </span>
               </h1>
               <p className="mt-7" style={{ fontFamily: '"Caveat", cursive', color: CORAL, fontSize: 'clamp(1.35rem, 3vw, 2.1rem)', fontWeight: 700, lineHeight: 1.2 }}>
@@ -310,15 +351,15 @@ export default function FathersDayWorkshopLandingPage() {
               </p>
               <div className="mt-7 flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-2.5">
                 <Pill icon={Calendar} text="Sunday, 21 June" />
-                <Pill icon={Clock}    text="3 – 6 PM" />
+                <Pill icon={Clock}    text="2 hours" />
                 <Pill icon={Sparkles} text="Ages 4 – 12" />
                 <Pill icon={MapPin}   text="Mumbai" />
               </div>
               <div className="mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-4">
                 <button onClick={openEnroll} data-testid="hero-enroll-btn"
-                  className="px-7 sm:px-8 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-bold inline-flex items-center gap-2 shadow-xl hover:scale-[1.03] transition-transform"
+                  className="fd-enroll-btn px-7 sm:px-8 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-bold inline-flex items-center gap-2 shadow-xl"
                   style={{ background: NAVY, color: '#fff', fontFamily: '"Fredoka", sans-serif' }}>
-                  Enroll Now <ArrowRight className="w-5 h-5" />
+                  Enroll Now <ArrowRight className="w-5 h-5 fd-enroll-arrow" />
                 </button>
                 <div className="text-xs sm:text-sm font-semibold" style={{ color: NAVY }}>Limited seats per center</div>
               </div>
@@ -398,9 +439,12 @@ export default function FathersDayWorkshopLandingPage() {
                     <div key={i}
                       className={im.large ? 'col-span-3' : 'col-span-2'}
                       style={{
-                        transform: `rotate(${im.rotate}deg)`,
+                        transform: im.overflow === 'extra'
+                          ? `rotate(${im.rotate}deg) scale(1.22) translateY(-8%)`
+                          : `rotate(${im.rotate}deg)`,
                         filter: 'drop-shadow(0 12px 24px rgba(15,30,80,0.22))',
                         aspectRatio: im.large ? '1 / 1' : '4 / 5',
+                        transformOrigin: 'center bottom',
                       }}>
                       <img src={im.src} alt={im.alt}
                         style={{ width: '100%', height: '100%', objectFit: 'contain', background: 'transparent', mixBlendMode: 'multiply' }}
@@ -449,7 +493,7 @@ export default function FathersDayWorkshopLandingPage() {
       <section style={{ background: NAVY_DEEP, color: '#fff', position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
         <Doodles preset="dark" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
-          <SectionLabel light>3-hour session</SectionLabel>
+          <SectionLabel light>The Session</SectionLabel>
           <H2 light>How the day runs</H2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8" data-testid="how-the-day-runs">
             {DAY_RUNS.map((s, i) => (
@@ -520,9 +564,7 @@ export default function FathersDayWorkshopLandingPage() {
                 data-testid={`fd-gallery-${i}`}
                 aria-label={`View ${m.label}`}>
                 {m.type === 'video' ? (
-                  <video src={m.src} preload="metadata" muted playsInline
-                    className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100"
-                    style={{ pointerEvents: 'none' }} />
+                  <LazyVideoPreview src={m.src} />
                 ) : (
                   <img src={m.src} alt={m.label} loading="lazy"
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -568,9 +610,7 @@ export default function FathersDayWorkshopLandingPage() {
                 style={{ border: `2px solid ${v.accent}`, background: NAVY_DEEP }}
                 data-testid={`fd-video-testimonial-${i}`}
                 aria-label={`Play ${v.role} testimonial`}>
-                <video src={v.src} preload="metadata" muted playsInline
-                  className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100"
-                  style={{ pointerEvents: 'none' }} />
+                <LazyVideoPreview src={v.src} />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0F2960] via-[#0F2960]/40 to-[#0F2960]/20" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-14 h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 transition-all shadow-2xl"
@@ -872,7 +912,7 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
             <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background: '#fff', border: `2px solid ${SKY}` }}>
               <Row k="Age group" v={AGE_GROUPS.find(g => g.slug === form.age_group)?.label} />
               <Row k="Center"    v={CENTERS.find(c => c.slug === form.center)?.label} />
-              <Row k="Date"      v="Sunday, 21 June · 3 – 6 PM" />
+              <Row k="Date"      v="Sunday, 21 June · 2 hours" />
               <Row k="Base"      v="₹1,999" />
               {form.additional_children > 0 && (
                 <Row k={`+${form.additional_children} extra child${form.additional_children > 1 ? 'ren' : ''}`} v={`₹${(form.additional_children * 999).toLocaleString()}`} />
@@ -917,6 +957,37 @@ const Row = ({ k, v }) => (
     <span className="font-bold text-right" style={{ color: NAVY_DEEP }}>{v || '—'}</span>
   </div>
 );
+
+// ──────────────────────────────────────────────────────────────────────
+//  LAZY VIDEO PREVIEW — only fetches the first frame when scrolled into view.
+//  Drastically cuts initial-load network requests on gallery + testimonials.
+// ──────────────────────────────────────────────────────────────────────
+const LazyVideoPreview = ({ src }) => {
+  const ref = useRef(null);
+  const [mount, setMount] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current || mount) return undefined;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setMount(true); io.disconnect(); }
+    }, { rootMargin: '200px' });
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, [mount]);
+
+  return (
+    <div ref={ref} className="absolute inset-0 w-full h-full pointer-events-none">
+      {mount ? (
+        <video src={`${src}#t=0.5`} preload="metadata" muted playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100" />
+      ) : (
+        // Static gradient placeholder while video is out of viewport
+        <div className="absolute inset-0 w-full h-full"
+          style={{ background: `linear-gradient(135deg, ${NAVY_DEEP} 0%, ${NAVY} 100%)` }} />
+      )}
+    </div>
+  );
+};
 
 // ──────────────────────────────────────────────────────────────────────
 //  DECORATIVE SVG DOODLES — hearts, squiggles, sparkles, dotted lines
