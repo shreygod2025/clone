@@ -33,11 +33,23 @@ const CAROUSEL = [
 
 const AGE_GROUPS = [
   { slug: '4-8',  label: 'Ages 4 – 8',  tagline: 'Tiny hands. Big imagination.', color: SUN,  emoji: '🌟',
-    builds: ["Miner's Head Lamp 💡", '3D-Pen Name Tags ✏️', 'Motorised Windmill 🌀'],
-    learns: ['Engineering basics', 'Electricity 101', 'How a motor works'] },
+    builds: ['Manual Swing 🛝', 'Motorised Merry-go-Round 🎠'],
+    learns: ['Engineering basics', 'Electricity 101', 'How a motor works'],
+    images: [
+      // Image 3 — Manual Swing (taller, slight tilt left)
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Manual Swing build', large: true,  rotate: -4 },
+      // Image 4 — Motorised Merry-go-Round (shorter, tilt right)
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Motorised Merry-go-Round build', large: false, rotate: 3 },
+    ] },
   { slug: '9-12', label: 'Ages 9 – 12', tagline: 'Build a real working robot.',   color: NAVY, emoji: '🤖',
-    builds: ['Edge-Avoiding Robot 🚗', 'Hand-Following Robot 🤖', 'Black Line Follower 🛤️'],
-    learns: ['Build a robot chassis', 'Add sensors', 'Wire motors', 'Power up & test'] },
+    builds: ['Edge Avoiding Robot 🚗', 'Circle Drawing Robot ⭕'],
+    learns: ['Build a robot chassis', 'Add sensors', 'Wire motors', 'Power up & test'],
+    images: [
+      // Image 1 — Edge Avoiding Robot (large, tilt right)
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wus3ar3y_1.png', alt: 'Edge Avoiding Robot build', large: true,  rotate: 4 },
+      // Image 2 — Circle Drawing Robot (smaller, tilt left)
+      { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/y01nt59y_2.png', alt: 'Circle Drawing Robot build', large: false, rotate: -3 },
+    ] },
 ];
 
 const CENTERS = [
@@ -189,7 +201,7 @@ export default function FathersDayWorkshopLandingPage() {
       <Navbar variant="workshop" />
 
       {/* ── HERO ─────────────────────────────────────────── */}
-      <section className="pb-12 sm:pb-16 lg:pb-20" style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, position: 'relative', overflow: 'hidden' }}>
+      <section className="pb-10 sm:pb-12 lg:pb-12" style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, position: 'relative', overflow: 'hidden' }}>
         {/* keyframes for ambient hero animations */}
         <style>{`
           @keyframes fd-sun-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -272,9 +284,9 @@ export default function FathersDayWorkshopLandingPage() {
 
             {/* Right — Photoframe + pinwheel (smaller on mobile) */}
             <div className="relative" style={{ minHeight: 'auto' }}>
-              {/* Spinning pinwheel — peeks out from below the photoframe */}
+              {/* Spinning pinwheel — peeks out from below the photoframe (right side) */}
               <div aria-hidden="true" className="fd-pinwheel-wrap" data-testid="hero-pinwheel"
-                style={{ position: 'absolute', bottom: 'clamp(-44px, -10vw, -36px)', left: 'clamp(10px, 4vw, 24px)', width: 'clamp(58px, 14vw, 78px)', height: 'clamp(58px, 14vw, 78px)', zIndex: 3, pointerEvents: 'none' }}>
+                style={{ position: 'absolute', bottom: 'clamp(-44px, -10vw, -36px)', right: 'clamp(10px, 4vw, 24px)', width: 'clamp(58px, 14vw, 78px)', height: 'clamp(58px, 14vw, 78px)', zIndex: 3, pointerEvents: 'none' }}>
                 <svg viewBox="0 0 100 100" className="fd-pinwheel" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 4px 8px rgba(15,30,80,0.35))' }}>
                   <path d="M50 50 L50 6 Q72 14 50 50 Z"  fill={CORAL} />
                   <path d="M50 50 L94 50 Q86 72 50 50 Z" fill={SUN} />
@@ -303,7 +315,7 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── USP STRIP ───────────────────────────────────── */}
-      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
+      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-8 sm:py-12 lg:py-12">
         <Doodles preset="usp" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 gap-4 relative" style={{ zIndex: 1 }}>
           <FeatureCard color={CORAL} icon={Heart}  title="Bonding time, no screens" sub="3 hours of fully present, hands-on time — building together." />
@@ -337,6 +349,29 @@ export default function FathersDayWorkshopLandingPage() {
         <div className="grid lg:grid-cols-2 gap-5 mt-6">
           {AGE_GROUPS.map(g => (
             <div key={g.slug} className="rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${g.color}` }} data-testid={`age-card-${g.slug}`}>
+              {/* ── Project image collage — staggered sizes for organic feel ── */}
+              {g.images && (
+                <div className="mb-6 grid grid-cols-5 gap-3 items-end" data-testid={`age-images-${g.slug}`}>
+                  {g.images.map((im, i) => (
+                    <div key={i}
+                      className={im.large ? 'col-span-3' : 'col-span-2'}
+                      style={{
+                        background: g.color,
+                        borderRadius: 18,
+                        padding: 6,
+                        transform: `rotate(${im.rotate}deg)`,
+                        boxShadow: '0 10px 24px rgba(15,30,80,0.18)',
+                        aspectRatio: im.large ? '1 / 1' : '4 / 5',
+                      }}>
+                      <div style={{ width: '100%', height: '100%', background: '#FFFEF7', borderRadius: 14, overflow: 'hidden' }}>
+                        <img src={im.src} alt={im.alt}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#0B1020' }}
+                          loading="lazy" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <div className="text-xs uppercase tracking-widest font-bold" style={{ color: g.color }}>{g.label}</div>
