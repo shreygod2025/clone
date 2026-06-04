@@ -1,7 +1,7 @@
 /**
  * Father's Day Robotics Workshop landing page.
- * Hero: superhero dad-child image · headline "This Father's Day, Bond over Learning"
- * + Photoframe carousel · How-the-day-runs · Pricing (+999 per extra child) · FAQ · Hand silhouette
+ * Hero: headline + photoframe carousel with I♥DAD watermark · rotating sun · spinning pinwheel
+ * + How-the-day-runs · Pricing (+999 per extra child) · FAQ · Hand silhouette
  */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -26,8 +26,8 @@ const NAVY_DEEP = '#0F2960';
 const SKY = '#A8DCF0';
 const CORAL = '#FF7B6B';
 
-// Hero image — superhero dad with child on shoulders
-const HERO_SUPERHERO = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/cf0u07ji_image.png';
+// "I ♥ DAD" coloring-book style — soft watermark behind the photoframe carousel
+const LOVE_DAD_BG = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/jiy1sry4_image.png';
 // Hand silhouette with "BEST DAD" lettering
 const HAND_VECTOR = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/id8md3w8_image.png';
 // Carousel — real workshop images (more to be added by client)
@@ -132,18 +132,39 @@ export default function FathersDayWorkshopLandingPage() {
 
       {/* ── HERO ─────────────────────────────────────────── */}
       <section style={{ background: `linear-gradient(180deg, ${YELLOW} 0%, ${YELLOW} 55%, ${SKY} 100%)`, paddingBottom: '4rem', position: 'relative', overflow: 'hidden' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-14 relative">
+        {/* keyframes for ambient hero animations */}
+        <style>{`
+          @keyframes fd-sun-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes fd-sun-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+          @keyframes fd-pinwheel-spin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+          @keyframes fd-pinwheel-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+          .fd-sun-rotor   { animation: fd-sun-spin 22s linear infinite; transform-origin: 50% 50%; }
+          .fd-sun-pulser  { animation: fd-sun-pulse 3.2s ease-in-out infinite; transform-origin: 50% 50%; }
+          .fd-pinwheel    { animation: fd-pinwheel-spin 2.4s linear infinite; transform-origin: 50% 50%; }
+          .fd-pinwheel-wrap { animation: fd-pinwheel-bob 3.6s ease-in-out infinite; }
+        `}</style>
+
+        {/* Decorative animated sun — top-right corner of hero */}
+        <div aria-hidden="true" style={{ position: 'absolute', top: 14, right: 18, width: 110, height: 110, pointerEvents: 'none', zIndex: 1 }} data-testid="hero-sun">
+          <svg viewBox="0 0 100 100" className="fd-sun-pulser" style={{ width: '100%', height: '100%' }}>
+            <g className="fd-sun-rotor">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <rect key={i} x="48" y="4" width="4" height="14" rx="2" fill={SUN}
+                  transform={`rotate(${i * 30} 50 50)`} />
+              ))}
+            </g>
+            <circle cx="50" cy="50" r="22" fill={SUN} stroke={YELLOW_DEEP} strokeWidth="2" />
+            {/* friendly face */}
+            <circle cx="43" cy="47" r="2" fill={NAVY_DEEP} />
+            <circle cx="57" cy="47" r="2" fill={NAVY_DEEP} />
+            <path d="M 43 56 Q 50 61 57 56" stroke={NAVY_DEEP} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+          </svg>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-14 relative" style={{ zIndex: 2 }}>
           <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
-            {/* Left — Superhero image ABOVE headline */}
+            {/* Left — headline only (superhero image removed) */}
             <div className="text-center lg:text-left">
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }} className="lg:justify-start">
-                <img
-                  src={HERO_SUPERHERO}
-                  alt="Superhero dad and child"
-                  style={{ width: '100%', maxWidth: 360, height: 'auto', filter: 'drop-shadow(0 12px 30px rgba(30,64,175,0.35))' }}
-                  data-testid="hero-superhero-img"
-                />
-              </div>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', background: '#FFFFFF', border: `2px solid ${NAVY}`, borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: NAVY }}>
                 <Heart className="w-3.5 h-3.5" style={{ color: CORAL }} /> Father's Day · 1-Day Event
               </span>
@@ -175,19 +196,45 @@ export default function FathersDayWorkshopLandingPage() {
               </div>
             </div>
 
-            {/* Right — Photoframe with carousel inside */}
-            <div className="relative">
-              <Photoframe imgSrc={CAROUSEL[carouselIdx]} />
-              {CAROUSEL.length > 1 && (
-                <div className="flex justify-center gap-1.5 mt-3">
-                  {CAROUSEL.map((_, i) => (
-                    <button key={i} onClick={() => setCarouselIdx(i)}
-                      className="w-2 h-2 rounded-full transition-all"
-                      style={{ background: i === carouselIdx ? NAVY : 'rgba(30,64,175,0.25)', width: i === carouselIdx ? 24 : 8 }}
-                      data-testid={`carousel-dot-${i}`} />
-                  ))}
+            {/* Right — Photoframe with I♥DAD watermark behind + pinwheel toy */}
+            <div className="relative" style={{ minHeight: 460 }}>
+              {/* I ♥ DAD coloring-book watermark behind the photoframe */}
+              <div aria-hidden="true" data-testid="love-dad-watermark"
+                style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
+                <img src={LOVE_DAD_BG} alt=""
+                  style={{ width: '108%', maxWidth: 540, opacity: 0.18, mixBlendMode: 'multiply', transform: 'rotate(-3deg)' }} />
+              </div>
+
+              {/* Spinning pinwheel toy — bottom-left of photoframe */}
+              <div aria-hidden="true" className="fd-pinwheel-wrap" data-testid="hero-pinwheel"
+                style={{ position: 'absolute', bottom: -6, left: -8, width: 92, height: 120, zIndex: 3, pointerEvents: 'none' }}>
+                {/* stick */}
+                <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 4, height: 78, background: '#8B5A2B', borderRadius: 2 }} />
+                {/* pinwheel head */}
+                <div style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', width: 72, height: 72 }}>
+                  <svg viewBox="0 0 100 100" className="fd-pinwheel" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 3px 6px rgba(15,30,80,0.25))' }}>
+                    <path d="M50 50 L50 6 Q72 14 50 50 Z"  fill={CORAL} />
+                    <path d="M50 50 L94 50 Q86 72 50 50 Z" fill={SUN} />
+                    <path d="M50 50 L50 94 Q28 86 50 50 Z" fill={NAVY} />
+                    <path d="M50 50 L6 50  Q14 28 50 50 Z" fill="#FFFFFF" stroke={NAVY} strokeWidth="1" />
+                    <circle cx="50" cy="50" r="6" fill={NAVY_DEEP} />
+                  </svg>
                 </div>
-              )}
+              </div>
+
+              <div style={{ position: 'relative', zIndex: 2 }}>
+                <Photoframe imgSrc={CAROUSEL[carouselIdx]} />
+                {CAROUSEL.length > 1 && (
+                  <div className="flex justify-center gap-1.5 mt-3">
+                    {CAROUSEL.map((_, i) => (
+                      <button key={i} onClick={() => setCarouselIdx(i)}
+                        className="w-2 h-2 rounded-full transition-all"
+                        style={{ background: i === carouselIdx ? NAVY : 'rgba(30,64,175,0.25)', width: i === carouselIdx ? 24 : 8 }}
+                        data-testid={`carousel-dot-${i}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
