@@ -56,7 +56,7 @@ const DAY_RUNS = [
 
 const FAQS = [
   { q: 'Do I need any technical background?', a: 'No. The session is built for complete beginners, adults and kids alike. Your instructor guides every step.' },
-  { q: 'What ages is this for?', a: 'Designed for children aged 8 to 12. Younger children (4–7) are welcome with more parent involvement.' },
+  { q: 'What ages is this for?', a: 'Designed for children aged 4 to 12. Younger kids (4–8) build hands-on circuits with more parent involvement; older kids (9–12) build a working robot. Everyone goes home happy.' },
   { q: 'Can I bring more than one child?', a: 'Yes! Add a second child for ₹999. Both kids get a build station with the parent guiding them.' },
   { q: 'Do we keep the robot?', a: 'The robot stays at OLL — but a printed photoframe of you and your child with the robot is yours to take home.' },
   { q: 'Is this online or in person?', a: 'In person at OLL Center, Kandivali or Mira Road. No kits shipped — everything is provided.' },
@@ -119,8 +119,70 @@ export default function FathersDayWorkshopLandingPage() {
   return (
     <div data-testid="fathers-day-landing" style={{ minHeight: '100vh', fontFamily: '"Fredoka", "Nunito", sans-serif', background: YELLOW }}>
       <Helmet>
-        <title>This Father's Day, Bond Over Learning — OLL Robotics Workshop</title>
-        <meta name="description" content="Father's Day Screen-Free Robotics Workshop · Sunday 21 June, 3-6 PM · Kandivali & Mira Road · ₹1,999 per duo." />
+        {/* Primary SEO */}
+        <title>Father's Day Robotics Workshop Mumbai 2026 — Bond Over Learning | OLL</title>
+        <meta name="description" content="Spend Father's Day 2026 building a real robot together with your child (ages 4–12). 3-hour screen-free workshop · Sunday 21 June, 3–6 PM · Kandivali & Mira Road, Mumbai · ₹1,999 per dad-child duo. Photoframe & memories to take home." />
+        <meta name="keywords" content="Father's Day workshop Mumbai, robotics workshop for kids, dad and child activity Mumbai, Father's Day 2026, screen-free workshop, OLL robotics, STEM workshop Kandivali, STEM workshop Mira Road, parent-child bonding workshop, summer activity Mumbai" />
+        <meta name="author" content="OLL — Skills for All" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="googlebot" content="index, follow" />
+        <link rel="canonical" href="https://oll.co/workshops/fathers-day-robotics" />
+        <meta name="theme-color" content="#1E40AF" />
+
+        {/* Open Graph / Facebook / WhatsApp */}
+        <meta property="og:type" content="event" />
+        <meta property="og:site_name" content="OLL — Skills for All" />
+        <meta property="og:url" content="https://oll.co/workshops/fathers-day-robotics" />
+        <meta property="og:title" content="Father's Day Robotics Workshop — Bond Over Learning | OLL" />
+        <meta property="og:description" content="3 uninterrupted hours building a real robot together — dad + child (ages 4–12). Sunday 21 June, 3–6 PM · Kandivali & Mira Road · ₹1,999." />
+        <meta property="og:image" content={CAROUSEL[0]} />
+        <meta property="og:image:alt" content="Children with their robots at OLL Father's Day workshop" />
+        <meta property="og:locale" content="en_IN" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Father's Day Robotics Workshop — Bond Over Learning | OLL" />
+        <meta name="twitter:description" content="3 hours · screen-free · dad-and-child robot build · Sunday 21 June, Mumbai. ₹1,999 per duo." />
+        <meta name="twitter:image" content={CAROUSEL[0]} />
+        <meta name="twitter:image:alt" content="OLL Father's Day Robotics Workshop" />
+
+        {/* Mobile / PWA hints */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+
+        {/* Structured data — Event */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Event',
+          name: "Father's Day Robotics Workshop — Bond Over Learning",
+          description: "A 3-hour screen-free Father's Day workshop where dads and kids (ages 4–12) build a real robot together at OLL Mumbai.",
+          startDate: '2026-06-21T15:00:00+05:30',
+          endDate: '2026-06-21T18:00:00+05:30',
+          eventStatus: 'https://schema.org/EventScheduled',
+          eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+          location: [
+            { '@type': 'Place', name: 'OLL Center — Kandivali', address: { '@type': 'PostalAddress', addressLocality: 'Kandivali West', addressRegion: 'Maharashtra', addressCountry: 'IN' } },
+            { '@type': 'Place', name: 'OLL Center — Mira Road',  address: { '@type': 'PostalAddress', addressLocality: 'Mira Bhayandar', addressRegion: 'Maharashtra', addressCountry: 'IN' } },
+          ],
+          image: [CAROUSEL[0]],
+          organizer: { '@type': 'Organization', name: 'OLL — Skills for All', url: 'https://oll.co' },
+          offers: {
+            '@type': 'Offer', url: 'https://oll.co/workshops/fathers-day-robotics', price: '1999',
+            priceCurrency: 'INR', availability: 'https://schema.org/InStock',
+            validFrom: '2026-05-15T00:00:00+05:30',
+          },
+        })}</script>
+
+        {/* FAQ structured data */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: FAQS.map(f => ({
+            '@type': 'Question', name: f.q,
+            acceptedAnswer: { '@type': 'Answer', text: f.a },
+          })),
+        })}</script>
+
         <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Caveat:wght@500;700&family=Bungee&display=swap" rel="stylesheet" />
       </Helmet>
 
@@ -169,6 +231,9 @@ export default function FathersDayWorkshopLandingPage() {
           </svg>
         </div>
 
+        {/* Hero doodle layer — hearts, squiggles, sparkles */}
+        <Doodles preset="hero" />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10 lg:pt-14 relative" style={{ zIndex: 2 }}>
           <div className="grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
             {/* Left — headline only */}
@@ -176,11 +241,11 @@ export default function FathersDayWorkshopLandingPage() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', background: '#FFFFFF', border: `2px solid ${NAVY}`, borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: NAVY }}>
                 <Heart className="w-3.5 h-3.5" style={{ color: CORAL }} /> Father's Day · 1-Day Event
               </span>
-              <h1 className="mt-4 leading-[1.06]" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 700, fontSize: 'clamp(1.85rem, 4.8vw, 3.6rem)' }}>
+              <h1 className="mt-4 leading-[1.04]" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 700, fontSize: 'clamp(2.1rem, 5.2vw, 4rem)', letterSpacing: '-0.01em' }}>
                 This Father&apos;s Day,<br />
                 <span style={{ display: 'inline-block', position: 'relative' }}>
                   Bond over Learning
-                  <span style={{ display: 'inline-block', position: 'absolute', bottom: -6, left: 0, right: 0, height: 6, background: SUN, borderRadius: 999, opacity: 0.6 }} />
+                  <span style={{ display: 'inline-block', position: 'absolute', bottom: -6, left: 0, right: 0, height: 8, background: SUN, borderRadius: 999, opacity: 0.6 }} />
                 </span>
               </h1>
               <p className="mt-5" style={{ fontFamily: '"Caveat", cursive', color: CORAL, fontSize: 'clamp(1.35rem, 3vw, 2.1rem)', fontWeight: 700, lineHeight: 1.2 }}>
@@ -192,7 +257,7 @@ export default function FathersDayWorkshopLandingPage() {
               <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-2.5">
                 <Pill icon={Calendar} text="Sunday, 21 June" />
                 <Pill icon={Clock}    text="3 – 6 PM" />
-                <Pill icon={Sparkles} text="Ages 8 – 12" />
+                <Pill icon={Sparkles} text="Ages 4 – 12" />
                 <Pill icon={MapPin}   text="Kandivali / Mira Road" />
               </div>
               <div className="mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-4">
@@ -241,15 +306,35 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── USP STRIP ───────────────────────────────────── */}
-      <section style={{ background: SKY }} className="-mt-8 pt-12 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 gap-4">
+      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="-mt-8 pt-12 pb-16">
+        <Doodles preset="usp" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 gap-4 relative" style={{ zIndex: 1 }}>
           <FeatureCard color={CORAL} icon={Heart}  title="Bonding time, no screens" sub="3 hours of fully present, hands-on time — building together." />
           <FeatureCard color={NAVY}  icon={Shield} title="100% screen-free zone"    sub="No phones, tablets or laptops. Just kits, smiles, and creativity." />
         </div>
       </section>
 
+      {/* ── WHY THIS MATTERS (callout) ─────────────────── */}
+      <section style={{ background: '#FFFEF7', position: 'relative', overflow: 'hidden' }} className="py-14 sm:py-20">
+        <Doodles preset="why" />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center" style={{ zIndex: 1 }}>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] sm:text-xs uppercase tracking-[0.16em] font-bold" style={{ background: `${CORAL}18`, color: CORAL, border: `1.5px solid ${CORAL}50` }}>
+            <Heart className="w-3 h-3" /> Why this Father&apos;s Day matters
+          </div>
+          <p className="mt-5 sm:mt-6" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontWeight: 500, fontSize: 'clamp(1.15rem, 2.2vw, 1.6rem)', lineHeight: 1.5 }} data-testid="why-paragraph">
+            Most Father&apos;s Day plans are a meal and a card.<br className="hidden sm:inline" />
+            This one gives you a few uninterrupted hours with your child, working on the same thing, side by side. You build a real robot together, from parts. They walk away knowing how the machines around them actually work. You walk away having spent the day as a team.
+          </p>
+          <div className="mt-7 flex items-center justify-center gap-3">
+            <SquigglyLine width={60} />
+            <Heart className="w-5 h-5" style={{ color: CORAL, fill: CORAL }} />
+            <SquigglyLine width={60} flip />
+          </div>
+        </div>
+      </section>
+
       {/* ── WHAT WILL YOU BUILD ─────────────────────────── */}
-      <Section bg={SKY}>
+      <Section bg={SKY} decor="build">
         <SectionLabel>The Build</SectionLabel>
         <H2>What will you build together?</H2>
         <div className="grid lg:grid-cols-2 gap-5 mt-6">
@@ -292,8 +377,9 @@ export default function FathersDayWorkshopLandingPage() {
       </Section>
 
       {/* ── HOW THE DAY RUNS ─────────────────────────── */}
-      <section style={{ background: NAVY_DEEP, color: '#fff' }} className="py-12 sm:py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section style={{ background: NAVY_DEEP, color: '#fff', position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
+        <Doodles preset="dark" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
           <SectionLabel light>3-hour session</SectionLabel>
           <H2 light>How the day runs</H2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8" data-testid="how-the-day-runs">
@@ -309,8 +395,9 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── WHAT WILL CHILD LEARN ─────────────────────────── */}
-      <section style={{ background: NAVY }} className="text-white py-12 sm:py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section style={{ background: NAVY, position: 'relative', overflow: 'hidden' }} className="text-white py-12 sm:py-16 lg:py-20">
+        <Doodles preset="dark" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
           <SectionLabel light>The Learning</SectionLabel>
           <H2 light>What will your child learn?</H2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
@@ -329,7 +416,7 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── WHAT YOU GET ─────────────────────────── */}
-      <Section bg={YELLOW}>
+      <Section bg={YELLOW} decor="warm">
         <SectionLabel>The Take-home</SectionLabel>
         <H2>What will you get?</H2>
         <div className="grid md:grid-cols-3 gap-4 mt-8">
@@ -348,8 +435,9 @@ export default function FathersDayWorkshopLandingPage() {
       </Section>
 
       {/* ── PRICING ─────────────────────────── */}
-      <section style={{ background: YELLOW }} className="pb-12 sm:pb-16 lg:pb-20">
-        <div className="max-w-3xl mx-auto px-4 text-center">
+      <section style={{ background: YELLOW, position: 'relative', overflow: 'hidden' }} className="pb-12 sm:pb-16 lg:pb-20">
+        <Doodles preset="warm" />
+        <div className="max-w-3xl mx-auto px-4 text-center relative" style={{ zIndex: 1 }}>
           <SectionLabel>Pricing</SectionLabel>
           <H2>One price. Everything included.</H2>
           <div className="mt-8 rounded-3xl p-8 sm:p-10 shadow-2xl text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)` }} data-testid="pricing-card">
@@ -370,7 +458,7 @@ export default function FathersDayWorkshopLandingPage() {
       </section>
 
       {/* ── FAQ ─────────────────────────── */}
-      <Section bg={YELLOW}>
+      <Section bg={YELLOW} decor="warm">
         <SectionLabel>FAQ</SectionLabel>
         <H2>Quick answers</H2>
         <div className="mt-6 max-w-3xl space-y-3" data-testid="faq-section">
@@ -448,9 +536,10 @@ const H2 = ({ children, light }) => (
   <h2 className="font-bold mt-2" style={{ color: light ? '#fff' : NAVY_DEEP, fontFamily: '"Fredoka", sans-serif', fontSize: 'clamp(1.8rem, 4vw, 2.6rem)' }}>{children}</h2>
 );
 
-const Section = ({ bg, children }) => (
-  <section style={{ background: bg }} className="py-12 sm:py-16 lg:py-20">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
+const Section = ({ bg, children, decor }) => (
+  <section style={{ background: bg, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
+    {decor && <Doodles preset={decor} />}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>{children}</div>
   </section>
 );
 
@@ -598,3 +687,122 @@ const Row = ({ k, v }) => (
     <span className="font-bold text-right" style={{ color: NAVY_DEEP }}>{v || '—'}</span>
   </div>
 );
+
+// ──────────────────────────────────────────────────────────────────────
+//  DECORATIVE SVG DOODLES — hearts, squiggles, sparkles, dotted lines
+//  Placed absolutely behind section content. Pointer-events disabled.
+// ──────────────────────────────────────────────────────────────────────
+
+const SquigglyLine = ({ width = 60, color = CORAL, flip = false }) => (
+  <svg width={width} height="10" viewBox="0 0 60 10" fill="none" aria-hidden="true"
+    style={{ transform: flip ? 'scaleX(-1)' : 'none', opacity: 0.7 }}>
+    <path d="M 2 5 Q 8 0 14 5 T 26 5 T 38 5 T 50 5 T 58 5"
+      stroke={color} strokeWidth="2" strokeLinecap="round" fill="none" />
+  </svg>
+);
+
+const HeartDoodle = ({ size = 22, color = CORAL, filled = true, rotate = 0 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'}
+    stroke={color} strokeWidth="1.6" aria-hidden="true"
+    style={{ transform: `rotate(${rotate}deg)` }}>
+    <path d="M12 21s-7-4.5-9.5-9C0 8 2 3.5 6 3.5c2 0 3.5 1.2 4.5 2.5 1-1.3 2.5-2.5 4.5-2.5 4 0 6 4.5 3.5 8.5C19 16.5 12 21 12 21z" strokeLinejoin="round" />
+  </svg>
+);
+
+const SparkleDoodle = ({ size = 18, color = SUN, rotate = 0 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true"
+    style={{ transform: `rotate(${rotate}deg)` }}>
+    <path d="M12 2 L13.5 9 L21 10.5 L13.5 12 L12 19.5 L10.5 12 L3 10.5 L10.5 9 Z" />
+  </svg>
+);
+
+const CurvyLine = ({ width = 140, color = NAVY, dashed = false, rotate = 0 }) => (
+  <svg width={width} height="40" viewBox="0 0 140 40" fill="none" aria-hidden="true"
+    style={{ transform: `rotate(${rotate}deg)`, opacity: 0.55 }}>
+    <path d="M 5 30 Q 30 5 60 25 T 135 15"
+      stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"
+      strokeDasharray={dashed ? '5,5' : '0'} />
+  </svg>
+);
+
+const DottedArc = ({ size = 90, color = CORAL, rotate = 0 }) => (
+  <svg width={size} height={size / 2} viewBox="0 0 90 45" fill="none" aria-hidden="true"
+    style={{ transform: `rotate(${rotate}deg)`, opacity: 0.55 }}>
+    <path d="M 5 40 Q 45 -5 85 40" stroke={color} strokeWidth="2.2" strokeLinecap="round"
+      strokeDasharray="2 6" fill="none" />
+  </svg>
+);
+
+// Decorative cluster — composed of hearts, squiggles, sparkles in absolute positions.
+// `preset` controls the color palette and density.
+const Doodles = ({ preset = 'usp' }) => {
+  // palette: array of [color, type] tuples
+  const palettes = {
+    hero:  { primary: CORAL, secondary: NAVY, accent: SUN },
+    usp:   { primary: CORAL, secondary: NAVY, accent: SUN },
+    why:   { primary: CORAL, secondary: NAVY_DEEP, accent: SUN },
+    build: { primary: CORAL, secondary: NAVY_DEEP, accent: SUN },
+    warm:  { primary: CORAL, secondary: NAVY,      accent: NAVY_DEEP },
+    dark:  { primary: SUN,   secondary: '#FFFFFF', accent: SKY },
+  };
+  const p = palettes[preset] || palettes.usp;
+  const dim = preset === 'dark' ? 0.18 : 0.6;
+
+  // Pre-set positions — keeps doodles outside text reading paths
+  const items = {
+    hero: [
+      { top: '6%',  left: '4%',  el: <HeartDoodle size={20} color={p.primary} rotate={-12} /> },
+      { top: '38%', left: '2%',  el: <SparkleDoodle size={14} color={p.accent} /> },
+      { top: '70%', left: '6%',  el: <HeartDoodle size={14} color={p.primary} filled={false} rotate={18} /> },
+      { top: '12%', left: '46%', el: <CurvyLine width={120} color={p.secondary} dashed /> },
+      { top: '55%', right: '8%', el: <SparkleDoodle size={18} color={p.primary} /> },
+    ],
+    usp: [
+      { top: '12%', left: '4%',  el: <HeartDoodle size={22} color={p.primary} rotate={-10} /> },
+      { top: '60%', left: '8%',  el: <CurvyLine width={110} color={p.secondary} /> },
+      { top: '20%', right: '6%', el: <SparkleDoodle size={20} color={p.accent} /> },
+      { bottom: '14%', right: '4%', el: <HeartDoodle size={16} color={p.primary} filled={false} rotate={20} /> },
+      { top: '46%', right: '20%', el: <DottedArc color={p.primary} /> },
+    ],
+    why: [
+      { top: '8%',  left: '6%',  el: <HeartDoodle size={26} color={p.primary} rotate={-15} /> },
+      { top: '20%', left: '12%', el: <SparkleDoodle size={14} color={p.accent} /> },
+      { top: '70%', left: '5%',  el: <CurvyLine width={130} color={p.secondary} dashed /> },
+      { top: '12%', right: '5%', el: <DottedArc color={p.primary} rotate={20} /> },
+      { top: '60%', right: '6%', el: <HeartDoodle size={22} color={p.primary} rotate={14} /> },
+      { bottom: '8%', right: '20%', el: <SparkleDoodle size={18} color={p.accent} /> },
+      { bottom: '10%', left: '20%', el: <HeartDoodle size={12} color={p.primary} filled={false} /> },
+    ],
+    build: [
+      { top: '6%',  left: '3%',  el: <SparkleDoodle size={20} color={p.accent} /> },
+      { top: '30%', left: '1%',  el: <HeartDoodle size={20} color={p.primary} rotate={-8} /> },
+      { top: '8%',  right: '4%', el: <CurvyLine width={120} color={p.secondary} dashed /> },
+      { bottom: '12%', right: '3%', el: <HeartDoodle size={18} color={p.primary} rotate={18} /> },
+      { bottom: '8%', left: '6%', el: <SparkleDoodle size={14} color={p.accent} /> },
+    ],
+    warm: [
+      { top: '8%',  left: '4%',  el: <HeartDoodle size={22} color={p.primary} rotate={-12} /> },
+      { top: '40%', left: '2%',  el: <CurvyLine width={100} color={p.secondary} /> },
+      { top: '14%', right: '4%', el: <SparkleDoodle size={20} color={p.accent} /> },
+      { bottom: '10%', right: '8%', el: <HeartDoodle size={16} color={p.primary} filled={false} rotate={16} /> },
+      { bottom: '14%', left: '14%', el: <DottedArc color={p.primary} rotate={180} /> },
+    ],
+    dark: [
+      { top: '8%',  left: '3%',  el: <HeartDoodle size={20} color={p.primary} rotate={-12} /> },
+      { top: '40%', left: '2%',  el: <SparkleDoodle size={18} color={p.accent} /> },
+      { top: '14%', right: '5%', el: <CurvyLine width={110} color={p.secondary} dashed /> },
+      { bottom: '12%', right: '6%', el: <HeartDoodle size={18} color={p.primary} rotate={14} /> },
+      { bottom: '10%', left: '12%', el: <SparkleDoodle size={14} color={p.accent} /> },
+    ],
+  };
+  const list = items[preset] || items.usp;
+  return (
+    <div aria-hidden="true" data-testid={`doodles-${preset}`}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: dim, zIndex: 0 }}>
+      {list.map((it, idx) => {
+        const { el, ...pos } = it;
+        return <div key={idx} style={{ position: 'absolute', ...pos }}>{el}</div>;
+      })}
+    </div>
+  );
+};
