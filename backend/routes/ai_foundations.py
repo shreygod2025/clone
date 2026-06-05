@@ -179,6 +179,7 @@ class BookingCreate(BaseModel):
     school_name: Optional[str] = Field(default="", max_length=200)
     notes: Optional[str] = Field(default="", max_length=500)
     source_ref: Optional[str] = Field(default="", max_length=64)
+    is_trial: Optional[bool] = False
 
 
 class PaymentInit(BaseModel):
@@ -215,8 +216,11 @@ async def register_booking(data: BookingCreate):
         "source_ref": (data.source_ref or "").strip(),
         "mode": "online",
         "amount": COURSE_PRICE,
-        "payment_status": "pending",
-        "crm_status": "lead",
+        "payment_status": "trial" if data.is_trial else "pending",
+        "crm_status": "trial_booked" if data.is_trial else "lead",
+        "is_trial": bool(data.is_trial),
+        "trial_attended": False,
+        "trial_booked_at": datetime.now(timezone.utc).isoformat() if data.is_trial else None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }

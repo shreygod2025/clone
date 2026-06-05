@@ -162,11 +162,11 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
               />
             </Link>
             <button
-              onClick={() => navigate('/ai-foundations/book')}
+              onClick={() => navigate('/ai-foundations/book?trial=1')}
               data-testid="aifoundations-nav-book-btn"
               className="bg-[#1E3A5F] text-white font-bold px-5 sm:px-6 py-2.5 rounded-xl shadow-lg shadow-blue-900/20 hover:bg-[#0F1E33] transition-all text-sm sm:text-base"
             >
-              Book Now
+              Book Free Trial
             </button>
           </div>
         </div>

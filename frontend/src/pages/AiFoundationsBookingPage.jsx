@@ -28,6 +28,7 @@ const initialForm = {
 const AiFoundationsBookingPage = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const isTrial = params.get('trial') === '1';
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [batches, setBatches] = useState([]);
@@ -81,16 +82,24 @@ const AiFoundationsBookingPage = () => {
     if (err) { toast.error(err); return; }
     setSubmitting(true);
     try {
-      // 1) Create the lead
+      // 1) Create the lead — flag as trial if user came via Book Free Trial CTA
       const reg = await axios.post(`${API}/ai-foundations/register`, {
         ...form,
         parent_phone: form.parent_phone.replace(/\D/g, '').slice(-10),
-        source_ref: params.get('ref') || '',
+        source_ref: params.get('ref') || (isTrial ? 'trial' : ''),
+        is_trial: isTrial,
       });
       const bookingId = reg.data?.booking_id;
       if (!bookingId) throw new Error('Booking creation failed');
 
-      // 2) Initiate Cashfree payment
+      // Trial flow — skip Cashfree. First session is free.
+      if (isTrial) {
+        toast.success("You're in! We'll WhatsApp the joining link.");
+        navigate(`/ai-foundations/success?booking_id=${bookingId}&trial=1`);
+        return;
+      }
+
+      // 2) Paid flow — Initiate Cashfree payment
       const pay = await axios.post(`${API}/ai-foundations/initiate-payment`, {
         booking_id: bookingId,
         frontend_url: window.location.origin,
@@ -145,12 +154,20 @@ const AiFoundationsBookingPage = () => {
               </div>
             </div>
             <div className="bg-blue-50/60 border-2 border-blue-100 rounded-2xl p-5 text-sm text-slate-700">
-              <div className="font-bold text-[#0F1E33] mb-1.5">What happens after payment?</div>
-              <ul className="space-y-1.5">
-                <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Instant WhatsApp confirmation</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Cohort details + Day 1 link by next day</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Educator briefing call within 48 hours</li>
-              </ul>
+              <div className="font-bold text-[#0F1E33] mb-1.5">{isTrial ? 'How your free trial works' : 'What happens after payment?'}</div>
+              {isTrial ? (
+                <ul className="space-y-1.5">
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Session 1 is completely free</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> WhatsApp confirmation with the joining link</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> If your child loves it, pay ₹1,999 for sessions 2 – 10</li>
+                </ul>
+              ) : (
+                <ul className="space-y-1.5">
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Instant WhatsApp confirmation</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Cohort details + Day 1 link by next day</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" /> Educator briefing call within 48 hours</li>
+                </ul>
+              )}
             </div>
           </aside>
 
@@ -158,10 +175,10 @@ const AiFoundationsBookingPage = () => {
           <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white border-2 border-slate-100 rounded-3xl p-6 lg:p-8 shadow-xl shadow-blue-900/5 space-y-5 order-2 lg:order-1">
             <div>
               <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest text-blue-600 uppercase">
-                <Sparkles className="w-3.5 h-3.5" /> Quick checkout
+                <Sparkles className="w-3.5 h-3.5" /> {isTrial ? 'Free Trial Booking' : 'Quick checkout'}
               </span>
-              <h1 className="text-2xl lg:text-3xl font-black text-[#0F1E33] mt-1">Enrol in AI Foundations</h1>
-              <p className="text-sm text-slate-500 mt-1">10 days · live online classes · max 10 students per cohort</p>
+              <h1 className="text-2xl lg:text-3xl font-black text-[#0F1E33] mt-1">{isTrial ? 'Book Your Free Trial' : 'Enrol in AI Foundations'}</h1>
+              <p className="text-sm text-slate-500 mt-1">{isTrial ? 'First session FREE · Pay only if you continue from session 2' : '10 days · live online classes · max 10 students per cohort'}</p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -239,11 +256,13 @@ const AiFoundationsBookingPage = () => {
               data-testid="submit-pay-btn"
             >
               {submitting
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Creating your booking…</>
-                : <>Pay ₹1,999 &amp; Confirm Seat <ArrowRight className="w-5 h-5" /></>}
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> {isTrial ? 'Booking your trial…' : 'Creating your booking…'}</>
+                : isTrial
+                  ? <>Confirm Free Trial Seat <ArrowRight className="w-5 h-5" /></>
+                  : <>Pay ₹1,999 &amp; Confirm Seat <ArrowRight className="w-5 h-5" /></>}
             </button>
             <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-              <Shield className="w-3.5 h-3.5" /> Secure Cashfree payment · UPI · Cards · Net Banking
+              <Shield className="w-3.5 h-3.5" /> {isTrial ? 'No payment required for your free trial' : 'Secure Cashfree payment · UPI · Cards · Net Banking'}
             </p>
           </form>
         </div>

@@ -162,11 +162,11 @@ const AiFoundationsLandingPage = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="flex flex-wrap gap-3 justify-center">
               <button
-                onClick={() => navigate('/ai-foundations/book')}
+                onClick={() => navigate('/ai-foundations/book?trial=1')}
                 className="group px-7 py-3.5 rounded-full bg-[#1E3A5F] text-white font-bold text-base hover:bg-[#0F1E33] transition-all shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 flex items-center gap-2"
                 data-testid="hero-enroll-btn"
               >
-                Enrol Now · ₹1,999
+                Book Free Trial
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <a
@@ -177,6 +177,9 @@ const AiFoundationsLandingPage = () => {
                 See 10-Day Curriculum
               </a>
             </div>
+            <p className="text-xs text-slate-500 mt-3" data-testid="trial-helper">
+              ✨ First session is on us · Pay ₹1,999 only if your child loves it
+            </p>
 
             <div className="flex flex-wrap items-center justify-center gap-6 pt-5 text-sm text-slate-600">
               <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-600" /> 10 sessions · online live</span>
@@ -220,11 +223,11 @@ const AiFoundationsLandingPage = () => {
                   ))}
                 </ul>
                 <button
-                  onClick={() => navigate(`/ai-foundations/book?track=${t.key}`)}
+                  onClick={() => navigate(`/ai-foundations/book?track=${t.key}&trial=1`)}
                   className="mt-5 w-full py-3 rounded-xl border-2 border-blue-200 text-blue-700 font-bold hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all flex items-center justify-center gap-2 group-hover:bg-blue-50"
                   data-testid={`track-enrol-${t.key}`}
                 >
-                  Enrol in {t.label} <ArrowRight className="w-4 h-4" />
+                  Book Free Trial – {t.label} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             ))}
@@ -389,14 +392,14 @@ const AiFoundationsLandingPage = () => {
 
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => navigate('/ai-foundations/book')}
+                  onClick={() => navigate('/ai-foundations/book?trial=1')}
                   className="flex-1 min-w-[200px] py-4 rounded-xl bg-[#1E3A5F] text-white font-bold text-base hover:bg-[#0F1E33] transition-all shadow-lg shadow-blue-900/20 hover:shadow-xl flex items-center justify-center gap-2"
                   data-testid="pricing-enrol-btn"
                 >
-                  Enrol Now & Pay ₹1,999 <ArrowRight className="w-5 h-5" />
+                  Book Free Trial <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-slate-400 mt-3 text-center">Secure payment via Cashfree · UPI · Cards · Net Banking</p>
+              <p className="text-xs text-slate-400 mt-3 text-center">First session FREE · Pay ₹1,999 only if you continue from session 2</p>
             </div>
           </div>
         </div>
