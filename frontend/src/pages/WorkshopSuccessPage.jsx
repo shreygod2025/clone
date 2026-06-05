@@ -58,9 +58,20 @@ export default function WorkshopSuccessPage() {
             <p className="text-slate-500 mt-2">We've reserved your spot for the Father's Day workshop.</p>
             <div className="mt-6 rounded-2xl bg-orange-50 border border-orange-200 p-5 text-left space-y-2.5">
               <Row icon={Calendar} label="Date" value={booking?.workshop_date || 'Sunday, 21 June 2026'} />
-              <Row icon={Clock}    label="Time" value={booking?.workshop_time || '3:00 PM – 6:00 PM'} />
-              <Row icon={MapPin}   label="Center" value={booking?.center_label || '—'} />
+              <Row icon={Clock}    label="Time" value={booking?.age_group_time || booking?.workshop_time || '—'} />
               <Row icon={ArrowRight} label="Age group" value={booking?.age_group_label || '—'} />
+              <Row icon={MapPin}   label="Venue" value={booking?.center_label || 'Pizza Buffet · Mira Road'} />
+              {(booking?.venue_address || true) && (
+                <div className="pl-7 -mt-1.5 text-[11.5px] text-slate-600 leading-snug">
+                  {booking?.venue_address || 'Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd, near Kali Mata Mandir, Shivar Garden, Mira Road East, Mira Bhayandar, Maharashtra 401107'}
+                </div>
+              )}
+              <a href={booking?.venue_map_url || 'https://share.google/j0L250QOAJ6hACbfN'}
+                target="_blank" rel="noopener noreferrer"
+                className="mt-1 ml-7 inline-flex items-center gap-1 text-xs font-bold text-[#1E40AF] hover:underline"
+                data-testid="success-gmaps-link">
+                Open in Google Maps <ArrowRight className="w-3 h-3" />
+              </a>
             </div>
             <button
               onClick={() => navigate('/')}

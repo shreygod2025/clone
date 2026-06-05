@@ -46,12 +46,17 @@ WORKSHOPS = {
         "time": "3:00 PM – 6:00 PM",
         "price": 1999.0,
         "centers": {
-            "kandivali": "OLL Center — Kandivali",
-            "mira_road": "OLL Center — Mira Road",
+            "mira_road": "Pizza Buffet · Mira Road",
         },
+        "address": "Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd, near Kali Mata mandir, Shivar Garden, Mira Road East, Mira Bhayandar, Maharashtra 401107",
+        "map_url": "https://share.google/j0L250QOAJ6hACbfN",
         "age_groups": {
             "4-8": "Ages 4 – 8",
             "9-12": "Ages 9 – 12",
+        },
+        "age_group_times": {
+            "4-8":  "11 AM – 1 PM",
+            "9-12": "2 PM – 4 PM",
         },
     },
 }
@@ -151,8 +156,11 @@ async def register_workshop(data: WorkshopRegister):
         "child_name": (data.child_name or "").strip(),
         "age_group": data.age_group,
         "age_group_label": ws["age_groups"][data.age_group],
+        "age_group_time":  ws["age_group_times"].get(data.age_group, ""),
         "center": data.center,
         "center_label": ws["centers"][data.center],
+        "venue_address": ws.get("address", ""),
+        "venue_map_url": ws.get("map_url", ""),
         "additional_children": extras,
         "amount": total_amount,
         "payment_status": "pending",

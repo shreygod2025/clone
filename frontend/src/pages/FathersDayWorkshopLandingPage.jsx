@@ -37,28 +37,29 @@ const CAROUSEL = [
 
 const AGE_GROUPS = [
   { slug: '4-8',  label: 'Ages 4 – 8',  tagline: 'Tiny hands. Big imagination.', color: SUN,  emoji: '🌟',
+    time: '11 AM – 1 PM',
     builds: ['Manual Swing 🛝', 'Motorised Merry-go-Round 🎠'],
     learns: ['Engineering basics', 'Electricity 101', 'How a motor works'],
     images: [
-      // Image 1 — large, slight left tilt
       { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wus3ar3y_1.png', alt: 'Manual Swing build', large: true,  rotate: -4 },
-      // Image 2 — smaller, right tilt
       { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/y01nt59y_2.png', alt: 'Motorised Merry-go-Round build', large: false, rotate: 3 },
     ] },
   { slug: '9-12', label: 'Ages 9 – 12', tagline: 'Build a real working robot.',   color: NAVY, emoji: '🤖',
+    time: '2 PM – 4 PM',
     builds: ['Edge Avoiding Robot 🚗', 'Circle Drawing Robot ⭕'],
     learns: ['Build a robot chassis', 'Add sensors', 'Wire motors', 'Power up & test'],
     images: [
-      // Image 3 — smaller, slight left tilt
       { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/580sl54n_3.png', alt: 'Edge Avoiding Robot build', large: false, rotate: -3 },
-      // Image 4 — large, overflow more, tilt right
       { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tg3vboqf_4.png', alt: 'Circle Drawing Robot build', large: true, rotate: 4, overflow: 'extra' },
     ] },
 ];
 
 const CENTERS = [
-  { slug: 'kandivali', label: 'OLL Center — Kandivali', area: 'West, Mumbai' },
-  { slug: 'mira_road', label: 'OLL Center — Mira Road', area: 'Mira Bhayandar' },
+  { slug: 'mira_road',
+    label: 'Pizza Buffet · Mira Road',
+    area:  'Mira Bhayandar',
+    address: 'Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd, near Kali Mata mandir, Shivar Garden, Mira Road East, Mira Bhayandar, Maharashtra 401107',
+    mapUrl: 'https://share.google/j0L250QOAJ6hACbfN' },
 ];
 
 const DAY_RUNS = [
@@ -113,7 +114,7 @@ export default function FathersDayWorkshopLandingPage() {
   const navigate = useNavigate();
   const [showEnroll, setShowEnroll] = useState(false);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ age_group: '', center: '', parent_phone: '', additional_children: 0 });
+  const [form, setForm] = useState({ age_group: '', center: 'mira_road', parent_phone: '', additional_children: 0 });
   const [submitting, setSubmitting] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
@@ -790,6 +791,66 @@ export default function FathersDayWorkshopLandingPage() {
         </div>
       </section>
 
+      {/* ── VENUE ─────────────────────────── */}
+      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20" data-testid="venue-section">
+        <Doodles preset="usp" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
+          <div className="text-center">
+            <SectionLabel>Venue</SectionLabel>
+            <H2>Where to find us</H2>
+          </div>
+
+          <div className="mt-8 grid lg:grid-cols-[1.05fr_1fr] gap-5">
+            {/* Left — address + map link */}
+            <div className="rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${NAVY}` }}>
+              <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
+                <MapPin className="w-4 h-4" /> Mira Road
+              </div>
+              <h3 className="mt-2 text-xl sm:text-2xl font-bold" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
+                Pizza Buffet · Mira Road
+              </h3>
+              <p className="text-sm leading-relaxed mt-3" style={{ color: '#1F2937' }}>
+                Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd,<br className="hidden sm:inline" />
+                near Kali Mata Mandir, Shivar Garden, Mira Road East,<br className="hidden sm:inline" />
+                Mira Bhayandar, Maharashtra <span className="font-mono">401107</span>
+              </p>
+              <a href="https://share.google/j0L250QOAJ6hACbfN" target="_blank" rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform"
+                style={{ background: NAVY, color: '#fff' }}
+                data-testid="venue-gmaps-link">
+                Open in Google Maps <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+
+            {/* Right — time slots */}
+            <div className="rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${SUN}` }}>
+              <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
+                <Clock className="w-4 h-4" /> Time slots
+              </div>
+              <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP }}>
+                Two batches, by age
+              </h3>
+              <div className="mt-4 space-y-3">
+                {AGE_GROUPS.map(g => (
+                  <div key={g.slug} className="rounded-2xl p-4 flex items-center gap-3" style={{ background: `${g.color}1a`, border: `2px solid ${g.color}40` }} data-testid={`venue-slot-${g.slug}`}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: g.color }}>
+                      {g.emoji}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-sm" style={{ color: NAVY_DEEP }}>{g.label}</div>
+                      <div className="inline-flex items-center gap-1.5 mt-1 text-sm font-bold" style={{ color: NAVY }}>
+                        <Clock className="w-3.5 h-3.5" /> {g.time}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs mt-4 italic text-slate-500">Sunday, 21 June 2026 · 2 hours per slot</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FAQ ─────────────────────────── */}
       <Section bg={YELLOW} decor="warm">
         <div className="text-center">
@@ -956,18 +1017,22 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
         {step === 0 && (
           <div>
             <h3 className="text-xl font-bold" style={{ color: NAVY_DEEP }}>How old is your child?</h3>
-            <p className="text-sm mt-1 text-slate-500">We split projects by age so it&apos;s just right.</p>
+            <p className="text-sm mt-1 text-slate-500">Each age group has its own time slot.</p>
             <div className="mt-5 space-y-3">
               {AGE_GROUPS.map(g => (
-                <button key={g.slug} onClick={() => { setForm(p => ({ ...p, age_group: g.slug })); setStep(1); }}
+                <button key={g.slug} onClick={() => { setForm(p => ({ ...p, age_group: g.slug })); setStep(2); }}
                   className="w-full text-left rounded-2xl p-4 transition-all hover:scale-[1.01]"
                   style={{ border: `2.5px solid ${form.age_group === g.slug ? g.color : '#E2E8F0'}`, background: form.age_group === g.slug ? `${g.color}10` : '#fff' }}
                   data-testid={`modal-age-${g.slug}`}>
                   <div className="flex items-center gap-3">
                     <div className="text-3xl">{g.emoji}</div>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-bold" style={{ color: NAVY_DEEP }}>{g.label}</div>
                       <div className="text-sm mt-0.5 text-slate-500">{g.tagline}</div>
+                      <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold"
+                        style={{ background: `${g.color}25`, color: NAVY_DEEP }}>
+                        <Clock className="w-3 h-3" /> {g.time}
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -1000,8 +1065,40 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
 
         {step === 2 && (
           <div>
-            <button onClick={() => setStep(1)} className="text-xs inline-flex items-center gap-1 mb-3 text-slate-500"><ArrowLeft className="w-3 h-3" /> Back</button>
+            <button onClick={() => setStep(0)} className="text-xs inline-flex items-center gap-1 mb-3 text-slate-500"><ArrowLeft className="w-3 h-3" /> Back</button>
             <h3 className="text-xl font-bold" style={{ color: NAVY_DEEP }}>Confirm &amp; pay</h3>
+
+            {/* Venue block */}
+            {(() => {
+              const c = CENTERS.find(x => x.slug === form.center) || CENTERS[0];
+              const g = AGE_GROUPS.find(x => x.slug === form.age_group);
+              return (
+                <div className="mt-4 rounded-2xl p-4" style={{ background: '#FFFEF7', border: `2px solid ${NAVY}25` }} data-testid="modal-venue-card">
+                  <div className="flex items-start gap-2.5">
+                    <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: NAVY }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm" style={{ color: NAVY_DEEP }}>{c.label}</div>
+                      <div className="text-[12px] text-slate-600 mt-1 leading-snug">{c.address}</div>
+                      <a href={c.mapUrl} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-xs font-bold hover:underline" style={{ color: NAVY }}>
+                        Open in Google Maps <ArrowRight className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                  {g && (
+                    <div className="mt-3 pt-3 border-t flex items-center gap-2.5" style={{ borderColor: '#E2E8F0' }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-base flex-shrink-0" style={{ background: `${g.color}25` }}>{g.emoji}</div>
+                      <div>
+                        <div className="text-[11px] uppercase tracking-widest font-bold text-slate-400">Your time slot</div>
+                        <div className="text-sm font-bold" style={{ color: NAVY_DEEP }}>
+                          <Clock className="w-3.5 h-3.5 inline -mt-0.5 mr-1" />{g.time} · Sun, 21 June
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Additional children selector */}
             <div className="mt-4 rounded-2xl p-4" style={{ background: YELLOW, border: `2px solid ${YELLOW_DEEP}` }}>
@@ -1030,8 +1127,9 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
 
             <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background: '#fff', border: `2px solid ${SKY}` }}>
               <Row k="Age group" v={AGE_GROUPS.find(g => g.slug === form.age_group)?.label} />
-              <Row k="Center"    v={CENTERS.find(c => c.slug === form.center)?.label} />
-              <Row k="Date"      v="Sunday, 21 June · 2 hours" />
+              <Row k="Time"      v={AGE_GROUPS.find(g => g.slug === form.age_group)?.time} />
+              <Row k="Date"      v="Sunday, 21 June" />
+              <Row k="Venue"     v={(CENTERS.find(c => c.slug === form.center) || CENTERS[0])?.label} />
               <Row k="Base"      v="₹1,999" />
               {form.additional_children > 0 && (
                 <Row k={`+${form.additional_children} extra child${form.additional_children > 1 ? 'ren' : ''}`} v={`₹${(form.additional_children * 1499).toLocaleString()}`} />
