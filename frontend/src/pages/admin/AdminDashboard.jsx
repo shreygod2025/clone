@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
-  Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot
+  Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -35,6 +35,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
     { path: '/admin/data-center', icon: Database, label: 'Data Center', permission: 'data_center' },
     { path: '/admin/data-export', icon: Download, label: 'Data Export', permission: 'settings' },
+    { path: '/admin/link-preview-tester', icon: Link2, label: 'Link Preview Tester', permission: 'settings' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
   ];

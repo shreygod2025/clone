@@ -4048,6 +4048,7 @@ from routes.external_mongo_dump import router as external_mongo_dump_router
 from routes.ai_foundations import router as ai_foundations_router
 from routes.future_skills import router as future_skills_router
 from routes.workshops import router as workshops_router
+from routes.link_preview import router as link_preview_router
 from routes.seo import router as seo_router
 from routes.support import router as support_router
 from routes.schools import router as schools_router
@@ -4077,6 +4078,7 @@ api_router.include_router(external_mongo_dump_router)
 api_router.include_router(ai_foundations_router)
 api_router.include_router(future_skills_router)
 api_router.include_router(workshops_router)
+api_router.include_router(link_preview_router)
 api_router.include_router(support_router)
 api_router.include_router(schools_router)
 api_router.include_router(orders_router)
