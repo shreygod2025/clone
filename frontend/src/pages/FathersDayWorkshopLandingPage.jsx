@@ -183,7 +183,32 @@ export default function FathersDayWorkshopLandingPage() {
   const total = 1999 + (Number(form.additional_children) || 0) * 1499;
 
   return (
-    <div data-testid="fathers-day-landing" style={{ minHeight: '100vh', fontFamily: '"Fredoka", "Nunito", sans-serif', background: YELLOW }}>
+    <div data-testid="fathers-day-landing" className="fd-workshop-page" style={{ minHeight: '100vh', fontFamily: '"Fredoka", "Nunito", sans-serif', background: YELLOW }}>
+      {/* Global font-weight & letter-spacing dial-down for the entire workshop page
+          – Fredoka @ 700 reads as cartoon-bulbous; semibold (500–600) is far cleaner. */}
+      <style>{`
+        .fd-workshop-page,
+        .fd-workshop-page p,
+        .fd-workshop-page span,
+        .fd-workshop-page div,
+        .fd-workshop-page li,
+        .fd-workshop-page td,
+        .fd-workshop-page button { font-weight: 500; }
+        .fd-workshop-page h1 { font-weight: 600 !important; letter-spacing: -0.015em; }
+        .fd-workshop-page h2,
+        .fd-workshop-page h3,
+        .fd-workshop-page h4,
+        .fd-workshop-page h5 { font-weight: 600 !important; letter-spacing: -0.005em; }
+        .fd-workshop-page strong,
+        .fd-workshop-page b,
+        .fd-workshop-page .font-bold,
+        .fd-workshop-page .font-extrabold,
+        .fd-workshop-page .font-black { font-weight: 600 !important; }
+        .fd-workshop-page .font-semibold,
+        .fd-workshop-page .font-medium  { font-weight: 500 !important; }
+        /* Caveat (script accent) stays at its natural weight — it's already cursive */
+        .fd-workshop-page [style*="Caveat"] { font-weight: 600 !important; }
+      `}</style>
       <Helmet>
         {/* ───── Primary SEO ───── */}
         <title>Father's Day 2026 Robotics Workshop Mumbai · Dad & Kid Build · OLL</title>
