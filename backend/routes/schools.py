@@ -448,7 +448,42 @@ async def update_school_inquiry(
             {"id": inquiry_id},
             {"$push": {"activity_log": {"$each": activity_entries}}}
         )
-    
+
+    # When moving back from active -> converted (or renewed -> renewal_meeting/active),
+    # reset onboarding workflow's completed flags so admin can re-complete steps and
+    # trigger the auto-transition back to active. Preserve all step data.
+    if 'status' in update_data:
+        old_status = current_inquiry.get('status')
+        new_status = update_data['status']
+        is_move_back = (
+            (old_status == 'active' and new_status == 'converted') or
+            (old_status == 'renewed' and new_status in ('renewal_meeting', 'active'))
+        )
+        if is_move_back:
+            workflow = current_inquiry.get('onboarding_workflow') or {}
+            steps = workflow.get('steps') or {}
+            if steps:
+                reset_steps = {}
+                first_incomplete = None
+                for sk, sv in steps.items():
+                    new_step = dict(sv) if isinstance(sv, dict) else {}
+                    new_step['completed'] = False
+                    new_step['completed_date'] = None
+                    reset_steps[sk] = new_step
+                    if first_incomplete is None:
+                        first_incomplete = sk
+                workflow['steps'] = reset_steps
+                workflow['completed_at'] = None
+                workflow['current_step'] = first_incomplete
+                timeline = workflow.get('timeline') or []
+                timeline.append({
+                    "action": f"Moved back to {new_status.replace('_', ' ').title()} - Onboarding reopened",
+                    "date": update_data['updated_at'],
+                    "by": user.get('name', user.get('email', 'System'))
+                })
+                workflow['timeline'] = timeline
+                update_data['onboarding_workflow'] = workflow
+
     await db.school_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
     
     # Auto-sync GP Share and School Share expenses whenever onboarding_data changes

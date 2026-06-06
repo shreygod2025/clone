@@ -1,6 +1,12 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-06) — School CRM: Move-Back Workflow Reset
+- **Bug fix**: When admin clicks "Move Back" on an Active school to send it to Converted (or Renewed → Renewal Meeting/Active), the `onboarding_workflow.steps[].completed` flags now auto-reset to `false` so the admin can re-complete the purple onboarding progress bar. Step data is preserved.
+- After all steps are re-completed via `/api/schools/{id}/onboarding-step/{step}`, the existing logic auto-transitions status back to `active`.
+- Implemented in `backend/routes/schools.py` PATCH `/schools/inquiry/{id}` handler.
+
+
 ### Latest Changes (2026-05-15) — AI Foundations Overhaul + Cashfree v3 SDK
 1. **🔴 Cashfree "Invalid form" fixed** — Root cause: `payments.cashfree.com/forms/{session_id}` is the deprecated v2 hosted URL; v3 sessions cannot be opened that way. Added the v3 SDK (`https://sdk.cashfree.com/js/v3/cashfree.js`) to `index.html`, created `frontend/src/utils/cashfreeCheckout.js` helper, and switched `AiFoundationsBookingPage.jsx` + `FutureSkillsBookingPage.jsx` to `cashfree.checkout({ paymentSessionId, redirectTarget:'_self', mode:'production' })`. Summer Camp was already using the SDK. On preview, Cashfree shows a domain whitelist error (expected — only `oll.co` is approved); on production it routes directly to the checkout.
 2. **AI Foundations form simplified** — Removed parent_name, parent_email, school_name, notes from form. Phone + Student Name + Grade + Track + Batch only. Backend `BookingCreate` model made those fields optional for backwards-compat.
