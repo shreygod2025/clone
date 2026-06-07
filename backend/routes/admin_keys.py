@@ -435,20 +435,39 @@ async def external_get_schools_stats(
 @router.get("/external/schools/active")
 async def external_get_active_schools_flat(
     city: Optional[str] = None,
+    status: Optional[str] = None,
     limit: int = 500,
     api_key_data: dict = Depends(verify_external_api_key)
 ):
     """
-    Simplified flat-format endpoint returning active OLL partner schools.
+    Simplified flat-format endpoint returning OLL partner schools across all CRM stages.
 
     Headers required:
         X-API-Key: your_api_key
+
+    Query params:
+        city: optional case-insensitive city filter
+        status: optional CRM stage filter (comma-separated). Defaults to all non-archived,
+                non-lost schools across new, meeting_done, converted, active,
+                renewal_meeting, renewed.
+        limit: max records (default 500, hard cap 1000)
 
     Returns a flat list with:
         school_name, address, latitude, longitude,
         contact_person, contact_phone, city, status
     """
-    query: dict = {"status": {"$in": ["active", "converted", "renewed"]}}
+    # Default: return all schools across active funnel stages (everything except
+    # archived/lost variants). Keeps the endpoint useful as the canonical "all
+    # OLL schools" feed for external consumers.
+    default_statuses = [
+        "new", "meeting_done", "converted", "active",
+        "renewal_meeting", "renewed",
+    ]
+    if status:
+        statuses = [s.strip() for s in status.split(",") if s.strip()]
+    else:
+        statuses = default_statuses
+    query: dict = {"status": {"$in": statuses}}
     if city:
         query["location"] = {"$regex": city, "$options": "i"}
 

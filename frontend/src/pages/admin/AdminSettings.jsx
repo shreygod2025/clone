@@ -1194,7 +1194,7 @@ const AdminSettings = () => {
               <div className="space-y-4">
                 {/* Endpoint */}
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Endpoint (Active Schools — flat format)</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Endpoint (All Schools — flat format)</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
                       GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools/active
@@ -1205,6 +1205,7 @@ const AdminSettings = () => {
                       title="Copy URL"
                     ><Copy className="w-4 h-4" /></button>
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">Returns schools across <strong>new, meeting_done, converted, active, renewal_meeting, renewed</strong> (archived &amp; lost are excluded). Add <code className="bg-slate-100 px-1 rounded">?status=active,renewed</code> to filter to specific stages, or <code className="bg-slate-100 px-1 rounded">?city=Mumbai</code> to filter by city.</p>
                   <p className="text-xs text-amber-600 mt-1">⚠️ The URL must include <code className="bg-amber-50 px-1 rounded">/api</code> — requests without it return the website HTML, not data.</p>
                 </div>
 
