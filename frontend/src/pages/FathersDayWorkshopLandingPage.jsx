@@ -60,6 +60,11 @@ const CENTERS = [
     area:  'Mira Bhayandar',
     address: 'Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd, near Kali Mata mandir, Shivar Garden, Mira Road East, Mira Bhayandar, Maharashtra 401107',
     mapUrl: 'https://share.google/j0L250QOAJ6hACbfN' },
+  { slug: 'borivali',
+    label: 'Wagh Bakri Tea Lounge · Borivali',
+    area:  'Borivali West',
+    address: 'Avyukta Rajhans, Rajyasarathi, Royal Complex, off Chandavarkar Road, opp. Reliance Digital, CKP Colony, Borivali West, Mumbai, Maharashtra 400091',
+    mapUrl: 'https://share.google/C7X6vA12fqsczdU1G' },
 ];
 
 const DAY_RUNS = [
@@ -76,7 +81,7 @@ const FAQS = [
   { q: 'What ages is this for?', a: 'Designed for children aged 4 to 12. Younger kids (4–8) build hands-on circuits with more parent involvement; older kids (9–12) build a working robot. Everyone goes home happy.' },
   { q: 'Can I bring more than one child?', a: 'Yes! Add a second child for ₹1,499. Both kids get a build station with the parent guiding them.' },
   { q: 'Do we keep the robot?', a: 'The robot stays at OLL — but a printed photoframe of you and your child with the robot is yours to take home.' },
-  { q: 'Is this online or in person?', a: 'In person at OLL Center, Kandivali or Mira Road. No kits shipped — everything is provided.' },
+  { q: 'Is this online or in person?', a: 'In person at Pizza Buffet, Mira Road or Wagh Bakri Tea Lounge, Borivali West. No kits shipped — everything is provided.' },
 ];
 
 // ── Video testimonials (parents + students) ───────────────────────────────
@@ -114,7 +119,7 @@ export default function FathersDayWorkshopLandingPage() {
   const navigate = useNavigate();
   const [showEnroll, setShowEnroll] = useState(false);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ age_group: '', center: 'mira_road', parent_phone: '', additional_children: 0 });
+  const [form, setForm] = useState({ age_group: '', center: '', parent_phone: '', additional_children: 0 });
   const [submitting, setSubmitting] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [openFaq, setOpenFaq] = useState(0);
@@ -274,7 +279,7 @@ export default function FathersDayWorkshopLandingPage() {
           '@type': 'Event',
           name: "Father's Day Robotics Workshop · Mumbai 2026",
           alternateName: ["Father's Day Workshop Mumbai", "Father's Day Activity Mumbai 2026", "Father's Day Robotics for Kids"],
-          description: "A screen-free Father's Day workshop where dads and kids (ages 4–12) build a real working robot together — at OLL Centers in Mumbai. Sunday 21 June 2026.",
+          description: "A screen-free Father's Day workshop where dads and kids (ages 4–12) build a real working robot together — at Mira Road & Borivali West, Mumbai. Sunday 21 June 2026.",
           startDate: '2026-06-21T15:00:00+05:30',
           endDate:   '2026-06-21T18:00:00+05:30',
           eventStatus: 'https://schema.org/EventScheduled',
@@ -288,10 +293,10 @@ export default function FathersDayWorkshopLandingPage() {
           url: 'https://oll.co/workshops/fathers-day-robotics',
           image: [CAROUSEL[0], CAROUSEL[1], CAROUSEL[2], CAROUSEL[3]],
           location: [
-            { '@type': 'Place', name: 'OLL Center — Kandivali (West)',
-              address: { '@type': 'PostalAddress', streetAddress: 'OLL Center, Kandivali West', addressLocality: 'Mumbai', addressRegion: 'Maharashtra', postalCode: '400067', addressCountry: 'IN' } },
-            { '@type': 'Place', name: 'OLL Center — Mira Road',
-              address: { '@type': 'PostalAddress', streetAddress: 'OLL Center, Mira Road East', addressLocality: 'Mira Bhayandar', addressRegion: 'Maharashtra', postalCode: '401107', addressCountry: 'IN' } },
+            { '@type': 'Place', name: 'Pizza Buffet · Mira Road',
+              address: { '@type': 'PostalAddress', streetAddress: 'Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd, near Kali Mata Mandir, Shivar Garden, Mira Road East', addressLocality: 'Mira Bhayandar', addressRegion: 'Maharashtra', postalCode: '401107', addressCountry: 'IN' } },
+            { '@type': 'Place', name: 'Wagh Bakri Tea Lounge · Borivali West',
+              address: { '@type': 'PostalAddress', streetAddress: 'Avyukta Rajhans, Rajyasarathi, Royal Complex, off Chandavarkar Road, opp. Reliance Digital, CKP Colony, Borivali West', addressLocality: 'Mumbai', addressRegion: 'Maharashtra', postalCode: '400091', addressCountry: 'IN' } },
           ],
           organizer: { '@type': 'Organization', name: 'OLL — Skills for All', url: 'https://oll.co', logo: 'https://oll.co/logo.png' },
           performer: { '@type': 'Organization', name: 'OLL Workshop Educators', url: 'https://oll.co' },
@@ -800,37 +805,37 @@ export default function FathersDayWorkshopLandingPage() {
             <H2>Where to find us</H2>
           </div>
 
-          <div className="mt-8 grid lg:grid-cols-[1.05fr_1fr] gap-5">
-            {/* Left — address + map link */}
-            <div className="rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${NAVY}` }}>
-              <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
-                <MapPin className="w-4 h-4" /> Mira Road
+          <div className="mt-8 grid md:grid-cols-2 gap-5">
+            {/* Two venue address cards */}
+            {CENTERS.map((c, i) => (
+              <div key={c.slug} className="rounded-3xl p-6 sm:p-7 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${i === 0 ? NAVY : CORAL}` }} data-testid={`venue-card-${c.slug}`}>
+                <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
+                  <MapPin className="w-4 h-4" /> {c.area}
+                </div>
+                <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
+                  {c.label}
+                </h3>
+                <p className="text-sm leading-relaxed mt-3" style={{ color: '#1F2937' }}>
+                  {c.address}
+                </p>
+                <a href={c.mapUrl} target="_blank" rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform"
+                  style={{ background: i === 0 ? NAVY : CORAL, color: '#fff' }}
+                  data-testid={`venue-gmaps-link-${c.slug}`}>
+                  Open in Google Maps <ArrowRight className="w-4 h-4" />
+                </a>
               </div>
-              <h3 className="mt-2 text-xl sm:text-2xl font-bold" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
-                Pizza Buffet · Mira Road
-              </h3>
-              <p className="text-sm leading-relaxed mt-3" style={{ color: '#1F2937' }}>
-                Gate no 5, Pizza Buffet, Vardhaman Fantasy, Mira Bhayandar Rd,<br className="hidden sm:inline" />
-                near Kali Mata Mandir, Shivar Garden, Mira Road East,<br className="hidden sm:inline" />
-                Mira Bhayandar, Maharashtra <span className="font-mono">401107</span>
-              </p>
-              <a href="https://share.google/j0L250QOAJ6hACbfN" target="_blank" rel="noopener noreferrer"
-                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform"
-                style={{ background: NAVY, color: '#fff' }}
-                data-testid="venue-gmaps-link">
-                Open in Google Maps <ArrowRight className="w-4 h-4" />
-              </a>
-            </div>
+            ))}
 
-            {/* Right — time slots */}
-            <div className="rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${SUN}` }}>
+            {/* Time slots — spans full width below */}
+            <div className="md:col-span-2 rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${SUN}` }}>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
                 <Clock className="w-4 h-4" /> Time slots
               </div>
               <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP }}>
                 Two batches, by age
               </h3>
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 grid sm:grid-cols-2 gap-3">
                 {AGE_GROUPS.map(g => (
                   <div key={g.slug} className="rounded-2xl p-4 flex items-center gap-3" style={{ background: `${g.color}1a`, border: `2px solid ${g.color}40` }} data-testid={`venue-slot-${g.slug}`}>
                     <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: g.color }}>
@@ -845,7 +850,7 @@ export default function FathersDayWorkshopLandingPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs mt-4 italic text-slate-500">Sunday, 21 June 2026 · 2 hours per slot</p>
+              <p className="text-xs mt-4 italic text-slate-500">Sunday, 21 June 2026 · 2 hours per slot · same time slots at both venues</p>
             </div>
           </div>
         </div>
