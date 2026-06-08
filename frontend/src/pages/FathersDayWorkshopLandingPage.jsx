@@ -614,6 +614,66 @@ export default function FathersDayWorkshopLandingPage() {
         </div>
       </Section>
 
+      {/* ── VENUE ─────────────────────────── */}
+      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20" data-testid="venue-section">
+        <Doodles preset="usp" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
+          <div className="text-center">
+            <SectionLabel>Venue</SectionLabel>
+            <H2>Where to find us</H2>
+          </div>
+
+          <div className="mt-8 grid md:grid-cols-2 gap-5">
+            {/* Two venue address cards */}
+            {CENTERS.map((c, i) => (
+              <div key={c.slug} className="rounded-3xl p-6 sm:p-7 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${i === 0 ? NAVY : CORAL}` }} data-testid={`venue-card-${c.slug}`}>
+                <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
+                  <MapPin className="w-4 h-4" /> {c.area}
+                </div>
+                <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
+                  {c.label}
+                </h3>
+                <p className="text-sm leading-relaxed mt-3" style={{ color: '#1F2937' }}>
+                  {c.address}
+                </p>
+                <a href={c.mapUrl} target="_blank" rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform"
+                  style={{ background: i === 0 ? NAVY : CORAL, color: '#fff' }}
+                  data-testid={`venue-gmaps-link-${c.slug}`}>
+                  Open in Google Maps <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+            ))}
+
+            {/* Time slots — spans full width below */}
+            <div className="md:col-span-2 rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${SUN}` }}>
+              <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
+                <Clock className="w-4 h-4" /> Time slots
+              </div>
+              <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP }}>
+                Two batches, by age
+              </h3>
+              <div className="mt-4 grid sm:grid-cols-2 gap-3">
+                {AGE_GROUPS.map(g => (
+                  <div key={g.slug} className="rounded-2xl p-4 flex items-center gap-3" style={{ background: `${g.color}1a`, border: `2px solid ${g.color}40` }} data-testid={`venue-slot-${g.slug}`}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: g.color }}>
+                      {g.emoji}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-sm" style={{ color: NAVY_DEEP }}>{g.label}</div>
+                      <div className="inline-flex items-center gap-1.5 mt-1 text-sm font-bold" style={{ color: NAVY }}>
+                        <Clock className="w-3.5 h-3.5" /> {g.time}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs mt-4 italic text-slate-500">Sunday, 21 June 2026 · 2 hours per slot · same time slots at both venues</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── HOW THE DAY RUNS ─────────────────────────── */}
       <section style={{ background: NAVY_DEEP, color: '#fff', position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20">
         <Doodles preset="dark" />
@@ -796,66 +856,6 @@ export default function FathersDayWorkshopLandingPage() {
         </div>
       </section>
 
-      {/* ── VENUE ─────────────────────────── */}
-      <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-12 sm:py-16 lg:py-20" data-testid="venue-section">
-        <Doodles preset="usp" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative" style={{ zIndex: 1 }}>
-          <div className="text-center">
-            <SectionLabel>Venue</SectionLabel>
-            <H2>Where to find us</H2>
-          </div>
-
-          <div className="mt-8 grid md:grid-cols-2 gap-5">
-            {/* Two venue address cards */}
-            {CENTERS.map((c, i) => (
-              <div key={c.slug} className="rounded-3xl p-6 sm:p-7 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${i === 0 ? NAVY : CORAL}` }} data-testid={`venue-card-${c.slug}`}>
-                <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
-                  <MapPin className="w-4 h-4" /> {c.area}
-                </div>
-                <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP, fontFamily: '"Fredoka", sans-serif' }}>
-                  {c.label}
-                </h3>
-                <p className="text-sm leading-relaxed mt-3" style={{ color: '#1F2937' }}>
-                  {c.address}
-                </p>
-                <a href={c.mapUrl} target="_blank" rel="noopener noreferrer"
-                  className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform"
-                  style={{ background: i === 0 ? NAVY : CORAL, color: '#fff' }}
-                  data-testid={`venue-gmaps-link-${c.slug}`}>
-                  Open in Google Maps <ArrowRight className="w-4 h-4" />
-                </a>
-              </div>
-            ))}
-
-            {/* Time slots — spans full width below */}
-            <div className="md:col-span-2 rounded-3xl p-6 sm:p-8 shadow-lg" style={{ background: '#FFFEF7', border: `3px solid ${SUN}` }}>
-              <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold" style={{ color: CORAL }}>
-                <Clock className="w-4 h-4" /> Time slots
-              </div>
-              <h3 className="mt-2 text-lg sm:text-xl font-bold" style={{ color: NAVY_DEEP }}>
-                Two batches, by age
-              </h3>
-              <div className="mt-4 grid sm:grid-cols-2 gap-3">
-                {AGE_GROUPS.map(g => (
-                  <div key={g.slug} className="rounded-2xl p-4 flex items-center gap-3" style={{ background: `${g.color}1a`, border: `2px solid ${g.color}40` }} data-testid={`venue-slot-${g.slug}`}>
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: g.color }}>
-                      {g.emoji}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-bold text-sm" style={{ color: NAVY_DEEP }}>{g.label}</div>
-                      <div className="inline-flex items-center gap-1.5 mt-1 text-sm font-bold" style={{ color: NAVY }}>
-                        <Clock className="w-3.5 h-3.5" /> {g.time}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs mt-4 italic text-slate-500">Sunday, 21 June 2026 · 2 hours per slot · same time slots at both venues</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── FAQ ─────────────────────────── */}
       <Section bg={YELLOW} decor="warm">
         <div className="text-center">
@@ -1025,7 +1025,7 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
             <p className="text-sm mt-1 text-slate-500">Each age group has its own time slot.</p>
             <div className="mt-5 space-y-3">
               {AGE_GROUPS.map(g => (
-                <button key={g.slug} onClick={() => { setForm(p => ({ ...p, age_group: g.slug })); setStep(2); }}
+                <button key={g.slug} onClick={() => { setForm(p => ({ ...p, age_group: g.slug })); setStep(1); }}
                   className="w-full text-left rounded-2xl p-4 transition-all hover:scale-[1.01]"
                   style={{ border: `2.5px solid ${form.age_group === g.slug ? g.color : '#E2E8F0'}`, background: form.age_group === g.slug ? `${g.color}10` : '#fff' }}
                   data-testid={`modal-age-${g.slug}`}>
@@ -1070,7 +1070,7 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
 
         {step === 2 && (
           <div>
-            <button onClick={() => setStep(0)} className="text-xs inline-flex items-center gap-1 mb-3 text-slate-500"><ArrowLeft className="w-3 h-3" /> Back</button>
+            <button onClick={() => setStep(1)} className="text-xs inline-flex items-center gap-1 mb-3 text-slate-500"><ArrowLeft className="w-3 h-3" /> Back</button>
             <h3 className="text-xl font-bold" style={{ color: NAVY_DEEP }}>Confirm &amp; pay</h3>
 
             {/* Venue block */}
