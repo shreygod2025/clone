@@ -29,7 +29,7 @@ REPORT_FROM = "OLL Reports <skills@oll.co>"
 # ─────────────────────────────────────────────
 
 def day_range():
-    """Return (start, end) for today in UTC corresponding to IST calendar day."""
+    """Return (start_iso, end_iso) for today in UTC corresponding to IST calendar day."""
     # IST = UTC+5:30
     now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
     start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -37,6 +37,33 @@ def day_range():
     start_utc = start_ist - timedelta(hours=5, minutes=30)
     end_utc = end_ist - timedelta(hours=5, minutes=30)
     return start_utc.isoformat(), end_utc.isoformat()
+
+
+def date_query(start, end):
+    """Build a created_at range query that matches docs regardless of whether
+    `created_at` is stored as a datetime (BSON) or an ISO-8601 string.
+
+    Different code paths in OLL save `created_at` inconsistently across collections
+    (e.g. student_inquiries has both; bookings tend to be strings). MongoDB never
+    cross-compares datetime and string, so a single-type filter silently misses
+    half the data — that's why the B2C section was showing 0.
+    """
+    if isinstance(start, str):
+        start_iso, end_iso = start, end
+        try:
+            start_dt = datetime.fromisoformat(start_iso)
+            end_dt = datetime.fromisoformat(end_iso)
+        except Exception:
+            start_dt = end_dt = None
+    else:
+        start_dt, end_dt = start, end
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+
+    branches = [{"created_at": {"$gte": start_iso, "$lt": end_iso}}]
+    if start_dt and end_dt:
+        branches.append({"created_at": {"$gte": start_dt, "$lt": end_dt}})
+    return {"$or": branches}
 
 
 def fmt_date():
@@ -196,7 +223,7 @@ async def fetch_support_data(start, end):
     resolved_statuses = ["resolved", "closed"]
 
     async def _fetch(col):
-        today_q = await db[col].find({"created_at": {"$gte": start, "$lt": end}}, {"_id": 0}).to_list(2000)
+        today_q = await db[col].find(date_query(start, end), {"_id": 0}).to_list(2000)
         all_open = await db[col].count_documents({"status": {"$in": open_statuses}})
         overdue = await db[col].count_documents({
             "status": {"$in": open_statuses},
@@ -305,7 +332,7 @@ async def fetch_support_data(start, end):
 
 
 async def fetch_b2c_data(start, end):
-    query = {"created_at": {"$gte": start, "$lt": end}}
+    query = date_query(start, end)
 
     # ── Core student inquiries (1:1 demos) ──
     today = await db.student_inquiries.find(query, {"_id": 0}).to_list(2000)
@@ -379,7 +406,7 @@ async def fetch_b2c_data(start, end):
 
 
 async def fetch_gp_data(start, end):
-    query = {"created_at": {"$gte": start, "$lt": end}}
+    query = date_query(start, end)
     today = await db.growth_partners.find(query, {"_id": 0}).to_list(1000)
     onboarded = [p for p in today if p.get("status") in ("converted", "onboarded")]
     return dict(
@@ -391,7 +418,7 @@ async def fetch_gp_data(start, end):
 
 
 async def fetch_team_data(start, end):
-    query = {"created_at": {"$gte": start, "$lt": end}}
+    query = date_query(start, end)
     today = await db.team_applications.find(query, {"_id": 0}).to_list(1000)
     onboarded = [a for a in today if a.get("status") in ("hired", "onboarded")]
     requirements = await db.team_requirements.find(
@@ -407,7 +434,7 @@ async def fetch_team_data(start, end):
 
 
 async def fetch_educator_data(start, end):
-    query = {"created_at": {"$gte": start, "$lt": end}}
+    query = date_query(start, end)
     today = await db.educator_applications.find(query, {"_id": 0}).to_list(1000)
     tech_round = [e for e in today if e.get("status") in ("tech_scheduled", "hr_done", "demo_completed")]
     onboarded = [e for e in today if e.get("status") == "onboarded"]
