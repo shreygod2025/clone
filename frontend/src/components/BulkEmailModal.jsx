@@ -12,7 +12,7 @@ import axios from 'axios';
 import { Mail, Send, Save, ChevronDown, X, Eye, EyeOff, Plus } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('oll_token')}` });
 
 export default function BulkEmailModal({
   open,

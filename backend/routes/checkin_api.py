@@ -72,11 +72,16 @@ async def list_checkin_educators(user: dict = Depends(get_current_user)):
 @router.post("/schools/{school_id}/timetable")
 async def create_or_update_timetable(school_id: str, payload: dict, user: dict = Depends(get_current_user)):
     """
-    Create (or update) a timetable in the checkin API and save the timetable_id
-    on the school record in MongoDB.
+    Create or update a timetable in the checkin API and persist its id on the school record.
+
+    Multi-timetable support:
+      • If payload contains `timetable_id`, that specific timetable is updated.
+      • Otherwise a NEW timetable is created and appended to the school's
+        `checkin_timetable_ids` array (one per educator / assistant educator).
+
     payload fields:
         educator_id, start_date, end_date, days_of_week, time_slots,
-        session_mode, sessions_per_week, notes
+        session_mode, sessions_per_week, notes, [timetable_id]
     """
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
@@ -106,38 +111,91 @@ async def create_or_update_timetable(school_id: str, payload: dict, user: dict =
         "mode":         payload.get("session_mode", "offline"),
     }
 
-    existing_timetable_id = school.get("checkin_timetable_id")
-
-    if existing_timetable_id:
-        # Update existing
-        result = await _checkin_put(f"/timetables/{existing_timetable_id}", api_body)
-        timetable_id = existing_timetable_id
+    explicit_id = payload.get("timetable_id")
+    if explicit_id:
+        # Update the specified timetable
+        result = await _checkin_put(f"/timetables/{explicit_id}", api_body)
+        timetable_id = explicit_id
     else:
-        # Create new
+        # Create a new timetable
         result = await _checkin_post("/timetables", api_body)
         timetable_id = result.get("data", {}).get("id") or result.get("id")
 
-    # Persist timetable_id on the school record
+    # Persist on the school record: maintain a list of ids + keep legacy single-id
+    # field for backward compatibility with older code paths.
     if timetable_id:
-        await db.school_inquiries.update_one(
-            {"id": school_id},
-            {"$set": {"checkin_timetable_id": timetable_id}}
-        )
+        current_ids = list(school.get("checkin_timetable_ids") or [])
+        legacy_id = school.get("checkin_timetable_id")
+        if legacy_id and legacy_id not in current_ids:
+            current_ids.append(legacy_id)
+        if timetable_id not in current_ids:
+            current_ids.append(timetable_id)
+        update_doc = {
+            "checkin_timetable_ids": current_ids,
+            "checkin_timetable_id": legacy_id or timetable_id,
+        }
+        await db.school_inquiries.update_one({"id": school_id}, {"$set": update_doc})
 
     return {"success": True, "timetable_id": timetable_id, "data": result.get("data", result)}
 
 
-@router.get("/schools/{school_id}/timetable")
-async def get_timetable(school_id: str, user: dict = Depends(get_current_user)):
-    """Fetch the saved timetable from the checkin API for this school."""
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0, "checkin_timetable_id": 1, "school_name": 1})
+@router.delete("/schools/{school_id}/timetable/{timetable_id}")
+async def delete_timetable(school_id: str, timetable_id: str, user: dict = Depends(get_current_user)):
+    """Remove a timetable from the school. Soft-removes from the school record;
+    the underlying checkin API call to delete the timetable itself is best-effort."""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
-    timetable_id = school.get("checkin_timetable_id")
-    if not timetable_id:
-        return {"timetable": None}
-    data = await _checkin_get(f"/timetables/{timetable_id}")
-    return {"timetable": data.get("data", data), "timetable_id": timetable_id}
+    # Best-effort delete on remote checkin API (not all backends support DELETE)
+    try:
+        await _checkin_put(f"/timetables/{timetable_id}", {"is_active": False})
+    except Exception:
+        pass
+    # Pull id from the list and clear legacy field if it matches
+    update_doc: dict = {"$pull": {"checkin_timetable_ids": timetable_id}}
+    if school.get("checkin_timetable_id") == timetable_id:
+        remaining = [t for t in (school.get("checkin_timetable_ids") or []) if t != timetable_id]
+        update_doc["$set"] = {"checkin_timetable_id": remaining[0] if remaining else None}
+    await db.school_inquiries.update_one({"id": school_id}, update_doc)
+    return {"success": True}
+
+
+@router.get("/schools/{school_id}/timetable")
+async def get_timetable(school_id: str, user: dict = Depends(get_current_user)):
+    """Fetch all saved timetables from the checkin API for this school.
+
+    Returns:
+      • `timetables`: array of every timetable linked to this school
+      • `timetable`: convenience field — the first timetable (legacy callers)
+      • `timetable_id`: convenience id of that first timetable (legacy callers)
+    """
+    school = await db.school_inquiries.find_one(
+        {"id": school_id},
+        {"_id": 0, "checkin_timetable_id": 1, "checkin_timetable_ids": 1, "school_name": 1},
+    )
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    # Merge legacy single id with the modern list, de-duping
+    ids: list = list(school.get("checkin_timetable_ids") or [])
+    legacy_id = school.get("checkin_timetable_id")
+    if legacy_id and legacy_id not in ids:
+        ids.insert(0, legacy_id)
+    timetables = []
+    for tid in ids:
+        try:
+            data = await _checkin_get(f"/timetables/{tid}")
+            row = data.get("data", data) or {}
+            if not row.get("id"):
+                row["id"] = tid
+            timetables.append(row)
+        except Exception:
+            # Skip missing/deleted timetables silently
+            continue
+    return {
+        "timetables": timetables,
+        "timetable": timetables[0] if timetables else None,
+        "timetable_id": timetables[0].get("id") if timetables else None,
+    }
 
 
 # ─── Sessions ────────────────────────────────────────────────────────────────
@@ -164,12 +222,13 @@ async def get_school_sessions(
     school_name = school.get("school_name") or ""
 
     # ── Resolve timetable_id(s) for this school ───────────────────
-    # Priority 1: use the stored checkin_timetable_id on the school record
-    timetable_ids = []
+    # Priority 1: use the stored checkin_timetable_ids array (newer) — falls back
+    #             to the legacy single-id field if the array is missing.
+    timetable_ids: list = list(school.get("checkin_timetable_ids") or [])
     stored_id = school.get("checkin_timetable_id")
-    if stored_id:
-        timetable_ids = [stored_id]
-    else:
+    if stored_id and stored_id not in timetable_ids:
+        timetable_ids.append(stored_id)
+    if not timetable_ids:
         # Priority 2: search all timetables and match by exact school_name
         # The external API's school_name filter is broken — fetch all and filter client-side
         all_timetables: list = []

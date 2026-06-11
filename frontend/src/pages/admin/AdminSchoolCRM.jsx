@@ -776,6 +776,8 @@ const AdminSchoolCRM = () => {
   // Standalone timetable editor
   const [showStandaloneTimetableModal, setShowStandaloneTimetableModal] = useState(null); // school object
   const [standaloneTimetableLoading, setStandaloneTimetableLoading] = useState(false);
+  const [allSchoolTimetables, setAllSchoolTimetables] = useState([]); // array of timetables for the current school
+  const [activeTimetableId, setActiveTimetableId] = useState(null);   // id being edited (null = new)
   // Contact Management Filters
   const [contactCityFilter, setContactCityFilter] = useState('all');
   const [contactRoleFilter, setContactRoleFilter] = useState('all');
@@ -3121,7 +3123,11 @@ ${FOOTER}</div></body></html>`
     }
     setSavingTimetable(true);
     try {
-      const res = await axios.post(`${API}/schools/${schoolId}/timetable`, timetableFormLocal, { headers: getAuthHeaders() });
+      // Include the active timetable id so the backend UPDATES that one
+      // instead of always creating a new record.
+      const body = { ...timetableFormLocal };
+      if (activeTimetableId) body.timetable_id = activeTimetableId;
+      const res = await axios.post(`${API}/schools/${schoolId}/timetable`, body, { headers: getAuthHeaders() });
       const timetableId = res.data.timetable_id;
       // Also save locally to onboarding step (only when called from onboarding workflow)
       if (showOnboardingWorkflowModal) {
@@ -3129,9 +3135,16 @@ ${FOOTER}</div></body></html>`
           data: { ...timetableFormLocal, timetable_created: true, checkin_timetable_id: timetableId }
         });
       }
-      toast.success(`Timetable ${timetableId ? 'saved to Checkin system' : 'saved locally'}`);
+      toast.success(`Timetable ${timetableId ? (activeTimetableId ? 'updated' : 'created') : 'saved locally'}`);
+      // Refresh the timetable list so newly-created ids show up as tabs
+      try {
+        const refresh = await axios.get(`${API}/schools/${schoolId}/timetable`, { headers: getAuthHeaders() });
+        setAllSchoolTimetables(refresh.data.timetables || []);
+        setActiveTimetableId(timetableId);
+      } catch (e) { /* ignore */ }
       setShowTimetableBuilder(null);
-      setShowStandaloneTimetableModal(null);
+      // Keep the standalone modal open so admin can add another timetable
+      // (don't auto-close — they may want to add an assistant educator next).
       // Refresh sessions if sessions modal is open
       if (showSessionsModal) fetchSchoolSessions(showSessionsModal, sessionsFilter);
     } catch (err) {
@@ -3200,6 +3213,33 @@ ${FOOTER}</div></body></html>`
   // Day name short↔full conversion for timetable
   const FULL_TO_SHORT = { monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu', friday:'Fri', saturday:'Sat', sunday:'Sun' };
 
+  // Hydrate the form fields from a checkin-API timetable record (or reset to blank)
+  const _hydrateTimetableForm = (t) => {
+    if (!t) {
+      setTimetableFormLocal({ session_mode: 'offline', start_date: '', end_date: '', days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: '', educator_id: '' });
+      setActiveTimetableId(null);
+      return;
+    }
+    const shortDays = (t.days_of_week || []).map(d => FULL_TO_SHORT[d] || d);
+    const mappedSlots = {};
+    for (const [fullDay, slots] of Object.entries(t.time_slots || {})) {
+      const shortDay = FULL_TO_SHORT[fullDay] || fullDay;
+      mappedSlots[shortDay] = (slots || []).map(s => ({ start: s.start_time || '', end: s.end_time || '' }));
+    }
+    setTimetableFormLocal({
+      educator_id: t.educator_id || '',
+      session_mode: t.mode || 'offline',
+      start_date: t.start_date || '',
+      end_date: t.end_date || '',
+      days_of_week: shortDays,
+      time_slots: mappedSlots,
+      sessions_per_week: '',
+      timetable_status: t.is_active === false ? 'inactive' : 'active',
+      notes: '',
+    });
+    setActiveTimetableId(t.id || null);
+  };
+
   const openStandaloneTimetableEditor = async (school) => {
     setStandaloneTimetableLoading(true);
     // Ensure educators are loaded
@@ -3208,40 +3248,51 @@ ${FOOTER}</div></body></html>`
         setCheckinEducatorsLoading(true);
         const eduRes = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
         setCheckinEducators(eduRes.data.educators || []);
-      } catch {} finally { setCheckinEducatorsLoading(false); }
+      } catch (e) { /* ignore */ } finally { setCheckinEducatorsLoading(false); }
     }
     try {
       const res = await axios.get(`${API}/schools/${school.id}/timetable`, { headers: getAuthHeaders() });
-      const t = res.data.timetable;
-      if (t) {
-        // Map API full day names → short names used by form
-        const shortDays = (t.days_of_week || []).map(d => FULL_TO_SHORT[d] || d);
-        // Map time_slots: {thursday:[{start_time,end_time}]} → {Thu:[{start,end}]}
-        const mappedSlots = {};
-        for (const [fullDay, slots] of Object.entries(t.time_slots || {})) {
-          const shortDay = FULL_TO_SHORT[fullDay] || fullDay;
-          mappedSlots[shortDay] = (slots || []).map(s => ({ start: s.start_time || '', end: s.end_time || '' }));
-        }
-        setTimetableFormLocal({
-          educator_id: t.educator_id || '',
-          session_mode: t.mode || 'offline',
-          start_date: t.start_date || '',
-          end_date: t.end_date || '',
-          days_of_week: shortDays,
-          time_slots: mappedSlots,
-          sessions_per_week: '',
-          timetable_status: t.is_active ? 'active' : 'inactive',
-          notes: '',
-        });
-      } else {
-        setTimetableFormLocal({ session_mode: 'offline', start_date: '', end_date: '', days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: '', educator_id: '' });
-      }
+      const list = res.data.timetables || (res.data.timetable ? [res.data.timetable] : []);
+      setAllSchoolTimetables(list);
+      _hydrateTimetableForm(list[0] || null);
     } catch {
       toast.error('Could not load timetable');
+      setAllSchoolTimetables([]);
+      _hydrateTimetableForm(null);
     } finally {
       setStandaloneTimetableLoading(false);
     }
     setShowStandaloneTimetableModal(school);
+  };
+
+  const switchTimetable = (timetableId) => {
+    const t = allSchoolTimetables.find(x => x.id === timetableId);
+    _hydrateTimetableForm(t || null);
+  };
+
+  const startNewTimetable = () => {
+    _hydrateTimetableForm(null);
+  };
+
+  const duplicateCurrentTimetable = () => {
+    // Keep all form fields except educator_id; new save will create a new record
+    setActiveTimetableId(null);
+    setTimetableFormLocal(p => ({ ...p, educator_id: '' }));
+    toast.success('Form duplicated — pick a different educator and save');
+  };
+
+  const deleteTimetable = async (timetableId) => {
+    if (!showStandaloneTimetableModal) return;
+    if (!window.confirm('Remove this timetable from the school?')) return;
+    try {
+      await axios.delete(`${API}/schools/${showStandaloneTimetableModal.id}/timetable/${timetableId}`, { headers: getAuthHeaders() });
+      toast.success('Timetable removed');
+      const next = allSchoolTimetables.filter(t => t.id !== timetableId);
+      setAllSchoolTimetables(next);
+      if (activeTimetableId === timetableId) _hydrateTimetableForm(next[0] || null);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not delete');
+    }
   };
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -12906,11 +12957,41 @@ ${FOOTER}</div></body></html>`
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-6">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-slate-800">Edit Timetable</h3>
+                <h3 className="font-semibold text-slate-800">{activeTimetableId ? 'Edit Timetable' : 'New Timetable'}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">{showStandaloneTimetableModal.school_name}</p>
               </div>
               <button onClick={() => setShowStandaloneTimetableModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
+
+            {/* Existing timetables tab bar — lets admin switch between multiple educators */}
+            {allSchoolTimetables.length > 0 && (
+              <div className="px-5 py-2.5 border-b bg-slate-50 flex items-center gap-2 flex-wrap" data-testid="timetable-tabs">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Timetables:</span>
+                {allSchoolTimetables.map((t, idx) => {
+                  const edu = checkinEducators.find(e => e.id === t.educator_id);
+                  const label = edu?.full_name || edu?.email || `Educator ${idx + 1}`;
+                  const isActive = activeTimetableId === t.id;
+                  return (
+                    <div key={t.id} className={`group inline-flex items-center gap-1 rounded-full text-xs border ${isActive ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'}`}>
+                      <button onClick={() => switchTimetable(t.id)} className="pl-3 pr-1.5 py-1 font-medium" data-testid={`timetable-tab-${idx}`}>
+                        {label}
+                      </button>
+                      <button onClick={() => deleteTimetable(t.id)} className={`pr-2 py-1 ${isActive ? 'text-white/80 hover:text-white' : 'text-slate-300 hover:text-rose-500'}`} title="Remove" data-testid={`timetable-delete-${idx}`}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+                <button onClick={startNewTimetable} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border-2 border-dashed ${!activeTimetableId ? 'border-indigo-500 text-indigo-700 bg-indigo-50' : 'border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600'}`} data-testid="timetable-new">
+                  + Add another
+                </button>
+                {activeTimetableId && (
+                  <button onClick={duplicateCurrentTimetable} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-slate-600 hover:text-indigo-700 border border-slate-200 hover:border-indigo-300 bg-white" data-testid="timetable-duplicate">
+                    Duplicate
+                  </button>
+                )}
+              </div>
+            )}
 
             {standaloneTimetableLoading ? (
               <div className="flex items-center justify-center py-12 text-slate-400 text-sm">Loading timetable...</div>
@@ -13042,8 +13123,9 @@ ${FOOTER}</div></body></html>`
               <button
                 disabled={savingTimetable}
                 onClick={() => saveTimetableToCheckin(showStandaloneTimetableModal.id)}
-                className="text-xs px-4 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-                {savingTimetable ? 'Saving...' : 'Update Timetable'}
+                className="text-xs px-4 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                data-testid="timetable-save">
+                {savingTimetable ? 'Saving...' : (activeTimetableId ? 'Update Timetable' : 'Create Timetable')}
               </button>
             </div>
           </div>

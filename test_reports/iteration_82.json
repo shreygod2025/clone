@@ -1,0 +1,40 @@
+{
+  "summary": "Iter 82 — Multi-timetable backend + BulkEmailModal token-key bug verified. 7/7 pytest cases PASS (creates two distinct timetables via real Supabase checkin API, verifies array append, explicit-id update does NOT create new, GET returns 'timetables' array with both, DELETE pulls id from checkin_timetable_ids and clears legacy field, BulkEmailModal source uses 'oll_token' key matching the AdminLogin setter). Live UI smoke check: admin login works and writes localStorage.oll_token (len=153) → BulkEmailModal's getAuthHeaders() WILL find the token, so the 'session expired' logout bug is fixed at the source. Standalone Timetable modal UI (data-testids: timetable-tabs/tab-N/delete-N/new/duplicate/save) is wired correctly per code review at /app/frontend/src/pages/admin/AdminSchoolCRM.jsx lines 12968-13127, but the modal is only reachable from card menus in 'Active Schools' (2) or 'Converted' (11) tabs — main agent can self-verify by clicking such a card's menu → 'Edit Timetable' or 'Manage Sessions'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/schools/{id}/timetable", "issue": "On update path (with timetable_id) the route still adds 'legacy_id' into the ids array if it wasn't there — safe, but a no-op DB write happens on every update. Cosmetic only."},
+      {"endpoint": "DELETE /api/schools/{id}/timetable/{tid}", "issue": "Remote checkin API delete is best-effort (try/except swallow). If the remote PUT is_active=false fails, the local school record still drops the id — could leave orphaned remote timetables. Acceptable for now per inline comment, but worth logging the swallowed exception."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter82_multi_timetable.py",
+    "/app/test_reports/pytest/iter82_multi_timetable.xml"
+  ],
+  "action_items": [
+    "Optional: main agent can manually open School CRM → Active Schools or Converted → card menu → Edit Timetable / Manage Sessions, then verify the tab bar (data-testid='timetable-tabs') renders existing timetables, '+ Add another' resets form, 'Duplicate' clears educator, X on tab deletes via DELETE API.",
+    "Optional minor: log swallowed exceptions in delete_timetable's best-effort remote PUT (currently silent except Exception: pass)."
+  ],
+  "critical_code_review_comments": [
+    "checkin_api.py:127-137 — correctly preserves legacy 'checkin_timetable_id' and migrates it into the 'checkin_timetable_ids' array; backward compatible.",
+    "checkin_api.py:115-122 — clean branch on explicit_id; update returns same id, create extracts new id from data.id.",
+    "checkin_api.py:155-158 — $pull plus conditional $set on legacy field; idempotent and DB-safe.",
+    "BulkEmailModal.jsx:15 — getAuthHeaders uses 'oll_token' (matches LoginPage setter). Regression test test_bulk_email_modal_uses_correct_token_key locks this in.",
+    "AdminSchoolCRM.jsx — all required data-testids present (timetable-tabs, timetable-tab-N, timetable-delete-N, timetable-new, timetable-duplicate, timetable-save). Switch/duplicate/delete handlers wired."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter82_multi_timetable.py (new)"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "Code review + token-key live verification only — modal UI walkthrough requires Active/Converted school to reach the card menu"},
+  "test_credentials": "admin@oll.co / Dagaji03@ (from /app/memory/test_credentials.md) — works.",
+  "seed_data_creation": "Test creates 2 timetables on the first school_inquiry in DB (e.g. Public Form Test School) via real Supabase checkin API, then DELETEs them and restores the school's original checkin_timetable_id(s) in autouse module-scoped cleanup fixture.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests in /app/backend/tests/test_iter82_multi_timetable.py hit the real external Supabase checkin API — if that API is down all create/update/delete/get tests will fail with 5xx. The BulkEmailModal static checks (test_bulk_email_modal_uses_correct_token_key, test_login_page_sets_oll_token_key) are file-content asserts and run offline. UI walkthrough of the standalone timetable modal requires clicking a card menu on the 'Active Schools' or 'Converted' tab in /admin/schools (Leads & Schools view). New-Leads cards do NOT show the Edit Timetable option.",
+  "rca of the issue": "Bug RCA: BulkEmailModal previously read localStorage.getItem('token') but AdminLogin sets 'oll_token'. axios then sent Authorization: Bearer null → backend 401 → frontend interceptor logged user out (session expired). Fix: change to localStorage.getItem('oll_token') in /app/frontend/src/components/BulkEmailModal.jsx:15. Verified in source + by checking localStorage state after live admin login."
+}

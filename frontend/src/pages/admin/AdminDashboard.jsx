@@ -546,7 +546,7 @@ const AdminDashboard = () => {
                   <button 
                     onClick={async () => {
                       try {
-                        const token = localStorage.getItem('token');
+                        const token = localStorage.getItem('oll_token');
                         const res = await fetch(API + '/admin/migrate-files', {
                           method: 'POST',
                           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
@@ -572,7 +572,7 @@ const AdminDashboard = () => {
                   <button 
                     onClick={async () => {
                       try {
-                        const token = localStorage.getItem('token');
+                        const token = localStorage.getItem('oll_token');
                         const res = await fetch(API + '/admin/migrate-files-to-cloudinary', {
                           method: 'POST',
                           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
