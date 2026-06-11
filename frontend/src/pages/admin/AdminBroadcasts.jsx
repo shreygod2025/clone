@@ -61,22 +61,21 @@ const STATUS_COLORS = {
 };
 
 export default function AdminBroadcasts() {
-  const { token } = useAuth();
+  const { getAuthHeaders } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showComposer, setShowComposer] = useState(false);
   const [selected, setSelected] = useState(null);
-  const headers = { Authorization: `Bearer ${token}` };
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axios.get(`${API}/admin/broadcasts`, { headers });
+      const r = await axios.get(`${API}/admin/broadcasts`, { headers: getAuthHeaders() });
       setCampaigns(r.data.campaigns || []);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed to load');
     } finally { setLoading(false); }
-  }, [token]); // eslint-disable-line
+  }, [getAuthHeaders]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -153,7 +152,7 @@ export default function AdminBroadcasts() {
         <CampaignComposer
           onClose={() => setShowComposer(false)}
           onSent={() => { setShowComposer(false); load(); }}
-          headers={headers}
+          getAuthHeaders={getAuthHeaders}
         />
       )}
 
@@ -162,7 +161,7 @@ export default function AdminBroadcasts() {
           campaignId={selected}
           onClose={() => setSelected(null)}
           onChanged={load}
-          headers={headers}
+          getAuthHeaders={getAuthHeaders}
         />
       )}
     </AdminLayout>
@@ -172,7 +171,7 @@ export default function AdminBroadcasts() {
 // ─────────────────────────────────────────────────────────────
 // Campaign Composer (modal wizard)
 // ─────────────────────────────────────────────────────────────
-const CampaignComposer = ({ onClose, onSent, headers }) => {
+const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: '', subject: '', html: STARTER_TEMPLATES[0].html,
@@ -191,7 +190,7 @@ const CampaignComposer = ({ onClose, onSent, headers }) => {
       if (form.course) params.set('course', form.course);
       if (form.city) params.set('city', form.city);
       if (form.grade) params.set('grade', form.grade);
-      const r = await axios.get(`${API}/admin/broadcasts/audience/preview?${params}`, { headers });
+      const r = await axios.get(`${API}/admin/broadcasts/audience/preview?${params}`, { headers: getAuthHeaders() });
       setPreview({ ...r.data, loading: false });
     } catch (e) {
       toast.error('Preview failed: ' + (e.response?.data?.detail || e.message));
@@ -213,10 +212,10 @@ const CampaignComposer = ({ onClose, onSent, headers }) => {
       const created = await axios.post(`${API}/admin/broadcasts`, {
         name: form.name, subject: form.subject, html: form.html,
         filters: { source: form.source, course: form.course || null, city: form.city || null, grade: form.grade || null },
-      }, { headers });
+      }, { headers: getAuthHeaders() });
       const id = created.data.id;
       const payload = form.schedule_type === 'now' ? {} : { scheduled_at: form.schedule_dt };
-      const r = await axios.post(`${API}/admin/broadcasts/${id}/send`, payload, { headers });
+      const r = await axios.post(`${API}/admin/broadcasts/${id}/send`, payload, { headers: getAuthHeaders() });
       toast.success(r.data.status === 'scheduled' ? `Scheduled for ${form.schedule_dt}` : `Sending to ${preview.count} contacts…`);
       onSent();
     } catch (e) {
@@ -389,25 +388,25 @@ const CampaignComposer = ({ onClose, onSent, headers }) => {
 // ─────────────────────────────────────────────────────────────
 // Campaign Detail (analytics)
 // ─────────────────────────────────────────────────────────────
-const CampaignDetail = ({ campaignId, onClose, onChanged, headers }) => {
+const CampaignDetail = ({ campaignId, onClose, onChanged, getAuthHeaders }) => {
   const [camp, setCamp] = useState(null);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axios.get(`${API}/admin/broadcasts/${campaignId}`, { headers });
+      const r = await axios.get(`${API}/admin/broadcasts/${campaignId}`, { headers: getAuthHeaders() });
       setCamp(r.data);
     } catch (e) {
       toast.error('Load failed');
     } finally { setLoading(false); }
-  }, [campaignId]); // eslint-disable-line
+  }, [campaignId, getAuthHeaders]);
 
   useEffect(() => { load(); }, [load]);
 
   const remove = async () => {
     if (!window.confirm('Delete this campaign?')) return;
     try {
-      await axios.delete(`${API}/admin/broadcasts/${campaignId}`, { headers });
+      await axios.delete(`${API}/admin/broadcasts/${campaignId}`, { headers: getAuthHeaders() });
       toast.success('Deleted');
       onChanged();
       onClose();
