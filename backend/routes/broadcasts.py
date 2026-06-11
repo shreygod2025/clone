@@ -463,6 +463,11 @@ async def send_campaign(campaign_id: str, payload: CampaignSend, user: dict = De
     if camp.get("status") not in ("draft", "scheduled", "failed"):
         raise HTTPException(status_code=400, detail=f"Cannot send a campaign in status '{camp.get('status')}'")
 
+    # Pre-flight: audience must be non-empty
+    audience = await _build_audience(camp.get("filters") or {})
+    if not audience:
+        raise HTTPException(status_code=400, detail="Audience is empty — no paid users match these filters")
+
     if payload.scheduled_at:
         # Persist schedule; the daily scheduler tick will pick it up.
         await db.broadcast_campaigns.update_one(
