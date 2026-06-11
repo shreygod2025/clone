@@ -650,20 +650,41 @@ def build_consolidated_email(support_d, b2c_d, gp_d, team_d, educator_d, account
 # ─────────────────────────────────────────────
 
 async def _send(subject: str, html: str, api_key: str, recipients=None):
-    """Send to all (or specified) report recipients via Resend."""
+    """Send to all (or specified) report recipients via Resend.
+
+    Each attempt is recorded in `daily_report_sends` so the admin UI can
+    surface delivery status without needing access to server logs.
+    """
     resend.api_key = api_key
     targets = recipients if recipients is not None else REPORT_RECIPIENTS
     for recipient in targets:
+        ok = True
+        err_msg = None
+        resend_id = None
         try:
-            await asyncio.to_thread(resend.Emails.send, {
+            res = await asyncio.to_thread(resend.Emails.send, {
                 "from": REPORT_FROM,
                 "to": recipient,
                 "subject": subject,
                 "html": html,
             })
+            resend_id = (res or {}).get("id") if isinstance(res, dict) else None
             logger.info(f"[DailyReport] Sent '{subject}' to {recipient}")
         except Exception as e:
+            ok = False
+            err_msg = str(e)
             logger.error(f"[DailyReport] Failed to send to {recipient}: {e}")
+        try:
+            await db.daily_report_sends.insert_one({
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "subject": subject,
+                "recipient": recipient,
+                "status": "sent" if ok else "failed",
+                "resend_id": resend_id,
+                "error": err_msg,
+            })
+        except Exception as e:
+            logger.warning(f"[DailyReport] Could not record send-log: {e}")
         await asyncio.sleep(0.3)  # Avoid Resend rate limit (5 req/s)
 
 
@@ -947,6 +968,27 @@ def build_b2b_email(d, date_str):
 # ─────────────────────────────────────────────
 # Manual Trigger API
 # ─────────────────────────────────────────────
+
+@router.get("/admin/daily-report/status")
+async def daily_report_status(user: dict = Depends(get_current_user)):
+    """Returns config + recent delivery history so admins can self-diagnose
+    whether the daily report scheduler/Resend pipeline is healthy.
+    """
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    api_key = await get_resend_api_key()
+    locks = await db.daily_report_locks.find({}, {"_id": 0}).sort("date", -1).limit(14).to_list(14)
+    sends = await db.daily_report_sends.find({}, {"_id": 0}).sort("sent_at", -1).limit(60).to_list(60)
+    return {
+        "recipients": REPORT_RECIPIENTS,
+        "from_address": REPORT_FROM,
+        "scheduled_at_ist": "8:00 PM IST daily",
+        "resend_api_key_configured": bool(api_key),
+        "resend_api_key_preview": (api_key[:6] + "…" + api_key[-3:]) if api_key else None,
+        "recent_locks": locks,
+        "recent_sends": sends,
+    }
+
 
 @router.post("/admin/daily-report/send-now")
 async def trigger_daily_report(payload: dict = None, user: dict = Depends(get_current_user)):

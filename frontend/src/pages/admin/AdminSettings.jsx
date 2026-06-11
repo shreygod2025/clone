@@ -589,6 +589,7 @@ const AdminSettings = () => {
   const tabs = [
     { id: 'api-keys', label: 'API Keys', icon: Key, count: apiKeys.length },
     { id: 'system', label: 'System', icon: Database, count: null },
+    { id: 'daily-report', label: 'Daily Report', icon: Mail, count: null },
     { id: 'case-studies', label: 'School Case Studies', icon: Video, count: caseStudies.length },
     { id: 'team-requirements', label: 'Team Openings', icon: Briefcase, count: teamRequirements.length },
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
@@ -651,7 +652,7 @@ const AdminSettings = () => {
         </div>
 
         {/* Search & Add */}
-        {activeTab !== 'system' && (
+        {activeTab !== 'system' && activeTab !== 'daily-report' && (
         <div className="flex gap-4 items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -662,7 +663,7 @@ const AdminSettings = () => {
               className="pl-10"
             />
           </div>
-          {activeTab !== 'api-keys' ? (
+          {activeTab !== 'api-keys' && activeTab !== 'daily-report' ? (
             <Button
               onClick={() => {
                 setEditingItem(null);
@@ -1408,6 +1409,11 @@ const AdminSettings = () => {
               )}
             </div>
           </div>
+        )}
+
+        {/* Daily Report Tab */}
+        {activeTab === 'daily-report' && (
+          <DailyReportPanel getAuthHeaders={getAuthHeaders} />
         )}
 
         {/* Case Studies Tab */}
@@ -2309,3 +2315,190 @@ const AdminSettings = () => {
 };
 
 export default AdminSettings;
+
+
+// ─────────────────────────────────────────────
+// Daily Report admin panel — self-service diagnostics + manual triggers
+// ─────────────────────────────────────────────
+const DailyReportPanel = ({ getAuthHeaders }) => {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [customEmail, setCustomEmail] = useState('');
+
+  const loadStatus = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/daily-report/status`, { headers: getAuthHeaders() });
+      setStatus(res.data);
+    } catch (e) {
+      toast.error('Failed to load status: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const triggerSend = async (recipients = null) => {
+    setSending(true);
+    try {
+      const body = { force: true };
+      if (recipients) body.recipients = recipients;
+      const res = await axios.post(`${API}/admin/daily-report/send-now`, body, { headers: getAuthHeaders() });
+      toast.success(res.data.message || 'Queued.');
+      // Wait a beat for the async send + DB write, then refresh
+      setTimeout(loadStatus, 4000);
+    } catch (e) {
+      toast.error('Send failed: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading && !status) {
+    return <div className="bg-white rounded-xl p-8 text-center text-slate-500">Loading…</div>;
+  }
+  if (!status) return null;
+
+  return (
+    <div className="space-y-6" data-testid="daily-report-panel">
+      {/* Config card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Daily Briefing Email</h3>
+            <p className="text-sm text-slate-500">Auto-sent at <strong>{status.scheduled_at_ist}</strong> from <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{status.from_address}</code></p>
+          </div>
+          <button
+            onClick={loadStatus}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium"
+            data-testid="daily-report-refresh"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </div>
+
+        <div className="mt-5 grid sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Recipients</p>
+            <ul className="space-y-1">
+              {status.recipients.map(r => (
+                <li key={r} className="flex items-center gap-2 text-sm text-slate-700">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <code className="bg-slate-50 px-2 py-0.5 rounded">{r}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Resend API key</p>
+            {status.resend_api_key_configured ? (
+              <div className="inline-flex items-center gap-2 text-sm text-emerald-700">
+                <CheckCircle className="w-4 h-4" />
+                Configured <code className="bg-emerald-50 px-2 py-0.5 rounded text-xs">{status.resend_api_key_preview}</code>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 text-sm text-rose-700">
+                <X className="w-4 h-4" /> Not configured — emails will fail
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Button
+            onClick={() => triggerSend()}
+            disabled={sending}
+            className="bg-[#1E3A5F] hover:bg-[#152a47] text-white"
+            data-testid="daily-report-send-all"
+          >
+            {sending ? 'Sending…' : 'Send Today\'s Report Now (all recipients)'}
+          </Button>
+          <div className="flex items-center gap-2">
+            <Input
+              value={customEmail}
+              onChange={(e) => setCustomEmail(e.target.value)}
+              placeholder="test@example.com"
+              className="w-64"
+              data-testid="daily-report-custom-email"
+            />
+            <Button
+              variant="outline"
+              disabled={sending || !customEmail.includes('@')}
+              onClick={() => triggerSend([customEmail.trim()])}
+              data-testid="daily-report-send-test"
+            >
+              Test send
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent sends */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-1">Recent send attempts</h3>
+        <p className="text-sm text-slate-500 mb-4">Last 60 attempts — including auto-scheduled runs and manual tests.</p>
+        {status.recent_sends.length === 0 ? (
+          <div className="text-sm text-slate-500 py-8 text-center bg-slate-50 rounded-lg">
+            No send attempts recorded yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-slate-500 uppercase tracking-wide">
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 pr-3">Sent at (UTC)</th>
+                  <th className="text-left py-2 pr-3">Recipient</th>
+                  <th className="text-left py-2 pr-3">Subject</th>
+                  <th className="text-left py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {status.recent_sends.map((s, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 text-slate-700 whitespace-nowrap">{(s.sent_at || '').replace('T', ' ').slice(0, 19)}</td>
+                    <td className="py-2 pr-3"><code className="text-xs">{s.recipient}</code></td>
+                    <td className="py-2 pr-3 text-slate-700">{s.subject}</td>
+                    <td className="py-2">
+                      {s.status === 'sent' ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-semibold">
+                          <CheckCircle className="w-3.5 h-3.5" /> Sent
+                        </span>
+                      ) : (
+                        <span className="text-rose-700 text-xs font-semibold" title={s.error || ''}>
+                          Failed: {(s.error || '').slice(0, 60)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Recent locks */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-1">Recent scheduler locks</h3>
+        <p className="text-sm text-slate-500 mb-4">A lock is created every time the 8 PM IST cron actually fires. Missing dates → scheduler skipped that day (likely pod restart).</p>
+        {status.recent_locks.length === 0 ? (
+          <div className="text-sm text-slate-500 py-8 text-center bg-slate-50 rounded-lg">
+            No scheduler runs recorded yet.
+          </div>
+        ) : (
+          <ul className="grid sm:grid-cols-2 gap-2">
+            {status.recent_locks.map(l => (
+              <li key={l.date} className="text-sm flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span className="font-mono">{l.date}</span>
+                <span className="text-xs text-slate-400">@ {l.locked_at?.slice(11, 19)} UTC</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
