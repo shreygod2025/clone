@@ -979,6 +979,7 @@ async def daily_report_status(user: dict = Depends(get_current_user)):
     api_key = await get_resend_api_key()
     locks = await db.daily_report_locks.find({}, {"_id": 0}).sort("date", -1).limit(14).to_list(14)
     sends = await db.daily_report_sends.find({}, {"_id": 0}).sort("sent_at", -1).limit(60).to_list(60)
+    receipt_sends = await db.receipt_email_sends.find({}, {"_id": 0}).sort("sent_at", -1).limit(60).to_list(60)
     return {
         "recipients": REPORT_RECIPIENTS,
         "from_address": REPORT_FROM,
@@ -987,6 +988,7 @@ async def daily_report_status(user: dict = Depends(get_current_user)):
         "resend_api_key_preview": (api_key[:6] + "…" + api_key[-3:]) if api_key else None,
         "recent_locks": locks,
         "recent_sends": sends,
+        "recent_receipt_sends": receipt_sends,
     }
 
 

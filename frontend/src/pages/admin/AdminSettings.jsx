@@ -2479,6 +2479,55 @@ const DailyReportPanel = ({ getAuthHeaders }) => {
         )}
       </div>
 
+      {/* Recent receipt sends */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-1">Recent payment receipt emails</h3>
+        <p className="text-sm text-slate-500 mb-4">Last 60 receipts auto-sent to parents after a successful school payment. <strong>Failures here = parents not receiving receipts.</strong></p>
+        {(!status.recent_receipt_sends || status.recent_receipt_sends.length === 0) ? (
+          <div className="text-sm text-slate-500 py-8 text-center bg-slate-50 rounded-lg">
+            No receipt emails recorded yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-slate-500 uppercase tracking-wide">
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 pr-3">Sent at (UTC)</th>
+                  <th className="text-left py-2 pr-3">Student → Email</th>
+                  <th className="text-left py-2 pr-3">School / Amount</th>
+                  <th className="text-left py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {status.recent_receipt_sends.map((s, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 text-slate-700 whitespace-nowrap">{(s.sent_at || '').replace('T', ' ').slice(0, 19)}</td>
+                    <td className="py-2 pr-3 text-slate-700">
+                      <div className="font-medium">{s.student_name || '—'}</div>
+                      <code className="text-xs text-slate-500">{s.recipient}</code>
+                    </td>
+                    <td className="py-2 pr-3 text-slate-700">
+                      {s.school_name || '—'}{s.amount ? ` · ₹${s.amount}` : ''}
+                    </td>
+                    <td className="py-2">
+                      {s.status === 'sent' ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-semibold">
+                          <CheckCircle className="w-3.5 h-3.5" /> Sent
+                        </span>
+                      ) : (
+                        <span className="text-rose-700 text-xs font-semibold" title={s.error || ''}>
+                          Failed: {(s.error || '').slice(0, 80)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Recent locks */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h3 className="text-lg font-bold text-slate-900 mb-1">Recent scheduler locks</h3>

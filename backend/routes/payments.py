@@ -193,18 +193,33 @@ def _build_receipt_html(student_name: str, school_name: str, grade: str, divisio
 </html>"""
 
 
-async def send_school_student_receipt_email(payment: dict) -> bool:
-    """Send a payment receipt email to the school student. Returns True on success."""
-    student_email = payment.get("student_email") or payment.get("email")
+async def send_school_student_receipt_email(payment: dict, override_email: Optional[str] = None) -> bool:
+    """Send a payment receipt email to the school student. Returns True on success.
+
+    Reads the Resend key from DB first (Admin → API Keys), then falls back to env —
+    matching the rest of the codebase (educators, orders, daily reports). Each attempt
+    is recorded in `receipt_email_sends` for admin auditing.
+    """
+    student_email = override_email or payment.get("student_email") or payment.get("email")
     if not student_email:
         logging.info(f"[RECEIPT_EMAIL] No email for order {payment.get('id')} — skipping")
         return False
 
-    resend_api_key = os.environ.get("RESEND_API_KEY", "")
+    # Use the DB-aware helper so receipts work even when only the DB key is set
+    from .admin_keys import get_resend_api_key
+    resend_api_key = await get_resend_api_key()
     if not resend_api_key:
-        logging.warning("[RECEIPT_EMAIL] RESEND_API_KEY not configured — skipping email")
+        logging.warning("[RECEIPT_EMAIL] Resend API key not configured (DB + env both empty) — skipping email")
+        await db.receipt_email_sends.insert_one({
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "order_id": payment.get("id"),
+            "recipient": student_email,
+            "status": "failed",
+            "error": "Resend API key not configured",
+        })
         return False
 
+    error_msg = None
     try:
         resend.api_key = resend_api_key
         html = _build_receipt_html(
@@ -223,11 +238,37 @@ async def send_school_student_receipt_email(payment: dict) -> bool:
             "subject": f"Payment Confirmed – {payment.get('school_name', 'School')} | OLL",
             "html": html
         }
-        await asyncio.to_thread(resend.Emails.send, params)
+        res = await asyncio.to_thread(resend.Emails.send, params)
+        resend_id = (res or {}).get("id") if isinstance(res, dict) else None
         logging.info(f"[RECEIPT_EMAIL] Receipt sent to {student_email} for order {payment.get('id')}")
+        await db.receipt_email_sends.insert_one({
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "order_id": payment.get("id"),
+            "recipient": student_email,
+            "student_name": payment.get("student_name"),
+            "school_name": payment.get("school_name"),
+            "amount": payment.get("amount"),
+            "status": "sent",
+            "resend_id": resend_id,
+            "error": None,
+        })
         return True
     except Exception as e:
+        error_msg = str(e)
         logging.error(f"[RECEIPT_EMAIL] Failed to send receipt to {student_email}: {e}")
+        try:
+            await db.receipt_email_sends.insert_one({
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "order_id": payment.get("id"),
+                "recipient": student_email,
+                "student_name": payment.get("student_name"),
+                "school_name": payment.get("school_name"),
+                "amount": payment.get("amount"),
+                "status": "failed",
+                "error": error_msg,
+            })
+        except Exception:
+            pass
         return False
 
 
