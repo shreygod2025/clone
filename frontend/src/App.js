@@ -114,6 +114,8 @@ const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTrack
 const AdminAIChat = lazy(() => import("./pages/admin/AdminAIChat"));
 const AdminAiFoundations = lazy(() => import("./pages/admin/AdminAiFoundations"));
 const AdminFutureSkills = lazy(() => import("./pages/admin/AdminFutureSkills"));
+const AdminBroadcasts = lazy(() => import("./pages/admin/AdminBroadcasts"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -269,6 +271,8 @@ function App() {
               <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
               <Route path="/admin/ai-foundations" element={<ProtectedRoute><AdminAiFoundations /></ProtectedRoute>} />
               <Route path="/admin/future-skills" element={<ProtectedRoute><AdminFutureSkills /></ProtectedRoute>} />
+              <Route path="/admin/broadcasts" element={<ProtectedRoute><AdminBroadcasts /></ProtectedRoute>} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
               {/* 404 Not Found - Must be last */}

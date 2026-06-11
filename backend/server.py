@@ -4055,6 +4055,7 @@ from routes.support import router as support_router
 from routes.schools import router as schools_router
 from routes.orders import router as orders_router
 from routes.misc import router as misc_router
+from routes.broadcasts import router as broadcasts_router, process_scheduled_broadcasts
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4085,6 +4086,7 @@ api_router.include_router(support_router)
 api_router.include_router(schools_router)
 api_router.include_router(orders_router)
 api_router.include_router(misc_router)
+api_router.include_router(broadcasts_router)
 
 app.include_router(api_router)
 
@@ -4292,6 +4294,17 @@ async def startup_db_client():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1)
     )
     print("[STARTUP] Summer Camp follow-up WhatsApp scheduled — runs every 1 minute")
+
+    # Process scheduled bulk-email broadcasts — fires every minute, sends any due campaigns
+    scheduler.add_job(
+        process_scheduled_broadcasts,
+        trigger=IntervalTrigger(minutes=1),
+        id="scheduled_broadcasts_job",
+        name="Process Scheduled Broadcasts",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1)
+    )
+    print("[STARTUP] Scheduled broadcasts processor — runs every 1 minute")
 
     # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
     # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)
