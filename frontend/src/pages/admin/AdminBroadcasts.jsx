@@ -186,6 +186,8 @@ const SOURCES = [
   // ── School-paid students (parents who paid online for kids) ──
   { group: 'Students', type: 'school_payers', label: 'School students paid online',
     schoolPicker: true },
+  { group: 'Students', type: 'csv_import', label: 'Import emails from CSV',
+    csvImport: true },
   // ── Send to SCHOOLS ──
   { group: 'Schools', type: 'school_contacts', label: 'School contacts (principals, owners, etc.)',
     stages: ['new', 'meeting_done', 'converted', 'active', 'renewal_meeting', 'renewed'],
@@ -273,6 +275,51 @@ const AudienceSourceCard = ({ source, value, onChange, schoolList }) => {
           )}
 
           {/* No additional filters at the moment — keep card simple */}
+          {/* CSV upload */}
+          {source.csvImport && (
+            <div>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const text = String(reader.result || '');
+                    const lines = text.split(/\r?\n/).filter(l => l.trim());
+                    if (lines.length === 0) return;
+                    // Detect header — if first line has "email" word
+                    let startIdx = 0;
+                    const header = lines[0].toLowerCase();
+                    const headerCells = header.split(',').map(s => s.trim());
+                    const emailIdx = headerCells.findIndex(h => h.includes('email'));
+                    const nameIdx = headerCells.findIndex(h => h.includes('name'));
+                    if (emailIdx >= 0) startIdx = 1;
+                    const recipients = [];
+                    for (let i = startIdx; i < lines.length; i++) {
+                      const cells = lines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+                      const email = emailIdx >= 0 ? cells[emailIdx] : cells[0];
+                      const name = nameIdx >= 0 ? cells[nameIdx] : cells[1] || '';
+                      if (email && email.includes('@')) {
+                        recipients.push({ email: email.toLowerCase(), first_name: name.split(' ')[0] || '', name });
+                      }
+                    }
+                    onChange({ ...value, recipients, _filename: file.name });
+                  };
+                  reader.readAsText(file);
+                }}
+                className="text-xs"
+                data-testid={`source-${source.type}-file`}
+              />
+              {value._filename && (
+                <p className="text-xs text-emerald-700 mt-1">
+                  📄 <strong>{value._filename}</strong> — {(value.recipients || []).length} rows imported
+                </p>
+              )}
+              <p className="text-[10px] text-slate-500 mt-1">Accepts <code>email,name</code> CSV. First row may be header.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -295,6 +342,7 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
   const [preview, setPreview] = useState({ count: null, by_source: {}, sample: [], loading: false });
   const [recipients, setRecipients] = useState({ items: [], total: 0, loading: false });
   const [showRecipients, setShowRecipients] = useState(false);
+  const [verification, setVerification] = useState({ loading: false, result: null });
   const [schoolList, setSchoolList] = useState([]);
   const [sending, setSending] = useState(false);
 
@@ -310,6 +358,7 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
       if (src.stages && (v.stages || []).length) g.stages = v.stages;
       if (src.roles && (v.roles || []).length) g.roles = v.roles;
       if (src.schoolPicker) g.schools = v.schools || ['all'];
+      if (src.csvImport)    g.recipients = v.recipients || [];
       groups.push(g);
     }
     return groups;
@@ -341,6 +390,17 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
     } catch (e) {
       toast.error('Failed to load recipients');
       setRecipients({ items: [], total: 0, loading: false });
+    }
+  };
+
+  const verifyAudience = async () => {
+    setVerification({ loading: true, result: null });
+    try {
+      const r = await axios.post(`${API}/admin/broadcasts/audience/verify`, { groups: buildGroups() }, { headers: getAuthHeaders() });
+      setVerification({ loading: false, result: r.data });
+    } catch (e) {
+      toast.error('Verify failed: ' + (e.response?.data?.detail || e.message));
+      setVerification({ loading: false, result: null });
     }
   };
 
@@ -482,9 +542,14 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
                       <span className="text-3xl font-bold text-emerald-700">{preview.count}</span>
                       <span className="text-sm text-emerald-700">unique contacts will receive this</span>
                       {preview.count > 0 && (
-                        <button onClick={loadRecipients} className="ml-auto text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline" data-testid="composer-view-recipients">
-                          View full list →
-                        </button>
+                        <div className="ml-auto flex gap-3">
+                          <button onClick={verifyAudience} disabled={verification.loading} className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 underline disabled:opacity-50" data-testid="composer-verify">
+                            {verification.loading ? 'Verifying…' : 'Verify emails →'}
+                          </button>
+                          <button onClick={loadRecipients} className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline" data-testid="composer-view-recipients">
+                            View full list →
+                          </button>
+                        </div>
                       )}
                     </div>
                     <div className="text-xs text-emerald-700/70 mt-1 flex flex-wrap gap-x-3">
@@ -492,6 +557,32 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
                         <span key={k}>{k}: <strong>{v}</strong></span>
                       ))}
                     </div>
+                    {verification.result && (
+                      <div className="mt-3 bg-white border border-indigo-200 rounded-lg p-3" data-testid="verify-result">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="text-xs text-slate-700">
+                            ✅ <strong>{verification.result.valid_count}</strong> valid ·
+                            ⚠️ <strong className="text-rose-700"> {verification.result.flagged_count}</strong> flagged
+                            {Object.keys(verification.result.flagged_by_reason || {}).length > 0 && (
+                              <span className="text-slate-500 ml-2">
+                                ({Object.entries(verification.result.flagged_by_reason).map(([k, v]) => `${k.replace('_', ' ')}: ${v}`).join(', ')})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {verification.result.flagged_sample?.length > 0 && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-xs text-slate-600">Show flagged emails</summary>
+                            <ul className="mt-1 max-h-32 overflow-y-auto text-xs text-slate-500 space-y-0.5">
+                              {verification.result.flagged_sample.map((f, i) => (
+                                <li key={i}><code>{f.email}</code> <span className="text-rose-600">— {f.reason.replace('_', ' ')}</span></li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">Flagged emails will be skipped automatically on send.</p>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

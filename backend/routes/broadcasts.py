@@ -314,7 +314,31 @@ GROUP_BUILDERS = {
     "internship":       _grp_internship,
     "school_payers":    _grp_school_payers,
     "school_contacts":  _grp_school_contacts,
+    "csv_import":       None,  # handled inline below — recipients list is passed directly in the group spec
 }
+
+
+async def _grp_csv_import(g: dict) -> List[dict]:
+    """CSV-imported recipients. The composer parses the file client-side and
+    passes the list of {email, first_name?, last_name?} as g['recipients']."""
+    rows = g.get("recipients") or []
+    out = []
+    for r in rows:
+        e = _norm_email(r.get("email") if isinstance(r, dict) else r)
+        if not e:
+            continue
+        fn = (r.get("first_name") or r.get("name") or "").split(" ")[0] if isinstance(r, dict) else ""
+        out.append({
+            "email": e,
+            "first_name": fn or "there",
+            "last_name": " ".join((r.get("name") or "").split(" ")[1:]) if isinstance(r, dict) else "",
+            "source": "csv_import",
+            "stage": "imported",
+        })
+    return out
+
+
+GROUP_BUILDERS["csv_import"] = _grp_csv_import
 
 
 def _legacy_to_groups(flat: dict) -> List[dict]:
@@ -356,8 +380,9 @@ async def _build_audience(filters: dict) -> List[dict]:
     seen: dict = {}
     for u in rows:
         e = u["email"]
-        # Skip @student.oll sample/demo emails created internally
-        if e.endswith("@student.oll") or e.endswith(".student.oll"):
+        # Skip any `.oll` test/demo domains (@student.oll, @inquiry.oll, etc.) —
+        # these are internal placeholders, not real recipients.
+        if e.endswith(".oll"):
             continue
         if e not in seen:
             seen[e] = u
@@ -383,6 +408,7 @@ class AudienceGroup(BaseModel):
     grade: Optional[str] = None
     standard: Optional[str] = None
     age_group: Optional[str] = None
+    recipients: Optional[List[dict]] = None  # csv_import payload
 
 
 class AudienceFilter(BaseModel):
@@ -580,6 +606,98 @@ async def send_sample(payload: SampleSend, user: dict = Depends(get_current_user
         raise HTTPException(status_code=500, detail=f"Send failed: {e}")
 
 
+# ────────────────────────────────────────────────────────────
+# In-house bounce verifier — runs syntactic, disposable-domain
+# and MX-record checks. Results cached in `email_verifications`
+# so we don't re-DNS every recipient on every preview.
+# ────────────────────────────────────────────────────────────
+import dns.resolver  # noqa: E402
+
+EMAIL_REGEX = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+
+DISPOSABLE_DOMAINS = {
+    "mailinator.com", "10minutemail.com", "guerrillamail.com", "yopmail.com",
+    "tempmail.com", "throwaway.email", "fakeinbox.com", "trashmail.com",
+    "getnada.com", "maildrop.cc", "sharklasers.com", "dispostable.com",
+    "tempr.email", "mohmal.com", "emailondeck.com",
+}
+
+
+async def _verify_email(email: str) -> dict:
+    """Return {valid, reason, domain} for a single email. Caches result for 30 days."""
+    email = (email or "").strip().lower()
+    if not EMAIL_REGEX.match(email):
+        return {"email": email, "valid": False, "reason": "invalid_syntax"}
+    domain = email.split("@", 1)[1]
+    if domain.endswith(".oll"):
+        return {"email": email, "valid": False, "reason": "internal_placeholder"}
+    if domain in DISPOSABLE_DOMAINS:
+        return {"email": email, "valid": False, "reason": "disposable"}
+
+    # Cache by domain (MX record per domain doesn't change often)
+    cached = await db.email_verifications.find_one({"domain": domain})
+    if cached:
+        ok = cached.get("has_mx", False)
+        if ok:
+            return {"email": email, "valid": True, "reason": "ok", "domain": domain}
+        return {"email": email, "valid": False, "reason": "no_mx_record", "domain": domain}
+
+    # MX lookup — synchronous; run in thread to avoid blocking
+    has_mx = False
+    try:
+        loop = asyncio.get_event_loop()
+        answers = await loop.run_in_executor(None, lambda: dns.resolver.resolve(domain, "MX", lifetime=4))
+        has_mx = len(list(answers)) > 0
+    except Exception:
+        has_mx = False
+
+    await db.email_verifications.update_one(
+        {"domain": domain},
+        {"$set": {"domain": domain, "has_mx": has_mx, "checked_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {
+        "email": email,
+        "valid": has_mx,
+        "reason": "ok" if has_mx else "no_mx_record",
+        "domain": domain,
+    }
+
+
+@router.post("/admin/broadcasts/audience/verify")
+async def verify_audience(payload: AudienceFilter = Body(...), user: dict = Depends(get_current_user)):
+    """Run the in-house bounce verifier against a built audience.
+    Returns: counts by reason + list of flagged emails (≤ 200 sample)."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    rows = await _build_audience(payload.model_dump(exclude_none=True))
+    valid: list = []
+    flagged: list = []
+    # Verify concurrently in small batches to honor DNS-resolver concurrency
+    sem = asyncio.Semaphore(20)
+
+    async def check(row):
+        async with sem:
+            r = await _verify_email(row["email"])
+            if r["valid"]:
+                valid.append(row["email"])
+            else:
+                flagged.append({"email": row["email"], "name": (row.get("first_name") or "") + " " + (row.get("last_name") or ""), "reason": r["reason"]})
+
+    await asyncio.gather(*[check(r) for r in rows])
+
+    reasons: dict = {}
+    for f in flagged:
+        reasons[f["reason"]] = reasons.get(f["reason"], 0) + 1
+    return {
+        "total": len(rows),
+        "valid_count": len(valid),
+        "flagged_count": len(flagged),
+        "flagged_by_reason": reasons,
+        "flagged_sample": flagged[:200],
+    }
+
+
 @router.get("/admin/broadcasts")
 async def list_campaigns(user: dict = Depends(get_current_user)):
     if user.get("role") not in ("admin", "super_admin"):
@@ -693,6 +811,32 @@ async def _send_campaign(campaign_id: str):
             {"$set": {"status": "failed", "error": "Audience is empty"}},
         )
         return
+
+    # In-house bounce verifier — drop syntactically invalid + disposable + no-MX
+    pre_count = len(audience)
+    verified: list = []
+    skipped: list = []
+    sem = asyncio.Semaphore(20)
+
+    async def _check(row):
+        async with sem:
+            r = await _verify_email(row["email"])
+            if r["valid"]:
+                verified.append(row)
+            else:
+                skipped.append({"email": row["email"], "reason": r["reason"]})
+
+    await asyncio.gather(*[_check(a) for a in audience])
+    audience = verified
+    if skipped:
+        logger.info(f"[Broadcast] {campaign_id}: bounce verifier dropped {len(skipped)} of {pre_count} (reasons: { {s['reason'] for s in skipped} })")
+        await db.broadcast_events.insert_one({
+            "campaign_id": campaign_id,
+            "event_type": "verifier_dropped",
+            "count": len(skipped),
+            "samples": skipped[:20],
+            "ts": datetime.now(timezone.utc).isoformat(),
+        })
 
     await db.broadcast_campaigns.update_one(
         {"id": campaign_id},
