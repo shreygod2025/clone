@@ -94,6 +94,12 @@ async def _grp_b2c_students(g: dict) -> List[dict]:
     for s in stages:
         statuses.extend(B2C_STAGE_MAP.get(s, [s]))
     q: dict = {"status": {"$in": list(set(statuses))}} if statuses else {}
+    if g.get("city"):
+        q["city"] = {"$regex": g["city"], "$options": "i"}
+    if g.get("age_group"):
+        q["age_group"] = {"$regex": g["age_group"], "$options": "i"}
+    if g.get("standard"):
+        q["standard"] = str(g["standard"])
     rows = await db.student_inquiries.find(q, {"_id": 0}).to_list(20000)
     out = []
     for r in rows:
@@ -108,6 +114,7 @@ async def _grp_b2c_students(g: dict) -> List[dict]:
             "stage": r.get("status"),
             "course": r.get("skill"),
             "city": r.get("city"),
+            "age_group": r.get("age_group"),
         })
     return out
 
@@ -120,6 +127,10 @@ async def _grp_summer_camp(g: dict) -> List[dict]:
         if m:
             or_clauses.append(m)
     q: dict = {"$or": or_clauses} if or_clauses else {}
+    if g.get("city"):
+        q["center_label"] = {"$regex": g["city"], "$options": "i"}
+    if g.get("age_group"):
+        q["age_group_label"] = {"$regex": g["age_group"], "$options": "i"}
     rows = await db.summer_camp_bookings.find(q, {"_id": 0}).to_list(20000)
     out = []
     for r in rows:
@@ -134,6 +145,7 @@ async def _grp_summer_camp(g: dict) -> List[dict]:
             "stage": "converted" if (r.get("payment_status") == "paid" or r.get("crm_status") == "converted") else "lead",
             "course": "Summer Camp",
             "city": r.get("center_label"),
+            "age_group": r.get("age_group_label"),
         })
     return out
 
@@ -142,6 +154,10 @@ async def _grp_ai_foundations(g: dict) -> List[dict]:
     stages = g.get("stages") or ["leads", "converted"]
     or_clauses: list = [AIF_STAGE_MAP[s] for s in stages if s in AIF_STAGE_MAP]
     q: dict = {"$or": or_clauses} if or_clauses else {}
+    if g.get("standard"):
+        q["student_grade"] = str(g["standard"])
+    if g.get("age_group"):
+        q["track_label"] = {"$regex": g["age_group"], "$options": "i"}
     rows = await db.ai_foundations_bookings.find(q, {"_id": 0}).to_list(20000)
     out = []
     for r in rows:
@@ -155,6 +171,8 @@ async def _grp_ai_foundations(g: dict) -> List[dict]:
             "source": "ai_foundations",
             "stage": "converted" if r.get("payment_status") == "paid" else "lead",
             "course": "AI Foundations",
+            "standard": r.get("student_grade"),
+            "age_group": r.get("track_label"),
         })
     return out
 
@@ -199,6 +217,10 @@ async def _grp_school_payers(g: dict) -> List[dict]:
         q["city"] = {"$regex": g["city"], "$options": "i"}
     if g.get("grade"):
         q["grade"] = str(g["grade"])
+    if g.get("standard"):
+        q["grade"] = str(g["standard"])
+    if g.get("age_group"):
+        q["age_group"] = {"$regex": g["age_group"], "$options": "i"}
     rows = await db.school_student_payments.find(q, {"_id": 0}).to_list(20000)
     out = []
     for r in rows:
@@ -230,6 +252,8 @@ async def _grp_school_contacts(g: dict) -> List[dict]:
     sq: dict = {}
     if stages and "all" not in stages:
         sq["status"] = {"$in": stages}
+    if g.get("city"):
+        sq["location"] = {"$regex": g["city"], "$options": "i"}
     schools = await db.school_inquiries.find(sq, {"_id": 0}).to_list(5000)
 
     out = []
@@ -336,6 +360,8 @@ class AudienceGroup(BaseModel):
     schools: Optional[List[str]] = None
     city: Optional[str] = None
     grade: Optional[str] = None
+    standard: Optional[str] = None
+    age_group: Optional[str] = None
 
 
 class AudienceFilter(BaseModel):
@@ -348,13 +374,29 @@ class AudienceFilter(BaseModel):
     school: Optional[str] = None
 
 
+class Attachment(BaseModel):
+    filename: str
+    content: str  # base64-encoded
+
+
 class CampaignCreate(BaseModel):
     name: str = Field(..., min_length=1)
     subject: str = Field(..., min_length=1)
     html: str = Field(..., min_length=1)
     filters: AudienceFilter
     from_address: Optional[str] = None
+    reply_to: Optional[str] = None
+    attachments: Optional[List[Attachment]] = None
     scheduled_at: Optional[str] = None
+
+
+class SampleSend(BaseModel):
+    recipient: EmailStr
+    subject: str
+    html: str
+    from_address: Optional[str] = None
+    reply_to: Optional[str] = None
+    attachments: Optional[List[Attachment]] = None
 
 
 class CampaignSend(BaseModel):
@@ -464,6 +506,57 @@ def _ensure_unsubscribe_footer(html: str) -> str:
 # Campaigns CRUD
 # ────────────────────────────────────────────────────────────
 
+@router.get("/admin/broadcasts/senders")
+async def list_senders(user: dict = Depends(get_current_user)):
+    """Verified sender addresses available for broadcasts. Add/remove via
+    BROADCAST_SENDERS env (comma-separated)."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    raw = os.environ.get(
+        "BROADCAST_SENDERS",
+        "OLL Marketing <marketing@oll.co>,"
+        "OLL Team <team@oll.co>,"
+        "OLL Skills <skills@oll.co>,"
+        "OLL Support <support@oll.co>",
+    )
+    senders = [s.strip() for s in raw.split(",") if s.strip()]
+    return {"senders": senders, "default": senders[0] if senders else BROADCAST_FROM}
+
+
+@router.post("/admin/broadcasts/send-sample")
+async def send_sample(payload: SampleSend, user: dict = Depends(get_current_user)):
+    """Send a single test email of the current draft to any email — used by the
+    composer's 'Send sample' button."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    api_key = await get_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Resend API key not configured")
+    resend.api_key = api_key
+    # Provide a fake recipient context so {{first_name}} etc. render in the preview
+    fake_contact = {"first_name": "Priya", "last_name": "Sharma", "course": "AI Foundations", "school": "OLL Demo School", "city": "Mumbai"}
+    backend_url = os.environ.get("BACKEND_PUBLIC_URL", "https://oll.co")
+    unsub_url = f"{backend_url}/unsubscribe?token=sample-preview"
+    html = _personalize(_ensure_unsubscribe_footer(payload.html), fake_contact, unsub_url)
+    subject = "[SAMPLE] " + _personalize(payload.subject, fake_contact, unsub_url)
+    email_params = {
+        "from": payload.from_address or BROADCAST_FROM,
+        "to": str(payload.recipient),
+        "subject": subject,
+        "html": html,
+        "headers": {"X-OLL-Sample": "true"},
+    }
+    if payload.reply_to:
+        email_params["reply_to"] = payload.reply_to
+    if payload.attachments:
+        email_params["attachments"] = [a.model_dump() for a in payload.attachments]
+    try:
+        res = await asyncio.to_thread(resend.Emails.send, email_params)
+        return {"ok": True, "resend_id": (res or {}).get("id") if isinstance(res, dict) else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Send failed: {e}")
+
+
 @router.get("/admin/broadcasts")
 async def list_campaigns(user: dict = Depends(get_current_user)):
     if user.get("role") not in ("admin", "super_admin"):
@@ -483,6 +576,8 @@ async def create_campaign(payload: CampaignCreate, user: dict = Depends(get_curr
         "html": _ensure_unsubscribe_footer(payload.html),
         "filters": payload.filters.model_dump(),
         "from_address": payload.from_address or BROADCAST_FROM,
+        "reply_to": payload.reply_to,
+        "attachments": [a.model_dump() for a in (payload.attachments or [])],
         "status": "draft",
         "scheduled_at": payload.scheduled_at,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -598,10 +693,10 @@ async def _send_campaign(campaign_id: str):
         personalized_html = _personalize(camp["html"], contact, unsub_url)
 
         try:
-            res = await asyncio.to_thread(resend.Emails.send, {
+            email_params = {
                 "from": camp.get("from_address") or BROADCAST_FROM,
                 "to": email,
-                "subject": camp["subject"],
+                "subject": _personalize(camp["subject"], contact, unsub_url),
                 "html": personalized_html,
                 "headers": {
                     "List-Unsubscribe": f"<{unsub_url}>",
@@ -611,7 +706,12 @@ async def _send_campaign(campaign_id: str):
                     {"name": "campaign_id", "value": campaign_id},
                     {"name": "source", "value": contact.get("source", "unknown")},
                 ],
-            })
+            }
+            if camp.get("reply_to"):
+                email_params["reply_to"] = camp["reply_to"]
+            if camp.get("attachments"):
+                email_params["attachments"] = camp["attachments"]
+            res = await asyncio.to_thread(resend.Emails.send, email_params)
             resend_id = (res or {}).get("id") if isinstance(res, dict) else None
             await db.broadcast_events.insert_one({
                 "campaign_id": campaign_id,

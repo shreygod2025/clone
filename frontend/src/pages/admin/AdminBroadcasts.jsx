@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import RichEmailEditor, { SubjectField } from '../../components/RichEmailEditor';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -174,22 +175,26 @@ export default function AdminBroadcasts() {
 const SOURCES = [
   // ── Send to STUDENTS ──
   { group: 'Students', type: 'b2c_students', label: 'B2C Students (Online learning)',
-    stages: ['leads', 'demo', 'converted'], stageLabels: { leads: 'Leads', demo: 'Demo stage', converted: 'Converted' } },
+    stages: ['leads', 'demo', 'converted'], stageLabels: { leads: 'Leads', demo: 'Demo stage', converted: 'Converted' },
+    hasCityAgeStandard: true },
   { group: 'Students', type: 'summer_camp', label: 'Summer Camp',
-    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' },
+    hasCityAgeStandard: 'city-age' },
   { group: 'Students', type: 'ai_foundations', label: 'AI Foundations Course',
-    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' },
+    hasCityAgeStandard: 'age-standard' },
   { group: 'Students', type: 'internship', label: 'Internship / Summer Internship',
     stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
   // ── School-paid students (parents who paid online for kids) ──
   { group: 'Students', type: 'school_payers', label: 'School students paid online',
-    schoolPicker: true, hasCityGrade: true },
+    schoolPicker: true, hasCityAgeStandard: true },
   // ── Send to SCHOOLS ──
   { group: 'Schools', type: 'school_contacts', label: 'School contacts (principals, owners, etc.)',
     stages: ['new', 'meeting_done', 'converted', 'active', 'renewal_meeting', 'renewed'],
     stageLabels: { new: 'New leads', meeting_done: 'Meeting done', converted: 'Converted', active: 'Active', renewal_meeting: 'Renewal meeting', renewed: 'Renewed' },
     roles: ['all', 'principal', 'owner', 'accounts', 'teacher'],
-    roleLabels: { all: 'All roles', principal: 'Principals', owner: 'Owners', accounts: 'Accounts', teacher: 'Teachers' } },
+    roleLabels: { all: 'All roles', principal: 'Principals', owner: 'Owners', accounts: 'Accounts', teacher: 'Teachers' },
+    hasCityAgeStandard: 'city' },
 ];
 
 const AudienceSourceCard = ({ source, value, onChange, schoolList }) => {
@@ -270,13 +275,21 @@ const AudienceSourceCard = ({ source, value, onChange, schoolList }) => {
             </div>
           )}
 
-          {/* City / Grade extra filters */}
-          {source.hasCityGrade && (
+          {/* City / Age group / Standard extra filters */}
+          {source.hasCityAgeStandard && (
             <div className="grid grid-cols-2 gap-2">
-              <input value={value.city || ''} onChange={e => onChange({ ...value, city: e.target.value })}
-                placeholder="City (optional)" className="text-xs px-2 py-1.5 border border-slate-300 rounded" />
-              <input value={value.grade || ''} onChange={e => onChange({ ...value, grade: e.target.value })}
-                placeholder="Grade (optional)" className="text-xs px-2 py-1.5 border border-slate-300 rounded" />
+              {(source.hasCityAgeStandard === true || String(source.hasCityAgeStandard).includes('city')) && (
+                <input value={value.city || ''} onChange={e => onChange({ ...value, city: e.target.value })}
+                  placeholder="City" className="text-xs px-2 py-1.5 border border-slate-300 rounded" data-testid={`source-${source.type}-city`} />
+              )}
+              {(source.hasCityAgeStandard === true || String(source.hasCityAgeStandard).includes('age')) && (
+                <input value={value.age_group || ''} onChange={e => onChange({ ...value, age_group: e.target.value })}
+                  placeholder="Age group (e.g. 9-12)" className="text-xs px-2 py-1.5 border border-slate-300 rounded" data-testid={`source-${source.type}-age`} />
+              )}
+              {(source.hasCityAgeStandard === true || String(source.hasCityAgeStandard).includes('standard')) && (
+                <input value={value.standard || ''} onChange={e => onChange({ ...value, standard: e.target.value })}
+                  placeholder="Standard / grade" className="text-xs px-2 py-1.5 border border-slate-300 rounded col-span-2" data-testid={`source-${source.type}-standard`} />
+              )}
             </div>
           )}
         </div>
@@ -291,8 +304,11 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: '', subject: '', html: STARTER_TEMPLATES[0].html,
+    from_address: '', reply_to: '',
     schedule_type: 'now', schedule_dt: '',
+    sample_email: '',
   });
+  const [senders, setSenders] = useState([]);
   // Per-source state: { b2c_students: {_enabled, stages: []}, school_contacts: {...}, ... }
   const [sources, setSources] = useState({});
   const [preview, setPreview] = useState({ count: null, by_source: {}, sample: [], loading: false });
@@ -313,9 +329,10 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
       if (src.stages && (v.stages || []).length) g.stages = v.stages;
       if (src.roles && (v.roles || []).length) g.roles = v.roles;
       if (src.schoolPicker) g.schools = v.schools || ['all'];
-      if (src.hasCityGrade) {
-        if (v.city) g.city = v.city;
-        if (v.grade) g.grade = v.grade;
+      if (src.hasCityAgeStandard) {
+        if (v.city)      g.city = v.city;
+        if (v.age_group) g.age_group = v.age_group;
+        if (v.standard)  g.standard = v.standard;
       }
       groups.push(g);
     }
@@ -351,10 +368,16 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
     }
   };
 
-  // Load school list once
+  // Load school list + senders once
   useEffect(() => {
     axios.get(`${API}/admin/broadcasts/schools-list`, { headers: getAuthHeaders() })
       .then(r => setSchoolList(r.data.schools || []))
+      .catch(() => { /* ignore */ });
+    axios.get(`${API}/admin/broadcasts/senders`, { headers: getAuthHeaders() })
+      .then(r => {
+        setSenders(r.data.senders || []);
+        setForm(f => ({ ...f, from_address: f.from_address || r.data.default || (r.data.senders || [])[0] || '' }));
+      })
       .catch(() => { /* ignore */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -366,12 +389,31 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
 
   const applyTemplate = (t) => setForm(f => ({ ...f, subject: t.subject, html: t.html }));
 
+  const sendSample = async () => {
+    if (!form.sample_email || !form.sample_email.includes('@')) { toast.error('Enter a valid sample email'); return; }
+    if (!form.subject || !form.html) { toast.error('Add subject and body first'); return; }
+    try {
+      await axios.post(`${API}/admin/broadcasts/send-sample`, {
+        recipient: form.sample_email.trim(),
+        subject: form.subject,
+        html: form.html,
+        from_address: form.from_address || undefined,
+        reply_to: form.reply_to || undefined,
+      }, { headers: getAuthHeaders() });
+      toast.success(`Sample sent to ${form.sample_email}`);
+    } catch (e) {
+      toast.error('Sample failed: ' + (e.response?.data?.detail || e.message));
+    }
+  };
+
   const sendNow = async () => {
     if (!form.name || !form.subject || !form.html) { toast.error('Fill name, subject and body'); return; }
     setSending(true);
     try {
       const created = await axios.post(`${API}/admin/broadcasts`, {
         name: form.name, subject: form.subject, html: form.html,
+        from_address: form.from_address || undefined,
+        reply_to: form.reply_to || undefined,
         filters: { groups: buildGroups() },
       }, { headers: getAuthHeaders() });
       const id = created.data.id;
@@ -515,21 +557,38 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
 
               <label className="block">
                 <span className="text-xs font-semibold text-slate-600 uppercase">Subject line</span>
-                <input value={form.subject} onChange={e => update('subject', e.target.value)} placeholder="e.g. Robotics camp seats open this Saturday"
-                  className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-subject" />
+                <div className="mt-1">
+                  <SubjectField value={form.subject} onChange={v => update('subject', v)} data-testid="composer-subject" />
+                </div>
               </label>
+
               <label className="block">
-                <span className="text-xs font-semibold text-slate-600 uppercase">HTML body</span>
-                <textarea rows={14} value={form.html} onChange={e => update('html', e.target.value)}
-                  className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono"
-                  data-testid="composer-html" />
+                <span className="text-xs font-semibold text-slate-600 uppercase">Email body</span>
+                <div className="mt-1">
+                  <RichEmailEditor value={form.html} onChange={(html) => update('html', html)} />
+                </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Tokens: <code className="bg-slate-100 px-1 rounded">{'{{first_name}}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{{unsubscribe_url}}'}</code> (auto-appended if missing). Inline CSS only.
+                  Toolbar supports bold, lists, colors, links, buttons, images, YouTube. Click <code>{`{{·}}`}</code> to insert personalization tokens. The Code icon toggles raw HTML editing.
                 </p>
               </label>
-              <div className="border border-slate-200 rounded-lg p-4 max-h-72 overflow-auto bg-white" data-testid="composer-html-preview">
-                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Preview</p>
-                <div dangerouslySetInnerHTML={{ __html: form.html.replaceAll('{{first_name}}', 'Priya').replaceAll('{{unsubscribe_url}}', '#') }} />
+
+              {/* Send sample for testing */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3" data-testid="composer-sample">
+                <p className="text-xs font-semibold text-amber-900 uppercase tracking-wide mb-1.5">Send a sample to test</p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={form.sample_email}
+                    onChange={e => update('sample_email', e.target.value)}
+                    placeholder="your@email.com"
+                    className="flex-1 px-3 py-1.5 border border-amber-300 rounded text-sm"
+                    data-testid="composer-sample-email"
+                  />
+                  <button onClick={sendSample} className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-sm font-semibold" data-testid="composer-sample-send">
+                    Send sample
+                  </button>
+                </div>
+                <p className="text-xs text-amber-700/70 mt-1">Sample uses placeholders (Priya · OLL Demo School). Subject prefixed with <code>[SAMPLE]</code>.</p>
               </div>
             </>
           )}
@@ -542,7 +601,27 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
                   {Object.entries(preview.by_source || {}).map(([k, v]) => <span key={k} className="mr-3">{k}: <strong>{v}</strong></span>)}
                 </div>
                 <div><span className="text-slate-500">Subject:</span> {form.subject}</div>
-                <div><span className="text-slate-500">From:</span> OLL &lt;marketing@oll.co&gt;</div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-600 uppercase">From address</span>
+                  <select value={form.from_address} onChange={e => update('from_address', e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-from">
+                    {senders.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-600 uppercase">Reply-to</span>
+                  <select value={form.reply_to || ''} onChange={e => update('reply_to', e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-reply-to">
+                    <option value="">Same as From</option>
+                    {senders.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input value={form.reply_to || ''} onChange={e => update('reply_to', e.target.value)}
+                    placeholder="…or paste a custom reply-to email"
+                    className="mt-1 w-full px-3 py-1.5 border border-slate-200 rounded text-xs" data-testid="composer-reply-to-custom" />
+                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
