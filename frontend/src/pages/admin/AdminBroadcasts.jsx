@@ -697,18 +697,61 @@ const CampaignDetail = ({ campaignId, onClose, onChanged, getAuthHeaders }) => {
             </div>
 
             <div className="p-6 space-y-5">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {['sent', 'delivered', 'opened', 'clicked', 'bounced', 'unsubscribed', 'complained', 'failed'].filter(k => camp.stats?.[k] !== undefined).map(k => (
-                  <div key={k} className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-slate-900">{camp.stats?.[k] || 0}</div>
-                    <div className="text-xs text-slate-500 capitalize">{k}</div>
+              {/* Engagement insights — open/click/bounce/unsub rates */}
+              {(() => {
+                const s = camp.stats || {};
+                const sent = s.sent || 0;
+                const delivered = s.delivered || 0;
+                const baseline = delivered || sent || 1;
+                const pct = (n) => `${Math.round((n / baseline) * 100)}%`;
+                const tiles = [
+                  { label: 'Sent', value: sent, sub: 'attempted', color: 'slate' },
+                  { label: 'Delivered', value: delivered, sub: sent ? `${Math.round(delivered / sent * 100)}% of sent` : '—', color: 'sky' },
+                  { label: 'Opens', value: s.opened || 0, sub: pct(s.opened || 0) + ' open rate', color: 'emerald' },
+                  { label: 'Clicks', value: s.clicked || 0, sub: pct(s.clicked || 0) + ' click rate', color: 'indigo' },
+                  { label: 'Replied', value: s.replied || 0, sub: 'inbox tracked', color: 'fuchsia' },
+                  { label: 'Bounced', value: s.bounced || 0, sub: pct(s.bounced || 0), color: 'rose' },
+                  { label: 'Unsubscribed', value: s.unsubscribed || 0, sub: pct(s.unsubscribed || 0), color: 'amber' },
+                  { label: 'Complaints', value: s.complained || 0, sub: pct(s.complained || 0), color: 'orange' },
+                ];
+                const colorMap = {
+                  slate: 'bg-slate-50 border-slate-200 text-slate-900',
+                  sky: 'bg-sky-50 border-sky-200 text-sky-900',
+                  emerald: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+                  indigo: 'bg-indigo-50 border-indigo-200 text-indigo-900',
+                  fuchsia: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-900',
+                  rose: 'bg-rose-50 border-rose-200 text-rose-900',
+                  amber: 'bg-amber-50 border-amber-200 text-amber-900',
+                  orange: 'bg-orange-50 border-orange-200 text-orange-900',
+                };
+                return (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 uppercase mb-2 tracking-wide">Insights</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {tiles.map(t => (
+                        <div key={t.label} className={`rounded-lg p-3 border ${colorMap[t.color]}`} data-testid={`stat-${t.label.toLowerCase()}`}>
+                          <div className="text-2xl font-bold">{t.value}</div>
+                          <div className="text-[11px] font-semibold uppercase tracking-wide opacity-70">{t.label}</div>
+                          <div className="text-[10px] mt-0.5 opacity-60">{t.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {(!s.opened && !s.clicked && (s.sent || 0) > 0) && (
+                      <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                        <strong>Opens &amp; clicks not yet showing?</strong> Configure Resend webhooks pointing to <code className="bg-amber-100 px-1 rounded">{process.env.REACT_APP_BACKEND_URL}/api/webhooks/resend</code> with events: <code>email.delivered, email.opened, email.clicked, email.bounced, email.complained</code>. <a href="https://resend.com/webhooks" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Configure in Resend →</a>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-slate-500 mt-2">
+                      <strong>Replied</strong> is tracked manually by checking the reply-to inbox (<code>{camp.reply_to || camp.from_address}</code>). Resend doesn&apos;t deliver inbound emails by default — count is updated when you log a reply in the inbox.
+                    </p>
                   </div>
-                ))}
-              </div>
+                );
+              })()}
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-slate-500">Status:</span> <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[camp.status] || 'bg-slate-100'}`}>{camp.status}</span></div>
                 <div><span className="text-slate-500">From:</span> {camp.from_address}</div>
+                {camp.reply_to && <div><span className="text-slate-500">Reply-to:</span> {camp.reply_to}</div>}
                 <div><span className="text-slate-500">Created:</span> {camp.created_at?.slice(0, 19).replace('T', ' ')}</div>
                 <div><span className="text-slate-500">Sent:</span> {camp.sent_at?.slice(0, 19).replace('T', ' ') || '—'}</div>
                 <div className="col-span-2"><span className="text-slate-500">Filters:</span> {camp.filters?.source} {camp.filters?.course ? `· course=${camp.filters.course}` : ''} {camp.filters?.city ? `· city=${camp.filters.city}` : ''} {camp.filters?.grade ? `· grade=${camp.filters.grade}` : ''}</div>

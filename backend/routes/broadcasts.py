@@ -338,6 +338,9 @@ async def _build_audience(filters: dict) -> List[dict]:
     seen: dict = {}
     for u in rows:
         e = u["email"]
+        # Skip @student.oll sample/demo emails created internally
+        if e.endswith("@student.oll") or e.endswith(".student.oll"):
+            continue
         if e not in seen:
             seen[e] = u
 
@@ -598,7 +601,7 @@ async def get_campaign(campaign_id: str, user: dict = Depends(get_current_user))
     if not camp:
         raise HTTPException(status_code=404, detail="Campaign not found")
     # Refresh stats from events
-    stats = {"sent": 0, "delivered": 0, "opened": 0, "clicked": 0, "bounced": 0, "unsubscribed": 0, "complained": 0}
+    stats = {"sent": 0, "delivered": 0, "opened": 0, "clicked": 0, "bounced": 0, "unsubscribed": 0, "complained": 0, "replied": 0}
     pipeline = [
         {"$match": {"campaign_id": campaign_id}},
         {"$group": {"_id": "$event_type", "n": {"$sum": 1}}},
@@ -619,6 +622,8 @@ async def get_campaign(campaign_id: str, user: dict = Depends(get_current_user))
             stats["complained"] = row["n"]
         elif et == "unsubscribed":
             stats["unsubscribed"] = row["n"]
+        elif et == "replied":
+            stats["replied"] = row["n"]
     if camp.get("stats", {}).get("sent"):
         stats["sent"] = max(stats["sent"], camp["stats"]["sent"])
     camp["stats"] = stats
