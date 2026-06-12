@@ -169,28 +169,168 @@ export default function AdminBroadcasts() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Campaign Composer (modal wizard)
+// Audience source picker — declarative spec drives the UI
+// ─────────────────────────────────────────────────────────────
+const SOURCES = [
+  // ── Send to STUDENTS ──
+  { group: 'Students', type: 'b2c_students', label: 'B2C Students (Online learning)',
+    stages: ['leads', 'demo', 'converted'], stageLabels: { leads: 'Leads', demo: 'Demo stage', converted: 'Converted' } },
+  { group: 'Students', type: 'summer_camp', label: 'Summer Camp',
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
+  { group: 'Students', type: 'ai_foundations', label: 'AI Foundations Course',
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
+  { group: 'Students', type: 'internship', label: 'Internship / Summer Internship',
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
+  // ── School-paid students (parents who paid online for kids) ──
+  { group: 'Students', type: 'school_payers', label: 'School students paid online',
+    schoolPicker: true, hasCityGrade: true },
+  // ── Send to SCHOOLS ──
+  { group: 'Schools', type: 'school_contacts', label: 'School contacts (principals, owners, etc.)',
+    stages: ['new', 'meeting_done', 'converted', 'active', 'renewal_meeting', 'renewed'],
+    stageLabels: { new: 'New leads', meeting_done: 'Meeting done', converted: 'Converted', active: 'Active', renewal_meeting: 'Renewal meeting', renewed: 'Renewed' },
+    roles: ['all', 'principal', 'owner', 'accounts', 'teacher'],
+    roleLabels: { all: 'All roles', principal: 'Principals', owner: 'Owners', accounts: 'Accounts', teacher: 'Teachers' } },
+];
+
+const AudienceSourceCard = ({ source, value, onChange, schoolList }) => {
+  const toggle = (key, val) => {
+    const arr = value[key] || [];
+    if (arr.includes(val)) onChange({ ...value, [key]: arr.filter(x => x !== val) });
+    else onChange({ ...value, [key]: [...arr, val] });
+  };
+  const enabled = value._enabled;
+
+  return (
+    <div className={`border rounded-lg p-3 ${enabled ? 'border-indigo-300 bg-indigo-50/30' : 'border-slate-200 bg-white'}`} data-testid={`source-${source.type}`}>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" checked={!!enabled} onChange={e => onChange({ ...value, _enabled: e.target.checked })}
+          className="w-4 h-4" data-testid={`source-toggle-${source.type}`} />
+        <span className="font-semibold text-sm text-slate-800">{source.label}</span>
+      </label>
+
+      {enabled && (
+        <div className="mt-3 pl-6 space-y-2">
+          {/* Stages */}
+          {source.stages && (
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">Stages</span>
+              <div className="flex flex-wrap gap-1.5">
+                {source.stages.map(s => {
+                  const active = (value.stages || []).includes(s);
+                  return (
+                    <button key={s} onClick={() => toggle('stages', s)} type="button"
+                      className={`text-xs px-2.5 py-1 rounded-full border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'}`}
+                      data-testid={`source-${source.type}-stage-${s}`}>
+                      {source.stageLabels?.[s] || s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Roles (school_contacts only) */}
+          {source.roles && (
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">Roles</span>
+              <div className="flex flex-wrap gap-1.5">
+                {source.roles.map(r => {
+                  const active = (value.roles || []).includes(r);
+                  return (
+                    <button key={r} onClick={() => toggle('roles', r)} type="button"
+                      className={`text-xs px-2.5 py-1 rounded-full border ${active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300 hover:border-emerald-400'}`}
+                      data-testid={`source-${source.type}-role-${r}`}>
+                      {source.roleLabels?.[r] || r}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* School picker (school_payers only) */}
+          {source.schoolPicker && (
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">Schools</span>
+              <select
+                multiple
+                value={value.schools || ['all']}
+                onChange={e => {
+                  const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+                  onChange({ ...value, schools: selected.length ? selected : ['all'] });
+                }}
+                className="w-full text-xs px-2 py-1 border border-slate-300 rounded h-24"
+                data-testid={`source-${source.type}-schools`}>
+                <option value="all">All schools</option>
+                {(schoolList || []).map(s => (
+                  <option key={s.id} value={s.id}>{s.school_name} ({s.status})</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500 mt-0.5">Hold Ctrl/Cmd to multi-select. Leave default to include all schools.</p>
+            </div>
+          )}
+
+          {/* City / Grade extra filters */}
+          {source.hasCityGrade && (
+            <div className="grid grid-cols-2 gap-2">
+              <input value={value.city || ''} onChange={e => onChange({ ...value, city: e.target.value })}
+                placeholder="City (optional)" className="text-xs px-2 py-1.5 border border-slate-300 rounded" />
+              <input value={value.grade || ''} onChange={e => onChange({ ...value, grade: e.target.value })}
+                placeholder="Grade (optional)" className="text-xs px-2 py-1.5 border border-slate-300 rounded" />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+// ─────────────────────────────────────────────────────────────
+// Campaign Composer (modal wizard) — uses the source picker above
 // ─────────────────────────────────────────────────────────────
 const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: '', subject: '', html: STARTER_TEMPLATES[0].html,
-    source: 'both', course: '', city: '', grade: '',
     schedule_type: 'now', schedule_dt: '',
   });
+  // Per-source state: { b2c_students: {_enabled, stages: []}, school_contacts: {...}, ... }
+  const [sources, setSources] = useState({});
   const [preview, setPreview] = useState({ count: null, by_source: {}, sample: [], loading: false });
+  const [recipients, setRecipients] = useState({ items: [], total: 0, loading: false });
+  const [showRecipients, setShowRecipients] = useState(false);
+  const [schoolList, setSchoolList] = useState([]);
   const [sending, setSending] = useState(false);
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Build the groups payload for the backend from per-source state
+  const buildGroups = () => {
+    const groups = [];
+    for (const src of SOURCES) {
+      const v = sources[src.type];
+      if (!v || !v._enabled) continue;
+      const g = { type: src.type };
+      if (src.stages && (v.stages || []).length) g.stages = v.stages;
+      if (src.roles && (v.roles || []).length) g.roles = v.roles;
+      if (src.schoolPicker) g.schools = v.schools || ['all'];
+      if (src.hasCityGrade) {
+        if (v.city) g.city = v.city;
+        if (v.grade) g.grade = v.grade;
+      }
+      groups.push(g);
+    }
+    return groups;
+  };
+
   const runPreview = async () => {
+    const groups = buildGroups();
+    if (groups.length === 0) {
+      setPreview({ count: 0, by_source: {}, sample: [], loading: false });
+      return;
+    }
     setPreview(p => ({ ...p, loading: true }));
     try {
-      const params = new URLSearchParams({ source: form.source });
-      if (form.course) params.set('course', form.course);
-      if (form.city) params.set('city', form.city);
-      if (form.grade) params.set('grade', form.grade);
-      const r = await axios.get(`${API}/admin/broadcasts/audience/preview?${params}`, { headers: getAuthHeaders() });
+      const r = await axios.post(`${API}/admin/broadcasts/audience/preview`, { groups }, { headers: getAuthHeaders() });
       setPreview({ ...r.data, loading: false });
     } catch (e) {
       toast.error('Preview failed: ' + (e.response?.data?.detail || e.message));
@@ -198,10 +338,31 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
     }
   };
 
+  const loadRecipients = async () => {
+    const groups = buildGroups();
+    setRecipients(r => ({ ...r, loading: true }));
+    setShowRecipients(true);
+    try {
+      const r = await axios.post(`${API}/admin/broadcasts/audience/recipients?page=1&page_size=500`, { groups }, { headers: getAuthHeaders() });
+      setRecipients({ items: r.data.recipients || [], total: r.data.count || 0, loading: false });
+    } catch (e) {
+      toast.error('Failed to load recipients');
+      setRecipients({ items: [], total: 0, loading: false });
+    }
+  };
+
+  // Load school list once
+  useEffect(() => {
+    axios.get(`${API}/admin/broadcasts/schools-list`, { headers: getAuthHeaders() })
+      .then(r => setSchoolList(r.data.schools || []))
+      .catch(() => { /* ignore */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (step === 1) runPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.source, form.course, form.city, form.grade, step]);
+  }, [sources, step]);
 
   const applyTemplate = (t) => setForm(f => ({ ...f, subject: t.subject, html: t.html }));
 
@@ -211,7 +372,7 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
     try {
       const created = await axios.post(`${API}/admin/broadcasts`, {
         name: form.name, subject: form.subject, html: form.html,
-        filters: { source: form.source, course: form.course || null, city: form.city || null, grade: form.grade || null },
+        filters: { groups: buildGroups() },
       }, { headers: getAuthHeaders() });
       const id = created.data.id;
       const payload = form.schedule_type === 'now' ? {} : { scheduled_at: form.schedule_dt };
@@ -223,14 +384,17 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
     } finally { setSending(false); }
   };
 
+  const studentSources = SOURCES.filter(s => s.group === 'Students');
+  const schoolSources = SOURCES.filter(s => s.group === 'Schools');
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="composer-modal">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="composer-modal">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-bold">New Campaign · Step {step} of 3</h2>
             <p className="text-xs text-slate-500">
-              {step === 1 ? 'Choose audience' : step === 2 ? 'Compose email' : 'Schedule & send'}
+              {step === 1 ? 'Pick audience' : step === 2 ? 'Compose email' : 'Schedule & send'}
             </p>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded" data-testid="composer-close">
@@ -249,27 +413,29 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
                   data-testid="composer-name" />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="text-xs font-semibold text-slate-600 uppercase">Audience source</span>
-                  <select value={form.source} onChange={e => update('source', e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-source">
-                    <option value="both">Both (school + B2C)</option>
-                    <option value="school">School payers only</option>
-                    <option value="b2c">B2C payers only</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-xs font-semibold text-slate-600 uppercase">Course (optional)</span>
-                  <input value={form.course} onChange={e => update('course', e.target.value)} placeholder="e.g. Robotics, AI" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-semibold text-slate-600 uppercase">City (optional)</span>
-                  <input value={form.city} onChange={e => update('city', e.target.value)} placeholder="e.g. Mumbai" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-semibold text-slate-600 uppercase">Grade (optional)</span>
-                  <input value={form.grade} onChange={e => update('grade', e.target.value)} placeholder="e.g. 7" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-                </label>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Send to Students</p>
+                  <div className="space-y-2">
+                    {studentSources.map(src => (
+                      <AudienceSourceCard key={src.type} source={src}
+                        value={sources[src.type] || {}}
+                        onChange={v => setSources(s => ({ ...s, [src.type]: v }))}
+                        schoolList={schoolList} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Send to Schools</p>
+                  <div className="space-y-2">
+                    {schoolSources.map(src => (
+                      <AudienceSourceCard key={src.type} source={src}
+                        value={sources[src.type] || {}}
+                        onChange={v => setSources(s => ({ ...s, [src.type]: v }))}
+                        schoolList={schoolList} />
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 border border-emerald-200 rounded-xl p-4" data-testid="composer-preview">
@@ -277,26 +443,62 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
                   <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Calculating audience…</div>
                 ) : preview.count === null ? null : (
                   <>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-3xl font-bold text-emerald-700">{preview.count}</span>
-                      <span className="text-sm text-emerald-700">paid users will receive this</span>
+                      <span className="text-sm text-emerald-700">unique contacts will receive this</span>
+                      {preview.count > 0 && (
+                        <button onClick={loadRecipients} className="ml-auto text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline" data-testid="composer-view-recipients">
+                          View full list →
+                        </button>
+                      )}
                     </div>
-                    <div className="text-xs text-emerald-700/70 mt-1">
-                      School: {preview.by_source?.school || 0} · B2C: {preview.by_source?.b2c || 0}
+                    <div className="text-xs text-emerald-700/70 mt-1 flex flex-wrap gap-x-3">
+                      {Object.entries(preview.by_source || {}).map(([k, v]) => (
+                        <span key={k}>{k}: <strong>{v}</strong></span>
+                      ))}
                     </div>
-                    {(preview.sample || []).length > 0 && (
-                      <details className="mt-2 text-xs text-slate-600">
-                        <summary className="cursor-pointer">Sample recipients</summary>
-                        <ul className="mt-1 space-y-0.5">
-                          {preview.sample.map((s, i) => (
-                            <li key={i}><code className="text-xs">{s.email}</code> · {s.first_name} · {s.course || s.source}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
                   </>
                 )}
               </div>
+
+              {showRecipients && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden" data-testid="recipients-list">
+                  <div className="flex items-center justify-between bg-slate-50 px-4 py-2 border-b">
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Recipients ({recipients.total})</p>
+                    <button onClick={() => setShowRecipients(false)} className="text-xs text-slate-500 hover:text-slate-900">Hide</button>
+                  </div>
+                  {recipients.loading ? (
+                    <div className="p-6 text-center text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" /> Loading…</div>
+                  ) : recipients.items.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-slate-500">No recipients matched these filters.</div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-50 sticky top-0">
+                          <tr className="text-left text-slate-500 uppercase tracking-wide">
+                            <th className="px-3 py-1.5">Name</th>
+                            <th className="px-3 py-1.5">Email</th>
+                            <th className="px-3 py-1.5">Source</th>
+                            <th className="px-3 py-1.5">Stage / Role</th>
+                            <th className="px-3 py-1.5">Context</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recipients.items.map((r, i) => (
+                            <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+                              <td className="px-3 py-1.5 font-medium text-slate-800">{r.first_name} {r.last_name}</td>
+                              <td className="px-3 py-1.5"><code className="text-[11px]">{r.email}</code></td>
+                              <td className="px-3 py-1.5 text-slate-600">{r.source}</td>
+                              <td className="px-3 py-1.5 text-slate-600">{r.role || r.stage || '—'}</td>
+                              <td className="px-3 py-1.5 text-slate-500">{r.school || r.course || r.city || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
@@ -335,7 +537,10 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
           {step === 3 && (
             <>
               <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
-                <div><span className="text-slate-500">To:</span> <strong>{preview.count}</strong> paid contacts ({preview.by_source?.school || 0} school + {preview.by_source?.b2c || 0} B2C)</div>
+                <div><span className="text-slate-500">To:</span> <strong>{preview.count}</strong> unique contacts</div>
+                <div className="text-xs text-slate-500 ml-4">
+                  {Object.entries(preview.by_source || {}).map(([k, v]) => <span key={k} className="mr-3">{k}: <strong>{v}</strong></span>)}
+                </div>
                 <div><span className="text-slate-500">Subject:</span> {form.subject}</div>
                 <div><span className="text-slate-500">From:</span> OLL &lt;marketing@oll.co&gt;</div>
               </div>
@@ -358,18 +563,18 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>By sending, you confirm these recipients have a paid relationship with OLL and have legitimate interest under DPDP/CAN-SPAM. Every email carries a one-click unsubscribe link.</span>
+                <span>By sending, you confirm these recipients have a legitimate relationship with OLL. Every email carries a one-click unsubscribe link.</span>
               </div>
             </>
           )}
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50 sticky bottom-0">
           <button onClick={() => step > 1 ? setStep(step - 1) : onClose()} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
             {step > 1 ? 'Back' : 'Cancel'}
           </button>
           {step < 3 ? (
-            <button onClick={() => setStep(step + 1)} disabled={step === 1 && (!form.name || preview.count === 0)} className="px-5 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#152a47] text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed" data-testid="composer-next">
+            <button onClick={() => setStep(step + 1)} disabled={step === 1 && (!form.name || !preview.count)} className="px-5 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#152a47] text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed" data-testid="composer-next">
               Next
             </button>
           ) : (

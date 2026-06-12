@@ -57,28 +57,160 @@ def _norm_email(e: Optional[str]) -> Optional[str]:
     return e.strip().lower()
 
 
-async def _paid_school_users(filters: dict) -> List[dict]:
-    """Paid B2B school students. Source: `school_student_payments` (Cashfree)."""
-    q = {"$or": [{"status": "PAID"}, {"order_status": "PAID"}]}
-    if filters.get("school"):
-        q["school_name"] = {"$regex": filters["school"], "$options": "i"}
-    if filters.get("grade"):
-        q["grade"] = str(filters["grade"])
-    if filters.get("city"):
-        q["city"] = {"$regex": filters["city"], "$options": "i"}
-    if filters.get("course"):
-        q["skill"] = {"$regex": filters["course"], "$options": "i"}
+# ────────────────────────────────────────────────────────────
+# AUDIENCE BUILDERS v2 — per-source pickers
+# Spec format (POST body for /audience/preview & embedded in CampaignCreate.groups):
+#   {"groups": [
+#     {"type": "b2c_students",  "stages": ["leads","demo","converted"]},
+#     {"type": "summer_camp",   "stages": ["leads","converted"]},
+#     {"type": "ai_foundations","stages": ["leads","converted"]},
+#     {"type": "internship",    "stages": ["leads","converted"]},
+#     {"type": "school_payers", "schools": ["<id>"|"all"], "city": "Mumbai", "grade": "7"},
+#     {"type": "school_contacts","stages": ["all"|"converted"|...],
+#                                "roles":  ["all"|"principal"|"owner"|"accounts"|"teacher"]},
+#   ]}
+# Backwards compat: the legacy {source, course, city, grade} shape is still
+# accepted by _build_audience() (calls _legacy_to_groups internally).
+# ────────────────────────────────────────────────────────────
+
+B2C_STAGE_MAP = {
+    "leads":     ["new"],
+    "demo":      ["demo_completed", "rescheduled", "demo_booked"],
+    "converted": ["converted"],
+}
+SC_STAGE_MAP = {  # summer_camp_bookings — crm_status / payment_status
+    "leads":     {"crm_status": {"$nin": ["converted"]}, "payment_status": {"$nin": ["paid"]}},
+    "converted": {"$or": [{"crm_status": "converted"}, {"payment_status": "paid"}]},
+}
+AIF_STAGE_MAP = {  # ai_foundations_bookings
+    "leads":     {"payment_status": {"$nin": ["paid"]}},
+    "converted": {"payment_status": "paid"},
+}
+
+
+async def _grp_b2c_students(g: dict) -> List[dict]:
+    stages = g.get("stages") or ["leads", "demo", "converted"]
+    statuses: list = []
+    for s in stages:
+        statuses.extend(B2C_STAGE_MAP.get(s, [s]))
+    q: dict = {"status": {"$in": list(set(statuses))}} if statuses else {}
+    rows = await db.student_inquiries.find(q, {"_id": 0}).to_list(20000)
+    out = []
+    for r in rows:
+        e = _norm_email(r.get("email"))
+        if not e:
+            continue
+        out.append({
+            "email": e,
+            "first_name": (r.get("name") or "").split(" ")[0] or "there",
+            "last_name": " ".join((r.get("name") or "").split(" ")[1:]),
+            "source": "b2c_students",
+            "stage": r.get("status"),
+            "course": r.get("skill"),
+            "city": r.get("city"),
+        })
+    return out
+
+
+async def _grp_summer_camp(g: dict) -> List[dict]:
+    stages = g.get("stages") or ["leads", "converted"]
+    or_clauses: list = []
+    for s in stages:
+        m = SC_STAGE_MAP.get(s)
+        if m:
+            or_clauses.append(m)
+    q: dict = {"$or": or_clauses} if or_clauses else {}
+    rows = await db.summer_camp_bookings.find(q, {"_id": 0}).to_list(20000)
+    out = []
+    for r in rows:
+        e = _norm_email(r.get("parent_email"))
+        if not e:
+            continue
+        out.append({
+            "email": e,
+            "first_name": (r.get("parent_name") or "").split(" ")[0] or "Parent",
+            "last_name": " ".join((r.get("parent_name") or "").split(" ")[1:]),
+            "source": "summer_camp",
+            "stage": "converted" if (r.get("payment_status") == "paid" or r.get("crm_status") == "converted") else "lead",
+            "course": "Summer Camp",
+            "city": r.get("center_label"),
+        })
+    return out
+
+
+async def _grp_ai_foundations(g: dict) -> List[dict]:
+    stages = g.get("stages") or ["leads", "converted"]
+    or_clauses: list = [AIF_STAGE_MAP[s] for s in stages if s in AIF_STAGE_MAP]
+    q: dict = {"$or": or_clauses} if or_clauses else {}
+    rows = await db.ai_foundations_bookings.find(q, {"_id": 0}).to_list(20000)
+    out = []
+    for r in rows:
+        e = _norm_email(r.get("parent_email"))
+        if not e:
+            continue
+        out.append({
+            "email": e,
+            "first_name": (r.get("parent_name") or "").split(" ")[0] or "Parent",
+            "last_name": " ".join((r.get("parent_name") or "").split(" ")[1:]),
+            "source": "ai_foundations",
+            "stage": "converted" if r.get("payment_status") == "paid" else "lead",
+            "course": "AI Foundations",
+        })
+    return out
+
+
+async def _grp_internship(g: dict) -> List[dict]:
+    """Social-media intern + summer internship registrations."""
+    stages = g.get("stages") or ["leads", "converted"]
+    or_clauses: list = []
+    if "leads" in stages:
+        or_clauses.append({"payment_status": {"$nin": ["paid"]}})
+    if "converted" in stages:
+        or_clauses.append({"payment_status": "paid"})
+    q: dict = {"$or": or_clauses} if or_clauses else {}
+    out = []
+    for coll, label in [
+        ("social_media_intern_registrations", "Social Media Internship"),
+        ("summer_internship_registrations", "Summer Internship"),
+    ]:
+        rows = await db[coll].find(q, {"_id": 0}).to_list(20000)
+        for r in rows:
+            e = _norm_email(r.get("email") or r.get("parent_email"))
+            if not e:
+                continue
+            out.append({
+                "email": e,
+                "first_name": (r.get("name") or r.get("parent_name") or "").split(" ")[0] or "there",
+                "last_name": " ".join((r.get("name") or r.get("parent_name") or "").split(" ")[1:]),
+                "source": "internship",
+                "stage": "converted" if r.get("payment_status") == "paid" else "lead",
+                "course": label,
+            })
+    return out
+
+
+async def _grp_school_payers(g: dict) -> List[dict]:
+    """Parents who paid online for their kids via Cashfree school-payments."""
+    q: dict = {"$or": [{"status": "PAID"}, {"order_status": "PAID"}]}
+    schools = g.get("schools") or []
+    if schools and "all" not in [s.lower() if isinstance(s, str) else s for s in schools]:
+        q["school_id"] = {"$in": schools}
+    if g.get("city"):
+        q["city"] = {"$regex": g["city"], "$options": "i"}
+    if g.get("grade"):
+        q["grade"] = str(g["grade"])
     rows = await db.school_student_payments.find(q, {"_id": 0}).to_list(20000)
     out = []
     for r in rows:
-        email = _norm_email(r.get("student_email") or r.get("email"))
-        if not email:
+        e = _norm_email(r.get("student_email") or r.get("email"))
+        if not e:
             continue
         out.append({
-            "email": email,
+            "email": e,
             "first_name": (r.get("student_name") or "").split(" ")[0] or "Student",
             "last_name": " ".join((r.get("student_name") or "").split(" ")[1:]),
-            "source": "school",
+            "source": "school_payers",
+            "stage": "paid",
             "school": r.get("school_name"),
             "grade": r.get("grade"),
             "city": r.get("city"),
@@ -87,90 +219,104 @@ async def _paid_school_users(filters: dict) -> List[dict]:
     return out
 
 
-async def _paid_b2c_users(filters: dict) -> List[dict]:
-    """Paid B2C bookings — AI Foundations, Summer Camp, Workshops (Father's Day, etc)."""
+async def _grp_school_contacts(g: dict) -> List[dict]:
+    """B2B contacts at schools — principal, owner, accounts, teacher.
+    Reads contacts from both the top-level `school_contacts` array and
+    nested `onboarding_data.school_contacts`."""
+    stages = g.get("stages") or []
+    roles = g.get("roles") or ["all"]
+    role_set = None if "all" in roles else {r.lower() for r in roles}
+
+    sq: dict = {}
+    if stages and "all" not in stages:
+        sq["status"] = {"$in": stages}
+    schools = await db.school_inquiries.find(sq, {"_id": 0}).to_list(5000)
+
     out = []
+    for s in schools:
+        # Pool of contacts from both fields
+        contacts: list = []
+        if isinstance(s.get("school_contacts"), list):
+            contacts.extend(s["school_contacts"])
+        od = s.get("onboarding_data") or {}
+        if isinstance(od.get("school_contacts"), list):
+            contacts.extend(od["school_contacts"])
+        # Top-level single contact_name/email as fallback
+        if s.get("email") and not contacts:
+            contacts.append({"name": s.get("contact_name"), "email": s.get("email"), "role": "primary"})
 
-    # AI Foundations
-    q_aif: dict = {"$or": [{"status": "PAID"}, {"order_status": "PAID"}]}
-    aif = await db.ai_foundations_bookings.find(q_aif, {"_id": 0}).to_list(20000)
-    for r in aif:
-        email = _norm_email(r.get("email") or r.get("parent_email"))
-        if not email:
-            continue
-        out.append({
-            "email": email,
-            "first_name": (r.get("parent_name") or r.get("name") or "").split(" ")[0] or "Parent",
-            "last_name": " ".join((r.get("parent_name") or r.get("name") or "").split(" ")[1:]),
-            "source": "b2c",
-            "course": "AI Foundations",
-            "city": r.get("city"),
-            "grade": r.get("grade"),
-        })
-
-    # Summer Camp
-    sc = await db.summer_camp_bookings.find({"$or": [{"status": "PAID"}, {"order_status": "PAID"}]}, {"_id": 0}).to_list(20000)
-    for r in sc:
-        email = _norm_email(r.get("parent_email"))
-        if not email:
-            continue
-        out.append({
-            "email": email,
-            "first_name": (r.get("parent_name") or "").split(" ")[0] or "Parent",
-            "last_name": " ".join((r.get("parent_name") or "").split(" ")[1:]),
-            "source": "b2c",
-            "course": "Summer Camp",
-            "city": r.get("city"),
-            "grade": r.get("grade"),
-        })
-
-    # Workshops (Father's Day, etc.)
-    ws = await db.workshop_bookings.find({"status": "PAID"}, {"_id": 0}).to_list(20000)
-    for r in ws:
-        # workshop bookings tend to lack email — capture phone only; skip if no email
-        email = _norm_email(r.get("parent_email") or r.get("email"))
-        if not email:
-            continue
-        out.append({
-            "email": email,
-            "first_name": (r.get("parent_name") or "").split(" ")[0] or "Parent",
-            "last_name": " ".join((r.get("parent_name") or "").split(" ")[1:]),
-            "source": "b2c",
-            "course": "Workshop",
-            "city": r.get("center_label"),
-            "grade": r.get("age_group_label"),
-        })
-
-    # Apply filters
-    if filters.get("course"):
-        rx = filters["course"].lower()
-        out = [u for u in out if rx in (u.get("course") or "").lower()]
-    if filters.get("city"):
-        rx = filters["city"].lower()
-        out = [u for u in out if rx in (u.get("city") or "").lower()]
-    if filters.get("grade"):
-        out = [u for u in out if str(u.get("grade") or "") == str(filters["grade"])]
+        for c in contacts:
+            e = _norm_email(c.get("email"))
+            if not e:
+                continue
+            r_ = (c.get("role") or "").lower()
+            if role_set is not None and r_ not in role_set:
+                continue
+            out.append({
+                "email": e,
+                "first_name": (c.get("name") or "").split(" ")[0] or "there",
+                "last_name": " ".join((c.get("name") or "").split(" ")[1:]),
+                "source": "school_contacts",
+                "stage": s.get("status"),
+                "role": r_ or "contact",
+                "school": s.get("school_name"),
+                "city": (s.get("location") or "").split(",")[0],
+            })
     return out
 
 
-async def _build_audience(filters: dict) -> List[dict]:
-    """Combine paid school + b2c users honoring source filter, dedupe by email,
-    drop globally-unsubscribed addresses."""
-    source = (filters.get("source") or "both").lower()
-    rows: List[dict] = []
-    if source in ("school", "both"):
-        rows.extend(await _paid_school_users(filters))
-    if source in ("b2c", "both"):
-        rows.extend(await _paid_b2c_users(filters))
+GROUP_BUILDERS = {
+    "b2c_students":     _grp_b2c_students,
+    "summer_camp":      _grp_summer_camp,
+    "ai_foundations":   _grp_ai_foundations,
+    "internship":       _grp_internship,
+    "school_payers":    _grp_school_payers,
+    "school_contacts":  _grp_school_contacts,
+}
 
-    # Dedupe by email — keep richer record first
-    seen = {}
+
+def _legacy_to_groups(flat: dict) -> List[dict]:
+    """Translate the old {source: school/b2c/both} filter shape into groups."""
+    src = (flat.get("source") or "both").lower()
+    common = {k: flat[k] for k in ("course", "city", "grade", "school") if flat.get(k)}
+    groups: List[dict] = []
+    if src in ("school", "both"):
+        sg = {"type": "school_payers"}
+        if common.get("city"):
+            sg["city"] = common["city"]
+        if common.get("grade"):
+            sg["grade"] = common["grade"]
+        groups.append(sg)
+    if src in ("b2c", "both"):
+        groups.append({"type": "b2c_students",   "stages": ["leads", "demo", "converted"]})
+        groups.append({"type": "summer_camp",    "stages": ["leads", "converted"]})
+        groups.append({"type": "ai_foundations", "stages": ["leads", "converted"]})
+    return groups
+
+
+async def _build_audience(filters: dict) -> List[dict]:
+    """Accepts EITHER:
+       • new shape: {"groups": [...]}
+       • legacy:    {"source": "school|b2c|both", "course": ..., "city": ..., "grade": ...}
+    Combines results, dedupes by email, drops unsubscribed."""
+    groups: list = filters.get("groups") or _legacy_to_groups(filters)
+    rows: List[dict] = []
+    for g in groups:
+        builder = GROUP_BUILDERS.get((g.get("type") or "").lower())
+        if not builder:
+            continue
+        try:
+            rows.extend(await builder(g))
+        except Exception as ex:
+            logger.warning(f"[Broadcast] group {g.get('type')} failed: {ex}")
+
+    # Dedupe by email — first occurrence wins
+    seen: dict = {}
     for u in rows:
         e = u["email"]
         if e not in seen:
             seen[e] = u
 
-    # Drop unsubscribed contacts
     unsubs = await db.broadcast_unsubscribes.distinct("email")
     if unsubs:
         unsub_set = set(unsubs)
@@ -182,8 +328,20 @@ async def _build_audience(filters: dict) -> List[dict]:
 # Models
 # ────────────────────────────────────────────────────────────
 
+class AudienceGroup(BaseModel):
+    """One source in a campaign's audience. See _build_audience() docstring."""
+    type: str
+    stages: Optional[List[str]] = None
+    roles: Optional[List[str]] = None
+    schools: Optional[List[str]] = None
+    city: Optional[str] = None
+    grade: Optional[str] = None
+
+
 class AudienceFilter(BaseModel):
-    source: Literal["school", "b2c", "both"] = "both"
+    # Either provide the new `groups` spec OR the legacy flat fields.
+    groups: Optional[List[AudienceGroup]] = None
+    source: Optional[Literal["school", "b2c", "both"]] = None
     course: Optional[str] = None
     city: Optional[str] = None
     grade: Optional[str] = None
@@ -196,19 +354,61 @@ class CampaignCreate(BaseModel):
     html: str = Field(..., min_length=1)
     filters: AudienceFilter
     from_address: Optional[str] = None
-    scheduled_at: Optional[str] = None  # ISO 8601 or natural language ("in 1 hour")
+    scheduled_at: Optional[str] = None
 
 
 class CampaignSend(BaseModel):
-    scheduled_at: Optional[str] = None  # Send now if None
+    scheduled_at: Optional[str] = None
 
 
 # ────────────────────────────────────────────────────────────
-# Audience preview & sync
+# Audience preview & recipients list
 # ────────────────────────────────────────────────────────────
+
+@router.post("/admin/broadcasts/audience/preview")
+async def audience_preview_post(
+    payload: AudienceFilter = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    rows = await _build_audience(payload.model_dump(exclude_none=True))
+    by_source: dict = {}
+    for r in rows:
+        by_source[r["source"]] = by_source.get(r["source"], 0) + 1
+    return {
+        "count": len(rows),
+        "by_source": by_source,
+        "sample": rows[:8],
+    }
+
+
+@router.post("/admin/broadcasts/audience/recipients")
+async def audience_recipients_post(
+    payload: AudienceFilter = Body(...),
+    page: int = 1,
+    page_size: int = 100,
+    user: dict = Depends(get_current_user),
+):
+    """Return the FULL list of recipients (paginated) so the admin can verify
+    exactly which names + emails will receive the email before clicking Send."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    rows = await _build_audience(payload.model_dump(exclude_none=True))
+    page = max(1, page)
+    page_size = max(1, min(page_size, 500))
+    start = (page - 1) * page_size
+    return {
+        "count": len(rows),
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (len(rows) + page_size - 1) // page_size),
+        "recipients": rows[start:start + page_size],
+    }
+
 
 @router.get("/admin/broadcasts/audience/preview")
-async def audience_preview(
+async def audience_preview_get(
     source: str = "both",
     course: Optional[str] = None,
     city: Optional[str] = None,
@@ -216,17 +416,24 @@ async def audience_preview(
     school: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
+    """Legacy flat-query endpoint — still used by the older composer.
+    The new composer should POST a `groups` spec to /audience/preview instead."""
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     rows = await _build_audience({"source": source, "course": course, "city": city, "grade": grade, "school": school})
-    return {
-        "count": len(rows),
-        "by_source": {
-            "school": sum(1 for r in rows if r["source"] == "school"),
-            "b2c": sum(1 for r in rows if r["source"] == "b2c"),
-        },
-        "sample": rows[:8],
-    }
+    by_source: dict = {}
+    for r in rows:
+        by_source[r["source"]] = by_source.get(r["source"], 0) + 1
+    return {"count": len(rows), "by_source": by_source, "sample": rows[:8]}
+
+
+@router.get("/admin/broadcasts/schools-list")
+async def schools_list_for_picker(user: dict = Depends(get_current_user)):
+    """Lightweight schools list for the audience-picker multi-select."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    rows = await db.school_inquiries.find({}, {"_id": 0, "id": 1, "school_name": 1, "status": 1, "location": 1}).sort("school_name", 1).to_list(2000)
+    return {"schools": rows}
 
 
 def _personalize(html: str, contact: dict, unsubscribe_url: str) -> str:
