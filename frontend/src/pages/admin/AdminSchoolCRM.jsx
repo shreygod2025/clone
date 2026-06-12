@@ -3949,13 +3949,14 @@ ${FOOTER}</div></body></html>`
       matchesSection = inq.status === activeSection;
     }
     
-    // Assignee filter
+    // Assignee filter — match if the user is EITHER the assignee OR the RM,
+    // so RMs see their schools even when the assigned_to field belongs to someone else.
     let matchesAssignee = true;
     if (assigneeFilter !== 'all') {
       if (assigneeFilter === 'unassigned') {
-        matchesAssignee = !inq.assigned_to;
+        matchesAssignee = !inq.assigned_to && !inq.relationship_manager_id;
       } else {
-        matchesAssignee = inq.assigned_to === assigneeFilter;
+        matchesAssignee = inq.assigned_to === assigneeFilter || inq.relationship_manager_id === assigneeFilter;
       }
     }
     
@@ -4902,7 +4903,7 @@ ${FOOTER}</div></body></html>`
                 className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm flex-1 sm:flex-none"
                 data-testid="school-assignee-filter"
               >
-                <option value="all">All Assignees</option>
+                <option value="all">All people</option>
                 <option value="unassigned">Unassigned</option>
                 {teamUsers.filter(u => u.is_active).map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
