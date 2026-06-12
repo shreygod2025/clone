@@ -1760,6 +1760,98 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
         file_url = f"/api/files/{unique_filename}"
         return {"url": file_url, "filename": unique_filename, "fallback": True}
 
+# Proxy endpoint - fetches a Cloudinary/uploaded URL via the backend and re-serves it
+# with the correct Content-Type and filename. Fixes the case where Cloudinary stripped
+# the extension from public_id (raw uploads) and serves files as application/octet-stream
+# with no filename extension, breaking previews and downloads on user machines.
+# NOTE: must be declared BEFORE /files/{filename} so FastAPI matches /files/proxy first.
+@router.get("/files/proxy")
+async def proxy_uploaded_file(
+    url: str = Query(..., description="Stored file URL (Cloudinary or /api/files/...)"),
+    download: int = Query(0, description="1 to force download (attachment), 0 to view inline"),
+    name: Optional[str] = Query(None, description="Optional explicit filename"),
+):
+    """Stream a file from its stored URL through the backend with proper Content-Type."""
+    from fastapi.responses import Response
+
+    # Look up the uploaded file record to get the original filename & content-type
+    file_doc = await db.uploaded_files.find_one({"cloudinary_url": url})
+    if not file_doc and url and "/api/files/" in url:
+        fn = url.rsplit("/", 1)[-1]
+        file_doc = await db.uploaded_files.find_one({"filename": fn})
+
+    original_name = (file_doc or {}).get("original_name") or name or "download"
+    safe_name = "".join(c if c.isalnum() or c in "._- " else "_" for c in original_name)
+    if "." not in safe_name:
+        safe_name = safe_name + ".pdf"
+
+    ext = Path(safe_name).suffix.lower()
+    content_types = {
+        '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+        '.csv': 'text/csv',
+    }
+    content_type = (
+        (file_doc or {}).get("content_type")
+        or content_types.get(ext, 'application/octet-stream')
+    )
+
+    content: Optional[bytes] = None
+    if file_doc and file_doc.get("data"):
+        import base64
+        content = base64.b64decode(file_doc["data"])
+    else:
+        fetch_url = (file_doc or {}).get("cloudinary_url") or url
+        if not fetch_url.startswith(("http://", "https://")):
+            raise HTTPException(status_code=400, detail="Invalid URL")
+
+        # For Cloudinary URLs, generate a signed URL to bypass any "Restricted media
+        # types" account settings (e.g. PDF/ZIP delivery). This works for both legacy
+        # URLs (no extension) and new uploads (with extension).
+        import re as _re_local
+        if "cloudinary.com" in fetch_url:
+            try:
+                cl = _get_cloudinary()
+                m = _re_local.search(r'/(image|raw|video)/upload/(?:v\d+/)?(.+?)(\?|$)', fetch_url)
+                if m:
+                    resource_type = m.group(1)
+                    public_id_raw = m.group(2)
+                    public_id = _re_local.sub(r'^[a-z_]+:[^/]+/', '', public_id_raw)
+                    signed_url, _ = cl.utils.cloudinary_url(
+                        public_id,
+                        resource_type=resource_type,
+                        sign_url=True,
+                        secure=True,
+                        type="upload",
+                    )
+                    fetch_url = signed_url
+            except Exception as e:
+                logging.warning(f"[FileProxy] Cloudinary sign failed ({e}); using direct URL")
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                resp = await client.get(fetch_url)
+                if resp.status_code >= 400:
+                    raise HTTPException(status_code=resp.status_code, detail="Failed to fetch file")
+                content = resp.content
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Failed to fetch file: {e}")
+
+    disposition = "attachment" if download else "inline"
+    headers = {
+        "Content-Disposition": f'{disposition}; filename="{safe_name}"',
+        "Cache-Control": "private, max-age=3600",
+    }
+    return Response(content=content, media_type=content_type, headers=headers)
+
 # Serve uploaded files - checks Cloudinary first, then MongoDB, then local
 @router.get("/files/{filename}")
 async def serve_file(filename: str):

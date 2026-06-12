@@ -1,6 +1,16 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-12) — School CRM MoU View/Download Fix (P0)
+- **Bug**: Admins/school users couldn't view or download uploaded MoU PDFs in School CRM. Files were served by Cloudinary with `Content-Type: application/octet-stream` and `Content-Disposition: attachment; filename="mou_xxx"` (no `.pdf` extension), so browsers downloaded an unreadable blob and PDF preview never opened.
+- **Root cause**: Cloudinary's free-tier "Restricted media types: PDF" stripped extensions from raw-uploaded PDFs. URLs with `.pdf` returned 401; URLs without returned the file but with broken `Content-Disposition` headers.
+- **Fix**: Added backend proxy `GET /api/files/proxy?url=<cloudinary_url>&download=0|1` that:
+  - Looks up the file in `uploaded_files` collection to recover the original filename + content-type.
+  - Generates a **Cloudinary signed URL** when fetching (bypasses the PDF restriction for both legacy URLs and new uploads).
+  - Re-streams the file to the browser with correct `Content-Type: application/pdf` and `Content-Disposition: inline|attachment; filename="<original_name>.pdf"`.
+- **Frontend updated**: `AdminSchoolCRM.jsx` (5 View/Download anchors + `downloadFile` helper) and `SchoolTrackingPage.jsx` (public school portal) now route MoU/document URLs through the new proxy.
+- **Verified**: curl tests show valid `%PDF-1` headers, 509KB binary content, and correct filenames like `St Wilfred's Group School 2026-2028 MOU.pdf`.
+
 ### Latest Changes (2026-06-06) — School CRM: Move-Back Workflow Reset
 - **Bug fix**: When admin clicks "Move Back" on an Active school to send it to Converted (or Renewed → Renewal Meeting/Active), the `onboarding_workflow.steps[].completed` flags now auto-reset to `false` so the admin can re-complete the purple onboarding progress bar. Step data is preserved.
 - After all steps are re-completed via `/api/schools/{id}/onboarding-step/{step}`, the existing logic auto-transitions status back to `active`.

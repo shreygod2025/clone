@@ -188,101 +188,35 @@ const getAbsoluteUrl = (url) => {
   return url;
 };
 
-// Download file utility - forces download with proper filename for cross-origin URLs (Cloudinary, etc.)
+// Build a backend-proxied URL for an uploaded file. The proxy fetches the underlying
+// (Cloudinary) file and re-streams it with the correct Content-Type and filename —
+// fixing browser previews & downloads that break when Cloudinary serves raw files
+// without a file extension (application/octet-stream).
+const getProxyUrl = (url, { download = false, name } = {}) => {
+  if (!url) return '';
+  const baseUrl = process.env.REACT_APP_BACKEND_URL || '';
+  const params = new URLSearchParams({ url });
+  if (download) params.set('download', '1');
+  if (name) params.set('name', name);
+  return `${baseUrl}/api/files/proxy?${params.toString()}`;
+};
+
+// Download file utility - forces download with proper filename via backend proxy.
 const downloadFile = async (url, filename) => {
   try {
-    const absoluteUrl = getAbsoluteUrl(url);
-
-    // Clean target filename: strip any existing extension, then re-add .pdf (or detected ext)
-    const targetExt = filename.match(/\.([a-zA-Z0-9]+)$/) ? `.${filename.match(/\.([a-zA-Z0-9]+)$/)[1].toLowerCase()}` : '.pdf';
-    const cleanFilename = filename.replace(/\.[^/.]+$/, '').replace(/[<>:"/\\|?*]/g, '_') + targetExt;
-
-    // ── Cloudinary raw URL: use fl_attachment transformation ──────────────────
-    // This instructs Cloudinary to serve the file with Content-Disposition: attachment
-    // and avoids CORS restrictions that break fetch()-based downloads on Windows.
-    const cloudinaryRawMatch = absoluteUrl.match(/(https:\/\/res\.cloudinary\.com\/[^/]+\/raw\/upload\/)(.*)/);
-    if (cloudinaryRawMatch) {
-      const base = cloudinaryRawMatch[1];
-      const rest = cloudinaryRawMatch[2];
-      const safeFilename = cleanFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
-      // Only add fl_attachment if not already present
-      const transformedUrl = rest.startsWith('fl_attachment')
-        ? absoluteUrl
-        : `${base}fl_attachment:filename_${safeFilename}/${rest}`;
-      const link = document.createElement('a');
-      link.href = transformedUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => document.body.removeChild(link), 200);
+    if (!url) {
+      toast.error('No file URL available');
       return;
     }
-    
-    // ── Non-Cloudinary URL: fetch + blob ──────────────────────────────────────
-    // Determine extension from URL
-    let extensionFromUrl = '';
-    const urlPath = absoluteUrl.split('?')[0];
-    const cloudinaryMatch = urlPath.match(/\/([^/]+)\.([a-zA-Z0-9]+)$/);
-    if (cloudinaryMatch) {
-      extensionFromUrl = `.${cloudinaryMatch[2].toLowerCase()}`;
-    } else {
-      const urlExtMatch = urlPath.match(/\.([a-zA-Z0-9]+)$/);
-      if (urlExtMatch) extensionFromUrl = `.${urlExtMatch[1].toLowerCase()}`;
-    }
-    
-    const response = await fetch(absoluteUrl);
-    if (!response.ok) throw new Error('Download failed');
-    
-    const blob = await response.blob();
-    const contentType = response.headers.get('content-type') || '';
-    
-    const contentTypeMap = {
-      'application/pdf': '.pdf',
-      'image/png': '.png',
-      'image/jpeg': '.jpg',
-      'image/jpg': '.jpg',
-      'image/webp': '.webp',
-      'image/gif': '.gif',
-      'application/msword': '.doc',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-      'application/vnd.ms-excel': '.xls',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
-      'text/csv': '.csv',
-      'text/plain': '.txt',
-    };
-    
-    let extension = contentTypeMap[contentType] || '';
-    if (!extension) {
-      if (contentType.includes('pdf')) extension = '.pdf';
-      else if (contentType.includes('png')) extension = '.png';
-      else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = '.jpg';
-      else if (contentType.includes('word') || contentType.includes('doc')) extension = '.docx';
-      else if (contentType.includes('excel') || contentType.includes('spreadsheet')) extension = '.xlsx';
-    }
-    if (!extension && extensionFromUrl) extension = extensionFromUrl;
-    if (!extension) extension = targetExt;
-    
-    const finalFilename = filename.replace(/\.[^/.]+$/, '').replace(/[<>:"/\\|?*]/g, '_') + extension;
-    const mimeType = Object.keys(contentTypeMap).find(k => contentTypeMap[k] === extension) || contentType || 'application/octet-stream';
-    const typedBlob = new Blob([blob], { type: mimeType });
-    const blobUrl = window.URL.createObjectURL(typedBlob);
-    
     const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = finalFilename;
+    link.href = getProxyUrl(url, { download: true, name: filename });
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    
-    setTimeout(() => {
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-    }, 100);
-    
-  } catch (error) {
-    console.error('Download error:', error);
-    // Fallback: open directly in new tab
-    window.open(getAbsoluteUrl(url), '_blank');
+    setTimeout(() => document.body.removeChild(link), 200);
+  } catch (err) {
+    console.error('Download error:', err);
+    toast.error('Failed to download file');
   }
 };
 
@@ -5572,7 +5506,7 @@ ${FOOTER}</div></body></html>`
                           <p className="text-xs text-purple-600 mb-2">MOU Document</p>
                           <div className="flex items-center gap-2">
                             <a 
-                              href={getAbsoluteUrl(viewInquiry.onboarding_data.mou_url)} 
+                              href={getProxyUrl(viewInquiry.onboarding_data.mou_url, { name: `MOU_${viewInquiry.school_name?.replace(/\s+/g, '_') || 'School'}.pdf` })} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 bg-white/50 px-3 py-2 rounded border border-blue-200"
@@ -6048,7 +5982,7 @@ ${FOOTER}</div></body></html>`
                       </div>
                       <div className="flex items-center gap-2">
                         <a
-                          href={getAbsoluteUrl(doc.url)}
+                          href={getProxyUrl(doc.url, { name: doc.name })}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-cyan-100 text-cyan-700 rounded hover:bg-cyan-200"
@@ -6953,7 +6887,7 @@ ${FOOTER}</div></body></html>`
                       MOU uploaded
                     </span>
                     <a 
-                      href={getAbsoluteUrl(renewalConvertData.mou_url)} 
+                      href={getProxyUrl(renewalConvertData.mou_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 underline"
@@ -9094,7 +9028,7 @@ ${FOOTER}</div></body></html>`
                       MOU uploaded
                     </span>
                     <a 
-                      href={getAbsoluteUrl(onboardData.mou_url)} 
+                      href={getProxyUrl(onboardData.mou_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 underline"
@@ -10180,7 +10114,7 @@ ${FOOTER}</div></body></html>`
                         MOU uploaded
                       </span>
                       <a 
-                        href={getAbsoluteUrl(editOnboardData.mou_url)} 
+                        href={getProxyUrl(editOnboardData.mou_url)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 underline"
