@@ -285,7 +285,7 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: '', subject: '', html: STARTER_TEMPLATES[0].html,
-    from_address: '', reply_to: '',
+    from_name: 'OLL', from_email: '', reply_to: '',
     schedule_type: 'now', schedule_dt: '',
     sample_email: '',
   });
@@ -351,12 +351,27 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
       .catch(() => { /* ignore */ });
     axios.get(`${API}/admin/broadcasts/senders`, { headers: getAuthHeaders() })
       .then(r => {
-        setSenders(r.data.senders || []);
-        setForm(f => ({ ...f, from_address: f.from_address || r.data.default || (r.data.senders || [])[0] || '' }));
+        // Senders come as "Name <email>" — split into name and email parts so the
+        // composer can use them as the email-address dropdown options.
+        const list = (r.data.senders || []).map(s => {
+          const m = s.match(/^(.*?)\s*<(.+?)>\s*$/);
+          return m ? { name: m[1].trim(), email: m[2].trim() } : { name: '', email: s.trim() };
+        });
+        setSenders(list);
+        setForm(f => ({ ...f, from_email: f.from_email || list[0]?.email || '' }));
       })
       .catch(() => { /* ignore */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Helpers — combine display name + email into the Resend "Name <email>" header
+  const buildFromHeader = () => {
+    const email = (form.from_email || '').trim();
+    if (!email) return '';
+    const name = (form.from_name || '').trim();
+    return name ? `${name} <${email}>` : email;
+  };
+  const isValidOllEmail = (em) => /@oll\.co$/i.test((em || '').trim());
 
   useEffect(() => {
     if (step === 1) runPreview();
@@ -368,12 +383,13 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
   const sendSample = async () => {
     if (!form.sample_email || !form.sample_email.includes('@')) { toast.error('Enter a valid sample email'); return; }
     if (!form.subject || !form.html) { toast.error('Add subject and body first'); return; }
+    if (!isValidOllEmail(form.from_email)) { toast.error('From email must end with @oll.co'); return; }
     try {
       await axios.post(`${API}/admin/broadcasts/send-sample`, {
         recipient: form.sample_email.trim(),
         subject: form.subject,
         html: form.html,
-        from_address: form.from_address || undefined,
+        from_address: buildFromHeader() || undefined,
         reply_to: form.reply_to || undefined,
       }, { headers: getAuthHeaders() });
       toast.success(`Sample sent to ${form.sample_email}`);
@@ -384,11 +400,12 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
 
   const sendNow = async () => {
     if (!form.name || !form.subject || !form.html) { toast.error('Fill name, subject and body'); return; }
+    if (!isValidOllEmail(form.from_email)) { toast.error('From email must end with @oll.co'); return; }
     setSending(true);
     try {
       const created = await axios.post(`${API}/admin/broadcasts`, {
         name: form.name, subject: form.subject, html: form.html,
-        from_address: form.from_address || undefined,
+        from_address: buildFromHeader() || undefined,
         reply_to: form.reply_to || undefined,
         filters: { groups: buildGroups() },
       }, { headers: getAuthHeaders() });
@@ -580,19 +597,45 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
               </div>
 
               <div className="grid sm:grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="text-xs font-semibold text-slate-600 uppercase">From address</span>
-                  <select value={form.from_address} onChange={e => update('from_address', e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-from">
-                    {senders.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </label>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-600 uppercase">Display name (as seen in inbox)</span>
+                      <input value={form.from_name} onChange={e => update('from_name', e.target.value)}
+                        placeholder="e.g. Shreyaan from OLL"
+                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-from-name" />
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-600 uppercase">From email</span>
+                      <select value={senders.some(s => s.email === form.from_email) ? form.from_email : ''} onChange={e => update('from_email', e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-from-email-preset">
+                        <option value="">Custom — type below</option>
+                        {senders.map(s => <option key={s.email} value={s.email}>{s.email}</option>)}
+                      </select>
+                      <input value={form.from_email} onChange={e => update('from_email', e.target.value)}
+                        placeholder="custom@oll.co"
+                        className={`mt-1 w-full px-3 py-1.5 border rounded text-xs ${form.from_email && !isValidOllEmail(form.from_email) ? 'border-rose-400 bg-rose-50' : 'border-slate-200'}`}
+                        data-testid="composer-from-email-custom" />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Preview: <code className="bg-slate-50 px-1 py-0.5 rounded">{buildFromHeader() || '—'}</code>
+                      </p>
+                      {form.from_email && !isValidOllEmail(form.from_email) && (
+                        <p className="text-[11px] text-rose-600 mt-1">From email must end with <code>@oll.co</code></p>
+                      )}
+                    </label>
+                  </div>
+                </div>
                 <label className="block">
                   <span className="text-xs font-semibold text-slate-600 uppercase">Reply-to</span>
-                  <select value={form.reply_to || ''} onChange={e => update('reply_to', e.target.value)}
+                  <select value={senders.some(s => `${s.name} <${s.email}>` === form.reply_to || s.email === form.reply_to) ? form.reply_to : ''} onChange={e => update('reply_to', e.target.value)}
                     className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" data-testid="composer-reply-to">
                     <option value="">Same as From</option>
-                    {senders.map(s => <option key={s} value={s}>{s}</option>)}
+                    {senders.map(s => {
+                      const full = s.name ? `${s.name} <${s.email}>` : s.email;
+                      return <option key={s.email} value={full}>{full}</option>;
+                    })}
                   </select>
                   <input value={form.reply_to || ''} onChange={e => update('reply_to', e.target.value)}
                     placeholder="…or paste a custom reply-to email"

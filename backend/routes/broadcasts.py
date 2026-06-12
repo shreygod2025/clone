@@ -37,7 +37,25 @@ from routes.admin_keys import get_current_user, get_resend_api_key
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+import re
+
 BROADCAST_FROM = os.environ.get("BROADCAST_FROM", "OLL <marketing@oll.co>")
+ALLOWED_FROM_DOMAIN = os.environ.get("BROADCAST_ALLOWED_DOMAIN", "oll.co").lower()
+
+
+def _validate_from_address(from_address: Optional[str]) -> Optional[str]:
+    """Ensure the From header's email ends with the allowed domain. Returns
+    the cleaned header or raises HTTPException. None passes through unchanged."""
+    if not from_address:
+        return from_address
+    m = re.search(r"<([^>]+)>", from_address)
+    email = (m.group(1) if m else from_address).strip().lower()
+    if not email.endswith("@" + ALLOWED_FROM_DOMAIN):
+        raise HTTPException(
+            status_code=400,
+            detail=f"From email must end with @{ALLOWED_FROM_DOMAIN}",
+        )
+    return from_address
 
 # ────────────────────────────────────────────────────────────
 # Helpers — paid-user discovery
@@ -532,6 +550,8 @@ async def send_sample(payload: SampleSend, user: dict = Depends(get_current_user
     composer's 'Send sample' button."""
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
+    _validate_from_address(payload.from_address)
+    _validate_from_address(payload.reply_to)
     api_key = await get_resend_api_key()
     if not api_key:
         raise HTTPException(status_code=500, detail="Resend API key not configured")
@@ -572,6 +592,8 @@ async def list_campaigns(user: dict = Depends(get_current_user)):
 async def create_campaign(payload: CampaignCreate, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
+    _validate_from_address(payload.from_address)
+    _validate_from_address(payload.reply_to)
     doc = {
         "id": str(uuid.uuid4()),
         "name": payload.name,
