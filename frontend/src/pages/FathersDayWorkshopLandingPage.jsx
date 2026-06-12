@@ -472,7 +472,7 @@ export default function FathersDayWorkshopLandingPage() {
                 Father&apos;s Day Screen-Free Robotics Workshop
               </p>
               <p className="mt-4 text-sm sm:text-base lg:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed" style={{ color: '#1F2937' }}>
-                3 hours of zero screens, full smiles. Bond with your child while you build a real robot.
+                2 hours of zero screens, full smiles. Bond with your child while you build a real robot.
               </p>
               <div className="mt-7 flex flex-wrap justify-center lg:justify-start gap-2 sm:gap-2.5">
                 <Pill icon={Calendar} text="Sunday, 21 June" />
@@ -526,7 +526,7 @@ export default function FathersDayWorkshopLandingPage() {
       <section style={{ background: SKY, position: 'relative', overflow: 'hidden' }} className="py-8 sm:py-12 lg:py-12">
         <Doodles preset="usp" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 gap-4 relative" style={{ zIndex: 1 }}>
-          <FeatureCard color={CORAL} icon={Heart}  title="Bonding time, no screens" sub="3 hours of fully present, hands-on time — building together." />
+          <FeatureCard color={CORAL} icon={Heart}  title="Bonding time, no screens" sub="2 hours of fully present, hands-on time — building together." />
           <FeatureCard color={NAVY}  icon={Shield} title="100% screen-free zone"    sub="No phones, tablets or laptops. Just kits, smiles, and creativity." />
         </div>
       </section>
