@@ -7,7 +7,8 @@ import {
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import RichEmailEditor, { SubjectField } from '../../components/RichEmailEditor';
+import RichEmailEditor from '../../components/RichEmailEditor';
+import SubjectField from '../../components/SubjectField';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -175,26 +176,22 @@ export default function AdminBroadcasts() {
 const SOURCES = [
   // ── Send to STUDENTS ──
   { group: 'Students', type: 'b2c_students', label: 'B2C Students (Online learning)',
-    stages: ['leads', 'demo', 'converted'], stageLabels: { leads: 'Leads', demo: 'Demo stage', converted: 'Converted' },
-    hasCityAgeStandard: true },
+    stages: ['leads', 'demo', 'converted'], stageLabels: { leads: 'Leads', demo: 'Demo stage', converted: 'Converted' } },
   { group: 'Students', type: 'summer_camp', label: 'Summer Camp',
-    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' },
-    hasCityAgeStandard: 'city-age' },
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
   { group: 'Students', type: 'ai_foundations', label: 'AI Foundations Course',
-    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' },
-    hasCityAgeStandard: 'age-standard' },
+    stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
   { group: 'Students', type: 'internship', label: 'Internship / Summer Internship',
     stages: ['leads', 'converted'], stageLabels: { leads: 'Leads', converted: 'Converted' } },
   // ── School-paid students (parents who paid online for kids) ──
   { group: 'Students', type: 'school_payers', label: 'School students paid online',
-    schoolPicker: true, hasCityAgeStandard: true },
+    schoolPicker: true },
   // ── Send to SCHOOLS ──
   { group: 'Schools', type: 'school_contacts', label: 'School contacts (principals, owners, etc.)',
     stages: ['new', 'meeting_done', 'converted', 'active', 'renewal_meeting', 'renewed'],
     stageLabels: { new: 'New leads', meeting_done: 'Meeting done', converted: 'Converted', active: 'Active', renewal_meeting: 'Renewal meeting', renewed: 'Renewed' },
     roles: ['all', 'principal', 'owner', 'accounts', 'teacher'],
-    roleLabels: { all: 'All roles', principal: 'Principals', owner: 'Owners', accounts: 'Accounts', teacher: 'Teachers' },
-    hasCityAgeStandard: 'city' },
+    roleLabels: { all: 'All roles', principal: 'Principals', owner: 'Owners', accounts: 'Accounts', teacher: 'Teachers' } },
 ];
 
 const AudienceSourceCard = ({ source, value, onChange, schoolList }) => {
@@ -275,23 +272,7 @@ const AudienceSourceCard = ({ source, value, onChange, schoolList }) => {
             </div>
           )}
 
-          {/* City / Age group / Standard extra filters */}
-          {source.hasCityAgeStandard && (
-            <div className="grid grid-cols-2 gap-2">
-              {(source.hasCityAgeStandard === true || String(source.hasCityAgeStandard).includes('city')) && (
-                <input value={value.city || ''} onChange={e => onChange({ ...value, city: e.target.value })}
-                  placeholder="City" className="text-xs px-2 py-1.5 border border-slate-300 rounded" data-testid={`source-${source.type}-city`} />
-              )}
-              {(source.hasCityAgeStandard === true || String(source.hasCityAgeStandard).includes('age')) && (
-                <input value={value.age_group || ''} onChange={e => onChange({ ...value, age_group: e.target.value })}
-                  placeholder="Age group (e.g. 9-12)" className="text-xs px-2 py-1.5 border border-slate-300 rounded" data-testid={`source-${source.type}-age`} />
-              )}
-              {(source.hasCityAgeStandard === true || String(source.hasCityAgeStandard).includes('standard')) && (
-                <input value={value.standard || ''} onChange={e => onChange({ ...value, standard: e.target.value })}
-                  placeholder="Standard / grade" className="text-xs px-2 py-1.5 border border-slate-300 rounded col-span-2" data-testid={`source-${source.type}-standard`} />
-              )}
-            </div>
-          )}
+          {/* No additional filters at the moment — keep card simple */}
         </div>
       )}
     </div>
@@ -329,11 +310,6 @@ const CampaignComposer = ({ onClose, onSent, getAuthHeaders }) => {
       if (src.stages && (v.stages || []).length) g.stages = v.stages;
       if (src.roles && (v.roles || []).length) g.roles = v.roles;
       if (src.schoolPicker) g.schools = v.schools || ['all'];
-      if (src.hasCityAgeStandard) {
-        if (v.city)      g.city = v.city;
-        if (v.age_group) g.age_group = v.age_group;
-        if (v.standard)  g.standard = v.standard;
-      }
       groups.push(g);
     }
     return groups;
