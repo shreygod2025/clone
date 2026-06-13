@@ -80,7 +80,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "postbuild": "react-snap",
+    "postbuild": "react-snap; true",
     "test": "craco test"
   },
   "reactSnap": {

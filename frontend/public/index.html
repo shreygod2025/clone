@@ -22,24 +22,16 @@
         <meta name="geo.region" content="IN" />
         <meta name="geo.placename" content="Mumbai" />
 
-        <!-- Open Graph (homepage default) -->
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co/" />
-        <meta property="og:title" content="OLL — Robotics, AI & Coding Classes for Kids in India" />
-        <meta property="og:description" content="Live future-skills classes for ages 4-16. Robotics, AI, Coding, Entrepreneurship & Financial Literacy. As seen on Shark Tank India." />
-        <meta property="og:image" content="https://oll.co/og-default.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="OLL — India's future-skills platform for kids" />
-        <meta property="og:site_name" content="OLL" />
-        <meta property="og:locale" content="en_IN" />
+        <!-- Open Graph (homepage default) — REMOVED. These tags are now set
+             entirely by React Helmet in each page's component, so prerendered
+             routes have only their own og:image / og:title / og:url. Having
+             them here AND in Helmet caused duplicate og:image tags, and per
+             OGP spec the FIRST occurrence wins — which was always the
+             homepage default, breaking WhatsApp link previews for every
+             inner page. A fallback default is now provided by the App root
+             via Helmet (see App.js). -->
 
-        <!-- Twitter / X -->
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@ollindia" />
-        <meta name="twitter:title" content="OLL — Robotics, AI & Coding Classes for Kids in India" />
-        <meta name="twitter:description" content="Live future-skills classes for ages 4-16. Robotics, AI, Coding, Entrepreneurship & Financial Literacy." />
-        <meta name="twitter:image" content="https://oll.co/og-default.png" />
+        <!-- Twitter / X — also removed for same duplication reason -->
 
         <!-- Canonical (Helmet overrides per-route) -->
         <link rel="canonical" href="https://oll.co/" />
