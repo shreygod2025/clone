@@ -23,6 +23,25 @@ REPORT_RECIPIENTS = [
     "clonefutura@gmail.com",
 ]
 REPORT_FROM = "OLL Reports <skills@oll.co>"
+REPORT_REPLY_TO = "skills@oll.co"
+
+
+def _html_to_text(html: str) -> str:
+    """Crude HTML → plain text fallback for the multipart alternative.
+    Improves deliverability — Gmail/Outlook heavily penalize HTML-only emails."""
+    import re as _re
+    text = _re.sub(r'<style[^>]*>.*?</style>', '', html, flags=_re.DOTALL | _re.IGNORECASE)
+    text = _re.sub(r'<script[^>]*>.*?</script>', '', text, flags=_re.DOTALL | _re.IGNORECASE)
+    text = _re.sub(r'<br\s*/?>', '\n', text, flags=_re.IGNORECASE)
+    text = _re.sub(r'</(p|div|tr|h[1-6]|li)>', '\n', text, flags=_re.IGNORECASE)
+    text = _re.sub(r'<[^>]+>', ' ', text)
+    text = _re.sub(r'&nbsp;', ' ', text)
+    text = _re.sub(r'&amp;', '&', text)
+    text = _re.sub(r'&lt;', '<', text)
+    text = _re.sub(r'&gt;', '>', text)
+    text = _re.sub(r'\n\s*\n+', '\n\n', text)
+    text = _re.sub(r'[ \t]+', ' ', text)
+    return text.strip()
 
 # ─────────────────────────────────────────────
 # Helpers
@@ -684,16 +703,34 @@ async def _send(subject: str, html: str, api_key: str, recipients=None):
     """
     resend.api_key = api_key
     targets = recipients if recipients is not None else REPORT_RECIPIENTS
+    text_body = _html_to_text(html)
     for recipient in targets:
         ok = True
         err_msg = None
         resend_id = None
         try:
+            # Generate a unique message reference for Gmail's Feedback-ID grouping
+            msg_ref = f"daily-report-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
             res = await asyncio.to_thread(resend.Emails.send, {
                 "from": REPORT_FROM,
                 "to": recipient,
+                "reply_to": REPORT_REPLY_TO,
                 "subject": subject,
                 "html": html,
+                "text": text_body,
+                "headers": {
+                    # List-Unsubscribe + one-click POST — major positive deliverability
+                    # signal for Gmail/Outlook. We point to a mailto so admins can
+                    # opt out by emailing; the daily report list itself is managed
+                    # in Admin Settings → Daily Reports.
+                    "List-Unsubscribe": "<mailto:unsubscribe@oll.co?subject=Unsubscribe%20Daily%20Report>",
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                    # Feedback-ID helps Gmail Postmaster Tools group these emails so
+                    # the sending reputation is computed separately from marketing.
+                    "X-Entity-Ref-ID": msg_ref,
+                    "X-Report-Type": "operational-daily-briefing",
+                },
+                "tags": [{"name": "category", "value": "daily-report"}],
             })
             resend_id = (res or {}).get("id") if isinstance(res, dict) else None
             logger.info(f"[DailyReport] Sent '{subject}' to {recipient}")
@@ -766,7 +803,7 @@ async def send_daily_reports(force: bool = False, recipients=None):
     consolidated_html = build_consolidated_email(
         support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, date_str
     )
-    subject = f"[OLL Daily Briefing] {date_str}"
+    subject = f"OLL daily briefing — {date_str}"
     await _send(subject, consolidated_html, api_key, recipients=recipients)
 
     logger.info("[DailyReport] Consolidated daily report dispatched.")
