@@ -1,6 +1,42 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-15) — Gmail Bot + Unified Student Search (P0)
+
+**Feature 1 — Gmail Bot (Auto-create support tickets from inbox)**
+- New backend module `routes/gmail_bot.py` with full Google OAuth 2.0 (Web App) flow.
+- Admin connects any number of Gmail accounts (e.g., `info@oll.co`, `skills@oll.co`) via the Admin → Settings → **Gmail Bot** tab.
+- Endpoints:
+  - `GET /api/gmail/auth-url` → returns Google consent URL (offline + prompt=consent → guaranteed refresh_token).
+  - `GET /api/oauth/gmail/callback` → exchanges code, upserts encrypted-on-rest tokens into `gmail_accounts`.
+  - `GET /api/gmail/accounts` → list connected accounts (tokens stripped).
+  - `POST /api/gmail/sync-now` / `/sync-now/{acc_id}` → manual trigger.
+  - `DELETE /api/gmail/accounts/{acc_id}` → disconnect.
+- **Hourly scheduler** (`sync_all_gmail_accounts`, APScheduler `IntervalTrigger(minutes=60)`):
+  1. For each active Gmail account, list `is:unread in:inbox -category:promotions -category:social`.
+  2. Skip obvious automation: no-reply, mailer-daemon, postmaster, Cashfree/Resend/AiSensy senders, our own outbound.
+  3. Send subject + body to **Emergent LLM (gpt-4o-mini)** with a strict triage prompt → returns `{is_query, category, priority, subject_summary}`. Only `is_query=true` becomes a ticket.
+  4. Auto-extract Indian phone numbers from the body for customer linking.
+  5. Match sender email & extracted phone against **12 customer-bearing collections** (students, student_inquiries, demo_bookings, ai_foundations_bookings, summer_camp_bookings, workshop_bookings, student_payments, social_media_intern_registrations, inquiry_leads, future_skills_subscriptions/trials, school_inquiries). Attach `customer_link` to the ticket.
+  6. Create `support_queries` ticket with `source='gmail_bot'`, embedded `gmail.{message_id, thread_id, gmail_url}` for traceability.
+  7. Mark the Gmail message READ + log to `db.gmail_processed` so the next sync never reprocesses it.
+- Failure modes are recorded on the account doc (`last_sync_error`) and shown in the UI.
+
+**Feature 2 — Unified Student Search**
+- New endpoint `GET /api/students/unified-search?q=<text|phone|email>` in `routes/unified_search.py` — searches all 11 customer-bearing collections, dedupes by `(phone | email | name)`, returns normalized `{source, source_label, name, phone, email, paid_amount, status, link, also_in[]}` with multi-source merge.
+- Extended the existing `GET /api/data-center/autocomplete` (powers the Support → Create-Ticket form's Name/Phone/Email autocomplete) to also pull from every Cashfree booking + payment collection. The dropdown now shows source labels (`Cashfree · Summer Camp`, `Cashfree · AI Foundations`, `Future Skills Subscription`, etc.) plus the paid amount where applicable.
+- Frontend: `AdminSupportUnified.jsx` autocomplete dropdowns now render the source label and ₹ paid amount per entry. Admins searching a name or phone in the support panel will now find **any student who paid via Cashfree on any funnel**, not just those in the legacy CRM.
+
+**New collections:**
+- `gmail_accounts` — connected Gmail accounts (encrypted tokens, last sync stats).
+- `gmail_processed` — every Gmail message we've handled (msg_id, action, classification, ticket_id) — primary key (gmail_msg_id, account).
+- `oauth_states` — short-lived OAuth state nonces (10-min TTL via expires_at).
+
+**Credentials added to `/app/backend/.env`:**
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Google Cloud Console OAuth 2.0 Web App). Redirect URI configured for both preview + `oll.co` production.
+
+**Testing**: 15/15 backend pytest cases pass · Frontend Gmail Bot panel + Support autocomplete verified · OAuth consent URL generates correctly (full E2E OAuth not run — needs real Google account).
+
 ### Latest Changes (2026-06-15) — SEO / WhatsApp Link Preview Fix (P0)
 - **Bug**: Sharing inner URLs like `oll.co/workshops/fathers-day-robotics` on WhatsApp/Facebook/Google showed the generic homepage image + title, instead of the workshop's own image + description. Confirmed via `curl -A "WhatsApp/2.23.20.0" https://oll.co/...` returning the homepage `<title>` and `og:image=https://oll.co/og-default.png`.
 - **Root cause**:

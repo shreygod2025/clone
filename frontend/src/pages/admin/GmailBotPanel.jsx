@@ -138,7 +138,7 @@ const GmailBotPanel = ({ getAuthHeaders }) => {
 
         <Button
           onClick={handleSyncAll}
-          disabled={syncingAll || accounts.length === 0}
+          disabled={syncingAll}
           variant="outline"
           data-testid="gmail-sync-all-btn"
         >

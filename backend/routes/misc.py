@@ -395,6 +395,7 @@ async def autocomplete_search(
         ).limit(5).to_list(5)
         for s in schools:
             s["type"] = "school"
+            s["source_label"] = "School Inquiry"
             s["name"] = s.get("school_name") or s.get("contact_name")
             results.append(s)
     
@@ -406,6 +407,7 @@ async def autocomplete_search(
         ).limit(5).to_list(5)
         for e in educators:
             e["type"] = "educator"
+            e["source_label"] = "Educator Application"
             results.append(e)
     
     return results[:20]
