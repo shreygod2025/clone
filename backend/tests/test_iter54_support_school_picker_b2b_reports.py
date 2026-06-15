@@ -36,7 +36,7 @@ class TestAuthAndHealth:
         """Test admin login and get token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         data = response.json()
@@ -53,7 +53,7 @@ class TestB2BInsightsEndpoint:
         """Get auth token before each test"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         self.token = response.json()["access_token"]
@@ -151,7 +151,7 @@ class TestSchoolSearchForTickets:
         """Get auth token before each test"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         self.token = response.json()["access_token"]
@@ -219,7 +219,7 @@ class TestSupportQueryCreation:
         """Get auth token before each test"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         self.token = response.json()["access_token"]
@@ -286,7 +286,7 @@ class TestSupportQueriesEndpoint:
         """Get auth token before each test"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         self.token = response.json()["access_token"]

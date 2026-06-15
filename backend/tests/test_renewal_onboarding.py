@@ -20,7 +20,7 @@ class TestRenewalOnboarding:
         """Setup test - get auth token"""
         login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert login_response.status_code == 200, f"Login failed: {login_response.text}"
         self.token = login_response.json().get("access_token")
@@ -227,7 +227,7 @@ class TestAutoStatusChange:
         """Setup test - get auth token"""
         login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert login_response.status_code == 200
         self.token = login_response.json().get("access_token")

@@ -16,7 +16,7 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 TEST_EMAIL = "testadmin@oll.co"
 TEST_PASSWORD = "test123"
 FALLBACK_EMAIL = "admin@oll.co"
-FALLBACK_PASSWORD = "Dagaji03@"
+FALLBACK_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 JOB_SECRET = "oll_cron_secret_2024"
 
 

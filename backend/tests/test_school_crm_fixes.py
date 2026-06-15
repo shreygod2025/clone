@@ -22,7 +22,7 @@ class TestSchoolCRMFixes:
     def setup(self):
         """Setup test data and authentication"""
         self.admin_email = "admin@oll.co"
-        self.admin_password = "Dagaji03@"
+        self.admin_password = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         self.auth_token = None
         self.created_school_ids = []
         self.created_onboarding_ids = []

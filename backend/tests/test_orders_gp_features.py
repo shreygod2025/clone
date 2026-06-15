@@ -21,7 +21,7 @@ class TestAdminOrdersAPI:
         """Setup authentication"""
         login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert login_response.status_code == 200, f"Login failed: {login_response.text}"
         self.token = login_response.json()["access_token"]
@@ -61,7 +61,7 @@ class TestGPRoleAssignment:
         """Setup authentication"""
         login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert login_response.status_code == 200, f"Login failed: {login_response.text}"
         self.token = login_response.json()["access_token"]
@@ -133,7 +133,7 @@ class TestGPOnboarding:
         """Setup authentication"""
         login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert login_response.status_code == 200, f"Login failed: {login_response.text}"
         self.token = login_response.json()["access_token"]

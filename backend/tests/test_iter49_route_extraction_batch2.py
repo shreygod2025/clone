@@ -27,7 +27,7 @@ def auth_token():
     # Fallback credentials
     response = requests.post(
         f"{BASE_URL}/api/auth/login",
-        json={"email": "admin@oll.co", "password": "Dagaji03@"},
+        json={"email": "admin@oll.co", "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")},
         headers={"Content-Type": "application/json"}
     )
     if response.status_code == 200:
@@ -61,7 +61,7 @@ class TestCoreRoutes:
         if response.status_code != 200:
             response = requests.post(
                 f"{BASE_URL}/api/auth/login",
-                json={"email": "admin@oll.co", "password": "Dagaji03@"},
+                json={"email": "admin@oll.co", "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")},
                 headers={"Content-Type": "application/json"}
             )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"

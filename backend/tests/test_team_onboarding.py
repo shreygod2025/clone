@@ -21,7 +21,7 @@ class TestTeamOnboardingFeature:
         """Get authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         token = response.json().get("access_token")
@@ -391,7 +391,7 @@ class TestTeamOnboardingFullWorkflow:
         """Get authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         token = response.json().get("access_token")

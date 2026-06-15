@@ -12,7 +12,7 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://camp-lead-capture.pr
 API = f"{BASE_URL}/api"
 
 ADMIN_EMAIL = "admin@oll.co"
-ADMIN_PASSWORD = "Dagaji03@"
+ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 
 
 @pytest.fixture(scope="session")

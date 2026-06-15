@@ -11,7 +11,7 @@ import time
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 ADMIN_EMAIL = "admin@oll.co"
-ADMIN_PASSWORD = "Dagaji03@"
+ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 
 # Unique test phones to avoid cross-test pollution
 TEST_PHONE_NEW = "8888100001"  # fresh phone – will create new record

@@ -15,7 +15,7 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://camp-lead-capture.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "admin@oll.co"
-ADMIN_PASSWORD = "Dagaji03@"
+ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 
 EXISTING_REQ_ID = "4ffde6a8-46f6-452e-af75-1071e4bf6913"
 

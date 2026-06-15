@@ -186,8 +186,8 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   // Load images
   let logoImg = null;
   let signImg = null;
-  try { logoImg = await loadImageAsDataURL('/oll_logo_invoice.png', 120, 200); } catch (e) { /* fallback */ }
-  try { signImg = await loadImageAsDataURL('/shreyaan_sign.png', 200, 100); } catch (e) { /* fallback */ }
+  try { logoImg = await loadImageAsDataURL('/oll_logo_invoice.png', 120, 200); } catch (e) { console.warn('[invoicePdfGenerator] Could not load OLL logo image — invoice will render without logo:', e?.message || e); }
+  try { signImg = await loadImageAsDataURL('/shreyaan_sign.png', 200, 100); } catch (e) { console.warn('[invoicePdfGenerator] Could not load signature image — invoice will render without signature:', e?.message || e); }
 
   // ─── Border ───
   doc.setDrawColor(30, 58, 95);

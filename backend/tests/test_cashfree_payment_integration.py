@@ -20,7 +20,7 @@ TEST_STUDENT_ID = "c3559dd1-acd3-4246-804a-9f307c378bca"
 
 # Admin credentials for authenticated requests
 ADMIN_EMAIL = "admin@oll.co"
-ADMIN_PASSWORD = "Dagaji03@"
+ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 
 
 @pytest.fixture(scope="module")

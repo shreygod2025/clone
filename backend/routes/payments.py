@@ -2023,10 +2023,11 @@ async def trigger_manual_sync(user: dict = Depends(get_current_user)):
 # ── School Student Payment Receipt (manual send / test) ──────────────────────
 
 @router.post("/school-payment/send-receipt/{order_id}")
-async def resend_school_student_receipt(order_id: str, data: dict = {}, user: dict = Depends(get_current_user)):
+async def resend_school_student_receipt(order_id: str, data: Optional[dict] = None, user: dict = Depends(get_current_user)):
     """Admin: Manually send (or re-send) the payment receipt email for a school student payment.
     Optionally override the email via { "email": "..." } in the body.
     """
+    data = data or {}
     payment = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
     if not payment:
         raise HTTPException(status_code=404, detail="Payment record not found")

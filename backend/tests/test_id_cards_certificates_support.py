@@ -16,7 +16,7 @@ def auth_token():
     """Get auth token using admin credentials"""
     resp = requests.post(f"{BASE_URL}/api/auth/login", json={
         "email": "admin@oll.co",
-        "password": "Dagaji03@"
+        "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
     })
     if resp.status_code == 200:
         data = resp.json()

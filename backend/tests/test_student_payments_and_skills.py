@@ -20,7 +20,7 @@ class TestStudentPayments:
         # Login to get token
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         self.token = response.json().get("access_token")
@@ -147,7 +147,7 @@ class TestStudentInquiryWithOtherSkill:
             # Login to get admin token for deletion
             login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
                 "email": "admin@oll.co",
-                "password": "Dagaji03@"
+                "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
             })
             if login_response.status_code == 200:
                 token = login_response.json().get("access_token")

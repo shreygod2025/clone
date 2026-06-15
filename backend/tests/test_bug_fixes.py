@@ -18,7 +18,7 @@ def admin_token():
     """Get admin authentication token"""
     login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
         "email": "admin@oll.co",
-        "password": "Dagaji03@"
+        "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
     })
     if login_response.status_code != 200:
         pytest.skip("Admin login failed")

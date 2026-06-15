@@ -176,7 +176,7 @@ class TestInitOnboardingAPI:
         """Login as admin and get token"""
         resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         if resp.status_code != 200:
             pytest.skip(f"Admin login failed: {resp.status_code} - {resp.text}")
@@ -330,7 +330,7 @@ class TestPublicTrackingAPI:
         """Create a school, init onboarding, get tracking token"""
         login_resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         if login_resp.status_code != 200:
             pytest.skip("Admin login failed")
@@ -441,7 +441,7 @@ class TestUpdateOnboardingStepAPI:
         """Create school with workflow for testing"""
         login_resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         if login_resp.status_code != 200:
             pytest.skip("Admin login failed")

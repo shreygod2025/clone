@@ -32,7 +32,7 @@ class TestAddDocument:
             # Try fallback admin credentials
             login_response = requests.post(
                 f"{BASE_URL}/api/auth/login",
-                json={"email": "admin@oll.co", "password": "Dagaji03@"}
+                json={"email": "admin@oll.co", "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")}
             )
             if login_response.status_code == 200:
                 self.auth_token = login_response.json().get("access_token")
@@ -51,7 +51,7 @@ class TestAddDocument:
         if login_response.status_code != 200:
             login_response = requests.post(
                 f"{BASE_URL}/api/auth/login",
-                json={"email": "admin@oll.co", "password": "Dagaji03@"}
+                json={"email": "admin@oll.co", "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")}
             )
         assert login_response.status_code == 200, f"Login failed: {login_response.text}"
         data = login_response.json()
@@ -177,7 +177,7 @@ class TestSendMOUEmail:
         else:
             login_response = requests.post(
                 f"{BASE_URL}/api/auth/login",
-                json={"email": "admin@oll.co", "password": "Dagaji03@"}
+                json={"email": "admin@oll.co", "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")}
             )
             if login_response.status_code == 200:
                 self.auth_token = login_response.json().get("access_token")

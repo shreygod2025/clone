@@ -10,7 +10,7 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test Credentials
 ADMIN_EMAIL = "admin@oll.co"
-ADMIN_PASSWORD = "Dagaji03@"
+ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 STUDENT_PHONE = "9699188188"
 OTP = "1111"
 TEST_STUDENT_ID = "c3559dd1-acd3-4246-804a-9f307c378bca"

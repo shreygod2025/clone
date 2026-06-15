@@ -20,7 +20,7 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/") or \
 API = f"{BASE_URL}/api"
 
 ADMIN_EMAIL = "admin@oll.co"
-ADMIN_PASSWORD = "Dagaji03@"
+ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
 
 # Direct DB connection for seeding (uses backend env vars same way the backend does)
 MONGO_URL = None

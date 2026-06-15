@@ -18,7 +18,7 @@ def admin_token():
     """Login as admin and return JWT token."""
     # Try admin@oll.co with Dagaji03@ first; fall back to testadmin@oll.co/test123
     for creds in [
-        {"email": "admin@oll.co", "password": "Dagaji03@"},
+        {"email": "admin@oll.co", "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")},
         {"email": "testadmin@oll.co", "password": "test123"},
     ]:
         resp = requests.post(f"{BASE_URL}/api/auth/login", json=creds)
@@ -54,7 +54,7 @@ class TestAdminAuth:
     def test_admin_login_success(self):
         resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text[:300]}"
         data = resp.json()

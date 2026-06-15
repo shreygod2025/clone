@@ -15,7 +15,7 @@ class TestAuth:
         """Get admin authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         data = response.json()
@@ -26,7 +26,7 @@ class TestAuth:
         """Test admin login"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         data = response.json()
@@ -42,7 +42,7 @@ class TestTeamMemberReports:
         """Get admin authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         return response.json()["access_token"]
@@ -148,7 +148,7 @@ class TestSchoolCRM:
         """Get admin authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         return response.json()["access_token"]
@@ -234,7 +234,7 @@ class TestStudentCRM:
         """Get admin authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         return response.json()["access_token"]
@@ -261,7 +261,7 @@ class TestEducators:
         """Get admin authentication token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         return response.json()["access_token"]

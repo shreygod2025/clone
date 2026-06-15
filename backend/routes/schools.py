@@ -1495,7 +1495,15 @@ async def send_crm_email_for_school(
             "custom_message": data.get("custom_message", "")
         }
 
-        from server import send_school_crm_email  # lazy import to avoid circular dependency
+        # Lazy import: `server.send_school_crm_email` lives in /app/backend/server.py
+        # which itself imports this `routes.schools` module — so a top-level
+        # `from server import …` would create a circular import. The clean fix
+        # is to extract `send_school_crm_email` (and its email-template helpers)
+        # into a new `routes/email_helpers.py` so both server.py and schools.py
+        # can import from it — TODO tracked in the code-quality backlog.
+        # For now, keeping the lazy import is functionally correct and the
+        # only place schools.py reaches into server.py.
+        from server import send_school_crm_email  # noqa: E402
         result = await send_school_crm_email(
             to_email=to_email,
             email_type=email_type,

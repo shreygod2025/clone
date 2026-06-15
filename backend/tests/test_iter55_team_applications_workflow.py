@@ -33,7 +33,7 @@ class TestAuthAndHealth:
         """Test admin login and get token"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert response.status_code == 200
         data = response.json()
@@ -49,7 +49,7 @@ class TestTeamApplicationsEndpoint:
     def auth_token(self):
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         return response.json().get("access_token")
     
@@ -107,7 +107,7 @@ class TestCreateTeamApplication:
     def auth_token(self):
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         return response.json().get("access_token")
     
@@ -164,7 +164,7 @@ class TestUpdateTeamApplicationPipeline:
     def auth_token(self):
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         return response.json().get("access_token")
     
@@ -435,7 +435,7 @@ class TestBulkUpload:
     def auth_token(self):
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         return response.json().get("access_token")
     
@@ -525,7 +525,7 @@ class TestFilterByStatus:
     def auth_token(self):
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         return response.json().get("access_token")
     
@@ -598,7 +598,7 @@ class TestCleanup:
     def auth_token(self):
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         return response.json().get("access_token")
     

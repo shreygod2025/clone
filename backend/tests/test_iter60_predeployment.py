@@ -16,7 +16,7 @@ def auth_token():
     """Login with admin credentials and return JWT token."""
     resp = requests.post(f"{BASE_URL}/api/auth/login", json={
         "email": "admin@oll.co",
-        "password": "Dagaji03@"
+        "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
     })
     assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
     data = resp.json()
@@ -38,7 +38,7 @@ class TestAuth:
     def test_login_success(self):
         resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
         data = resp.json()
@@ -50,7 +50,7 @@ class TestAuth:
         """Token should work with an authenticated endpoint."""
         resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "admin@oll.co",
-            "password": "Dagaji03@"
+            "password": os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
         })
         data = resp.json()
         token = data.get("access_token") or data.get("token")
