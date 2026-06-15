@@ -846,7 +846,70 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
         "ticket_number": await get_next_ticket_number(),
     }
     await db.support_queries.insert_one(doc)
-    
+
+    # ── Customer acknowledgment email ───────────────────────────────────────
+    # Sent via Resend. We also send for admin-created tickets so the customer
+    # gets the same "ticket #XXXX received, replying within 48h" promise that
+    # Gmail-bot auto-tickets get. Skip if no customer email is on record.
+    customer_email = (data.get("email") or "").strip()
+    if customer_email and "@" in customer_email:
+        try:
+            resend_ready = await ensure_resend_api_key()
+            if resend_ready:
+                first_name = (data.get("name") or "there").split()[0]
+                ticket_no = doc["ticket_number"]
+                query_type_label = (data.get("query_type") or "support").replace("_", " ").title()
+                preview = (data.get("message") or "")[:400]
+                html_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a202c;">
+                    <h2 style="color: #1E3A5F; margin-bottom: 8px;">We've received your query — Ticket #{ticket_no}</h2>
+                    <p>Hi {first_name},</p>
+                    <p>Thank you for reaching out to OLL. We've logged your query and our team will get back to you within <strong>48 hours</strong>.</p>
+                    <div style="background: #f6f8fa; padding: 16px 20px; border-radius: 10px; margin: 18px 0; border-left: 4px solid #1E3A5F;">
+                        <p style="margin: 4px 0;"><strong>Ticket #</strong> {ticket_no}</p>
+                        <p style="margin: 4px 0;"><strong>Category:</strong> {query_type_label}</p>
+                        {f'<p style="margin: 4px 0;"><strong>Details:</strong> {preview}{"…" if len(data.get("message") or "")>400 else ""}</p>' if preview else ""}
+                    </div>
+                    <p>If your matter is urgent or you'd like to add more context, simply reply to this email and we'll prioritise it.</p>
+                    <p style="margin-top: 28px;">Warm regards,<br><strong>OLL Support Team</strong><br><a href="https://oll.co" style="color: #1E3A5F;">oll.co</a></p>
+                </div>
+                """
+                plain_body = (
+                    f"Hi {first_name},\n\n"
+                    f"Thank you for reaching out to OLL. We've logged your query and our team will get back to you within 48 hours.\n\n"
+                    f"Ticket #: {ticket_no}\n"
+                    f"Category: {query_type_label}\n"
+                    + (f"Details: {preview}\n\n" if preview else "\n")
+                    + "If your matter is urgent or you'd like to add more context, simply reply to this email and we'll prioritise it.\n\n"
+                    f"Warm regards,\nOLL Support Team\nhttps://oll.co"
+                )
+                email_params = {
+                    "from": SENDER_EMAIL,
+                    "to": [customer_email],
+                    "subject": f"We've received your query — Ticket #{ticket_no} | OLL Support",
+                    "html": html_body,
+                    "text": plain_body,
+                    "reply_to": ["welcome@oll.co"],
+                    "headers": {"List-Unsubscribe": "<mailto:unsubscribe@oll.co>"},
+                }
+                await asyncio.to_thread(resend.Emails.send, email_params)
+                # Persist the ack flag so the support panel can show "ack sent ✓"
+                await db.support_queries.update_one(
+                    {"id": query_id},
+                    {"$set": {
+                        "ack_sent": True,
+                        "ack_sent_at": datetime.now(timezone.utc).isoformat(),
+                        "ack_channel": "resend_email",
+                    }},
+                )
+                print(f"[support/create] ack email sent to {customer_email} for ticket #{ticket_no}")
+        except Exception as e:
+            print(f"[support/create] ack email failed for {customer_email}: {e}")
+            await db.support_queries.update_one(
+                {"id": query_id},
+                {"$set": {"ack_error": str(e)[:200]}},
+            )
+
     # Send notification if assigned to someone
     if data.get("assigned_to"):
         assignee = await db.team_users.find_one({"id": data["assigned_to"]}, {"_id": 0})
