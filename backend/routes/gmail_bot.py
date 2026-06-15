@@ -709,8 +709,35 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
 
     for m in msgs:
         msg_id = m["id"]
-        # Skip if already processed (guard against double-runs)
-        if await db.gmail_processed.find_one({"gmail_msg_id": msg_id, "account": email_addr}):
+        # ── Atomic claim: "I'm processing this message" ────────────────────
+        # Two syncs running concurrently (hourly cron + a manual "Sync now"
+        # click) would otherwise both pass the "already processed?" check and
+        # each create a ticket. The atomic upsert below guarantees only ONE
+        # of them inserts the lock doc; the other sees matched_count > 0 and
+        # bails out. Combined with the unique index on (gmail_msg_id, account),
+        # this eliminates the duplicate-ticket race.
+        try:
+            lock_res = await db.gmail_processed.update_one(
+                {"gmail_msg_id": msg_id, "account": email_addr},
+                {
+                    "$setOnInsert": {
+                        "gmail_msg_id": msg_id,
+                        "account": email_addr,
+                        "action": "in_progress",
+                        "processed_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
+                upsert=True,
+            )
+        except Exception as e:
+            # Most likely a DuplicateKeyError from the unique index — another
+            # sync already claimed this message. Skip.
+            logger.info(f"[gmail_bot] lock_acquire_failed for {msg_id}: {e}")
+            skipped += 1
+            continue
+        if lock_res.matched_count > 0:
+            # Doc existed already → already processed (or being processed) by
+            # an earlier sync. Skip.
             skipped += 1
             continue
 
@@ -954,32 +981,48 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
 async def _mark_processed(msg_id: str, account: str, gmail, action: str, subject: str, sender: str,
                           classification: Optional[dict] = None, ticket_id: Optional[str] = None,
                           ticket_number: Optional[int] = None):
-    """Record we've handled this Gmail message + remove UNREAD label so the next sync skips it."""
+    """Update the previously-claimed gmail_processed doc with the final outcome
+    + remove the UNREAD label so the next sync skips this message."""
     # 1) Mark read in Gmail
     try:
         gmail.users().messages().modify(userId="me", id=msg_id, body={"removeLabelIds": ["UNREAD"]}).execute()
     except Exception:
         logger.exception(f"Failed to mark Gmail msg {msg_id} read")
-    # 2) Record in our processed log
+    # 2) Update the in-flight lock doc with the final action + details. We use
+    #    update_one + upsert=True so this also works for first-run installs
+    #    (before the atomic-claim refactor or if the lock doc was deleted).
     try:
-        await db.gmail_processed.insert_one({
-            "gmail_msg_id": msg_id,
-            "account": account,
-            "action": action,
-            "subject": subject[:160],
-            "sender": sender,
-            "classification": classification,
-            "ticket_id": ticket_id,
-            "ticket_number": ticket_number,
-            "processed_at": datetime.now(timezone.utc).isoformat(),
-        })
+        await db.gmail_processed.update_one(
+            {"gmail_msg_id": msg_id, "account": account},
+            {"$set": {
+                "action": action,
+                "subject": subject[:160],
+                "sender": sender,
+                "classification": classification,
+                "ticket_id": ticket_id,
+                "ticket_number": ticket_number,
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
     except Exception:
-        logger.exception("Failed to write gmail_processed log")
+        logger.exception("Failed to update gmail_processed log")
 
 
 # ── Public sync endpoints ──────────────────────────────────────────────────
 async def sync_all_gmail_accounts() -> dict:
     """Called by APScheduler every hour. Iterates over all active accounts."""
+    # Ensure the unique index that backs the atomic-claim dedup. Idempotent —
+    # safe to call on every sync; MongoDB no-ops if the index already exists.
+    try:
+        await db.gmail_processed.create_index(
+            [("gmail_msg_id", 1), ("account", 1)],
+            unique=True,
+            name="gmail_msg_account_unique",
+        )
+    except Exception:
+        logger.exception("Could not ensure gmail_processed unique index")
+
     accounts = await db.gmail_accounts.find({"active": {"$ne": False}}).to_list(50)
     results = []
     for a in accounts:
