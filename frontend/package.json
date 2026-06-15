@@ -80,7 +80,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "postbuild": "react-snap; true",
+    "postbuild": "node scripts/seo-prerender.cjs",
     "test": "craco test"
   },
   "reactSnap": {

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { openCashfreeCheckout } from '../utils/cashfreeCheckout';
+import { ogImage } from '../utils/ogImage';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const WORKSHOP_KEY = 'fathers-day-robotics';
@@ -247,8 +248,8 @@ export default function FathersDayWorkshopLandingPage() {
         <meta property="og:url" content="https://oll.co/workshops/fathers-day-robotics" />
         <meta property="og:title" content="Father's Day 2026 Robotics Workshop · Mumbai · OLL" />
         <meta property="og:description" content="This Father's Day, bond over learning. Build a real robot together with your child (ages 4–12). Screen-free · Sun 21 June · ₹1,999 · Mumbai." />
-        <meta property="og:image"        content={CAROUSEL[0]} />
-        <meta property="og:image:secure_url" content={CAROUSEL[0]} />
+        <meta property="og:image"        content={ogImage(CAROUSEL[0])} />
+        <meta property="og:image:secure_url" content={ogImage(CAROUSEL[0])} />
         <meta property="og:image:width"  content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt"    content="Father and child building a robot together at the OLL Father's Day workshop in Mumbai" />
@@ -263,7 +264,7 @@ export default function FathersDayWorkshopLandingPage() {
         <meta name="twitter:creator"     content="@oll_official" />
         <meta name="twitter:title"       content="Father's Day 2026 Robotics Workshop · Mumbai · OLL" />
         <meta name="twitter:description" content="Dad + kid build a real robot together — screen-free, hands-on, Sunday 21 June, ₹1,999." />
-        <meta name="twitter:image"       content={CAROUSEL[0]} />
+        <meta name="twitter:image"       content={ogImage(CAROUSEL[0])} />
         <meta name="twitter:image:alt"   content="OLL Father's Day Robotics Workshop, Mumbai 2026" />
 
         {/* Mobile / PWA / Apple */}

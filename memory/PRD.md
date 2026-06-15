@@ -1,6 +1,22 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-15) — SEO / WhatsApp Link Preview Fix (P0)
+- **Bug**: Sharing inner URLs like `oll.co/workshops/fathers-day-robotics` on WhatsApp/Facebook/Google showed the generic homepage image + title, instead of the workshop's own image + description. Confirmed via `curl -A "WhatsApp/2.23.20.0" https://oll.co/...` returning the homepage `<title>` and `og:image=https://oll.co/og-default.png`.
+- **Root cause**:
+  1. The previous prerenderer (`react-snap`) was unreliable under React 19 + `react-helmet-async`: puppeteer races sometimes captured the DOM *before* Helmet had flushed its `<head>` tags, so per-route HTML had a stripped head. One slow API call on `/about` also crashed the entire prerender pass, so the deploy fell back to the SPA shell for every URL.
+  2. The `og:image` for the workshop pointed at a 2.1 MB Cloudinary PNG. WhatsApp refuses to fetch OG images > ~1 MB, so even with the right tag the image would silently fail to render.
+- **Fix**:
+  1. **Replaced `react-snap` with a deterministic Node postbuild script** (`frontend/scripts/seo-prerender.cjs`) that reads CRA's `build/index.html`, regex-rewrites `<title>`, `<meta name="description">`, `<link rel="canonical">`, and an OpenGraph + Twitter block, then writes `build/<route>/index.html` for every route in `seo-routes.cjs`. No puppeteer, no JS execution, no race conditions — runs in ~2s for 20 routes.
+  2. **Auto-proxied all OG images through wsrv.nl** (`frontend/src/utils/ogImage.js` + same wrapper inside `seo-routes.cjs`). The Father's Day workshop image went from 2.1 MB PNG → 74 KB JPG, well under WhatsApp's hard ~1 MB ceiling.
+  3. Updated `FathersDayWorkshopLandingPage.jsx` Helmet to also use `ogImage()` so the client-rendered tags stay consistent with the prerendered ones.
+- **Verified**:
+  - `yarn build` produced 20 per-route HTML files at `build/<route>/index.html`.
+  - `grep og:image build/workshops/fathers-day-robotics/index.html` shows the wsrv.nl URL.
+  - Locally served the `build/` dir and `curl -A "WhatsApp/..."` against the prerendered routes returned correct per-route `<title>`, `og:title`, `og:image`, `og:description`.
+  - `curl -sI` against the wsrv.nl OG URL returns `200 / image/jpeg / content-length: 73833` (74 KB).
+- **Deployment**: Cloudflare Pages / Netlify (per `public/_redirects`) always checks the filesystem first, so `/workshops/fathers-day-robotics/index.html` will win over the SPA `_redirects` fallback automatically on next deploy.
+
 ### Latest Changes (2026-06-12) — School CRM MoU View/Download Fix (P0)
 - **Bug**: Admins/school users couldn't view or download uploaded MoU PDFs in School CRM. Files were served by Cloudinary with `Content-Type: application/octet-stream` and `Content-Disposition: attachment; filename="mou_xxx"` (no `.pdf` extension), so browsers downloaded an unreadable blob and PDF preview never opened.
 - **Root cause**: Cloudinary's free-tier "Restricted media types: PDF" stripped extensions from raw-uploaded PDFs. URLs with `.pdf` returned 401; URLs without returned the file but with broken `Content-Disposition` headers.
