@@ -898,6 +898,14 @@ const AdminSupportUnified = () => {
       setSelectedSchool(null);
       setSchoolContacts([]);
       setSchoolSearchQuery('');
+      // Reset filters + jump to the New tab so the freshly-created ticket is
+      // immediately visible, regardless of what the admin was filtering by.
+      setActiveTab('new');
+      setSearchQuery('');
+      setSourceFilter('all');
+      setAssigneeFilter('all');
+      setQueryTypeFilter('');
+      setUserTypeFilter('all');
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to create ticket');

@@ -151,13 +151,16 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = user.get("email", "admin")
 
+    # Pre-fetch the doc once so we can both manage the hold timer AND fire
+    # the customer-facing status-change email below.
+    new_status = data.get("status")
+    existing = await db.support_queries.find_one({"id": query_id}, {"_id": 0}) if new_status is not None else None
+    prev_status = (existing or {}).get("status")
+
     # ── Hold lifecycle: pause resolution timer ─────────────────────────────
     # When status → on_hold: stamp hold_started_at + hold_reason.
     # When status → away from on_hold: accumulate (now - hold_started_at) into paused_seconds.
-    new_status = data.get("status")
-    if new_status is not None:
-        existing = await db.support_queries.find_one({"id": query_id}, {"_id": 0}) or {}
-        prev_status = existing.get("status")
+    if new_status is not None and existing is not None:
         now_iso = datetime.now(timezone.utc).isoformat()
 
         if new_status == "on_hold" and prev_status != "on_hold":
@@ -174,7 +177,6 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
 
     # Auto-set resolved_at when status → resolved/closed (if not already set)
     if data.get("status") in ("resolved", "closed"):
-        existing = await db.support_queries.find_one({"id": query_id}, {"_id": 0, "resolved_at": 1})
         if not (existing or {}).get("resolved_at"):
             update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
     elif data.get("status") in ("new", "open", "in_progress"):
@@ -197,8 +199,146 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
         )
     else:
         await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
-    
+
+    # ── Customer status-change email ────────────────────────────────────────
+    # Fires ONLY on actual transitions (prev != new) into one of:
+    # in_progress · on_hold · resolved · closed. Replied & sent only if a
+    # customer email is on file. Failures are logged but don't break the
+    # status update — the admin's primary action still succeeds.
+    if (
+        new_status
+        and existing
+        and prev_status != new_status
+        and new_status in ("in_progress", "on_hold", "resolved", "closed")
+    ):
+        ticket_for_mail = {**existing, **update_data}
+        hold_reason = data.get("hold_reason") or existing.get("hold_reason")
+        # Run in the background so the admin's PATCH returns instantly
+        asyncio.create_task(_send_customer_status_email(
+            ticket=ticket_for_mail,
+            new_status=new_status,
+            hold_reason=hold_reason,
+            admin_name=user.get("name") or user.get("email") or "OLL Support",
+        ))
+
     return {"message": "Query updated successfully"}
+
+
+async def _send_customer_status_email(ticket: dict, new_status: str, hold_reason: Optional[str], admin_name: str):
+    """Send a status-change notification to the customer via Resend.
+
+    Templates per status:
+      - in_progress: "We're working on it"
+      - on_hold:     "Paused — here's why" (uses hold_reason)
+      - resolved:    "Resolved — please confirm"
+      - closed:      same as resolved but final
+    Silent no-op if no customer email is on file.
+    """
+    customer_email = (ticket.get("email") or "").strip()
+    if not customer_email or "@" not in customer_email:
+        return
+    try:
+        if not await ensure_resend_api_key():
+            return
+        first_name = (ticket.get("name") or "there").split()[0]
+        ticket_no = ticket.get("ticket_number") or (ticket.get("id") or "")[:8].upper()
+        query_type_label = (ticket.get("query_type") or "support").replace("_", " ").title()
+
+        copy = {
+            "in_progress": {
+                "subject": f"Update on your query — Ticket #{ticket_no} | In Progress",
+                "headline": "We're now working on this",
+                "body_html": f"<p>Good news — our team has picked up your query and we are actively working on it.</p>"
+                             f"<p>We'll come back to you with a resolution as soon as possible. If you'd like to add any extra context, "
+                             f"just reply to this email.</p>",
+                "body_text": "Good news — our team has picked up your query and we are actively working on it. "
+                             "We'll come back to you with a resolution as soon as possible. If you'd like to add any extra context, "
+                             "just reply to this email.",
+                "accent": "#2563eb",
+            },
+            "on_hold": {
+                "subject": f"Your query is on hold — Ticket #{ticket_no}",
+                "headline": "We've placed this on hold",
+                "body_html": f"<p>We're temporarily pausing work on this ticket while we wait on some information from your side.</p>"
+                             + (f"<p><strong>Reason:</strong> {hold_reason}</p>" if hold_reason else "")
+                             + "<p>Please reply to this email with the details — we'll resume the moment we hear from you.</p>",
+                "body_text": "We're temporarily pausing work on this ticket while we wait on some information from your side.\n"
+                             + (f"Reason: {hold_reason}\n" if hold_reason else "")
+                             + "Please reply to this email with the details — we'll resume the moment we hear from you.",
+                "accent": "#d97706",
+            },
+            "resolved": {
+                "subject": f"Resolved — Ticket #{ticket_no} | OLL Support",
+                "headline": "Your query has been resolved",
+                "body_html": "<p>Your query has been marked <strong>resolved</strong>. If everything looks good on your side, no further "
+                             "action is needed — this thread will close automatically.</p>"
+                             "<p>If anything is still pending, simply reply to this email and we'll re-open the ticket.</p>",
+                "body_text": "Your query has been marked resolved. If everything looks good on your side, no further action is needed — "
+                             "this thread will close automatically. If anything is still pending, simply reply to this email and we'll "
+                             "re-open the ticket.",
+                "accent": "#15803d",
+            },
+            "closed": {
+                "subject": f"Closed — Ticket #{ticket_no} | OLL Support",
+                "headline": "This ticket is now closed",
+                "body_html": "<p>This ticket has been closed. Thank you for reaching out to OLL.</p>"
+                             "<p>Need help with something new? Just reply to this email or write to "
+                             "<a href='mailto:welcome@oll.co'>welcome@oll.co</a> and we'll open a fresh ticket.</p>",
+                "body_text": "This ticket has been closed. Thank you for reaching out to OLL.\n"
+                             "Need help with something new? Just reply to this email or write to welcome@oll.co and we'll open a fresh ticket.",
+                "accent": "#475569",
+            },
+        }[new_status]
+
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a202c;">
+            <h2 style="color: {copy['accent']}; margin-bottom: 8px;">{copy['headline']} — Ticket #{ticket_no}</h2>
+            <p>Hi {first_name},</p>
+            {copy['body_html']}
+            <div style="background: #f6f8fa; padding: 14px 18px; border-radius: 10px; margin: 18px 0; border-left: 4px solid {copy['accent']};">
+                <p style="margin: 4px 0;"><strong>Ticket #</strong> {ticket_no}</p>
+                <p style="margin: 4px 0;"><strong>Category:</strong> {query_type_label}</p>
+                <p style="margin: 4px 0;"><strong>Updated by:</strong> {admin_name}</p>
+            </div>
+            <p style="margin-top: 28px;">Warm regards,<br><strong>OLL Support Team</strong><br><a href="https://oll.co" style="color: #1E3A5F;">oll.co</a></p>
+        </div>
+        """
+        plain_body = (
+            f"Hi {first_name},\n\n"
+            f"{copy['body_text']}\n\n"
+            f"Ticket #: {ticket_no}\n"
+            f"Category: {query_type_label}\n"
+            f"Updated by: {admin_name}\n\n"
+            f"Warm regards,\nOLL Support Team\nhttps://oll.co"
+        )
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [customer_email],
+            "subject": copy["subject"],
+            "html": html_body,
+            "text": plain_body,
+            "reply_to": ["welcome@oll.co"],
+            "headers": {"List-Unsubscribe": "<mailto:unsubscribe@oll.co>"},
+        })
+        # Persist the last status-update notification on the ticket for audit
+        await db.support_queries.update_one(
+            {"id": ticket["id"]},
+            {"$set": {
+                "last_status_email_at": datetime.now(timezone.utc).isoformat(),
+                "last_status_email_to": customer_email,
+                "last_status_email_status": new_status,
+            }},
+        )
+        print(f"[support/status-email] sent '{new_status}' email to {customer_email} for ticket #{ticket_no}")
+    except Exception as e:
+        print(f"[support/status-email] failed for {customer_email}: {e}")
+        try:
+            await db.support_queries.update_one(
+                {"id": ticket["id"]},
+                {"$set": {"last_status_email_error": str(e)[:200]}},
+            )
+        except Exception:
+            pass
 
 @router.post("/support/queries/{query_id}/assign")
 async def assign_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
