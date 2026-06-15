@@ -23,7 +23,6 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null }, // Always visible
     { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null }, // Always visible
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
-    { path: '/admin/future-skills', icon: Bot, label: 'Future Skills', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
     { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'orders' },
@@ -31,14 +30,17 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
-    { path: '/admin/blogs', icon: PenSquare, label: 'Blogs', permission: 'blogs' },
-    { path: '/admin/broadcasts', icon: Send, label: 'Bulk Email', permission: 'settings' },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
-    { path: '/admin/data-center', icon: Database, label: 'Data Center', permission: 'data_center' },
-    { path: '/admin/data-export', icon: Download, label: 'Data Export', permission: 'settings' },
-    { path: '/admin/link-preview-tester', icon: Link2, label: 'Link Preview Tester', permission: 'settings' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
+    // ── Moved into Settings tabs (not shown in sidebar):
+    //   Future Skills      → lives under Student CRM
+    //   Blogs              → Settings → Blogs tab
+    //   Bulk Email         → Settings → Bulk Email tab
+    //   Data Center        → Settings → Data Center tab
+    //   Data Export        → Settings → Data Export tab
+    //   Link Preview Tester→ Settings → Link Preview tab
+    // Routes themselves remain registered in App.js so deep links still work.
   ];
 
   // Filter nav items based on user role and permissions

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import CitySearch from '../../components/CitySearch';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
-  Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal, Inbox
+  Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal, Inbox,
+  Send, Link2, ExternalLink
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -21,6 +23,7 @@ const ROLE_TYPES = ['Full-time', 'Part-time', 'Internship', 'Freelance', 'Contra
 
 const AdminSettings = () => {
   const { getAuthHeaders, user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('team-requirements');
   const [loading, setLoading] = useState(true);
   
@@ -597,6 +600,11 @@ const AdminSettings = () => {
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
     { id: 'centers', label: 'Centers', icon: Building, count: centers.length },
     { id: 'blogs', label: 'Blogs', icon: FileText, count: blogs.length },
+    // ── External tabs — click navigates to the dedicated page (removed from sidebar).
+    { id: 'broadcasts',          label: 'Bulk Email',          icon: Send,     count: null, external: '/admin/broadcasts' },
+    { id: 'data-center',         label: 'Data Center',         icon: Database, count: null, external: '/admin/data-center' },
+    { id: 'data-export',         label: 'Data Export',         icon: Download, count: null, external: '/admin/data-export' },
+    { id: 'link-preview-tester', label: 'Link Preview Tester', icon: Link2,    count: null, external: '/admin/link-preview-tester' },
   ];
 
   const filteredCaseStudies = caseStudies.filter(s => 
@@ -632,16 +640,19 @@ const AdminSettings = () => {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => tab.external ? navigate(tab.external) : setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
                 activeTab === tab.id 
                   ? 'bg-[#1E3A5F] text-white' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : tab.external
+                    ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-[#1E3A5F]'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
               data-testid={`tab-${tab.id}`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
+              {tab.external && <ExternalLink className="w-3 h-3 opacity-60" />}
               {tab.count !== null && (
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   activeTab === tab.id ? 'bg-white/20' : 'bg-slate-200'
