@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { format, differenceInHours } from 'date-fns';
 import axios from 'axios';
+import GmailReplyModal from './GmailReplyModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -245,6 +246,7 @@ const AdminSupportUnified = () => {
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [userTypeFilter, setUserTypeFilter] = useState('all'); // Filter by inquiry_type
   const [showReplyModal, setShowReplyModal] = useState(null);
+  const [showGmailReply, setShowGmailReply] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -1776,6 +1778,19 @@ const AdminSupportUnified = () => {
                     Delete
                   </Button>
 
+                  {/* Reply via Gmail — only on gmail_bot tickets that have a thread */}
+                  {query.source === 'gmail_bot' && query.gmail?.thread_id && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowGmailReply(query)}
+                      className="flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                      data-testid={`gmail-reply-${query.id}`}
+                    >
+                      <Inbox className="w-4 h-4" />
+                      Reply via Gmail
+                    </Button>
+                  )}
+
                   {/* Raise PO — only for kit_related tickets */}
                   {query.query_type === 'kit_related' && (
                     query.po_info?.po_number ? (
@@ -3161,6 +3176,16 @@ const AdminSupportUnified = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reply via Gmail (only for gmail_bot tickets with an active Gmail thread) */}
+      {showGmailReply && (
+        <GmailReplyModal
+          ticket={showGmailReply}
+          onClose={() => setShowGmailReply(null)}
+          onSent={() => fetchAllQueries()}
+          getAuthHeaders={getAuthHeaders}
+        />
+      )}
     </AdminLayout>
   );
 };

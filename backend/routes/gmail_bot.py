@@ -306,6 +306,90 @@ def _extract_name(from_header: str) -> str:
     return addr.split("@", 1)[0] if "@" in addr else (from_header or "").strip()
 
 
+def _build_gmail_url(account_email: str, thread_id: str) -> str:
+    """Build a Gmail deep-link to a specific thread for a specific account.
+
+    Gmail web URLs look like `https://mail.google.com/mail/u/0/#inbox/<thread>`
+    where the `0` is the account-chooser index. Since we don't always know the
+    index (varies per user / multi-login), we pass `authuser=<email>` instead —
+    Gmail will resolve the correct account from the URL-encoded email. The
+    thread_id is what the API returns and matches the Gmail web URL fragment.
+    """
+    from urllib.parse import quote
+    if not thread_id:
+        return f"https://mail.google.com/mail/?authuser={quote(account_email)}"
+    return f"https://mail.google.com/mail/?authuser={quote(account_email)}#inbox/{thread_id}"
+
+
+def _build_reply_message(
+    to_email: str, to_name: str, subject: str, body_text: str,
+    in_reply_to_msg_id: Optional[str] = None, references: Optional[str] = None,
+    from_email: Optional[str] = None,
+) -> dict:
+    """Build a Gmail API `users.messages.send` body that threads correctly.
+
+    The `In-Reply-To` and `References` headers (both holding the original
+    RFC-822 Message-ID) plus the `threadId` in the request body are what make
+    Gmail show our reply inside the same conversation as the customer's email.
+    """
+    from email.mime.text import MIMEText
+    from email.utils import formataddr
+
+    msg = MIMEText(body_text, "plain", "utf-8")
+    msg["To"] = formataddr((to_name or "", to_email))
+    if from_email:
+        msg["From"] = formataddr(("OLL Support", from_email))
+    # Always reply with "Re: " prefix unless caller already added it
+    subj = subject or ""
+    if not subj.lower().startswith("re:"):
+        subj = f"Re: {subj}"
+    msg["Subject"] = subj
+    if in_reply_to_msg_id:
+        msg["In-Reply-To"] = in_reply_to_msg_id
+        msg["References"] = references or in_reply_to_msg_id
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    return {"raw": raw}
+
+
+async def _send_gmail_reply(
+    account_email: str,
+    to_email: str,
+    to_name: str,
+    subject: str,
+    body_text: str,
+    thread_id: Optional[str],
+    in_reply_to_msg_id: Optional[str],
+    references: Optional[str],
+) -> dict:
+    """Send a reply through a specific connected Gmail account. Threads correctly.
+
+    Returns the Gmail API response dict (contains `id`, `threadId`, `labelIds`).
+    Raises HTTPException if the account isn't connected or the send fails.
+    """
+    acc_doc = await db.gmail_accounts.find_one({"email": account_email.lower()})
+    if not acc_doc:
+        raise HTTPException(404, f"Gmail account {account_email} not connected")
+    try:
+        creds = _creds_from_doc(acc_doc)
+        await _persist_refreshed_token(account_email, creds)
+        gmail = build("gmail", "v1", credentials=creds, cache_discovery=False)
+    except Exception as e:
+        raise HTTPException(500, f"Gmail auth failed: {e}")
+
+    msg_body = _build_reply_message(
+        to_email=to_email, to_name=to_name, subject=subject, body_text=body_text,
+        in_reply_to_msg_id=in_reply_to_msg_id, references=references, from_email=account_email,
+    )
+    if thread_id:
+        msg_body["threadId"] = thread_id
+    try:
+        sent = gmail.users().messages().send(userId="me", body=msg_body).execute()
+    except HttpError as e:
+        raise HTTPException(500, f"Gmail send failed: {e}")
+    return sent
+
+
 # ── AI classification ──────────────────────────────────────────────────────
 CLASSIFIER_PROMPT = """\
 You are a support-mail triage classifier for OLL (an EdTech company in India that runs
@@ -583,7 +667,10 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
         sender_name = _extract_name(from_h)
         body = _extract_body(payload)
         thread_id = full.get("threadId")
-        gmail_url = f"https://mail.google.com/mail/u/?authuser={email_addr}#inbox/{thread_id or msg_id}"
+        # Capture RFC-822 Message-ID for proper threading on our reply
+        rfc_message_id = _hdr(headers, "Message-ID") or _hdr(headers, "Message-Id")
+        existing_references = _hdr(headers, "References")
+        gmail_url = _build_gmail_url(email_addr, thread_id)
 
         # Hard skips before paying for LLM call
         if (
@@ -723,10 +810,14 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
                 "account": email_addr,
                 "message_id": msg_id,
                 "thread_id": thread_id,
+                "rfc_message_id": rfc_message_id,    # for In-Reply-To when replying
+                "references": existing_references,   # for References header chain
                 "subject": subject,
                 "normalized_subject": (lambda s: re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]+", " ", re.sub(r"^(re|fwd|fw)\s*:\s*", "", (s or "").strip(), flags=re.I).lower())).strip()[:80])(subject),
                 "from": from_h,
                 "gmail_url": gmail_url,
+                "ack_sent": False,
+                "ack_sent_at": None,
             },
             "customer_link": link,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -734,6 +825,46 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
         }
         await db.support_queries.insert_one(ticket_doc)
         created += 1
+
+        # ── Auto-acknowledgment reply ───────────────────────────────────────
+        # As soon as we create a ticket, send the customer a polite "we've got
+        # this — ticket #XXXX — someone replies within 48h" email, threaded
+        # under their original message so it appears in the same conversation.
+        ack_text = (
+            f"Hi {customer_name.split()[0] if customer_name else 'there'},\n\n"
+            f"Thank you for reaching out to OLL. We have received your query and "
+            f"created Support Ticket #{ticket_number} to track it.\n\n"
+            f"A member of our team will get back to you within 48 hours. If your "
+            f"matter is urgent, please reply to this email and we'll prioritise it.\n\n"
+            f"Warm regards,\n"
+            f"OLL Support Team\n"
+            f"https://oll.co"
+        )
+        try:
+            sent = await _send_gmail_reply(
+                account_email=email_addr,
+                to_email=sender_email,
+                to_name=customer_name,
+                subject=subject,
+                body_text=ack_text,
+                thread_id=thread_id,
+                in_reply_to_msg_id=rfc_message_id,
+                references=existing_references or rfc_message_id,
+            )
+            await db.support_queries.update_one(
+                {"id": ticket_id},
+                {"$set": {
+                    "gmail.ack_sent": True,
+                    "gmail.ack_sent_at": datetime.now(timezone.utc).isoformat(),
+                    "gmail.ack_message_id": sent.get("id"),
+                }},
+            )
+        except Exception as ack_err:
+            logger.exception(f"Auto-ack failed for ticket #{ticket_number}")
+            await db.support_queries.update_one(
+                {"id": ticket_id},
+                {"$set": {"gmail.ack_error": str(ack_err)[:200]}},
+            )
 
         # Mark as read in Gmail + processed in our DB
         await _mark_processed(msg_id, email_addr, gmail, "ticket_created", subject, sender_email,
@@ -812,3 +943,163 @@ async def sync_now_single(acc_id: str, user: dict = Depends(get_current_user)):
     if not acc:
         raise HTTPException(404, "Account not found")
     return await _sync_account(acc)
+
+
+# ── Reply templates ────────────────────────────────────────────────────────
+# Seeded built-ins so the panel works on day 1 — admins can add/edit/delete
+# additional templates which we store in db.gmail_reply_templates.
+BUILTIN_TEMPLATES = [
+    {
+        "id": "builtin_received",
+        "name": "Acknowledge receipt (48h)",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Thanks for writing in. Your query has been logged as Support Ticket #{ticket_number}. "
+            "A team member will reach out to you within 48 hours with next steps.\n\n"
+            "If this is urgent, simply reply to this email and we'll fast-track it.\n\n"
+            "Warm regards,\nOLL Support"
+        ),
+    },
+    {
+        "id": "builtin_receipt_followup",
+        "name": "Payment receipt — share Cashfree invoice",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Apologies for the delay. Sharing your Cashfree payment receipt for ticket #{ticket_number}. "
+            "If anything looks incorrect, do let us know in the same thread.\n\n"
+            "Best,\nOLL Finance"
+        ),
+    },
+    {
+        "id": "builtin_demo_scheduling",
+        "name": "Schedule demo class",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Happy to help schedule your demo class. Could you share:\n"
+            "  · Child's age + grade\n"
+            "  · Preferred skill (Robotics / AI / Coding / Financial Literacy)\n"
+            "  · 2-3 weekday/weekend slots that work for you\n\n"
+            "Once we have these, we'll send a confirmation with the educator's details and "
+            "Zoom/centre link. — Ticket #{ticket_number}\n\nWarm regards,\nOLL Admissions"
+        ),
+    },
+    {
+        "id": "builtin_login_help",
+        "name": "Student login help",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "We've reset access for your account. Please follow these steps:\n"
+            "  1. Go to https://oll.co/login\n"
+            "  2. Choose 'Student / Parent' login\n"
+            "  3. Enter your registered phone number — you'll receive an OTP on WhatsApp\n\n"
+            "Reply here if you don't receive the OTP within 2 minutes. — Ticket #{ticket_number}\n\n"
+            "Warm regards,\nOLL Support"
+        ),
+    },
+]
+
+
+@router.get("/gmail/templates")
+async def list_reply_templates(user: dict = Depends(get_current_user)):
+    """All reply templates — built-ins + admin-defined."""
+    custom = await db.gmail_reply_templates.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"templates": [*BUILTIN_TEMPLATES, *custom]}
+
+
+@router.post("/gmail/templates")
+async def create_reply_template(data: dict, user: dict = Depends(get_current_user)):
+    """Save a new reusable template. `{first_name}` and `{ticket_number}` are interpolated."""
+    name = (data.get("name") or "").strip()
+    body = (data.get("body") or "").strip()
+    if not name or not body:
+        raise HTTPException(400, "name + body required")
+    tpl = {
+        "id": str(uuid.uuid4()),
+        "name": name[:120],
+        "subject_prefix": (data.get("subject_prefix") or "Re: ")[:40],
+        "body": body[:5000],
+        "created_by": user.get("email"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.gmail_reply_templates.insert_one(tpl)
+    tpl.pop("_id", None)
+    return tpl
+
+
+@router.delete("/gmail/templates/{tpl_id}")
+async def delete_reply_template(tpl_id: str, user: dict = Depends(get_current_user)):
+    if tpl_id.startswith("builtin_"):
+        raise HTTPException(400, "Built-in templates cannot be deleted")
+    res = await db.gmail_reply_templates.delete_one({"id": tpl_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Template not found")
+    return {"deleted": True}
+
+
+# ── Manual reply from admin via Gmail ──────────────────────────────────────
+@router.post("/gmail/reply/{ticket_id}")
+async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Send a Gmail reply from the same account the original email came in on,
+    threaded under the original conversation. Log the reply as a comment on the
+    ticket so it shows in the support panel timeline."""
+    body_text = (data.get("body") or "").strip()
+    if not body_text:
+        raise HTTPException(400, "body required")
+
+    ticket = await db.support_queries.find_one({"id": ticket_id})
+    if not ticket:
+        raise HTTPException(404, "Ticket not found")
+    gmail = ticket.get("gmail") or {}
+    account_email = gmail.get("account")
+    if not account_email:
+        raise HTTPException(400, "Ticket has no associated Gmail account (only Gmail-bot tickets can be replied to via Gmail)")
+
+    # Render template placeholders
+    customer_first_name = (ticket.get("name") or "there").split()[0]
+    rendered = body_text.format(
+        first_name=customer_first_name,
+        ticket_number=ticket.get("ticket_number", ""),
+    ) if "{" in body_text else body_text
+
+    try:
+        sent = await _send_gmail_reply(
+            account_email=account_email,
+            to_email=ticket.get("email"),
+            to_name=ticket.get("name", ""),
+            subject=gmail.get("subject", ""),
+            body_text=rendered,
+            thread_id=gmail.get("thread_id"),
+            in_reply_to_msg_id=gmail.get("rfc_message_id"),
+            references=gmail.get("references") or gmail.get("rfc_message_id"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Gmail reply failed")
+        raise HTTPException(500, f"Gmail send failed: {e}")
+
+    # Log reply as a comment so the support panel shows the back-and-forth
+    comment = {
+        "id": str(uuid.uuid4()),
+        "author": user.get("name") or user.get("email") or "Admin",
+        "author_email": user.get("email"),
+        "text": f"[Replied via Gmail · {account_email}]\n\n{rendered}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "gmail": {"sent_message_id": sent.get("id"), "thread_id": sent.get("threadId")},
+    }
+    await db.support_queries.update_one(
+        {"id": ticket_id},
+        {
+            "$push": {"comments": comment},
+            "$set": {
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "last_replied_at": datetime.now(timezone.utc).isoformat(),
+                "last_replied_by": user.get("email"),
+            },
+        },
+    )
+    return {"message": "Reply sent", "gmail_message_id": sent.get("id"), "thread_id": sent.get("threadId")}
