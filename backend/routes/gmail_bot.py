@@ -477,9 +477,28 @@ Return ONLY valid JSON (no prose, no markdown fences):
   - Bounce / undeliverable / mailer-daemon notifications
   - Outgoing emails sent BY OLL team
   - Spam / phishing
+  - **College / university sponsorship & event-collaboration outreach** — emails
+    from student bodies, fest organisers, IIT / IIM / college clubs, MUNs,
+    hackathons, techfests, cultural fests, e-summits, e-cells,
+    entrepreneurship cells, incubators or college societies asking OLL to:
+      * sponsor their event / fest / summit / hackathon / MUN / conference
+      * partner / collaborate on a college event
+      * provide gift hampers, vouchers, swag, prizes, or branding slots
+      * speak at / mentor / judge a college event
+      * be a media / outreach / community partner
+      * post about their event on OLL's social channels
+    Set is_query = FALSE for ALL such cold-outreach emails, even if polite
+    and well-written. These are NOT customer support queries.
+  - Generic B2B partnership / business-development cold emails from agencies,
+    SaaS vendors, lead-gen companies, design studios, dev shops, recruiters
+    pitching candidates, etc.
+  - Conference / webinar / event invitations addressed to OLL leadership.
 
-Set is_query = true ONLY when a real person is sending a question, complaint, booking
-enquiry, refund/payment issue, scheduling change, or any other concern.
+Set is_query = true ONLY when a real person is sending a question, complaint,
+booking enquiry, refund/payment issue, scheduling change, or any other concern
+AND they appear to be a parent / student / school principal-coordinator /
+current educator / growth partner — i.e. someone with an existing or potential
+paid relationship with OLL. Cold-outreach pitches do NOT qualify.
 
 # inquiry_type (WHO is writing) — pick the best fit:
   - "student"        → a parent asking about THEIR child's class / demo / kit / payment, or a teen learner themselves
@@ -673,8 +692,9 @@ async def _find_customer_by_email_or_phone(email: str, phone: str = "") -> Optio
 
 
 # ── Core: fetch + classify + create tickets for one account ────────────────
-async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
-    """Pull unread INBOX, classify, create tickets, mark read. Returns summary."""
+async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
+    """Pull INBOX (last 30d, read + unread), classify, create tickets, mark read.
+    Returns summary. Atomic-claim dedup via gmail_processed prevents double-runs."""
     email_addr = acc_doc["email"]
     created = 0
     skipped = 0
@@ -692,10 +712,15 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
         )
         return {"email": email_addr, "created": 0, "skipped": 0, "error": f"auth_failed: {e}"}
 
-    # List unread messages in INBOX (cap at max_messages so a backlog doesn't explode the ticket queue)
+    # List INBOX messages (read + unread) from the last 30 days. We no longer
+    # rely on the `is:unread` flag because the user wants the bot to ALSO
+    # catch queries they've already opened in Gmail (e.g., from before the bot
+    # was connected, or read on mobile but not yet replied to). Dedup is
+    # entirely handled by the `gmail_processed` lock, so re-scans are cheap.
     try:
-        # Exclude promotional + social tab traffic, which is rarely a customer query
-        query = "is:unread in:inbox -category:promotions -category:social"
+        # Exclude promotional + social tab traffic, which is rarely a customer query.
+        # Cap window to 30 days so the first scan after a long backlog stays bounded.
+        query = "in:inbox newer_than:30d -category:promotions -category:social"
         resp = gmail.users().messages().list(userId="me", q=query, maxResults=max_messages).execute()
         msgs = resp.get("messages", []) or []
     except HttpError as e:
@@ -774,6 +799,47 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
             or sender_email.endswith("@aisensy.com")
         ):
             await _mark_processed(msg_id, email_addr, gmail, "auto_skip", subject, sender_email)
+            skipped += 1
+            continue
+
+        # ── Cold-outreach pre-filter (free, runs before the LLM call) ────────
+        # Catches the most obvious college-fest / sponsorship / collaboration
+        # pitches via subject + sender-domain keywords. These are NOT customer
+        # queries and the user explicitly asked us not to ticket them.
+        subj_l = (subject or "").lower()
+        body_head = (body or "")[:1500].lower()  # first ~1.5 KB usually contains the ask
+        combined = subj_l + " " + body_head
+        sender_domain = sender_email.split("@")[-1] if "@" in sender_email else ""
+
+        # Strong cold-outreach signals: any of these in subject or body
+        cold_outreach_kw = (
+            "sponsorship", "sponsor us", "sponsor our", "seeking sponsors",
+            "in-kind sponsorship", "title sponsor", "category sponsor",
+            "collaboration", "collaborate with", "looking to collaborate",
+            "partner with us", "outreach partner", "media partner", "community partner",
+            "techfest", "tech fest", "e-summit", "esummit", "e-cell", "ecell",
+            "entrepreneurship cell", "entrepreneurship summit",
+            "college fest", "annual fest", "cultural fest", "management fest",
+            "model united nations", " mun ", "mun ", "hackathon partnership",
+            "judge our", "mentor our", "speak at our",
+            "swag", "gift hampers", "voucher partner", "prize sponsor",
+            "alumni meet", "ted talk", "tedx",
+        )
+        is_college_domain = any(sender_domain.endswith(s) for s in (
+            ".edu", ".edu.in", ".ac.in", "iim", "iit",
+        )) or any(k in sender_domain for k in ("iitb", "iitd", "iitm", "iitk", "iitkgp", "iiitm", "nit", "bits-pilani"))
+
+        cold_hits = sum(1 for kw in cold_outreach_kw if kw in combined)
+        # A college-domain sender + ANY one keyword → skip
+        # OR 2+ keywords from anywhere → skip
+        if (is_college_domain and cold_hits >= 1) or cold_hits >= 2:
+            await _mark_processed(
+                msg_id, email_addr, gmail, "cold_outreach_skip",
+                subject, sender_email,
+                classification={"reason": "college/sponsorship/collaboration pre-filter",
+                                "matched_keywords": cold_hits,
+                                "college_domain": is_college_domain},
+            )
             skipped += 1
             continue
 
