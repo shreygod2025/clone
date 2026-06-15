@@ -303,23 +303,90 @@ async def autocomplete_search(
     data_type: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    """Autocomplete search for forms - search by name, phone, or email"""
+    """Autocomplete search for forms - search by name, phone, or email.
+
+    For data_type='students' (or default), this searches across ALL student-bearing
+    collections — student_inquiries, students, demo_bookings, plus every Cashfree
+    booking collection (workshop, summer camp, AI Foundations, etc.) and Cashfree
+    payment records — so admins can find a student even if they only paid online
+    and never appeared in the legacy CRM.
+    """
     if len(q) < 2:
         return []
-    
+
+    import re as _re
     search_regex = {"$regex": q, "$options": "i"}
+    digits = _re.sub(r"\D", "", q)
+    phone_regex = None
+    if digits and len(digits) >= 4:
+        last_n = digits[-10:] if len(digits) > 10 else digits
+        phone_regex = {"$regex": last_n + "$"}
     results = []
-    
-    # Search students
-    if data_type in [None, "students"]:
-        students = await db.student_inquiries.find(
-            {"$or": [{"name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
-            {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "city": 1, "age_group": 1, "skill": 1, "learning_mode": 1, "learning_goal": 1, "address": 1}
-        ).limit(5).to_list(5)
-        for s in students:
-            s["type"] = "student"
-            results.append(s)
-    
+    seen_keys = set()  # dedupe by (phone, email)
+
+    def _add(rec: dict, src_type: str, src_label: str):
+        name = rec.get("name") or rec.get("student_name") or rec.get("parent_name") or rec.get("contact_name") or rec.get("school_name") or ""
+        phone = rec.get("phone") or rec.get("parent_phone") or rec.get("student_phone") or rec.get("contact_phone") or rec.get("mobile") or ""
+        email = rec.get("email") or rec.get("parent_email") or rec.get("student_email") or rec.get("contact_email") or ""
+        key = f"{phone}|{email}|{name.lower().strip()}"
+        if not name and not phone and not email:
+            return
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        results.append({
+            "type": src_type,
+            "source_label": src_label,
+            "id": rec.get("id") or rec.get("booking_id") or "",
+            "name": name,
+            "phone": phone,
+            "email": email,
+            "city": rec.get("city") or rec.get("location") or "",
+            "age_group": rec.get("age_group") or rec.get("grade") or "",
+            "skill": rec.get("skill") or rec.get("track") or rec.get("course") or rec.get("workshop_key") or "",
+            "learning_mode": rec.get("learning_mode") or rec.get("mode") or "",
+            "learning_goal": rec.get("learning_goal") or "",
+            "address": rec.get("address") or "",
+            "paid_amount": rec.get("amount") or rec.get("paid_amount") or rec.get("total_amount") or rec.get("price"),
+            "payment_status": rec.get("payment_status") or rec.get("status"),
+        })
+
+    # ── Students: scan every collection that holds a student name + phone/email ─
+    if data_type in (None, "students"):
+        STUDENT_COLLECTIONS = [
+            ("student_inquiries",                 "student", "Student Inquiry"),
+            ("students",                          "student", "Student CRM"),
+            ("demo_bookings",                     "student", "Demo Booking"),
+            ("ai_foundations_bookings",           "student", "Cashfree · AI Foundations"),
+            ("summer_camp_bookings",              "student", "Cashfree · Summer Camp"),
+            ("workshop_bookings",                 "student", "Cashfree · Workshop"),
+            ("student_payments",                  "student", "Cashfree · Center Payment"),
+            ("inquiry_leads",                     "student", "Inquiry Lead"),
+            ("future_skills_subscriptions",       "student", "Future Skills Subscription"),
+            ("future_skills_trials",              "student", "Future Skills Trial"),
+            ("social_media_intern_registrations", "student", "SM Intern Registration"),
+        ]
+        # Build $or with the text + phone + email field aliases each collection might use
+        NAME_FIELDS  = ["name", "student_name", "parent_name", "child_name", "full_name", "contact_name"]
+        PHONE_FIELDS = ["phone", "parent_phone", "student_phone", "contact_phone", "mobile", "whatsapp"]
+        EMAIL_FIELDS = ["email", "parent_email", "student_email", "contact_email"]
+        or_clauses = []
+        for f in NAME_FIELDS + EMAIL_FIELDS:
+            or_clauses.append({f: search_regex})
+        if phone_regex:
+            for f in PHONE_FIELDS:
+                or_clauses.append({f: phone_regex})
+        for coll_name, src_type, src_label in STUDENT_COLLECTIONS:
+            try:
+                coll = getattr(db, coll_name)
+                docs = await coll.find({"$or": or_clauses}, {"_id": 0}).limit(5).to_list(5)
+            except Exception:
+                continue
+            for d in docs:
+                _add(d, src_type, src_label)
+            if len(results) >= 20:
+                break
+
     # Search schools
     if data_type in [None, "schools"]:
         schools = await db.school_inquiries.find(
@@ -341,7 +408,7 @@ async def autocomplete_search(
             e["type"] = "educator"
             results.append(e)
     
-    return results[:10]
+    return results[:20]
 
 @router.put("/data-center/{data_type}/{record_id}")
 async def update_data_center_record(

@@ -1,0 +1,671 @@
+"""
+Gmail OAuth + Inbox Bot.
+
+Endpoints under /api/gmail/*:
+  - GET  /gmail/auth-url               — start OAuth flow (returns redirect URL)
+  - GET  /oauth/gmail/callback         — Google OAuth callback (saves account)
+  - GET  /gmail/accounts               — list connected Gmail accounts
+  - DELETE /gmail/accounts/{acc_id}    — disconnect an account
+  - POST /gmail/sync-now               — manual sync trigger (for admin testing)
+  - POST /gmail/sync-now/{acc_id}      — sync a single account
+
+The hourly scheduler in server.py calls `sync_all_gmail_accounts()`.
+
+A connected account's flow:
+  1. APScheduler hits `sync_all_gmail_accounts()` every hour.
+  2. For each Gmail account, list unread INBOX messages.
+  3. For each message, run AI classification (Emergent LLM) to decide if it's a
+     real customer query (skip OTPs/promotions/payment receipts/no-reply).
+  4. If it IS a query → create a support_queries ticket, auto-link customer
+     via email/phone match across booking + payment collections.
+  5. Mark the Gmail message as read so we don't re-process it next hour.
+"""
+import os
+import re
+import uuid
+import json
+import base64
+import logging
+import asyncio
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi.responses import RedirectResponse
+
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request as GoogleAuthRequest
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+from .shared import db, get_current_user, get_next_ticket_number
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+# ── Config ─────────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", "")
+REDIRECT_URI = f"{BACKEND_PUBLIC_URL}/api/oauth/gmail/callback"
+
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.labels",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "openid",
+]
+
+# Allow http transport during OAuth dance (preview env may proxy through http internally)
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+# Permit slight scope drift — Google sometimes adds/reorders default scopes
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
+
+def _client_config():
+    return {
+        "web": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [REDIRECT_URI],
+        }
+    }
+
+
+# ── OAuth endpoints ────────────────────────────────────────────────────────
+@router.get("/gmail/auth-url")
+async def gmail_auth_url(user: dict = Depends(get_current_user)):
+    """Generate Google OAuth consent URL. Admin clicks → Google consent → callback."""
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise HTTPException(500, "Google OAuth credentials not configured. Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env")
+
+    flow = Flow.from_client_config(_client_config(), scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    url, state = flow.authorization_url(
+        access_type="offline",
+        prompt="consent",       # forces Google to return refresh_token every time
+        include_granted_scopes="true",
+    )
+
+    # Persist state so callback can verify it. 10-min TTL via expires_at.
+    await db.oauth_states.insert_one({
+        "state": state,
+        "admin_email": user.get("email"),
+        "purpose": "gmail",
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"url": url}
+
+
+@router.get("/oauth/gmail/callback")
+async def gmail_oauth_callback(code: str = Query(...), state: str = Query(...), error: Optional[str] = Query(None)):
+    """Google redirects here after consent. Exchange code → tokens → save account."""
+    if error:
+        return RedirectResponse(url=f"/admin/settings?gmail_error={error}", status_code=302)
+
+    # Validate state
+    state_doc = await db.oauth_states.find_one({"state": state, "purpose": "gmail"})
+    if not state_doc:
+        raise HTTPException(400, "Invalid or expired OAuth state")
+    expires_at = datetime.fromisoformat(state_doc["expires_at"])
+    if datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(400, "OAuth state expired — please retry")
+
+    # Exchange code for credentials
+    try:
+        flow = Flow.from_client_config(_client_config(), scopes=SCOPES, redirect_uri=REDIRECT_URI, state=state)
+        flow.fetch_token(code=code)
+    except Exception as e:
+        logger.exception("Gmail OAuth code exchange failed")
+        return RedirectResponse(url=f"/admin/settings?gmail_error={str(e)[:120]}", status_code=302)
+
+    creds = flow.credentials
+
+    # Pull user email via Gmail profile
+    try:
+        gmail = build("gmail", "v1", credentials=creds, cache_discovery=False)
+        profile = gmail.users().getProfile(userId="me").execute()
+        email_address = profile.get("emailAddress", "").lower()
+    except Exception as e:
+        logger.exception("Failed to fetch Gmail profile after OAuth")
+        return RedirectResponse(url=f"/admin/settings?gmail_error=profile_fetch_failed", status_code=302)
+
+    if not email_address:
+        return RedirectResponse(url="/admin/settings?gmail_error=no_email_in_token", status_code=302)
+
+    # Upsert the connected account
+    expiry_iso = creds.expiry.replace(tzinfo=timezone.utc).isoformat() if creds.expiry else None
+    doc = {
+        "id": str(uuid.uuid4()),
+        "email": email_address,
+        "access_token": creds.token,
+        "refresh_token": creds.refresh_token,  # may be None on re-consent — see logic below
+        "token_uri": creds.token_uri,
+        "client_id": creds.client_id,
+        "client_secret": creds.client_secret,
+        "scopes": list(creds.scopes) if creds.scopes else SCOPES,
+        "expires_at": expiry_iso,
+        "connected_by": state_doc.get("admin_email"),
+        "connected_at": datetime.now(timezone.utc).isoformat(),
+        "active": True,
+        "last_sync_at": None,
+        "last_sync_count": 0,
+        "last_sync_error": None,
+    }
+    existing = await db.gmail_accounts.find_one({"email": email_address})
+    if existing:
+        # Preserve refresh token if Google omitted it on this consent (happens when scopes unchanged)
+        if not doc["refresh_token"]:
+            doc["refresh_token"] = existing.get("refresh_token")
+        doc["id"] = existing["id"]
+        doc["connected_at"] = existing.get("connected_at", doc["connected_at"])
+        await db.gmail_accounts.update_one({"email": email_address}, {"$set": doc})
+    else:
+        await db.gmail_accounts.insert_one(doc)
+
+    await db.oauth_states.delete_one({"state": state})
+
+    # Send admin back to the settings page
+    return RedirectResponse(url=f"/admin/settings?gmail_connected={email_address}", status_code=302)
+
+
+@router.get("/gmail/accounts")
+async def list_gmail_accounts(user: dict = Depends(get_current_user)):
+    """Return all connected Gmail accounts (sans tokens)."""
+    accts = await db.gmail_accounts.find({}, {
+        "_id": 0, "access_token": 0, "refresh_token": 0, "client_secret": 0,
+    }).to_list(50)
+    return accts
+
+
+@router.delete("/gmail/accounts/{acc_id}")
+async def disconnect_gmail(acc_id: str, user: dict = Depends(get_current_user)):
+    res = await db.gmail_accounts.delete_one({"id": acc_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Account not found")
+    return {"message": "Disconnected"}
+
+
+# ── Credential refresh helper ──────────────────────────────────────────────
+def _creds_from_doc(doc: dict) -> Credentials:
+    """Build a google.oauth2.credentials.Credentials from a stored doc; refresh if expired."""
+    creds = Credentials(
+        token=doc.get("access_token"),
+        refresh_token=doc.get("refresh_token"),
+        token_uri=doc.get("token_uri", "https://oauth2.googleapis.com/token"),
+        client_id=doc.get("client_id", GOOGLE_CLIENT_ID),
+        client_secret=doc.get("client_secret", GOOGLE_CLIENT_SECRET),
+        scopes=doc.get("scopes", SCOPES),
+    )
+    # Check expiry (stored as ISO string with tz)
+    expires_at = doc.get("expires_at")
+    expired = False
+    if expires_at:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at)
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+            expired = datetime.now(timezone.utc) >= exp_dt - timedelta(seconds=60)
+        except Exception:
+            expired = True
+    else:
+        expired = True
+
+    if expired and creds.refresh_token:
+        creds.refresh(GoogleAuthRequest())
+    return creds
+
+
+async def _persist_refreshed_token(email: str, creds: Credentials):
+    """Save the refreshed access token + new expiry back to the doc."""
+    expiry_iso = creds.expiry.replace(tzinfo=timezone.utc).isoformat() if creds.expiry else None
+    await db.gmail_accounts.update_one(
+        {"email": email},
+        {"$set": {"access_token": creds.token, "expires_at": expiry_iso}},
+    )
+
+
+# ── Inbox parsing ──────────────────────────────────────────────────────────
+def _decode_body(part) -> str:
+    """Decode a Gmail message part body (base64url) to text."""
+    data = (part.get("body") or {}).get("data")
+    if not data:
+        return ""
+    try:
+        return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _extract_body(payload: dict) -> str:
+    """Extract the plain-text body from a Gmail message payload (recurse into parts)."""
+    if not payload:
+        return ""
+    mime = payload.get("mimeType", "")
+    if mime == "text/plain":
+        return _decode_body(payload)
+    # Multipart: prefer text/plain part, fall back to text/html, recursively
+    parts = payload.get("parts") or []
+    plain = ""
+    html = ""
+    for p in parts:
+        nested = _extract_body(p)
+        if not nested:
+            continue
+        if p.get("mimeType") == "text/plain":
+            plain = plain or nested
+        elif p.get("mimeType") == "text/html":
+            html = html or nested
+        else:
+            plain = plain or nested
+    if plain:
+        return plain
+    if html:
+        # Strip HTML tags as a fallback
+        return re.sub(r"<[^>]+>", " ", html)
+    return ""
+
+
+def _hdr(headers: List[dict], name: str) -> str:
+    name_l = name.lower()
+    for h in headers or []:
+        if h.get("name", "").lower() == name_l:
+            return h.get("value", "")
+    return ""
+
+
+def _extract_email_address(from_header: str) -> str:
+    """'Foo Bar <foo@bar.com>' → 'foo@bar.com'."""
+    m = re.search(r"<([^>]+)>", from_header or "")
+    if m:
+        return m.group(1).strip().lower()
+    return (from_header or "").strip().lower()
+
+
+def _extract_name(from_header: str) -> str:
+    """'Foo Bar <foo@bar.com>' → 'Foo Bar'. Strips surrounding quotes."""
+    m = re.match(r'\s*"?([^"<]+?)"?\s*<', from_header or "")
+    if m:
+        return m.group(1).strip()
+    # Fall back to local-part of email address
+    addr = _extract_email_address(from_header)
+    return addr.split("@", 1)[0] if "@" in addr else (from_header or "").strip()
+
+
+# ── AI classification ──────────────────────────────────────────────────────
+CLASSIFIER_PROMPT = """\
+You are a support-mail triage classifier for OLL (an EdTech company).
+Decide whether an email is a genuine customer/lead enquiry that needs a human reply.
+
+Return ONLY valid JSON:
+{
+  "is_query": true|false,
+  "category": "student" | "school" | "educator" | "payment" | "refund" | "general",
+  "priority": "high" | "normal" | "low",
+  "subject_summary": "≤80-char distilled subject"
+}
+
+Set is_query = false for:
+- Automated notifications (OTPs, password resets, calendar invites)
+- Payment-gateway receipts (Cashfree, Stripe, Razorpay, Resend, AiSensy, Twilio)
+- Marketing, newsletters, no-reply senders, sales pitches, vendor invoices
+- Bounce / undeliverable notifications
+- Outgoing emails sent BY us (OLL team replies)
+- Spam / phishing
+
+Set is_query = true ONLY when a real person is asking us a question, complaint,
+booking enquiry, refund/payment issue, or class-related concern.
+
+priority = "high" if email contains: refund, complaint, urgent, missed class,
+broken / not working, payment failed, harassment, escalate, lawyer.
+priority = "low" if it's informational (e.g., "thanks", "received").
+Otherwise "normal".
+
+category mapping:
+- student → parent/student queries (demo, class, schedule, payment for a kid)
+- school → school principal/coordinator queries (lab setup, curriculum, MoU)
+- educator → teacher applications, payments, scheduling, training
+- payment → invoices, payment failures, GST, refunds (general billing)
+- refund → explicit refund requests
+- general → everything else that's still a query
+"""
+
+
+async def _classify_email(subject: str, sender: str, body: str) -> dict:
+    """Use Emergent LLM (GPT-4o) to classify the email. Returns the parsed dict."""
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+    except Exception:
+        logger.warning("emergentintegrations not available — defaulting to is_query=true")
+        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+
+    llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
+    if not llm_key:
+        logger.warning("EMERGENT_LLM_KEY not set — defaulting to is_query=true")
+        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+
+    # Truncate body to keep context lean
+    body_trim = (body or "")[:3000]
+    text = (
+        f"From: {sender}\n"
+        f"Subject: {subject}\n"
+        f"---\n"
+        f"{body_trim}\n"
+    )
+
+    chat = LlmChat(
+        api_key=llm_key,
+        session_id=f"gmail-classifier-{uuid.uuid4().hex[:8]}",
+        system_message=CLASSIFIER_PROMPT,
+    ).with_model("openai", "gpt-4o-mini")
+
+    try:
+        raw = await chat.send_message(UserMessage(text=text))
+    except Exception:
+        logger.exception("LLM classifier call failed")
+        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+
+    # Extract JSON
+    m = re.search(r"\{[\s\S]*\}", raw or "")
+    if not m:
+        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+    try:
+        parsed = json.loads(m.group(0))
+    except Exception:
+        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+
+    # Defensive defaults
+    parsed.setdefault("is_query", True)
+    parsed.setdefault("category", "general")
+    parsed.setdefault("priority", "normal")
+    parsed.setdefault("subject_summary", (subject or "")[:80])
+    return parsed
+
+
+# ── Customer auto-link (search across all booking/payment collections) ────
+CUSTOMER_COLLECTIONS = [
+    ("students", "Student CRM"),
+    ("student_inquiries", "Student Inquiry"),
+    ("student_payments", "Student Payment (Cashfree)"),
+    ("demo_bookings", "Demo Booking"),
+    ("ai_foundations_bookings", "AI Foundations Booking"),
+    ("summer_camp_bookings", "Summer Camp Booking"),
+    ("workshop_bookings", "Workshop Booking"),
+    ("social_media_intern_registrations", "SM Intern Registration"),
+    ("inquiry_leads", "Inquiry Lead"),
+    ("future_skills_subscriptions", "Future Skills Subscription"),
+    ("future_skills_trials", "Future Skills Trial"),
+    ("school_inquiries", "School Inquiry"),
+]
+
+
+def _digits_only(s: str) -> str:
+    return re.sub(r"\D", "", s or "")
+
+
+async def _find_customer_by_email_or_phone(email: str, phone: str = "") -> Optional[dict]:
+    """Search all customer-bearing collections for a match by email or phone."""
+    email_l = (email or "").lower().strip()
+    digits = _digits_only(phone)[-10:] if phone else ""  # Indian mobiles → last 10
+
+    for coll_name, source_label in CUSTOMER_COLLECTIONS:
+        try:
+            coll = getattr(db, coll_name)
+        except Exception:
+            continue
+        ors = []
+        if email_l:
+            ors += [
+                {"email": email_l},
+                {"parent_email": email_l},
+                {"student_email": email_l},
+                {"contact_email": email_l},
+            ]
+        if digits:
+            # Match phone fields ending in the last-10 digits (allows +91/0 prefixes)
+            phone_regex = {"$regex": digits + "$"}
+            ors += [
+                {"phone": phone_regex},
+                {"parent_phone": phone_regex},
+                {"student_phone": phone_regex},
+                {"contact_phone": phone_regex},
+                {"mobile": phone_regex},
+            ]
+        if not ors:
+            continue
+        try:
+            hit = await coll.find_one({"$or": ors}, {"_id": 0})
+        except Exception:
+            continue
+        if hit:
+            return {"source": source_label, "collection": coll_name, "record": hit}
+    return None
+
+
+# ── Core: fetch + classify + create tickets for one account ────────────────
+async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
+    """Pull unread INBOX, classify, create tickets, mark read. Returns summary."""
+    email_addr = acc_doc["email"]
+    created = 0
+    skipped = 0
+    errors: List[str] = []
+
+    try:
+        creds = _creds_from_doc(acc_doc)
+        await _persist_refreshed_token(email_addr, creds)
+        gmail = build("gmail", "v1", credentials=creds, cache_discovery=False)
+    except Exception as e:
+        logger.exception(f"Gmail auth failed for {email_addr}")
+        await db.gmail_accounts.update_one(
+            {"email": email_addr},
+            {"$set": {"last_sync_error": f"auth_failed: {str(e)[:200]}", "last_sync_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return {"email": email_addr, "created": 0, "skipped": 0, "error": f"auth_failed: {e}"}
+
+    # List unread messages in INBOX (cap at max_messages so a backlog doesn't explode the ticket queue)
+    try:
+        # Exclude promotional + social tab traffic, which is rarely a customer query
+        query = "is:unread in:inbox -category:promotions -category:social"
+        resp = gmail.users().messages().list(userId="me", q=query, maxResults=max_messages).execute()
+        msgs = resp.get("messages", []) or []
+    except HttpError as e:
+        logger.exception(f"Gmail list failed for {email_addr}")
+        errors.append(f"list_failed: {e}")
+        await db.gmail_accounts.update_one(
+            {"email": email_addr},
+            {"$set": {"last_sync_error": str(e)[:200], "last_sync_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return {"email": email_addr, "created": 0, "skipped": 0, "error": str(e)}
+
+    for m in msgs:
+        msg_id = m["id"]
+        # Skip if already processed (guard against double-runs)
+        if await db.gmail_processed.find_one({"gmail_msg_id": msg_id, "account": email_addr}):
+            skipped += 1
+            continue
+
+        try:
+            full = gmail.users().messages().get(userId="me", id=msg_id, format="full").execute()
+        except HttpError as e:
+            errors.append(f"get_failed {msg_id}: {e}")
+            continue
+
+        payload = full.get("payload", {})
+        headers = payload.get("headers", [])
+        subject = _hdr(headers, "Subject")
+        from_h = _hdr(headers, "From")
+        sender_email = _extract_email_address(from_h)
+        sender_name = _extract_name(from_h)
+        body = _extract_body(payload)
+        thread_id = full.get("threadId")
+        gmail_url = f"https://mail.google.com/mail/u/?authuser={email_addr}#inbox/{thread_id or msg_id}"
+
+        # Hard skips before paying for LLM call
+        if (
+            not sender_email
+            or sender_email == email_addr  # our own outbound
+            or "noreply" in sender_email
+            or "no-reply" in sender_email
+            or "donotreply" in sender_email
+            or "mailer-daemon" in sender_email
+            or "postmaster" in sender_email
+            or sender_email.endswith("@cashfree.com")
+            or sender_email.endswith("@resend.com")
+            or sender_email.endswith("@aisensy.com")
+        ):
+            await _mark_processed(msg_id, email_addr, gmail, "auto_skip", subject, sender_email)
+            skipped += 1
+            continue
+
+        # AI classification
+        try:
+            cls = await _classify_email(subject, from_h, body)
+        except Exception as e:
+            errors.append(f"classify_failed {msg_id}: {e}")
+            cls = {"is_query": True, "category": "general", "priority": "normal", "subject_summary": subject[:80]}
+
+        if not cls.get("is_query"):
+            await _mark_processed(msg_id, email_addr, gmail, "not_a_query", subject, sender_email, classification=cls)
+            skipped += 1
+            continue
+
+        # Try to extract a phone number from the body for customer linking
+        phone_match = re.search(r"(?:\+?91[\s\-]?)?[6-9]\d{9}", body or "")
+        phone_guess = phone_match.group(0) if phone_match else ""
+
+        link = None
+        try:
+            link = await _find_customer_by_email_or_phone(sender_email, phone_guess)
+        except Exception:
+            logger.exception("Customer link lookup failed")
+
+        # Construct ticket
+        ticket_id = str(uuid.uuid4())
+        ticket_number = await get_next_ticket_number()
+        customer_name = sender_name or (link or {}).get("record", {}).get("name") or sender_email.split("@")[0]
+        customer_phone = ""
+        if link:
+            rec = link.get("record", {}) or {}
+            customer_phone = rec.get("phone") or rec.get("parent_phone") or rec.get("student_phone") or rec.get("contact_phone") or rec.get("mobile") or ""
+        if not customer_phone:
+            customer_phone = phone_guess
+
+        ticket_doc = {
+            "id": ticket_id,
+            "ticket_number": ticket_number,
+            "name": customer_name,
+            "phone": customer_phone,
+            "email": sender_email,
+            "query_type": cls.get("category", "general"),
+            "related_to": cls.get("subject_summary", subject)[:120],
+            "inquiry_type": cls.get("category", "general") if cls.get("category") in ("student", "school", "educator") else "student",
+            "message": (subject + "\n\n" + (body or ""))[:5000],
+            "query_details": (subject + "\n\n" + (body or ""))[:5000],
+            "priority": cls.get("priority", "normal"),
+            "status": "open",
+            "source": "gmail_bot",
+            "attachments": [],
+            "created_by": "gmail_bot",
+            "created_by_name": f"Gmail Bot ({email_addr})",
+            "viewers": [],
+            "comments": [],
+            "assigned_to": None,
+            # Gmail-specific provenance
+            "gmail": {
+                "account": email_addr,
+                "message_id": msg_id,
+                "thread_id": thread_id,
+                "subject": subject,
+                "from": from_h,
+                "gmail_url": gmail_url,
+            },
+            "customer_link": link,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.support_queries.insert_one(ticket_doc)
+        created += 1
+
+        # Mark as read in Gmail + processed in our DB
+        await _mark_processed(msg_id, email_addr, gmail, "ticket_created", subject, sender_email,
+                              classification=cls, ticket_id=ticket_id, ticket_number=ticket_number)
+
+    summary = {
+        "email": email_addr,
+        "created": created,
+        "skipped": skipped,
+        "errors": errors[:10],
+        "examined": len(msgs),
+    }
+    await db.gmail_accounts.update_one(
+        {"email": email_addr},
+        {"$set": {
+            "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            "last_sync_count": created,
+            "last_sync_examined": len(msgs),
+            "last_sync_error": ("; ".join(errors[:3]) if errors else None),
+        }},
+    )
+    logger.info(f"[gmail_bot] {email_addr} → {summary}")
+    return summary
+
+
+async def _mark_processed(msg_id: str, account: str, gmail, action: str, subject: str, sender: str,
+                          classification: Optional[dict] = None, ticket_id: Optional[str] = None,
+                          ticket_number: Optional[int] = None):
+    """Record we've handled this Gmail message + remove UNREAD label so the next sync skips it."""
+    # 1) Mark read in Gmail
+    try:
+        gmail.users().messages().modify(userId="me", id=msg_id, body={"removeLabelIds": ["UNREAD"]}).execute()
+    except Exception:
+        logger.exception(f"Failed to mark Gmail msg {msg_id} read")
+    # 2) Record in our processed log
+    try:
+        await db.gmail_processed.insert_one({
+            "gmail_msg_id": msg_id,
+            "account": account,
+            "action": action,
+            "subject": subject[:160],
+            "sender": sender,
+            "classification": classification,
+            "ticket_id": ticket_id,
+            "ticket_number": ticket_number,
+            "processed_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        logger.exception("Failed to write gmail_processed log")
+
+
+# ── Public sync endpoints ──────────────────────────────────────────────────
+async def sync_all_gmail_accounts() -> dict:
+    """Called by APScheduler every hour. Iterates over all active accounts."""
+    accounts = await db.gmail_accounts.find({"active": {"$ne": False}}).to_list(50)
+    results = []
+    for a in accounts:
+        try:
+            results.append(await _sync_account(a))
+        except Exception as e:
+            logger.exception(f"sync_account crashed for {a.get('email')}")
+            results.append({"email": a.get("email"), "error": str(e)})
+    return {"accounts": len(results), "results": results}
+
+
+@router.post("/gmail/sync-now")
+async def sync_now(user: dict = Depends(get_current_user)):
+    """Admin manual trigger — runs sync immediately across all active accounts."""
+    res = await sync_all_gmail_accounts()
+    return res
+
+
+@router.post("/gmail/sync-now/{acc_id}")
+async def sync_now_single(acc_id: str, user: dict = Depends(get_current_user)):
+    acc = await db.gmail_accounts.find_one({"id": acc_id})
+    if not acc:
+        raise HTTPException(404, "Account not found")
+    return await _sync_account(acc)

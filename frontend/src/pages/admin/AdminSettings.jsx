@@ -5,7 +5,7 @@ import CitySearch from '../../components/CitySearch';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
-  Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal
+  Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal, Inbox
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
 import axios from 'axios';
+import GmailBotPanel from './GmailBotPanel';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -590,6 +591,7 @@ const AdminSettings = () => {
     { id: 'api-keys', label: 'API Keys', icon: Key, count: apiKeys.length },
     { id: 'system', label: 'System', icon: Database, count: null },
     { id: 'daily-report', label: 'Daily Report', icon: Mail, count: null },
+    { id: 'gmail-bot', label: 'Gmail Bot', icon: Inbox, count: null },
     { id: 'case-studies', label: 'School Case Studies', icon: Video, count: caseStudies.length },
     { id: 'team-requirements', label: 'Team Openings', icon: Briefcase, count: teamRequirements.length },
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
@@ -652,7 +654,7 @@ const AdminSettings = () => {
         </div>
 
         {/* Search & Add */}
-        {activeTab !== 'system' && activeTab !== 'daily-report' && (
+        {activeTab !== 'system' && activeTab !== 'daily-report' && activeTab !== 'gmail-bot' && (
         <div className="flex gap-4 items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -712,6 +714,11 @@ const AdminSettings = () => {
             </Button>
           )}
         </div>
+        )}
+
+        {/* Gmail Bot Tab */}
+        {activeTab === 'gmail-bot' && (
+          <GmailBotPanel getAuthHeaders={getAuthHeaders} />
         )}
 
         {/* System Tab */}

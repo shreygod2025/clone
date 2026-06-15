@@ -4056,6 +4056,8 @@ from routes.schools import router as schools_router
 from routes.orders import router as orders_router
 from routes.misc import router as misc_router
 from routes.broadcasts import router as broadcasts_router, process_scheduled_broadcasts
+from routes.gmail_bot import router as gmail_bot_router, sync_all_gmail_accounts
+from routes.unified_search import router as unified_search_router
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4087,6 +4089,8 @@ api_router.include_router(schools_router)
 api_router.include_router(orders_router)
 api_router.include_router(misc_router)
 api_router.include_router(broadcasts_router)
+api_router.include_router(gmail_bot_router)
+api_router.include_router(unified_search_router)
 
 app.include_router(api_router)
 
@@ -4305,6 +4309,19 @@ async def startup_db_client():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1)
     )
     print("[STARTUP] Scheduled broadcasts processor — runs every 1 minute")
+
+    # Gmail Bot — pull unread mail from every connected Gmail account, classify
+    # via AI, and create support tickets for genuine customer queries.
+    # Fires every 60 minutes; defer first run by 3 min so the app is warm.
+    scheduler.add_job(
+        sync_all_gmail_accounts,
+        trigger=IntervalTrigger(minutes=60),
+        id="gmail_bot_sync_job",
+        name="Gmail Inbox Bot — Hourly Sync",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3)
+    )
+    print("[STARTUP] Gmail bot sync scheduled — runs every 60 minutes")
 
     # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
     # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)

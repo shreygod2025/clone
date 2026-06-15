@@ -1,0 +1,49 @@
+{
+  "summary": "Iter 83 — Gmail Bot + Unified Student Search. All 15 backend pytest cases pass. Frontend Gmail Bot panel renders correctly under /admin/settings → 'Gmail Bot' tab with all expected testids. Connect button correctly triggers redirect to accounts.google.com (confirmed via blocked route + framenavigated → chrome-error://). Create-Ticket autocomplete on /admin/support successfully returns 20 entries across multiple sources including 'Cashfree · AI Foundations', 'Cashfree · Summer Camp', 'Future Skills Subscription', 'Student Inquiry', 'Inquiry Lead'. Two minor inconsistencies flagged below.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/data-center/autocomplete",
+        "issue": "Schools and Educators branches don't inject 'source_label' field on returned items (only the student-collection branch does). Spec says response objects should include 'source_label'; school/educator items just have 'type' field. Cosmetic/UX inconsistency — UI renders 'school'/'educator' from the 'type' field but no human label like 'School Inquiry'."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "GmailBotPanel",
+        "issue": "'Sync all now' button is disabled when accounts.length === 0 (line 141 of GmailBotPanel.jsx). The test request expects clicking with no accounts to show a toast 'Sync complete · 0 new tickets across 0 accounts', but UI disables the button so the toast can never appear. Backend /api/gmail/sync-now does handle zero-account case correctly.",
+        "selector": "[data-testid='gmail-sync-all-btn']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter83_gmail_unified_search.py",
+    "/app/test_reports/pytest/iter83_results.xml"
+  ],
+  "action_items": [
+    "(LOW) Either remove the `accounts.length === 0` disable condition on gmail-sync-all-btn, or update the test spec — currently the button cannot be clicked when no accounts exist.",
+    "(LOW) Add 'source_label' field to school_inquiries and educator_applications branches in /app/backend/routes/misc.py:391-409 for consistency with student-source entries."
+  ],
+  "critical_code_review_comments": [
+    "gmail_bot.py: OAUTHLIB_INSECURE_TRANSPORT=1 is set unconditionally — acceptable in preview env but should be gated by env flag for production hardening.",
+    "gmail_bot.py: `sync_all_gmail_accounts` is registered with an APScheduler IntervalTrigger(60min) per task brief — verify scheduler is started in server.py lifespan and not duplicated on hot-reload.",
+    "unified_search.py: per_source_cap = max(5, limit // len(SEARCH_SOURCES)) with default limit=50 → 50//11=4 then max(5,4)=5; OK, but consider passing the regex compiled once.",
+    "GmailBotPanel.jsx: `window.location.href = res.data.url` works but is not robustly testable; consider exposing a small hook + using <a target='_self' href={url}> so tests / SSR can intercept.",
+    "misc.py autocomplete: school + educator response shape differs (lacks source_label) from student shape — breaks the contract advertised by the new multi-collection extension."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter83_gmail_unified_search.py (new)"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "95% (all flows verified; sync-all click blocked by disabled state)"},
+  "test_credentials": "admin@oll.co / Dagaji03@ — works",
+  "seed_data_creation": "None — used existing student_inquiries / cashfree booking records already in DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Gmail Bot endpoints behave correctly (auth-url payload, accounts list w/o tokens, callback error/invalid-state, sync-now empty, 404s). Unified search returns normalized shape across 9+ collections with dedup. Autocomplete (Support → Create Ticket → Name/Phone field) shows multi-source dropdown live. The two LOW items above are inconsistencies, not breakages. OAuth flow itself was not completed (no real Google account) — only the consent URL generation and redirect were verified.",
+  "rca of the issue": "N/A — no critical bugs."
+}

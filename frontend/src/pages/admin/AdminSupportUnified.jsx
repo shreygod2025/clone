@@ -2247,7 +2247,11 @@ const AdminSupportUnified = () => {
                         className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                       >
                         <p className="font-medium text-sm">{s.name || s.school_name}</p>
-                        <p className="text-xs text-slate-500">{s.phone} • {s.type}</p>
+                        <p className="text-xs text-slate-500">
+                          {s.phone || s.email || '—'}
+                          {s.source_label ? <span className="ml-1 text-[10px] uppercase tracking-wide text-indigo-600">· {s.source_label}</span> : <span className="ml-1">· {s.type}</span>}
+                          {s.paid_amount ? <span className="ml-1 text-green-700 font-medium">· ₹{s.paid_amount}</span> : null}
+                        </p>
                       </button>
                     ))}
                   </div>
@@ -2273,7 +2277,11 @@ const AdminSupportUnified = () => {
                         className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                       >
                         <p className="font-medium text-sm">{s.name || s.school_name}</p>
-                        <p className="text-xs text-slate-500">{s.phone} • {s.type}</p>
+                        <p className="text-xs text-slate-500">
+                          {s.phone || s.email || '—'}
+                          {s.source_label ? <span className="ml-1 text-[10px] uppercase tracking-wide text-indigo-600">· {s.source_label}</span> : <span className="ml-1">· {s.type}</span>}
+                          {s.paid_amount ? <span className="ml-1 text-green-700 font-medium">· ₹{s.paid_amount}</span> : null}
+                        </p>
                       </button>
                     ))}
                   </div>

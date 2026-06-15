@@ -139,3 +139,8 @@ watchfiles==1.1.1
 websockets==15.0.1
 yarl==1.22.0
 zipp==3.23.0
+google-api-core==2.29.0
+google-api-python-client==2.188.0
+google-auth==2.48.0rc0
+google-auth-httplib2==0.3.0
+google-auth-oauthlib==1.4.0
