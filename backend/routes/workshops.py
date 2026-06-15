@@ -45,6 +45,12 @@ WORKSHOPS = {
         "date": "Sunday, 21 June 2026",
         "time": "3:00 PM – 6:00 PM",
         "price": 1999.0,
+        # Time-limited promo: ₹500 off the base ticket until the workshop day itself.
+        # The total_amount calc reads these at runtime so changes here propagate
+        # everywhere (booking, payment, Cashfree order) without code edits.
+        "discount_amount": 500.0,
+        "discount_until": "2026-06-21T23:59:59+05:30",  # IST — ends Sunday night
+        "discount_label": "Father's Day Flash · ₹500 OFF",
         "centers": {
             "mira_road": {
                 "label": "Pizza Buffet · Mira Road",
@@ -83,6 +89,36 @@ def _workshop_or_404(slug: str):
     return ws
 
 
+def _effective_price(ws: dict) -> dict:
+    """Apply time-limited discount if active.
+
+    Returns a dict with `base_price`, `effective_price`, `discount_amount`,
+    `discount_active` (bool), `discount_until` (ISO str | None), `discount_label`.
+    The booking + Cashfree-order endpoints call this so the customer can never
+    pay the wrong amount — even if the frontend has a stale price.
+    """
+    base = float(ws.get("price", 0))
+    disc_amt = float(ws.get("discount_amount", 0) or 0)
+    disc_until_iso = ws.get("discount_until")
+    active = False
+    if disc_amt > 0 and disc_until_iso:
+        try:
+            disc_until = datetime.fromisoformat(disc_until_iso)
+            if disc_until.tzinfo is None:
+                disc_until = disc_until.replace(tzinfo=timezone.utc)
+            active = datetime.now(timezone.utc) <= disc_until
+        except Exception:
+            active = False
+    return {
+        "base_price": base,
+        "effective_price": max(0.0, base - disc_amt) if active else base,
+        "discount_amount": disc_amt if active else 0.0,
+        "discount_active": active,
+        "discount_until": disc_until_iso if active else None,
+        "discount_label": ws.get("discount_label") if active else None,
+    }
+
+
 # ── Models ────────────────────────────────────────────────────────────────────
 class WorkshopRegister(BaseModel):
     workshop_key: str
@@ -110,7 +146,11 @@ async def list_workshops():
 
 @router.get("/workshops/{slug}")
 async def get_workshop(slug: str):
-    return _workshop_or_404(slug)
+    """Returns workshop config + live effective price (discount if active)."""
+    ws = _workshop_or_404(slug)
+    # Avoid mutating the catalog dict — return a shallow copy with pricing merged in
+    eff = _effective_price(ws)
+    return {**ws, "pricing": eff}
 
 
 # ── Register ─────────────────────────────────────────────────────────────────
@@ -131,9 +171,10 @@ async def register_workshop(data: WorkshopRegister):
         sort=[("created_at", -1)],
     )
     if existing and existing.get("payment_status") != "paid":
-        # Refresh with the latest age/center/extras selection
+        # Refresh with the latest age/center/extras + current effective price
         extras = int(data.additional_children or 0)
-        new_amount = ws["price"] + (extras * 1499)
+        eff = _effective_price(ws)
+        new_amount = eff["effective_price"] + (extras * 1499)
         await db.workshop_bookings.update_one(
             {"id": existing["id"]},
             {"$set": {
@@ -145,13 +186,18 @@ async def register_workshop(data: WorkshopRegister):
                 "age_group_label": ws["age_groups"][data.age_group],
                 "additional_children": extras,
                 "amount": new_amount,
+                "base_amount": eff["base_price"] + (extras * 1499),
+                "discount_amount": eff["discount_amount"],
+                "discount_active": eff["discount_active"],
+                "discount_until": eff["discount_until"],
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        return {"booking_id": existing["id"], "amount": new_amount}
+        return {"booking_id": existing["id"], "amount": new_amount, "discount": eff}
 
     extras = int(data.additional_children or 0)
-    total_amount = ws["price"] + (extras * 1499)
+    eff = _effective_price(ws)
+    total_amount = eff["effective_price"] + (extras * 1499)
     booking_id = str(uuid.uuid4())
     doc = {
         "id": booking_id,
@@ -172,6 +218,10 @@ async def register_workshop(data: WorkshopRegister):
         "venue_map_url": ws["centers"][data.center]["map_url"],
         "additional_children": extras,
         "amount": total_amount,
+        "base_amount": eff["base_price"] + (extras * 1499),
+        "discount_amount": eff["discount_amount"],
+        "discount_active": eff["discount_active"],
+        "discount_until": eff["discount_until"],
         "payment_status": "pending",
         "crm_status": "lead",
         "source_ref": (data.source_ref or "").strip(),
@@ -179,8 +229,8 @@ async def register_workshop(data: WorkshopRegister):
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.workshop_bookings.insert_one(doc)
-    logging.info(f"[workshop] booking created {booking_id} – {data.workshop_key} – {phone} – extras={extras} – amount={total_amount}")
-    return {"booking_id": booking_id, "amount": total_amount}
+    logging.info(f"[workshop] booking created {booking_id} – {data.workshop_key} – {phone} – extras={extras} – amount={total_amount} (discount_active={eff['discount_active']})")
+    return {"booking_id": booking_id, "amount": total_amount, "discount": eff}
 
 
 # ── Cashfree payment init ─────────────────────────────────────────────────────

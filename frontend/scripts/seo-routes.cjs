@@ -63,10 +63,10 @@ const ROUTES = {
   },
 
   '/workshops/fathers-day-robotics': {
-    title: "Father's Day 2026 Robotics Workshop Mumbai · Dad & Kid Build · OLL",
-    description: "Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). Screen-free, hands-on, ₹1,999 per dad-child duo. Kandivali & Mira Road. Best Father's Day activity & gift in Mumbai.",
-    ogTitle: "Father's Day 2026 Robotics Workshop · Mumbai · OLL",
-    ogDescription: "This Father's Day, bond over learning. Build a real robot together with your child (ages 4–12). Screen-free · Sun 21 June · ₹1,999 · Mumbai.",
+    title: "Father's Day 2026 Robotics Workshop · ₹500 OFF till Sunday · Mumbai · OLL",
+    description: "Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). ₹500 OFF, now ₹1,499 (was ₹1,999) — offer ends Sunday. Screen-free, hands-on, Kandivali & Mira Road.",
+    ogTitle: "Father's Day 2026 Robotics Workshop · ₹500 OFF · Mumbai · OLL",
+    ogDescription: "₹500 OFF — now ₹1,499 (was ₹1,999) till Sunday only. Build a real robot with your child (ages 4–12). Screen-free · Sun 21 June · Mumbai.",
     ogImage: ogImage('https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2t1vu6l9_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_50_47%20PM.png'),
     ogType: 'event',
   },

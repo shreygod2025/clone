@@ -187,7 +187,27 @@ export default function FathersDayWorkshopLandingPage() {
     }
   };
 
-  const total = 1999 + (Number(form.additional_children) || 0) * 1499;
+  // ── Promo pricing ─────────────────────────────────────────────────────────
+  // Single source of truth, mirrored on the backend (routes/workshops.py).
+  // The backend re-applies the same discount when computing the Cashfree amount,
+  // so even if the frontend has stale state the customer never overpays.
+  const BASE_PRICE = 1999;
+  const DISCOUNT_AMOUNT = 500;
+  const DISCOUNT_UNTIL = new Date('2026-06-21T23:59:59+05:30');  // Sunday IST
+  const DISCOUNT_LABEL = "Father's Day Flash · ₹500 OFF";
+  const discountActive = Date.now() <= DISCOUNT_UNTIL.getTime();
+  const effectivePrice = discountActive ? (BASE_PRICE - DISCOUNT_AMOUNT) : BASE_PRICE;
+  const total = effectivePrice + (Number(form.additional_children) || 0) * 1499;
+
+  // Live countdown text — recomputed on every render (re-renders frequently due to form state)
+  const timeLeftMs = discountActive ? (DISCOUNT_UNTIL.getTime() - Date.now()) : 0;
+  const hoursLeft = Math.max(0, Math.floor(timeLeftMs / 3_600_000));
+  const daysLeft = Math.floor(hoursLeft / 24);
+  const countdownText = daysLeft >= 2
+    ? `Ends in ${daysLeft} days`
+    : hoursLeft >= 24
+      ? `Ends Sunday · ${hoursLeft}h left`
+      : `Ends today · ${hoursLeft}h left`;
 
   return (
     <div data-testid="fathers-day-landing" className="fd-workshop-page" style={{ minHeight: '100vh', fontFamily: '"Fredoka", "Nunito", sans-serif', background: YELLOW }}>
@@ -218,8 +238,10 @@ export default function FathersDayWorkshopLandingPage() {
       `}</style>
       <Helmet>
         {/* ───── Primary SEO ───── */}
-        <title>Father's Day 2026 Robotics Workshop Mumbai · Dad & Kid Build · OLL</title>
-        <meta name="description" content="Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). Screen-free, hands-on, ₹1,999 per dad-child duo. Kandivali & Mira Road. Best Father's Day activity & gift in Mumbai." />
+        <title>{discountActive ? "Father's Day 2026 Robotics Workshop · ₹500 OFF till Sunday · Mumbai · OLL" : "Father's Day 2026 Robotics Workshop Mumbai · Dad & Kid Build · OLL"}</title>
+        <meta name="description" content={discountActive
+          ? "Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). ₹500 OFF, now ₹1,499 (was ₹1,999) — offer ends Sunday. Screen-free, hands-on, Kandivali & Mira Road. Best Father's Day activity & gift in Mumbai."
+          : "Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). Screen-free, hands-on, ₹1,999 per dad-child duo. Kandivali & Mira Road. Best Father's Day activity & gift in Mumbai."} />
         <meta name="keywords" content="Father's Day, Father's Day 2026, Father's Day Mumbai, Father's Day workshop, Father's Day activity, Father's Day gift, Father's Day for kids, Father's Day robotics, Father's Day STEM workshop, Father's Day event Mumbai, things to do on Father's Day, dad and child workshop, dad and son activity, dad and daughter activity, robotics workshop for kids Mumbai, screen-free workshop, Sunday 21 June 2026, Kandivali workshop, Mira Road workshop, OLL workshops, parent-child bonding activity, hands-on STEM workshop India" />
         <meta name="subject" content="Father's Day 2026 Robotics Workshop in Mumbai for Dads and Kids" />
         <meta name="author" content="OLL — Skills for All" />
@@ -246,8 +268,10 @@ export default function FathersDayWorkshopLandingPage() {
         <meta property="og:type" content="event" />
         <meta property="og:site_name" content="OLL — Skills for All" />
         <meta property="og:url" content="https://oll.co/workshops/fathers-day-robotics" />
-        <meta property="og:title" content="Father's Day 2026 Robotics Workshop · Mumbai · OLL" />
-        <meta property="og:description" content="This Father's Day, bond over learning. Build a real robot together with your child (ages 4–12). Screen-free · Sun 21 June · ₹1,999 · Mumbai." />
+        <meta property="og:title" content={discountActive ? "Father's Day 2026 Robotics Workshop · ₹500 OFF · Mumbai · OLL" : "Father's Day 2026 Robotics Workshop · Mumbai · OLL"} />
+        <meta property="og:description" content={discountActive
+          ? "₹500 OFF — now ₹1,499 (was ₹1,999) till Sunday only. Build a real robot with your child (ages 4–12). Screen-free · Sun 21 June · Mumbai."
+          : "This Father's Day, bond over learning. Build a real robot together with your child (ages 4–12). Screen-free · Sun 21 June · ₹1,999 · Mumbai."} />
         <meta property="og:image"        content={ogImage(CAROUSEL[0])} />
         <meta property="og:image:secure_url" content={ogImage(CAROUSEL[0])} />
         <meta property="og:image:width"  content="1200" />
@@ -263,7 +287,9 @@ export default function FathersDayWorkshopLandingPage() {
         <meta name="twitter:site"        content="@oll_official" />
         <meta name="twitter:creator"     content="@oll_official" />
         <meta name="twitter:title"       content="Father's Day 2026 Robotics Workshop · Mumbai · OLL" />
-        <meta name="twitter:description" content="Dad + kid build a real robot together — screen-free, hands-on, Sunday 21 June, ₹1,999." />
+        <meta name="twitter:description" content={discountActive
+          ? "₹500 OFF till Sunday — now ₹1,499 (was ₹1,999). Dad + kid build a real robot together. Sunday 21 June. Mumbai."
+          : "Dad + kid build a real robot together — screen-free, hands-on, Sunday 21 June, ₹1,999."} />
         <meta name="twitter:image"       content={ogImage(CAROUSEL[0])} />
         <meta name="twitter:image:alt"   content="OLL Father's Day Robotics Workshop, Mumbai 2026" />
 
@@ -303,8 +329,10 @@ export default function FathersDayWorkshopLandingPage() {
           performer: { '@type': 'Organization', name: 'OLL Workshop Educators', url: 'https://oll.co' },
           offers: [
             { '@type': 'Offer', name: 'Dad + 1 Child Duo', url: 'https://oll.co/workshops/fathers-day-robotics',
-              price: '1999', priceCurrency: 'INR', availability: 'https://schema.org/InStock',
-              validFrom: '2026-05-15T00:00:00+05:30', category: 'Workshop' },
+              price: String(effectivePrice), priceCurrency: 'INR', availability: 'https://schema.org/InStock',
+              validFrom: '2026-05-15T00:00:00+05:30',
+              ...(discountActive ? { priceValidUntil: '2026-06-21' } : {}),
+              category: 'Workshop' },
             { '@type': 'Offer', name: 'Additional Child', url: 'https://oll.co/workshops/fathers-day-robotics',
               price: '1499', priceCurrency: 'INR', availability: 'https://schema.org/InStock', category: 'Workshop · Add-on' },
           ],
@@ -324,7 +352,7 @@ export default function FathersDayWorkshopLandingPage() {
           sku: 'OLL-WS-FD-2026',
           offers: {
             '@type': 'Offer', url: 'https://oll.co/workshops/fathers-day-robotics',
-            priceCurrency: 'INR', price: '1999', availability: 'https://schema.org/InStock',
+            priceCurrency: 'INR', price: String(effectivePrice), availability: 'https://schema.org/InStock',
             priceValidUntil: '2026-06-21', itemCondition: 'https://schema.org/NewCondition',
           },
           aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.9', reviewCount: '210' },
@@ -841,9 +869,28 @@ export default function FathersDayWorkshopLandingPage() {
           <SectionLabel>Pricing</SectionLabel>
           <H2>One price. Everything included.</H2>
           <div className="mt-8 rounded-3xl p-8 sm:p-10 shadow-2xl text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)` }} data-testid="pricing-card">
+            {discountActive && (
+              <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-[11px] font-extrabold tracking-wide uppercase shadow-lg animate-pulse"
+                   style={{ background: '#FF4444', color: 'white', fontFamily: '"Fredoka", sans-serif' }}
+                   data-testid="discount-badge">
+                ₹500 OFF · {countdownText}
+              </div>
+            )}
             <div className="text-[11px] uppercase tracking-widest font-bold" style={{ color: SUN }}>Father-Child Pair</div>
-            <div className="mt-2 font-black" style={{ fontFamily: '"Fredoka", sans-serif', fontSize: 'clamp(2.6rem, 6vw, 4rem)', lineHeight: 1 }}>₹1,999</div>
+            {discountActive ? (
+              <div className="mt-2 flex items-baseline justify-center gap-3 flex-wrap">
+                <div className="font-black" style={{ fontFamily: '"Fredoka", sans-serif', fontSize: 'clamp(2.6rem, 6vw, 4rem)', lineHeight: 1 }}>₹1,499</div>
+                <div className="text-2xl line-through opacity-50" style={{ fontFamily: '"Fredoka", sans-serif' }}>₹1,999</div>
+              </div>
+            ) : (
+              <div className="mt-2 font-black" style={{ fontFamily: '"Fredoka", sans-serif', fontSize: 'clamp(2.6rem, 6vw, 4rem)', lineHeight: 1 }}>₹1,999</div>
+            )}
             <div className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.78)' }}>per father-and-child duo</div>
+            {discountActive && (
+              <div className="mt-2 text-sm font-bold inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: '#FFD96622', color: SUN }}>
+                You save ₹500 · offer ends Sun 21 June
+              </div>
+            )}
             <p className="mt-5 max-w-md mx-auto text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>Includes everything: robot kit, materials, photoframe, refreshments — hardware yours to keep where applicable.</p>
             <div className="mt-5 inline-block rounded-full px-4 py-2 text-sm font-bold" style={{ background: 'rgba(252,232,153,0.18)', color: SUN, border: `1px solid ${SUN}55` }}>
               + ₹1,499 for each additional child
@@ -1137,11 +1184,20 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
               <Row k="Date"      v="Sunday, 21 June" />
               <Row k="Venue"     v={(CENTERS.find(c => c.slug === form.center) || CENTERS[0])?.label} />
               <Row k="Base"      v="₹1,999" />
+              {discountActive && (
+                <Row k="Father's Day discount" v={<span className="text-green-600 font-bold">− ₹500</span>} />
+              )}
               {form.additional_children > 0 && (
                 <Row k={`+${form.additional_children} extra child${form.additional_children > 1 ? 'ren' : ''}`} v={`₹${(form.additional_children * 1499).toLocaleString()}`} />
               )}
               <div className="border-t mt-3 pt-3 flex justify-between text-base font-bold" style={{ borderColor: SKY, color: NAVY_DEEP }}>
-                <span>Total</span><span data-testid="modal-total">₹{total.toLocaleString()}</span>
+                <span>Total</span>
+                <span data-testid="modal-total">
+                  {discountActive && (
+                    <span className="line-through text-slate-400 font-normal mr-2 text-sm">₹{(BASE_PRICE + (Number(form.additional_children) || 0) * 1499).toLocaleString()}</span>
+                  )}
+                  ₹{total.toLocaleString()}
+                </span>
               </div>
             </div>
             <div className="mt-5">
