@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2 } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2, ChevronDown, ChevronUp, ExternalLink, Inbox } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
@@ -183,6 +183,54 @@ const HOLD_REASONS = [
   'Awaiting payment / refund',
   'Other',
 ];
+
+/**
+ * CollapsibleMessage — long support ticket message becomes a collapsible card.
+ * Auto-collapses anything beyond `previewChars` (≈ first paragraph). Gmail-bot
+ * tickets get an "Open in Gmail" deep-link in the header.
+ */
+const CollapsibleMessage = ({ text, gmailUrl, source }) => {
+  const COLLAPSE_AT = 320;       // chars
+  const long = (text || '').length > COLLAPSE_AT;
+  const [open, setOpen] = useState(false);
+  const preview = long && !open ? text.slice(0, COLLAPSE_AT).trimEnd() + '…' : text;
+  const isGmailBot = source === 'gmail_bot';
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl mb-4 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-slate-100">
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+          {isGmailBot ? <Inbox className="w-3.5 h-3.5 text-red-500" /> : <MessageSquare className="w-3.5 h-3.5 text-slate-400" />}
+          <span>{isGmailBot ? 'From Gmail' : 'Original message'}</span>
+          {gmailUrl && (
+            <a
+              href={gmailUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-1 text-[11px] text-[#1E3A5F] hover:underline inline-flex items-center gap-0.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open in Gmail <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+        {long && (
+          <button
+            type="button"
+            onClick={() => setOpen(o => !o)}
+            className="text-xs font-medium text-[#1E3A5F] hover:bg-slate-100 px-2 py-1 rounded inline-flex items-center gap-1"
+            data-testid="msg-toggle"
+          >
+            {open ? <>Show less <ChevronUp className="w-3 h-3" /></> : <>Show full ({text.length.toLocaleString()} chars) <ChevronDown className="w-3 h-3" /></>}
+          </button>
+        )}
+      </div>
+      <div className={`px-4 py-3 ${open ? 'max-h-[60vh] overflow-y-auto' : ''}`}>
+        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{preview}</p>
+      </div>
+    </div>
+  );
+};
 
 const AdminSupportUnified = () => {
   const { getAuthHeaders, user } = useAuth();
@@ -1559,10 +1607,11 @@ const AdminSupportUnified = () => {
               </div>
 
               {(query.query_details || query.message) && (
-                <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <p className="text-xs font-medium text-slate-500 mb-1">Original Message:</p>
-                  <p className="text-slate-600 whitespace-pre-wrap">{query.query_details || query.message}</p>
-                </div>
+                <CollapsibleMessage
+                  text={query.query_details || query.message}
+                  gmailUrl={query.gmail?.gmail_url}
+                  source={query.source}
+                />
               )}
               
               {/* Replies Preview */}

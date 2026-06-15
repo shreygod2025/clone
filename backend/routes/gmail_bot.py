@@ -308,64 +308,131 @@ def _extract_name(from_header: str) -> str:
 
 # ── AI classification ──────────────────────────────────────────────────────
 CLASSIFIER_PROMPT = """\
-You are a support-mail triage classifier for OLL (an EdTech company).
-Decide whether an email is a genuine customer/lead enquiry that needs a human reply.
+You are a support-mail triage classifier for OLL (an EdTech company in India that runs
+Robotics / AI / Coding / Entrepreneurship / Financial-Literacy classes for kids 4-16,
+plus in-school programs, summer camps, and one-off workshops).
 
-Return ONLY valid JSON:
+Decide whether an email is a genuine customer/lead enquiry that needs a human reply,
+and route it into the support panel's existing taxonomy.
+
+Return ONLY valid JSON (no prose, no markdown fences):
 {
   "is_query": true|false,
-  "category": "student" | "school" | "educator" | "payment" | "refund" | "general",
+  "inquiry_type": "student" | "school" | "educator" | "growth_partner" | "general",
+  "query_type": "demo_related" | "payment" | "course_info" | "ongoing_classes" | "technical" | "kit_related" | "partnership" | "feedback" | "educator_query" | "admission" | "scheduling" | "other",
+  "related_to": "<sub-category slug>",
   "priority": "high" | "normal" | "low",
   "subject_summary": "≤80-char distilled subject"
 }
 
-Set is_query = false for:
-- Automated notifications (OTPs, password resets, calendar invites)
-- Payment-gateway receipts (Cashfree, Stripe, Razorpay, Resend, AiSensy, Twilio)
-- Marketing, newsletters, no-reply senders, sales pitches, vendor invoices
-- Bounce / undeliverable notifications
-- Outgoing emails sent BY us (OLL team replies)
-- Spam / phishing
+# is_query — set FALSE for:
+  - Automated notifications (OTPs, password resets, calendar invites, Google Drive shares)
+  - Payment-gateway / messaging-vendor receipts (Cashfree, Stripe, Razorpay, Resend, AiSensy, Twilio)
+  - Marketing emails, newsletters, no-reply senders, cold sales pitches, vendor invoices
+  - Bounce / undeliverable / mailer-daemon notifications
+  - Outgoing emails sent BY OLL team
+  - Spam / phishing
 
-Set is_query = true ONLY when a real person is asking us a question, complaint,
-booking enquiry, refund/payment issue, or class-related concern.
+Set is_query = true ONLY when a real person is sending a question, complaint, booking
+enquiry, refund/payment issue, scheduling change, or any other concern.
 
-priority = "high" if email contains: refund, complaint, urgent, missed class,
-broken / not working, payment failed, harassment, escalate, lawyer.
-priority = "low" if it's informational (e.g., "thanks", "received").
-Otherwise "normal".
+# inquiry_type (WHO is writing) — pick the best fit:
+  - "student"        → a parent asking about THEIR child's class / demo / kit / payment, or a teen learner themselves
+  - "school"         → a principal / coordinator / school admin asking about labs, MoU, curriculum, in-school program
+  - "educator"       → someone applying to TEACH at OLL, asking about training, schedule, or stipend
+  - "growth_partner" → someone interested in becoming a franchise / centre / referral partner
+  - "general"        → media, careers (non-teaching), CSR, sponsorship, business partnerships — anything else
 
-category mapping:
-- student → parent/student queries (demo, class, schedule, payment for a kid)
-- school → school principal/coordinator queries (lab setup, curriculum, MoU)
-- educator → teacher applications, payments, scheduling, training
-- payment → invoices, payment failures, GST, refunds (general billing)
-- refund → explicit refund requests
-- general → everything else that's still a query
+# query_type → MUST be one of the exact values listed above. Choose the closest fit:
+  - demo_related       → demo booking / reschedule / no-show
+  - payment            → payment receipts, failed payments, refund requests, invoices, discounts
+  - course_info        → curriculum questions, eligibility, pricing, certification
+  - ongoing_classes    → currently-enrolled student issues: missed class, teacher issue, reschedule, progress
+  - technical          → login bug, app issue, video/audio, payment-gateway error
+  - kit_related        → robotics kit components missing/damaged/delayed
+  - partnership        → school MoU, centre/franchise enquiry, bulk enrolment, sponsorship
+  - feedback           → thank-you / praise / complaint about quality
+  - educator_query     → teacher application status, training, payment, scheduling
+  - admission          → "how do I enrol my child", document submission, seats
+  - scheduling         → batch timing, slot availability, preferred timing
+  - other              → genuine queries that fit none of the above
+
+# related_to slug — one of these MUST match the chosen query_type:
+  demo_related:    demo_booking | demo_reschedule | demo_cancellation | demo_feedback | demo_no_show | other
+  payment:         payment_pending | payment_failed | refund_request | invoice_request | payment_plan | discount_query | other
+  course_info:     course_content | course_duration | course_pricing | course_eligibility | course_certification | batch_timing | other
+  ongoing_classes: class_reschedule | class_missed | teacher_issue | class_quality | progress_report | batch_change | other
+  technical:       login_issue | app_bug | video_issue | payment_gateway | notification_issue | other
+  kit_related:     components_missing | delivery_delay | component_damaged | quality_issues | other
+  partnership:     school_partnership | center_partnership | franchise_inquiry | bulk_enrollment | other
+  educator_query:  application_status | training_support | student_issue | schedule_query | other
+  admission:       new_admission | admission_process | document_submission | seat_availability | other
+  scheduling:      slot_availability | preferred_timing | teacher_preference | batch_inquiry | other
+  feedback:        other
+  other:           general_inquiry | career_inquiry | media_inquiry | other
+
+# priority
+  - "high"   → refund, complaint, urgent, missed-class, broken/not-working, payment-failed,
+               harassment, legal, escalate, lawyer, RBI/consumer-court
+  - "low"    → "thanks", "received", purely informational
+  - "normal" → everything else
+
+# Important
+  - NEVER default everything to "partnership" + "student". Match the actual content.
+  - "Receipt not received" → query_type=payment, related_to=invoice_request, inquiry_type=student
+  - "Sponsorship request" → query_type=partnership, related_to=other, inquiry_type=general
+  - "Login credentials for daughter" → query_type=technical, related_to=login_issue, inquiry_type=student
+  - "Apply to teach" → query_type=educator_query, related_to=application_status, inquiry_type=educator
 """
 
 
+# ── Defensive defaults for when LLM returns an unknown enum value ─────────
+VALID_QUERY_TYPES = {
+    "demo_related", "payment", "course_info", "ongoing_classes", "technical",
+    "kit_related", "partnership", "feedback", "educator_query", "admission",
+    "scheduling", "other",
+}
+VALID_INQUIRY_TYPES = {"student", "school", "educator", "growth_partner", "general", "teacher", "team"}
+VALID_RELATED_TO = {
+    "demo_related":    {"demo_booking","demo_reschedule","demo_cancellation","demo_feedback","demo_no_show","other"},
+    "payment":         {"payment_pending","payment_failed","refund_request","invoice_request","payment_plan","discount_query","other"},
+    "course_info":     {"course_content","course_duration","course_pricing","course_eligibility","course_certification","batch_timing","other"},
+    "ongoing_classes": {"class_reschedule","class_missed","teacher_issue","class_quality","progress_report","batch_change","other"},
+    "technical":       {"login_issue","app_bug","video_issue","payment_gateway","notification_issue","other"},
+    "kit_related":     {"components_missing","delivery_delay","component_damaged","quality_issues","other"},
+    "partnership":     {"school_partnership","center_partnership","franchise_inquiry","bulk_enrollment","other"},
+    "educator_query":  {"application_status","training_support","student_issue","schedule_query","other"},
+    "admission":       {"new_admission","admission_process","document_submission","seat_availability","other"},
+    "scheduling":      {"slot_availability","preferred_timing","teacher_preference","batch_inquiry","other"},
+    "feedback":        {"other"},
+    "other":           {"general_inquiry","career_inquiry","media_inquiry","other"},
+}
+
+
 async def _classify_email(subject: str, sender: str, body: str) -> dict:
-    """Use Emergent LLM (GPT-4o) to classify the email. Returns the parsed dict."""
+    """Use Emergent LLM (GPT-4o-mini) to classify the email. Returns the parsed dict
+    with values normalized to the support panel's existing taxonomy."""
+    fallback = {
+        "is_query": True,
+        "inquiry_type": "general",
+        "query_type": "other",
+        "related_to": "general_inquiry",
+        "priority": "normal",
+        "subject_summary": (subject or "")[:80],
+    }
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
     except Exception:
-        logger.warning("emergentintegrations not available — defaulting to is_query=true")
-        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+        logger.warning("emergentintegrations not available — using fallback classification")
+        return fallback
 
     llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
     if not llm_key:
-        logger.warning("EMERGENT_LLM_KEY not set — defaulting to is_query=true")
-        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+        logger.warning("EMERGENT_LLM_KEY not set — using fallback classification")
+        return fallback
 
-    # Truncate body to keep context lean
     body_trim = (body or "")[:3000]
-    text = (
-        f"From: {sender}\n"
-        f"Subject: {subject}\n"
-        f"---\n"
-        f"{body_trim}\n"
-    )
+    text = f"From: {sender}\nSubject: {subject}\n---\n{body_trim}\n"
 
     chat = LlmChat(
         api_key=llm_key,
@@ -377,22 +444,26 @@ async def _classify_email(subject: str, sender: str, body: str) -> dict:
         raw = await chat.send_message(UserMessage(text=text))
     except Exception:
         logger.exception("LLM classifier call failed")
-        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+        return fallback
 
-    # Extract JSON
     m = re.search(r"\{[\s\S]*\}", raw or "")
     if not m:
-        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+        return fallback
     try:
         parsed = json.loads(m.group(0))
     except Exception:
-        return {"is_query": True, "category": "general", "priority": "normal", "subject_summary": (subject or "")[:80]}
+        return fallback
 
-    # Defensive defaults
+    # Normalize against valid enums; fall back if model hallucinated a value.
     parsed.setdefault("is_query", True)
-    parsed.setdefault("category", "general")
-    parsed.setdefault("priority", "normal")
-    parsed.setdefault("subject_summary", (subject or "")[:80])
+    parsed["inquiry_type"]    = parsed.get("inquiry_type") if parsed.get("inquiry_type") in VALID_INQUIRY_TYPES else "general"
+    parsed["query_type"]      = parsed.get("query_type")   if parsed.get("query_type")   in VALID_QUERY_TYPES   else "other"
+    allowed_rel = VALID_RELATED_TO.get(parsed["query_type"], {"other"})
+    if parsed.get("related_to") not in allowed_rel:
+        # pick a sensible default per query_type
+        parsed["related_to"] = "general_inquiry" if parsed["query_type"] == "other" else "other"
+    parsed["priority"]        = parsed.get("priority") if parsed.get("priority") in ("high","normal","low") else "normal"
+    parsed["subject_summary"] = (parsed.get("subject_summary") or subject or "")[:80]
     return parsed
 
 
@@ -543,9 +614,69 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
             skipped += 1
             continue
 
+        # ── Dedup by Gmail thread_id ────────────────────────────────────────
+        # Gmail groups replies into a single threadId. If we already created a
+        # ticket for this thread, append the new message as a comment instead
+        # of opening a second ticket (which is what was causing duplicates).
+        existing_ticket = None
+        if thread_id:
+            existing_ticket = await db.support_queries.find_one(
+                {"gmail.thread_id": thread_id},
+                {"_id": 0, "id": 1, "ticket_number": 1, "comments": 1, "status": 1},
+            )
+
+        # ── Secondary dedup: same sender + similar subject within 7 days ───
+        # Catches duplicates where the customer re-sent the same query (different
+        # Gmail thread) or wrote to multiple aliases (info@ AND skills@). We
+        # normalize the subject (strip Re:/Fwd:, lowercase, drop punctuation) so
+        # "Re: Sponsorship" and "Sponsorship" collapse together.
+        if not existing_ticket and sender_email:
+            from datetime import timedelta as _td
+            norm_subject = re.sub(r"^(re|fwd|fw)\s*:\s*", "", (subject or "").strip(), flags=re.I)
+            norm_subject = re.sub(r"[^a-z0-9 ]+", " ", norm_subject.lower()).strip()
+            norm_subject = re.sub(r"\s+", " ", norm_subject)[:80]
+            if len(norm_subject) >= 6:
+                seven_days_ago = (datetime.now(timezone.utc) - _td(days=7)).isoformat()
+                existing_ticket = await db.support_queries.find_one(
+                    {
+                        "source": "gmail_bot",
+                        "email": sender_email,
+                        "created_at": {"$gte": seven_days_ago},
+                        "gmail.normalized_subject": norm_subject,
+                    },
+                    {"_id": 0, "id": 1, "ticket_number": 1, "comments": 1, "status": 1},
+                )
+
         # Try to extract a phone number from the body for customer linking
         phone_match = re.search(r"(?:\+?91[\s\-]?)?[6-9]\d{9}", body or "")
         phone_guess = phone_match.group(0) if phone_match else ""
+
+        if existing_ticket:
+            # Append a comment on the existing ticket; re-open if it was resolved.
+            comment = {
+                "id": str(uuid.uuid4()),
+                "author": "Gmail Bot",
+                "author_email": "gmail_bot",
+                "text": f"[New Gmail reply on this thread]\nSubject: {subject}\n\n{(body or '')[:3000]}",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "gmail": {"message_id": msg_id, "thread_id": thread_id, "from": from_h},
+            }
+            update = {
+                "$push": {"comments": comment},
+                "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+            }
+            # If the ticket was resolved/closed, re-open so the team sees the new reply
+            if existing_ticket.get("status") in ("resolved", "closed"):
+                update["$set"]["status"] = "open"
+                update["$set"]["reopened_at"] = datetime.now(timezone.utc).isoformat()
+            await db.support_queries.update_one({"id": existing_ticket["id"]}, update)
+            await _mark_processed(
+                msg_id, email_addr, gmail, "appended_to_existing", subject, sender_email,
+                classification=cls, ticket_id=existing_ticket["id"],
+                ticket_number=existing_ticket.get("ticket_number"),
+            )
+            skipped += 1  # not a NEW ticket
+            continue
 
         link = None
         try:
@@ -564,15 +695,18 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
         if not customer_phone:
             customer_phone = phone_guess
 
+        # Use the AI-classified taxonomy directly so the support panel's existing
+        # dropdowns + filters work without any UI changes.
         ticket_doc = {
             "id": ticket_id,
             "ticket_number": ticket_number,
             "name": customer_name,
             "phone": customer_phone,
             "email": sender_email,
-            "query_type": cls.get("category", "general"),
-            "related_to": cls.get("subject_summary", subject)[:120],
-            "inquiry_type": cls.get("category", "general") if cls.get("category") in ("student", "school", "educator") else "student",
+            "query_type": cls.get("query_type", "other"),
+            "related_to": cls.get("related_to", "general_inquiry"),
+            "inquiry_type": cls.get("inquiry_type", "general"),
+            "subject_summary": cls.get("subject_summary", subject)[:120],
             "message": (subject + "\n\n" + (body or ""))[:5000],
             "query_details": (subject + "\n\n" + (body or ""))[:5000],
             "priority": cls.get("priority", "normal"),
@@ -590,6 +724,7 @@ async def _sync_account(acc_doc: dict, max_messages: int = 50) -> dict:
                 "message_id": msg_id,
                 "thread_id": thread_id,
                 "subject": subject,
+                "normalized_subject": (lambda s: re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]+", " ", re.sub(r"^(re|fwd|fw)\s*:\s*", "", (s or "").strip(), flags=re.I).lower())).strip()[:80])(subject),
                 "from": from_h,
                 "gmail_url": gmail_url,
             },
