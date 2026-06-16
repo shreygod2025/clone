@@ -41,7 +41,7 @@ const ShopCheckoutPage = () => {
   const validate = () => {
     const errs = [];
     if (form.full_name.trim().length < 2) errs.push('Full name is required');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.push('Valid email is required');
+    if (form.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.push('Please enter a valid email or leave it blank');
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length < 10) errs.push('10-digit phone is required');
     if (form.line1.trim().length < 4) errs.push('Address line 1 is required');
@@ -123,7 +123,7 @@ const ShopCheckoutPage = () => {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Full Name *" value={form.full_name} onChange={setField('full_name')} testId="checkout-full-name" />
-            <Field label="Email *" type="email" value={form.email} onChange={setField('email')} testId="checkout-email" />
+            <Field label="Email (optional)" type="email" value={form.email} onChange={setField('email')} placeholder="For order updates" testId="checkout-email" />
           </div>
           <Field
             label="Phone *"

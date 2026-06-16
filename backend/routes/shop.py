@@ -217,7 +217,7 @@ class ShopCartItem(BaseModel):
 
 class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=2, max_length=80)
-    email: EmailStr
+    email: Optional[EmailStr] = None
     phone: str = Field(min_length=10, max_length=15)
     line1: str = Field(min_length=4, max_length=200)
     line2: Optional[str] = ""
@@ -321,7 +321,7 @@ async def initiate_shop_payment(body: InitiatePaymentBody):
         customer = CashfreeCustomerDetails(
             customer_id=order["id"][:50],
             customer_name=shipping["full_name"][:50] or "OLL Shopper",
-            customer_email=shipping["email"],
+            customer_email=shipping.get("email") or f"shopper+{raw_phone}@oll.co",
             customer_phone=raw_phone,
         )
         order_meta = OrderMeta(
@@ -470,7 +470,10 @@ async def _submit_vendor_pos(order: dict) -> List[dict]:
 
 
 async def _send_order_confirmation_email(order: dict, pos: List[dict]):
-    """Email the customer a paid confirmation + the admin team."""
+    """Email the customer a paid confirmation + the admin team. No-op if email missing."""
+    shipping = order["shipping"]
+    if not shipping.get("email"):
+        return
     try:
         from server import get_resend_api_key  # type: ignore
         key = await get_resend_api_key()
@@ -480,8 +483,6 @@ async def _send_order_confirmation_email(order: dict, pos: List[dict]):
     except Exception:
         if not resend.api_key:
             return
-
-    shipping = order["shipping"]
     item_rows = "".join(
         f"""<tr>
             <td style='padding:8px;border-bottom:1px solid #eee'>{it['name']}</td>

@@ -2,18 +2,20 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
-import { ShoppingCart, ShoppingBag, ArrowLeft, Check, Truck, Shield, Sparkles } from 'lucide-react';
+import { ShoppingCart, ShoppingBag, Check, Truck, Shield, Sparkles, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../components/Footer';
 import CartDrawer from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
 const ShopPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
+  const [search, setSearch] = useState('');
   const { addItem, openDrawer, count } = useCart();
 
   useEffect(() => {
@@ -39,9 +41,17 @@ const ShopPage = () => {
   }, [products]);
 
   const visible = useMemo(() => {
-    if (category === 'all') return products;
-    return products.filter((p) => p.category === category);
-  }, [products, category]);
+    let list = products;
+    if (category !== 'all') list = list.filter((p) => p.category === category);
+    const s = search.trim().toLowerCase();
+    if (s) {
+      list = list.filter((p) => {
+        const blob = `${p.name} ${p.sku} ${p.description} ${p.vendor_name} ${p.category}`.toLowerCase();
+        return blob.includes(s);
+      });
+    }
+    return list;
+  }, [products, category, search]);
 
   const handleAdd = (p) => {
     addItem(p, 1);
@@ -60,21 +70,51 @@ const ShopPage = () => {
         />
       </Helmet>
 
-      {/* Hero / Header */}
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-sm font-semibold opacity-80 hover:opacity-100">
-            <ArrowLeft className="w-4 h-4" /> Home
+      {/* Sticky white navbar with logo + search + cart */}
+      <nav
+        className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm"
+        data-testid="shop-navbar"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3 sm:gap-6">
+          <Link to="/" className="flex-shrink-0" data-testid="shop-navbar-logo">
+            <img
+              src={LOGO_URL}
+              alt="OLL"
+              className="h-8 sm:h-10 w-auto"
+              loading="eager"
+            />
           </Link>
+          <div className="flex-1 max-w-2xl mx-auto relative" data-testid="shop-search-wrap">
+            <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 left-3 text-slate-400 pointer-events-none" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search robotics kits, vendors, SKUs…"
+              className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-100 hover:bg-slate-50 focus:bg-white border border-transparent focus:border-slate-300 rounded-full focus:outline-none transition-colors"
+              data-testid="shop-search-input"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute top-1/2 -translate-y-1/2 right-3 text-slate-400 hover:text-slate-600"
+                aria-label="Clear search"
+                data-testid="shop-search-clear"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <button
             onClick={openDrawer}
-            className="relative bg-white/10 hover:bg-white/15 rounded-full px-4 py-2 flex items-center gap-2 text-sm font-semibold"
+            className="relative flex-shrink-0 bg-slate-900 hover:bg-[#D63031] text-white rounded-full px-4 sm:px-5 py-2.5 flex items-center gap-2 text-sm font-semibold transition-colors"
             data-testid="shop-cart-button"
           >
-            <ShoppingCart className="w-4 h-4" /> Cart
+            <ShoppingCart className="w-4 h-4" />
+            <span className="hidden sm:inline">Cart</span>
             {count > 0 && (
               <span
-                className="absolute -top-1 -right-1 bg-[#D63031] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                className="absolute -top-1 -right-1 bg-amber-400 text-slate-900 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
                 data-testid="shop-cart-count"
               >
                 {count}
@@ -82,7 +122,11 @@ const ShopPage = () => {
             )}
           </button>
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12 grid lg:grid-cols-[1.3fr,1fr] gap-8 items-center">
+      </nav>
+
+      {/* Hero */}
+      <header className="bg-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 grid lg:grid-cols-[1.3fr,1fr] gap-8 items-center">
           <div>
             <span className="inline-block bg-amber-500/15 text-amber-300 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
               <Sparkles className="inline w-3 h-3 mr-1 -mt-0.5" /> Robotics Kit Shop
@@ -116,7 +160,7 @@ const ShopPage = () => {
       </header>
 
       {/* Category filter */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+      <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex gap-2 overflow-x-auto">
           {categories.map((c) => (
             <button
@@ -144,9 +188,18 @@ const ShopPage = () => {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="text-center text-slate-500 py-20">
+          <div className="text-center text-slate-500 py-20" data-testid="shop-empty">
             <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No kits available in this category yet.</p>
+            <p>{search ? `No kits match "${search}".` : 'No kits available in this category yet.'}</p>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="mt-3 text-[#D63031] text-sm font-semibold"
+                data-testid="shop-empty-clear"
+              >
+                Clear search
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6" data-testid="shop-product-grid">

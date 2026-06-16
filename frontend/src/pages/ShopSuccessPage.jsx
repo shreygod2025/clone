@@ -82,7 +82,7 @@ const ShopSuccessPage = () => {
               </div>
               <h1 className="text-2xl font-bold text-slate-900">Order placed!</h1>
               <p className="text-sm text-slate-500 mt-1">
-                Order <span className="font-semibold text-slate-700">{order.order_no}</span> — we've sent a confirmation to <strong>{order.shipping.email}</strong>.
+                Order <span className="font-semibold text-slate-700">{order.order_no}</span>{order.shipping?.email ? <> — we've sent a confirmation to <strong>{order.shipping.email}</strong>.</> : <> — we'll reach you on <strong>{order.shipping?.phone}</strong>.</>}
               </p>
             </div>
 
