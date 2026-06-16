@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
-import { Loader2, Search, Package, Truck, CheckCircle2, ExternalLink, Edit2, Eye } from 'lucide-react';
+import { Loader2, Search, Package, Truck, CheckCircle2, ExternalLink, Edit2, Eye, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -409,6 +409,7 @@ const ProductsTab = () => {
   const { getAuthHeaders } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [edit, setEdit] = useState(null);
 
@@ -421,6 +422,18 @@ const ProductsTab = () => {
       toast.error('Failed to load products');
     } finally {
       setLoading(false);
+    }
+  };
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const r = await axios.post(`${API}/admin/shop/sync`, {}, { headers: getAuthHeaders() });
+      toast.success(`Synced ${r.data.total_products} products · ${r.data.visible_products} visible on shop`);
+      await load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Sync failed');
+    } finally {
+      setSyncing(false);
     }
   };
   useEffect(() => {
@@ -452,7 +465,19 @@ const ProductsTab = () => {
             data-testid="shop-products-search"
           />
         </div>
-        <p className="text-xs text-slate-500">{filtered.length} products</p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-slate-500">{filtered.length} products</p>
+          <button
+            onClick={sync}
+            disabled={syncing || loading}
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-[#D63031] disabled:bg-slate-400 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg transition-colors"
+            data-testid="shop-products-sync"
+            title="Re-fetch the vendor catalog now (bypasses the 5-min cache)"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing…' : 'Sync from Vendor'}
+          </button>
+        </div>
       </div>
       {loading ? (
         <Skeleton />

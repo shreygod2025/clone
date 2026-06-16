@@ -735,6 +735,20 @@ class ProductOverrideBody(BaseModel):
     show_on_shop: Optional[bool] = None
 
 
+@router.post("/admin/shop/sync")
+async def admin_sync_vendor_catalog(user: dict = Depends(get_current_user)):
+    """Force-refresh the vendor catalog cache so brand-new products show up
+    immediately on /shop without waiting for the 5-minute TTL."""
+    products = await _fetch_vendor_catalog(force=True)
+    visible = sum(1 for p in products if p.get("show_on_shop"))
+    return {
+        "ok": True,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "total_products": len(products),
+        "visible_products": visible,
+    }
+
+
 @router.get("/admin/shop/products")
 async def admin_list_products(user: dict = Depends(get_current_user)):
     vendor_products = await _fetch_vendor_catalog(force=True)
