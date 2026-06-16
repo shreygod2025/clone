@@ -1830,7 +1830,8 @@ def generate_dynamic_onboarding_steps(onboarding_data: dict, is_renewal: bool = 
     all_steps = copy.deepcopy(DEFAULT_ONBOARDING_STEPS)
 
     # Determine which step keys are active (in order)
-    ordered_keys = ["payment_collection", "kit_delivery"]
+    # MOU signing is the FIRST onboarding step (above payment collection)
+    ordered_keys = ["mou_signing", "payment_collection", "kit_delivery"]
 
     if kit_type in ("individual", "student_kit", "individual_books"):
         ordered_keys.append("distribution_checking")
@@ -1848,7 +1849,7 @@ def generate_dynamic_onboarding_steps(onboarding_data: dict, is_renewal: bool = 
     if needs_student_training:
         ordered_keys += ["timetable_finalization", "teacher_allocation", "teacher_approval"]
 
-    ordered_keys += ["calendar_making", "mou_signing", "lms_setup", "school_confirmation"]
+    ordered_keys += ["calendar_making", "lms_setup", "school_confirmation"]
 
     # Return only the active steps (in order, as an ordered dict)
     from collections import OrderedDict
@@ -1879,18 +1880,15 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
     # Initialize onboarding steps dynamically based on what the school purchased
     onboarding_data_for_steps = school.get("onboarding_data") or {}
     steps = generate_dynamic_onboarding_steps(onboarding_data_for_steps, is_renewal=is_renewal)
-    if "mou_signing" in steps:
-        steps["mou_signing"]["completed"] = True
-        steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
-    
+
     action_label = "Renewal Started" if is_renewal else "Onboarding Started"
-    mou_label = "MOU Signed - School Renewed" if is_renewal else "MOU Signed - School Converted"
-    
+    mou_label = "Onboarding initiated — MOU signing pending" + (" (Renewal)" if is_renewal else "")
+
     onboarding_workflow = {
         "tracking_token": tracking_token,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
-        "current_step": "payment_collection",  # Start from payment since MOU is done
+        "current_step": "mou_signing",  # MOU signing is the first onboarding step
         "is_renewal": is_renewal,
         "steps": steps,
         "timeline": [
