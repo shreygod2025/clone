@@ -1876,43 +1876,74 @@ async def proxy_uploaded_file(
     content: Optional[bytes] = None
     if file_doc and file_doc.get("data"):
         import base64
-        content = base64.b64decode(file_doc["data"])
-    else:
+        try:
+            content = base64.b64decode(file_doc["data"])
+            # A sentinel-sized "data" field (a few bytes) indicates a migration
+            # placeholder, not the real file. Fall through to fetch from
+            # Cloudinary so the user actually gets the document.
+            if content is None or len(content) < 32:
+                content = None
+        except Exception:
+            content = None
+    if content is None:
         fetch_url = (file_doc or {}).get("cloudinary_url") or url
         if not fetch_url.startswith(("http://", "https://")):
             raise HTTPException(status_code=400, detail="Invalid URL")
 
-        # For Cloudinary URLs, generate a signed URL to bypass any "Restricted media
-        # types" account settings (e.g. PDF/ZIP delivery). This works for both legacy
-        # URLs (no extension) and new uploads (with extension).
+        # Strategy: try multiple candidate URLs in order until one succeeds.
+        # Order matters — direct unsigned URL is the most reliable for legacy
+        # MOUs that were uploaded WITHOUT a file extension in the public_id
+        # (signing those URLs sometimes appends ".pdf" and Cloudinary returns
+        # 404 because the stored public_id has no extension).
         import re as _re_local
+        candidate_urls: List[str] = [fetch_url]
+
         if "cloudinary.com" in fetch_url:
             try:
                 cl = _get_cloudinary()
-                m = _re_local.search(r'/(image|raw|video)/upload/(?:v\d+/)?(.+?)(\?|$)', fetch_url)
+                m = _re_local.search(
+                    r'/(image|raw|video)/upload/(?:v\d+/)?(.+?)(\?|$)', fetch_url
+                )
                 if m:
                     resource_type = m.group(1)
                     public_id_raw = m.group(2)
                     public_id = _re_local.sub(r'^[a-z_]+:[^/]+/', '', public_id_raw)
+                    # Add the signed URL as a secondary candidate (works for
+                    # account-level signed-delivery enforcement)
                     signed_url, _ = cl.utils.cloudinary_url(
-                        public_id,
-                        resource_type=resource_type,
-                        sign_url=True,
-                        secure=True,
-                        type="upload",
+                        public_id, resource_type=resource_type,
+                        sign_url=True, secure=True, type="upload",
                     )
-                    fetch_url = signed_url
+                    if signed_url and signed_url not in candidate_urls:
+                        candidate_urls.append(signed_url)
+                    # Also try the OTHER resource type — many older PDFs were
+                    # accidentally stored under "image" instead of "raw" or
+                    # vice-versa.
+                    alt_type = "image" if resource_type == "raw" else "raw"
+                    alt_url = fetch_url.replace(
+                        f"/{resource_type}/upload/", f"/{alt_type}/upload/"
+                    )
+                    if alt_url not in candidate_urls:
+                        candidate_urls.append(alt_url)
             except Exception as e:
                 logging.warning(f"[FileProxy] Cloudinary sign failed ({e}); using direct URL")
 
-        try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(fetch_url)
-                if resp.status_code >= 400:
-                    raise HTTPException(status_code=resp.status_code, detail="Failed to fetch file")
-                content = resp.content
-        except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Failed to fetch file: {e}")
+        last_status = None
+        last_error = None
+        for cand in candidate_urls:
+            try:
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    resp = await client.get(cand)
+                if resp.status_code < 400 and len(resp.content) > 0:
+                    content = resp.content
+                    break
+                last_status = resp.status_code
+            except httpx.HTTPError as e:
+                last_error = str(e)
+                continue
+        if content is None:
+            detail = f"Failed to fetch file (last status {last_status})" if last_status else f"Failed to fetch file: {last_error}"
+            raise HTTPException(status_code=502, detail=detail)
 
     disposition = "attachment" if download else "inline"
     headers = {

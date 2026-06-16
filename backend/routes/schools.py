@@ -2289,6 +2289,155 @@ async def add_onboarding_query(
     return {"success": True, "query": query}
 
 
+@router.post("/schools/{school_id}/move-to-active")
+async def move_school_to_active(school_id: str, user: dict = Depends(get_current_user)):
+    """Manually promote a school in the Customers (converted) or Renewals
+    (renewed) stage to the Active Schools stage. Intended for when the
+    onboarding checklist is complete and the admin is ready to flip the school
+    from "being-onboarded" to "live in production".
+    Idempotent — re-calling for a school already in `active` returns success.
+    """
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    current_status = school.get("status")
+    if current_status == "active":
+        return {"success": True, "already_active": True, "school_id": school_id}
+
+    if current_status not in ("converted", "renewed"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"School is in '{current_status}' stage — only Customers (converted) or Renewals (renewed) can be moved to Active.",
+        )
+
+    # Snapshot onboarding completion status for audit
+    workflow = school.get("onboarding_workflow") or {}
+    steps = (workflow.get("steps") or {})
+    total_steps = len(steps)
+    completed_steps = sum(1 for s in steps.values() if s.get("completed"))
+    all_completed = total_steps > 0 and completed_steps == total_steps
+
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": f"Moved to Active{'' if all_completed else ' (onboarding incomplete)'} by admin",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": user.get("name", user.get("email", "Admin")),
+        "step": "promote_to_active",
+    })
+    workflow["timeline"] = timeline
+    if all_completed and not workflow.get("completed_at"):
+        workflow["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "status": "active",
+            "promoted_to_active_at": datetime.now(timezone.utc).isoformat(),
+            "promoted_to_active_by": user.get("email"),
+            "promoted_from_status": current_status,
+            "onboarding_workflow": workflow,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    return {
+        "success": True,
+        "school_id": school_id,
+        "previous_status": current_status,
+        "new_status": "active",
+        "onboarding_completed": all_completed,
+        "completed_steps": completed_steps,
+        "total_steps": total_steps,
+    }
+
+
+@router.get("/schools/onboarding-tracker")
+async def get_onboarding_tracker(
+    stage: Optional[str] = None,  # 'customers' | 'renewals' | None=both
+    user: dict = Depends(get_current_user),
+):
+    """Tabular view of every school currently in the Customers (converted) or
+    Renewals (renewed) stage along with its step-wise onboarding status,
+    per-step completion date, the school's assigned RM and any assignees on
+    individual steps. Powers the "Onboarding Tracker" tab under School CRM."""
+    status_filter: List[str]
+    if stage == "customers":
+        status_filter = ["converted"]
+    elif stage == "renewals":
+        status_filter = ["renewed"]
+    else:
+        status_filter = ["converted", "renewed"]
+
+    schools = await db.school_inquiries.find(
+        {"status": {"$in": status_filter}},
+        {"_id": 0},
+    ).sort("updated_at", -1).to_list(2000)
+
+    rows = []
+    all_step_keys: List[str] = []
+    all_step_labels: dict = {}
+
+    for s in schools:
+        wf = s.get("onboarding_workflow") or {}
+        steps = wf.get("steps") or {}
+
+        # Preserve the per-school step order while collecting the union
+        for sk, sv in steps.items():
+            if sk not in all_step_keys:
+                all_step_keys.append(sk)
+                all_step_labels[sk] = sv.get("title", sk.replace("_", " ").title())
+
+        step_rows = {}
+        for sk, sv in steps.items():
+            step_rows[sk] = {
+                "title": sv.get("title", sk.replace("_", " ").title()),
+                "completed": bool(sv.get("completed", False)),
+                "completed_date": sv.get("completed_date"),
+                "assignee": (sv.get("data") or {}).get("assignee")
+                            or (sv.get("data") or {}).get("assigned_to")
+                            or sv.get("assignee"),
+                "step_key": sk,
+            }
+
+        total = len(steps)
+        completed = sum(1 for sv in steps.values() if sv.get("completed"))
+        pct = round((completed / total) * 100, 1) if total else 0
+        # Next incomplete step's title
+        current_step_key = wf.get("current_step")
+        current_step_title = (steps.get(current_step_key) or {}).get("title") if current_step_key else None
+
+        rows.append({
+            "school_id": s.get("id"),
+            "school_name": s.get("school_name"),
+            "stage": "renewals" if s.get("status") == "renewed" else "customers",
+            "rm": s.get("assigned_to_name")
+                  or s.get("rm_name")
+                  or s.get("assigned_to")
+                  or (s.get("onboarding_data") or {}).get("rm"),
+            "rm_email": s.get("assigned_to_email")
+                        or s.get("rm_email"),
+            "contact_name": s.get("contact_name"),
+            "city": s.get("location") or s.get("city"),
+            "total_steps": total,
+            "completed_steps": completed,
+            "completion_pct": pct,
+            "all_completed": total > 0 and completed == total,
+            "current_step": current_step_title,
+            "started_at": wf.get("started_at") or s.get("converted_at") or s.get("renewed_at"),
+            "completed_at": wf.get("completed_at"),
+            "promoted_to_active_at": s.get("promoted_to_active_at"),
+            "updated_at": s.get("updated_at"),
+            "steps": step_rows,
+        })
+
+    return {
+        "rows": rows,
+        "step_columns": [{"key": k, "title": all_step_labels.get(k, k)} for k in all_step_keys],
+        "total_schools": len(rows),
+        "fully_onboarded": sum(1 for r in rows if r["all_completed"]),
+    }
+
+
 @router.post("/schools/{school_id}/send-mou-email")
 async def send_mou_email(school_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Send MOU PDF as email attachment to school contacts"""

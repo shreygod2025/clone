@@ -4678,7 +4678,7 @@ ${FOOTER}</div></body></html>`
   return (
     <AdminLayout title="School CRM">
       {/* Main Tab Navigation */}
-      <div className="flex gap-4 mb-6 border-b border-slate-200">
+      <div className="flex flex-wrap items-center gap-4 mb-6 border-b border-slate-200">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: CalendarClock },
           { id: 'leads', label: 'Leads & Schools', icon: Building2 },
@@ -4698,6 +4698,14 @@ ${FOOTER}</div></body></html>`
             {tab.label}
           </button>
         ))}
+        <a
+          href="/admin/schools/onboarding-tracker"
+          className="ml-auto inline-flex items-center gap-2 px-4 py-2 mb-2 text-xs font-bold uppercase tracking-wider bg-[#1E3A5F] hover:bg-[#162a44] text-white rounded-full transition-colors"
+          data-testid="open-onboarding-tracker"
+        >
+          <CalendarClock className="w-3.5 h-3.5" />
+          Onboarding Tracker
+        </a>
       </div>
 
       {/* Dashboard Tab */}
