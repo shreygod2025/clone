@@ -66,6 +66,12 @@ const CartDrawer = () => {
                 alt={it.name}
                 className="w-16 h-16 rounded-lg object-cover bg-slate-800"
                 loading="lazy"
+                onError={(e) => {
+                  if (e.currentTarget.dataset.fallback !== '1') {
+                    e.currentTarget.dataset.fallback = '1';
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1535378917042-10a22c95931a?w=200&h=200&fit=crop';
+                  }
+                }}
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold leading-tight line-clamp-2">{it.name}</p>

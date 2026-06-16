@@ -164,18 +164,37 @@ async def _get_overrides_map() -> dict:
 
 
 def _merge_product(v: dict, override: Optional[dict]) -> dict:
-    """Combine vendor product + local override into the final shop card payload."""
+    """Combine vendor product + local override into the final shop card payload.
+
+    Priority for each field: admin override → real vendor value → sample fallback.
+    """
     pid = v["id"]
     name = v.get("name", "").strip()
-    mrp = float((override or {}).get("mrp") or _sample_mrp_for(pid, name))
-    selling_price = float((override or {}).get("selling_price") or mrp)
-    image_url = (override or {}).get("image_url") or _sample_image_for(pid)
-    description = (override or {}).get("description") or v.get("description") or name
-    show_on_shop = (override or {}).get("show_on_shop")
-    # Default: every product is visible until admin hides it (since user said
-    # render the page using sample data for now).
-    if show_on_shop is None:
-        show_on_shop = True
+    ov = override or {}
+
+    vendor_mrp = v.get("mrp")
+    vendor_image = v.get("image_url")
+    vendor_show = v.get("show_on_shop")  # may be True / False / None
+    vendor_unit_price = v.get("unit_price")
+
+    mrp = float(ov.get("mrp") if ov.get("mrp") is not None
+                else vendor_mrp if vendor_mrp is not None
+                else _sample_mrp_for(pid, name))
+    selling_price = float(ov.get("selling_price") if ov.get("selling_price") is not None
+                          else vendor_unit_price if vendor_unit_price is not None
+                          else mrp)
+    image_url = ov.get("image_url") or vendor_image or _sample_image_for(pid)
+    description = ov.get("description") or v.get("description") or name
+
+    # show_on_shop precedence: admin override > vendor flag > default False (don't expose
+    # anything the vendor hasn't approved).
+    if "show_on_shop" in ov and ov.get("show_on_shop") is not None:
+        show_on_shop = bool(ov["show_on_shop"])
+    elif vendor_show is not None:
+        show_on_shop = bool(vendor_show)
+    else:
+        show_on_shop = False
+
     return {
         "id": pid,
         "name": name,
@@ -187,8 +206,8 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         "mrp": mrp,
         "selling_price": selling_price,
         "image_url": image_url,
-        "show_on_shop": bool(show_on_shop),
-        "category": (override or {}).get("category")
+        "show_on_shop": show_on_shop,
+        "category": ov.get("category")
         or ("IoT Kits" if "iot" in name.lower() else "Robotics Kits"),
     }
 

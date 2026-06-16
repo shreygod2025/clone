@@ -10,6 +10,17 @@ import { useCart } from '../context/CartContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1535378917042-10a22c95931a?w=600&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1561557944-6e7860d1a7eb?w=600&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=600&h=600&fit=crop',
+];
+const fallbackImage = (id = '') => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return FALLBACK_IMAGES[h % FALLBACK_IMAGES.length];
+};
 
 const ShopPage = () => {
   const [products, setProducts] = useState([]);
@@ -215,6 +226,12 @@ const ShopPage = () => {
                     alt={p.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
+                    onError={(e) => {
+                      if (e.currentTarget.dataset.fallback !== '1') {
+                        e.currentTarget.dataset.fallback = '1';
+                        e.currentTarget.src = fallbackImage(p.id);
+                      }
+                    }}
                   />
                   {p.mrp > p.selling_price && (
                     <span className="absolute top-2 left-2 bg-[#D63031] text-white text-[10px] font-bold px-2 py-1 rounded-full">
