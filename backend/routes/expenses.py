@@ -165,8 +165,12 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         ("books_cost",             "Book Cost"),
         ("printing_certification", "Certificate Cost"),
         ("teacher_cost",           "Educator Cost"),
+        ("school_share",           "School Share"),
+        ("gp_share",               "GP Share"),
     ]
     PNL_COST_IDS = {k for k, _ in PNL_COST_KEYS}
+    PAID_STATUSES = {"paid", "completed", "cleared", "success", "PAID", "SUCCESS", "COMPLETED"}
+    PARTIAL_STATUSES = {"partial", "partially_paid", "PARTIAL", "PARTIALLY_PAID"}
 
     # ── 1. Build revenue from school_inquiries ────────────────────────────────
     schools = await db.school_inquiries.find(
@@ -214,10 +218,30 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
                 tot_rev_amt = amt
 
             ep   = next((p for p in existing_payments if p.get("tranche_index") == idx), None)
-            # Use paid_amount if explicitly set; otherwise fall back to tranche amount when status is paid
-            paid = float((ep.get("paid_amount") if ep else 0) or 0)
-            if paid <= 0 and ep and ep.get("status") in ("paid", "completed", "cleared"):
-                # Admin marked as paid without entering paid_amount — use tranche amount
+            ep_status = (ep.get("status") if ep else None)
+
+            # Robustly coerce paid_amount (may be stored as str/int/float/None)
+            raw_paid = ep.get("paid_amount") if ep else 0
+            try:
+                paid = float(raw_paid or 0)
+            except (TypeError, ValueError):
+                paid = 0.0
+
+            # If admin marked the tranche fully PAID without entering a
+            # paid_amount, treat the full billed amount as received. Handles
+            # legacy data + Cashfree-synced webhook statuses (uppercase "PAID",
+            # "success", etc.).
+            if paid <= 0 and ep_status in PAID_STATUSES:
+                paid = tot_rev_amt
+
+            # Partial payments: respect paid_amount when set; otherwise leave 0
+            # (admin needs to enter the actual amount received).
+            # No fallback for "partial" without paid_amount because we cannot
+            # guess how much they actually received.
+
+            # Clamp paid to never exceed the tranche total so partial overpays
+            # in one tranche don't artificially shrink another's receivable.
+            if paid > tot_rev_amt:
                 paid = tot_rev_amt
 
             total_revenue += tot_rev_amt

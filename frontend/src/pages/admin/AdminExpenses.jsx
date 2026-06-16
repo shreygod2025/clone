@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
   DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
   Upload, Paperclip, ChevronRight, TrendingDown, BookOpen,
-  Package, Truck, Award, Users, BarChart2
+  Package, Truck, Award, Users, BarChart2, Briefcase, Handshake
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -1078,6 +1078,8 @@ const PnLSheet = ({ data, loading }) => {
     books_cost:             <BookOpen className="w-3 h-3" />,
     printing_certification: <Award className="w-3 h-3" />,
     teacher_cost:           <Users className="w-3 h-3" />,
+    school_share:           <Briefcase className="w-3 h-3" />,
+    gp_share:               <Handshake className="w-3 h-3" />,
   };
 
   const rowBg = (i) => i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
