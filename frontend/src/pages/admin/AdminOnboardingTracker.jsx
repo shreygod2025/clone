@@ -29,7 +29,6 @@ const AdminOnboardingTracker = () => {
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState('all'); // all | customers | renewals
   const [search, setSearch] = useState('');
-  const [promotingId, setPromotingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -60,20 +59,6 @@ const AdminOnboardingTracker = () => {
         r.contact_name?.toLowerCase().includes(s)
     );
   }, [data, search]);
-
-  const promote = async (row) => {
-    if (!window.confirm(`Move "${row.school_name}" to Active Schools?\n\nCurrent: ${row.stage} · ${row.completed_steps}/${row.total_steps} steps complete.`)) return;
-    setPromotingId(row.school_id);
-    try {
-      await axios.post(`${API}/schools/${row.school_id}/move-to-active`, {}, { headers: getAuthHeaders() });
-      toast.success(`${row.school_name} moved to Active Schools`);
-      load();
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to move school');
-    } finally {
-      setPromotingId(null);
-    }
-  };
 
   return (
     <AdminLayout title="Onboarding Tracker">
@@ -166,7 +151,6 @@ const AdminOnboardingTracker = () => {
                       {c.title.replace(/ Distribution & Checking/, ' D&C').slice(0, 18)}
                     </th>
                   ))}
-                  <th className="px-3 py-3 text-right sticky right-0 bg-slate-50 z-10">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,24 +197,6 @@ const AdminOnboardingTracker = () => {
                         </td>
                       );
                     })}
-                    <td className="px-3 py-3 text-right sticky right-0 bg-white">
-                      <Button
-                        size="sm"
-                        onClick={() => promote(row)}
-                        disabled={promotingId === row.school_id}
-                        className={`text-[11px] font-bold ${row.all_completed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-700 hover:bg-slate-800'} text-white`}
-                        data-testid={`tracker-promote-${row.school_id}`}
-                      >
-                        {promotingId === row.school_id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <>
-                            <ChevronUp className="w-3 h-3 mr-1" />
-                            Move to Active
-                          </>
-                        )}
-                      </Button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
