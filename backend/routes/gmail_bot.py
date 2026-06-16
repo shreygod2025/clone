@@ -31,8 +31,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Query, UploadFile, File
+from fastapi.responses import RedirectResponse, StreamingResponse
 
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -41,6 +41,17 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from .shared import db, get_current_user, get_next_ticket_number
+
+# GridFS bucket for support email attachments. Lazily initialised so test
+# environments without a Mongo client at import-time still load this module.
+try:
+    from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+    _ATTACHMENT_BUCKET = AsyncIOMotorGridFSBucket(db, bucket_name="support_attachments")
+except Exception:
+    _ATTACHMENT_BUCKET = None
+
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024   # 10 MB per file
+MAX_TOTAL_ATTACHMENT_BYTES = 24 * 1024 * 1024  # Gmail send caps near 25 MB
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -386,17 +397,39 @@ def _build_reply_message(
     to_email: str, to_name: str, subject: str, body_text: str,
     in_reply_to_msg_id: Optional[str] = None, references: Optional[str] = None,
     from_email: Optional[str] = None,
+    attachments: Optional[List[dict]] = None,  # [{filename, content_type, data: bytes}, ...]
 ) -> dict:
     """Build a Gmail API `users.messages.send` body that threads correctly.
 
     The `In-Reply-To` and `References` headers (both holding the original
     RFC-822 Message-ID) plus the `threadId` in the request body are what make
     Gmail show our reply inside the same conversation as the customer's email.
+    When attachments are passed, the message is built as a multipart/mixed.
     """
     from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email import encoders
     from email.utils import formataddr
 
-    msg = MIMEText(body_text, "plain", "utf-8")
+    if attachments:
+        msg = MIMEMultipart()
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+        for att in attachments:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(att.get("data") or b"")
+            encoders.encode_base64(part)
+            fname = att.get("filename") or "attachment"
+            part.add_header(
+                "Content-Disposition",
+                f'attachment; filename="{fname}"',
+            )
+            if att.get("content_type"):
+                part.replace_header("Content-Type", att["content_type"])
+            msg.attach(part)
+    else:
+        msg = MIMEText(body_text, "plain", "utf-8")
+
     msg["To"] = formataddr((to_name or "", to_email))
     if from_email:
         msg["From"] = formataddr(("OLL Support", from_email))
@@ -422,6 +455,7 @@ async def _send_gmail_reply(
     thread_id: Optional[str],
     in_reply_to_msg_id: Optional[str],
     references: Optional[str],
+    attachments: Optional[List[dict]] = None,
 ) -> dict:
     """Send a reply through a specific connected Gmail account. Threads correctly.
 
@@ -441,6 +475,7 @@ async def _send_gmail_reply(
     msg_body = _build_reply_message(
         to_email=to_email, to_name=to_name, subject=subject, body_text=body_text,
         in_reply_to_msg_id=in_reply_to_msg_id, references=references, from_email=account_email,
+        attachments=attachments,
     )
     if thread_id:
         msg_body["threadId"] = thread_id
@@ -449,6 +484,93 @@ async def _send_gmail_reply(
     except HttpError as e:
         raise HTTPException(500, f"Gmail send failed: {e}")
     return sent
+
+
+# ── AI auto-acknowledgment generator ──────────────────────────────────────
+AI_ACK_PROMPT = """\
+You are writing a brief acknowledgment email on behalf of OLL Support — an EdTech
+company in India that offers Robotics, AI, Coding, Entrepreneurship and Financial
+Literacy classes for kids 4-16, plus in-school programs, summer camps and one-off
+workshops.
+
+You are NOT solving the customer's problem. You are simply acknowledging that we
+received their email and a real team member will follow up within 48 hours.
+
+Write a calm, professional reply in 4-6 short sentences that:
+  1. Greets the customer by first name on its own line.
+  2. References ONE specific thing from their message in one sentence (paraphrase
+     the actual concern — do NOT just say "regarding your query"). If the email
+     is generic, simply acknowledge their query was received.
+  3. Confirms a Support Ticket has been opened (insert the ticket number).
+  4. Promises a team member will personally respond within 48 hours.
+  5. Gently notes: if it's urgent, replying to this email will fast-track it.
+  6. Closes with "Warm regards," on its own line and "OLL Support Team" on the next.
+
+ABSOLUTE RULES:
+  · Do NOT make any commitment about a solution, refund, schedule, price, link, demo
+    booking, or callback time. Do NOT promise anything beyond "team will get back".
+  · Do NOT use marketing words ("excited", "thrilled", "delighted", "awesome",
+    "amazing", etc.). Keep it warm but professional.
+  · Do NOT include emoji, signatures with phone numbers, or product pitches.
+  · Do NOT include the original quoted email or any "On <date> wrote:" prefix.
+  · Output ONLY the plain-text email body — no subject line, no markdown, no
+    code fences, no preamble or "Here is the reply:".
+"""
+
+
+async def _ai_generate_ack(
+    *, first_name: str, ticket_number: int, subject: str, body: str
+) -> Optional[str]:
+    """Generate a personalised acknowledgment email body using Emergent LLM.
+    Returns the body string on success, or None to let the caller fall back to
+    the static template."""
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+    except Exception:
+        return None
+    llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
+    if not llm_key:
+        return None
+
+    body_trim = (body or "")[:2500]
+    text = (
+        f"Customer first name: {first_name}\n"
+        f"Ticket number: #{ticket_number}\n"
+        f"Email subject: {subject or '(no subject)'}\n"
+        f"---\n{body_trim}\n"
+    )
+    chat = LlmChat(
+        api_key=llm_key,
+        session_id=f"gmail-ack-{uuid.uuid4().hex[:8]}",
+        system_message=AI_ACK_PROMPT,
+    ).with_model("openai", "gpt-4o-mini")
+    try:
+        raw = (await chat.send_message(UserMessage(text=text)) or "").strip()
+    except Exception:
+        logger.exception("AI ack generation failed — falling back to static template")
+        return None
+    if not raw:
+        return None
+    # Strip accidental code fences
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw)
+        raw = re.sub(r"\n?```\s*$", "", raw).strip()
+    # Guard rails: must contain the ticket number, must be reasonable length
+    if str(ticket_number) not in raw or len(raw) < 80 or len(raw) > 2500:
+        return None
+    return raw
+
+
+def _static_ack(first_name: str, ticket_number: int) -> str:
+    return (
+        f"Hi {first_name},\n\n"
+        f"Thank you for reaching out to OLL. We have received your query and "
+        f"created Support Ticket #{ticket_number} to track it.\n\n"
+        f"A member of our team will get back to you within 48 hours. If your "
+        f"matter is urgent, please reply to this email and we'll prioritise it.\n\n"
+        f"Warm regards,\n"
+        f"OLL Support Team"
+    )
 
 
 # ── AI classification ──────────────────────────────────────────────────────
@@ -981,44 +1103,61 @@ async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
         created += 1
 
         # ── Auto-acknowledgment reply ───────────────────────────────────────
-        # As soon as we create a ticket, send the customer a polite "we've got
-        # this — ticket #XXXX — someone replies within 48h" email, threaded
-        # under their original message so it appears in the same conversation.
-        ack_text = (
-            f"Hi {customer_name.split()[0] if customer_name else 'there'},\n\n"
-            f"Thank you for reaching out to OLL. We have received your query and "
-            f"created Support Ticket #{ticket_number} to track it.\n\n"
-            f"A member of our team will get back to you within 48 hours. If your "
-            f"matter is urgent, please reply to this email and we'll prioritise it.\n\n"
-            f"Warm regards,\n"
-            f"OLL Support Team\n"
-            f"https://oll.co"
+        # Idempotent: only one ack per ticket, ever. The flag is set BEFORE we
+        # send so a concurrent retry won't double-send. If the send itself
+        # fails, we clear the flag so the next sync can retry.
+        first_name = customer_name.split()[0] if customer_name else "there"
+        claim = await db.support_queries.update_one(
+            {"id": ticket_id, "gmail.ack_sent": {"$ne": True}},
+            {"$set": {
+                "gmail.ack_sent": True,
+                "gmail.ack_sent_at": datetime.now(timezone.utc).isoformat(),
+                "gmail.ack_channel": "gmail_bot_auto",
+            }},
         )
-        try:
-            sent = await _send_gmail_reply(
-                account_email=email_addr,
-                to_email=sender_email,
-                to_name=customer_name,
+        if claim.modified_count == 1:
+            # AI-generated content (query-aware, reassuring). Falls back to a
+            # safe static template if the LLM fails or returns an unsafe shape.
+            ai_body = await _ai_generate_ack(
+                first_name=first_name,
+                ticket_number=ticket_number,
                 subject=subject,
-                body_text=ack_text,
-                thread_id=thread_id,
-                in_reply_to_msg_id=rfc_message_id,
-                references=existing_references or rfc_message_id,
+                body=body,
             )
-            await db.support_queries.update_one(
-                {"id": ticket_id},
-                {"$set": {
-                    "gmail.ack_sent": True,
-                    "gmail.ack_sent_at": datetime.now(timezone.utc).isoformat(),
-                    "gmail.ack_message_id": sent.get("id"),
-                }},
-            )
-        except Exception as ack_err:
-            logger.exception(f"Auto-ack failed for ticket #{ticket_number}")
-            await db.support_queries.update_one(
-                {"id": ticket_id},
-                {"$set": {"gmail.ack_error": str(ack_err)[:200]}},
-            )
+            ack_text = ai_body or _static_ack(first_name, ticket_number)
+            try:
+                sent = await _send_gmail_reply(
+                    account_email=email_addr,
+                    to_email=sender_email,
+                    to_name=customer_name,
+                    subject=subject,
+                    body_text=ack_text,
+                    thread_id=thread_id,
+                    in_reply_to_msg_id=rfc_message_id,
+                    references=existing_references or rfc_message_id,
+                )
+                await db.support_queries.update_one(
+                    {"id": ticket_id},
+                    {"$set": {
+                        "gmail.ack_message_id": sent.get("id"),
+                        "gmail.ack_is_ai": bool(ai_body),
+                        # Also set top-level ack_sent so the support panel
+                        # shows the same indicator that resend-acked tickets do.
+                        "ack_sent": True,
+                        "ack_sent_at": datetime.now(timezone.utc).isoformat(),
+                        "ack_channel": "gmail_thread",
+                    }},
+                )
+            except Exception as ack_err:
+                logger.exception(f"Auto-ack failed for ticket #{ticket_number}")
+                # Clear the claim so a future sync can retry the ack
+                await db.support_queries.update_one(
+                    {"id": ticket_id},
+                    {"$set": {
+                        "gmail.ack_sent": False,
+                        "gmail.ack_error": str(ack_err)[:200],
+                    }},
+                )
 
         # Mark as read in Gmail + processed in our DB
         await _mark_processed(msg_id, email_addr, gmail, "ticket_created", subject, sender_email,
@@ -1132,6 +1271,72 @@ BUILTIN_TEMPLATES = [
         ),
     },
     {
+        "id": "builtin_refund_initiated",
+        "name": "Refund initiated (5-7 working days)",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Apologies for the inconvenience. Your refund for ticket #{ticket_number} has been initiated "
+            "from our end. The amount should reflect in the original payment method within 5–7 working days.\n\n"
+            "Please reply to this thread if you don't see it by then and we'll escalate to our finance team.\n\n"
+            "Warm regards,\nOLL Finance"
+        ),
+    },
+    {
+        "id": "builtin_info_requested",
+        "name": "Request more information",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Thanks for getting in touch — we'd like to help quickly on ticket #{ticket_number}. "
+            "Could you please share a bit more context so we can route this to the right team?\n\n"
+            "  · Child's name + grade (if a class-related query)\n"
+            "  · Order number or registered phone (if a payment-related query)\n"
+            "  · A screenshot or short note describing the exact issue\n\n"
+            "Once we have these we'll get back to you within 24 hours.\n\n"
+            "Warm regards,\nOLL Support"
+        ),
+    },
+    {
+        "id": "builtin_escalated",
+        "name": "Escalated to the team",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Thanks for your patience on ticket #{ticket_number}. Just to keep you posted — your query has "
+            "been escalated to the relevant team lead and is being actively looked into.\n\n"
+            "We'll come back to you with a definitive update within the next 48 hours. If anything urgent "
+            "comes up in the meantime, simply reply to this email and we'll prioritise it.\n\n"
+            "Warm regards,\nOLL Support"
+        ),
+    },
+    {
+        "id": "builtin_resolved_link",
+        "name": "Resolved — share resource link",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Good news — ticket #{ticket_number} has been resolved from our end. Here's the link / resource you'll need:\n\n"
+            "  👉 [PASTE LINK HERE]\n\n"
+            "Do reply on this same thread if anything else comes up and we'll be happy to help.\n\n"
+            "Warm regards,\nOLL Support"
+        ),
+    },
+    {
+        "id": "builtin_callback_request",
+        "name": "Schedule a callback",
+        "subject_prefix": "Re: ",
+        "body": (
+            "Hi {first_name},\n\n"
+            "Happy to set up a quick call so we can address ticket #{ticket_number} faster. "
+            "Could you share:\n\n"
+            "  · Your preferred date + 2-3 time-slots (IST)\n"
+            "  · A working phone number\n\n"
+            "Once we have these, we'll lock a slot and send a confirmation here.\n\n"
+            "Warm regards,\nOLL Support"
+        ),
+    },
+    {
         "id": "builtin_receipt_followup",
         "name": "Payment receipt — share Cashfree invoice",
         "subject_prefix": "Re: ",
@@ -1211,11 +1416,108 @@ async def delete_reply_template(tpl_id: str, user: dict = Depends(get_current_us
 
 
 # ── Manual reply from admin via Gmail ──────────────────────────────────────
+@router.post("/gmail/attachments")
+async def upload_support_attachment(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """Upload an attachment to GridFS and return its metadata. The frontend
+    sends the returned `id` along with the reply request. Files persist so the
+    ticket history page can re-download them later for audit."""
+    if _ATTACHMENT_BUCKET is None:
+        raise HTTPException(500, "Attachment store not available")
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Empty file")
+    if len(data) > MAX_ATTACHMENT_BYTES:
+        raise HTTPException(413, f"File exceeds {MAX_ATTACHMENT_BYTES // (1024 * 1024)} MB limit")
+    file_id = await _ATTACHMENT_BUCKET.upload_from_stream(
+        file.filename or "attachment",
+        data,
+        metadata={
+            "content_type": file.content_type or "application/octet-stream",
+            "uploaded_by": user.get("email"),
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "size": len(data),
+        },
+    )
+    return {
+        "id": str(file_id),
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(data),
+    }
+
+
+@router.get("/gmail/attachments/{file_id}")
+async def download_support_attachment(file_id: str, user: dict = Depends(get_current_user)):
+    """Stream a previously uploaded attachment from GridFS so admins can
+    re-download/preview it from the ticket history."""
+    if _ATTACHMENT_BUCKET is None:
+        raise HTTPException(500, "Attachment store not available")
+    from bson import ObjectId
+    try:
+        oid = ObjectId(file_id)
+    except Exception:
+        raise HTTPException(400, "Invalid file id")
+    try:
+        gridout = await _ATTACHMENT_BUCKET.open_download_stream(oid)
+    except Exception:
+        raise HTTPException(404, "Attachment not found")
+    meta = gridout.metadata or {}
+    ctype = meta.get("content_type") or "application/octet-stream"
+
+    async def _iter():
+        while True:
+            chunk = await gridout.readchunk()
+            if not chunk:
+                break
+            yield chunk
+
+    return StreamingResponse(
+        _iter(),
+        media_type=ctype,
+        headers={"Content-Disposition": f'attachment; filename="{gridout.filename}"'},
+    )
+
+
+async def _load_attachments_from_gridfs(attachment_ids: List[str]) -> List[dict]:
+    """Resolve a list of GridFS IDs into the {filename, content_type, data} dicts
+    expected by `_build_reply_message`. Enforces the per-file + total size caps."""
+    if not attachment_ids or _ATTACHMENT_BUCKET is None:
+        return []
+    from bson import ObjectId
+    out = []
+    total = 0
+    for aid in attachment_ids:
+        try:
+            oid = ObjectId(aid)
+        except Exception:
+            raise HTTPException(400, f"Invalid attachment id: {aid}")
+        try:
+            gridout = await _ATTACHMENT_BUCKET.open_download_stream(oid)
+        except Exception:
+            raise HTTPException(404, f"Attachment not found: {aid}")
+        data = await gridout.read()
+        total += len(data)
+        if total > MAX_TOTAL_ATTACHMENT_BYTES:
+            raise HTTPException(413, "Total attachment size exceeds Gmail's 24 MB limit")
+        out.append({
+            "filename": gridout.filename or "attachment",
+            "content_type": (gridout.metadata or {}).get("content_type") or "application/octet-stream",
+            "data": data,
+            "_id": str(oid),
+            "size": len(data),
+        })
+    return out
+
+
 @router.post("/gmail/reply/{ticket_id}")
 async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Send a Gmail reply from the same account the original email came in on,
     threaded under the original conversation. Log the reply as a comment on the
-    ticket so it shows in the support panel timeline."""
+    ticket so it shows in the support panel timeline. Accepts optional
+    `attachment_ids[]` (GridFS IDs previously uploaded via /gmail/attachments)."""
     body_text = (data.get("body") or "").strip()
     if not body_text:
         raise HTTPException(400, "body required")
@@ -1235,6 +1537,12 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
         ticket_number=ticket.get("ticket_number", ""),
     ) if "{" in body_text else body_text
 
+    # Resolve attachments (optional)
+    attachment_ids = data.get("attachment_ids") or []
+    if not isinstance(attachment_ids, list):
+        raise HTTPException(400, "attachment_ids must be a list")
+    attachments = await _load_attachments_from_gridfs(attachment_ids)
+
     try:
         sent = await _send_gmail_reply(
             account_email=account_email,
@@ -1245,6 +1553,7 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
             thread_id=gmail.get("thread_id"),
             in_reply_to_msg_id=gmail.get("rfc_message_id"),
             references=gmail.get("references") or gmail.get("rfc_message_id"),
+            attachments=attachments,
         )
     except HTTPException:
         raise
@@ -1253,11 +1562,14 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
         raise HTTPException(500, f"Gmail send failed: {e}")
 
     # Log reply as a comment so the support panel shows the back-and-forth
+    att_meta = [{"id": a["_id"], "filename": a["filename"],
+                 "content_type": a["content_type"], "size": a["size"]} for a in attachments]
     comment = {
         "id": str(uuid.uuid4()),
         "author": user.get("name") or user.get("email") or "Admin",
         "author_email": user.get("email"),
         "text": f"[Replied via Gmail · {account_email}]\n\n{rendered}",
+        "attachments": att_meta,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "gmail": {"sent_message_id": sent.get("id"), "thread_id": sent.get("threadId")},
     }
@@ -1272,4 +1584,5 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
             },
         },
     )
-    return {"message": "Reply sent", "gmail_message_id": sent.get("id"), "thread_id": sent.get("threadId")}
+    return {"message": "Reply sent", "gmail_message_id": sent.get("id"),
+            "thread_id": sent.get("threadId"), "attachments": att_meta}
