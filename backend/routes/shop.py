@@ -99,6 +99,23 @@ def _sample_image_for(product_id: str) -> str:
     return SAMPLE_IMAGES[h % len(SAMPLE_IMAGES)]
 
 
+# The vendor panel stores image URLs pointing to a stale preview host that
+# returns 404. The same file IDs ARE served by the active vendor host. Rewrite
+# the URL so images load on the storefront.
+_VENDOR_IMAGE_HOST_REWRITES = {
+    "oll-procure.preview.emergentagent.com": "vendorplus-4.emergent.host",
+}
+
+
+def _normalize_vendor_image(url: Optional[str]) -> Optional[str]:
+    if not url or not isinstance(url, str):
+        return url
+    for stale, live in _VENDOR_IMAGE_HOST_REWRITES.items():
+        if stale in url:
+            return url.replace(stale, live)
+    return url
+
+
 def _sample_mrp_for(product_id: str, name: str) -> float:
     """Generate a deterministic sample MRP based on the product id + name."""
     name_l = (name or "").lower()
@@ -173,7 +190,7 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
     ov = override or {}
 
     vendor_mrp = v.get("mrp")
-    vendor_image = v.get("image_url")
+    vendor_image = _normalize_vendor_image(v.get("image_url"))
     vendor_show = v.get("show_on_shop")  # may be True / False / None
     vendor_unit_price = v.get("unit_price")
 
