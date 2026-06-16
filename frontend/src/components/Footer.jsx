@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { 
   Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube,
   ChevronDown, ChevronUp, Cpu, Code, Brain, TrendingUp, GraduationCap,
-  FileText, Shield, RefreshCcw, HelpCircle, Building2
+  FileText, Shield, RefreshCcw, HelpCircle, Building2, ShoppingBag
 } from 'lucide-react';
 
 // All Student Offerings
@@ -310,6 +310,11 @@ const Footer = ({ variant = 'full' }) => {
           <div itemProp="contactPoint" itemScope itemType="https://schema.org/ContactPoint">
             <h4 className="font-semibold mb-4 text-white">Support</h4>
             <ul className="space-y-2 text-sm text-slate-400">
+              <li>
+                <Link to="/shop" className="hover:text-white transition-colors flex items-center gap-1 text-amber-300" data-testid="footer-shop-link">
+                  <ShoppingBag className="w-3.5 h-3.5" /> Robotics Shop
+                </Link>
+              </li>
               <li><Link to="/centers" className="hover:text-white transition-colors">Learning Centers</Link></li>
               <li><Link to="/faqs" className="hover:text-white transition-colors">FAQs</Link></li>
               <li>

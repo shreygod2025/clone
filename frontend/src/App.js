@@ -120,6 +120,13 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
+import { CartProvider } from "./context/CartContext";
+
+// Robotics Shop
+const ShopPage = lazy(() => import("./pages/ShopPage"));
+const ShopCheckoutPage = lazy(() => import("./pages/ShopCheckoutPage"));
+const ShopSuccessPage = lazy(() => import("./pages/ShopSuccessPage"));
+const AdminShopPanel = lazy(() => import("./pages/admin/AdminShopPanel"));
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -139,6 +146,7 @@ function App() {
   return (
     <AuthProvider>
       <UserAuthProvider>
+        <CartProvider>
         <BrowserRouter>
           <ScrollToTop />
           <Suspense fallback={<PageLoader />}>
@@ -245,6 +253,11 @@ function App() {
               <Route path="/social-media-intern" element={<SocialMediaInternPage />} />
               <Route path="/social-media-intern/apply" element={<SocialMediaInternApplyPage />} />
               <Route path="/social-media-intern/success" element={<SocialMediaInternSuccessPage />} />
+
+              {/* Robotics Kit Shop */}
+              <Route path="/shop" element={<ShopPage />} />
+              <Route path="/shop/checkout" element={<ShopCheckoutPage />} />
+              <Route path="/shop/success" element={<ShopSuccessPage />} />
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -272,6 +285,7 @@ function App() {
               <Route path="/admin/ai-foundations" element={<ProtectedRoute><AdminAiFoundations /></ProtectedRoute>} />
               <Route path="/admin/future-skills" element={<ProtectedRoute><AdminFutureSkills /></ProtectedRoute>} />
               <Route path="/admin/broadcasts" element={<ProtectedRoute><AdminBroadcasts /></ProtectedRoute>} />
+              <Route path="/admin/shop" element={<ProtectedRoute><AdminShopPanel /></ProtectedRoute>} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
@@ -282,6 +296,7 @@ function App() {
           <Toaster position="top-right" richColors />
           <RaiseQueryButton />
         </BrowserRouter>
+        </CartProvider>
       </UserAuthProvider>
     </AuthProvider>
   );

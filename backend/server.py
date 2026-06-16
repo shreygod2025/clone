@@ -4056,6 +4056,7 @@ from routes.schools import router as schools_router
 from routes.orders import router as orders_router
 from routes.misc import router as misc_router
 from routes.broadcasts import router as broadcasts_router, process_scheduled_broadcasts
+from routes.shop import router as shop_router
 from routes.gmail_bot import router as gmail_bot_router, sync_all_gmail_accounts
 from routes.unified_search import router as unified_search_router
 
@@ -4089,6 +4090,7 @@ api_router.include_router(schools_router)
 api_router.include_router(orders_router)
 api_router.include_router(misc_router)
 api_router.include_router(broadcasts_router)
+api_router.include_router(shop_router)
 api_router.include_router(gmail_bot_router)
 api_router.include_router(unified_search_router)
 
