@@ -1,7 +1,38 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
-### Latest Changes (2026-06-15) — Gmail Bot + Unified Student Search (P0)
+### Latest Changes (2026-06-16) — Robotics Kit E-commerce Shop (P0)
+
+**New public funnel** at `/shop` — guest-checkout e-commerce for OLL Robotics & IoT kits.
+
+**Backend (`routes/shop.py`, 730 lines, 17/17 pytest passing):**
+- `GET /api/shop/products` — fetches catalog from OLL Vendor Panel public API (`vendorplus-4.emergent.host/api/public/products`), merges with local `shop_product_overrides` collection (image_url, mrp, selling_price, category, show_on_shop). Returns 139–140 visible products + `delivery_charge=150`.
+- `POST /api/shop/orders` — creates a pending order with subtotal + flat ₹150 delivery; persists in `shop_orders` collection.
+- `POST /api/shop/initiate-payment` — Cashfree v3 PGCreateOrder, returns `payment_session_id` (production env reused from existing `/payments` setup).
+- `POST /api/shop/webhook` — Cashfree webhook: on `PAID`, marks order paid, **splits cart per `vendor_id`**, submits one `/api/public/po-request` per vendor to the vendor panel, saves the returned `tracking_token` + tracking URL on each PO, fires customer confirmation email via Resend.
+- `GET /api/shop/verify/{order_id}` — success-page polling; also runs the finalize flow if webhook hasn't fired yet.
+- Admin: `GET /api/admin/shop/orders`, `GET /api/admin/shop/purchase-orders` (with `?status` / `?vendor_id` filters), `PATCH /api/admin/shop/purchase-orders/{po_id}` (fulfillment_status: pending|dispatched|delivered|cancelled), `GET /api/admin/shop/products`, `PUT /api/admin/shop/products/{vendor_product_id}` (override image_url/mrp/selling_price/category/show_on_shop).
+- Sample image + deterministic sample MRP filled-in until the vendor panel exposes those fields publicly (then we can drop the local generator).
+
+**Frontend:**
+- `/shop` page — hero, category filter pills, responsive product grid, "Add to Cart" with toast + cart drawer.
+- `CartDrawer` — client-side localStorage cart, qty +/-, subtotal, navigates to /shop/checkout.
+- `/shop/checkout` — guest form (full_name, email, 10-digit phone, line1/line2/city/state/6-digit pincode, notes) → calls `POST /api/shop/orders` → `POST /api/shop/initiate-payment` → Cashfree v3 hosted checkout.
+- `/shop/success` — polls `/api/shop/verify/{order_id}` (up to 10 attempts × 2.5s), shows order summary + per-vendor PO tracking links.
+- `AdminShopPanel.jsx` at `/admin/shop` — three tabs (Orders, Purchase Orders, Products); Orders detail modal shows full address + per-vendor PO breakdown.
+- Footer: new "Robotics Shop" link (amber accent) under Support column.
+- Admin sidebar: new "Robotics Shop" entry under Orders.
+
+**New collections:**
+- `shop_orders` — guest orders, shipping snapshot, items, totals, cashfree IDs, fulfillment_status.
+- `shop_purchase_orders` — one per (order × vendor_id) with vendor_tracking_token + vendor_tracking_url returned by the vendor panel.
+- `shop_product_overrides` — admin overrides keyed by `vendor_product_id`.
+
+**Integration notes:**
+- Vendor public API only exposes `id, name, sku, vendor_id, vendor_name, unit, description` today. `image_url`, `mrp`, `unit_price`, `show_on_shop` exist in their model but are not yet in the public response — when the vendor team enables those fields, swap the sample generator in `_merge_product` for live data.
+- Cashfree webhook does NOT yet verify the `x-webhook-signature` header (advisory from testing agent — to add in a hardening pass).
+
+### Previous Changes (2026-06-15) — Gmail Bot + Unified Student Search (P0)
 
 **Feature 1 — Gmail Bot (Auto-create support tickets from inbox)**
 - New backend module `routes/gmail_bot.py` with full Google OAuth 2.0 (Web App) flow.
