@@ -1,6 +1,34 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-17 pt2) — Invoice "Bill To" Override + Custom Invoices (P0)
+
+**1. Per-school "Bill To" name override (Update Payment popup)**
+- Added an amber input block in the AdminOrders → Update Payment modal labelled "Invoice Bill To name override". Persists per-school as `school_inquiries.invoice_name_override`.
+- Backend: `PATCH /api/schools/{id}/invoice-name-override {invoice_name_override}` (empty string clears).
+- The override only affects the **Bill To** block on the generated PDF — Ship To, email recipients and CRM data continue to use the actual school name.
+- `generateInvoicePDF` extended with a `nameOverride` option; AdminOrders passes `schoolData.invoice_name_override` on every PDF generation (download + email + save).
+
+**2. Custom Invoice generator (FilePlus icon button in search bar)**
+- New icon button in the AdminOrders search/filter bar opens a modal that lets admin author a one-off invoice for any non-onboarded customer.
+- Fields: customer_name (req), GSTIN (optional), address, state, gst_type (exclusive_18 / inclusive_18 / book_gst_0).
+- **Multi-row line items** (Description, Qty, Rate) with add/remove + live subtotal, GST and grand-total math.
+- Generates a PDF in **the exact same visual format** as school invoices (same OLL branding, header, totals block, bank details, signature).
+- Saves to new `custom_invoices` collection with sequential numbering: `OLL{YEAR}/CUST-NNNN` (atomic counter).
+- "Recent Custom Invoices" history table inside the modal with one-click re-download.
+- Backend module: `/app/backend/routes/custom_invoices.py`
+  - `POST /api/admin/custom-invoices` — save (PDF base64 stored alongside metadata).
+  - `GET /api/admin/custom-invoices` — list (without heavy PDF payload).
+  - `GET /api/admin/custom-invoices/{id}/pdf` — stream saved PDF.
+  - `DELETE /api/admin/custom-invoices/{id}` — remove.
+- `invoicePdfGenerator.js` extended with `customLineItems` option — when supplied, replaces grade_pricing rendering and uses each line's plain description (no "Grade " prefix), preserving per-row GST math.
+
+**Smoke tests (curl + screenshots, all PASS):**
+- Override set/clear/round-trip via PATCH endpoint.
+- Custom invoice create returns `OLL2026/CUST-0001`, list returns 1 row, PDF download returns valid `%PDF-1.4` bytes.
+- Update Payment modal renders override field with school name as placeholder.
+- Custom Invoice modal renders full form with GST math (Subtotal · GST 18% · Grand Total).
+
 ### Latest Changes (2026-06-17) — Gmail Dup-Fix + Accounts Communication Scheduler (P0)
 
 **1. Gmail Bot Cross-Environment Conflict Fixed**

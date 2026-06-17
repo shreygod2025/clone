@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { ShopOrdersSection } from './AdminShopPanel';
+import CustomInvoiceModal from './CustomInvoiceModal';
 import { useAuth } from '../../context/AuthContext';
 import { 
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
@@ -180,6 +181,8 @@ const AdminOrders = () => {
   
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(null);
+  const [showCustomInvoiceModal, setShowCustomInvoiceModal] = useState(false);
+  const [invoiceNameOverride, setInvoiceNameOverride] = useState('');
   const [showSchoolDetails, setShowSchoolDetails] = useState(null);
   const [showStudentDetails, setShowStudentDetails] = useState(null);
   const [showViewModal, setShowViewModal] = useState(null);
@@ -359,6 +362,21 @@ const AdminOrders = () => {
         type: activeTab
       }, { headers: getAuthHeaders() });
 
+      // Persist the per-school invoice name override (if changed) before regenerating
+      if (showPaymentModal.school_id) {
+        try {
+          await axios.patch(
+            `${API}/schools/${showPaymentModal.school_id}/invoice-name-override`,
+            { invoice_name_override: invoiceNameOverride.trim() },
+            { headers: getAuthHeaders() },
+          );
+          // Bust school detail cache so the override flows into PDFs straight away
+          delete schoolDataCache.current[showPaymentModal.school_id];
+        } catch (overrideErr) {
+          console.warn('Invoice name override save failed:', overrideErr);
+        }
+      }
+
       toast.success('Payment updated successfully');
 
       // Auto-send confirmation email if paid or partial
@@ -374,7 +392,8 @@ const AdminOrders = () => {
             }
             const { invoiceNo, base64 } = await generateInvoicePDF(
               { ...showPaymentModal, status: paymentUpdate.status, paid_amount: paymentUpdate.paid_amount },
-              schoolData, { skipDownload: true }
+              schoolData,
+              { skipDownload: true, nameOverride: schoolData?.invoice_name_override || '' },
             );
             await axios.post(`${API}/orders/save-invoice-pdf`, {
               payment_id: showPaymentModal.id,
@@ -431,6 +450,13 @@ const AdminOrders = () => {
       payment_link: payment.payment_link || '',
       paid_amount: payment.paid_amount || 0
     });
+    // Pre-load the saved per-school name override (if any) so the admin can edit it
+    setInvoiceNameOverride('');
+    if (payment.school_id) {
+      axios.get(`${API}/orders/school-details/${payment.school_id}`, { headers: getAuthHeaders() })
+        .then(res => setInvoiceNameOverride(res.data?.invoice_name_override || ''))
+        .catch(() => {});
+    }
   };
 
   const fetchSchoolDetails = async (schoolId) => {
@@ -622,7 +648,9 @@ const AdminOrders = () => {
         schoolDataCache.current[payment.school_id] = schoolData;
       }
       // Generate, download, and get base64 back
-      const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData);
+      const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, {
+        nameOverride: schoolData?.invoice_name_override || '',
+      });
 
       // Save to invoices collection so Send Email uses the same PDF
       try {
@@ -674,7 +702,10 @@ const AdminOrders = () => {
           schoolData = r.data;
           schoolDataCache.current[payment.school_id] = schoolData;
         }
-        const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, { skipDownload: true });
+        const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, {
+          skipDownload: true,
+          nameOverride: schoolData?.invoice_name_override || '',
+        });
         await axios.post(`${API}/orders/save-invoice-pdf`, {
           payment_id: payment.id,
           school_id: payment.school_id,
@@ -1177,6 +1208,18 @@ const AdminOrders = () => {
             <option value="paid">Paid</option>
             <option value="partial">Partial</option>
           </select>
+
+          {/* Custom Invoice — admin can author a standalone invoice for non-onboarded customers */}
+          <button
+            type="button"
+            onClick={() => setShowCustomInvoiceModal(true)}
+            data-testid="open-custom-invoice-btn"
+            className="h-10 px-3 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors font-medium text-sm"
+            title="Create a custom invoice for a one-off customer"
+          >
+            <FilePlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Custom Invoice</span>
+          </button>
         </div>
 
         {/* Payments Table - Only for school and student tabs */}
@@ -1845,6 +1888,12 @@ const AdminOrders = () => {
       </div>
 
       {/* Payment Update Modal */}
+      {/* Custom Invoice Modal */}
+      <CustomInvoiceModal
+        open={showCustomInvoiceModal}
+        onClose={() => setShowCustomInvoiceModal(false)}
+      />
+
       <Dialog open={!!showPaymentModal} onOpenChange={() => setShowPaymentModal(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1917,6 +1966,27 @@ const AdminOrders = () => {
                   <option value="exclusive">Exclusive GST</option>
                 </select>
               </div>
+
+              {/* Invoice Name Override (per school, persistent) */}
+              {activeTab === 'school' && (
+                <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-amber-900 mb-1">
+                    Invoice "Bill To" name override
+                  </label>
+                  <p className="text-[11px] text-amber-700 mb-2">
+                    Optional. When set, every future invoice for <strong>{showPaymentModal?.school_name || 'this school'}</strong> will
+                    show this name in the "Bill To" block instead of the school's name. Leave blank to use the default.
+                  </p>
+                  <Input
+                    type="text"
+                    placeholder={showPaymentModal?.school_name || 'e.g. Sunrise Educational Trust'}
+                    value={invoiceNameOverride}
+                    onChange={(e) => setInvoiceNameOverride(e.target.value)}
+                    className="bg-white"
+                    data-testid="invoice-name-override-input"
+                  />
+                </div>
+              )}
 
               {/* Payment Date */}
               {(paymentUpdate.status === 'paid' || paymentUpdate.status === 'partial') && (

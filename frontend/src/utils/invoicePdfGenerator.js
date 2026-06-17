@@ -169,7 +169,7 @@ function calculateGST(amount, gstType, schoolState) {
 // ──────────────────────────────────────────────
 // Main: Generate Invoice PDF
 // ──────────────────────────────────────────────
-export async function generateInvoicePDF(payment, schoolData, { skipDownload = false } = {}) {
+export async function generateInvoicePDF(payment, schoolData, { skipDownload = false, nameOverride = '', customLineItems = null } = {}) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -328,7 +328,12 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   const halfWidth = contentWidth / 2 - 2;
 
   // Determine Bill To content
-  const billToName = isDistributor ? (onboardingData.distributor_name || 'Distributor') : schoolName;
+  // `nameOverride` (per-school invoice name override OR set on a custom invoice) wins
+  // over the school's actual name. Only affects Bill To — Ship To always uses the
+  // real school name so deliveries / records stay accurate.
+  const effectiveBillName = (nameOverride && nameOverride.trim())
+    || (isDistributor ? (onboardingData.distributor_name || 'Distributor') : schoolName);
+  const billToName = effectiveBillName;
   const billToAddress = isDistributor ? (onboardingData.distributor_address || '') : schoolAddress;
   const billToGSTIN = isDistributor ? (onboardingData.distributor_gstin || '') : schoolGSTIN;
 
@@ -372,8 +377,19 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   const gst = calculateGST(payment.amount || 0, gstType, schoolState);
 
   // Build per-grade rows from grade_pricing[]
-  const rawGrades = (schoolData?.onboarding_data?.grade_pricing || [])
-    .filter(g => g.grade && g.students && g.price_per_student);
+  // `customLineItems` (when supplied) replaces grade_pricing for fully custom invoices.
+  // Each item: { desc, qty, rate }. Rows are NOT scaled — they're used as-provided.
+  const rawGrades = customLineItems && customLineItems.length > 0
+    ? customLineItems
+        .filter(li => li.desc && (li.qty || li.amount))
+        .map(li => ({
+          grade: li.desc,           // grade field overloaded to carry custom description
+          students: li.qty || 1,
+          price_per_student: li.rate ?? (Number(li.amount || 0) / Math.max(1, Number(li.qty || 1))),
+          _custom: true,            // marker so we know to skip the "Grade " prefix later
+        }))
+    : (schoolData?.onboarding_data?.grade_pricing || [])
+        .filter(g => g.grade && g.students && g.price_per_student);
 
   // Sum of (students × rate) across all grades — the full contract base
   const rawContractTotal = rawGrades.reduce(
@@ -396,7 +412,8 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       const rowCGST = rowBase * gst.cgstRate / 100;
       const rowSGST = rowBase * gst.sgstRate / 100;
       const rowIGST = rowBase * gst.igstRate / 100;
-      const desc = `Grade ${g.grade}`;
+      // Use plain description when this is a custom line item (e.g. "Robotics Lab Setup")
+      const desc = g._custom ? String(g.grade) : `Grade ${g.grade}`;
       return { idx, desc, students, scaledRate, rowBase, rowCGST, rowSGST, rowIGST };
     });
   }

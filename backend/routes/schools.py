@@ -2189,6 +2189,31 @@ async def toggle_accounts_reminders(
     return {"ok": True, "enabled": enabled}
 
 
+@router.patch("/schools/{school_id}/invoice-name-override")
+async def set_invoice_name_override(
+    school_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Set or clear the per-school 'Bill To' name override applied to every
+    future invoice generated for this school. Pass an empty string to clear.
+
+    Body: {"invoice_name_override": "Sunrise Trust"} or {"invoice_name_override": ""}
+    """
+    name = (payload.get("invoice_name_override") or "").strip()
+    res = await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "invoice_name_override": name,
+            "invoice_name_override_updated_at": datetime.now(timezone.utc).isoformat(),
+            "invoice_name_override_updated_by": user.get("email", "admin"),
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="School not found")
+    return {"ok": True, "invoice_name_override": name}
+
+
 
 @router.patch("/schools/{school_id}/onboarding-step/{step_key}")
 async def update_onboarding_step(
