@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from './AdminDashboard';
+import { ShopOrdersSection } from './AdminShopPanel';
 import { useAuth } from '../../context/AuthContext';
 import { 
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus, ShoppingBag
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -897,6 +898,18 @@ const AdminOrders = () => {
             <CreditCard className="w-4 h-4" />
             School Student Payments (Online)
           </button>
+          <button
+            onClick={() => setActiveTab('robotics-shop')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'robotics-shop'
+                ? 'border-red-500 text-red-600 bg-red-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+            data-testid="robotics-shop-orders-tab"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Robotics Shop Orders
+          </button>
           <div className="ml-auto flex items-center pb-1">
             <Button
               variant="outline"
@@ -1636,6 +1649,14 @@ const AdminOrders = () => {
           )}
         </div>
         )}
+        {/* Robotics Shop Orders Tab */}
+        {activeTab === 'robotics-shop' && (
+          <div className="mt-6">
+            <ShopOrdersSection />
+          </div>
+        )}
+
+
 
         {/* School Student Payments (Online) Tab */}
         {activeTab === 'school-students' && (

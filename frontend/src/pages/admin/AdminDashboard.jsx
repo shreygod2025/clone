@@ -25,7 +25,6 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
-    { path: '/admin/shop', icon: ShoppingBag, label: 'Robotics Shop', permission: 'orders' },
     { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'orders' },
     { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },

@@ -12,7 +12,7 @@ import { useUserAuth } from '../context/UserAuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const SHOP_URL = 'https://oll-robotics.myshopify.com/collections/all';
+const SHOP_URL = 'https://oll.co/shop';
 const LMS_URL = 'https://lms.oll.co';
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];

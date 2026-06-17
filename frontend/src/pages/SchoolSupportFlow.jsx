@@ -9,7 +9,7 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const SHOP_URL = 'https://oll-robotics.myshopify.com/collections/all';
+const SHOP_URL = 'https://oll.co/shop';
 const LMS_URL = 'https://lms.oll.co';
 
 const SchoolSupportFlow = ({ onBack }) => {
