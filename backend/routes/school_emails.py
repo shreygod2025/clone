@@ -24,7 +24,7 @@ from routes.admin_keys import get_current_user, get_resend_api_key
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-FROM_EMAIL = "OLL <skills@oll.co>"
+FROM_EMAIL = "OLL Accounts <support@oll.co>"
 
 # ─── Resend helper ───────────────────────────────────────────────────────────
 
@@ -177,7 +177,7 @@ MEETING_FOLLOWUP_HTML = """
     <p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong></p>
   </div>
   <div style="padding:14px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">
-    OLL · skills@oll.co · www.oll.co
+    OLL · support@oll.co · www.oll.co
   </div>
 </div></body></html>
 """
@@ -283,11 +283,11 @@ BASE_EMAIL_WRAP = """<!DOCTYPE html><html><body style="font-family:'Segoe UI',Ar
     {body}
     <p style="color:#475569;font-size:14px;margin-top:28px">Warm regards,<br><strong>The OLL Team</strong></p>
     <div style="margin-top:16px;padding:14px;background:#f0f9ff;border-radius:8px;border-left:4px solid #1E3A5F">
-      <p style="margin:0;color:#1E3A5F;font-size:12px">Questions? Call us at <strong>+91 98921 50714</strong> or email skills@oll.co</p>
+      <p style="margin:0;color:#1E3A5F;font-size:12px">Questions? Call us at <strong>+91 98921 50714</strong> or email support@oll.co</p>
     </div>
   </div>
   <div style="padding:14px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">
-    OLL · skills@oll.co · www.oll.co
+    OLL · support@oll.co · www.oll.co
   </div>
 </div></body></html>"""
 
