@@ -4058,6 +4058,7 @@ from routes.misc import router as misc_router
 from routes.broadcasts import router as broadcasts_router, process_scheduled_broadcasts
 from routes.shop import router as shop_router
 from routes.gmail_bot import router as gmail_bot_router, sync_all_gmail_accounts
+from routes.accounts_scheduler import run_accounts_reminders, router as accounts_scheduler_router
 from routes.unified_search import router as unified_search_router
 
 api_router.include_router(reports_router)
@@ -4092,6 +4093,7 @@ api_router.include_router(misc_router)
 api_router.include_router(broadcasts_router)
 api_router.include_router(shop_router)
 api_router.include_router(gmail_bot_router)
+api_router.include_router(accounts_scheduler_router)
 api_router.include_router(unified_search_router)
 
 app.include_router(api_router)
@@ -4332,6 +4334,24 @@ async def startup_db_client():
         print("[STARTUP] Gmail bot sync scheduled — runs every 60 minutes (production)")
     else:
         print(f"[STARTUP] Gmail bot sync NOT scheduled — ENVIRONMENT={_APP_ENV!r} (manual /api/gmail/sync-now still works)")
+
+    # ── Accounts Communication Scheduler ─────────────────────────────────
+    # Fires once a day at 9:00 AM IST (= 03:30 UTC) to scan every active
+    # school's open invoice tranches and send timeline-based reminder emails
+    # (T-7, T-2, due, T+1, T+3, T+7 — escalation BCCs internal aliases on
+    # T+7). Per-school toggle `accounts_reminders_enabled` pauses sends for
+    # an individual school. Dedupe lives in `accounts_reminder_log` so we
+    # never double-send the same (school, tranche, trigger).
+    # Runs in BOTH preview + production (user choice — duplicate sends are
+    # already prevented by the dedupe collection at the DB layer).
+    scheduler.add_job(
+        run_accounts_reminders,
+        trigger=CronTrigger(hour=3, minute=30, timezone="UTC"),  # 9:00 AM IST
+        id="accounts_reminders_job",
+        name="Accounts Communication — Daily Invoice/Payment Reminders",
+        replace_existing=True,
+    )
+    print("[STARTUP] Accounts reminder cron scheduled — fires daily at 9:00 AM IST (03:30 UTC)")
 
     # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
     # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)

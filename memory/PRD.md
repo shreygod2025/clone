@@ -1,6 +1,37 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-17) — Gmail Dup-Fix + Accounts Communication Scheduler (P0)
+
+**1. Gmail Bot Cross-Environment Conflict Fixed**
+- Added `ENVIRONMENT` env var to `backend/.env` (defaults to `preview`).
+- `server.py` only schedules `sync_all_gmail_accounts` when `ENVIRONMENT=production`.
+- `routes/gmail_bot.py::sync_all_gmail_accounts()` also bails out early if `ENVIRONMENT != production` — so even a manual `/api/gmail/sync-now` triggered from preview becomes a no-op.
+- Verified in startup logs: `[STARTUP] Gmail bot sync NOT scheduled — ENVIRONMENT='preview'`. On the deployed app, set `ENVIRONMENT=production` to enable the hourly sync.
+
+**2. Accounts Communication Scheduler (Daily Invoice/Payment Reminders)**
+- New module `/app/backend/routes/accounts_scheduler.py` with a daily 9:00 AM IST cron (CronTrigger `hour=3, minute=30, UTC`) that walks every `school_inquiries` with status in `[converted, active, renewed]` and `accounts_reminders_enabled != False`, scanning each open payment tranche for timeline offsets:
+  - `T-7`, `T-2`, `T0` (due today), `T+1`, `T+3`, `T+7` (escalation — BCC to `clonefutura@gmail.com` + `lavisha@oll.co`).
+- **9 templates** keyed by `(audience, trigger)`:
+  - 6 school templates: T-7, T-2, T0, T+1, T+3, T+7
+  - 3 distributor templates: T-2, T0, T+3
+- Audience resolved by `onboarding_data.payment_mode`: `from_distributor` (when `distributor_contact_email` is filled) → distributor template path; else → school template path.
+- Recipient priority (school): contact role contains `account` → `principal` → `trustee` → first contact with email → inquiry-level email fallback.
+- Dedup via `accounts_reminder_log` collection (key: `school_id + tranche_index + trigger`).
+- **Per-school kill-switch**: new field `accounts_reminders_enabled` (default True). Admin toggle in `AdminOrders.jsx` (School Payments tab) — green/grey switch under every school name with live "Auto reminders ON/OFF" label. Backend endpoint: `PATCH /api/schools/{id}/accounts-reminders {enabled}`.
+- **Admin endpoints**:
+  - `POST /api/admin/accounts-reminders/run-now` — manual trigger (admin only, dedup still applies).
+  - `GET /api/admin/accounts-reminders/templates` — list all 9 templates.
+  - `GET /api/admin/accounts-reminders/log?school_id=&limit=` — recent reminder send log.
+- **Distributor contact fields** added to all 3 school onboarding modals (Convert, Renewal, Edit Onboarding) — `distributor_contact_email` + `distributor_contact_number`. Persisted in `onboarding_data` and synced via `PUT /schools/onboarding/{id}`.
+
+**Smoke tests (curl + seeded test data, all PASS):**
+- school T-7 routed to Accountant > Principal (priority winner verified).
+- distributor T0 routed to `distributor_contact_email`.
+- school T+7 BCC'd to `clonefutura@gmail.com` + `lavisha@oll.co`.
+- Re-running `run-now` immediately = 0 sends (dedup verified).
+- `accounts_reminders_enabled: false` = school's tranches skipped.
+
 ### Latest Changes (2026-06-16) — Robotics Kit E-commerce Shop (P0)
 
 **New public funnel** at `/shop` — guest-checkout e-commerce for OLL Robotics & IoT kits.
