@@ -1,6 +1,36 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-17 pt3) — Full Bill-To/Ship-To overrides + IGST/Place of Supply (P0)
+
+**Fixed**: Bill To / Ship To block in generated invoice PDFs no longer overlap when address text wraps. Refactored `renderPartyBlock(...)` in `invoicePdfGenerator.js` to:
+- Use `doc.splitTextToSize(...)` to pre-compute wrapped lines.
+- Compute dynamic block height from actual line counts.
+- Print sections sequentially (label → name → address → GSTIN) at incremental y, never overlapping.
+
+**Custom Invoice modal** now has:
+- **Bill To section**: customer name, GSTIN, Bill To address, Bill To state, GST type.
+- **Ship To section**: separate Ship To name + address + state, with a "Same as Bill To" checkbox (default ON).
+- **Place of Supply selector** (drives GST math): when ≠ Maharashtra → IGST 18%; when = Maharashtra → CGST 9% + SGST 9%. Live preview pill shows which math is being applied.
+- Tfoot updates to show IGST OR CGST+SGST breakdown based on Place of Supply.
+
+**Per-school invoice overrides** (Update Payment modal in AdminOrders) now supports:
+- `invoice_name_override` (legacy, name-only)
+- `invoice_bill_to` { name, address, gstin } — full Bill To block override.
+- `invoice_ship_to` { name, address } — separate Ship To override.
+- `invoice_place_of_supply` — state name; outside-Maharashtra automatically switches to IGST.
+
+**Backend changes**:
+- `PATCH /api/schools/{id}/invoice-name-override` now accepts the expanded payload (`invoice_bill_to`, `invoice_ship_to`, `invoice_place_of_supply`) in addition to the legacy `invoice_name_override`. Each field can be cleared independently by passing empty values.
+
+**Generator API**:
+- `generateInvoicePDF(payment, schoolData, { skipDownload, nameOverride, customLineItems, billTo, shipTo, placeOfSupply })` — when `billTo`/`shipTo`/`placeOfSupply` are supplied they fully override the school's defaults.
+
+**Smoke tests (curl + UI screenshots, all PASS)**:
+- Update Payment modal: Bill To + Ship To + Place of Supply fields render, "Inter-state · IGST 18%" callout appears for non-Maharashtra states.
+- Custom Invoice modal: Bill To + Ship To (with Same-as-Bill-To) + Place of Supply selector + live IGST math (₹9,344.16 on ₹51,912 base with UP place-of-supply).
+- Backend PATCH writes and reads back all four override fields correctly.
+
 ### Latest Changes (2026-06-17 pt2) — Invoice "Bill To" Override + Custom Invoices (P0)
 
 **1. Per-school "Bill To" name override (Update Payment popup)**

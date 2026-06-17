@@ -182,7 +182,12 @@ const AdminOrders = () => {
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(null);
   const [showCustomInvoiceModal, setShowCustomInvoiceModal] = useState(false);
-  const [invoiceNameOverride, setInvoiceNameOverride] = useState('');
+  const [invoiceOverrides, setInvoiceOverrides] = useState({
+    invoice_name_override: '',
+    invoice_bill_to: { name: '', address: '', gstin: '' },
+    invoice_ship_to: { name: '', address: '' },
+    invoice_place_of_supply: '',
+  });
   const [showSchoolDetails, setShowSchoolDetails] = useState(null);
   const [showStudentDetails, setShowStudentDetails] = useState(null);
   const [showViewModal, setShowViewModal] = useState(null);
@@ -362,18 +367,23 @@ const AdminOrders = () => {
         type: activeTab
       }, { headers: getAuthHeaders() });
 
-      // Persist the per-school invoice name override (if changed) before regenerating
+      // Persist the per-school invoice overrides (if changed) before regenerating
       if (showPaymentModal.school_id) {
         try {
           await axios.patch(
             `${API}/schools/${showPaymentModal.school_id}/invoice-name-override`,
-            { invoice_name_override: invoiceNameOverride.trim() },
+            {
+              invoice_name_override: invoiceOverrides.invoice_name_override.trim(),
+              invoice_bill_to: invoiceOverrides.invoice_bill_to,
+              invoice_ship_to: invoiceOverrides.invoice_ship_to,
+              invoice_place_of_supply: invoiceOverrides.invoice_place_of_supply,
+            },
             { headers: getAuthHeaders() },
           );
           // Bust school detail cache so the override flows into PDFs straight away
           delete schoolDataCache.current[showPaymentModal.school_id];
         } catch (overrideErr) {
-          console.warn('Invoice name override save failed:', overrideErr);
+          console.warn('Invoice override save failed:', overrideErr);
         }
       }
 
@@ -393,7 +403,13 @@ const AdminOrders = () => {
             const { invoiceNo, base64 } = await generateInvoicePDF(
               { ...showPaymentModal, status: paymentUpdate.status, paid_amount: paymentUpdate.paid_amount },
               schoolData,
-              { skipDownload: true, nameOverride: schoolData?.invoice_name_override || '' },
+              {
+                skipDownload: true,
+                nameOverride: schoolData?.invoice_name_override || '',
+                billTo: schoolData?.invoice_bill_to?.name || schoolData?.invoice_bill_to?.address ? schoolData.invoice_bill_to : null,
+                shipTo: schoolData?.invoice_ship_to?.name || schoolData?.invoice_ship_to?.address ? schoolData.invoice_ship_to : null,
+                placeOfSupply: schoolData?.invoice_place_of_supply || null,
+              },
             );
             await axios.post(`${API}/orders/save-invoice-pdf`, {
               payment_id: showPaymentModal.id,
@@ -450,11 +466,31 @@ const AdminOrders = () => {
       payment_link: payment.payment_link || '',
       paid_amount: payment.paid_amount || 0
     });
-    // Pre-load the saved per-school name override (if any) so the admin can edit it
-    setInvoiceNameOverride('');
+    // Pre-load the saved per-school overrides (Bill To / Ship To / Place of Supply)
+    setInvoiceOverrides({
+      invoice_name_override: '',
+      invoice_bill_to: { name: '', address: '', gstin: '' },
+      invoice_ship_to: { name: '', address: '' },
+      invoice_place_of_supply: '',
+    });
     if (payment.school_id) {
       axios.get(`${API}/orders/school-details/${payment.school_id}`, { headers: getAuthHeaders() })
-        .then(res => setInvoiceNameOverride(res.data?.invoice_name_override || ''))
+        .then(res => {
+          const d = res.data || {};
+          setInvoiceOverrides({
+            invoice_name_override: d.invoice_name_override || '',
+            invoice_bill_to: {
+              name: d.invoice_bill_to?.name || '',
+              address: d.invoice_bill_to?.address || '',
+              gstin: d.invoice_bill_to?.gstin || '',
+            },
+            invoice_ship_to: {
+              name: d.invoice_ship_to?.name || '',
+              address: d.invoice_ship_to?.address || '',
+            },
+            invoice_place_of_supply: d.invoice_place_of_supply || '',
+          });
+        })
         .catch(() => {});
     }
   };
@@ -650,6 +686,9 @@ const AdminOrders = () => {
       // Generate, download, and get base64 back
       const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, {
         nameOverride: schoolData?.invoice_name_override || '',
+        billTo: schoolData?.invoice_bill_to?.name || schoolData?.invoice_bill_to?.address ? schoolData.invoice_bill_to : null,
+        shipTo: schoolData?.invoice_ship_to?.name || schoolData?.invoice_ship_to?.address ? schoolData.invoice_ship_to : null,
+        placeOfSupply: schoolData?.invoice_place_of_supply || null,
       });
 
       // Save to invoices collection so Send Email uses the same PDF
@@ -705,6 +744,9 @@ const AdminOrders = () => {
         const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, {
           skipDownload: true,
           nameOverride: schoolData?.invoice_name_override || '',
+          billTo: schoolData?.invoice_bill_to?.name || schoolData?.invoice_bill_to?.address ? schoolData.invoice_bill_to : null,
+          shipTo: schoolData?.invoice_ship_to?.name || schoolData?.invoice_ship_to?.address ? schoolData.invoice_ship_to : null,
+          placeOfSupply: schoolData?.invoice_place_of_supply || null,
         });
         await axios.post(`${API}/orders/save-invoice-pdf`, {
           payment_id: payment.id,
@@ -1967,24 +2009,129 @@ const AdminOrders = () => {
                 </select>
               </div>
 
-              {/* Invoice Name Override (per school, persistent) */}
+              {/* Invoice overrides (per school, persistent) */}
               {activeTab === 'school' && (
-                <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3">
-                  <label className="block text-sm font-medium text-amber-900 mb-1">
-                    Invoice "Bill To" name override
-                  </label>
-                  <p className="text-[11px] text-amber-700 mb-2">
-                    Optional. When set, every future invoice for <strong>{showPaymentModal?.school_name || 'this school'}</strong> will
-                    show this name in the "Bill To" block instead of the school's name. Leave blank to use the default.
-                  </p>
-                  <Input
-                    type="text"
-                    placeholder={showPaymentModal?.school_name || 'e.g. Sunrise Educational Trust'}
-                    value={invoiceNameOverride}
-                    onChange={(e) => setInvoiceNameOverride(e.target.value)}
-                    className="bg-white"
-                    data-testid="invoice-name-override-input"
-                  />
+                <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3 space-y-3" data-testid="invoice-overrides-block">
+                  <div>
+                    <h4 className="text-sm font-semibold text-amber-900">Invoice overrides for {showPaymentModal?.school_name || 'this school'}</h4>
+                    <p className="text-[11px] text-amber-700">
+                      Optional. When set, every future invoice for this school uses these instead of the
+                      school's default. Leave any field blank to fall back to the school's default.
+                    </p>
+                  </div>
+
+                  {/* Bill To */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Bill To</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Input
+                        type="text"
+                        placeholder={`Name (default: ${showPaymentModal?.school_name || 'school name'})`}
+                        value={invoiceOverrides.invoice_bill_to.name}
+                        onChange={(e) => setInvoiceOverrides(prev => ({ ...prev, invoice_bill_to: { ...prev.invoice_bill_to, name: e.target.value } }))}
+                        className="bg-white"
+                        data-testid="bill-to-name-input"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="GSTIN (optional)"
+                        value={invoiceOverrides.invoice_bill_to.gstin}
+                        onChange={(e) => setInvoiceOverrides(prev => ({ ...prev, invoice_bill_to: { ...prev.invoice_bill_to, gstin: e.target.value } }))}
+                        className="bg-white"
+                        data-testid="bill-to-gstin-input"
+                      />
+                    </div>
+                    <textarea
+                      placeholder="Address (full billing address)"
+                      value={invoiceOverrides.invoice_bill_to.address}
+                      onChange={(e) => setInvoiceOverrides(prev => ({ ...prev, invoice_bill_to: { ...prev.invoice_bill_to, address: e.target.value } }))}
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white resize-none"
+                      data-testid="bill-to-address-input"
+                    />
+                  </div>
+
+                  {/* Ship To */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Ship To (delivery address)</p>
+                    <Input
+                      type="text"
+                      placeholder={`Name (default: ${showPaymentModal?.school_name || 'school name'})`}
+                      value={invoiceOverrides.invoice_ship_to.name}
+                      onChange={(e) => setInvoiceOverrides(prev => ({ ...prev, invoice_ship_to: { ...prev.invoice_ship_to, name: e.target.value } }))}
+                      className="bg-white"
+                      data-testid="ship-to-name-input"
+                    />
+                    <textarea
+                      placeholder="Address (full delivery address)"
+                      value={invoiceOverrides.invoice_ship_to.address}
+                      onChange={(e) => setInvoiceOverrides(prev => ({ ...prev, invoice_ship_to: { ...prev.invoice_ship_to, address: e.target.value } }))}
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white resize-none"
+                      data-testid="ship-to-address-input"
+                    />
+                  </div>
+
+                  {/* Place of Supply */}
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1">Place of Supply</p>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={invoiceOverrides.invoice_place_of_supply}
+                        onChange={(e) => setInvoiceOverrides(prev => ({ ...prev, invoice_place_of_supply: e.target.value }))}
+                        className="flex-1 h-10 px-3 border border-slate-200 rounded-md bg-white text-sm"
+                        data-testid="place-of-supply-select"
+                      >
+                        <option value="">— Use school's default state —</option>
+                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                        <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                        <option value="Assam">Assam</option>
+                        <option value="Bihar">Bihar</option>
+                        <option value="Chhattisgarh">Chhattisgarh</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Goa">Goa</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Haryana">Haryana</option>
+                        <option value="Himachal Pradesh">Himachal Pradesh</option>
+                        <option value="Jharkhand">Jharkhand</option>
+                        <option value="Karnataka">Karnataka</option>
+                        <option value="Kerala">Kerala</option>
+                        <option value="Madhya Pradesh">Madhya Pradesh</option>
+                        <option value="Maharashtra">Maharashtra</option>
+                        <option value="Manipur">Manipur</option>
+                        <option value="Meghalaya">Meghalaya</option>
+                        <option value="Mizoram">Mizoram</option>
+                        <option value="Nagaland">Nagaland</option>
+                        <option value="Odisha">Odisha</option>
+                        <option value="Punjab">Punjab</option>
+                        <option value="Rajasthan">Rajasthan</option>
+                        <option value="Sikkim">Sikkim</option>
+                        <option value="Tamil Nadu">Tamil Nadu</option>
+                        <option value="Telangana">Telangana</option>
+                        <option value="Tripura">Tripura</option>
+                        <option value="Uttar Pradesh">Uttar Pradesh</option>
+                        <option value="Uttarakhand">Uttarakhand</option>
+                        <option value="West Bengal">West Bengal</option>
+                        <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                        <option value="Ladakh">Ladakh</option>
+                        <option value="Chandigarh">Chandigarh</option>
+                        <option value="Puducherry">Puducherry</option>
+                        <option value="Andaman and Nicobar">Andaman and Nicobar</option>
+                        <option value="Lakshadweep">Lakshadweep</option>
+                        <option value="Dadra and Nagar Haveli">Dadra and Nagar Haveli</option>
+                      </select>
+                    </div>
+                    {invoiceOverrides.invoice_place_of_supply && invoiceOverrides.invoice_place_of_supply.toLowerCase() !== 'maharashtra' && (
+                      <p className="text-[11px] text-purple-700 mt-1 font-medium">
+                        → Inter-state · IGST 18% will apply on this invoice.
+                      </p>
+                    )}
+                    {invoiceOverrides.invoice_place_of_supply.toLowerCase() === 'maharashtra' && (
+                      <p className="text-[11px] text-emerald-700 mt-1 font-medium">
+                        → Intra-state · CGST 9% + SGST 9% will apply on this invoice.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

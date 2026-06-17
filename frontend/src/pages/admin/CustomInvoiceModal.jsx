@@ -29,10 +29,18 @@ const getAuthHeaders = () => {
 
 export default function CustomInvoiceModal({ open, onClose }) {
   const [form, setForm] = useState({
+    // Bill To
     customer_name: '',
     address: '',
     gstin: '',
-    state: 'Maharashtra',
+    state: 'Maharashtra',           // Bill To state (printed in address block)
+    // Ship To
+    same_ship_to: true,              // when true, Ship To mirrors Bill To
+    ship_to_name: '',
+    ship_to_address: '',
+    ship_to_state: 'Maharashtra',
+    // Place of supply (drives IGST/CGST+SGST math)
+    place_of_supply: 'Maharashtra',
     gst_type: 'exclusive_18',
     notes: '',
   });
@@ -63,6 +71,14 @@ export default function CustomInvoiceModal({ open, onClose }) {
     const rate = Number(r.rate || 0);
     return s + q * rate;
   }, 0);
+
+  // Inter-state vs intra-state. If place_of_supply is outside Maharashtra → IGST,
+  // else CGST + SGST split. (Our company is registered in Maharashtra.)
+  const isInterstate = (form.place_of_supply || '').toLowerCase() !== 'maharashtra';
+  const gstRate = (form.gst_type === 'book_gst_0') ? 0 : 18;
+  const gstAmount = (form.gst_type === 'exclusive_18' || form.gst_type === 'exclusive')
+    ? subtotal * (gstRate / 100)
+    : 0;
 
   const handleGenerate = async () => {
     // Validation
@@ -102,17 +118,22 @@ export default function CustomInvoiceModal({ open, onClose }) {
         status: 'pending',
         qty: valid.reduce((s, r) => s + Number(r.qty || 0), 0),
       };
+      // The schoolData is now mostly a carrier — billTo / shipTo overrides drive
+      // the actual rendering. We still pass state so it's available as fallback.
       const fakeSchoolData = {
         school_name: form.customer_name,
-        address: form.address,
-        gstin: form.gstin,
         state: form.state || 'Maharashtra',
         onboarding_data: {
           payment_mode: 'from_school',
           gst_type: form.gst_type,
-          // grade_pricing left empty — customLineItems takes over
         },
       };
+
+      const billAddrLines = [form.address, form.state].filter(Boolean).join(', ');
+      const shipName = form.same_ship_to ? form.customer_name : (form.ship_to_name || form.customer_name);
+      const shipAddrLines = form.same_ship_to
+        ? billAddrLines
+        : [form.ship_to_address, form.ship_to_state].filter(Boolean).join(', ');
 
       const { invoiceNo, base64 } = await generateInvoicePDF(
         fakePayment,
@@ -124,6 +145,16 @@ export default function CustomInvoiceModal({ open, onClose }) {
             qty: Number(r.qty),
             rate: Number(r.rate),
           })),
+          billTo: {
+            name: form.customer_name,
+            address: billAddrLines,
+            gstin: form.gstin,
+          },
+          shipTo: {
+            name: shipName,
+            address: shipAddrLines,
+          },
+          placeOfSupply: form.place_of_supply || form.state || 'Maharashtra',
         },
       );
 
@@ -136,6 +167,10 @@ export default function CustomInvoiceModal({ open, onClose }) {
           state: form.state,
           gst_type: form.gst_type,
           notes: form.notes,
+          place_of_supply: form.place_of_supply,
+          ship_to_name: form.same_ship_to ? form.customer_name : form.ship_to_name,
+          ship_to_address: form.same_ship_to ? form.address : form.ship_to_address,
+          ship_to_state: form.same_ship_to ? form.state : form.ship_to_state,
           line_items: valid.map(r => ({ desc: r.desc, qty: Number(r.qty), rate: Number(r.rate) })),
           total_amount: totalAmount,
           generated_invoice_no: invoiceNo,
@@ -156,6 +191,11 @@ export default function CustomInvoiceModal({ open, onClose }) {
         address: '',
         gstin: '',
         state: 'Maharashtra',
+        same_ship_to: true,
+        ship_to_name: '',
+        ship_to_address: '',
+        ship_to_state: 'Maharashtra',
+        place_of_supply: 'Maharashtra',
         gst_type: 'exclusive_18',
         notes: '',
       });
@@ -198,64 +238,149 @@ export default function CustomInvoiceModal({ open, onClose }) {
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Customer block */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-slate-700">Customer Name *</label>
-              <Input
-                placeholder="e.g. Sunrise Educational Trust"
-                value={form.customer_name}
-                onChange={(e) => setForm(prev => ({ ...prev, customer_name: e.target.value }))}
-                className="mt-1"
-                data-testid="custom-invoice-customer-name"
-              />
+          {/* ── Bill To ────────────────────────────────────────────── */}
+          <div>
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Bill To</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-700">Customer Name *</label>
+                <Input
+                  placeholder="e.g. Sunrise Educational Trust"
+                  value={form.customer_name}
+                  onChange={(e) => setForm(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="mt-1"
+                  data-testid="custom-invoice-customer-name"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">GSTIN (optional)</label>
+                <Input
+                  placeholder="27XXXXX1234X1ZX"
+                  value={form.gstin}
+                  onChange={(e) => setForm(prev => ({ ...prev, gstin: e.target.value }))}
+                  className="mt-1"
+                  data-testid="custom-invoice-gstin"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium text-slate-700">Bill To Address</label>
+                <Textarea
+                  placeholder="Full billing address"
+                  value={form.address}
+                  onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
+                  rows={2}
+                  className="mt-1"
+                  data-testid="custom-invoice-address"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">Bill To State</label>
+                <select
+                  value={form.state}
+                  onChange={(e) => setForm(prev => ({ ...prev, state: e.target.value }))}
+                  className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                  data-testid="custom-invoice-state"
+                >
+                  {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">GST Type</label>
+                <select
+                  value={form.gst_type}
+                  onChange={(e) => setForm(prev => ({ ...prev, gst_type: e.target.value }))}
+                  className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                  data-testid="custom-invoice-gst-type"
+                >
+                  <option value="exclusive_18">Exclusive 18% (add GST on top)</option>
+                  <option value="inclusive_18">Inclusive 18%</option>
+                  <option value="book_gst_0">Book GST (0%)</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">GSTIN (optional)</label>
-              <Input
-                placeholder="27XXXXX1234X1ZX"
-                value={form.gstin}
-                onChange={(e) => setForm(prev => ({ ...prev, gstin: e.target.value }))}
-                className="mt-1"
-                data-testid="custom-invoice-gstin"
-              />
+          </div>
+
+          {/* ── Ship To ────────────────────────────────────────────── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500">Ship To</h3>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={form.same_ship_to}
+                  onChange={(e) => setForm(prev => ({ ...prev, same_ship_to: e.target.checked }))}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  data-testid="custom-invoice-same-ship-to"
+                />
+                Same as Bill To
+              </label>
             </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-medium text-slate-700">Address</label>
-              <Textarea
-                placeholder="Full billing address"
-                value={form.address}
-                onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
-                rows={2}
-                className="mt-1"
-                data-testid="custom-invoice-address"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">State</label>
+            {!form.same_ship_to && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-slate-700">Ship To Name</label>
+                  <Input
+                    placeholder="e.g. Sunrise School — Andheri Branch"
+                    value={form.ship_to_name}
+                    onChange={(e) => setForm(prev => ({ ...prev, ship_to_name: e.target.value }))}
+                    className="mt-1"
+                    data-testid="custom-invoice-ship-to-name"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-slate-700">Ship To Address</label>
+                  <Textarea
+                    placeholder="Full delivery address"
+                    value={form.ship_to_address}
+                    onChange={(e) => setForm(prev => ({ ...prev, ship_to_address: e.target.value }))}
+                    rows={2}
+                    className="mt-1"
+                    data-testid="custom-invoice-ship-to-address"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700">Ship To State</label>
+                  <select
+                    value={form.ship_to_state}
+                    onChange={(e) => setForm(prev => ({ ...prev, ship_to_state: e.target.value }))}
+                    className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                    data-testid="custom-invoice-ship-to-state"
+                  >
+                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Place of Supply (drives GST math) ─────────────────── */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <label className="text-xs font-medium text-blue-900">Place of Supply *</label>
+                <p className="text-[11px] text-blue-700 mt-0.5">
+                  Selecting a state other than Maharashtra applies <strong>IGST 18%</strong> (inter-state).
+                  Maharashtra applies <strong>CGST 9% + SGST 9%</strong> (intra-state).
+                </p>
+              </div>
               <select
-                value={form.state}
-                onChange={(e) => setForm(prev => ({ ...prev, state: e.target.value }))}
-                className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
-                data-testid="custom-invoice-state"
+                value={form.place_of_supply}
+                onChange={(e) => setForm(prev => ({ ...prev, place_of_supply: e.target.value }))}
+                className="h-10 px-3 border border-blue-300 rounded-lg bg-white text-sm font-medium min-w-[200px]"
+                data-testid="custom-invoice-place-of-supply"
               >
                 {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">GST Type</label>
-              <select
-                value={form.gst_type}
-                onChange={(e) => setForm(prev => ({ ...prev, gst_type: e.target.value }))}
-                className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
-                data-testid="custom-invoice-gst-type"
-              >
-                <option value="exclusive_18">Exclusive 18% (add GST on top)</option>
-                <option value="inclusive_18">Inclusive 18%</option>
-                <option value="book_gst_0">Book GST (0%)</option>
-              </select>
-            </div>
+            <p className="mt-2 text-[11px] font-medium">
+              {isInterstate ? (
+                <span className="text-purple-700">→ Inter-state · IGST {gstRate}% will apply</span>
+              ) : (
+                <span className="text-emerald-700">→ Intra-state · CGST {gstRate / 2}% + SGST {gstRate / 2}% will apply</span>
+              )}
+            </p>
           </div>
+
 
           {/* Line items */}
           <div>
@@ -345,17 +470,36 @@ export default function CustomInvoiceModal({ open, onClose }) {
                   </tr>
                   {(form.gst_type === 'exclusive_18' || form.gst_type === 'exclusive') && (
                     <>
-                      <tr>
-                        <td colSpan={3} className="px-3 py-1 text-right text-xs text-slate-600">GST @ 18% (added on top)</td>
-                        <td className="px-3 py-1 text-right text-slate-700">
-                          ₹{(subtotal * 0.18).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td />
-                      </tr>
+                      {isInterstate ? (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-1 text-right text-xs text-slate-600">IGST @ 18%</td>
+                          <td className="px-3 py-1 text-right text-slate-700">
+                            ₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td />
+                        </tr>
+                      ) : (
+                        <>
+                          <tr>
+                            <td colSpan={3} className="px-3 py-1 text-right text-xs text-slate-600">CGST @ 9%</td>
+                            <td className="px-3 py-1 text-right text-slate-700">
+                              ₹{(gstAmount / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td />
+                          </tr>
+                          <tr>
+                            <td colSpan={3} className="px-3 py-1 text-right text-xs text-slate-600">SGST @ 9%</td>
+                            <td className="px-3 py-1 text-right text-slate-700">
+                              ₹{(gstAmount / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td />
+                          </tr>
+                        </>
+                      )}
                       <tr>
                         <td colSpan={3} className="px-3 py-2 text-right text-sm font-semibold text-slate-800">Grand Total (incl. GST)</td>
                         <td className="px-3 py-2 text-right font-bold text-emerald-700">
-                          ₹{(subtotal * 1.18).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          ₹{(subtotal + gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                         <td />
                       </tr>

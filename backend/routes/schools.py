@@ -2195,23 +2195,48 @@ async def set_invoice_name_override(
     payload: dict,
     user: dict = Depends(get_current_user),
 ):
-    """Set or clear the per-school 'Bill To' name override applied to every
-    future invoice generated for this school. Pass an empty string to clear.
+    """Set or clear per-school invoice overrides applied to every future invoice
+    generated for this school. Supports:
 
-    Body: {"invoice_name_override": "Sunrise Trust"} or {"invoice_name_override": ""}
+    - `invoice_name_override` (legacy quick override — Bill To name only)
+    - `invoice_bill_to` {name, address, gstin} — full Bill To override
+    - `invoice_ship_to` {name, address} — full Ship To override
+    - `invoice_place_of_supply` — state name (drives IGST vs CGST+SGST)
+
+    Pass empty strings / null to clear individual fields.
     """
-    name = (payload.get("invoice_name_override") or "").strip()
+    update_set = {}
+    if "invoice_name_override" in payload:
+        update_set["invoice_name_override"] = (payload.get("invoice_name_override") or "").strip()
+    if "invoice_bill_to" in payload:
+        bt = payload.get("invoice_bill_to") or {}
+        update_set["invoice_bill_to"] = {
+            "name": (bt.get("name") or "").strip(),
+            "address": (bt.get("address") or "").strip(),
+            "gstin": (bt.get("gstin") or "").strip(),
+        }
+    if "invoice_ship_to" in payload:
+        st = payload.get("invoice_ship_to") or {}
+        update_set["invoice_ship_to"] = {
+            "name": (st.get("name") or "").strip(),
+            "address": (st.get("address") or "").strip(),
+        }
+    if "invoice_place_of_supply" in payload:
+        update_set["invoice_place_of_supply"] = (payload.get("invoice_place_of_supply") or "").strip()
+
+    if not update_set:
+        raise HTTPException(status_code=400, detail="No override fields provided")
+
+    update_set["invoice_overrides_updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_set["invoice_overrides_updated_by"] = user.get("email", "admin")
+
     res = await db.school_inquiries.update_one(
         {"id": school_id},
-        {"$set": {
-            "invoice_name_override": name,
-            "invoice_name_override_updated_at": datetime.now(timezone.utc).isoformat(),
-            "invoice_name_override_updated_by": user.get("email", "admin"),
-        }},
+        {"$set": update_set},
     )
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="School not found")
-    return {"ok": True, "invoice_name_override": name}
+    return {"ok": True, "updated": list(update_set.keys())}
 
 
 

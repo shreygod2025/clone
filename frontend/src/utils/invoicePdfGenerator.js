@@ -169,7 +169,14 @@ function calculateGST(amount, gstType, schoolState) {
 // ──────────────────────────────────────────────
 // Main: Generate Invoice PDF
 // ──────────────────────────────────────────────
-export async function generateInvoicePDF(payment, schoolData, { skipDownload = false, nameOverride = '', customLineItems = null } = {}) {
+export async function generateInvoicePDF(payment, schoolData, {
+  skipDownload = false,
+  nameOverride = '',
+  customLineItems = null,
+  billTo = null,         // { name, address, gstin, state } — full override of Bill To
+  shipTo = null,         // { name, address, state } — full override of Ship To
+  placeOfSupply = null,  // explicit place-of-supply state name (drives IGST/CGST+SGST)
+} = {}) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -279,10 +286,15 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
     schoolData?.address, schoolData?.onboarding_data?.address,
     schoolData?.location, schoolData?.city,
   ].filter(Boolean).join(', ');
-  const schoolState = rawStateField || detectStateFromAddress(fullAddressForDetection);
+  // Place-of-supply override (from custom invoice or per-school setting) wins over
+  // any detected state. This drives IGST vs CGST+SGST math AND the "Place of Supply"
+  // header line on the PDF.
+  const schoolState = placeOfSupply
+    || rawStateField
+    || detectStateFromAddress(fullAddressForDetection);
   const isMaharashtra = schoolState.toLowerCase().includes('maharashtra');
   const gstStateCode = STATE_GST_CODES[schoolState] || '';
-  const placeOfSupply = schoolState
+  const placeOfSupplyLabel = schoolState
     ? (gstStateCode ? `${schoolState} (${gstStateCode})` : schoolState)
     : 'Maharashtra (27)';
 
@@ -305,7 +317,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   addDetailPair('Invoice Date:', invoiceDate, detailsLeft, y);
   addDetailPair('Due Date:', dueDate, detailsRight, y);
   y += 5;
-  addDetailPair('Place of Supply:', placeOfSupply, detailsLeft, y);
+  addDetailPair('Place of Supply:', placeOfSupplyLabel, detailsLeft, y);
   y += 6;
 
   // ─── Divider ───
@@ -315,8 +327,12 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   y += 4;
 
   // ─── Bill To / Ship To ───
-  // When payment is from distributor: Bill To = distributor. Ship To = school (delivery address).
-  // When payment is from school/student: Bill To = school.
+  // Layout supports three modes:
+  //   1. Per-payment defaults: Bill To = school, Ship To = school.
+  //      For distributor mode: Bill To = distributor, Ship To = school.
+  //   2. `nameOverride` (legacy per-school override): replaces only the Bill To NAME.
+  //   3. `billTo` / `shipTo` (full overrides from custom invoices or per-school
+  //      detailed settings): completely replace the respective block.
   const schoolName = schoolData?.school_name || payment.school_name || 'N/A';
   const rawAddr = schoolData?.address || schoolData?.onboarding_data?.address || '';
   const cityVal = schoolData?.city || schoolData?.onboarding_data?.city || '';
@@ -327,49 +343,103 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   const schoolGSTIN = schoolData?.gstin || schoolData?.onboarding_data?.gstin || '';
   const halfWidth = contentWidth / 2 - 2;
 
-  // Determine Bill To content
-  // `nameOverride` (per-school invoice name override OR set on a custom invoice) wins
-  // over the school's actual name. Only affects Bill To — Ship To always uses the
-  // real school name so deliveries / records stay accurate.
-  const effectiveBillName = (nameOverride && nameOverride.trim())
-    || (isDistributor ? (onboardingData.distributor_name || 'Distributor') : schoolName);
-  const billToName = effectiveBillName;
-  const billToAddress = isDistributor ? (onboardingData.distributor_address || '') : schoolAddress;
-  const billToGSTIN = isDistributor ? (onboardingData.distributor_gstin || '') : schoolGSTIN;
+  // Resolve final Bill To block (full override > legacy nameOverride > distributor > school)
+  const billToBlock = billTo && (billTo.name || billTo.address)
+    ? {
+        name: billTo.name || schoolName,
+        address: billTo.address || '',
+        gstin: billTo.gstin || '',
+      }
+    : (isDistributor
+      ? {
+          name: onboardingData.distributor_name || 'Distributor',
+          address: onboardingData.distributor_address || '',
+          gstin: onboardingData.distributor_gstin || '',
+        }
+      : {
+          name: (nameOverride && nameOverride.trim()) || schoolName,
+          address: schoolAddress,
+          gstin: schoolGSTIN,
+        });
 
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(innerLeft, y, halfWidth, 22, 2, 2, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 100, 100);
-  doc.text('Bill To', innerLeft + 3, y + 5);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text(billToName, innerLeft + 3, y + 11);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  if (billToAddress) doc.text(billToAddress, innerLeft + 3, y + 16, { maxWidth: halfWidth - 6 });
-  if (billToGSTIN) doc.text(`GSTIN: ${billToGSTIN}`, innerLeft + 3, y + 20);
+  // Resolve final Ship To block (full override > school default)
+  const shipToBlock = shipTo && (shipTo.name || shipTo.address)
+    ? {
+        name: shipTo.name || schoolName,
+        address: shipTo.address || '',
+      }
+    : {
+        name: schoolName,
+        address: schoolAddress,
+      };
 
-  const shipX = innerLeft + halfWidth + 4;
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(shipX, y, halfWidth, 22, 2, 2, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100, 100, 100);
-  doc.text('Ship To', shipX + 3, y + 5);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text(schoolName, shipX + 3, y + 11);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  if (schoolAddress) doc.text(schoolAddress, shipX + 3, y + 16, { maxWidth: halfWidth - 6 });
+  // Render a Bill To / Ship To panel with dynamic height that hugs its content
+  // (no more fixed 22pt rect → no more overlap when addresses wrap).
+  const renderPartyBlock = (label, block, xPos) => {
+    const innerWidth = halfWidth - 6;
+    doc.setFontSize(8);
+    const nameLines = block.name ? doc.splitTextToSize(String(block.name), innerWidth) : [];
+    doc.setFontSize(7);
+    const addrLines = block.address ? doc.splitTextToSize(String(block.address), innerWidth) : [];
+    const gstLines = block.gstin ? doc.splitTextToSize(`GSTIN: ${block.gstin}`, innerWidth) : [];
 
-  y += 28;
+    // Vertical math (in points). label=4 top pad, then name(s) at 4mm height each,
+    // address(es) at 3.5mm each, gstin at 3.5mm, then 3mm bottom pad.
+    const blockHeight = 4 + 4 + (nameLines.length - 1) * 3.5
+      + (addrLines.length ? 2 + addrLines.length * 3.5 : 0)
+      + (gstLines.length ? 1 + gstLines.length * 3.5 : 0)
+      + 3;
+
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(xPos, y, halfWidth, blockHeight, 2, 2, 'F');
+
+    let cy = y + 5;
+    // Label
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, xPos + 3, cy);
+    cy += 4;
+
+    // Name (bold, can wrap to 2 lines if extremely long)
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    nameLines.forEach((ln, i) => {
+      doc.text(ln, xPos + 3, cy + i * 3.5);
+    });
+    cy += Math.max(nameLines.length, 1) * 3.5;
+
+    // Address
+    if (addrLines.length) {
+      cy += 1.5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(80, 80, 80);
+      addrLines.forEach((ln, i) => {
+        doc.text(ln, xPos + 3, cy + i * 3.5);
+      });
+      cy += addrLines.length * 3.5;
+    }
+
+    // GSTIN
+    if (gstLines.length) {
+      cy += 1;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(80, 80, 80);
+      gstLines.forEach((ln, i) => {
+        doc.text(ln, xPos + 3, cy + i * 3.5);
+      });
+    }
+
+    return blockHeight;
+  };
+
+  const billHeight = renderPartyBlock('Bill To', billToBlock, innerLeft);
+  const shipHeight = renderPartyBlock('Ship To', shipToBlock, innerLeft + halfWidth + 4);
+  // Advance y past the taller of the two blocks + 6pt breathing room
+  y += Math.max(billHeight, shipHeight) + 6;
 
   // ─── Items Table ───
   // gst_type is stored in onboarding_data; fall back to payment field for legacy records
