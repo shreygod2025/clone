@@ -12,16 +12,15 @@
 **2. Accounts Communication Scheduler (Daily Invoice/Payment Reminders)**
 - New module `/app/backend/routes/accounts_scheduler.py` with a daily 9:00 AM IST cron (CronTrigger `hour=3, minute=30, UTC`) that walks every `school_inquiries` with status in `[converted, active, renewed]` and `accounts_reminders_enabled != False`, scanning each open payment tranche for timeline offsets:
   - `T-7`, `T-2`, `T0` (due today), `T+1`, `T+3`, `T+7` (escalation — BCC to `clonefutura@gmail.com` + `lavisha@oll.co`).
-- **9 templates** keyed by `(audience, trigger)`:
-  - 6 school templates: T-7, T-2, T0, T+1, T+3, T+7
-  - 3 distributor templates: T-2, T0, T+3
+- **6 approved templates (Anjali, OLL Accounts voice)** keyed by trigger. Same warm copy used for both school + distributor recipients. Sender: `Anjali, OLL Accounts <support@oll.co>`. Variables: `{name}` (first name), `{school}`, `{program}` (from `onboarding_data.offering`, fallback "Robotics program"), `{due_date}` (short "30 Jun" format).
+- 250ms inter-send delay keeps the run safely below Resend's 5 req/sec rate-limit.
 - Audience resolved by `onboarding_data.payment_mode`: `from_distributor` (when `distributor_contact_email` is filled) → distributor template path; else → school template path.
 - Recipient priority (school): contact role contains `account` → `principal` → `trustee` → first contact with email → inquiry-level email fallback.
 - Dedup via `accounts_reminder_log` collection (key: `school_id + tranche_index + trigger`).
 - **Per-school kill-switch**: new field `accounts_reminders_enabled` (default True). Admin toggle in `AdminOrders.jsx` (School Payments tab) — green/grey switch under every school name with live "Auto reminders ON/OFF" label. Backend endpoint: `PATCH /api/schools/{id}/accounts-reminders {enabled}`.
 - **Admin endpoints**:
   - `POST /api/admin/accounts-reminders/run-now` — manual trigger (admin only, dedup still applies).
-  - `GET /api/admin/accounts-reminders/templates` — list all 9 templates.
+  - `GET /api/admin/accounts-reminders/templates` — list all 6 templates + sender + escalation BCC.
   - `GET /api/admin/accounts-reminders/log?school_id=&limit=` — recent reminder send log.
 - **Distributor contact fields** added to all 3 school onboarding modals (Convert, Renewal, Edit Onboarding) — `distributor_contact_email` + `distributor_contact_number`. Persisted in `onboarding_data` and synced via `PUT /schools/onboarding/{id}`.
 

@@ -50,156 +50,112 @@ logger = logging.getLogger(__name__)
 # India Standard Time = UTC+5:30
 IST_OFFSET = timedelta(hours=5, minutes=30)
 
+# Accounts emails are sent from a dedicated mailbox so they're easy to triage
+# and reply to. This overrides the global SENDER_EMAIL ("OLL Team <welcome@oll.co>")
+# for this scheduler only.
+ACCOUNTS_FROM_EMAIL = "Anjali, OLL Accounts <support@oll.co>"
+
 # Escalation recipients on T+7 trigger
 ESCALATION_BCC = ["clonefutura@gmail.com", "lavisha@oll.co"]
 
-# ── Default templates (9 total) ──────────────────────────────────────────────
-# Each template is a `(subject, body_html)` tuple. `{name}`, `{school}`,
-# `{amount}`, `{tranche}`, `{due_date}`, `{invoice_no}`, `{days}` are filled
-# from the tranche/school context.
+# ── Approved templates (Anjali, OLL Accounts voice) ─────────────────────────
+# Variables filled in at send time:
+#   {name}        — recipient's first name (accountant / principal / distributor contact)
+#   {school}      — school name (e.g. "Khyati World School")
+#   {program}     — program label (e.g. "Robotics Program" — derived from offering)
+#   {due_date}    — short due date, "30 Jun"
+# Each entry is a (subject, body_html) tuple. Body uses simple <p> blocks so
+# the email renders well across Gmail, Outlook and mobile clients.
 
-_T_SCHOOL_T_MINUS_7 = (
-    "Friendly reminder · Tranche {tranche} due on {due_date}",
+_T_T_MINUS_7 = (
+    "Reminder · Invoice for {program} at {school} due {due_date}",
     """
-    <p>Dear {name},</p>
-    <p>This is a friendly heads-up that <strong>Tranche {tranche}</strong> for
-    <strong>{school}</strong> is scheduled for <strong>{due_date}</strong> — a
-    week from today.</p>
-    <p>Outstanding amount: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>If the payment has already been initiated, please ignore this email and
-    share the UTR / cheque details whenever convenient.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
+    <p>Hi {name},</p>
+    <p>Just a gentle reminder, the invoice for the {program} at
+    {school} is due next Monday, {due_date}.</p>
+    <p>If you're already on top of it, please ignore this note.</p>
+    <p>Thank you so much!</p>
+    <p>Warm regards,<br/>Anjali<br/>Accounts, OLL</p>
     """,
 )
 
-_T_SCHOOL_T_MINUS_2 = (
-    "Reminder · Tranche {tranche} due in 2 days",
+_T_T_MINUS_2 = (
+    "Payment due in 2 days · {program} at {school}",
     """
-    <p>Dear {name},</p>
-    <p>Quick reminder that <strong>Tranche {tranche}</strong> for
-    <strong>{school}</strong> falls due on <strong>{due_date}</strong> — that
-    is just 2 days away.</p>
-    <p>Outstanding amount: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>To avoid any delay in the program rollout, please ensure the payment is
-    processed by the due date. Reply to this email with the UTR / cheque
-    details once it is sent.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
+    <p>Hi {name},</p>
+    <p>Quick gentle nudge, payment for the {program} at {school}
+    is due in 2 days, on {due_date}.</p>
+    <p>If the transfer is already in the works, do share the UTR whenever
+    it's done. Thanks a ton for staying on top of this!</p>
+    <p>Warm regards,<br/>Anjali<br/>Accounts, OLL</p>
     """,
 )
 
-_T_SCHOOL_DUE_TODAY = (
-    "Due today · Tranche {tranche} for {school}",
+_T_DUE_TODAY = (
+    "Payment due today, {program} at {school}",
     """
-    <p>Dear {name},</p>
-    <p>This is a courteous reminder that <strong>Tranche {tranche}</strong>
-    for <strong>{school}</strong> is <strong>due today</strong>
-    ({due_date}).</p>
-    <p>Outstanding amount: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>Kindly process the payment today and share the UTR / cheque details on
-    this thread so we can mark it received.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
+    <p>Hi {name},</p>
+    <p>Today's the due date for the invoice for the {program} at
+    {school}.</p>
+    <p>I'm attaching the PDF here just so you have it handy. Once the
+    payment is processed do share the UTR, and I'll mark this off and send
+    you the receipt right away.</p>
+    <p>Thank you!</p>
+    <p>Warm regards,<br/>Anjali<br/>Accounts, OLL</p>
     """,
 )
 
-_T_SCHOOL_T_PLUS_1 = (
-    "Payment overdue · 1 day past due for Tranche {tranche}",
+_T_T_PLUS_1 = (
+    "Quick check on the {program} at {school} payment",
     """
-    <p>Dear {name},</p>
-    <p>Our records show that <strong>Tranche {tranche}</strong> for
-    <strong>{school}</strong> ({due_date}) is now <strong>1 day
-    overdue</strong>.</p>
-    <p>Outstanding amount: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>If the payment has been initiated, please share the UTR / cheque
-    reference so we can close this out. If there is any issue, do reply and
-    we will be happy to help.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
+    <p>Hi {name},</p>
+    <p>The payment for the {program} at {school} was due yesterday and
+    I haven't seen it come through yet. Just a quick check to make sure
+    things are moving smoothly on your end.</p>
+    <p>If the transfer has been initiated, do share the UTR whenever you
+    have it. Appreciate your help!</p>
+    <p>Warm regards,<br/>Anjali<br/>Accounts, OLL</p>
     """,
 )
 
-_T_SCHOOL_T_PLUS_3 = (
-    "2nd reminder · Tranche {tranche} for {school} is 3 days overdue",
+_T_T_PLUS_3 = (
+    "Checking in on the {program} at {school}, 3 days overdue",
     """
-    <p>Dear {name},</p>
-    <p>This is our second reminder regarding <strong>Tranche {tranche}</strong>
-    for <strong>{school}</strong>, which was due on <strong>{due_date}</strong>
-    and is now <strong>3 days overdue</strong>.</p>
-    <p>Outstanding amount: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>Please prioritise the release of this payment to keep the program
-    running smoothly. If there is a specific blocker on your side, share it
-    here and we will work with you to resolve it.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
+    <p>Hi {name},</p>
+    <p>Hope you're doing well. Looping back on the invoice for the
+    {program} at {school}, it's now 3 days past the due date and I
+    wanted to check in.</p>
+    <p>Could you let me know roughly when we can expect the transfer?
+    Even an estimated date helps us plan things on this side. Truly
+    appreciate it!</p>
+    <p>Warm regards,<br/>Anjali<br/>Accounts, OLL</p>
     """,
 )
 
-_T_SCHOOL_T_PLUS_7 = (
-    "Urgent · 1 week overdue · Tranche {tranche} for {school}",
+_T_T_PLUS_7 = (
+    "The {program} at {school} invoice, 1 week overdue",
     """
-    <p>Dear {name},</p>
-    <p>We have not yet received <strong>Tranche {tranche}</strong> for
-    <strong>{school}</strong>, which was due on <strong>{due_date}</strong>
-    and is now <strong>1 week overdue</strong>.</p>
-    <p>Outstanding amount: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>This email is also being shared with our senior accounts team for
-    follow-up. Kindly arrange the payment at the earliest, or reply to this
-    thread with the expected date of settlement.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
+    <p>Hi {name},</p>
+    <p>Just touching base again on the invoice for the {program} at
+    {school}, it's now a week past the due date.</p>
+    <p>If there's anything blocking it on your side, please let me know
+    and I'll do my best to help sort it. Otherwise, would really
+    appreciate a quick line on when the payment is likely to be
+    released.</p>
+    <p>Thank you for the help.</p>
+    <p>Warm regards,<br/>Anjali<br/>Accounts, OLL</p>
     """,
 )
 
-_T_DIST_T_MINUS_2 = (
-    "Reminder · Invoice for {school} due in 2 days",
-    """
-    <p>Dear {name},</p>
-    <p>This is a gentle reminder that the invoice for <strong>{school}</strong>
-    (Tranche {tranche}) falls due on <strong>{due_date}</strong> — 2 days from
-    today.</p>
-    <p>Invoice value: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>Please confirm the payment schedule so we can keep the program rollout
-    on track.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
-    """,
-)
-
-_T_DIST_DUE_TODAY = (
-    "Due today · Invoice for {school}",
-    """
-    <p>Dear {name},</p>
-    <p>The invoice for <strong>{school}</strong> (Tranche {tranche}) is
-    <strong>due today</strong> ({due_date}).</p>
-    <p>Invoice value: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>Kindly process the payment today and share the UTR / cheque details on
-    this thread so we can mark it received.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
-    """,
-)
-
-_T_DIST_T_PLUS_3 = (
-    "Reminder · Invoice for {school} is 3 days overdue",
-    """
-    <p>Dear {name},</p>
-    <p>Our records show that the invoice for <strong>{school}</strong>
-    (Tranche {tranche}, due on <strong>{due_date}</strong>) is now
-    <strong>3 days overdue</strong>.</p>
-    <p>Invoice value: <strong>₹{amount}</strong>{invoice_line}</p>
-    <p>Kindly release the payment at the earliest. If a specific approval is
-    still pending, reply to this thread and we will follow up jointly with the
-    school.</p>
-    <p>Warm regards,<br/>OLL Accounts Team</p>
-    """,
-)
-
-# Key format: (audience, trigger). Audience ∈ {"school", "distributor"}.
-# Trigger ∈ {"T-7", "T-2", "T0", "T+1", "T+3", "T+7"}.
-TEMPLATES: dict[tuple[str, str], tuple[str, str]] = {
-    ("school", "T-7"): _T_SCHOOL_T_MINUS_7,
-    ("school", "T-2"): _T_SCHOOL_T_MINUS_2,
-    ("school", "T0"): _T_SCHOOL_DUE_TODAY,
-    ("school", "T+1"): _T_SCHOOL_T_PLUS_1,
-    ("school", "T+3"): _T_SCHOOL_T_PLUS_3,
-    ("school", "T+7"): _T_SCHOOL_T_PLUS_7,
-    ("distributor", "T-2"): _T_DIST_T_MINUS_2,
-    ("distributor", "T0"): _T_DIST_DUE_TODAY,
-    ("distributor", "T+3"): _T_DIST_T_PLUS_3,
+# Unified template map. Same warm Anjali voice is used for both school and
+# distributor pathways — only the recipient resolution differs.
+TEMPLATES: dict[str, tuple[str, str]] = {
+    "T-7": _T_T_MINUS_7,
+    "T-2": _T_T_MINUS_2,
+    "T0":  _T_DUE_TODAY,
+    "T+1": _T_T_PLUS_1,
+    "T+3": _T_T_PLUS_3,
+    "T+7": _T_T_PLUS_7,
 }
 
 
@@ -274,6 +230,32 @@ def _resolve_school_recipient(school_contacts: list) -> tuple[Optional[str], str
     return None, "Team"
 
 
+def _first_name(full_name: str) -> str:
+    """Anjali's templates use the recipient's first name (e.g. 'Hi Rohini')."""
+    parts = (full_name or "").strip().split()
+    return parts[0] if parts else "there"
+
+
+def _program_label(offering: str) -> str:
+    """Compose the '{program}' label used in the email copy.
+
+    Templates read like: "the {program} at {school}". We want this to
+    produce phrases such as "the Robotics program", "the Robotics & AI
+    program" — so we append " program" only if the offering name doesn't
+    already include the word."""
+    base = (offering or "").strip()
+    if not base:
+        return "Robotics program"
+    if "program" in base.lower():
+        return base
+    return f"{base} program"
+
+
+def _fmt_short_date(d: date) -> str:
+    """Anjali's copy uses '30 Jun' (no year)."""
+    return d.strftime("%-d %b") if hasattr(d, "strftime") else str(d)
+
+
 def _amount_str(amount) -> str:
     try:
         n = float(amount or 0)
@@ -327,11 +309,9 @@ async def _send_reminder(
     if not recipient_email or "@" not in recipient_email:
         return False
 
-    # Template lookup. Distributors only get T-2/T0/T+3 templates — for any
-    # other trigger we silently no-op so the school cron can decide whether
-    # to send a school-audience reminder instead (but in distributor mode we
-    # don't want to spam the school). Keep it tight.
-    tpl = TEMPLATES.get((audience, trigger))
+    # Template lookup — single dict keyed on trigger (school + distributor
+    # share the same warm Anjali voice; only the recipient changes).
+    tpl = TEMPLATES.get(trigger)
     if not tpl:
         return False
 
@@ -350,19 +330,13 @@ async def _send_reminder(
     # ── Build context ─────────────────────────────────────────────────────
     due_str = tranche.get("date") or ""
     due_d = _parse_due_date(due_str)
-    due_display = _fmt_date(due_d) if due_d else (due_str or "—")
-    invoice_no = (tranche.get("invoice_no") or tranche.get("invoice_number") or "").strip()
-    invoice_line = f" (Invoice #{invoice_no})" if invoice_no else ""
+    due_display = _fmt_short_date(due_d) if due_d else (due_str or "—")
 
     fmt_ctx = {
-        "name": recipient_name or "Team",
+        "name": _first_name(recipient_name),
         "school": school.get("school_name") or "your school",
-        "amount": _amount_str(tranche.get("amount") or 0),
-        "tranche": tranche_index + 1,
+        "program": _program_label(onboarding.get("offering") or ""),
         "due_date": due_display,
-        "invoice_no": invoice_no or "—",
-        "invoice_line": invoice_line,
-        "days": abs(days_to_due),
     }
 
     try:
@@ -381,7 +355,7 @@ async def _send_reminder(
     bcc = ESCALATION_BCC if trigger == "T+7" else None
 
     params = {
-        "from": SENDER_EMAIL,
+        "from": ACCOUNTS_FROM_EMAIL,
         "to": [recipient_email],
         "subject": subject,
         "html": body_html,
@@ -471,6 +445,10 @@ async def run_accounts_reminders() -> dict:
                 )
                 if ok:
                     sent += 1
+                    # Resend allows 5 req/sec; pace ourselves to stay safely
+                    # below that even when many schools share the same
+                    # trigger.
+                    await asyncio.sleep(0.25)
                 else:
                     skipped += 1
             except Exception:
@@ -510,14 +488,13 @@ async def admin_list_templates(user: dict = Depends(get_current_user)):
     if (user.get("role") or "").lower() not in {"admin", "super_admin"} and not (user.get("email") or "").endswith("@oll.co"):
         raise HTTPException(status_code=403, detail="Admin access required")
     out = []
-    for (audience, trigger), (subject, body) in TEMPLATES.items():
+    for trigger, (subject, body) in TEMPLATES.items():
         out.append({
-            "audience": audience,
             "trigger": trigger,
             "subject": subject,
             "body_html": body.strip(),
         })
-    return {"templates": out}
+    return {"templates": out, "from": ACCOUNTS_FROM_EMAIL, "escalation_bcc": ESCALATION_BCC}
 
 
 @router.get("/admin/accounts-reminders/log")
