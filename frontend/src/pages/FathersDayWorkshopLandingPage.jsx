@@ -927,7 +927,7 @@ export default function FathersDayWorkshopLandingPage() {
       </Section>
 
       {showEnroll && (
-        <EnrollModal step={step} setStep={setStep} form={form} setForm={setForm} total={total} submitting={submitting} onPay={handlePay} onClose={() => setShowEnroll(false)} />
+        <EnrollModal step={step} setStep={setStep} form={form} setForm={setForm} total={total} submitting={submitting} onPay={handlePay} onClose={() => setShowEnroll(false)} discountActive={discountActive} basePrice={BASE_PRICE} />
       )}
 
       {/* ── Class media modal ───────────────────────── */}
@@ -1054,7 +1054,7 @@ const FeatureCard = ({ color, icon: Icon, title, sub }) => (
   </div>
 );
 
-function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, onClose }) {
+function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, onClose, discountActive = false, basePrice = 1999 }) {
   const setExtras = (n) => setForm(p => ({ ...p, additional_children: Math.max(0, Math.min(5, n)) }));
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" data-testid="enroll-modal">
@@ -1194,7 +1194,7 @@ function EnrollModal({ step, setStep, form, setForm, total, submitting, onPay, o
                 <span>Total</span>
                 <span data-testid="modal-total">
                   {discountActive && (
-                    <span className="line-through text-slate-400 font-normal mr-2 text-sm">₹{(BASE_PRICE + (Number(form.additional_children) || 0) * 1499).toLocaleString()}</span>
+                    <span className="line-through text-slate-400 font-normal mr-2 text-sm">₹{(basePrice + (Number(form.additional_children) || 0) * 1499).toLocaleString()}</span>
                   )}
                   ₹{total.toLocaleString()}
                 </span>
