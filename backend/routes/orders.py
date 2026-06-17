@@ -165,6 +165,7 @@ async def get_school_payments(
                 "school_id": school.get("id"),
                 "school_name": school.get("school_name", ""),
                 "contact_name": school.get("contact_name", ""),
+                "accounts_reminders_enabled": school.get("accounts_reminders_enabled", True),
                 "tranche_index": idx,
                 "tranche_info": f"Tranche {idx + 1}" + (f" ({tranche.get('percentage')}%)" if tranche.get("percentage") else ""),
                 "amount": amount or 0,

@@ -1225,7 +1225,18 @@ async def _mark_processed(msg_id: str, account: str, gmail, action: str, subject
 
 # ── Public sync endpoints ──────────────────────────────────────────────────
 async def sync_all_gmail_accounts() -> dict:
-    """Called by APScheduler every hour. Iterates over all active accounts."""
+    """Called by APScheduler every hour. Iterates over all active accounts.
+
+    Environment guard: the production and preview backends both connect to the
+    same Gmail mailbox(es). Without this guard, both environments would create
+    duplicate tickets and send duplicate auto-acks. Gmail sync only runs when
+    ENVIRONMENT=production. Preview returns a no-op result.
+    """
+    _env = (os.environ.get("ENVIRONMENT") or "preview").lower()
+    if _env != "production":
+        logger.info(f"[gmail_bot] Skipping sync — ENVIRONMENT={_env!r} (production-only)")
+        return {"accounts": 0, "results": [], "skipped": True, "reason": f"ENVIRONMENT={_env}"}
+
     # Ensure the unique index that backs the atomic-claim dedup. Idempotent —
     # safe to call on every sync; MongoDB no-ops if the index already exists.
     try:

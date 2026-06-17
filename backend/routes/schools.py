@@ -1064,6 +1064,11 @@ async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = 
                 "onboarding_data.gp_share_amount": data.get("gp_share_amount"),
                 "onboarding_data.gst_type": data.get("gst_type"),
                 "onboarding_data.school_address": data.get("school_address"),
+                "onboarding_data.distributor_name": data.get("distributor_name"),
+                "onboarding_data.distributor_address": data.get("distributor_address"),
+                "onboarding_data.distributor_gstin": data.get("distributor_gstin"),
+                "onboarding_data.distributor_contact_email": data.get("distributor_contact_email"),
+                "onboarding_data.distributor_contact_number": data.get("distributor_contact_number"),
             }
             # Only update fields that are provided (not None)
             sync_update = {k: v for k, v in sync_fields.items() if v is not None}
@@ -2157,6 +2162,32 @@ async def regenerate_onboarding_workflow(school_id: str, user: dict = Depends(ge
         "workflow": updated_school.get("onboarding_workflow"),
         "school": updated_school
     }
+
+
+@router.patch("/schools/{school_id}/accounts-reminders")
+async def toggle_accounts_reminders(
+    school_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Toggle automated accounts (invoice/payment) reminder emails for a school.
+
+    Body: {"enabled": true | false}. When disabled, the daily accounts cron
+    will skip every invoice belonging to this school.
+    """
+    enabled = bool(payload.get("enabled", True))
+    res = await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "accounts_reminders_enabled": enabled,
+            "accounts_reminders_updated_at": datetime.now(timezone.utc).isoformat(),
+            "accounts_reminders_updated_by": user.get("email", "admin"),
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="School not found")
+    return {"ok": True, "enabled": enabled}
+
 
 
 @router.patch("/schools/{school_id}/onboarding-step/{step_key}")

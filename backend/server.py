@@ -4315,15 +4315,23 @@ async def startup_db_client():
     # Gmail Bot — pull unread mail from every connected Gmail account, classify
     # via AI, and create support tickets for genuine customer queries.
     # Fires every 60 minutes; defer first run by 3 min so the app is warm.
-    scheduler.add_job(
-        sync_all_gmail_accounts,
-        trigger=IntervalTrigger(minutes=60),
-        id="gmail_bot_sync_job",
-        name="Gmail Inbox Bot — Hourly Sync",
-        replace_existing=True,
-        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3)
-    )
-    print("[STARTUP] Gmail bot sync scheduled — runs every 60 minutes")
+    # IMPORTANT: Skip the scheduled job in non-production environments to avoid
+    # duplicate AI replies / acks when both the preview and production backends
+    # poll the same Gmail inbox. Admins can still trigger a manual sync from
+    # the preview UI via POST /api/gmail/sync-now.
+    _APP_ENV = (os.environ.get("ENVIRONMENT") or "preview").lower()
+    if _APP_ENV == "production":
+        scheduler.add_job(
+            sync_all_gmail_accounts,
+            trigger=IntervalTrigger(minutes=60),
+            id="gmail_bot_sync_job",
+            name="Gmail Inbox Bot — Hourly Sync",
+            replace_existing=True,
+            next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3)
+        )
+        print("[STARTUP] Gmail bot sync scheduled — runs every 60 minutes (production)")
+    else:
+        print(f"[STARTUP] Gmail bot sync NOT scheduled — ENVIRONMENT={_APP_ENV!r} (manual /api/gmail/sync-now still works)")
 
     # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
     # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)

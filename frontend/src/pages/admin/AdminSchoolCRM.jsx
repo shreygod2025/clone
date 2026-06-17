@@ -579,6 +579,8 @@ const AdminSchoolCRM = () => {
     distributor_name: '',
     distributor_address: '',
     distributor_gstin: '',
+    distributor_contact_email: '',
+    distributor_contact_number: '',
     deadline_date: '', // Deadline for online payments
     contract_start: '',
     contract_end: '',
@@ -737,6 +739,8 @@ const AdminSchoolCRM = () => {
     distributor_name: '',
     distributor_address: '',
     distributor_gstin: '',
+    distributor_contact_email: '',
+    distributor_contact_number: '',
     deadline_date: '', // Deadline for online payments
     contract_start: '',
     contract_end: '',
@@ -1119,6 +1123,8 @@ const AdminSchoolCRM = () => {
       distributor_name: existingOnboardData.distributor_name || '',
       distributor_address: existingOnboardData.distributor_address || '',
       distributor_gstin: existingOnboardData.distributor_gstin || '',
+      distributor_contact_email: existingOnboardData.distributor_contact_email || '',
+      distributor_contact_number: existingOnboardData.distributor_contact_number || '',
       deadline_date: existingOnboardData.deadline_date || '',
       contract_start: existingOnboardData.contract_start || '',
       contract_end: existingOnboardData.contract_end || '',
@@ -1734,6 +1740,8 @@ ${FOOTER}</div></body></html>`
       distributor_name: existingData.distributor_name || '',
       distributor_address: existingData.distributor_address || '',
       distributor_gstin: existingData.distributor_gstin || '',
+      distributor_contact_email: existingData.distributor_contact_email || '',
+      distributor_contact_number: existingData.distributor_contact_number || '',
       deadline_date: existingData.deadline_date || '',
       contract_start: '',
       contract_end: '',
@@ -1893,6 +1901,8 @@ ${FOOTER}</div></body></html>`
           distributor_name: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_name || '') : '',
           distributor_address: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_address || '') : '',
           distributor_gstin: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_gstin || '') : '',
+          distributor_contact_email: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_contact_email || '') : '',
+          distributor_contact_number: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_contact_number || '') : '',
           gst_type: renewalConvertData.gst_type || '',
           state: renewalConvertData.state || '',
           deadline_date: renewalConvertData.deadline_date,
@@ -2043,6 +2053,8 @@ ${FOOTER}</div></body></html>`
           distributor_name: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_name || '') : '',
           distributor_address: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_address || '') : '',
           distributor_gstin: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_gstin || '') : '',
+          distributor_contact_email: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_contact_email || '') : '',
+          distributor_contact_number: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_contact_number || '') : '',
           gst_type: renewalConvertData.gst_type || '',
           state: renewalConvertData.state || '',
           deadline_date: renewalConvertData.deadline_date,
@@ -2561,6 +2573,8 @@ ${FOOTER}</div></body></html>`
         distributor_name: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_name || '') : '',
         distributor_address: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_address || '') : '',
         distributor_gstin: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_gstin || '') : '',
+        distributor_contact_email: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_contact_email || '') : '',
+        distributor_contact_number: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_contact_number || '') : '',
         gst_type: String(onboardData.gst_type || ''),
         school_address: String(onboardData.school_address || ''),
         latitude: onboardData.latitude || null,
@@ -3627,6 +3641,8 @@ ${FOOTER}</div></body></html>`
         distributor_name: existingOnboardData.distributor_name || '',
         distributor_address: existingOnboardData.distributor_address || '',
         distributor_gstin: existingOnboardData.distributor_gstin || '',
+        distributor_contact_email: existingOnboardData.distributor_contact_email || '',
+        distributor_contact_number: existingOnboardData.distributor_contact_number || '',
         deadline_date: existingOnboardData.deadline_date || '',
         contract_start: existingOnboardData.contract_start || '',
         contract_end: existingOnboardData.contract_end || '',
@@ -3800,6 +3816,8 @@ ${FOOTER}</div></body></html>`
         distributor_name: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_name || '') : '',
         distributor_address: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_address || '') : '',
         distributor_gstin: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_gstin || '') : '',
+        distributor_contact_email: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_contact_email || '') : '',
+        distributor_contact_number: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_contact_number || '') : '',
         deadline_date: editOnboardData.deadline_date,
         contract_start: editOnboardData.contract_start,
         contract_end: editOnboardData.contract_end,
@@ -7337,6 +7355,31 @@ ${FOOTER}</div></body></html>`
                       className="mt-1"
                     />
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor Contact Email</label>
+                      <Input
+                        type="email"
+                        placeholder="accounts@distributor.com"
+                        value={renewalConvertData.distributor_contact_email || ''}
+                        onChange={(e) => setRenewalConvertData(prev => ({ ...prev, distributor_contact_email: e.target.value }))}
+                        className="mt-1"
+                        data-testid="renewal-distributor-contact-email"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">Used for automated invoice & payment reminder emails</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor Contact Number</label>
+                      <Input
+                        type="tel"
+                        placeholder="+91 98XXXXXXXX"
+                        value={renewalConvertData.distributor_contact_number || ''}
+                        onChange={(e) => setRenewalConvertData(prev => ({ ...prev, distributor_contact_number: e.target.value }))}
+                        className="mt-1"
+                        data-testid="renewal-distributor-contact-number"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -9566,6 +9609,31 @@ ${FOOTER}</div></body></html>`
                       className="mt-1"
                     />
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor Contact Email</label>
+                      <Input
+                        type="email"
+                        placeholder="accounts@distributor.com"
+                        value={onboardData.distributor_contact_email || ''}
+                        onChange={(e) => setOnboardData(prev => ({ ...prev, distributor_contact_email: e.target.value }))}
+                        className="mt-1"
+                        data-testid="onboard-distributor-contact-email"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">Used for automated invoice & payment reminder emails</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor Contact Number</label>
+                      <Input
+                        type="tel"
+                        placeholder="+91 98XXXXXXXX"
+                        value={onboardData.distributor_contact_number || ''}
+                        onChange={(e) => setOnboardData(prev => ({ ...prev, distributor_contact_number: e.target.value }))}
+                        className="mt-1"
+                        data-testid="onboard-distributor-contact-number"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -10667,6 +10735,31 @@ ${FOOTER}</div></body></html>`
                         onChange={(e) => setEditOnboardData(prev => ({ ...prev, distributor_gstin: e.target.value }))}
                         className="mt-1"
                       />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-slate-700">Distributor Contact Email</label>
+                        <Input
+                          type="email"
+                          placeholder="accounts@distributor.com"
+                          value={editOnboardData.distributor_contact_email || ''}
+                          onChange={(e) => setEditOnboardData(prev => ({ ...prev, distributor_contact_email: e.target.value }))}
+                          className="mt-1"
+                          data-testid="edit-distributor-contact-email"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">Used for automated invoice & payment reminder emails</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-700">Distributor Contact Number</label>
+                        <Input
+                          type="tel"
+                          placeholder="+91 98XXXXXXXX"
+                          value={editOnboardData.distributor_contact_number || ''}
+                          onChange={(e) => setEditOnboardData(prev => ({ ...prev, distributor_contact_number: e.target.value }))}
+                          className="mt-1"
+                          data-testid="edit-distributor-contact-number"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

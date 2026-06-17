@@ -523,6 +523,7 @@ const AdminOrders = () => {
           school_id: schoolId,
           school_name: payment.school_name,
           contact_name: payment.contact_name,
+          accounts_reminders_enabled: payment.accounts_reminders_enabled !== false,
           tranches: [],
           totalAmount: 0,
           paidAmount: 0,
@@ -572,6 +573,29 @@ const AdminOrders = () => {
       ...prev,
       [schoolId]: !prev[schoolId]
     }));
+  };
+
+  // Toggle per-school automated accounts/invoice reminder emails
+  const handleToggleAccountsReminders = async (schoolId, currentEnabled) => {
+    const next = !currentEnabled;
+    // Optimistic update on local payments list so the UI reflects immediately
+    setPayments(prev => prev.map(p => (
+      p.school_id === schoolId ? { ...p, accounts_reminders_enabled: next } : p
+    )));
+    try {
+      await axios.patch(
+        `${API}/schools/${schoolId}/accounts-reminders`,
+        { enabled: next },
+        { headers: getAuthHeaders() },
+      );
+      toast.success(next ? 'Automated reminders enabled' : 'Automated reminders paused');
+    } catch (err) {
+      // Revert on failure
+      setPayments(prev => prev.map(p => (
+        p.school_id === schoolId ? { ...p, accounts_reminders_enabled: currentEnabled } : p
+      )));
+      toast.error(err?.response?.data?.detail || 'Failed to update reminder setting');
+    }
   };
 
   const stats = {
@@ -1232,6 +1256,23 @@ const AdminOrders = () => {
                                       {group.tranches.length} tranches
                                     </span>
                                   )}
+                                </div>
+                                {/* Per-school automated invoice/payment reminder toggle */}
+                                <div className="flex items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={group.accounts_reminders_enabled}
+                                    onClick={() => handleToggleAccountsReminders(group.school_id, group.accounts_reminders_enabled)}
+                                    data-testid={`toggle-accounts-reminders-${group.school_id}`}
+                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ${group.accounts_reminders_enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                    title={group.accounts_reminders_enabled ? 'Automated invoice/payment reminder emails are ON' : 'Automated reminders are PAUSED for this school'}
+                                  >
+                                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${group.accounts_reminders_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                                  </button>
+                                  <span className={`text-[11px] font-medium ${group.accounts_reminders_enabled ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                    {group.accounts_reminders_enabled ? 'Auto reminders ON' : 'Auto reminders OFF'}
+                                  </span>
                                 </div>
                               </div>
                             </div>
