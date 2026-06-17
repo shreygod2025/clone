@@ -110,10 +110,34 @@ _VENDOR_IMAGE_HOST_REWRITES = {
 def _normalize_vendor_image(url: Optional[str]) -> Optional[str]:
     if not url or not isinstance(url, str):
         return url
+    rewritten = url
     for stale, live in _VENDOR_IMAGE_HOST_REWRITES.items():
-        if stale in url:
-            return url.replace(stale, live)
-    return url
+        if stale in rewritten:
+            rewritten = rewritten.replace(stale, live)
+            break
+    return _optimized_image_url(rewritten)
+
+
+def _optimized_image_url(url: Optional[str], width: int = 600) -> Optional[str]:
+    """Route any HTTP(S) image through the free images.weserv.nl proxy which
+    auto-resizes, converts to webp/avif, and edge-caches it globally. This is
+    what shrinks the OLL vendor PNGs from ~1.5 MB → ~20 KB on the shop grid.
+
+    `unsplash.com` URLs already serve optimized variants natively, so we let
+    them through untouched to avoid a needless extra hop.
+    """
+    if not url or not isinstance(url, str) or not url.startswith(("http://", "https://")):
+        return url
+    if "images.unsplash.com" in url or "images.weserv.nl" in url:
+        return url
+    # Strip scheme — weserv requires bare host/path
+    bare = url.split("://", 1)[1]
+    # quote_plus would also escape ":/?" — but weserv accepts the unescaped form.
+    from urllib.parse import quote
+    return (
+        f"https://images.weserv.nl/?url={quote(bare, safe='/:?&=')}"
+        f"&w={width}&q=80&output=webp"
+    )
 
 
 def _sample_mrp_for(product_id: str, name: str) -> float:
@@ -527,12 +551,40 @@ async def _send_order_confirmation_email(order: dict, pos: List[dict]):
           </tr>"""
         for it in order.get("items", [])
     )
-    po_rows = "".join(
-        f"<li><strong>{p['vendor_name']}</strong> — {len(p['items'])} item(s)"
-        + (f" · <a href='{p['vendor_tracking_url']}'>Track</a>" if p.get('vendor_tracking_url') else '')
-        + "</li>"
-        for p in pos
-    )
+    po_rows = ""  # Legacy var — vendor names are no longer shown to customers.
+
+    # Tracking call-to-action button(s) — no vendor name shown to customer
+    tracking_pos = [p for p in pos if p.get("vendor_tracking_url")]
+    if len(tracking_pos) == 1:
+        _po = tracking_pos[0]
+        tracking_block = f"""
+          <div style='margin:22px 0;text-align:center'>
+            <a href='{_po['vendor_tracking_url']}' target='_blank'
+               style='display:inline-block;background:#D63031;color:#fff;font-weight:700;font-size:15px;
+                      padding:14px 28px;border-radius:14px;text-decoration:none;
+                      box-shadow:0 6px 18px rgba(214,48,49,0.35);letter-spacing:0.3px'>
+              &#128230; Track Your Order
+            </a>
+            <p style='font-size:12px;color:#666;margin-top:8px'>Expected delivery by {_po['delivery_date']}</p>
+          </div>
+        """
+    elif len(tracking_pos) > 1:
+        _rows = "".join(
+            f"""<a href='{p['vendor_tracking_url']}' target='_blank'
+                   style='display:block;background:#D63031;color:#fff;font-weight:700;font-size:14px;
+                          padding:12px 18px;border-radius:12px;text-decoration:none;margin:8px 0;text-align:left'>
+                <span style='font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.5px'>Shipment {i+1}</span><br>
+                Track {len(p['items'])} item(s) — by {p['delivery_date']}
+               </a>"""
+            for i, p in enumerate(tracking_pos)
+        )
+        tracking_block = (
+            "<div style='margin:20px 0'>"
+            "<p style='font-size:13px;color:#555;font-weight:600;margin-bottom:6px'>&#128230; Track Your Order</p>"
+            f"{_rows}</div>"
+        )
+    else:
+        tracking_block = ""
     html = f"""
     <div style='font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:20px;color:#1a1a1a'>
       <div style='background:#1E3A5F;padding:24px;border-radius:10px 10px 0 0;text-align:center'>
@@ -553,13 +605,13 @@ async def _send_order_confirmation_email(order: dict, pos: List[dict]):
         <p style='margin:4px 0'>Subtotal: <strong>₹{order['subtotal']:.0f}</strong></p>
         <p style='margin:4px 0'>Delivery: <strong>₹{order['delivery_charge']:.0f}</strong></p>
         <p style='margin:4px 0;font-size:18px'>Total Paid: <strong>₹{order['total']:.0f}</strong></p>
+        {tracking_block}
         <hr style='border:none;border-top:1px solid #eee;margin:16px 0'>
         <p><strong>Shipping to:</strong><br>
           {shipping['full_name']}<br>
           {shipping['line1']}{', ' + shipping['line2'] if shipping.get('line2') else ''}<br>
           {shipping['city']}, {shipping['state']} - {shipping['pincode']}<br>
           {shipping['phone']}</p>
-        {f"<p><strong>Fulfilled by:</strong></p><ul>{po_rows}</ul>" if po_rows else ""}
         <p style='margin-top:18px'>Need help? Reply to this email or write to <a href='mailto:info@oll.co'>info@oll.co</a>.</p>
         <p>— Team OLL</p>
       </div>

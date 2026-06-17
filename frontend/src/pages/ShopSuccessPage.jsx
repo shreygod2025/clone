@@ -99,37 +99,54 @@ const ShopSuccessPage = () => {
               </div>
             </div>
 
-            {pos.length > 0 && (
+            {pos.length > 0 && pos.some((po) => po.vendor_tracking_url) && (
               <div className="mt-6">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-emerald-600" /> Vendors handling your order
-                </h2>
-                <div className="space-y-2">
-                  {pos.map((po) => (
-                    <div
-                      key={po.id}
-                      className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3"
-                      data-testid={`success-po-${po.id}`}
-                    >
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{po.vendor_name}</p>
-                        <p className="text-xs text-slate-500">{po.items.length} item(s) · expected by {po.delivery_date}</p>
-                      </div>
-                      {po.vendor_tracking_url ? (
-                        <a
-                          href={po.vendor_tracking_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-semibold text-[#D63031] flex items-center gap-1 hover:underline"
-                        >
-                          Track <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-400">Pending</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                {/* Primary tracking CTA — single tracking link */}
+                {pos.filter((po) => po.vendor_tracking_url).length === 1 ? (
+                  (() => {
+                    const po = pos.find((p) => p.vendor_tracking_url);
+                    return (
+                      <a
+                        href={po.vendor_tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="shop-success-track-btn"
+                        className="block bg-gradient-to-r from-[#D63031] to-[#b22729] hover:brightness-110 text-white font-bold rounded-2xl px-5 py-4 shadow-lg shadow-red-200/60 transition-all"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-left">
+                            <p className="text-[10px] uppercase tracking-widest text-white/80 font-bold">Track Your Order</p>
+                            <p className="text-base font-bold mt-0.5">Expected delivery by {po.delivery_date}</p>
+                            <p className="text-[11px] text-white/80 mt-0.5">{po.items.length} item(s) on the way</p>
+                          </div>
+                          <Truck className="w-8 h-8 text-white/90 flex-shrink-0" />
+                        </div>
+                      </a>
+                    );
+                  })()
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-emerald-600" /> Track Your Order
+                    </p>
+                    {pos.filter((p) => p.vendor_tracking_url).map((po, i) => (
+                      <a
+                        key={po.id}
+                        href={po.vendor_tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid={`shop-success-track-btn-${i}`}
+                        className="flex items-center justify-between bg-gradient-to-r from-[#D63031] to-[#b22729] hover:brightness-110 text-white font-bold rounded-xl px-4 py-3 shadow-md transition-all"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-bold">Shipment {i + 1} · {po.items.length} item(s)</p>
+                          <p className="text-[11px] text-white/80">Expected by {po.delivery_date}</p>
+                        </div>
+                        <ExternalLink className="w-5 h-5 text-white/90" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
