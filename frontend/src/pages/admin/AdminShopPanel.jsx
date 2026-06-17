@@ -109,6 +109,32 @@ const OrdersTab = ({ embedded = false }) => {
     );
   }, [orders, search]);
 
+  // Stats are computed across ALL orders (not filtered) so admins always see
+  // the global picture even while drilling into a search.
+  const stats = useMemo(() => {
+    let totalRevenue = 0;
+    let paidCount = 0;
+    let pendingRevenue = 0;
+    let pendingCount = 0;
+    for (const o of orders) {
+      const total = Number(o.total) || 0;
+      if (o.payment_status === 'paid') {
+        totalRevenue += total;
+        paidCount += 1;
+      } else {
+        pendingRevenue += total;
+        pendingCount += 1;
+      }
+    }
+    return {
+      totalOrders: orders.length,
+      paidCount,
+      totalRevenue,
+      pendingCount,
+      pendingRevenue,
+    };
+  }, [orders]);
+
   const copyTracking = async (url) => {
     try {
       await navigator.clipboard.writeText(url);
@@ -120,6 +146,37 @@ const OrdersTab = ({ embedded = false }) => {
 
   return (
     <div className={embedded ? '' : ''}>
+      {/* Shop-specific stats — total orders + revenue (paid + pending). */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5" data-testid="shop-stats">
+        <StatCard
+          label="Total Orders"
+          value={stats.totalOrders}
+          accent="from-slate-700 to-slate-500"
+          testId="shop-stat-total-orders"
+        />
+        <StatCard
+          label="Revenue (Paid)"
+          value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`}
+          sub={`${stats.paidCount} order${stats.paidCount === 1 ? '' : 's'}`}
+          accent="from-emerald-700 to-emerald-500"
+          testId="shop-stat-revenue"
+        />
+        <StatCard
+          label="Pending"
+          value={stats.pendingCount}
+          sub={`₹${stats.pendingRevenue.toLocaleString('en-IN')} unpaid`}
+          accent="from-amber-600 to-amber-400"
+          testId="shop-stat-pending"
+        />
+        <StatCard
+          label="AOV (Paid)"
+          value={`₹${(stats.paidCount ? Math.round(stats.totalRevenue / stats.paidCount) : 0).toLocaleString('en-IN')}`}
+          sub="avg order value"
+          accent="from-indigo-700 to-indigo-500"
+          testId="shop-stat-aov"
+        />
+      </div>
+
       <div className="flex flex-wrap gap-3 mb-4 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-4 h-4 absolute top-3 left-3 text-slate-400" />
@@ -363,6 +420,17 @@ const Empty = ({ msg }) => (
   <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
     <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
     <p className="text-sm">{msg}</p>
+  </div>
+);
+
+const StatCard = ({ label, value, sub, accent, testId }) => (
+  <div
+    className={`bg-gradient-to-br ${accent} rounded-xl p-4 text-white shadow-sm`}
+    data-testid={testId}
+  >
+    <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-1.5">{label}</p>
+    <p className="text-2xl font-bold leading-none">{value}</p>
+    {sub && <p className="text-white/70 text-[11px] mt-1.5">{sub}</p>}
   </div>
 );
 
