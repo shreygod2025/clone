@@ -828,6 +828,7 @@ async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
     Returns summary. Atomic-claim dedup via gmail_processed prevents double-runs."""
     email_addr = acc_doc["email"]
     created = 0
+    updated = 0  # appended to an existing thread (no new ticket)
     skipped = 0
     errors: List[str] = []
 
@@ -1047,7 +1048,7 @@ async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
                 classification=cls, ticket_id=existing_ticket["id"],
                 ticket_number=existing_ticket.get("ticket_number"),
             )
-            skipped += 1  # not a NEW ticket
+            updated += 1  # thread-dedup hit — counts as an update, not a new ticket
             continue
 
         link = None
@@ -1175,8 +1176,10 @@ async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
     summary = {
         "email": email_addr,
         "created": created,
+        "updated": updated,
         "skipped": skipped,
         "errors": errors[:10],
+        "errors_count": len(errors),
         "examined": len(msgs),
     }
     await db.gmail_accounts.update_one(
@@ -1227,15 +1230,36 @@ async def _mark_processed(msg_id: str, account: str, gmail, action: str, subject
 async def sync_all_gmail_accounts() -> dict:
     """Called by APScheduler every hour. Iterates over all active accounts.
 
+    Logging + observability:
+    - Logs run-start, per-account success/error, and run-end summary at INFO level.
+    - Writes a snapshot to `db.gmail_cron_runs` so admins can introspect the
+      last run via `GET /api/admin/gmail/cron-status` from the UI.
+
     Environment guard: the production and preview backends both connect to the
     same Gmail mailbox(es). Without this guard, both environments would create
     duplicate tickets and send duplicate auto-acks. Gmail sync only runs when
     ENVIRONMENT=production. Preview returns a no-op result.
     """
+    run_started_at = datetime.now(timezone.utc).isoformat()
     _env = (os.environ.get("ENVIRONMENT") or "preview").lower()
+    logger.info(f"[gmail-cron] run start at={run_started_at} env={_env}")
+
     if _env != "production":
-        logger.info(f"[gmail_bot] Skipping sync — ENVIRONMENT={_env!r} (production-only)")
-        return {"accounts": 0, "results": [], "skipped": True, "reason": f"ENVIRONMENT={_env}"}
+        skip_doc = {
+            "started_at": run_started_at,
+            "ended_at": datetime.now(timezone.utc).isoformat(),
+            "env": _env,
+            "skipped": True,
+            "reason": f"ENVIRONMENT={_env} (production-only)",
+            "accounts": 0,
+            "results": [],
+        }
+        try:
+            await db.gmail_cron_runs.insert_one({**skip_doc})
+        except Exception:
+            logger.exception("[gmail-cron] could not persist skip log")
+        logger.info(f"[gmail-cron] skip · env={_env}")
+        return {**skip_doc}
 
     # Ensure the unique index that backs the atomic-claim dedup. Idempotent —
     # safe to call on every sync; MongoDB no-ops if the index already exists.
@@ -1246,17 +1270,73 @@ async def sync_all_gmail_accounts() -> dict:
             name="gmail_msg_account_unique",
         )
     except Exception:
-        logger.exception("Could not ensure gmail_processed unique index")
+        logger.exception("[gmail-cron] Could not ensure gmail_processed unique index")
 
     accounts = await db.gmail_accounts.find({"active": {"$ne": False}}).to_list(50)
+    logger.info(f"[gmail-cron] discovered {len(accounts)} active gmail account(s)")
     results = []
+    totals = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
     for a in accounts:
+        acc_email = a.get("email", "?")
+        logger.info(f"[gmail-cron] syncing account={acc_email}")
         try:
-            results.append(await _sync_account(a))
+            res = await _sync_account(a)
+            results.append(res)
+            totals["created"] += int(res.get("created", 0) or 0)
+            totals["updated"] += int(res.get("updated", 0) or 0)
+            totals["skipped"] += int(res.get("skipped", 0) or 0)
+            totals["errors"] += int(res.get("errors_count", 0) or len(res.get("errors", []) or []))
+            logger.info(
+                f"[gmail-cron] OK account={acc_email} created={res.get('created', 0)} "
+                f"updated={res.get('updated', 0)} skipped={res.get('skipped', 0)}"
+            )
         except Exception as e:
-            logger.exception(f"sync_account crashed for {a.get('email')}")
-            results.append({"email": a.get("email"), "error": str(e)})
-    return {"accounts": len(results), "results": results}
+            logger.exception(f"[gmail-cron] FAIL account={acc_email} — sync_account crashed")
+            results.append({"email": acc_email, "error": str(e)})
+            totals["errors"] += 1
+
+    summary = {
+        "started_at": run_started_at,
+        "ended_at": datetime.now(timezone.utc).isoformat(),
+        "env": _env,
+        "skipped": False,
+        "accounts": len(results),
+        "results": results,
+        "totals": totals,
+    }
+    try:
+        await db.gmail_cron_runs.insert_one({**summary})
+        # Keep only last 100 run records to avoid unbounded growth
+        cnt = await db.gmail_cron_runs.count_documents({})
+        if cnt > 100:
+            to_drop = cnt - 100
+            old_ids = await db.gmail_cron_runs.find({}, {"_id": 1}).sort("started_at", 1).limit(to_drop).to_list(to_drop)
+            await db.gmail_cron_runs.delete_many({"_id": {"$in": [d["_id"] for d in old_ids]}})
+    except Exception:
+        logger.exception("[gmail-cron] could not persist run log")
+
+    logger.info(
+        f"[gmail-cron] run end · accounts={len(results)} created={totals['created']} "
+        f"updated={totals['updated']} skipped={totals['skipped']} errors={totals['errors']}"
+    )
+    return summary
+
+
+@router.get("/admin/gmail/cron-status")
+async def admin_gmail_cron_status(limit: int = 20, user: dict = Depends(get_current_user)):
+    """Returns recent Gmail cron run history so admins can verify the hourly
+    sync is actually running. Includes per-account totals and any errors."""
+    rows = await db.gmail_cron_runs.find(
+        {}, {"_id": 0}
+    ).sort("started_at", -1).to_list(length=max(1, min(limit, 100)))
+    _env = (os.environ.get("ENVIRONMENT") or "preview").lower()
+    return {
+        "env": _env,
+        "cron_enabled_in_this_env": _env == "production",
+        "count": len(rows),
+        "last_run": rows[0] if rows else None,
+        "rows": rows,
+    }
 
 
 @router.post("/gmail/sync-now")
@@ -1577,15 +1657,22 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
         raise HTTPException(400, "attachment_ids must be a list")
     attachments = await _load_attachments_from_gridfs(attachment_ids)
 
-    # Subject: prefer the original Gmail subject (keeps the thread intact); fall
-    # back to the ticket's subject_summary or a sensible default for non-Gmail
-    # tickets so we never send "Re: " with an empty subject.
-    subject_line = (
-        gmail.get("subject")
-        or ticket.get("subject_summary")
-        or ticket.get("query_type")
-        or f"Your ticket #{ticket.get('ticket_number', '')}"
-    )
+    # Subject: admin can override via the modal's editable Subject input.
+    # When the body includes a `subject` field, it wins. Otherwise we fall back
+    # to the original Gmail subject (keeps the thread intact), then the ticket's
+    # subject_summary, query_type, or a generated default so we never send
+    # "Re: " with an empty subject.
+    custom_subject = (data.get("subject") or "").strip()
+    if custom_subject:
+        subject_line = custom_subject
+        logger.info(f"[gmail-reply] Using admin-supplied subject for ticket={ticket_id}: {subject_line!r}")
+    else:
+        subject_line = (
+            gmail.get("subject")
+            or ticket.get("subject_summary")
+            or ticket.get("query_type")
+            or f"Your ticket #{ticket.get('ticket_number', '')}"
+        )
 
     try:
         sent = await _send_gmail_reply(

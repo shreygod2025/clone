@@ -1,6 +1,40 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-19 pt3) — Gmail Cron Visibility + Editable Reply Subject (P0)
+
+**1. Reply via Gmail — editable Subject field**
+- New text input in `GmailReplyModal.jsx`:
+  - Pre-filled with `ticket.gmail.subject` (or `subject_summary` / `query_type` / `Your ticket #N` fallback).
+  - Admin can edit freely.
+  - **Required**: red border + "Subject is required" message appear when blank; the Send button is disabled.
+- `POST /api/gmail/reply/{ticket_id}` now accepts a `subject` field on the body. When present, it overrides the default — admin-supplied subject is logged at INFO level for audit.
+- Backend `_send_gmail_reply` continues to auto-prefix "Re:" and re-uses the existing `thread_id` so the reply stays on the original Gmail thread (no new ticket is created).
+
+**2. Gmail cron — observability & resilience**
+- `sync_all_gmail_accounts()` now logs structured INFO lines (`[gmail-cron]`) at run-start, per-account success/error, and run-end, plus persists a row in a new `gmail_cron_runs` collection per run (kept to the most recent 100).
+- Per-account counters now include `created`, `updated` (thread-dedup hits), `skipped`, `errors`, `errors_count`, `examined`.
+- New endpoint `GET /api/admin/gmail/cron-status?limit=20` returns current env, whether the cron is enabled in this env, and the recent run history (start/end times, totals, errors). Admins can use it to verify the hourly sync is actually firing in production.
+- Existing thread_id dedup (`gmail.thread_id` match → append comment, no new ticket) is unchanged — confirmed still in place at line ~995.
+- Production-only gate preserved (`ENVIRONMENT=production` required) to prevent preview + prod double-polling the same inbox. Set this env var on the deployed app to enable the hourly sync.
+
+**Curl tests (all PASS)**
+- Manual `POST /api/gmail/sync-now` in preview correctly records a skip row in `gmail_cron_runs` with reason "ENVIRONMENT=preview (production-only)".
+- `GET /api/admin/gmail/cron-status` returns `env=preview, cron_enabled=False, count=1, last_run={skipped:true}`.
+- Reply with `subject:"My Custom Subject Test"` succeeded, returned `thread_id` (no new ticket), and the INFO log line `[gmail-reply] Using admin-supplied subject for ticket=…: 'My Custom Subject Test'` confirms the custom subject was used.
+
+### Latest Changes (2026-06-19 pt2) — Notes/Reply Final Behaviour + Duplicate Ticket Fix (P0)
+
+**1. Notes button = Reply/Comment composer**
+- Clarified per user: clicking the amber "Notes" button now opens the **back-and-forth Reply/Comment** modal (`setShowReplyModal` + `fetchQueryReplies`) — i.e., the exact composer the old "Reply" button used.
+- Standalone old Notes button (internal-notes-only) is fully removed.
+- Net result: one button labelled "Notes" → opens the reply/comment composer for every ticket.
+
+**2. Duplicate Ticket Bug — both client + server guards**
+- Frontend: new `creatingTicket` state guards `handleCreateTicket()` against double-click. The "Create Ticket" button is now disabled and shows "Creating…" while in flight.
+- Backend `POST /api/support/queries/create`: added a 10-second dedup window on `(created_by + phone + email + message)`. If an identical payload lands within 10s, the existing ticket is returned with `deduped: true` — no second row.
+- Curl-verified: back-to-back POSTs return the same UUID, `deduped: true` on the second call.
+
 ### Latest Changes (2026-06-19) — Support Centre Action Bar Cleanup (P0)
 
 **1. "Reply" button removed, single "Notes" button**

@@ -47,6 +47,16 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState([]); // [{id, filename, content_type, size}]
   const [uploading, setUploading] = useState(false);
+  // Editable subject. Prefilled with the original Gmail subject (or a sensible
+  // fallback for non-Gmail tickets). Admin can change it freely; send is
+  // blocked when blank.
+  const initialSubject = (
+    ticket?.gmail?.subject
+    || ticket?.subject_summary
+    || ticket?.query_type
+    || `Your ticket #${ticket?.ticket_number || ''}`
+  );
+  const [subject, setSubject] = useState(initialSubject || '');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -103,6 +113,10 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
   };
 
   const handleSend = async () => {
+    if (!subject.trim()) {
+      toast.error('Subject is required');
+      return;
+    }
     if (!body.trim()) {
       toast.error('Reply cannot be empty');
       return;
@@ -111,7 +125,7 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
       setSending(true);
       const res = await axios.post(
         `${API}/gmail/reply/${ticket.id}`,
-        { body, attachment_ids: attachments.map((a) => a.id) },
+        { body, subject: subject.trim(), attachment_ids: attachments.map((a) => a.id) },
         { headers: getAuthHeaders() }
       );
       toast.success(`Reply sent via Gmail${attachments.length ? ` · ${attachments.length} attachment(s)` : ''}`);
@@ -183,8 +197,24 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
             <div><span className="text-slate-500 font-medium">From:</span> {acctEmail}</div>
             <div><span className="text-slate-500 font-medium">To:</span> {ticket.name} &lt;{ticket.email}&gt;</div>
             <div>
-              <span className="text-slate-500 font-medium">Subject:</span>{' '}
-              Re: {ticket.gmail?.subject || ticket.subject_summary || ticket.query_type || `Your ticket #${ticket.ticket_number || ''}`}
+              <label htmlFor="gmail-reply-subject" className="text-slate-500 font-medium block mb-1">Subject *</label>
+              <input
+                id="gmail-reply-subject"
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter subject line for this reply"
+                required
+                data-testid="gmail-reply-subject-input"
+                className={`w-full px-3 py-2 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 ${
+                  subject.trim()
+                    ? 'border-slate-200 focus:ring-blue-200'
+                    : 'border-red-300 focus:ring-red-200'
+                }`}
+              />
+              {!subject.trim() && (
+                <p className="text-[11px] text-red-600 mt-1">Subject is required.</p>
+              )}
             </div>
             {gmailUrl && (
               <a href={gmailUrl} target="_blank" rel="noreferrer"
@@ -297,7 +327,7 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
           <Button variant="outline" onClick={onClose} disabled={sending}>Cancel</Button>
           <Button
             onClick={handleSend}
-            disabled={sending || !body.trim() || uploading || totalAttSize > MAX_TOTAL_MB * 1024 * 1024}
+            disabled={sending || !subject.trim() || !body.trim() || uploading || totalAttSize > MAX_TOTAL_MB * 1024 * 1024}
             className="bg-[#1E3A5F] text-white hover:bg-[#162a44]"
             data-testid="gmail-reply-send-btn"
           >
