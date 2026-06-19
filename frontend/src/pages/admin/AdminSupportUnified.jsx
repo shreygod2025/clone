@@ -1695,19 +1695,6 @@ const AdminSupportUnified = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      setShowNotesModal(query);
-                      fetchQueryHistory(query.id);
-                    }}
-                    className="flex items-center gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
-                    data-testid={`notes-${query.id}`}
-                  >
-                    <StickyNote className="w-4 h-4" />
-                    Notes
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
                       setShowHistoryModal(query);
                       fetchQueryHistory(query.id);
                     }}
@@ -1721,14 +1708,14 @@ const AdminSupportUnified = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      setShowReplyModal(query);
-                      fetchQueryReplies(query.id);
+                      setShowNotesModal(query);
+                      fetchQueryHistory(query.id);
                     }}
-                    className="flex items-center gap-1"
-                    data-testid={`reply-${query.id}`}
+                    className="flex items-center gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
+                    data-testid={`notes-${query.id}`}
                   >
-                    <Send className="w-4 h-4" />
-                    Reply
+                    <StickyNote className="w-4 h-4" />
+                    Notes
                   </Button>
                   <Button
                     size="sm"
@@ -1786,8 +1773,11 @@ const AdminSupportUnified = () => {
                     Delete
                   </Button>
 
-                  {/* Reply via Gmail — only on gmail_bot tickets that have a thread */}
-                  {query.source === 'gmail_bot' && query.gmail?.thread_id && (
+                  {/* Reply via Gmail — shown on every ticket. The backend picks an
+                      active connected Gmail account when the ticket itself was not
+                      created via Gmail, so any team member can fire off an email
+                      reply through the support@oll.co / info@oll.co mailbox. */}
+                  {query.email && (
                     <Button
                       size="sm"
                       onClick={() => setShowGmailReply(query)}

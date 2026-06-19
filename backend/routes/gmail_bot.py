@@ -1548,7 +1548,21 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
     gmail = ticket.get("gmail") or {}
     account_email = gmail.get("account")
     if not account_email:
-        raise HTTPException(400, "Ticket has no associated Gmail account (only Gmail-bot tickets can be replied to via Gmail)")
+        # Ticket was created from a non-Gmail source (User Support form, manual
+        # entry, etc.) — pick the first active connected Gmail account so the
+        # admin can still fire a reply from our official mailbox. Prefer
+        # support@oll.co when available since it matches the accounts/support
+        # sender used elsewhere.
+        preferred = await db.gmail_accounts.find_one({"email": "support@oll.co", "active": True})
+        if not preferred:
+            preferred = await db.gmail_accounts.find_one({"active": True})
+        if not preferred:
+            raise HTTPException(400, "No active Gmail account is connected — please connect one in Admin Settings.")
+        account_email = preferred.get("email")
+
+    # Recipient sanity-check — without an email there's nowhere to send to.
+    if not ticket.get("email"):
+        raise HTTPException(400, "Ticket has no customer email on file. Add one via Edit first.")
 
     # Render template placeholders
     customer_first_name = (ticket.get("name") or "there").split()[0]
@@ -1563,12 +1577,22 @@ async def reply_to_ticket_via_gmail(ticket_id: str, data: dict, user: dict = Dep
         raise HTTPException(400, "attachment_ids must be a list")
     attachments = await _load_attachments_from_gridfs(attachment_ids)
 
+    # Subject: prefer the original Gmail subject (keeps the thread intact); fall
+    # back to the ticket's subject_summary or a sensible default for non-Gmail
+    # tickets so we never send "Re: " with an empty subject.
+    subject_line = (
+        gmail.get("subject")
+        or ticket.get("subject_summary")
+        or ticket.get("query_type")
+        or f"Your ticket #{ticket.get('ticket_number', '')}"
+    )
+
     try:
         sent = await _send_gmail_reply(
             account_email=account_email,
             to_email=ticket.get("email"),
             to_name=ticket.get("name", ""),
-            subject=gmail.get("subject", ""),
+            subject=subject_line,
             body_text=rendered,
             thread_id=gmail.get("thread_id"),
             in_reply_to_msg_id=gmail.get("rfc_message_id"),

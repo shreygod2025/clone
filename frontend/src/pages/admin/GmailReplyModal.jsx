@@ -125,11 +125,12 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
   };
 
   if (!ticket) return null;
-  const acctEmail = ticket.gmail?.account || '—';
+  const acctEmail = ticket.gmail?.account || 'support@oll.co';
   const gmailUrl = ticket.gmail?.gmail_url;
   const ackSent = !!ticket.gmail?.ack_sent;
   const ackSentAt = ticket.gmail?.ack_sent_at;
   const ackIsAi = !!ticket.gmail?.ack_is_ai;
+  const isNonGmailTicket = !ticket.gmail?.account;
   const totalAttSize = attachments.reduce((sum, a) => sum + (a.size || 0), 0);
 
   return (
@@ -143,6 +144,22 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
         </DialogHeader>
 
         <div className="space-y-3 text-sm">
+          {isNonGmailTicket && (
+            <div
+              className="flex items-start gap-2 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg p-3 text-xs"
+              data-testid="gmail-reply-new-thread"
+            >
+              <Inbox className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold">Starting a new Gmail conversation</p>
+                <p className="mt-0.5">
+                  This ticket wasn't created from a Gmail inbox, so we'll send a fresh email
+                  from <strong>{acctEmail}</strong>. The customer's reply will land back in that mailbox.
+                </p>
+              </div>
+            </div>
+          )}
+
           {ackSent && (
             <div
               className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-3 text-xs"
@@ -165,7 +182,10 @@ const GmailReplyModal = ({ ticket, onClose, onSent, getAuthHeaders }) => {
           <div className="bg-slate-50 rounded-lg p-3 grid gap-1 text-slate-700">
             <div><span className="text-slate-500 font-medium">From:</span> {acctEmail}</div>
             <div><span className="text-slate-500 font-medium">To:</span> {ticket.name} &lt;{ticket.email}&gt;</div>
-            <div><span className="text-slate-500 font-medium">Subject:</span> Re: {ticket.gmail?.subject || ticket.subject_summary}</div>
+            <div>
+              <span className="text-slate-500 font-medium">Subject:</span>{' '}
+              Re: {ticket.gmail?.subject || ticket.subject_summary || ticket.query_type || `Your ticket #${ticket.ticket_number || ''}`}
+            </div>
             {gmailUrl && (
               <a href={gmailUrl} target="_blank" rel="noreferrer"
                  className="text-xs text-[#1E3A5F] hover:underline inline-flex items-center gap-1 mt-1">

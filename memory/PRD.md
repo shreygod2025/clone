@@ -1,6 +1,27 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-19) — Support Centre Action Bar Cleanup (P0)
+
+**1. "Reply" button removed, single "Notes" button**
+- The old "Reply" button (which opened an internal-comment composer) has been removed entirely from the ticket detail action bar.
+- The amber "Notes" button (StickyNote icon) is kept as the single internal-notes composer entry-point.
+- Net result: one button labelled "Notes" that opens the internal notes modal (same composer as before).
+
+**2. "Reply via Gmail" visible for every ticket source**
+- Removed the `query.source === 'gmail_bot'` and `query.gmail?.thread_id` gating conditions.
+- Now shown on every ticket that has a customer email on file (Gmail-bot, User Support form, manual entries, etc.).
+- Backend `/gmail/reply/{ticket_id}` updated to:
+  - Pick a default active Gmail account (prefers `support@oll.co`, falls back to first active) when the ticket itself wasn't a Gmail-bot ticket.
+  - Compose a sensible subject from `subject_summary` / `query_type` / `ticket_number` fallbacks.
+  - `_send_gmail_reply` auto-prefixes "Re:" and handles `thread_id=None` (starts a fresh thread).
+- New "Starting a new Gmail conversation" blue callout shown inside the modal when the ticket has no existing Gmail thread, so admins know the customer's reply will land in the chosen mailbox.
+
+**Smoke tests (UI screenshots, all PASS)**
+- Ticket action bar: 0 "Reply" buttons (was 1), 62 "Notes" buttons, 55 "Reply via Gmail" buttons across 62 User Support tickets.
+- Gmail-source ticket (`#0125 kit_related`) shows: History · Notes · Assign · Viewers · Edit · Delete · **Reply via Gmail** · Raise PO.
+- User Support / manual tickets also show **Reply via Gmail** alongside the same set.
+
 ### Latest Changes (2026-06-17 pt3) — Full Bill-To/Ship-To overrides + IGST/Place of Supply (P0)
 
 **Fixed**: Bill To / Ship To block in generated invoice PDFs no longer overlap when address text wraps. Refactored `renderPartyBlock(...)` in `invoicePdfGenerator.js` to:
