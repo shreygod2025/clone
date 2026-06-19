@@ -298,7 +298,20 @@ def _creds_from_doc(doc: dict) -> Credentials:
         expired = True
 
     if expired and creds.refresh_token:
-        creds.refresh(GoogleAuthRequest())
+        try:
+            creds.refresh(GoogleAuthRequest())
+            logger.info("[gmail-cron] Refreshed access token for account doc")
+        except Exception as exc:
+            # Surface auth failures loudly — silent token failures were the
+            # most common cause of "cron not working". Caller catches this.
+            logger.error(f"[gmail-cron] Token refresh FAILED — account needs to re-connect via OAuth: {exc}")
+            raise
+    elif expired and not creds.refresh_token:
+        logger.error(
+            "[gmail-cron] Access token expired BUT no refresh_token on file — "
+            "this Gmail account must be reconnected via Admin → Settings → Gmail Bot."
+        )
+        raise RuntimeError("No refresh_token — account must be reconnected via OAuth.")
     return creds
 
 
@@ -1126,48 +1139,64 @@ async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
             }},
         )
         if claim.modified_count == 1:
-            # AI-generated content (query-aware, reassuring). Falls back to a
-            # safe static template if the LLM fails or returns an unsafe shape.
-            ai_body = await _ai_generate_ack(
-                first_name=first_name,
-                ticket_number=ticket_number,
-                subject=subject,
-                body=body,
-            )
-            ack_text = ai_body or _static_ack(first_name, ticket_number)
-            try:
-                sent = await _send_gmail_reply(
-                    account_email=email_addr,
-                    to_email=sender_email,
-                    to_name=customer_name,
-                    subject=subject,
-                    body_text=ack_text,
-                    thread_id=thread_id,
-                    in_reply_to_msg_id=rfc_message_id,
-                    references=existing_references or rfc_message_id,
-                )
-                await db.support_queries.update_one(
-                    {"id": ticket_id},
-                    {"$set": {
-                        "gmail.ack_message_id": sent.get("id"),
-                        "gmail.ack_is_ai": bool(ai_body),
-                        # Also set top-level ack_sent so the support panel
-                        # shows the same indicator that resend-acked tickets do.
-                        "ack_sent": True,
-                        "ack_sent_at": datetime.now(timezone.utc).isoformat(),
-                        "ack_channel": "gmail_thread",
-                    }},
-                )
-            except Exception as ack_err:
-                logger.exception(f"Auto-ack failed for ticket #{ticket_number}")
-                # Clear the claim so a future sync can retry the ack
+            # Gate the actual outbound email to production only — preview can
+            # still create tickets + populate the ack metadata, but it will
+            # not double-send replies to real customers from the dev pod.
+            _env = (os.environ.get("ENVIRONMENT") or "preview").lower()
+            if _env != "production":
+                logger.info(f"[gmail-cron] Skipping auto-ack send for ticket #{ticket_number} — ENVIRONMENT={_env!r} (production-only)")
+                # Mark ack as skipped so the next prod sync will retry it
+                # (we re-clear the gmail.ack_sent flag set above by the claim)
                 await db.support_queries.update_one(
                     {"id": ticket_id},
                     {"$set": {
                         "gmail.ack_sent": False,
-                        "gmail.ack_error": str(ack_err)[:200],
+                        "gmail.ack_skipped_env": _env,
                     }},
                 )
+            else:
+                # AI-generated content (query-aware, reassuring). Falls back to a
+                # safe static template if the LLM fails or returns an unsafe shape.
+                ai_body = await _ai_generate_ack(
+                    first_name=first_name,
+                    ticket_number=ticket_number,
+                    subject=subject,
+                    body=body,
+                )
+                ack_text = ai_body or _static_ack(first_name, ticket_number)
+                try:
+                    sent = await _send_gmail_reply(
+                        account_email=email_addr,
+                        to_email=sender_email,
+                        to_name=customer_name,
+                        subject=subject,
+                        body_text=ack_text,
+                        thread_id=thread_id,
+                        in_reply_to_msg_id=rfc_message_id,
+                        references=existing_references or rfc_message_id,
+                    )
+                    await db.support_queries.update_one(
+                        {"id": ticket_id},
+                        {"$set": {
+                            "gmail.ack_message_id": sent.get("id"),
+                            "gmail.ack_is_ai": bool(ai_body),
+                            # Also set top-level ack_sent so the support panel
+                            # shows the same indicator that resend-acked tickets do.
+                            "ack_sent": True,
+                            "ack_sent_at": datetime.now(timezone.utc).isoformat(),
+                            "ack_channel": "gmail_thread",
+                        }},
+                    )
+                except Exception as ack_err:
+                    logger.exception(f"Auto-ack failed for ticket #{ticket_number}")
+                    # Clear the claim so a future sync can retry the ack
+                    await db.support_queries.update_one(
+                        {"id": ticket_id},
+                        {"$set": {
+                            "gmail.ack_sent": False,
+                            "gmail.ack_error": str(ack_err)[:200],
+                        }},
+                    )
 
         # Mark as read in Gmail + processed in our DB
         await _mark_processed(msg_id, email_addr, gmail, "ticket_created", subject, sender_email,
@@ -1244,22 +1273,11 @@ async def sync_all_gmail_accounts() -> dict:
     _env = (os.environ.get("ENVIRONMENT") or "preview").lower()
     logger.info(f"[gmail-cron] run start at={run_started_at} env={_env}")
 
-    if _env != "production":
-        skip_doc = {
-            "started_at": run_started_at,
-            "ended_at": datetime.now(timezone.utc).isoformat(),
-            "env": _env,
-            "skipped": True,
-            "reason": f"ENVIRONMENT={_env} (production-only)",
-            "accounts": 0,
-            "results": [],
-        }
-        try:
-            await db.gmail_cron_runs.insert_one({**skip_doc})
-        except Exception:
-            logger.exception("[gmail-cron] could not persist skip log")
-        logger.info(f"[gmail-cron] skip · env={_env}")
-        return {**skip_doc}
+    # Note: we intentionally do NOT gate the sync itself on env anymore.
+    # - Ticket creation uses thread_id + msg_id dedup, so we won't create duplicates
+    #   within an env (each env has its own MongoDB).
+    # - The auto-ACK email send IS still gated to production inside the per-message
+    #   loop, so preview never sends a reply to a real customer's inbox.
 
     # Ensure the unique index that backs the atomic-claim dedup. Idempotent —
     # safe to call on every sync; MongoDB no-ops if the index already exists.
@@ -1330,9 +1348,33 @@ async def admin_gmail_cron_status(limit: int = 20, user: dict = Depends(get_curr
         {}, {"_id": 0}
     ).sort("started_at", -1).to_list(length=max(1, min(limit, 100)))
     _env = (os.environ.get("ENVIRONMENT") or "preview").lower()
+
+    # Inspect the live APScheduler instance from server.py so the admin can
+    # confirm the job is actually registered + see its next_run_time. This
+    # makes it obvious whether the cron is "alive" without needing log access.
+    scheduler_info = {"available": False, "jobs": []}
+    try:
+        from server import scheduler as _scheduler  # noqa: WPS433 — runtime import to avoid circular
+        scheduler_info["available"] = bool(_scheduler and _scheduler.running)
+        if scheduler_info["available"]:
+            for j in _scheduler.get_jobs():
+                scheduler_info["jobs"].append({
+                    "id": j.id,
+                    "name": j.name,
+                    "next_run_time": j.next_run_time.isoformat() if j.next_run_time else None,
+                    "trigger": str(j.trigger),
+                })
+    except Exception as exc:
+        scheduler_info["error"] = str(exc)
+
+    gmail_job = next((j for j in scheduler_info.get("jobs", []) if j["id"] == "gmail_bot_sync_job"), None)
     return {
         "env": _env,
-        "cron_enabled_in_this_env": _env == "production",
+        "auto_ack_send_enabled_in_this_env": _env == "production",
+        "scheduler_running": scheduler_info["available"],
+        "gmail_job_registered": gmail_job is not None,
+        "gmail_next_run_time": gmail_job.get("next_run_time") if gmail_job else None,
+        "all_scheduled_jobs": scheduler_info.get("jobs", []),
         "count": len(rows),
         "last_run": rows[0] if rows else None,
         "rows": rows,

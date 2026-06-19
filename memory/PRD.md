@@ -1,6 +1,27 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-19 pt5) — Gmail Cron Actually Runs Now (P0)
+
+**Root cause**: cron was registered behind `ENVIRONMENT=production` gate AND the `sync_all_gmail_accounts()` function early-returned in non-production envs. If the deploy env didn't set `ENVIRONMENT=production` explicitly (or anything other than that exact value), the scheduler simply never registered the job — `[STARTUP] Gmail bot sync NOT scheduled` in the logs.
+
+**Fix**:
+1. **`server.py`**: removed the `if _APP_ENV == "production":` gate around `scheduler.add_job(sync_all_gmail_accounts, ...)`. The job is now registered in **every** environment with `misfire_grace_time=300`, `coalesce=True`, `max_instances=1`.
+2. **`routes/gmail_bot.py::sync_all_gmail_accounts`**: removed the early `_env != "production"` return. The cron now actually fetches Gmail in every env.
+3. **`routes/gmail_bot.py::_sync_account` (auto-ack block)**: gating moved here — preview still processes emails + creates tickets, but the outbound auto-ACK Gmail reply is `production`-only so preview never spams real customers. Tickets stay marked "ack pending" so the next prod run can send the ack.
+4. **OAuth token refresh now logs loudly**: a stale refresh / missing refresh_token used to silently fail. Now logs `[gmail-cron] Token refresh FAILED — account needs to re-connect via OAuth` so the user knows when reconnection is required.
+5. **`GET /api/admin/gmail/cron-status`** upgraded — surfaces:
+   - `scheduler_running` (live APScheduler state),
+   - `gmail_job_registered` + `gmail_next_run_time` (proves the cron is actually queued),
+   - `all_scheduled_jobs` (live job list for audit),
+   - `auto_ack_send_enabled_in_this_env` (replaces the old `cron_enabled_in_this_env` flag),
+   - `last_run` + `rows` (most recent run history).
+
+**Curl tests (PASS in preview)**:
+- `[STARTUP] Gmail bot sync scheduled — runs every 60 minutes (env=preview, auto-ack send only in production)` ✅
+- `/api/admin/gmail/cron-status` returns `scheduler_running=True`, `gmail_job_registered=True`, `gmail_next_run_time=2026-06-19T10:26:…`, `total_jobs_scheduled=18` ✅
+- `POST /api/gmail/sync-now` returns `skipped=False, accounts=1, totals={created:0, updated:0, skipped:84, errors:0}` — actually polled Gmail, found 84 already-processed messages (dedup hit), 0 errors ✅
+
 ### Latest Changes (2026-06-19 pt4) — SEO Prerender Hard-Wired Into Build (P0)
 
 **Problem**: Every internal URL (`/workshops/fathers-day-robotics`, `/summer-camp`, etc.) was being served the homepage HTML shell to Google + WhatsApp + Facebook + Twitter crawlers, so they saw the homepage `<title>` / `<meta description>` / `og:image` on every page → Google only listed the homepage, link previews showed no image/text.
