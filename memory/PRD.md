@@ -1,6 +1,30 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-19 pt4) — SEO Prerender Hard-Wired Into Build (P0)
+
+**Problem**: Every internal URL (`/workshops/fathers-day-robotics`, `/summer-camp`, etc.) was being served the homepage HTML shell to Google + WhatsApp + Facebook + Twitter crawlers, so they saw the homepage `<title>` / `<meta description>` / `og:image` on every page → Google only listed the homepage, link previews showed no image/text.
+
+**Root cause**: `seo-prerender.cjs` (which generates per-route `<route>/index.html` files with route-specific tags) was set up as a `postbuild` lifecycle script. Some deploy paths bypass `postbuild` (e.g. when the platform overrides the build command), so the per-route HTML never got generated.
+
+**Fix**:
+1. `frontend/package.json`: chained the prerender directly into `build`:
+   ```
+   "build": "craco build && node scripts/seo-prerender.cjs && node scripts/seo-verify.cjs"
+   ```
+   The SEO step can no longer be skipped no matter how the build is invoked.
+2. New `frontend/scripts/seo-verify.cjs`: post-build hard-fails the deploy when spot-check routes don't have the expected route-specific `<title>` and `og:url`. Catches both "postbuild didn't run" and "rewrite produced stale output" regressions on the next deploy.
+3. Verified locally: 5/5 spot-check routes pass — `/`, `/about`, `/summer-camp`, `/workshops/fathers-day-robotics`, `/future-skills` all have route-unique titles + canonical URLs + full OG/Twitter blocks.
+
+**Manual verification of the Father's Day route in build output**:
+```
+<title>Father's Day 2026 Robotics Workshop · ₹500 OFF till Sunday · Mumbai · OLL</title>
+<link rel="canonical" href="https://oll.co/workshops/fathers-day-robotics"/>
+<meta property="og:title" content="Father's Day 2026 Robotics Workshop · ₹500 OFF · Mumbai · OLL"/>
+<meta property="og:description" content="₹500 OFF — now ₹1,499..."/>
+<meta property="og:image" content="https://wsrv.nl/?url=...ChatGPT%20Image..."/>
+```
+
 ### Latest Changes (2026-06-19 pt3) — Gmail Cron Visibility + Editable Reply Subject (P0)
 
 **1. Reply via Gmail — editable Subject field**

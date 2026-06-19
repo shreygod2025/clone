@@ -79,8 +79,8 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "craco build",
-    "postbuild": "node scripts/seo-prerender.cjs",
+    "build": "craco build && node scripts/seo-prerender.cjs && node scripts/seo-verify.cjs",
+    "postbuild": "node scripts/seo-prerender.cjs && node scripts/seo-verify.cjs",
     "test": "craco test"
   },
   "reactSnap": {
