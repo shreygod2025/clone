@@ -955,23 +955,55 @@ async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends
 
 @router.post("/support/queries/create")
 async def create_support_query(data: dict, user: dict = Depends(get_current_user)):
-    """Create a new support query from admin"""
-    query_id = str(uuid.uuid4())
+    """Create a new support query from admin.
+
+    Includes a 10-second dedup window: if an admin double-clicks (or two near-
+    simultaneous POSTs land due to network retries), we return the already-
+    created ticket instead of inserting a duplicate. The dedup key is the
+    tuple (created_by, phone, email, message) — admins explicitly creating
+    two near-identical tickets within 10s is virtually never intentional.
+    """
     user_id = user.get("id") or user.get("email")
-    
+    phone = (data.get("phone") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    message = (data.get("message") or "").strip()
+
+    # ── Dedup safety net ──────────────────────────────────────────────────
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+    if phone or email or message:
+        existing = await db.support_queries.find_one(
+            {
+                "created_by": user_id,
+                "phone": phone,
+                "email": email,
+                "message": message,
+                "created_at": {"$gte": cutoff},
+            },
+            {"_id": 0, "id": 1, "ticket_number": 1},
+        )
+        if existing:
+            return {
+                "id": existing.get("id"),
+                "ticket_number": existing.get("ticket_number"),
+                "deduped": True,
+                "message": "Same ticket was just created — returning existing one.",
+            }
+
+    query_id = str(uuid.uuid4())
+
     # Initialize viewers with the creator
     viewers = [user_id] if user_id else []
-    
+
     doc = {
         "id": query_id,
         "name": data.get("name", ""),
-        "phone": data.get("phone", ""),
-        "email": data.get("email", ""),
+        "phone": phone,
+        "email": email,
         "query_type": data.get("query_type", "other"),
         "related_to": data.get("related_to", ""),  # Sub-category
         "inquiry_type": data.get("inquiry_type", "student"),
-        "message": data.get("message", ""),
-        "query_details": data.get("message", ""),  # Also store as query_details for consistency
+        "message": message,
+        "query_details": message,  # Also store as query_details for consistency
         "priority": data.get("priority", "normal"),
         "status": "open",
         "source": data.get("source", "admin_created"),

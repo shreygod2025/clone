@@ -255,6 +255,7 @@ const AdminSupportUnified = () => {
     name: '', phone: '', email: '', query_type: 'course_info', related_to: 'course_content', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
   });
   const [multipleUsers, setMultipleUsers] = useState([]); // For creating tickets for multiple users
+  const [creatingTicket, setCreatingTicket] = useState(false); // Guard against double-click submission
   
   // Notes, History, Edit, Delete states
   const [showNotesModal, setShowNotesModal] = useState(null);
@@ -824,6 +825,10 @@ const AdminSupportUnified = () => {
   const [assignSubmitting, setAssignSubmitting] = useState(false);
 
   const handleCreateTicket = async () => {
+    // Guard against double-submission (double-click, slow-network rage clicks).
+    // Prevents the same ticket being created twice with sequential numbers.
+    if (creatingTicket) return;
+
     // Determine the list of users to create tickets for
     const usersToCreate = multipleUsers.length > 0 
       ? multipleUsers 
@@ -841,6 +846,7 @@ const AdminSupportUnified = () => {
       return;
     }
     
+    setCreatingTicket(true);
     try {
       // Upload voice note if exists
       let allAttachments = [...attachments];
@@ -909,6 +915,8 @@ const AdminSupportUnified = () => {
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to create ticket');
+    } finally {
+      setCreatingTicket(false);
     }
   };
 
@@ -1708,8 +1716,8 @@ const AdminSupportUnified = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      setShowNotesModal(query);
-                      fetchQueryHistory(query.id);
+                      setShowReplyModal(query);
+                      fetchQueryReplies(query.id);
                     }}
                     className="flex items-center gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
                     data-testid={`notes-${query.id}`}
@@ -2603,10 +2611,17 @@ const AdminSupportUnified = () => {
               }} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleCreateTicket} className="flex-1 bg-[#D63031] hover:bg-red-600">
-                {multipleUsers.length > 0 
-                  ? `Create ${multipleUsers.length} Ticket${multipleUsers.length > 1 ? 's' : ''}`
-                  : 'Create Ticket'
+              <Button
+                onClick={handleCreateTicket}
+                disabled={creatingTicket}
+                className="flex-1 bg-[#D63031] hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                data-testid="submit-create-ticket"
+              >
+                {creatingTicket
+                  ? 'Creating…'
+                  : (multipleUsers.length > 0
+                    ? `Create ${multipleUsers.length} Ticket${multipleUsers.length > 1 ? 's' : ''}`
+                    : 'Create Ticket')
                 }
               </Button>
             </div>
