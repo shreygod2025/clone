@@ -388,7 +388,6 @@ export default function SummerCampLandingPage() {
         <meta name="description" content="India's #1 kids tech summer camp. Robotics, Python Coding, AI & 3D Design for ages 4–16. 5-day intensive camps in Mumbai (Mira Road, Dombivli, Andheri, Dahisar). STEM.org certified. May 2026. Book now — limited seats." />
         <meta name="keywords" content="summer camp Mumbai, robotics summer camp, coding camp for kids, AI camp India, kids tech camp 2026, STEM camp Mumbai, summer camp ages 4-16, OLL summer camp, school holiday camp Mumbai" />
         <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://oll.co/summer-camp" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />

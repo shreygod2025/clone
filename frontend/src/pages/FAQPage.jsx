@@ -138,7 +138,6 @@ const FAQPage = () => {
       <Helmet>
         <title>FAQ - OLL | Robotics, Coding & AI Classes for Kids</title>
         <meta name="description" content="Find answers to frequently asked questions about OLL's skill education programs. Learn about course fees, demo sessions, age groups, online vs offline classes, and more." />
-        <link rel="canonical" href="https://oll.co/faq" />
         <meta property="og:url" content="https://oll.co/faq" />
         <meta property="og:title" content="FAQ - OLL | Robotics, Coding & AI Classes for Kids" />
         <meta property="og:description" content="Find answers to frequently asked questions about OLL's Robotics, AI, Coding & Entrepreneurship programs. Fees, batch timings, age groups and more." />

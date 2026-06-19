@@ -91,7 +91,6 @@ const CoursePage = () => {
         <meta property="og:image" content={course.heroImage} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="OLL" />
-        <link rel="canonical" href={`https://oll.co/courses/${course.id}`} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={course.metaTitle} />
         <meta name="twitter:description" content={course.metaDescription} />

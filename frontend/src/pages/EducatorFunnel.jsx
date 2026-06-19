@@ -572,7 +572,6 @@ const EducatorFunnel = () => {
         <title>Become an Educator | Teach Robotics, AI, Coding Jobs | OLL</title>
         <meta name="description" content="Join OLL as an educator! Teach Robotics, Coding, AI, Entrepreneurship. Flexible hours, competitive pay ₹500-2000/session. Work from home or centers. Apply now!" />
         <meta name="keywords" content="robotics teacher jobs, coding instructor jobs, AI educator, STEM teacher jobs India, teach robotics online, freelance educator, work from home teaching, skill educator jobs, part time teaching" />
-        <link rel="canonical" href="https://oll.co/educator" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />

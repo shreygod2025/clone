@@ -115,7 +115,6 @@ const AiFoundationsLandingPage = () => {
         <meta name="description" content="A hands-on, no-code AI course for Grades 6-12. 10 days online. Build images, music, videos, websites & apps with real AI tools. Earn an OLL certificate. ₹1,999." />
         <meta property="og:title" content="AI Foundations · 10-Day Online Course | OLL" />
         <meta property="og:description" content="Master ChatGPT, Midjourney, Suno, Runway, Vibe Coding & more. 10 days, online, ₹1,999." />
-        <link rel="canonical" href="https://oll.co/ai-foundations" />
       </Helmet>
 
       <Navbar variant="aifoundations" />

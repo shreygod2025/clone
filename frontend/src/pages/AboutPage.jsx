@@ -192,7 +192,6 @@ const AboutPage = () => {
         <title>About OLL | India's Leading Skill Education Platform | Robotics, AI, Coding</title>
         <meta name="description" content="Learn about OLL - India's leading skill education platform with a mission for 1 Billion Learners. Robotics, AI, Coding, Entrepreneurship & Financial Literacy programs for students & schools. Founded by Shreyaan Daga." />
         <meta name="keywords" content="about OLL, skill education India, robotics education company, coding classes company, AI education platform, entrepreneurship training, Shreyaan Daga, Clonefutura Live Solutions, STEM education India, school robotics programs" />
-        <link rel="canonical" href="https://oll.co/about" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />

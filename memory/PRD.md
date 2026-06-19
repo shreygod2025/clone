@@ -1,6 +1,29 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-19 pt6) — SEO Canonical De-Duplication + Per-Route OG Images (P0)
+
+**Problem (reported via Google Search Console + Google Search "Top" tab)**:
+1. **Canonical defined multiple times** — the prerendered HTML had one `<link rel="canonical">` (baked in by `seo-prerender.cjs`), AND `react-helmet-async` was appending a SECOND canonical on hydration (21 page components each emitted their own).
+2. **Description > 170 chars** — `/for-schools` had 174 chars.
+3. **Same OG image on every Google result** — every route except `/workshops/fathers-day-robotics` fell back to `og-default.png`, so Google's image carousel showed the same homepage thumbnail for every URL.
+
+**Fix**:
+1. **`seo-prerender.cjs` is the single source of truth for `<link rel="canonical">`**. Removed `<link rel="canonical">` from 21 page-level Helmet blocks: `LandingPage`, `AboutPage`, `CentersPage`, `EducatorFunnel`, `StudentFunnel`, `SchoolFunnel`, `SchoolLandingPage`, `SchoolOfferingsPage`, `SchoolOfferingDetailPage`, `SummerCampLandingPage`, `SummerCampSEOPage`, `FathersDayWorkshopLandingPage`, `AiFoundationsLandingPage`, `CoursesListPage`, `CoursePage`, `ResourcesPage`, `BlogsPage`, `FAQPage`, `TermsPage`, `PrivacyPage`, `RefundPolicyPage`. The runtime `useSeo.js` hook (which uses `querySelector` to reuse the existing canonical) was already safe.
+2. **`/for-schools` description trimmed** from 174 → 147 chars in `seo-routes.cjs`. All 66 prerendered routes now have descriptions ≤158 chars.
+3. **Added per-category OG image map** (`OG.robotics`, `OG.ai`, `OG.coding`, `OG.financial`, `OG.entrepreneur`, `OG.threeD`, `OG.summerCamp`, `OG.school`, `OG.workshop`, `OG.fathersDay`, `OG.kbcShark`, `OG.about`, `OG.futureSkills`, etc.) wired through:
+   - 18 unique og:image URLs across 66 routes (was 2 before)
+   - 5 `/courses/{slug}` routes each have a different image
+   - 6 `/summer-camp/skill/{slug}` routes each have a different image
+   - 9 `/school-offerings/{cat}/{slug}` routes use category-appropriate images
+
+**Verification (after `yarn build`)**:
+- `grep -c canonical build/*/index.html` returns exactly 1 per route ✅
+- All descriptions ≤158 chars ✅
+- 18 distinct OG images, 5 unique hashes across course routes ✅
+- `[seo-verify] 5 passed, 0 failed` ✅
+
+
 ### Latest Changes (2026-06-19 pt5) — Gmail Cron Actually Runs Now (P0)
 
 **Root cause**: cron was registered behind `ENVIRONMENT=production` gate AND the `sync_all_gmail_accounts()` function early-returned in non-production envs. If the deploy env didn't set `ENVIRONMENT=production` explicitly (or anything other than that exact value), the scheduler simply never registered the job — `[STARTUP] Gmail bot sync NOT scheduled` in the logs.

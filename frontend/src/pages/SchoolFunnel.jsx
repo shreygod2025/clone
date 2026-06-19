@@ -724,7 +724,6 @@ const SchoolFunnel = () => {
         <title>Robotics Lab Setup for Schools India | OLL - STEM & AI Programs</title>
         <meta name="description" content="Set up a robotics lab in your CBSE, ICSE or State Board school. OLL provides robotics, AI, coding & STEM for 500+ schools. Get a free consultation today." />
         <meta name="keywords" content="robotics lab setup for schools, robotics program school India, STEM lab school CBSE ICSE, school robotics curriculum, AI program for schools, coding classes school, NEP 2020 robotics, robotics lab cost India, school STEM partnership" />
-        <link rel="canonical" href="https://oll.co/school" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />

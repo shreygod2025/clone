@@ -259,7 +259,6 @@ export default function FathersDayWorkshopLandingPage() {
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <meta name="bingbot"   content="index, follow" />
-        <link rel="canonical" href="https://oll.co/workshops/fathers-day-robotics" />
         <link rel="alternate" hrefLang="en-IN" href="https://oll.co/workshops/fathers-day-robotics" />
         <link rel="alternate" hrefLang="x-default" href="https://oll.co/workshops/fathers-day-robotics" />
         <meta name="theme-color" content="#1E40AF" />

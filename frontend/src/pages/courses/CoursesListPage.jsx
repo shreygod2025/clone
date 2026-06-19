@@ -27,7 +27,6 @@ const CoursesListPage = () => {
         <meta property="og:title" content="Skill Courses for Kids | Robotics, AI, Coding | OLL" />
         <meta property="og:description" content="Future-ready skill courses for kids aged 6-17. Robotics, Coding, AI, Entrepreneurship & more. Expert instructors, hands-on projects." />
         <meta property="og:site_name" content="OLL" />
-        <link rel="canonical" href="https://oll.co/courses" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",

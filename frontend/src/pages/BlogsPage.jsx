@@ -102,7 +102,6 @@ const BlogsPage = () => {
         <title>OLL Blog | Robotics, AI, Coding Education Tips & Insights</title>
         <meta name="description" content="Read expert articles on Robotics, AI, Coding, STEM education for kids. Tips for parents, educators & schools. Learn about future skills, career guidance & teaching methods." />
         <meta name="keywords" content="robotics blog, coding for kids tips, AI education articles, STEM education blog, entrepreneurship for students, skill development, parenting tech kids, teaching robotics, school STEM programs" />
-        <link rel="canonical" href="https://oll.co/blogs" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />

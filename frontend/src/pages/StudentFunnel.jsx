@@ -1609,7 +1609,6 @@ const StudentFunnel = () => {
         <title>Book Free Demo Class | Learn Robotics, AI, Coding | OLL</title>
         <meta name="description" content="Book a FREE demo class for Robotics, AI, Coding, Entrepreneurship or Financial Literacy at OLL. Expert educators, flexible timings, online or at centers across India. Ages 6-25." />
         <meta name="keywords" content="book robotics demo, free coding class, AI classes for kids, robotics classes near me, coding classes for children, STEM demo class, entrepreneurship course, skill classes India" />
-        <link rel="canonical" href="https://oll.co/student" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />

@@ -65,7 +65,6 @@ const LandingPage = () => {
         <title>OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship Classes</title>
         <meta name="description" content="OLL offers Robotics, AI, Coding, Entrepreneurship & Financial Literacy skill classes for students of all ages. Lab setups & programs for ICSE, CBSE, State Board schools. Book a free demo today!" />
         <meta name="keywords" content="OLL, OLL India, robotics classes, AI classes, coding for kids, entrepreneurship classes, financial literacy, STEM education, robotics lab setup, ICSE robotics, CBSE robotics, skill education India, future skills, coding classes near me" />
-        <link rel="canonical" href="https://oll.co/" />
 
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://oll.co/" />

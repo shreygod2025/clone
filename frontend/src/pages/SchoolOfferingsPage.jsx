@@ -149,7 +149,6 @@ const SchoolOfferingsPage = () => {
         <title>School Programs & Pricing | Robotics Lab, STEM, AI | OLL</title>
         <meta name="description" content="OLL school programs: Robotics Lab Setup, STEM Curriculum, AI & Coding for ICSE, CBSE & State Board schools. 500+ partners, 50K+ students. View pricing & case studies." />
         <meta name="keywords" content="school robotics programs, STEM curriculum pricing, robotics lab cost India, school AI program, coding for schools, ICSE CBSE robotics, school partnership, robotics case study, teacher training program, robotics lab setup cost" />
-        <link rel="canonical" href="https://oll.co/school-offerings" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />

@@ -52,7 +52,6 @@ const SchoolLandingPage = () => {
         <title>For Schools | Robotics Lab Setup, AI & STEM Programs | OLL</title>
         <meta name="description" content="Partner with OLL for Robotics Lab Setup, AI, Coding & STEM programs for ICSE, CBSE & State Board schools. NEP 2020 aligned curriculum, teacher training, E-cell setup. 500+ partner schools across India." />
         <meta name="keywords" content="school robotics lab, STEM programs for schools, ICSE robotics, CBSE robotics program, robotics lab setup India, school AI program, coding curriculum schools, E-cell for schools, NEP 2020 skill education, teacher training robotics, state board STEM" />
-        <link rel="canonical" href="https://oll.co/for-schools" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />

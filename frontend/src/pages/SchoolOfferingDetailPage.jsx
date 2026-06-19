@@ -669,7 +669,6 @@ const SchoolOfferingDetailPage = () => {
         <title>{seoTitle}</title>
         <meta name="description" content={seoDesc.substring(0, 155)} />
         <meta name="keywords" content={seoKeywords} />
-        <link rel="canonical" href={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
 
         {/* Open Graph */}
         <meta property="og:title" content={`${offering.title} | OLL School Programs`} />
