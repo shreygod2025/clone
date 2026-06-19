@@ -55,7 +55,7 @@ const DEFAULT_OG_IMAGE = `${SITE}/og-default.png`;
 const ROUTES = {
   '/': {
     title: 'OLL — Robotics, AI & Coding Classes for Kids in India | Skill Education',
-    description: "OLL is India's leading future-skills platform for kids age 4-16. Live online & in-centre Robotics, AI, Coding, Entrepreneurship & Financial Literacy classes. Trusted by 500+ schools nationwide.",
+    description: "India's leading future-skills platform for kids age 4-16. Live Robotics, AI, Coding, Entrepreneurship & Financial Literacy classes. 500+ schools trust OLL.",
     ogTitle: 'OLL — Robotics, AI & Coding Classes for Kids in India',
     ogDescription: 'Live future-skills classes for ages 4-16. Robotics, AI, Coding, Entrepreneurship & Financial Literacy. As seen on Shark Tank India.',
     ogImage: DEFAULT_OG_IMAGE,
@@ -64,7 +64,7 @@ const ROUTES = {
 
   '/workshops/fathers-day-robotics': {
     title: "Father's Day 2026 Robotics Workshop · ₹500 OFF till Sunday · Mumbai · OLL",
-    description: "Father's Day 2026 in Mumbai — spend Sunday 21 June building a real robot with your child (ages 4–12). ₹500 OFF, now ₹1,499 (was ₹1,999) — offer ends Sunday. Screen-free, hands-on, Kandivali & Mira Road.",
+    description: "Father's Day 2026 Mumbai — Sun 21 June, build a real robot with your child (ages 4–12). ₹500 OFF, now ₹1,499. Screen-free, Kandivali & Mira Road.",
     ogTitle: "Father's Day 2026 Robotics Workshop · ₹500 OFF · Mumbai · OLL",
     ogDescription: "₹500 OFF — now ₹1,499 (was ₹1,999) till Sunday only. Build a real robot with your child (ages 4–12). Screen-free · Sun 21 June · Mumbai.",
     ogImage: ogImage('https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2t1vu6l9_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_50_47%20PM.png'),
@@ -232,6 +232,134 @@ const ROUTES = {
     ogImage: DEFAULT_OG_IMAGE,
     ogType: 'website',
   },
+};
+
+// ─── Programmatically generated dynamic routes ──────────────────────────────
+// Google Search Console reported "Discovered – currently not indexed" /
+// "Alternate page with proper canonical tag" for these dynamic family pages.
+// Without route-specific HTML they all fell back to the homepage shell, so
+// Google treated them as duplicates of the homepage. Generating concrete
+// per-route entries gives each a unique title + canonical + description so
+// Google can index them as distinct pages.
+
+const SUMMER_CAMP_LOCATIONS = [
+  'mumbai', 'andheri', 'bandra', 'dombivli', 'kandivali', 'mira-road',
+  'thane', 'navi-mumbai', 'pune', 'bangalore', 'delhi', 'gurgaon',
+  'noida', 'hyderabad', 'chennai', 'kolkata', 'online',
+];
+SUMMER_CAMP_LOCATIONS.forEach((loc) => {
+  const niceName = loc.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+  ROUTES[`/summer-camp/location/${loc}`] = {
+    title: `OLL Summer Camp 2026 in ${niceName} — Robotics, AI & Coding for Kids`,
+    description: `OLL Summer Camp 2026 in ${niceName} — week-long Robotics, AI, Coding, 3D Design & Financial Literacy programs for kids age 4-16.`,
+    ogTitle: `Summer Camp 2026 in ${niceName} · OLL`,
+    ogDescription: `Week-long Robotics, AI, Coding, 3D Design & Financial Literacy camps for kids age 4-16 in ${niceName}.`,
+    ogImage: DEFAULT_OG_IMAGE,
+    ogType: 'website',
+  };
+});
+
+const SUMMER_CAMP_AGES = [
+  { slug: '4-6', label: 'Ages 4-6 (Pre-K & Lower KG)' },
+  { slug: '6-8', label: 'Ages 6-8 (Grade 1-2)' },
+  { slug: '8-10', label: 'Ages 8-10 (Grade 3-4)' },
+  { slug: '10-12', label: 'Ages 10-12 (Grade 5-6)' },
+  { slug: '12-14', label: 'Ages 12-14 (Grade 7-8)' },
+  { slug: '14-16', label: 'Ages 14-16 (Grade 9-10)' },
+];
+SUMMER_CAMP_AGES.forEach(({ slug, label }) => {
+  ROUTES[`/summer-camp/age/${slug}`] = {
+    title: `Summer Camp for ${label} — Robotics, AI & Coding | OLL`,
+    description: `OLL Summer Camp 2026 for ${label} — age-appropriate Robotics, AI, Coding & 3D Design programs across Mumbai & online.`,
+    ogTitle: `Summer Camp for ${label} · OLL`,
+    ogDescription: `Age-appropriate Robotics, AI, Coding & 3D Design camps for ${label}.`,
+    ogImage: DEFAULT_OG_IMAGE,
+    ogType: 'website',
+  };
+});
+
+const SUMMER_CAMP_SKILLS = [
+  { slug: 'robotics', label: 'Robotics' },
+  { slug: 'coding', label: 'Coding' },
+  { slug: 'ai', label: 'AI' },
+  { slug: '3d-design', label: '3D Design' },
+  { slug: 'financial-literacy', label: 'Financial Literacy' },
+  { slug: 'entrepreneurship', label: 'Entrepreneurship' },
+];
+SUMMER_CAMP_SKILLS.forEach(({ slug, label }) => {
+  ROUTES[`/summer-camp/skill/${slug}`] = {
+    title: `${label} Summer Camp 2026 for Kids — Mumbai & Online | OLL`,
+    description: `OLL Summer Camp 2026 — week-long ${label} programs for kids age 4-16, taught live in Mumbai & online by trained educators.`,
+    ogTitle: `${label} Summer Camp 2026 · OLL`,
+    ogDescription: `Week-long ${label} camps for kids age 4-16. Live online & across Mumbai.`,
+    ogImage: DEFAULT_OG_IMAGE,
+    ogType: 'website',
+  };
+});
+
+const COURSES = [
+  { slug: 'robotics', label: 'Robotics', desc: 'Live Robotics classes for kids age 4-16 — build real robots, learn microcontrollers & programming with OLL trained educators.' },
+  { slug: 'coding', label: 'Coding', desc: 'Live Coding classes for kids age 4-16 — Scratch, Python, JavaScript & full-stack web with OLL trained educators.' },
+  { slug: 'ai', label: 'AI', desc: 'Live AI classes for kids age 8-16 — build AI projects, learn LLMs, prompt engineering & ML fundamentals with OLL educators.' },
+  { slug: 'financial', label: 'Financial Literacy', desc: 'Live Financial Literacy for kids age 8-16 — money sense, budgeting, investing & entrepreneurship with OLL educators.' },
+  { slug: 'entrepreneurship', label: 'Entrepreneurship', desc: 'Live Entrepreneurship for kids age 10-16 — idea, build, pitch & sell with OLL educators and real mentors.' },
+];
+ROUTES['/courses'] = {
+  title: 'OLL Courses — Live Robotics, AI, Coding & Future-Skills Classes',
+  description: 'Browse all OLL courses — live Robotics, AI, Coding, Financial Literacy & Entrepreneurship classes for kids age 4-16.',
+  ogTitle: 'OLL Courses — Live Future-Skills for Kids',
+  ogDescription: 'Live Robotics, AI, Coding, Financial Literacy & Entrepreneurship classes for kids age 4-16.',
+  ogImage: DEFAULT_OG_IMAGE,
+  ogType: 'website',
+};
+COURSES.forEach(({ slug, label, desc }) => {
+  ROUTES[`/courses/${slug}`] = {
+    title: `${label} for Kids — Live ${label} Classes Online & in Mumbai | OLL`,
+    description: desc,
+    ogTitle: `${label} Classes for Kids · OLL`,
+    ogDescription: desc,
+    ogImage: DEFAULT_OG_IMAGE,
+    ogType: 'website',
+  };
+});
+
+const SCHOOL_OFFERINGS = [
+  { cat: 'robotics', slug: 'robotics-lab-setup', label: 'Robotics Lab Setup', desc: 'Turn-key Robotics Lab setup for schools — equipment, curriculum, teacher training & ongoing support from OLL.' },
+  { cat: 'robotics', slug: 'robotics-curriculum-kits', label: 'Robotics Curriculum & Kits', desc: 'Age-graded Robotics curriculum + student kits for schools — Grades 1-10, mapped to NEP 2020.' },
+  { cat: 'robotics', slug: 'robotics-afterschool', label: 'Robotics After-School Program', desc: 'After-school Robotics program delivered by OLL educators on campus — Grades 1-10.' },
+  { cat: 'ai', slug: 'ai-center-excellence', label: 'AI Centre of Excellence', desc: 'AI Centre of Excellence for schools — full curriculum, infra, teacher upskilling & student showcase.' },
+  { cat: 'ai', slug: 'ai-foundations', label: 'AI Foundations for Schools', desc: 'Cohort-based AI Foundations curriculum for school students — taught by OLL AI educators.' },
+  { cat: 'coding', slug: 'python-curriculum', label: 'Python Curriculum', desc: 'Grade-wise Python curriculum for schools — Grades 6-10, project-based, mapped to CBSE & ICSE.' },
+  { cat: 'coding', slug: 'coding-afterschool', label: 'Coding After-School Program', desc: 'After-school coding program for schools — Scratch, Python & web development for Grades 1-10.' },
+  { cat: 'financial-literacy', slug: 'financial-bootcamp', label: 'Financial Literacy Bootcamp', desc: 'Financial Literacy bootcamp for school students — money sense, budgeting & investing fundamentals.' },
+  { cat: 'financial-literacy', slug: 'entrepreneurship-workshop', label: 'Entrepreneurship Workshop', desc: 'Hands-on Entrepreneurship workshop for school students — idea, build, pitch & sell, with real mentors.' },
+];
+ROUTES['/school-offerings'] = {
+  title: 'OLL for Schools — Robotics, AI & Coding Programs for K-12 Schools',
+  description: 'Turn your school into a future-skills hub. OLL delivers Robotics Labs, AI Centres, Coding & Entrepreneurship programs to 500+ schools across India.',
+  ogTitle: 'OLL for Schools — Robotics, AI, Coding & Entrepreneurship',
+  ogDescription: 'Robotics Labs, AI Centres, Coding & Entrepreneurship programs for K-12 schools across India.',
+  ogImage: DEFAULT_OG_IMAGE,
+  ogType: 'website',
+};
+SCHOOL_OFFERINGS.forEach(({ cat, slug, label, desc }) => {
+  ROUTES[`/school-offerings/${cat}/${slug}`] = {
+    title: `${label} for Schools — OLL`,
+    description: desc,
+    ogTitle: `${label} · OLL for Schools`,
+    ogDescription: desc,
+    ogImage: DEFAULT_OG_IMAGE,
+    ogType: 'website',
+  };
+});
+
+ROUTES['/school'] = {
+  title: 'OLL for Schools — Robotics Labs, AI Centres & Coding Programs',
+  description: 'Turn your school into a future-skills hub. OLL Robotics Labs, AI Centres, Coding & Entrepreneurship programs serve 500+ schools across India.',
+  ogTitle: 'OLL for Schools',
+  ogDescription: 'Robotics Labs, AI Centres, Coding & Entrepreneurship programs for K-12 schools across India.',
+  ogImage: DEFAULT_OG_IMAGE,
+  ogType: 'website',
 };
 
 module.exports = { SITE, ROUTES, DEFAULT_OG_IMAGE, ogImage };
