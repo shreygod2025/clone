@@ -1894,7 +1894,7 @@ const AdminSupportUnified = () => {
           <DialogHeader className="flex-shrink-0 p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-[#D63031]" />
-              Query Conversation
+              Internal Notes
               {showReplyModal?.ticket_number && (
                 <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-slate-800 text-white ml-1">
                   #{showReplyModal.ticket_number}
