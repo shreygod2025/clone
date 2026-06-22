@@ -1,6 +1,46 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-22) — 🔥 Indexing Collapse Root Cause Found & Fixed (P0)
+
+**Symptom (Google Search Console)**: Indexed pages dropped from 11 → 5 between May 6 and June 12, 2026. ~1.24K URLs marked "Not indexed". Only `oll.co/`, `lms.oll.co/`, `oll.co/?trk=public_post_comment-text`, `oll.co/privacy`, and one blog post survived. Started immediately after the **April 28, 2026** commit (`2883845b`) introduced `frontend/public/_redirects`.
+
+**Root cause (verified with live `curl` against production `oll.co`)**:
+The new `_redirects` file added three families of SPA-fallback rules:
+```
+/courses/*                  /index.html  200
+/school-offerings/*         /index.html  200
+/summer-camp/:type/:slug    /index.html  200
+/centers/*                  /index.html  200
+```
+On **Cloudflare Pages**, `_redirects` rules with status `200` are evaluated BEFORE the static-asset lookup. So every prerendered file under `build/courses/**/index.html`, `build/school-offerings/**/index.html`, and `build/summer-camp/{location,age,skill}/**/index.html` was being CLOBBERED by the homepage SPA shell at request time. ~**44 prerendered SEO pages were serving the homepage `<title>` and `<meta description>`** — Google's duplicate-content detector then deindexed them.
+
+Verification (run before the fix):
+```
+[homepage title] ← https://oll.co/courses/robotics    (WRONG)
+[homepage title] ← https://oll.co/school-offerings/robotics/robotics-lab-setup    (WRONG)
+[homepage title] ← https://oll.co/summer-camp/skill/robotics    (WRONG)
+[homepage title] ← https://oll.co/courses    (WRONG)
+[homepage title] ← https://oll.co/school    (WRONG — deploy out of date)
+```
+
+Routes WITHOUT a matching `_redirects` rule served their prerendered HTML correctly (`/about`, `/workshops/fathers-day-robotics`, `/social-media-intern`, `/blogs`, `/faq`, `/privacy`, etc.).
+
+Secondary issue: the `/* /404.html 404` catch-all wasn't even firing — random URLs returned **200** instead of **404** on Cloudflare Pages. So it was providing zero ghost-URL cleanup while still creating a risk of accidentally killing legitimate Google-cached URLs.
+
+**Fix** (3 files):
+1. **`public/_redirects`**: Removed `/courses/*`, `/school-offerings/*`, `/summer-camp/:type/:slug`, `/centers/*` SPA-fallback rules. Removed broken `/* /404.html 404` catch-all. Kept `/blogs/*`, `/admin/*`, `/login`, funnel/checkout, and authenticated areas (these are genuinely SPA-only). Cloudflare's default SPA behavior (200 + index.html) now handles unmatched routes. Added an extensive header comment so future agents don't repeat this mistake.
+2. **`scripts/seo-prerender.cjs`**: Added `generateSitemap()` step that auto-writes `build/sitemap.xml` from `seo-routes.cjs` on every build. Old hand-maintained sitemap missed 12 summer-camp locations, 6 ages, and 1 skill route — these are now auto-included.
+3. **`public/sitemap.xml`** is now superseded by the build-generated one (66 URLs, was 51).
+
+**Verification**:
+- `yarn build` → `[seo-prerender] Done. 66 routes written, 0 failed. sitemap.xml regenerated with 66 URLs. [seo-verify] 5 passed, 0 failed.` ✅
+- All 66 prerendered HTML files present in `build/` ✅
+- `_redirects` deployed to `build/_redirects` ✅
+
+**Required next step (USER)**: Push to production (`Save to GitHub` → Cloudflare auto-deploys). After deploy: in Search Console, request re-indexing for `oll.co/courses/robotics`, `oll.co/summer-camp/skill/robotics`, `oll.co/school-offerings/robotics/robotics-lab-setup` to accelerate recovery. Indexed pages should climb back over 4-8 weeks as Google re-crawls.
+
+
 ### Latest Changes (2026-06-19 pt6) — SEO Canonical De-Duplication + Per-Route OG Images (P0)
 
 **Problem (reported via Google Search Console + Google Search "Top" tab)**:
