@@ -25,6 +25,9 @@ EXPENSE_CATEGORIES = [
     {"id": "renewal_commission_teachers", "name": "Renewal Commission (Teachers)", "description": "Teacher renewal commission"},
     {"id": "marketing_cost", "name": "Marketing Cost", "description": "Marketing and promotional expenses"},
     {"id": "technology_cost", "name": "Technology Cost", "description": "Software and technology costs"},
+    {"id": "office_expense", "name": "Office Expense", "description": "Office supplies, utilities and day-to-day office costs"},
+    {"id": "rent", "name": "Rent", "description": "Office, warehouse or facility rent"},
+    {"id": "employee_welfare", "name": "Employee Welfare", "description": "Employee benefits, meals, team activities and welfare"},
     {"id": "other", "name": "Other Expenses", "description": "Miscellaneous expenses"},
 ]
 

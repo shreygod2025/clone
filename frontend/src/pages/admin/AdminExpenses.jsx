@@ -299,6 +299,9 @@ const AdminExpenses = () => {
       renewal_commission_teachers: 'bg-cyan-100 text-cyan-700',
       marketing_cost: 'bg-red-100 text-red-700',
       technology_cost: 'bg-violet-100 text-violet-700',
+      office_expense: 'bg-stone-100 text-stone-700',
+      rent: 'bg-yellow-100 text-yellow-700',
+      employee_welfare: 'bg-emerald-100 text-emerald-700',
       other: 'bg-slate-100 text-slate-700'
     };
     return colors[categoryId] || colors.other;
