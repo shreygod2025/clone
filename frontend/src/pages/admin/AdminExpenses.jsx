@@ -27,11 +27,15 @@ const normalizeVendorUrl = (url) => {
     .replace(/https?:\/\/[^/]*\.stage-preview\.emergentagent\.com/g, VENDOR_HOST);
 };
 
-// Route all vendor/Cloudinary file URLs through backend proxy (handles auth headers)
+// Route all vendor/Cloudinary file URLs through backend proxy (handles auth headers).
+// Browser-tab opens (window.open / <a href>) drop the Authorization header, so
+// we also append the JWT as a `token` query param — the backend accepts either.
 const proxyFileUrl = (url, filename = '') => {
   if (!url) return url;
   const normalized = normalizeVendorUrl(url);
-  return `${API}/proxy/file?url=${encodeURIComponent(normalized)}&filename=${encodeURIComponent(filename)}`;
+  const jwtToken = (typeof localStorage !== 'undefined' && localStorage.getItem('oll_token')) || '';
+  const tokenParam = jwtToken ? `&token=${encodeURIComponent(jwtToken)}` : '';
+  return `${API}/proxy/file?url=${encodeURIComponent(normalized)}&filename=${encodeURIComponent(filename)}${tokenParam}`;
 };
 
 const AdminExpenses = () => {

@@ -1,6 +1,23 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-25 pt2) — Invoice File Proxy 401 Fix (P0 bug)
+
+**Symptom**: Clicking the invoice/PO/logistics/delivery-proof links on `/admin/expenses` opened a new tab showing `{"detail":"Not authenticated"}` instead of the file. URL pattern: `oll.co/api/proxy/file?url=https%3A%2F%2Fres.cloudinary.com%2F...`.
+
+**Root cause**: The `/api/proxy/file` endpoint requires `get_current_user` auth (reads JWT from `Authorization: Bearer …` header). The frontend opens the file via plain `<a target="_blank" href="/api/proxy/file?url=…">`, but **browsers do NOT propagate the Authorization header on `<a href>` / `window.open` navigations** — only XHR/fetch with explicit headers carry it. So the backend always saw zero auth on these direct-tab opens → 401.
+
+**Fix** (2 files):
+1. **`backend/routes/misc.py`** — `/api/proxy/file` now accepts the JWT via EITHER `Authorization: Bearer …` header OR a `?token=…` query parameter. JWT signature is validated explicitly using the same `SECRET_KEY` / `ALGORITHM` as `get_current_user`. Expired/invalid tokens still 401.
+2. **`frontend/src/pages/admin/AdminExpenses.jsx`** — `proxyFileUrl()` helper now appends `&token=<jwt-from-localStorage('oll_token')>` so direct-tab opens carry auth via the URL. (LocalStorage key matches `AuthContext.jsx`.)
+
+**Verified via curl**:
+- No auth → HTTP 401 ✅
+- `Authorization` header → HTTP 404 for fake URL = auth passed ✅
+- `?token=<jwt>` → HTTP 404 for fake URL = auth passed ✅
+- `?token=garbage` → HTTP 401 ✅
+
+
 ### Latest Changes (2026-06-25) — Public Receipt Portal + School Payment Comments
 
 **Feature 1: Public Receipt Portal — `/receipt`**

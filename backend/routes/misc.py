@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from .shared import db, get_current_user, get_next_ticket_number
+import jwt
 from .notifications import send_whatsapp_notification
 
 # Cloudinary lazy loader
@@ -2210,14 +2211,37 @@ def _is_trusted(url: str) -> bool:
 async def proxy_file(
     url: str,
     filename: Optional[str] = None,
-    user: dict = Depends(get_current_user),
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
 ):
     """Proxy a remote file through the backend with appropriate auth headers.
 
     Supported sources:
     - Cloudinary raw resources (generates signed URL to bypass 401)
     - VendorPlus / emergent.host files (adds X-API-Key header)
+
+    Authentication: requires a valid JWT, accepted via EITHER the
+    `Authorization: Bearer <token>` header (used by axios) OR a `?token=`
+    query parameter (used when admin opens the file URL directly in a new
+    browser tab — browsers don't propagate the Authorization header for
+    plain `<a href>` / `window.open` navigations).
     """
+    # ── Authenticate via header OR query token ────────────────────────────────
+    raw_token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        raw_token = authorization.split(" ", 1)[1].strip()
+    elif token:
+        raw_token = token.strip()
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        from .shared import SECRET_KEY, ALGORITHM
+        jwt.decode(raw_token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     if not url or not _is_trusted(url):
         raise HTTPException(status_code=400, detail="URL is not from a trusted source")
 
