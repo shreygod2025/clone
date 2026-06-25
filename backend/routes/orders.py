@@ -178,6 +178,9 @@ async def get_school_payments(
                 "invoice_url": existing_payment.get("invoice_url") if existing_payment else None,
                 "receipt_url": existing_payment.get("receipt_url") if existing_payment else None,
                 "notes": existing_payment.get("notes") if existing_payment else tranche.get("notes", ""),
+                "admin_comment": (existing_payment.get("admin_comment") if existing_payment else "") or "",
+                "admin_comment_updated_at": existing_payment.get("admin_comment_updated_at") if existing_payment else None,
+                "admin_comment_updated_by": existing_payment.get("admin_comment_updated_by") if existing_payment else None,
                 "paid_amount": existing_payment.get("paid_amount", 0) if existing_payment else 0,
                 "created_at": existing_payment.get("created_at") if existing_payment else school.get("created_at"),
             }
@@ -695,6 +698,87 @@ async def delete_student_payment(
         )
     
     return {"success": True, "message": "Payment record deleted successfully"}
+
+
+@router.patch("/orders/school-payments/{payment_id}/comment")
+async def update_school_payment_comment(
+    payment_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Add or update the admin comment for a school payment tranche.
+
+    The "school payments" rows in AdminOrders are computed from the school
+    `onboarding_data.payment_tranches[]` and an optional `payments[]` array on
+    the school document (where the payment record gets created on first edit).
+    This endpoint upserts the matching record in `school_inquiries.payments[]`
+    and writes the admin's free-text comment to `admin_comment` so admins can
+    leave notes like "follow up after Diwali" or "split payment agreed via
+    email — see thread #1234".
+    """
+    comment = (data or {}).get("comment", "")
+    if not isinstance(comment, str):
+        raise HTTPException(status_code=400, detail="`comment` must be a string.")
+    comment = comment.strip()[:2000]  # safety cap
+
+    # Payment IDs are formatted "sch-{school_id}-t{tranche_index}" or
+    # "pay-{school_id}-{tranche_index}" depending on where they were created.
+    # Both encode school_id + tranche_index in the suffix.
+    school_id = None
+    tranche_index = None
+    if "-t" in payment_id:
+        school_id = payment_id.split("-t")[0].replace("sch-", "").replace("pay-", "")
+        try:
+            tranche_index = int(payment_id.split("-t")[-1])
+        except ValueError:
+            tranche_index = None
+    if school_id is None or tranche_index is None:
+        # Last-segment fallback: pay-<schoolid>-<idx>
+        parts = payment_id.split("-")
+        if len(parts) >= 3 and parts[-1].isdigit():
+            tranche_index = int(parts[-1])
+            school_id = "-".join(parts[1:-1])
+    if not school_id or tranche_index is None:
+        raise HTTPException(status_code=400, detail=f"Could not parse payment id '{payment_id}'.")
+
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    payments = school.get("payments", []) or []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    actor = user.get("email") or user.get("name") or "admin"
+
+    # Find existing payment record by id OR by tranche_index
+    idx = next(
+        (i for i, p in enumerate(payments)
+         if (p.get("id") == payment_id) or (p.get("tranche_index") == tranche_index)),
+        None,
+    )
+    if idx is None:
+        payments.append({
+            "id": payment_id,
+            "tranche_index": tranche_index,
+            "admin_comment": comment,
+            "admin_comment_updated_at": now_iso,
+            "admin_comment_updated_by": actor,
+        })
+    else:
+        payments[idx]["admin_comment"] = comment
+        payments[idx]["admin_comment_updated_at"] = now_iso
+        payments[idx]["admin_comment_updated_by"] = actor
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {"payments": payments, "updated_at": now_iso}},
+    )
+    return {
+        "success": True,
+        "payment_id": payment_id,
+        "admin_comment": comment,
+        "admin_comment_updated_at": now_iso,
+        "admin_comment_updated_by": actor,
+    }
 
 
 @router.delete("/orders/school-payments/{payment_id}")

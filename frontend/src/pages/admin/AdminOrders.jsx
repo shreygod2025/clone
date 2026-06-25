@@ -7,7 +7,7 @@ import {
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus, ShoppingBag
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus, ShoppingBag, MessageSquare
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -192,6 +192,9 @@ const AdminOrders = () => {
   const [showStudentDetails, setShowStudentDetails] = useState(null);
   const [showViewModal, setShowViewModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [commentModal, setCommentModal] = useState(null); // { payment } — school payment comment editor
+  const [commentDraft, setCommentDraft] = useState('');
+  const [savingComment, setSavingComment] = useState(false);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(null);
   const schoolDataCache = React.useRef({});
@@ -797,6 +800,33 @@ const AdminOrders = () => {
     } catch (error) {
       console.error('Delete error:', error);
       toast.error(error.response?.data?.detail || 'Failed to delete payment');
+    }
+  };
+
+  // School payment admin-comment handler
+  const openCommentModal = (payment) => {
+    setCommentDraft(payment?.admin_comment || '');
+    setCommentModal({ payment });
+  };
+
+  const handleSaveComment = async () => {
+    if (!commentModal?.payment) return;
+    setSavingComment(true);
+    try {
+      await axios.patch(
+        `${API}/orders/school-payments/${commentModal.payment.id}/comment`,
+        { comment: commentDraft },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment saved');
+      setCommentModal(null);
+      setCommentDraft('');
+      fetchPayments();
+    } catch (error) {
+      console.error('Save comment error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save comment');
+    } finally {
+      setSavingComment(false);
     }
   };
 
@@ -1498,6 +1528,19 @@ const AdminOrders = () => {
                                   Update
                                 </Button>
                               )}
+                              {group.tranches.length === 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); openCommentModal(group.tranches[0]); }}
+                                  className={`${group.tranches[0].admin_comment ? 'border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                  data-testid={`comment-payment-${group.tranches[0].id}`}
+                                  title={group.tranches[0].admin_comment ? `Comment: ${group.tranches[0].admin_comment}` : 'Add comment'}
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 mr-1" />
+                                  {group.tranches[0].admin_comment ? 'Comment' : 'Comment'}
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1588,6 +1631,17 @@ const AdminOrders = () => {
                                   data-testid={`update-payment-${payment.id}`}
                                 >
                                   Update
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openCommentModal(payment)}
+                                  className={`${payment.admin_comment ? 'border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                  data-testid={`comment-payment-${payment.id}`}
+                                  title={payment.admin_comment ? `Comment: ${payment.admin_comment}` : 'Add comment'}
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 mr-1" />
+                                  Comment
                                 </Button>
                               </div>
                             </td>
@@ -2841,6 +2895,73 @@ const AdminOrders = () => {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+
+      {/* School Payment Comment Modal */}
+      <Dialog open={!!commentModal} onOpenChange={() => { if (!savingComment) { setCommentModal(null); setCommentDraft(''); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <MessageSquare className="w-5 h-5 text-amber-600" />
+              Payment Comment
+            </DialogTitle>
+          </DialogHeader>
+          {commentModal?.payment && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <p className="text-xs text-slate-500">School</p>
+                <p className="text-sm font-medium text-slate-900">{commentModal.payment.school_name || '—'}</p>
+                <div className="grid grid-cols-2 gap-3 mt-2 text-xs">
+                  <div>
+                    <span className="text-slate-500">Tranche:</span> <span className="font-medium text-slate-700">{commentModal.payment.tranche_info || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Amount:</span> <span className="font-medium text-slate-700">₹{(commentModal.payment.amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Comment</label>
+                <Textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  placeholder="e.g. School agreed to split into 2 tranches over email — see thread #3421. Follow up after Diwali."
+                  rows={5}
+                  maxLength={2000}
+                  className="resize-none"
+                  data-testid="payment-comment-textarea"
+                />
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-slate-500">Visible to admins only. Not sent to the school.</p>
+                  <p className="text-xs text-slate-400">{commentDraft.length}/2000</p>
+                </div>
+              </div>
+
+              {commentModal.payment.admin_comment_updated_at && (
+                <div className="text-xs text-slate-500 bg-blue-50 border border-blue-100 rounded p-2">
+                  Last updated {new Date(commentModal.payment.admin_comment_updated_at).toLocaleString('en-IN')}
+                  {commentModal.payment.admin_comment_updated_by ? ` by ${commentModal.payment.admin_comment_updated_by}` : ''}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => { setCommentModal(null); setCommentDraft(''); }} className="flex-1" disabled={savingComment}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveComment}
+                  disabled={savingComment}
+                  className="flex-1 bg-[#1E3A5F] hover:bg-[#15294a] text-white"
+                  data-testid="save-payment-comment-btn"
+                >
+                  {savingComment ? 'Saving…' : (commentModal.payment.admin_comment ? 'Update Comment' : 'Save Comment')}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

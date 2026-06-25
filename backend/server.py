@@ -4098,6 +4098,10 @@ api_router.include_router(accounts_scheduler_router)
 api_router.include_router(custom_invoices_router)
 api_router.include_router(unified_search_router)
 
+# Public receipt portal (no auth — phone+OTP gated, used by oll.co/receipt)
+from routes.public_receipts import router as public_receipts_router
+api_router.include_router(public_receipts_router)
+
 app.include_router(api_router)
 
 # SEO routes mount at the root (NOT under /api/) — Google requests

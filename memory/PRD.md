@@ -1,6 +1,33 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-25) — Public Receipt Portal + School Payment Comments
+
+**Feature 1: Public Receipt Portal — `/receipt`**
+Parents who paid for their kid's program via a school online payment link can now self-serve receipts without admin help:
+- Visit `oll.co/receipt` (also `/receipts`)
+- Enter the same 10-digit phone they used at payment
+- Receive 4-digit OTP via AiSensy WhatsApp ("otp" campaign)
+- See all PAID `school_student_payments` for that phone
+- Click "View / Download Receipt" → opens HTML receipt in new tab with browser print/save-as-PDF button
+
+Security: phone-locked. Backend issues a 30-min HS256 JWT scoped to the verified phone; `view` endpoint validates the JWT phone matches the payment's phone — prevents cross-account download even with token leak. OTP only sent if the phone has ≥1 paid record (prevents spamming random numbers).
+
+New files:
+- `backend/routes/public_receipts.py` — 3 endpoints (`/api/receipts/school-student/{send-otp,verify-otp,{payment_id}/view}`)
+- `frontend/src/pages/PublicReceiptPage.jsx` — 3-step UI (phone → OTP → list)
+- Routes added to `App.js` (`/receipt`, `/receipts`) and `seo-routes.cjs` (prerender)
+
+**Feature 2: Admin Comments on School Payments**
+Added a "Comment" action button next to Invoice / Send Email / Update on every school payment row (both single-tranche and multi-tranche sub-rows). Opens a modal with full-width textarea (2000-char cap), shows last-updated metadata, and persists to `school_inquiries.payments[].admin_comment` with `_updated_at` / `_updated_by`. Comment button glows amber when a comment exists so it's visible at a glance.
+
+New endpoint: `PATCH /api/orders/school-payments/{payment_id}/comment` — upserts the comment record by `payment_id` or `tranche_index`. GET `/api/orders/school-payments` now returns `admin_comment`, `admin_comment_updated_at`, `admin_comment_updated_by`.
+
+**Verification**:
+- Receipt: `send-otp` → AiSensy WhatsApp delivered (`submitted_message_id` returned). `verify-otp` → JWT + 1 payment returned. `view` with wrong payment id → 404. `view` without token → 422. UI screenshot confirms 3-step flow.
+- Comments: PATCH endpoint persists comment, GET endpoint returns it. UI screenshot shows modal opens with correct school/tranche context and saves successfully.
+
+
 ### Latest Changes (2026-06-22) — 🔥 Indexing Collapse Root Cause Found & Fixed (P0)
 
 **Symptom (Google Search Console)**: Indexed pages dropped from 11 → 5 between May 6 and June 12, 2026. ~1.24K URLs marked "Not indexed". Only `oll.co/`, `lms.oll.co/`, `oll.co/?trk=public_post_comment-text`, `oll.co/privacy`, and one blog post survived. Started immediately after the **April 28, 2026** commit (`2883845b`) introduced `frontend/public/_redirects`.

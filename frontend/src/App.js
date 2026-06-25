@@ -51,6 +51,7 @@ const OfferingsPage = lazy(() => import("./pages/OfferingsPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
+const PublicReceiptPage = lazy(() => import("./pages/PublicReceiptPage"));
 const SchoolTrackingPage = lazy(() => import("./pages/SchoolTrackingPage"));
 const TeamOnboardingTrack = lazy(() => import("./pages/TeamOnboardingTrack"));
 const GPOnboardingTrack = lazy(() => import("./pages/GPOnboardingTrack"));
@@ -171,6 +172,8 @@ function App() {
               <Route path="/resources/:slug" element={<ResourcesPage />} />
               <Route path="/faq" element={<FAQPage />} />
               <Route path="/faqs" element={<FAQPage />} />
+              <Route path="/receipt" element={<PublicReceiptPage />} />
+              <Route path="/receipts" element={<PublicReceiptPage />} />
               <Route path="/centers" element={<CentersPage />} />
               
               {/* URL Redirects for old/external links */}

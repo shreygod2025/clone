@@ -259,6 +259,15 @@ const ROUTES = {
     ogImage: OG.default,
     ogType: 'website',
   },
+
+  '/receipt': {
+    title: 'Download Payment Receipt — OLL',
+    description: 'Get your OLL payment receipt — enter your phone number, verify via WhatsApp OTP and download receipts for online school payments.',
+    ogTitle: 'Download your OLL payment receipt',
+    ogDescription: 'Verify your phone via WhatsApp OTP and download receipts for online school payments made on oll.co.',
+    ogImage: OG.school,
+    ogType: 'website',
+  },
 };
 
 // ─── Programmatically generated dynamic routes ──────────────────────────────
