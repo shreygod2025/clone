@@ -133,9 +133,10 @@ frontend/node_modules/.cache/default-development/155.pack
 frontend/node_modules/.cache/default-development/154.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
+# NOTE: backend/.env and frontend/.env MUST stay tracked — Emergent's deploy
+# pipeline reads them from the repo and auto-updates them with production
+# values. Excluding them caused a Cloudflare 520 outage in Jun 2026 because
+# the deployed backend started without MONGO_URL and crashed on boot.
 credentials.json
 *.pem
 *.key
