@@ -823,6 +823,8 @@ const AdminSupportUnified = () => {
 
   const [assignDeadline, setAssignDeadline] = useState('');
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [expandedReplyIds, setExpandedReplyIds] = useState(new Set());
 
   const handleCreateTicket = async () => {
     // Guard against double-submission (double-click, slow-network rage clicks).
@@ -934,15 +936,35 @@ const AdminSupportUnified = () => {
         endpoint = `${API}/support/queries/${showAssignModal.id}/assign`;
       }
       
-      await axios.post(endpoint, {
+      const res = await axios.post(endpoint, {
         assigned_to: userId,
         deadline: assignDeadline || null
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('Query assigned and notifications sent');
+
+      // Surface WhatsApp / Email delivery status returned by the backend so
+      // admin can see immediately if AiSensy credits ran out, the assignee has
+      // no phone on file, etc. (was a silent failure on production before.)
+      const notif = res?.data?.notifications || {};
+      const waOk = notif.whatsapp?.sent;
+      const emOk = notif.email?.sent;
+      if (!userId) {
+        toast.success('Query unassigned');
+      } else if (waOk && emOk) {
+        toast.success('Query assigned · WhatsApp + Email sent');
+      } else if (waOk) {
+        toast.success(`Query assigned · WhatsApp sent (email skipped: ${notif.email?.message || 'unknown'})`);
+      } else if (emOk) {
+        toast.warning(`Query assigned · Email sent · WhatsApp FAILED: ${notif.whatsapp?.message || 'unknown'}`, { duration: 8000 });
+      } else if (notif.whatsapp || notif.email) {
+        toast.warning(`Query assigned BUT both notifications failed — WA: ${notif.whatsapp?.message || '?'} · Email: ${notif.email?.message || '?'}`, { duration: 10000 });
+      } else {
+        toast.success('Query assigned');
+      }
       setShowAssignModal(null);
       setAssignDeadline('');
+      setAssignSearch('');
       fetchAllQueries();
     } catch (error) {
       console.error('Assign error:', error.response?.data || error);
@@ -1633,19 +1655,45 @@ const AdminSupportUnified = () => {
               )}
               
               {/* Replies Preview */}
-              {query.replies && query.replies.length > 0 && (
-                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs font-medium text-blue-700 mb-1 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    {query.replies.length} {query.replies.length === 1 ? 'Reply' : 'Replies'}
-                  </p>
-                  {query.replies.length > 0 && (
-                    <p className="text-sm text-blue-800 truncate">
-                      Latest: {query.replies[query.replies.length - 1]?.text?.substring(0, 80)}...
+              {query.replies && query.replies.length > 0 && (() => {
+                const last = query.replies[query.replies.length - 1];
+                const fullText = last?.text || '';
+                const isExpanded = expandedReplyIds.has(query.id);
+                const needsExpand = fullText.length > 80;
+                return (
+                  <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-700 mb-1 flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3" />
+                      {query.replies.length} {query.replies.length === 1 ? 'Reply' : 'Replies'}
                     </p>
-                  )}
-                </div>
-              )}
+                    <p
+                      className={`text-sm text-blue-800 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'}`}
+                      data-testid={`reply-preview-${query.id}`}
+                    >
+                      <span className="font-medium">Latest:</span>{' '}
+                      {isExpanded ? fullText : `${fullText.substring(0, 80)}${needsExpand ? '…' : ''}`}
+                    </p>
+                    {needsExpand && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedReplyIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(query.id)) next.delete(query.id);
+                            else next.add(query.id);
+                            return next;
+                          });
+                        }}
+                        className="mt-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        data-testid={`reply-toggle-${query.id}`}
+                      >
+                        {isExpanded ? 'Show less' : 'Show more'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Attachments Display */}
               {query.attachments && query.attachments.length > 0 && (
@@ -2085,7 +2133,7 @@ const AdminSupportUnified = () => {
       </Dialog>
 
       {/* Assign Modal */}
-      <Dialog open={!!showAssignModal} onOpenChange={() => { setShowAssignModal(null); setAssignDeadline(''); }}>
+      <Dialog open={!!showAssignModal} onOpenChange={() => { setShowAssignModal(null); setAssignDeadline(''); setAssignSearch(''); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -2112,31 +2160,56 @@ const AdminSupportUnified = () => {
                 {teamUsers.length === 0 ? (
                   <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {teamUsers.filter(u => u.is_active).map(teamUser => (
-                      <button
-                        key={teamUser.id}
-                        onClick={() => handleAssignQuery(teamUser.id)}
-                        disabled={assignSubmitting}
-                        className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
-                          showAssignModal.assigned_to === teamUser.id 
-                            ? 'border-indigo-500 bg-indigo-50' 
-                            : 'border-slate-200'
-                        } ${assignSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        data-testid={`assign-to-${teamUser.id}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-slate-900">{teamUser.name}</p>
-                            <p className="text-xs text-slate-500">{teamUser.email}</p>
-                          </div>
-                          {showAssignModal.assigned_to === teamUser.id && (
-                            <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
-                          )}
+                  <>
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <Input
+                        type="text"
+                        placeholder="Search by name or email…"
+                        value={assignSearch}
+                        onChange={(e) => setAssignSearch(e.target.value)}
+                        className="pl-9"
+                        autoFocus
+                        data-testid="assign-team-search-input"
+                      />
+                    </div>
+                    {(() => {
+                      const q = assignSearch.trim().toLowerCase();
+                      const visible = teamUsers
+                        .filter((u) => u.is_active)
+                        .filter((u) => !q || (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q));
+                      if (visible.length === 0) {
+                        return <p className="text-sm text-slate-500 py-4 text-center" data-testid="assign-team-no-match">No team members match "{assignSearch}".</p>;
+                      }
+                      return (
+                        <div className="max-h-48 overflow-y-auto space-y-2">
+                          {visible.map((teamUser) => (
+                            <button
+                              key={teamUser.id}
+                              onClick={() => handleAssignQuery(teamUser.id)}
+                              disabled={assignSubmitting}
+                              className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                                showAssignModal.assigned_to === teamUser.id
+                                  ? 'border-indigo-500 bg-indigo-50'
+                                  : 'border-slate-200'
+                              } ${assignSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              data-testid={`assign-to-${teamUser.id}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-slate-900">{teamUser.name}</p>
+                                  <p className="text-xs text-slate-500">{teamUser.email}</p>
+                                </div>
+                                {showAssignModal.assigned_to === teamUser.id && (
+                                  <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                      </button>
-                    ))}
-                  </div>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
               
@@ -2156,7 +2229,7 @@ const AdminSupportUnified = () => {
               </details>
               
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowAssignModal(null); setAssignDeadline(''); }} className="flex-1" disabled={assignSubmitting}>
+                <Button variant="outline" onClick={() => { setShowAssignModal(null); setAssignDeadline(''); setAssignSearch(''); }} className="flex-1" disabled={assignSubmitting}>
                   Cancel
                 </Button>
                 {showAssignModal.assigned_to && (

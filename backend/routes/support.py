@@ -382,8 +382,12 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         {"$set": update_data, "$push": {"activity_history": activity}}
     )
 
-    await send_assignment_notifications(query, assignee, assignee_name, query_id, deadline)
-    return {"message": "Query assigned successfully", "assigned_to": assigned_to}
+    notif_result = await send_assignment_notifications(query, assignee, assignee_name, query_id, deadline)
+    return {
+        "message": "Query assigned successfully",
+        "assigned_to": assigned_to,
+        "notifications": notif_result,
+    }
 
 
 async def _resolve_assignee(user_id: str):
@@ -400,9 +404,20 @@ async def send_assignment_notifications(query: dict, assignee: dict, assignee_na
 
     Used by both /support/queries/{id}/assign and /inquiry/queries/{id}/assign so
     the Need Help popup queries also notify the assignee.
+
+    Returns a status dict so callers can surface delivery problems to the admin
+    UI (e.g. AiSensy credit exhausted, missing phone, Resend failure):
+        { "whatsapp": {"sent": bool, "message": str},
+          "email":    {"sent": bool, "message": str} }
     """
+    result = {
+        "whatsapp": {"sent": False, "message": "not attempted"},
+        "email": {"sent": False, "message": "not attempted"},
+    }
     if not assignee:
-        return
+        result["whatsapp"]["message"] = "assignee not found"
+        result["email"]["message"] = "assignee not found"
+        return result
 
     assignee_phone = assignee.get("phone", "")
     assignee_email = assignee.get("email", "")
@@ -419,15 +434,21 @@ async def send_assignment_notifications(query: dict, assignee: dict, assignee_na
             subject = query.get("query_type", "Support Request")
             priority = (query.get("priority") or "normal").upper()
             customer_name = query.get("name", "Customer")
-            result = await send_whatsapp_notification(
+            wa_result = await send_whatsapp_notification(
                 assignee_phone, "ticket_assigned",
                 params=[assignee_name, ticket_id, subject, priority, customer_name],
                 user_name="Clone Futura Live Solutions Ltd"
             )
-            print(f"[ASSIGN] WhatsApp → {assignee_phone}: {result}")
+            result["whatsapp"] = {
+                "sent": bool(wa_result.get("success")),
+                "message": wa_result.get("message", ""),
+            }
+            print(f"[ASSIGN] WhatsApp → {assignee_phone}: {wa_result}")
         except Exception as e:
+            result["whatsapp"] = {"sent": False, "message": f"exception: {e}"}
             print(f"[ASSIGN] WhatsApp failed: {e}")
     else:
+        result["whatsapp"]["message"] = "assignee has no phone number on file"
         # Fallback: notify admin phones
         try:
             admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
@@ -472,9 +493,17 @@ async def send_assignment_notifications(query: dict, assignee: dict, assignee_na
                 """
             }
             await asyncio.to_thread(resend.Emails.send, email_params)
+            result["email"] = {"sent": True, "message": "delivered"}
             print(f"[ASSIGN] Email sent to {assignee_email}")
         except Exception as e:
+            result["email"] = {"sent": False, "message": f"exception: {e}"}
             print(f"[ASSIGN] Email failed: {e}")
+    elif not assignee_email:
+        result["email"]["message"] = "assignee has no email on file"
+    elif not resend_ready:
+        result["email"]["message"] = "Resend API key not configured"
+
+    return result
 
 @router.post("/support/queries/{query_id}/notes")
 async def add_query_note(query_id: str, data: dict, user: dict = Depends(get_current_user)):

@@ -379,6 +379,10 @@ const AdminGrowthPartners = () => {
 
   const handleCompleteStep = async () => {
     if (!showStepModal) return;
+    if (!showStepModal.onboardingId) {
+      toast.error('Cannot complete step — onboarding record is missing. Try refreshing the page.');
+      return;
+    }
     try {
       await axios.post(`${API}/gp-onboarding/${showStepModal.onboardingId}/complete-step`, {
         step: showStepModal.step,
@@ -389,7 +393,9 @@ const AdminGrowthPartners = () => {
       setStepData({});
       fetchGpOnboardings();
     } catch (error) {
-      toast.error('Failed to complete step');
+      const detail = error.response?.data?.detail || error.response?.data?.message || error.message || 'Failed to complete step';
+      toast.error(typeof detail === 'string' ? detail : 'Failed to complete step');
+      console.error('[GP onboarding] complete-step failed:', error.response?.status, detail, { onboardingId: showStepModal.onboardingId, step: showStepModal.step });
     }
   };
 
