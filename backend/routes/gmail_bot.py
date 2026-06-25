@@ -595,6 +595,46 @@ def _static_ack(first_name: str, ticket_number: int) -> str:
     )
 
 
+def _looks_like_receipt_request(cls: dict, subject: str, body: str) -> bool:
+    """Heuristic: did the customer ask for a receipt / invoice for a payment
+    they already made? Used by the auto-ack flow to add the self-serve receipt
+    portal link (oll.co/receipt) to the reply email so parents who paid via
+    the school online payment link can pull their receipt themselves without
+    waiting for an admin response."""
+    related = (cls.get("related_to") or "").lower()
+    qtype = (cls.get("query_type") or "").lower()
+    if related == "invoice_request":
+        return True
+    text = f"{subject or ''} {body or ''}".lower()
+    # Explicit phrases — keep narrow to avoid false positives on refund
+    # requests, payment failures, discount queries etc.
+    keywords = ("receipt", "invoice", "payment proof", "bill copy", "tax invoice", "gst invoice")
+    if qtype == "payment" and any(k in text for k in keywords):
+        return True
+    return False
+
+
+RECEIPT_PORTAL_NOTICE_TEXT = (
+    "\n\nIf you're looking for the receipt of an online school payment, you can "
+    "self-download it now from our portal: https://oll.co/receipt — just enter "
+    "the phone number you used at payment and verify with a WhatsApp OTP. "
+    "For any further clarification, our team will reach out to you within 48 hours."
+)
+
+RECEIPT_PORTAL_NOTICE_HTML = (
+    '<div style="background:#f0f9ff;border-left:4px solid #1E3A5F;border-radius:8px;'
+    'padding:14px 18px;margin:18px 0;">'
+    '<p style="margin:0 0 8px;color:#1E3A5F;font-size:14px;font-weight:600;">'
+    'Need your receipt right now?</p>'
+    '<p style="margin:0;color:#334155;font-size:13.5px;line-height:1.6;">'
+    'If you paid online via the school payment link, you can self-download your '
+    'receipt at <a href="https://oll.co/receipt" style="color:#1E3A5F;font-weight:600;">'
+    'oll.co/receipt</a> — enter the phone number used at payment and verify with '
+    'a WhatsApp OTP. For any further clarification, our team will reach out within 48 hours.'
+    '</p></div>'
+)
+
+
 # ── AI classification ──────────────────────────────────────────────────────
 CLASSIFIER_PROMPT = """\
 You are a support-mail triage classifier for OLL (an EdTech company in India that runs
@@ -1164,6 +1204,23 @@ async def _sync_account(acc_doc: dict, max_messages: int = 150) -> dict:
                     body=body,
                 )
                 ack_text = ai_body or _static_ack(first_name, ticket_number)
+                # If this looks like a receipt/invoice request and we have the
+                # sender's email (we always do for Gmail-sourced tickets), point
+                # them at the self-serve receipt portal so they don't have to
+                # wait 48 h for a human reply.
+                if sender_email and _looks_like_receipt_request(cls, subject, body):
+                    # Insert before the sign-off ("Warm regards,") so the link
+                    # appears in the body, not below the signature.
+                    sign_off_idx = ack_text.lower().rfind("warm regards")
+                    if sign_off_idx > 0:
+                        ack_text = (
+                            ack_text[:sign_off_idx].rstrip()
+                            + RECEIPT_PORTAL_NOTICE_TEXT
+                            + "\n\n"
+                            + ack_text[sign_off_idx:]
+                        )
+                    else:
+                        ack_text = ack_text + RECEIPT_PORTAL_NOTICE_TEXT
                 try:
                     sent = await _send_gmail_reply(
                         account_email=email_addr,

@@ -1061,6 +1061,39 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
                 ticket_no = doc["ticket_number"]
                 query_type_label = (data.get("query_type") or "support").replace("_", " ").title()
                 preview = (data.get("message") or "")[:400]
+
+                # If the admin tagged this ticket as a receipt/invoice request,
+                # add a self-serve link to oll.co/receipt so the parent can
+                # download their receipt immediately (provided they paid via
+                # the school online payment link). Matches the Gmail bot
+                # auto-ack behaviour for consistency.
+                related = (data.get("related_to") or "").lower()
+                qtype_norm = (data.get("query_type") or "").lower()
+                msg_lower = (data.get("message") or "").lower()
+                looks_like_receipt = (
+                    related == "invoice_request"
+                    or (
+                        qtype_norm == "payment"
+                        and any(k in msg_lower for k in ("receipt", "invoice", "payment proof", "bill copy", "tax invoice", "gst invoice"))
+                    )
+                )
+                receipt_block_html = """
+                <div style="background:#f0f9ff;border-left:4px solid #1E3A5F;border-radius:8px;padding:14px 18px;margin:18px 0;">
+                    <p style="margin:0 0 8px;color:#1E3A5F;font-size:14px;font-weight:600;">Need your receipt right now?</p>
+                    <p style="margin:0;color:#334155;font-size:13.5px;line-height:1.6;">
+                        If you paid online via the school payment link, you can self-download your receipt at
+                        <a href="https://oll.co/receipt" style="color:#1E3A5F;font-weight:600;">oll.co/receipt</a> —
+                        enter the phone number used at payment and verify with a WhatsApp OTP. For any further clarification, our team will reach out within 48 hours.
+                    </p>
+                </div>
+                """ if looks_like_receipt else ""
+                receipt_block_text = (
+                    "\nIf you're looking for the receipt of an online school payment, you can "
+                    "self-download it now at https://oll.co/receipt — enter the phone number "
+                    "you used at payment and verify with a WhatsApp OTP. For any further "
+                    "clarification, our team will reach out within 48 hours.\n\n"
+                ) if looks_like_receipt else ""
+
                 html_body = f"""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a202c;">
                     <h2 style="color: #1E3A5F; margin-bottom: 8px;">We've received your query — Ticket #{ticket_no}</h2>
@@ -1071,6 +1104,7 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
                         <p style="margin: 4px 0;"><strong>Category:</strong> {query_type_label}</p>
                         {f'<p style="margin: 4px 0;"><strong>Details:</strong> {preview}{"…" if len(data.get("message") or "")>400 else ""}</p>' if preview else ""}
                     </div>
+                    {receipt_block_html}
                     <p>If your matter is urgent or you'd like to add more context, simply reply to this email and we'll prioritise it.</p>
                     <p style="margin-top: 28px;">Warm regards,<br><strong>OLL Support Team</strong><br><a href="https://oll.co" style="color: #1E3A5F;">oll.co</a></p>
                 </div>
@@ -1081,6 +1115,7 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
                     f"Ticket #: {ticket_no}\n"
                     f"Category: {query_type_label}\n"
                     + (f"Details: {preview}\n\n" if preview else "\n")
+                    + receipt_block_text
                     + "If your matter is urgent or you'd like to add more context, simply reply to this email and we'll prioritise it.\n\n"
                     f"Warm regards,\nOLL Support Team\nhttps://oll.co"
                 )

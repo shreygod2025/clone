@@ -1,6 +1,26 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-25 pt3) — Auto-ack Receipt Portal Link for Invoice Requests
+
+**What**: Whenever a customer emails (or the admin manually creates a ticket) asking for a **receipt / invoice / payment proof** and we have their email on file, the existing auto-acknowledgment email now includes a clearly-styled block pointing them at **`oll.co/receipt`** so they can self-download immediately — no waiting for a human reply.
+
+**Detection** (matches in EITHER path):
+- `related_to == "invoice_request"`, **or**
+- `query_type == "payment"` AND the message body/subject contains `receipt`, `invoice`, `payment proof`, `bill copy`, `tax invoice`, `gst invoice`
+
+Deliberately narrow — refund requests, failed-payment tickets and unrelated queries do NOT get the link (verified via unit-style check).
+
+**Implemented in BOTH ack pipelines for parity**:
+1. **`backend/routes/gmail_bot.py`** — `_looks_like_receipt_request()` + a constant `RECEIPT_PORTAL_NOTICE_TEXT` that gets injected before "Warm regards," in the AI-generated (or static-fallback) ack body. Subject to the same production-env gate as the rest of the auto-ack.
+2. **`backend/routes/support.py`** — `/api/support/queries/create` now appends a matching HTML block (styled with the OLL navy `#1E3A5F` left-border) to the Resend ack email, with a plain-text equivalent for non-HTML clients.
+
+**Copy** (verbatim):
+> *"If you paid online via the school payment link, you can self-download your receipt at oll.co/receipt — enter the phone number used at payment and verify with a WhatsApp OTP. For any further clarification, our team will reach out within 48 hours."*
+
+**Verified**: Created two test tickets via curl — receipt one logged `[support/create] ack email sent to clonefutura@gmail.com for ticket #0143`, non-receipt one was sent too with NO receipt block. Detection logic unit-checked across 5 scenarios (3 hit, 2 skip).
+
+
 ### Latest Changes (2026-06-25 pt2) — Invoice File Proxy 401 Fix (P0 bug)
 
 **Symptom**: Clicking the invoice/PO/logistics/delivery-proof links on `/admin/expenses` opened a new tab showing `{"detail":"Not authenticated"}` instead of the file. URL pattern: `oll.co/api/proxy/file?url=https%3A%2F%2Fres.cloudinary.com%2F...`.
