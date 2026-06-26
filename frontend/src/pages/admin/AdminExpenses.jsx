@@ -217,6 +217,32 @@ const AdminExpenses = () => {
     }
   };
 
+  const [syncingPos, setSyncingPos] = useState(false);
+  const handleSyncFromPOs = async () => {
+    if (syncingPos) return;
+    if (!confirm('Pull the latest kit & logistics costs from delivered POs into Expenses?\n\nThis runs the same sync the nightly cron uses — it will create any missing kit_cost / logistics_cost rows for schools whose POs were delivered but never auto-recorded.')) return;
+    setSyncingPos(true);
+    const t = toast.loading('Syncing costs from POs…');
+    try {
+      const res = await axios.post(`${API}/admin/sync-po-costs`, {}, { headers: getAuthHeaders(), timeout: 180_000 });
+      const r = res.data?.results || {};
+      const skipped = (r.skipped_pos || []).length;
+      toast.success(
+        `Sync complete — ${r.expenses_created || 0} new cost row${r.expenses_created === 1 ? '' : 's'} created across ${r.schools_processed || 0} schools.` +
+        (skipped ? `\n${skipped} PO${skipped === 1 ? '' : 's'} skipped due to name mismatch — see browser console for details.` : ''),
+        { id: t, duration: 8000 }
+      );
+      if (skipped) {
+        console.warn('[PO sync] Skipped POs (name mismatch):', r.skipped_pos);
+      }
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Sync failed', { id: t });
+    } finally {
+      setSyncingPos(false);
+    }
+  };
+
   const resetForm = () => {
     setExpenseForm({
       school_id: '',
@@ -379,6 +405,17 @@ const AdminExpenses = () => {
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Clean Duplicates
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSyncFromPOs}
+              disabled={syncingPos}
+              className="text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+              data-testid="sync-po-costs-btn"
+              title="Pull kit & logistics costs from delivered POs into Expenses"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncingPos ? 'animate-spin' : ''}`} />
+              {syncingPos ? 'Syncing…' : 'Sync Costs from POs'}
             </Button>
             <Button 
               onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}

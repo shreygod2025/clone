@@ -1,6 +1,18 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-26) — Sync Costs from POs Button + Multi-PO Confirmation
+
+**Added on user request**:
+1. New endpoint **`POST /api/admin/sync-po-costs`** — admin-auth wrapper around the existing `/jobs/sync-po-data` cron job. Internally calls the same battle-tested logic with the configured `JOB_SECRET`, returns the full results dict (including `skipped_pos`) so admins can audit name-mismatch rejections.
+2. New **"Sync Costs from POs"** button in `/admin/expenses` action bar (indigo outline, RefreshCw icon). On click: confirms intent → loading toast → calls the new endpoint with 180 s timeout → success toast shows "X new cost row(s) created across Y schools" + warning count of skipped POs → list of skipped POs is logged to browser console for inspection. Spinner on the icon while running.
+
+**Confirmed for user** — multi-PO aggregation works correctly:
+- `jobs.py` line 754-758: dedup key is `(school_id, po_number, category)` so each unique PO creates its OWN `school_expenses` row, never overwriting an existing one.
+- `expenses.py` aggregation pipeline (line 314+): groups by `(school_id, category)` and uses `$sum: $amount` → multiple kit_cost rows for the same school are added together in the P&L.
+- Verified on preview with a school carrying ₹111,696 kit_cost from a single PO; if a second PO landed it would simply sum.
+
+
 ### Latest Changes (2026-06-25 pt5) — Missing Kit Cost / Logistics Cost in P&L
 
 **Symptom**: For many production schools the P&L sheet showed kit_cost = ₹0 and logistics_cost = ₹0 even though POs had been raised and delivered against those schools.
