@@ -1929,6 +1929,23 @@ async def proxy_uploaded_file(
                     resource_type = m.group(1)
                     public_id_raw = m.group(2)
                     public_id = _re_local.sub(r'^[a-z_]+:[^/]+/', '', public_id_raw)
+                    # PRIVATE DOWNLOAD URL (highest priority)
+                    # The OLL Cloudinary account has "Restricted media types"
+                    # enabled for `raw` resources, so the public delivery URL
+                    # (even with sign_url=True) returns 401. The Admin API's
+                    # private_download_url helper bakes the api_key + a HMAC
+                    # signature into a download URL that works regardless of
+                    # delivery restrictions — this is the ONLY reliable path
+                    # for fetching MOU PDFs and similar restricted assets.
+                    try:
+                        priv_url = cl.utils.private_download_url(
+                            public_id, format="",  # public_id already carries the extension
+                            resource_type=resource_type, type="upload",
+                        )
+                        if priv_url and priv_url not in candidate_urls:
+                            candidate_urls.insert(0, priv_url)  # try FIRST
+                    except Exception as e:
+                        logging.warning(f"[FileProxy] private_download_url failed: {e}")
                     # Add the signed URL as a secondary candidate (works for
                     # account-level signed-delivery enforcement)
                     signed_url, _ = cl.utils.cloudinary_url(

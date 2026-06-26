@@ -1,6 +1,28 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-26 pt3) — MOU 502 Real Root Cause: Cloudinary Restricted Delivery
+
+**What my previous fix (pt2) missed**: I added a fast-path 302 redirect when HEAD on the Cloudinary URL returns 200. But for the OLL Cloudinary account (`dyssfvcmw`), every `raw` delivery URL returns **HTTP 401 Unauthorized** — even ones flagged as `type=upload, access_mode=None` in the Admin API. The Cloudinary account has **"Restricted media types"** enabled for `raw` resources at the account level.
+
+**Verification done in this session**:
+- Direct `GET https://res.cloudinary.com/dyssfvcmw/raw/upload/v.../oll_general/general_xyz.pdf` → `HTTP 401`
+- `cloudinary.utils.cloudinary_url(public_id, sign_url=True, type="upload")` → also `HTTP 401`
+- `type=authenticated` / `type=private` signed URLs → `HTTP 404` (resources not stored there)
+- Admin API confirms `type=upload, access_mode=None, secure_url=<same 401 URL>` — i.e. the account-level restriction is invisible to the SDK
+
+**The working path**: `cloudinary.utils.private_download_url(public_id, resource_type='raw', type='upload')` — generates a time-limited Admin-API download URL that embeds the `api_key` + HMAC signature, bypasses the delivery-restriction filter, returns `HTTP 200 + 45,759 bytes` (verified PDF magic bytes `%PDF-1.3`).
+
+**Fix** (`backend/routes/misc.py`): inserted `private_download_url` as the **first** candidate in `candidate_urls` before the existing signed/alt-type fallbacks. Tried first because it's the only one that actually works for OLL's restricted account.
+
+**Verified on preview**:
+- View mode: `HTTP 200 application/pdf 45,759 bytes 0.81 s` ✅
+- Download mode: `HTTP 200 application/pdf 45,759 bytes 0.45 s` ✅
+- Both files start with `%PDF-1.3` magic bytes ✅
+
+Production fix is automatic — same code path, same Cloudinary account.
+
+
 ### Latest Changes (2026-06-26 pt2) — MOU View/Download 502 — URGENT FIX
 
 **Symptom**: Admin clicking "View MOU" or "Download MOU" anywhere in the CRM got Cloudflare's **502 Bad Gateway — Host: Error** page. URL pattern: `oll.co/api/files/proxy?url=…cloudinary.com/dyssfvcmw/raw/upload/…`. This is a DIFFERENT endpoint (`/api/files/proxy`) than the one I fixed yesterday (`/api/proxy/file`).
