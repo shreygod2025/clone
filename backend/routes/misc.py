@@ -2287,6 +2287,7 @@ async def proxy_file(
 
     fetch_url = url
     fetch_headers: dict = {}
+    cloudinary_priv_url = None  # set below for Cloudinary; used as primary fetch URL
 
     # ── Cloudinary: generate signed URL so raw resources are accessible ──────
     if "cloudinary.com" in url:
@@ -2300,6 +2301,18 @@ async def proxy_file(
                 public_id_raw = m.group(2)
                 # Strip any Cloudinary transformation prefix (e.g. fl_attachment:...)
                 public_id = _re.sub(r'^[a-z_]+:[^/]+/', '', public_id_raw)
+                # PRIMARY: private_download_url — works even when the
+                # Cloudinary account has "Restricted media types" enabled
+                # for `raw` resources (the OLL account does — every direct
+                # delivery URL, signed or not, returns 401 without this).
+                try:
+                    cloudinary_priv_url = cl.utils.private_download_url(
+                        public_id, format="",  # public_id already carries the extension
+                        resource_type=resource_type, type="upload",
+                    )
+                except Exception as e:
+                    logging.warning(f"[Proxy] private_download_url failed ({e}); will try signed URL")
+                # SECONDARY: ordinary signed URL (kept as fallback)
                 signed_url, _ = cl.utils.cloudinary_url(
                     public_id,
                     resource_type=resource_type,
@@ -2307,7 +2320,7 @@ async def proxy_file(
                     secure=True,
                     type="upload",
                 )
-                fetch_url = signed_url
+                fetch_url = cloudinary_priv_url or signed_url
         except Exception as e:
             logging.warning(f"[Proxy] Cloudinary sign failed ({e}), trying direct fetch")
             # Fall through with original URL
@@ -2330,24 +2343,46 @@ async def proxy_file(
             )
 
         content_type = resp.headers.get("content-type", "application/octet-stream")
-        # Normalise: treat PDF API endpoints as application/pdf
+        # Normalise: Cloudinary often returns application/octet-stream for raw
+        # uploads — but if the source URL ends in a known extension we override.
         url_path = url.lower().split("?")[0]
-        if url_path.endswith(".pdf") or url_path.endswith("/pdf") or "invoice" in url_path:
-            content_type = "application/pdf"
+        ext_map = {
+            ".pdf": "application/pdf",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
+        for ext, ct in ext_map.items():
+            if url_path.endswith(ext) or "invoice" in url_path and ext == ".pdf":
+                content_type = ct
+                break
 
         disp_name = (
             filename
             or url.rstrip("/").split("/")[-1].split("?")[0]
             or "file"
         )
-        if not disp_name.endswith(".pdf") and "pdf" in content_type:
+        # If the URL is a PDF (e.g. an MOU) but the desired filename lacks the
+        # extension, append `.pdf` so the OS recognises the file after download.
+        if url_path.endswith(".pdf") and not disp_name.lower().endswith(".pdf"):
             disp_name += ".pdf"
+        elif not disp_name.endswith(".pdf") and "pdf" in content_type:
+            disp_name += ".pdf"
+
+        # Force `attachment` (browser downloads) when the caller passed a
+        # `filename` query param. That's how AdminOrders → "Download MOU"
+        # button signals intent. Without this, Content-Disposition: inline
+        # would open the file in a new tab instead of saving to disk.
+        disposition = "attachment" if filename else "inline"
 
         return StreamingResponse(
             iter([resp.content]),
             media_type=content_type,
             headers={
-                "Content-Disposition": f'inline; filename="{disp_name}"',
+                "Content-Disposition": f'{disposition}; filename="{disp_name}"',
                 "Cache-Control": "private, max-age=3600",
             },
         )
