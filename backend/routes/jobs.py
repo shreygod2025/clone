@@ -715,25 +715,95 @@ async def sync_po_data_job(secret: str = None):
                             )
                             results["po_data_synced"] += 1
             
+            # ── PO ↔ school name matching ──────────────────────────────────────
+            # Previously this was a strict case-insensitive + trimmed string
+            # equality. In production that caused dozens of POs to be silently
+            # dropped because the PO portal stored slight variants of the school
+            # name (extra "Pvt Ltd", "&" vs "and", trailing "School", curly
+            # quotes, double spaces, etc.) — the matching kit_cost /
+            # logistics_cost expense never made it into school_expenses, so
+            # /school-expenses/pnl-summary showed those costs as ₹0.
+            #
+            # We now normalize aggressively before comparing AND keep a
+            # `skipped_pos` list in `results` so the admin can see what was
+            # rejected.
+            import re as _po_re
+
+            def _norm_school_name(s: str) -> str:
+                s = (s or "").lower().strip()
+                # Replace & with "and" and unify quotes
+                s = s.replace("&", "and").replace("'", "'").replace("'", "'")
+                # Drop common non-discriminating suffixes/words
+                s = _po_re.sub(
+                    r"\b(school|skool|pvt\.?|private|ltd\.?|limited|trust|"
+                    r"educational|education|academy|institute|institution|"
+                    r"public|the|of|for)\b",
+                    " ",
+                    s,
+                )
+                # Collapse all non-alphanumerics into single spaces, then strip
+                s = _po_re.sub(r"[^a-z0-9]+", " ", s).strip()
+                s = _po_re.sub(r"\s+", " ", s)
+                return s
+
+            target_norm = _norm_school_name(school_name)
+
             # Create expenses ONLY from delivered POs
+            results.setdefault("skipped_pos", [])
             for delivered_po_summary in delivered_pos:
                 po_number = delivered_po_summary.get("po_number")
                 if not po_number:
                     continue
-                
-                # IMPORTANT: Verify this PO actually belongs to this school by checking school_name match
+
+                # IMPORTANT: Verify this PO actually belongs to this school.
+                # Prefer school_id when the PO portal exposes it (rare today
+                # but cheapest signal). Fall back to normalized name match.
                 po_school_name = delivered_po_summary.get("school_name", "")
-                if po_school_name and po_school_name.lower().strip() != school_name.lower().strip():
+                po_school_id = delivered_po_summary.get("school_id") or delivered_po_summary.get("schoolId")
+                name_match = (
+                    not po_school_name
+                    or _norm_school_name(po_school_name) == target_norm
+                    # Either name contains the other (handles "Cathedral" vs
+                    # "Cathedral & John Connon School" after normalization)
+                    or (target_norm and _norm_school_name(po_school_name) and (
+                        target_norm in _norm_school_name(po_school_name)
+                        or _norm_school_name(po_school_name) in target_norm
+                    ))
+                )
+                id_match = po_school_id and po_school_id == school_id
+                if not (name_match or id_match):
                     # PO belongs to a different school, skip it
+                    results["skipped_pos"].append({
+                        "po_number": po_number,
+                        "po_school_name": po_school_name,
+                        "expected_school": school_name,
+                        "reason": "school_name mismatch (no id provided)",
+                    })
                     continue
                     
                 detailed_po = await fetch_po_data(f"po/{po_number}")
                 if not detailed_po:
                     continue
                 
-                # Double-check school name from detailed PO
+                # Double-check school name from detailed PO using the same lenient match
                 detailed_school_name = detailed_po.get("school_name", "")
-                if detailed_school_name and detailed_school_name.lower().strip() != school_name.lower().strip():
+                detailed_school_id = detailed_po.get("school_id") or detailed_po.get("schoolId")
+                detailed_name_match = (
+                    not detailed_school_name
+                    or _norm_school_name(detailed_school_name) == target_norm
+                    or (target_norm and _norm_school_name(detailed_school_name) and (
+                        target_norm in _norm_school_name(detailed_school_name)
+                        or _norm_school_name(detailed_school_name) in target_norm
+                    ))
+                )
+                detailed_id_match = detailed_school_id and detailed_school_id == school_id
+                if not (detailed_name_match or detailed_id_match):
+                    results["skipped_pos"].append({
+                        "po_number": po_number,
+                        "po_school_name": detailed_school_name,
+                        "expected_school": school_name,
+                        "reason": "detailed PO school_name mismatch",
+                    })
                     continue
                 
                 # Auto-create expenses from delivered PO data

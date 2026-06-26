@@ -1,6 +1,29 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-25 pt5) — Missing Kit Cost / Logistics Cost in P&L
+
+**Symptom**: For many production schools the P&L sheet showed kit_cost = ₹0 and logistics_cost = ₹0 even though POs had been raised and delivered against those schools.
+
+**Root cause** (3 silent filters, all in different files):
+1. **`backend/routes/jobs.py`** (the PO ↔ school sync that auto-creates kit_cost / logistics_cost rows in `school_expenses`) used **strict case-insensitive trimmed string equality** between the PO portal's `school_name` and the school_inquiries `school_name`. Real-world variants like `Cathedral & John Connon School` vs `Cathedral and John Connon`, or `Maneckji Cooper Edu Trust School` vs `Maneckji Cooper Education Trust` silently failed → PO was skipped → no kit_cost row ever got created → P&L permanently showed ₹0.
+2. **`backend/routes/expenses.py` get_pnl_summary** only included schools with `status in [converted, active, renewed]`. Schools mid-`onboarding` or `in_progress` had real POs delivered (so kit_cost was recorded) but the school's revenue row didn't appear → those costs vanished.
+3. **`backend/routes/expenses.py` aggregation pipeline** grouped by `category` without case normalization. Any legacy/imported rows with `Kit Cost`, `KIT_COST`, etc. were bucketed as separate categories and fell into Misc instead of rolling up under `kit_cost`.
+
+**Fix** (2 files):
+- `backend/routes/jobs.py`:
+  - Added `_norm_school_name()` that strips punctuation, normalizes `&`/`and`, drops noise words (`School`, `Pvt`, `Ltd`, `Trust`, `Education`, `Academy`, `Institute`, `Public`, `The`, `of`, `for`, …), collapses whitespace, then compares.
+  - Match logic now: (a) PO portal's `school_id` if provided wins outright; (b) else normalized names equal OR one contains the other; (c) anything else is recorded in `results["skipped_pos"]` so the admin can see what was rejected and why.
+- `backend/routes/expenses.py`:
+  - P&L school filter widened to `[converted, active, renewed, onboarding, in_progress]`.
+  - Expense aggregation pipeline uses `{"$toLower": "$category"}` so case-variant entries roll up to the canonical lowercase ids.
+  - Bumped aggregation `to_list(5000)` → `to_list(10000)` for safety.
+
+**Verified** with 5 normalization test pairs — `Cathedral & John Connon School` ↔ `Cathedral and John Connon` matches, `Activity High School` vs `ABC School` correctly does NOT match.
+
+**Heads-up to user**: After redeploy, the next time the PO-sync cron runs, it will create the kit_cost / logistics_cost rows it had been skipping for months. Expect P&L numbers to update significantly for affected schools. The list of previously-skipped POs is exposed in the sync job's response as `skipped_pos` so you can audit.
+
+
 ### Latest Changes (2026-06-25 pt4) — P&L Status Mismatch + Expenses Slow Load
 
 **Issue 1: Payment status mismatch between Orders page and P&L sheet**

@@ -197,9 +197,13 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
     PARTIAL_STATUSES = {"partial", "partially_paid", "PARTIAL", "PARTIALLY_PAID"}
 
     # ── 1. Build revenue from school_inquiries ────────────────────────────────
+    # Broadened from ["converted", "active", "renewed"] to also include
+    # onboarding/in_progress — schools mid-setup already have real kit_cost
+    # and logistics_cost expenses (POs raised before final conversion). The
+    # narrower filter caused those costs to silently disappear from the P&L.
     schools = await db.school_inquiries.find(
-        {"status": {"$in": ["converted", "active", "renewed"]}},
-        {"_id": 0, "id": 1, "school_name": 1, "onboarding_data": 1, "payments": 1},
+        {"status": {"$in": ["converted", "active", "renewed", "onboarding", "in_progress"]}},
+        {"_id": 0, "id": 1, "school_name": 1, "status": 1, "onboarding_data": 1, "payments": 1},
     ).to_list(1000)
 
     school_rev: dict = {}
@@ -311,14 +315,18 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         }
 
     # ── 2. Aggregate expenses by school_id & category ─────────────────────────
+    # `$toLower` on category guards against legacy/imported rows that may have
+    # been written with mixed case ("Kit Cost", "KIT_COST", "kitCost") — those
+    # would otherwise be bucketed separately and disappear into Misc instead of
+    # rolling up under the canonical lowercase IDs in PNL_COST_KEYS.
     exp_pipeline = [
         {"$match": {"school_id": {"$exists": True, "$nin": ["", None]}}},
         {"$group": {
-            "_id": {"school_id": "$school_id", "category": "$category"},
+            "_id": {"school_id": "$school_id", "category": {"$toLower": "$category"}},
             "total": {"$sum": "$amount"},
         }},
     ]
-    exp_docs = await db.school_expenses.aggregate(exp_pipeline).to_list(5000)
+    exp_docs = await db.school_expenses.aggregate(exp_pipeline).to_list(10000)
     exp_map: dict = {}
     for row in exp_docs:
         sid = row["_id"]["school_id"]
