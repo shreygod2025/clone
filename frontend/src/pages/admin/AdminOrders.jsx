@@ -1538,16 +1538,38 @@ const AdminOrders = () => {
                                   title={group.tranches[0].admin_comment ? `Comment: ${group.tranches[0].admin_comment}` : 'Add comment'}
                                 >
                                   <MessageSquare className="w-3.5 h-3.5 mr-1" />
-                                  {group.tranches[0].admin_comment ? 'Comment' : 'Comment'}
+                                  {group.tranches[0].admin_comment ? 'Edit Comment' : 'Comment'}
                                 </Button>
                               )}
                             </div>
                           </td>
                         </tr>
+
+                        {/* Inline admin comment preview — visible without opening the modal */}
+                        {group.tranches.length === 1 && group.tranches[0].admin_comment && (
+                          <tr key={`${group.tranches[0].id}-comment`} className="bg-amber-50/40">
+                            <td colSpan={6} className="px-6 py-2 border-t border-amber-100">
+                              <div className="flex items-start gap-2 text-xs">
+                                <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" />
+                                <div className="flex-1">
+                                  <span className="font-semibold text-amber-900">Admin note:</span>{' '}
+                                  <span className="text-amber-800 whitespace-pre-wrap break-words">{group.tranches[0].admin_comment}</span>
+                                  {group.tranches[0].admin_comment_updated_by && (
+                                    <span className="ml-2 text-amber-600/70">
+                                      — {group.tranches[0].admin_comment_updated_by}
+                                      {group.tranches[0].admin_comment_updated_at && ` · ${new Date(group.tranches[0].admin_comment_updated_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' })}`}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         
                         {/* Tranche Sub-rows (only shown when expanded and has multiple tranches) */}
                         {expandedSchools[group.school_id] && group.tranches.length > 1 && group.tranches.map((payment, idx) => (
-                          <tr key={payment.id} className="bg-gradient-to-r from-slate-50 to-white hover:from-orange-50/30 hover:to-white transition-all duration-200 border-l-2 border-l-orange-200">
+                          <React.Fragment key={payment.id}>
+                          <tr className="bg-gradient-to-r from-slate-50 to-white hover:from-orange-50/30 hover:to-white transition-all duration-200 border-l-2 border-l-orange-200">
                             <td className="px-6 py-4 pl-16">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-semibold text-sm">
@@ -1641,12 +1663,33 @@ const AdminOrders = () => {
                                   title={payment.admin_comment ? `Comment: ${payment.admin_comment}` : 'Add comment'}
                                 >
                                   <MessageSquare className="w-3.5 h-3.5 mr-1" />
-                                  Comment
+                                  {payment.admin_comment ? 'Edit' : 'Comment'}
                                 </Button>
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          {/* Inline admin comment preview for this tranche */}
+                          {payment.admin_comment && (
+                            <tr key={`${payment.id}-comment`} className="bg-amber-50/40">
+                              <td colSpan={6} className="px-6 py-2 pl-16 border-t border-amber-100">
+                                <div className="flex items-start gap-2 text-xs">
+                                  <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" />
+                                  <div className="flex-1">
+                                    <span className="font-semibold text-amber-900">Admin note:</span>{' '}
+                                    <span className="text-amber-800 whitespace-pre-wrap break-words">{payment.admin_comment}</span>
+                                    {payment.admin_comment_updated_by && (
+                                      <span className="ml-2 text-amber-600/70">
+                                        — {payment.admin_comment_updated_by}
+                                        {payment.admin_comment_updated_at && ` · ${new Date(payment.admin_comment_updated_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' })}`}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
                       </React.Fragment>
                     ))
                   ) : (
