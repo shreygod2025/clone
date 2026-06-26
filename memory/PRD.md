@@ -1,6 +1,29 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-26 pt2) — MOU View/Download 502 — URGENT FIX
+
+**Symptom**: Admin clicking "View MOU" or "Download MOU" anywhere in the CRM got Cloudflare's **502 Bad Gateway — Host: Error** page. URL pattern: `oll.co/api/files/proxy?url=…cloudinary.com/dyssfvcmw/raw/upload/…`. This is a DIFFERENT endpoint (`/api/files/proxy`) than the one I fixed yesterday (`/api/proxy/file`).
+
+**Root cause**: `routes/misc.py:1838` proxy_uploaded_file buffered the ENTIRE file through the backend before responding. For MOU PDFs (often 5-15 MB) it:
+1. Generated up to 4 candidate Cloudinary URLs (direct, signed, alt resource_type, etc.)
+2. Tried each with a **30 s timeout** → worst-case `4 × 30 = 120 s` before failing
+3. Cloudflare's origin timeout is 100 s → connection killed → **502 "Host: Error"**
+
+Also memory-intensive for large files (full response held in RAM before streaming back).
+
+**Fix** (`backend/routes/misc.py`):
+1. **Fast path** — for non-download requests (the "View MOU" button), do a 4-second HEAD probe on the Cloudinary URL. If reachable → return `RedirectResponse(302)` so the browser fetches DIRECTLY from Cloudinary's edge. Zero backend buffering, no timeout pressure, leverages Cloudflare/Cloudinary's global edge instead of routing every byte through the Mumbai origin.
+2. **Slow path** — when `download=1` (forced attachment with custom filename) or HEAD fails: still proxy through the backend but shortened per-candidate timeout from `30 s → 8 s`. Worst case now `4 × 8 = 32 s`, well below Cloudflare's 100 s window.
+
+**Verified**:
+- View mode: `HTTP 302 → cloudinary.com URL` in **0.36 s** (was timing out)
+- Download mode (forced proxy): `HTTP 200 application/pdf` in **0.30 s**
+- Invalid URL still 400 ✅
+
+**🚀 Deploy needed**: Push to production. After deploy, click any "View MOU" link — should open instantly. "Download MOU" will also work (proxied, but now under the 100 s limit).
+
+
 ### Latest Changes (2026-06-26) — Sync Costs from POs Button + Multi-PO Confirmation
 
 **Added on user request**:

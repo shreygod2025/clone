@@ -1886,6 +1886,26 @@ async def proxy_uploaded_file(
                 content = None
         except Exception:
             content = None
+
+    # ── FAST PATH: 302-redirect to Cloudinary when the URL is publicly
+    # accessible. This skips backend buffering entirely (no memory pressure,
+    # no Cloudflare 100s timeout on large MOU PDFs) and lets the browser
+    # download directly from Cloudinary's edge.
+    #
+    # We only redirect when the user is NOT forcing a downloaded filename
+    # (because the Content-Disposition header has to come from the backend),
+    # AND when a quick HEAD check confirms the URL responds without auth.
+    if content is None and not download:
+        from fastapi.responses import RedirectResponse
+        fetch_url = (file_doc or {}).get("cloudinary_url") or url
+        if fetch_url.startswith(("http://", "https://")) and "cloudinary.com" in fetch_url:
+            try:
+                async with httpx.AsyncClient(timeout=4.0, follow_redirects=True) as client:
+                    head = await client.head(fetch_url)
+                if 200 <= head.status_code < 300:
+                    return RedirectResponse(url=fetch_url, status_code=302)
+            except httpx.HTTPError:
+                pass  # fall through to full proxy
     if content is None:
         fetch_url = (file_doc or {}).get("cloudinary_url") or url
         if not fetch_url.startswith(("http://", "https://")):
@@ -1933,7 +1953,10 @@ async def proxy_uploaded_file(
         last_error = None
         for cand in candidate_urls:
             try:
-                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                # 8 s per candidate × ≤4 candidates = ≤32 s total — well below
+                # Cloudflare's 100 s origin timeout. Previously 30 s × 4 could
+                # take 120 s and trigger a Cloudflare 502 "Host Error".
+                async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
                     resp = await client.get(cand)
                 if resp.status_code < 400 and len(resp.content) > 0:
                     content = resp.content
