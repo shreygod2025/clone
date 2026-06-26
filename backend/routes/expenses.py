@@ -45,11 +45,22 @@ async def get_all_school_expenses(
     category: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    limit: int = 1000,
+    skip: int = 0,
     user: dict = Depends(get_current_user)
 ):
-    """Get all expenses with optional filters"""
+    """Get all expenses with optional filters.
+
+    Performance: the previous implementation pulled up to 1000 full documents
+    (each with description, file URLs, GST breakdowns, …) and sorted by
+    `expense_date` in-memory because no index existed for that field. As the
+    collection grew this caused multi-second initial loads on /admin/expenses.
+
+    Fix: ensure an index on `expense_date` exists on first call (idempotent —
+    `create_index` is a no-op when the index already exists) and accept
+    `limit` / `skip` so the frontend can paginate.
+    """
     query = {}
-    
     if school_id:
         query["school_id"] = school_id
     if category:
@@ -61,9 +72,19 @@ async def get_all_school_expenses(
             query["expense_date"]["$lte"] = end_date
         else:
             query["expense_date"] = {"$lte": end_date}
-    
-    expenses = await db.school_expenses.find(query, {"_id": 0}).sort("expense_date", -1).to_list(1000)
-    return expenses
+
+    # Idempotent: MongoDB skips if already present. Cheap (~1ms).
+    await db.school_expenses.create_index([("expense_date", -1)])
+    await db.school_expenses.create_index([("school_id", 1), ("expense_date", -1)])
+
+    cursor = (
+        db.school_expenses
+        .find(query, {"_id": 0})
+        .sort("expense_date", -1)
+        .skip(max(0, int(skip)))
+        .limit(max(1, min(int(limit), 1000)))
+    )
+    return await cursor.to_list(length=None)
 
 
 @router.get("/school-expenses/summary")
@@ -221,10 +242,22 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
                 tot_rev_amt = amt
 
             ep   = next((p for p in existing_payments if p.get("tranche_index") == idx), None)
-            ep_status = (ep.get("status") if ep else None)
+            # Match the Orders-page status resolution: payments[] takes priority,
+            # but if that record is missing fall back to the status set directly
+            # on the tranche. Before this fix the P&L silently ignored tranches
+            # that were marked "paid" inline (via the tranche field) — causing
+            # huge "Receivable" amounts on schools that had actually been paid.
+            ep_status = (
+                ep.get("status") if ep and ep.get("status")
+                else tranche.get("status")
+            )
 
-            # Robustly coerce paid_amount (may be stored as str/int/float/None)
-            raw_paid = ep.get("paid_amount") if ep else 0
+            # Robustly coerce paid_amount (may be stored as str/int/float/None).
+            # Source-of-truth priority: payments[].paid_amount > tranche.paid_amount > 0
+            raw_paid = (
+                ep.get("paid_amount") if ep and ep.get("paid_amount") not in (None, "")
+                else tranche.get("paid_amount", 0)
+            )
             try:
                 paid = float(raw_paid or 0)
             except (TypeError, ValueError):
@@ -252,8 +285,14 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
             gst_total     += gst_amt
             received      += paid
 
-            # track online-collected separately
-            if ep and ep.get("payment_mode") in ("online", "razorpay", "cashfree", "upi"):
+            # track online-collected separately (payments[] record OR tranche field)
+            pmode = (
+                (ep or {}).get("payment_mode")
+                or tranche.get("payment_mode")
+                or tranche.get("payment_method")
+                or ""
+            )
+            if pmode in ("online", "razorpay", "cashfree", "upi"):
                 online_collected += paid
 
         if net_rev == 0 and not tranches:

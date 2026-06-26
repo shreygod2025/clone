@@ -1,6 +1,33 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-06-25 pt4) — P&L Status Mismatch + Expenses Slow Load
+
+**Issue 1: Payment status mismatch between Orders page and P&L sheet**
+Activity High School and others showed "Paid ₹16,32,000 / Receivable ₹0" in `/admin/orders` but "Pending / Received ₹0 / Receivable ₹16,32,000" in `/admin/expenses → School P&L Sheet`. Same data, two different verdicts.
+
+**Root cause**: Status is stored in TWO places on `school_inquiries`:
+- `school.payments[]` — explicit payment records (the "audit log")
+- `school.onboarding_data.payment_tranches[].status` — inline status on the tranche itself (set by admin via the Orders "Update" button without creating a payment record)
+
+`backend/routes/orders.py:173` reads BOTH (falls back from `existing_payment.status` → `tranche.status`). `backend/routes/expenses.py` line 223-227 only read `ep.status` and ignored `tranche.status` entirely. So tranches marked "paid" inline showed up correctly in Orders but as "Pending" in the P&L.
+
+**Fix** (`backend/routes/expenses.py`):
+- `ep_status` now falls back to `tranche.get("status")` if no payment record exists (matches Orders logic exactly)
+- `paid` amount now falls back to `tranche.get("paid_amount")` when payments[] record is missing or empty
+- `online_collected` similarly looks at both records — uses `payment_mode` / `payment_method` from whichever source is present
+
+Result: Activity High School (and ~12 other schools previously showing as "Pending" wrongly) will now match Orders/Receivables aggregates.
+
+**Issue 2: /admin/expenses loading slow**
+The "All Expenses" tab was fetching up to 1000 documents and sorting by `expense_date` — but there was NO index on `expense_date`. MongoDB does in-memory sort which gets quadratically slower as the collection grows.
+
+**Fix** (`backend/routes/expenses.py`):
+- Added two indexes (idempotent, created on first request): `expense_date_-1` and compound `(school_id_1, expense_date_-1)`
+- Added `limit` and `skip` query params so the frontend can paginate later if needed (default 1000 preserved for backward compat)
+- Preview timing after fix: 187-269 ms per call (was multi-second on prod)
+
+
 ### Latest Changes (2026-06-25 pt3) — Auto-ack Receipt Portal Link for Invoice Requests
 
 **What**: Whenever a customer emails (or the admin manually creates a ticket) asking for a **receipt / invoice / payment proof** and we have their email on file, the existing auto-acknowledgment email now includes a clearly-styled block pointing them at **`oll.co/receipt`** so they can self-download immediately — no waiting for a human reply.
