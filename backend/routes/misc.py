@@ -1850,10 +1850,21 @@ async def proxy_uploaded_file(
         fn = url.rsplit("/", 1)[-1]
         file_doc = await db.uploaded_files.find_one({"filename": fn})
 
-    original_name = (file_doc or {}).get("original_name") or name or "download"
+    # Caller-supplied `name` (set by the frontend `Download` button as
+    # `MOU_<SchoolName>.pdf` or similar) wins over the original-upload name —
+    # admins want files saved with the user-friendly school name, NOT the
+    # internal Cloudinary public_id (e.g. "general_1fda44b674964d5cbf40519...").
+    original_name = name or (file_doc or {}).get("original_name") or "download"
     safe_name = "".join(c if c.isalnum() or c in "._- " else "_" for c in original_name)
     if "." not in safe_name:
-        safe_name = safe_name + ".pdf"
+        # If the source URL has a known extension, use it; otherwise default to .pdf
+        url_lower = (url or "").lower().split("?")[0]
+        ext_guess = ".pdf"
+        for e in (".pdf", ".png", ".jpg", ".jpeg", ".docx", ".xlsx", ".csv", ".webp"):
+            if url_lower.endswith(e):
+                ext_guess = e
+                break
+        safe_name = safe_name + ext_guess
 
     ext = Path(safe_name).suffix.lower()
     content_types = {
