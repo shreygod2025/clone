@@ -640,7 +640,7 @@ const LandingPage = () => {
                 {[
                   { k: '1 Class / Week', v: '90 min · offline', icon: '📅', accent: '#1E3A5F' },
                   { k: 'Max 10 / Batch',  v: 'Small group',     icon: '👥', accent: '#1E3A5F' },
-                  { k: '₹1,750/mo',      v: 'Yearly · Save 15%', icon: '💸', accent: '#D63031' },
+                  { k: '₹2,000/mo',      v: 'Yearly · Save 20%', icon: '💸', accent: '#D63031' },
                   { k: 'Free Kit',       v: 'With yearly plan',  icon: '🎁', accent: '#D63031' },
                 ].map(s => (
                   <div key={s.k}
