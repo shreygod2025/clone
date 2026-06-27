@@ -1011,7 +1011,7 @@ const FutureSkillsLandingPage = () => {
             <div className="bg-white border-2 border-slate-200 rounded-3xl p-7 hover:border-[#1E3A5F] transition-all" data-testid="plan-monthly">
               <div className="text-xs font-bold tracking-widest text-slate-500 uppercase">Monthly</div>
               <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-5xl font-black text-[#0F1E33]">₹2,000</span>
+                <span className="text-5xl font-black text-[#0F1E33]">₹2,500</span>
                 <span className="text-sm text-slate-500 font-bold">/month</span>
               </div>
               <div className="text-xs text-slate-500 mt-1">Cancel anytime · Billed monthly</div>
@@ -1030,13 +1030,13 @@ const FutureSkillsLandingPage = () => {
             </div>
 
             <div className="relative bg-gradient-to-br from-[#1E3A5F] to-[#0F1E33] text-white border-2 border-[#D63031] rounded-3xl p-7 shadow-2xl shadow-blue-900/30" data-testid="plan-yearly">
-              <span className="absolute -top-3 right-6 bg-[#D63031] text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-lg shadow-[#D63031]/40">Save ₹3,000</span>
+              <span className="absolute -top-3 right-6 bg-[#D63031] text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-lg shadow-[#D63031]/40">Save 20%</span>
               <div className="text-xs font-bold tracking-widest text-[#FCA5A5] uppercase">Yearly · Best Value</div>
               <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-5xl font-black">₹1,750</span>
+                <span className="text-5xl font-black">₹2,000</span>
                 <span className="text-sm text-blue-200 font-bold">/month</span>
               </div>
-              <div className="text-xs text-blue-200 mt-1">₹21,000 billed annually</div>
+              <div className="text-xs text-blue-200 mt-1">₹24,000 billed annually</div>
               <ul className="space-y-2.5 mt-5 text-sm">
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#FCA5A5]" /> 48 classes (full year)</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#FCA5A5]" /> All 5 skill tracks</li>
@@ -1047,7 +1047,7 @@ const FutureSkillsLandingPage = () => {
               <button onClick={() => goSubscribe('yearly')}
                 className="w-full mt-6 py-3 rounded-xl bg-[#D63031] text-white font-bold hover:bg-[#B52828] transition-all shadow-lg shadow-[#D63031]/40"
                 data-testid="plan-yearly-btn">
-                Choose Yearly · Save ₹3,000
+                Choose Yearly · Save 20%
               </button>
             </div>
           </div>
