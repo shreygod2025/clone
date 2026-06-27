@@ -374,7 +374,7 @@ const FutureSkillsLandingPage = () => {
                   <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Starts at</div>
-                      <div className="text-2xl font-black text-[#0F1E33]">₹1,750<span className="text-sm text-slate-500 font-bold">/month</span></div>
+                      <div className="text-2xl font-black text-[#0F1E33]">₹2,000<span className="text-sm text-slate-500 font-bold">/month</span></div>
                     </div>
                     <span className="text-[10px] uppercase tracking-widest text-[#D63031] bg-red-50 border border-red-200 px-2 py-1 rounded-full font-bold">Kit Included</span>
                   </div>
