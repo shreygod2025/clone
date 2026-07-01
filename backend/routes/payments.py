@@ -1124,12 +1124,15 @@ async def get_school_payment_info(school_id: str):
         raise HTTPException(status_code=400, detail="No grade pricing configured for this school")
     
     # Transform grade_pricing to use 'price' key for frontend compatibility
-    # The data may have 'price_per_student' from the admin form
+    # The data may have 'price_per_student' from the admin form.
+    # Normalize grade to string+strip to handle mixed int/str/whitespace values from admin form.
     transformed_pricing = []
     for gp in grade_pricing:
         price = gp.get("price") or gp.get("price_per_student") or 0
+        raw_grade = gp.get("grade", "")
+        norm_grade = str(raw_grade).strip() if raw_grade is not None else ""
         transformed_pricing.append({
-            "grade": gp.get("grade", ""),
+            "grade": norm_grade,
             "price": float(price) if price else 0,
             "students": gp.get("students", 0)
         })
@@ -1184,13 +1187,24 @@ async def create_school_student_payment_session(data: dict):
         raise HTTPException(status_code=400, detail="Online student payment not enabled")
     
     # Validate amount matches grade pricing
+    # Normalize both sides to string+strip so mixed int/str/whitespace grades from admin form still match.
     grade_pricing = onboarding_data.get("grade_pricing", [])
-    grade_match = next((g for g in grade_pricing if g.get("grade") == grade), None)
+    normalized_grade = str(grade).strip() if grade else ""
+    grade_match = next(
+        (g for g in grade_pricing
+         if str(g.get("grade", "")).strip() == normalized_grade),
+        None
+    )
     if not grade_match:
         raise HTTPException(status_code=400, detail=f"Invalid grade: {grade}")
     
     # Handle both 'price' and 'price_per_student' field names
     expected_amount = grade_match.get("price") or grade_match.get("price_per_student") or 0
+    if not expected_amount or float(expected_amount) <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No fee configured for Grade {normalized_grade}. Please contact your school administrator."
+        )
     if float(amount) != float(expected_amount):
         raise HTTPException(status_code=400, detail=f"Amount mismatch. Expected: {expected_amount}")
     

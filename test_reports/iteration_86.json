@@ -1,0 +1,36 @@
+{
+  "summary": "Verified grade-normalization bug fix for Maneckji Cooper school payment. Backend + frontend both correctly handle mixed int/string/whitespace grade values in onboarding_data.grade_pricing. All 9 pytest cases passed. Frontend E2E confirmed Grade 3 (originally stored as INT) is selectable, displays ₹2,500 fee, and create-session returns HTTP 200 hitting Cashfree successfully.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter86_grade_normalization.py",
+    "/app/test_reports/pytest/iter86_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fix is correct and minimal — both backend endpoints (get_school_payment_info L1128-1138, create_school_student_payment_session L1190-1199) and frontend (SchoolStudentPayment.jsx L82-92 and L594-609) apply str().strip() normalization consistently.",
+    "Root cause: onboarding_data.grade_pricing was persisted with heterogeneous grade types (int vs str, and whitespace like '5 ') by the admin form. Prior strict === / == comparison silently failed for those rows.",
+    "Recommend adding server-side normalization at write-time (admin onboarding save) to prevent this at source; the read-time fix is a good compatibility layer but doesn't clean underlying data.",
+    "The added user-friendly error 'No fee configured for Grade X. Please contact your school administrator.' (L1204-1207) is helpful for cases where price is 0/None."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter86_grade_normalization.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9)",
+    "frontend": "100%"
+  },
+  "test_credentials": "Not required — /school-pay/{schoolId} is a public parent page",
+  "seed_data_creation": "PRESERVED seeded school id='test-maneckji-grade3-repro' (Maneckji Cooper Education Trust (Test Repro)) with grade_pricing containing mixed types: grades 1,2,4 as strings, grade 3 as INT, grade 5 as '5 ' with trailing whitespace. Left intact for regression tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 86 verified grade normalization fix (bug: Grade 3 payment creation was failing for Maneckji Cooper school). Reusable regression suite: /app/backend/tests/test_iter86_grade_normalization.py covers get_school_payment_info normalization, POST create-session for grade 3 (INT-typed) and grade 5 (whitespace-typed), invalid grade rejection, and all-5-grades parametrized coverage. Seeded school 'test-maneckji-grade3-repro' should remain in DB for future runs.",
+  "rca of the issue": "onboarding_data.grade_pricing[] persisted grade values with inconsistent types (int vs str) and trailing whitespace because the admin onboarding form did not coerce input. Backend/frontend both used strict equality (== / ===) comparing user-selected grade (always string) against stored grade — mismatches produced 'Invalid grade' rejections for the mismatched row only (e.g., grade 3 stored as int 3 !== '3'). Fix normalizes both sides to str(x).strip() before comparison, and the same normalization is used when transforming grade_pricing for the frontend response so dropdown values are always clean strings. Reproduction: create school with mixed-type grade_pricing (or use seeded id 'test-maneckji-grade3-repro'), open /school-pay/{id}, select Grade 3 → prior to fix, fee showed ₹0 and create-session returned 400. After fix: ₹2,500 shown and 200 returned."
+}

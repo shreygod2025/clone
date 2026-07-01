@@ -82,7 +82,11 @@ const SchoolStudentPayment = () => {
   // Update amount when grade changes
   useEffect(() => {
     if (grade && schoolInfo?.grade_pricing) {
-      const gradeInfo = schoolInfo.grade_pricing.find(g => g.grade === grade);
+      // Normalize (str + trim) on both sides to handle DB inconsistencies (e.g. "3 " vs "3", int vs str)
+      const target = String(grade).trim();
+      const gradeInfo = schoolInfo.grade_pricing.find(
+        g => String(g.grade ?? '').trim() === target
+      );
       setSelectedAmount(gradeInfo?.price || 0);
     }
   }, [grade, schoolInfo]);
@@ -591,12 +595,13 @@ const SchoolStudentPayment = () => {
                       <SelectValue placeholder="Select student's grade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {schoolInfo?.grade_pricing?.filter(g => g.grade && g.grade.toString().trim() !== '').map((g) => {
-                        const isClosed = (schoolInfo?.disabled_grades || []).includes(g.grade.toString());
+                      {schoolInfo?.grade_pricing?.filter(g => g.grade !== null && g.grade !== undefined && String(g.grade).trim() !== '').map((g) => {
+                        const normalizedGrade = String(g.grade).trim();
+                        const isClosed = (schoolInfo?.disabled_grades || []).map(x => String(x).trim()).includes(normalizedGrade);
                         return (
-                          <SelectItem key={g.grade} value={g.grade.toString()} disabled={isClosed}
+                          <SelectItem key={normalizedGrade} value={normalizedGrade} disabled={isClosed}
                             className={isClosed ? 'text-slate-400' : ''}>
-                            Grade {g.grade}{isClosed ? ' — Registration Closed' : ''}
+                            Grade {normalizedGrade}{isClosed ? ' — Registration Closed' : ''}
                           </SelectItem>
                         );
                       })}
