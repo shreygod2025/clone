@@ -23,7 +23,7 @@ const INDIAN_STATES = [
 const emptyRow = () => ({ desc: '', qty: '', rate: '' });
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('oll_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

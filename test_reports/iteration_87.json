@@ -1,0 +1,33 @@
+{
+  "summary": "Verified the Custom Invoice modal auth-token fix (localStorage key 'token' -> 'oll_token' at /app/frontend/src/pages/admin/CustomInvoiceModal.jsx L26). Backend regression (3 pytest cases: list, list-requires-auth, create/get-pdf/delete) all passed. Frontend E2E: admin login -> /admin/orders -> Custom Invoice modal -> filled form -> Generate & Download PDF fired POST /api/admin/custom-invoices successfully, SUCCESS toast 'Custom invoice saved OLL2026/139361' appeared (NOT the warning), history section auto-refreshed from 0 to 1 row, history PDF download worked with no 'Failed to download' toast, and after closing/re-opening modal the history row still persisted (GET list works with corrected auth header). Test invoice cleaned up via DELETE endpoint.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "CustomInvoiceModal (accessibility only, non-blocking)", "issues": ["Radix DialogContent missing Description/aria-describedby (console warnings)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_custom_invoices_iter87.py",
+    "/app/test_reports/pytest/iter87_custom_invoices.xml"
+  ],
+  "action_items": [
+    "OPTIONAL/NON-BLOCKING: invoice_no shown in the success toast (from frontend generateInvoicePDF, e.g. OLL2026/139361) differs from the invoice_no persisted by the backend (e.g. OLL2026/CUST-0004). The saved history row and re-downloaded PDF use the backend value. Not the reported bug but a data-consistency inconsistency worth aligning: either use backend's invoice_no in the toast (after POST response) or pass the frontend-generated one to the backend as the source of truth (payload already has 'generated_invoice_no' — backend appears to ignore it).",
+    "OPTIONAL: add DialogDescription (or aria-describedby) to CustomInvoiceModal DialogContent to silence the Radix accessibility warning."
+  ],
+  "critical_code_review_comments": [
+    "Fix at CustomInvoiceModal.jsx L26 is correct — 'oll_token' matches AuthContext source of truth.",
+    "Frontend/backend invoice_no divergence (see action_items) — the toast tells the admin one number but history/PDF store another. Confusing for support cases."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_custom_invoices_iter87.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / Dagaji03@ (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created 1 custom invoice via backend test (auto-cleaned) and 1 via UI E2E (cleaned via DELETE /api/admin/custom-invoices/{id} at end).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The reported bug is fully resolved. If touching CustomInvoiceModal again, note the invoice_no divergence between frontend PDF generator and backend storage (see action_items). Backend endpoints (list/create/get-pdf/delete) at /api/admin/custom-invoices are all working with Bearer auth (401 without token as expected).",
+  "rca of the issue": "CustomInvoiceModal.getAuthHeaders() read localStorage.getItem('token') while AuthContext writes the JWT to localStorage under key 'oll_token'. As a result every axios call from the modal (GET list, POST save, GET history PDF) went out with no Authorization header, backend get_current_user returned 403, POST save silently failed (caught in try/catch showing the 'PDF downloaded but failed to save' warning), and GET list always returned empty so the History section stayed empty. Fix: change the key to 'oll_token'. Verified via backend pytest (auth required — 401 without token, 200 with) and frontend E2E (POST returned 200, SUCCESS toast shown, history populated, history PDF downloadable)."
+}
