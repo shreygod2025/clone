@@ -1,6 +1,19 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-07-01) — `/admin/school-payments` 404 Fix
+
+**Symptom**: User reported that navigating to `oll.co/admin/school-payments` (base path, no schoolId) rendered the 404 Not Found page.
+
+**Root cause**: `frontend/src/App.js` had only `/admin/school-payments/:schoolId` defined. The base URL matched no route, so the `path="*"` catch-all rendered `NotFoundPage`.
+
+**Fix**: Added a `Navigate` redirect route in `App.js` (line 273): `/admin/school-payments` → `/admin/orders` (which defaults to the "School Payments" tab, `activeTab='school'`). The parametrized detail route is untouched.
+
+**Verified via testing_agent (iteration_85)**:
+- `/admin/school-payments` redirects to `/admin/orders` and lands on School Payments tab ✅
+- `/admin/school-payments/{schoolId}` still loads `SchoolPaymentTracker` correctly ✅
+
+
 ### Latest Changes (2026-06-26 pt3) — MOU 502 Real Root Cause: Cloudinary Restricted Delivery
 
 **What my previous fix (pt2) missed**: I added a fast-path 302 redirect when HEAD on the Cloudinary URL returns 200. But for the OLL Cloudinary account (`dyssfvcmw`), every `raw` delivery URL returns **HTTP 401 Unauthorized** — even ones flagged as `type=upload, access_mode=None` in the Admin API. The Cloudinary account has **"Restricted media types"** enabled for `raw` resources at the account level.
