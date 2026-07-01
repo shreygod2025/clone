@@ -270,6 +270,7 @@ function App() {
               <Route path="/admin/link-preview-tester" element={<ProtectedRoute><AdminLinkPreviewTester /></ProtectedRoute>} />
               <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute><AdminOnboardingTracker /></ProtectedRoute>} />
+              <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
               <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute><SchoolPaymentTracker /></ProtectedRoute>} />
               <Route path="/admin/orders" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
               <Route path="/admin/expenses" element={<ProtectedRoute><AdminExpenses /></ProtectedRoute>} />
