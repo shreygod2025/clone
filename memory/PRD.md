@@ -1,6 +1,23 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-07-01 pt2) — Maneckji Cooper School: Grade 3 Payment Creation Failure
+
+**Symptom** (production, reported by user): "For Maneckji Cooper Education Trust School, payment creation fails only for Grade 3." Grade 3 selectable in dropdown but either showed ₹0 fee or backend rejected create-session with "Invalid grade: 3" / "Missing required fields", while all other grades worked normally.
+
+**Root cause**: `school_inquiries.onboarding_data.grade_pricing[]` was persisted with inconsistent types across rows — a specific row's `grade` was stored as an **integer** (e.g. `3`) or with trailing whitespace (e.g. `"5 "`), while others were clean strings. Both backend (`payments.py`) and frontend (`SchoolStudentPayment.jsx`) used strict equality (`==` / `===`) to compare user-selected grade (always string from `<Select>`) against stored grade — so exactly the mismatched row was rejected.
+
+**Fix** — normalize `str(grade).strip()` on both sides:
+- `backend/routes/payments.py`:
+  - `get_school_payment_info` — transformed_pricing normalizes each `grade` to `str().strip()` so dropdown values are always clean.
+  - `create_school_student_payment_session` — grade match uses `str(g.get('grade','')).strip() == normalized_grade`. Also added clearer error 'No fee configured for Grade X. Please contact your school administrator.' when price is 0/None.
+- `frontend/src/pages/SchoolStudentPayment.jsx` — useEffect for `selectedAmount` uses normalized comparison; SelectItem values use `String(g.grade).trim()`.
+
+**Verified by testing_agent (iteration_86)**: 100% pass (9/9 pytest + frontend E2E). Seeded regression school `test-maneckji-grade3-repro` left in DB with intentionally mixed-type grade_pricing. New pytest suite at `/app/backend/tests/test_iter86_grade_normalization.py`.
+
+**Note for user (production)**: The fix is data-tolerant so no cleanup is required. However, the underlying source data for Maneckji Cooper still has the mixed type — the tolerance layer will handle it correctly going forward.
+
+
 ### Latest Changes (2026-07-01) — `/admin/school-payments` 404 Fix
 
 **Symptom**: User reported that navigating to `oll.co/admin/school-payments` (base path, no schoolId) rendered the 404 Not Found page.
