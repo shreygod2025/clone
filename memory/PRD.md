@@ -1,6 +1,18 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-07-01 pt3) — Custom Invoice PDF Not Saving (Admin → Orders)
+
+**Symptom** (production, reported by user): In Admin → Orders → School Payments → "Custom Invoice" modal, clicking "Generate & Download PDF" downloaded the PDF locally but the record never persisted — the History section stayed empty and admins couldn't re-download later. Users saw a warning toast 'PDF downloaded but failed to save to history' instead of the expected success toast.
+
+**Root cause**: `CustomInvoiceModal.jsx` line 26 read `localStorage.getItem('token')` — WRONG key. The entire rest of the app (AuthContext.jsx, SchoolPaymentTracker.jsx, AdminEducators.jsx, etc.) uses `oll_token`. Result: every authenticated axios call from the modal (GET list, POST save, GET history PDF) went out without an Authorization header → backend `get_current_user` returned 403 → the save silently failed (caught by the try/catch that only shows the warning toast).
+
+**Fix**: One-line change in `frontend/src/pages/admin/CustomInvoiceModal.jsx` L26 — `localStorage.getItem('token')` → `localStorage.getItem('oll_token')`. Now all three calls (list, create, download) authenticate correctly.
+
+**Verified by testing_agent (iteration_87)**: 100% pass on backend (3 pytest cases: list/list-requires-auth/create-get-delete) + frontend E2E (Generate PDF → SUCCESS toast → history populates → re-download works → persists across modal open/close). New regression suite at `/app/backend/tests/test_custom_invoices_iter87.py`.
+
+**Note for user (production)**: Fix is in preview only. Deploy via "Save to GitHub" to push to https://eventmate-19.emergent.host.
+
 ### Latest Changes (2026-07-01 pt2) — Maneckji Cooper School: Grade 3 Payment Creation Failure
 
 **Symptom** (production, reported by user): "For Maneckji Cooper Education Trust School, payment creation fails only for Grade 3." Grade 3 selectable in dropdown but either showed ₹0 fee or backend rejected create-session with "Invalid grade: 3" / "Missing required fields", while all other grades worked normally.
