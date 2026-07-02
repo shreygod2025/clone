@@ -3,8 +3,9 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Plus, User, Mail, Key, Shield, CheckCircle, XCircle, 
-  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone
+  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -71,6 +72,7 @@ const DEFAULT_ROLES = [
 
 const AdminUsers = () => {
   const { getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -111,11 +113,19 @@ const AdminUsers = () => {
     name: '',
     description: '',
     permissions: [],
+    kpis: [],
     is_active: true
   });
 
+  // KPI catalog (grouped by category) for role builder
+  const [kpiCatalog, setKpiCatalog] = useState({ grouped: {}, catalog: [] });
+
   useEffect(() => {
     fetchData();
+    // Fetch KPI catalog for role builder
+    axios.get(`${API}/kpis/catalog`, { headers: getAuthHeaders() })
+      .then(res => setKpiCatalog(res.data || { grouped: {}, catalog: [] }))
+      .catch(() => setKpiCatalog({ grouped: {}, catalog: [] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -289,8 +299,18 @@ const AdminUsers = () => {
       name: '',
       description: '',
       permissions: [],
+      kpis: [],
       is_active: true
     });
+  };
+
+  const toggleRoleKpi = (kpiId) => {
+    const current = roleForm.kpis || [];
+    if (current.includes(kpiId)) {
+      setRoleForm({ ...roleForm, kpis: current.filter(k => k !== kpiId) });
+    } else {
+      setRoleForm({ ...roleForm, kpis: [...current, kpiId] });
+    }
   };
 
   const toggleRolePermission = (permission) => {
@@ -496,6 +516,14 @@ const AdminUsers = () => {
                         {user.is_active !== false ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </button>
                       <button
+                        onClick={() => navigate(`/admin/users/${user.id}/performance`)}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600"
+                        title="View performance"
+                        data-testid={`user-performance-btn-${user.id}`}
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => {
                           setEditUser(user);
                           setUserForm({
@@ -584,6 +612,7 @@ const AdminUsers = () => {
                             name: role.name,
                             description: role.description || '',
                             permissions: role.permissions || [],
+                            kpis: role.kpis || [],
                             is_active: role.is_active !== false
                           });
                           setShowAddRoleModal(true);
@@ -830,6 +859,45 @@ const AdminUsers = () => {
               <p className="text-xs text-slate-500 mt-1">
                 Selected: {roleForm.permissions.length} / {ALL_SECTIONS.length}
               </p>
+            </div>
+
+            {/* KPI Selection (for performance tracking) */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Performance KPIs</label>
+              <p className="text-xs text-slate-500 mb-2">Select the KPIs to track for users under this role. Visible on each user's Performance page.</p>
+              <div className="space-y-3 max-h-72 overflow-y-auto border rounded-lg p-3" data-testid="role-kpi-selector">
+                {Object.keys(kpiCatalog.grouped || {}).length === 0 && (
+                  <p className="text-xs text-slate-500 italic">Loading KPI catalog…</p>
+                )}
+                {Object.entries(kpiCatalog.grouped || {}).map(([category, kpis]) => (
+                  <div key={category}>
+                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">{category}</p>
+                    <div className="space-y-1.5">
+                      {kpis.map(kpi => (
+                        <label
+                          key={kpi.id}
+                          className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer text-sm transition-all ${
+                            (roleForm.kpis || []).includes(kpi.id)
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'bg-white border border-slate-200 hover:border-slate-300'
+                          }`}
+                          data-testid={`role-kpi-option-${kpi.id}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(roleForm.kpis || []).includes(kpi.id)}
+                            onChange={() => toggleRoleKpi(kpi.id)}
+                            className="w-4 h-4"
+                          />
+                          <span className="flex-1">{kpi.label}</span>
+                          <span className="text-xs text-slate-400">{kpi.unit}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Selected: {(roleForm.kpis || []).length}</p>
             </div>
 
             <div className="flex gap-3 pt-2">

@@ -118,6 +118,7 @@ class Role(BaseModel):
     name: str
     description: str = ""
     permissions: List[str] = []
+    kpis: List[str] = []  # KPI ids from KPI_CATALOG (see routes/kpis.py)
     is_system: bool = False
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -325,6 +326,7 @@ async def create_role(data: dict, user: dict = Depends(get_current_user)):
         name=data.get("name", ""),
         description=data.get("description", ""),
         permissions=data.get("permissions", []),
+        kpis=data.get("kpis", []),
         is_system=data.get("is_system", False),
         is_active=data.get("is_active", True)
     )
@@ -345,9 +347,9 @@ async def update_role(role_id: str, data: dict, user: dict = Depends(get_current
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
     
-    # For system roles, only allow updating permissions and description
+    # For system roles, only allow updating permissions, description, and kpis
     if role.get("is_system"):
-        allowed_fields = ["permissions", "description"]
+        allowed_fields = ["permissions", "description", "kpis"]
         update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
     else:
         update_data = {k: v for k, v in data.items() if v is not None and k not in ["id", "created_at"]}
