@@ -40,6 +40,13 @@ KPI_CATALOG = [
     {"id": "b2c_bookings_closed", "label": "No. of bookings/orders closed", "category": "Sales — B2C", "unit": "count"},
     {"id": "b2c_conversion_rate", "label": "Conversion rate (%)", "category": "Sales — B2C", "unit": "%"},
     {"id": "b2c_revenue_generated", "label": "Revenue generated (₹)", "category": "Sales — B2C", "unit": "₹"},
+
+    # Task & Project Delivery — sourced from `tasks` and `projects`
+    {"id": "tasks_assigned", "label": "Tasks assigned", "category": "Task & Project Delivery", "unit": "count"},
+    {"id": "tasks_completed", "label": "Tasks completed", "category": "Task & Project Delivery", "unit": "count"},
+    {"id": "tasks_overdue", "label": "Tasks overdue", "category": "Task & Project Delivery", "unit": "count"},
+    {"id": "projects_member_of", "label": "Projects assigned to", "category": "Task & Project Delivery", "unit": "count"},
+    {"id": "projects_leading", "label": "Projects leading", "category": "Task & Project Delivery", "unit": "count"},
 ]
 
 KPI_BY_ID = {k["id"]: k for k in KPI_CATALOG}
@@ -237,6 +244,43 @@ async def _compute_b2c_metrics(user_id: str, start_iso: str, end_iso: str) -> di
     }
 
 
+async def _compute_task_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
+    """Task & Project Delivery metrics.
+
+    - tasks_assigned:   tasks with assigned_to=user AND created_at in month
+    - tasks_completed:  tasks with assigned_to=user AND completed_at in month
+    - tasks_overdue:    tasks with assigned_to=user AND due_date < now AND status != completed
+                        (real-time snapshot — not month-scoped so admin sees the live count)
+    - projects_member_of: projects where member_ids contains user (all-time)
+    - projects_leading:   projects where lead_id == user (all-time)
+    """
+    tasks_assigned = await db.tasks.count_documents({
+        "assigned_to": user_id,
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    tasks_completed = await db.tasks.count_documents({
+        "assigned_to": user_id,
+        "status": "completed",
+        "completed_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    now_iso = datetime.now(timezone.utc).isoformat()
+    tasks_overdue = await db.tasks.count_documents({
+        "assigned_to": user_id,
+        "due_date": {"$lt": now_iso, "$ne": None},
+        "status": {"$ne": "completed"},
+    })
+    projects_member_of = await db.projects.count_documents({"member_ids": user_id})
+    projects_leading = await db.projects.count_documents({"lead_id": user_id})
+
+    return {
+        "tasks_assigned": tasks_assigned,
+        "tasks_completed": tasks_completed,
+        "tasks_overdue": tasks_overdue,
+        "projects_member_of": projects_member_of,
+        "projects_leading": projects_leading,
+    }
+
+
 @router.get("/users/{user_id}/performance")
 async def get_user_performance(
     user_id: str,
@@ -280,6 +324,7 @@ async def get_user_performance(
     needs_support = any(k.startswith("support_") for k in role_kpi_ids)
     needs_b2b = any(k.startswith("b2b_") for k in role_kpi_ids)
     needs_b2c = any(k.startswith("b2c_") for k in role_kpi_ids)
+    needs_tasks = any(k.startswith("tasks_") or k.startswith("projects_") for k in role_kpi_ids)
 
     if needs_support:
         metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
@@ -287,6 +332,8 @@ async def get_user_performance(
         metrics.update(await _compute_b2b_metrics(user_id, start_iso, end_iso))
     if needs_b2c:
         metrics.update(await _compute_b2c_metrics(user_id, start_iso, end_iso))
+    if needs_tasks:
+        metrics.update(await _compute_task_metrics(user_id, start_iso, end_iso))
 
     # Only return the KPIs actually on the role (with catalog metadata for UI)
     kpis_out = []

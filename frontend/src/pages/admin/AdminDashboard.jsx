@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
-  Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2, Send, ShoppingBag
+  Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2, Send, ShoppingBag,
+  CheckSquare, FolderKanban
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -30,6 +31,8 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
+    { path: '/admin/tasks', icon: CheckSquare, label: 'Tasks', permission: null },
+    { path: '/admin/projects', icon: FolderKanban, label: 'Projects', permission: null },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
@@ -153,6 +156,87 @@ const AdminLayout = ({ children, title }) => {
   );
 };
 
+// ── Today's Tasks widget (shown on Admin Dashboard) ──────────────────────────
+const TodaysTasksWidget = () => {
+  const { getAuthHeaders } = useAuth();
+  const [today, setToday] = useState([]);
+  const [overdue, setOverdue] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get(`${API}/tasks/today`, { headers: getAuthHeaders() })
+      .then(r => {
+        setToday(r.data?.today || []);
+        setOverdue(r.data?.overdue || []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [getAuthHeaders]);
+
+  const advance = async (t) => {
+    const next = t.status === 'pending' ? 'in_progress' : 'completed';
+    try {
+      await axios.patch(`${API}/tasks/${t.id}`, { status: next }, { headers: getAuthHeaders() });
+      // Refresh
+      const r = await axios.get(`${API}/tasks/today`, { headers: getAuthHeaders() });
+      setToday(r.data?.today || []);
+      setOverdue(r.data?.overdue || []);
+    } catch { /* noop */ }
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="mb-8" data-testid="todays-tasks-widget">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-slate-600" />
+          Today&apos;s Tasks
+          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{today.length}</span>
+          {overdue.length > 0 && (
+            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{overdue.length} overdue</span>
+          )}
+        </h3>
+        <Link to="/admin/tasks" className="text-xs text-blue-600 hover:underline">View all →</Link>
+      </div>
+
+      {today.length === 0 && overdue.length === 0 ? (
+        <div className="bg-white rounded-xl border p-6 text-center text-slate-500 text-sm">
+          No tasks due today. Nice work.
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border divide-y">
+          {[...overdue, ...today].map(t => (
+            <div key={t.id} className="flex items-center gap-3 p-3 hover:bg-slate-50" data-testid={`dashboard-task-${t.id}`}>
+              <div className={`w-2 h-2 rounded-full ${
+                t.priority === 'urgent' ? 'bg-red-500' :
+                t.priority === 'high' ? 'bg-amber-500' :
+                t.priority === 'medium' ? 'bg-blue-500' : 'bg-slate-300'
+              }`} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 truncate">{t.title}</p>
+                <p className="text-xs text-slate-500">
+                  {t.code}{t.due_date ? ` · Due ${new Date(t.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
+                  {overdue.some(o => o.id === t.id) && <span className="text-red-600 font-medium"> · Overdue</span>}
+                </p>
+              </div>
+              {t.status !== 'completed' && (
+                <button
+                  onClick={() => advance(t)}
+                  className="text-xs font-medium text-blue-600 hover:underline shrink-0"
+                  data-testid={`dashboard-task-advance-${t.id}`}
+                >
+                  {t.status === 'pending' ? 'Start' : 'Complete'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminDashboard = () => {
   const { user, getAuthHeaders } = useAuth();
   const [stats, setStats] = useState({
@@ -264,6 +348,9 @@ const AdminDashboard = () => {
               </Link>
             ))}
           </div>
+
+          {/* Today's Tasks */}
+          <TodaysTasksWidget />
 
           {/* Overdue Section - Show first as it's urgent */}
           {stats.total_overdue > 0 && (

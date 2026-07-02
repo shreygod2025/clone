@@ -105,6 +105,8 @@ const AdminTeamApplications = lazy(() => import("./pages/admin/AdminTeamApplicat
 const AdminTeamOnboarding = lazy(() => import("./pages/admin/AdminTeamOnboarding"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const UserPerformance = lazy(() => import("./pages/admin/UserPerformance"));
+const AdminTasks = lazy(() => import("./pages/admin/AdminTasks"));
+const AdminProjects = lazy(() => import("./pages/admin/AdminProjects"));
 const AdminRequirements = lazy(() => import("./pages/admin/AdminRequirements"));
 const AdminSupportUnified = lazy(() => import("./pages/admin/AdminSupportUnified"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
@@ -282,6 +284,8 @@ function App() {
               <Route path="/admin/team-onboarding" element={<ProtectedRoute><AdminTeamOnboarding /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
               <Route path="/admin/users/:id/performance" element={<ProtectedRoute><UserPerformance /></ProtectedRoute>} />
+              <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasks /></ProtectedRoute>} />
+              <Route path="/admin/projects" element={<ProtectedRoute><AdminProjects /></ProtectedRoute>} />
               <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
               <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
               <Route path="/admin/reports" element={<ProtectedRoute><AdminReports /></ProtectedRoute>} />
