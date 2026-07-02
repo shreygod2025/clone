@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   Plus, Calendar, User as UserIcon, Flag, Trash2, X, Filter, Search,
   CheckCircle2, Circle, Clock, MessageSquare, ChevronDown, ChevronRight,
-  Check, XCircle, Send, ListChecks
+  Check, XCircle, Send, ListChecks, Repeat, Link2, Tag as TagIcon, FolderKanban as FolderIcon
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -126,10 +126,12 @@ const AdminTasks = () => {
 
   const emptyForm = () => ({
     title: '', description: '',
-    assigned_to: currentUserId || '',   // Default to SELF
+    assigned_to: currentUserId || '',
     priority: 'medium',
     due_date: '', project_id: '', tags: '',
     parent_task_id: null,
+    gdrive_link: '',
+    repeat_freq: '',
   });
   const [form, setForm] = useState(emptyForm());
 
@@ -192,8 +194,25 @@ const AdminTasks = () => {
         project_id: form.project_id || null,
         parent_task_id: form.parent_task_id || null,
         tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        gdrive_link: form.gdrive_link || null,
       };
       await axios.post(`${API}/tasks`, body, { headers: getAuthHeaders() });
+
+      // If a repeat is set, create a scheduled_task rule so it recurs
+      if (form.repeat_freq && !form.parent_task_id) {
+        try {
+          await axios.post(`${API}/scheduled-tasks`, {
+            title: form.title.trim(),
+            description: form.description,
+            priority: form.priority,
+            frequency: form.repeat_freq,
+            assigned_to: form.assigned_to,
+            project_id: form.project_id || null,
+            is_active: true,
+          }, { headers: getAuthHeaders() });
+        } catch { /* non-blocking */ }
+      }
+
       toast.success(form.parent_task_id ? 'Sub-task created' : 'Task created');
       setShowCreate(false);
       setForm(emptyForm());
@@ -486,76 +505,247 @@ const TaskRow = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSu
   );
 };
 
-// ── Create modal ─────────────────────────────────────────────────────────────
-const TaskCreateModal = ({ form, setForm, users, projects, currentUserId, onClose, onSubmit }) => (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-    <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="new-task-modal">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-slate-900">
-          {form.parent_task_id ? 'Create Sub-Task' : 'Create Task'}
-        </h2>
-        <button onClick={onClose}><X className="w-5 h-5" /></button>
-      </div>
-      <div className="space-y-3">
-        <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Title *</label>
-          <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="task-title-input" autoFocus />
+// ── Chip button (hoisted so it's stable across renders) ─────────────────────
+const Chip = ({ onClick, icon: Icon, label, active, dotColor, testid }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+      active
+        ? 'bg-blue-50 border-blue-300 text-blue-700'
+        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+    }`}
+    data-testid={testid}
+  >
+    {dotColor && <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />}
+    {Icon && <Icon className="w-3.5 h-3.5" />}
+    {label}
+  </button>
+);
+
+// ── Create modal (chip-based redesign) ───────────────────────────────────────
+const TaskCreateModal = ({ form, setForm, users, projects, currentUserId, onClose, onSubmit }) => {
+  const [openPanel, setOpenPanel] = useState(null);
+  const [tagsInput, setTagsInput] = useState(form.tags || '');
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        onSubmit();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, onSubmit]);
+
+  const selectedAssignee = users.find(u => u.id === form.assigned_to);
+  const selectedProject  = projects.find(p => p.id === form.project_id);
+  const pMeta = PRIORITY_META[form.priority] || PRIORITY_META.medium;
+
+  const closePanel = () => setOpenPanel(null);
+  const togglePanel = (k) => setOpenPanel(o => (o === k ? null : k));
+  const commitTags = () => { setForm({ ...form, tags: tagsInput }); closePanel(); };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()} data-testid="new-task-modal">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3">
+          <p className="text-xs font-semibold text-blue-600">
+            {form.parent_task_id ? 'New sub-task' : 'New task'}
+          </p>
+          <button onClick={onClose} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-500" /></button>
         </div>
-        <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Description</label>
-          <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg text-sm min-h-[80px]" placeholder="Details, links, context…" />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">
-            Assign to * <span className="text-slate-400 font-normal">(default: yourself)</span>
-          </label>
-          <AssigneeCombo value={form.assigned_to}
-            onChange={(id) => setForm({ ...form, assigned_to: id })}
-            users={users} currentUserId={currentUserId} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Priority</label>
-            <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="task-priority-select">
-              {Object.entries(PRIORITY_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-            </select>
+
+        {/* Body */}
+        <div className="px-6 pb-5 space-y-3">
+          {/* Title (huge input) */}
+          <input
+            autoFocus
+            type="text"
+            value={form.title}
+            onChange={e => setForm({ ...form, title: e.target.value })}
+            placeholder={form.parent_task_id ? "Sub-task name…" : "Task name… (Cmd+Enter to create)"}
+            className="w-full px-4 py-3 text-lg font-medium border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400"
+            data-testid="task-title-input"
+          />
+
+          {/* Description */}
+          <textarea
+            value={form.description}
+            onChange={e => setForm({ ...form, description: e.target.value })}
+            placeholder="Add a description… what does done look like?"
+            className="w-full px-4 py-3 border rounded-xl text-sm min-h-[110px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400 resize-none"
+          />
+
+          {/* Chip row 1 */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+              <span className="w-2 h-2 bg-slate-400 rounded-full" /> TO DO
+            </span>
+            <Chip
+              onClick={() => togglePanel('assignee')}
+              icon={UserIcon}
+              label={selectedAssignee ? `${selectedAssignee.name}${selectedAssignee.id === currentUserId ? ' (you)' : ''}` : 'Assignee'}
+              active={!!selectedAssignee && selectedAssignee.id !== currentUserId}
+              testid="chip-assignee"
+            />
+            <Chip
+              onClick={() => togglePanel('due')}
+              icon={Calendar}
+              label={form.due_date ? new Date(form.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Due date'}
+              active={!!form.due_date}
+              testid="chip-due"
+            />
+            <Chip
+              onClick={() => togglePanel('priority')}
+              icon={Flag}
+              label={pMeta.label}
+              active={true}
+              dotColor={pMeta.dot}
+              testid="chip-priority"
+            />
+            {!form.parent_task_id && (
+              <Chip
+                onClick={() => togglePanel('project')}
+                icon={FolderIcon}
+                label={selectedProject ? selectedProject.name : 'Project'}
+                active={!!selectedProject}
+                testid="chip-project"
+              />
+            )}
           </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Due date</label>
-            <input type="datetime-local" value={form.due_date}
-              onChange={e => setForm({ ...form, due_date: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="task-duedate-input" />
+
+          {/* Chip row 2 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip onClick={() => togglePanel('repeat')}  icon={Repeat}  label={form.repeat_freq ? `Repeat: ${form.repeat_freq}` : 'Repeat'} active={!!form.repeat_freq} testid="chip-repeat" />
+            <Chip onClick={() => togglePanel('drive')}   icon={Link2}   label={form.gdrive_link ? 'Drive linked' : 'Drive link'} active={!!form.gdrive_link} testid="chip-drive" />
+            <Chip onClick={() => togglePanel('tags')}    icon={TagIcon} label={form.tags ? `${form.tags.split(',').filter(Boolean).length} tag${form.tags.split(',').filter(Boolean).length !== 1 ? 's' : ''}` : 'Tags'} active={!!form.tags} testid="chip-tags" />
+          </div>
+
+          {/* Inline panels for each chip */}
+          {openPanel === 'assignee' && (
+            <div className="border rounded-xl p-3 bg-slate-50" data-testid="panel-assignee">
+              <AssigneeCombo value={form.assigned_to}
+                onChange={(id) => { setForm({ ...form, assigned_to: id }); closePanel(); }}
+                users={users} currentUserId={currentUserId} />
+            </div>
+          )}
+          {openPanel === 'due' && (
+            <div className="border rounded-xl p-3 bg-slate-50" data-testid="panel-due">
+              <input type="datetime-local" value={form.due_date}
+                onChange={e => setForm({ ...form, due_date: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="task-duedate-input" />
+              {form.due_date && (
+                <button onClick={() => setForm({ ...form, due_date: '' })}
+                  className="text-xs text-red-600 mt-2 hover:underline">Clear date</button>
+              )}
+            </div>
+          )}
+          {openPanel === 'priority' && (
+            <div className="border rounded-xl p-3 bg-slate-50 flex flex-wrap gap-2" data-testid="panel-priority">
+              {Object.entries(PRIORITY_META).map(([v, m]) => (
+                <button key={v}
+                  onClick={() => { setForm({ ...form, priority: v }); closePanel(); }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                    form.priority === v ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 hover:bg-slate-50'
+                  }`}
+                  data-testid={`priority-option-${v}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {openPanel === 'project' && !form.parent_task_id && (
+            <div className="border rounded-xl p-3 bg-slate-50" data-testid="panel-project">
+              <select value={form.project_id}
+                onChange={e => { setForm({ ...form, project_id: e.target.value }); closePanel(); }}
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="">No project</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+          {openPanel === 'repeat' && (
+            <div className="border rounded-xl p-3 bg-slate-50 space-y-2" data-testid="panel-repeat">
+              <select value={form.repeat_freq || ''}
+                onChange={e => setForm({ ...form, repeat_freq: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="">No repeat</option>
+                <option value="daily">Every day</option>
+                <option value="weekly">Every week</option>
+                <option value="monthly">Every month</option>
+              </select>
+              <p className="text-[10px] text-slate-500">A recurring schedule will be created that auto-generates this task on each occurrence.</p>
+            </div>
+          )}
+          {openPanel === 'drive' && (
+            <div className="border rounded-xl p-3 bg-slate-50" data-testid="panel-drive">
+              <input type="url" value={form.gdrive_link || ''}
+                onChange={e => setForm({ ...form, gdrive_link: e.target.value })}
+                placeholder="https://drive.google.com/…"
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-white" data-testid="drive-link-input" />
+            </div>
+          )}
+          {openPanel === 'tags' && (
+            <div className="border rounded-xl p-3 bg-slate-50" data-testid="panel-tags">
+              <input type="text" value={tagsInput}
+                onChange={e => setTagsInput(e.target.value)}
+                onBlur={commitTags}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), commitTags())}
+                placeholder="comma-separated e.g. urgent, cms"
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-white" data-testid="task-tags-input" />
+            </div>
+          )}
+
+          {/* Attachments & Voice Note cards (visual — coming soon) */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="rounded-xl border bg-slate-50/70 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">📎 Attachments</span>
+                <span className="text-[10px] text-slate-400 bg-white px-1.5 py-0.5 rounded-full border">Soon</span>
+              </div>
+              <button type="button" disabled
+                title="File uploads coming soon"
+                className="w-full py-2 text-xs font-medium text-blue-500 bg-blue-50/60 border border-dashed border-blue-200 rounded-lg cursor-not-allowed opacity-70">
+                + Attach files
+              </button>
+            </div>
+            <div className="rounded-xl border bg-slate-50/70 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">🎙 Voice Note</span>
+                <span className="text-[10px] text-slate-400 bg-white px-1.5 py-0.5 rounded-full border">Soon</span>
+              </div>
+              <button type="button" disabled
+                title="Voice recording coming soon"
+                className="w-full py-2 text-xs font-medium text-red-500 bg-red-50/50 border border-dashed border-red-200 rounded-lg cursor-not-allowed opacity-70">
+                🎙 Record
+              </button>
+            </div>
           </div>
         </div>
-        {!form.parent_task_id && (
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Project</label>
-            <select value={form.project_id} onChange={e => setForm({ ...form, project_id: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg text-sm">
-              <option value="">No project</option>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-t">
+          <p className="text-[10px] text-slate-400 tracking-wider font-medium">⌘ + ENTER TO CREATE</p>
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="px-4 py-1.5 border rounded-lg text-sm hover:bg-white">Cancel</button>
+            <button onClick={onSubmit}
+              className="px-5 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium"
+              data-testid="task-submit-btn">
+              Create Task
+            </button>
           </div>
-        )}
-        <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Tags</label>
-          <input type="text" value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="comma-separated e.g. urgent, cms" />
         </div>
-      </div>
-      <div className="flex gap-2 mt-5">
-        <button onClick={onClose}
-          className="flex-1 px-4 py-2 border rounded-lg text-sm hover:bg-slate-50">Cancel</button>
-        <button onClick={onSubmit}
-          className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800"
-          data-testid="task-submit-btn">Create</button>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Detail modal (comments + approval) ───────────────────────────────────────
 const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getAuthHeaders }) => {
