@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import TaskCreateModal from '../../components/tasks/TaskCreateModal';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
@@ -323,12 +324,13 @@ const MyKpisWidget = () => {
 
 // ── Today's Tasks widget (shown on Admin Dashboard) ──────────────────────────
 const TodaysTasksWidget = () => {
-  const { getAuthHeaders } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [today, setToday] = useState([]);
   const [overdue, setOverdue] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
+  const reload = () => {
     axios.get(`${API}/tasks/today`, { headers: getAuthHeaders() })
       .then(r => {
         setToday(r.data?.today || []);
@@ -336,7 +338,12 @@ const TodaysTasksWidget = () => {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [getAuthHeaders]);
+  };
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const advance = async (t) => {
     const next = t.status === 'pending' ? 'in_progress' : 'completed';
@@ -363,13 +370,13 @@ const TodaysTasksWidget = () => {
           )}
         </h3>
         <div className="flex items-center gap-3">
-          <Link
-            to="/admin/tasks?new=1"
+          <button
+            onClick={() => setShowCreate(true)}
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800"
             data-testid="dashboard-add-task-btn"
           >
             + Add Task
-          </Link>
+          </button>
           <Link to="/admin/tasks" className="text-xs text-blue-600 hover:underline">View all →</Link>
         </div>
       </div>
@@ -407,6 +414,12 @@ const TodaysTasksWidget = () => {
           ))}
         </div>
       )}
+      <TaskCreateModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={reload}
+        currentUser={user}
+      />
     </div>
   );
 };

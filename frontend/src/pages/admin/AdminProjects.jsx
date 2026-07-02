@@ -155,51 +155,71 @@ const AdminProjects = () => {
         )}
 
         {showCreate && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
-            <div className="bg-white rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="new-project-modal">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-900">Create Project</h2>
-                <button onClick={() => setShowCreate(false)}><X className="w-5 h-5" /></button>
+          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCreate(false)} data-testid="new-project-overlay">
+            <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-visible" onClick={e => e.stopPropagation()} data-testid="new-project-modal">
+              <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                <p className="text-xs font-semibold text-blue-600">New project</p>
+                <button onClick={() => setShowCreate(false)} className="p-1 rounded hover:bg-slate-100">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
               </div>
-              <div className="space-y-3">
-                <input type="text" placeholder="Project name *" value={form.name}
+              <div className="px-6 pb-5 space-y-3">
+                <input autoFocus type="text" placeholder="Project name…" value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="project-name-input" />
-                <textarea placeholder="Description" value={form.description}
+                  className="w-full px-4 py-3 text-lg font-medium border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400"
+                  data-testid="project-name-input" />
+                <textarea placeholder="What is this project about?" value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm min-h-[70px]" />
+                  className="w-full px-4 py-3 border rounded-xl text-sm min-h-[80px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400 resize-none" />
+
+                {/* Color */}
                 <div>
-                  <label className="text-xs text-slate-500 mb-1 block">Color</label>
+                  <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Color</p>
                   <div className="flex gap-2 flex-wrap">
                     {COLORS.map(c => (
-                      <button key={c} onClick={() => setForm({ ...form, color: c })}
+                      <button key={c} type="button" onClick={() => setForm({ ...form, color: c })}
                         className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === c ? 'ring-2 ring-offset-2 ring-slate-900 border-white' : 'border-white'}`}
                         style={{ backgroundColor: c }} />
                     ))}
                   </div>
                 </div>
+
+                {/* Lead + Status + Dates in chip grid */}
                 <div className="grid grid-cols-2 gap-3">
-                  <select value={form.lead_id} onChange={e => setForm({ ...form, lead_id: e.target.value })}
-                    className="px-3 py-2 border rounded-lg text-sm" data-testid="project-lead-select">
-                    <option value="">Select Lead</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
-                    className="px-3 py-2 border rounded-lg text-sm">
-                    {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                  </select>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Lead</p>
+                    <select value={form.lead_id} onChange={e => setForm({ ...form, lead_id: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="project-lead-select">
+                      <option value="">Select lead</option>
+                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Status</p>
+                    <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm">
+                      {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })}
-                    className="px-3 py-2 border rounded-lg text-sm" placeholder="Start date" />
-                  <input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })}
-                    className="px-3 py-2 border rounded-lg text-sm" placeholder="End date" />
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Start date</p>
+                    <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">End date</p>
+                    <input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-sm" />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="text-xs text-slate-500 mb-1 block">Members ({form.member_ids.length} selected)</label>
-                  <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
+                  <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Members ({form.member_ids.length})</p>
+                  <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1 bg-slate-50/50">
                     {users.map(u => (
-                      <label key={u.id} className={`flex items-center gap-2 p-1.5 rounded cursor-pointer text-sm ${form.member_ids.includes(u.id) ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                      <label key={u.id} className={`flex items-center gap-2 p-1.5 rounded cursor-pointer text-sm ${form.member_ids.includes(u.id) ? 'bg-blue-50 text-blue-700' : 'hover:bg-white'}`}>
                         <input type="checkbox" checked={form.member_ids.includes(u.id)}
                           onChange={() => toggleMember(u.id)} className="w-4 h-4" />
                         {u.name}
@@ -208,12 +228,12 @@ const AdminProjects = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-5">
+              <div className="flex items-center justify-end px-6 py-3 bg-slate-50 border-t rounded-b-2xl gap-2">
                 <button onClick={() => { setShowCreate(false); resetForm(); }}
-                  className="flex-1 px-4 py-2 border rounded-lg text-sm hover:bg-slate-50">Cancel</button>
+                  className="px-4 py-1.5 border rounded-lg text-sm hover:bg-white">Cancel</button>
                 <button onClick={handleCreate} data-testid="project-submit-btn"
-                  className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800">
-                  Create
+                  className="px-5 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium">
+                  Create Project
                 </button>
               </div>
             </div>
