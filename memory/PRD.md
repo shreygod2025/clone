@@ -1,6 +1,28 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-07-02) — Role KPIs & Per-User Performance Page
+
+**New feature**: (1) Roles now have a **Performance KPIs** section — admins pick from a fixed catalog when creating/editing a role. (2) Every user row in `/admin/users` has a new **Performance** action button (chart icon) that opens `/admin/users/:id/performance`, showing that user's KPI cards computed from records where `assigned_to == user.id`, with month & year pickers and a user-switcher dropdown.
+
+**KPI catalog** (15 KPIs, 3 categories):
+- **Support Center** (source: `support_queries`): tickets assigned/resolved, avg resolution hours, avg first-response hours, resolution rate %, SLA breach > 3d.
+- **Sales — B2B** (source: `school_inquiries`): leads assigned, schools onboarded, conversion %, revenue ₹, avg deal size ₹.
+- **Sales — B2C** (source: `inquiry_leads` where `inquiry_type='student'`): leads assigned, bookings closed, conversion %, revenue ₹.
+
+**Access control** for `/api/users/{id}/performance`: super_admin OR any team_user who is (transitively) the target user's manager via `reports_to` chain (uses a `seen` set to guard cycles).
+
+**Files added / changed**:
+- NEW `/app/backend/routes/kpis.py` — `KPI_CATALOG`, `GET /api/kpis/catalog`, `GET /api/users/{id}/performance?month&year`, access helper `_is_admin_or_manager_of`.
+- `/app/backend/routes/users.py` — `Role` model gains `kpis: List[str]`; `create_role` persists it; system-role `allowed_fields` now includes `kpis`.
+- `/app/backend/server.py` — registered `kpis_router`.
+- `/app/frontend/src/pages/admin/AdminUsers.jsx` — roleForm has `kpis`, catalog fetched on mount, Role modal has new **Performance KPIs** selector (`data-testid="role-kpi-selector"`), each user row has a new Performance icon button (`data-testid="user-performance-btn-{id}"`).
+- NEW `/app/frontend/src/pages/admin/UserPerformance.jsx` — user name header, user-switcher dropdown, month+year pickers, KPI cards grid.
+- `/app/frontend/src/App.js` — route `/admin/users/:id/performance` registered.
+
+**Verified by testing_agent (iteration_89)** — 100% pass. 7/7 pytest cases (catalog auth+shape, roles CRUD with kpis, default empty kpis, performance metric computation, access control 403→200 after PATCH reports_to, no-KPIs state). Frontend Playwright E2E: Role KPI selector create + prefill + cleanup, Performance page navigation + name + switcher + pickers + kpi-grid all work. Test suite: `/app/backend/tests/test_iter89_kpis_and_performance.py`.
+
+
 ### Latest Changes (2026-07-01 pt3) — Custom Invoice PDF Not Saving (Admin → Orders)
 
 **Symptom** (production, reported by user): In Admin → Orders → School Payments → "Custom Invoice" modal, clicking "Generate & Download PDF" downloaded the PDF locally but the record never persisted — the History section stayed empty and admins couldn't re-download later. Users saw a warning toast 'PDF downloaded but failed to save to history' instead of the expected success toast.
