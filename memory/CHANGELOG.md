@@ -1,5 +1,31 @@
 # OLL Backend Changelog
 
+## 2026-07-02 — Task Page UI Redesign (Card/List Hybrid) 🎨
+**Status: COMPLETE — Screenshot verified**
+
+### What was done
+- Redesigned `/app/frontend/src/pages/admin/AdminTasks.jsx` from a table to a **card/list hybrid** layout, matching the modern chip-based aesthetic of `TaskCreateModal.jsx`
+- **Mission Control** branding label + Sparkles icon in header
+- Rich header meta: total count, in-progress count, pending-approval count (color-coded)
+- Toolbar overhaul: 2-row toolbar with scope pills (All Team / Assigned to me / Assigned by me) + status filter chips with per-status counts + soft-focus search
+- **Grouped-by-status** default view with collapsible sections (Pending Approval → In Progress → Pending → Rejected → Completed); "Ungroup" toggle for flat view
+- New **TaskCard** row: clickable status circle (advances status), priority dot, title + code, metadata icons (due date, subtasks, comments, drive link), status pill, initials avatar with deterministic colors, hover-revealed 3-dot menu (start/complete, add sub-task, open detail, delete)
+- Nested subtask rendering with left-connector line indent
+- Overdue tasks now show a red "Overdue" chip
+- Empty-state card with icon + inline CTA
+- Detail modal upgraded: blue accents, avatar in header + comments, softer focus rings
+
+### Cleanup
+- Deleted iteration-94 automated test data:
+  - Project: `TEST_Iter94_Project`
+  - Tasks: `Iter94 shortcut test`, `test sub`, `Testing new task`
+
+### Files touched
+- `/app/frontend/src/pages/admin/AdminTasks.jsx` (rewritten)
+- MongoDB cleanup (projects, tasks)
+
+
+
 ## 2026-04-03 — server.py Modularization (MAJOR)
 **Status: COMPLETE — Tested (34/34 backend tests passed)**
 
