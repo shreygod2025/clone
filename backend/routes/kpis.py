@@ -7,7 +7,7 @@ Endpoints:
                                                query: month (1-12), year (YYYY)
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from calendar import monthrange
 from typing import Optional
 
@@ -89,13 +89,45 @@ async def _is_admin_or_manager_of(requester: dict, target_user_id: str) -> bool:
 
 # ── Metric computation ────────────────────────────────────────────────────────
 def _month_bounds_iso(month: int, year: int) -> tuple[str, str]:
-    """Return ISO strings for start and end (exclusive) of the given month."""
+    """Return ISO strings for start and end (inclusive) of the given month."""
     if not (1 <= month <= 12):
         raise HTTPException(status_code=400, detail="month must be 1-12")
     start = datetime(year, month, 1, tzinfo=timezone.utc)
     last_day = monthrange(year, month)[1]
-    # end is exclusive: start of next day of last day
     end = datetime(year, month, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+    return start.isoformat(), end.isoformat()
+
+
+def _scope_bounds_iso(scope: str, ref_iso: Optional[str] = None) -> tuple[str, str]:
+    """Return ISO (start, end) for scope in {'today','week','month','year'} anchored to ref date.
+
+    ref_iso is a YYYY-MM-DD string. Defaults to today (UTC).
+    """
+    if ref_iso:
+        try:
+            ref = datetime.strptime(ref_iso[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid ref date; use YYYY-MM-DD")
+    else:
+        ref = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    scope = (scope or "today").lower()
+    if scope == "today":
+        start = ref.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = ref.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif scope == "week":
+        weekday = ref.weekday()  # Mon=0
+        start = (ref - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = (start + timedelta(days=6)).replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif scope == "month":
+        start = ref.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_day = monthrange(ref.year, ref.month)[1]
+        end = ref.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
+    elif scope == "year":
+        start = ref.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = ref.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
+    else:
+        raise HTTPException(status_code=400, detail="scope must be one of: today, week, month, year")
     return start.isoformat(), end.isoformat()
 
 
@@ -288,21 +320,14 @@ async def get_user_performance(
     year: int = Query(..., ge=2020, le=2100),
     user: dict = Depends(get_current_user),
 ):
-    """Return the user's performance metrics for the selected month/year.
-
-    Access: super_admin ('admin') OR a team_user who is (transitively) the
-    target user's manager via `reports_to`.
-    """
-    # Resolve target
+    """Return the user's performance metrics for the selected month/year."""
     target = await db.team_users.find_one({"id": user_id}, {"_id": 0})
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Access control
     if not await _is_admin_or_manager_of(user, user_id):
         raise HTTPException(status_code=403, detail="You are not allowed to view this user's performance")
 
-    # Fetch role and its KPIs
     role_id = target.get("role_id") or ""
     role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
     role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
@@ -318,33 +343,8 @@ async def get_user_performance(
         }
 
     start_iso, end_iso = _month_bounds_iso(month, year)
-
-    # Compute only the metrics groups the role actually needs
-    metrics: dict = {}
-    needs_support = any(k.startswith("support_") for k in role_kpi_ids)
-    needs_b2b = any(k.startswith("b2b_") for k in role_kpi_ids)
-    needs_b2c = any(k.startswith("b2c_") for k in role_kpi_ids)
-    needs_tasks = any(k.startswith("tasks_") or k.startswith("projects_") for k in role_kpi_ids)
-
-    if needs_support:
-        metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
-    if needs_b2b:
-        metrics.update(await _compute_b2b_metrics(user_id, start_iso, end_iso))
-    if needs_b2c:
-        metrics.update(await _compute_b2c_metrics(user_id, start_iso, end_iso))
-    if needs_tasks:
-        metrics.update(await _compute_task_metrics(user_id, start_iso, end_iso))
-
-    # Only return the KPIs actually on the role (with catalog metadata for UI)
-    kpis_out = []
-    for kid in role_kpi_ids:
-        meta = KPI_BY_ID.get(kid)
-        if not meta:
-            continue
-        kpis_out.append({
-            **meta,
-            "value": metrics.get(kid, 0),
-        })
+    metrics = await _compute_selected_metrics(user_id, role_kpi_ids, start_iso, end_iso)
+    kpis_out = _shape_kpis_out(role_kpi_ids, metrics)
 
     return {
         "user": {
@@ -359,3 +359,77 @@ async def get_user_performance(
         "kpis": kpis_out,
         "metrics": metrics,
     }
+
+
+@router.get("/me/performance")
+async def get_my_performance(
+    scope: str = Query("today", pattern="^(today|week|month|year)$"),
+    ref: Optional[str] = Query(None, description="Anchor date YYYY-MM-DD; defaults to today"),
+    user: dict = Depends(get_current_user),
+):
+    """Return the current user's performance for a scoped time range.
+
+    Used by the Admin Dashboard KPI strip. Falls back gracefully when the current
+    user is an admin (from `admins` collection) with no role KPIs — returns
+    the full task-delivery block as a sensible default so the Dashboard is not
+    blank.
+    """
+    uid = user.get("id") or user.get("user_id") or ""
+    if not uid:
+        raise HTTPException(status_code=400, detail="Missing user id in token")
+
+    # Lookup role: prefer team_users' role_id; admins may not have a role_id
+    tu = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1})
+    role_id = (tu or {}).get("role_id") or ""
+    role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
+    role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
+
+    # For admins without a role, default to the Task & Project Delivery block
+    if not role_kpi_ids:
+        role_kpi_ids = [
+            "tasks_assigned", "tasks_completed", "tasks_overdue",
+            "projects_leading", "projects_member_of",
+        ]
+
+    start_iso, end_iso = _scope_bounds_iso(scope, ref)
+    metrics = await _compute_selected_metrics(uid, role_kpi_ids, start_iso, end_iso)
+    kpis_out = _shape_kpis_out(role_kpi_ids, metrics)
+    return {
+        "user_id": uid,
+        "scope": scope,
+        "ref": ref,
+        "start": start_iso,
+        "end": end_iso,
+        "kpis": kpis_out,
+        "metrics": metrics,
+    }
+
+
+# ── Shared metric routing ─────────────────────────────────────────────────────
+async def _compute_selected_metrics(
+    user_id: str, role_kpi_ids: list, start_iso: str, end_iso: str
+) -> dict:
+    metrics: dict = {}
+    needs_support = any(k.startswith("support_") for k in role_kpi_ids)
+    needs_b2b = any(k.startswith("b2b_") for k in role_kpi_ids)
+    needs_b2c = any(k.startswith("b2c_") for k in role_kpi_ids)
+    needs_tasks = any(k.startswith("tasks_") or k.startswith("projects_") for k in role_kpi_ids)
+    if needs_support:
+        metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
+    if needs_b2b:
+        metrics.update(await _compute_b2b_metrics(user_id, start_iso, end_iso))
+    if needs_b2c:
+        metrics.update(await _compute_b2c_metrics(user_id, start_iso, end_iso))
+    if needs_tasks:
+        metrics.update(await _compute_task_metrics(user_id, start_iso, end_iso))
+    return metrics
+
+
+def _shape_kpis_out(role_kpi_ids: list, metrics: dict) -> list:
+    out = []
+    for kid in role_kpi_ids:
+        meta = KPI_BY_ID.get(kid)
+        if not meta:
+            continue
+        out.append({**meta, "value": metrics.get(kid, 0)})
+    return out

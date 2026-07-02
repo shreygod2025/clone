@@ -49,24 +49,52 @@ def _current_user_id(user: dict) -> str:
     return user.get("id") or user.get("user_id") or ""
 
 
+async def _find_user_display(user_id: str) -> dict:
+    if not user_id:
+        return {"name": "", "email": ""}
+    u = await db.team_users.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+    if u:
+        return {"name": u.get("name", ""), "email": u.get("email", "")}
+    a = await db.admins.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+    if a:
+        return {"name": a.get("name", ""), "email": a.get("email", "")}
+    return {"name": "", "email": ""}
+
+
+async def _user_exists(user_id: str) -> bool:
+    if not user_id:
+        return False
+    if await db.team_users.find_one({"id": user_id}, {"_id": 0, "id": 1}):
+        return True
+    if await db.admins.find_one({"id": user_id}, {"_id": 0, "id": 1}):
+        return True
+    return False
+
+
 async def _enrich_project(p: dict, with_task_stats: bool = False) -> dict:
     p.pop("_id", None)
-    # Fetch lead name
-    lead_id = p.get("lead_id")
-    if lead_id:
-        lu = await db.team_users.find_one({"id": lead_id}, {"_id": 0, "name": 1, "email": 1})
-        p["lead_name"] = (lu or {}).get("name", "")
-    else:
-        p["lead_name"] = ""
-    # Member names
+    lead_info = await _find_user_display(p.get("lead_id", ""))
+    p["lead_name"] = lead_info["name"]
+
     m_ids = p.get("member_ids") or []
+    members: list = []
     if m_ids:
-        members = await db.team_users.find(
+        # Prefer team_users; fall back to admins for the rest
+        tu = await db.team_users.find(
             {"id": {"$in": m_ids}}, {"_id": 0, "id": 1, "name": 1, "email": 1}
         ).to_list(500)
-        p["members"] = members
-    else:
-        p["members"] = []
+        seen = {m["id"] for m in tu}
+        for m in tu:
+            members.append(m)
+        remaining = [x for x in m_ids if x not in seen]
+        if remaining:
+            adm = await db.admins.find(
+                {"id": {"$in": remaining}}, {"_id": 0, "id": 1, "name": 1, "email": 1}
+            ).to_list(500)
+            for a in adm:
+                members.append(a)
+    p["members"] = members
+
     if with_task_stats:
         p["task_count"] = await db.tasks.count_documents({"project_id": p["id"]})
         p["task_done"] = await db.tasks.count_documents({"project_id": p["id"], "status": "completed"})
@@ -80,7 +108,7 @@ async def create_project(data: ProjectCreate, user: dict = Depends(get_current_u
     if data.status not in VALID_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid status: {data.status}")
 
-    if data.lead_id and not await db.team_users.find_one({"id": data.lead_id}, {"_id": 0}):
+    if data.lead_id and not await _user_exists(data.lead_id):
         raise HTTPException(status_code=404, detail="Lead user not found")
 
     project = {
@@ -139,7 +167,7 @@ async def update_project(project_id: str, data: ProjectUpdate, user: dict = Depe
     if "status" in updates and updates["status"] not in VALID_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid status: {updates['status']}")
     if updates.get("lead_id"):
-        if not await db.team_users.find_one({"id": updates["lead_id"]}, {"_id": 0}):
+        if not await _user_exists(updates["lead_id"]):
             raise HTTPException(status_code=404, detail="Lead user not found")
 
     if updates:

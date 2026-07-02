@@ -24,7 +24,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
-VALID_STATUSES = ["pending", "in_progress", "completed"]
+VALID_STATUSES = ["pending", "in_progress", "pending_approval", "completed", "rejected"]
 VALID_PRIORITIES = ["low", "medium", "high", "urgent"]
 
 
@@ -33,9 +33,10 @@ class TaskCreate(BaseModel):
     description: str = ""
     status: str = "pending"
     priority: str = "medium"
-    assigned_to: str = ""  # team_user.id — required
-    due_date: Optional[str] = None  # ISO date/datetime string
+    assigned_to: str = ""  # team_user.id OR admin.id — required
+    due_date: Optional[str] = None
     project_id: Optional[str] = None
+    parent_task_id: Optional[str] = None  # NEW — for sub-tasks
     tags: List[str] = []
 
 
@@ -47,7 +48,16 @@ class TaskUpdate(BaseModel):
     assigned_to: Optional[str] = None
     due_date: Optional[str] = None
     project_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
     tags: Optional[List[str]] = None
+
+
+class CommentCreate(BaseModel):
+    message: str
+
+
+class RejectPayload(BaseModel):
+    reason: str = ""
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -67,16 +77,51 @@ async def _next_task_code() -> str:
     return f"TSK-{seq:04d}"
 
 
+async def _find_user_display(user_id: str) -> dict:
+    """Look up a user by id in team_users OR admins collection and return {name, email}."""
+    if not user_id:
+        return {"name": "", "email": ""}
+    u = await db.team_users.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+    if u:
+        return {"name": u.get("name", ""), "email": u.get("email", "")}
+    a = await db.admins.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+    if a:
+        return {"name": a.get("name", ""), "email": a.get("email", "")}
+    return {"name": "", "email": ""}
+
+
+async def _user_exists(user_id: str) -> bool:
+    if not user_id:
+        return False
+    if await db.team_users.find_one({"id": user_id}, {"_id": 0, "id": 1}):
+        return True
+    if await db.admins.find_one({"id": user_id}, {"_id": 0, "id": 1}):
+        return True
+    return False
+
+
 async def _enrich_task(t: dict) -> dict:
     """Attach assignee & assigner display names for the UI."""
     t.pop("_id", None)
     for key, out in (("assigned_to", "assigned_to_name"), ("assigned_by", "assigned_by_name")):
-        uid = t.get(key)
-        if uid:
-            u = await db.team_users.find_one({"id": uid}, {"_id": 0, "name": 1, "email": 1})
-            t[out] = (u or {}).get("name", "")
-        else:
-            t[out] = ""
+        info = await _find_user_display(t.get(key) or "")
+        t[out] = info["name"]
+
+    # Sub-task stats
+    tid = t.get("id")
+    if tid and not t.get("parent_task_id"):  # only compute for top-level
+        t["subtask_total"] = await db.tasks.count_documents({"parent_task_id": tid})
+        t["subtask_done"] = await db.tasks.count_documents({"parent_task_id": tid, "status": "completed"})
+    else:
+        t["subtask_total"] = 0
+        t["subtask_done"] = 0
+
+    # Comment count
+    if tid:
+        t["comment_count"] = await db.task_comments.count_documents({"task_id": tid})
+    else:
+        t["comment_count"] = 0
+
     return t
 
 
@@ -98,14 +143,17 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
     if data.priority not in VALID_PRIORITIES:
         raise HTTPException(status_code=400, detail=f"Invalid priority: {data.priority}")
 
-    # Validate assignee exists
-    if not await db.team_users.find_one({"id": data.assigned_to}, {"_id": 0, "id": 1}):
+    if not await _user_exists(data.assigned_to):
         raise HTTPException(status_code=404, detail="Assignee not found")
 
-    # Validate project if provided
     if data.project_id:
         if not await db.projects.find_one({"id": data.project_id}, {"_id": 0, "id": 1}):
             raise HTTPException(status_code=404, detail="Project not found")
+
+    if data.parent_task_id:
+        parent = await db.tasks.find_one({"id": data.parent_task_id}, {"_id": 0, "id": 1})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent task not found")
 
     task = {
         "id": str(uuid.uuid4()),
@@ -118,9 +166,11 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
         "assigned_by": _current_user_id(user),
         "due_date": data.due_date,
         "project_id": data.project_id,
+        "parent_task_id": data.parent_task_id,
         "tags": data.tags or [],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
+        "rejection_reason": None,
     }
     await db.tasks.insert_one(task)
     return await _enrich_task(task)
@@ -131,6 +181,8 @@ async def list_tasks(
     filter: str = Query("my", pattern="^(my|by_me|team|all)$"),
     status: Optional[str] = None,
     project_id: Optional[str] = None,
+    include_subtasks: bool = False,
+    parent_task_id: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
     uid = _current_user_id(user)
@@ -142,22 +194,26 @@ async def list_tasks(
     elif filter == "by_me":
         query["assigned_by"] = uid
     elif filter == "team":
-        # Direct reports + self — admin sees all
         if is_admin:
-            pass  # no filter, all tasks
+            pass
         else:
             reports = await _list_reports_of(uid)
             ids = reports + [uid]
             query["assigned_to"] = {"$in": ids}
     elif filter == "all":
         if not is_admin:
-            # Non-admins are constrained to my + by_me
             query["$or"] = [{"assigned_to": uid}, {"assigned_by": uid}]
 
     if status:
         query["status"] = status
     if project_id:
         query["project_id"] = project_id
+
+    # Sub-task scoping: default hide sub-tasks; if parent_task_id set, list only subtasks of that parent
+    if parent_task_id:
+        query["parent_task_id"] = parent_task_id
+    elif not include_subtasks:
+        query["$and"] = query.get("$and", []) + [{"$or": [{"parent_task_id": None}, {"parent_task_id": {"$exists": False}}]}]
 
     docs = await db.tasks.find(query).sort("created_at", -1).to_list(1000)
     return [await _enrich_task(t) for t in docs]
@@ -231,7 +287,7 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         # Only admin can reassign
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only admin can reassign a task")
-        if data.assigned_to and not await db.team_users.find_one({"id": data.assigned_to}, {"_id": 0}):
+        if data.assigned_to and not await _user_exists(data.assigned_to):
             raise HTTPException(status_code=404, detail="Assignee not found")
         updates["assigned_to"] = data.assigned_to
 
@@ -252,5 +308,108 @@ async def delete_task(task_id: str, user: dict = Depends(get_current_user)):
     if not is_admin and uid not in (t.get("assigned_to"), t.get("assigned_by")):
         raise HTTPException(status_code=403, detail="Not allowed to delete this task")
 
+    # Cascade delete sub-tasks & comments
+    await db.tasks.delete_many({"parent_task_id": task_id})
+    await db.task_comments.delete_many({"task_id": task_id})
     await db.tasks.delete_one({"id": task_id})
     return {"ok": True}
+
+
+# ── Sub-tasks ─────────────────────────────────────────────────────────────────
+@router.get("/{task_id}/subtasks")
+async def list_subtasks(task_id: str, user: dict = Depends(get_current_user)):
+    """List all direct sub-tasks of a parent task."""
+    parent = await db.tasks.find_one({"id": task_id}, {"_id": 0, "id": 1})
+    if not parent:
+        raise HTTPException(status_code=404, detail="Task not found")
+    docs = await db.tasks.find({"parent_task_id": task_id}).sort("created_at", 1).to_list(500)
+    return [await _enrich_task(t) for t in docs]
+
+
+# ── Approval flow ─────────────────────────────────────────────────────────────
+@router.post("/{task_id}/submit")
+async def submit_task(task_id: str, user: dict = Depends(get_current_user)):
+    """Assignee submits a task for approval by the assigner. status -> pending_approval."""
+    t = await db.tasks.find_one({"id": task_id})
+    if not t:
+        raise HTTPException(status_code=404, detail="Task not found")
+    uid = _current_user_id(user)
+    if uid != t.get("assigned_to") and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only the assignee can submit this task")
+    await db.tasks.update_one({"id": task_id}, {"$set": {"status": "pending_approval"}})
+    t = await db.tasks.find_one({"id": task_id})
+    return await _enrich_task(t)
+
+
+@router.post("/{task_id}/approve")
+async def approve_task(task_id: str, user: dict = Depends(get_current_user)):
+    """Assigner or admin approves — status -> completed with completed_at stamp."""
+    t = await db.tasks.find_one({"id": task_id})
+    if not t:
+        raise HTTPException(status_code=404, detail="Task not found")
+    uid = _current_user_id(user)
+    is_admin = user.get("role") == "admin"
+    if not is_admin and uid != t.get("assigned_by"):
+        raise HTTPException(status_code=403, detail="Only the assigner or an admin can approve")
+    await db.tasks.update_one(
+        {"id": task_id},
+        {"$set": {
+            "status": "completed",
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "rejection_reason": None,
+        }},
+    )
+    t = await db.tasks.find_one({"id": task_id})
+    return await _enrich_task(t)
+
+
+@router.post("/{task_id}/reject")
+async def reject_task(task_id: str, payload: RejectPayload, user: dict = Depends(get_current_user)):
+    """Assigner or admin rejects — status -> rejected with reason."""
+    t = await db.tasks.find_one({"id": task_id})
+    if not t:
+        raise HTTPException(status_code=404, detail="Task not found")
+    uid = _current_user_id(user)
+    is_admin = user.get("role") == "admin"
+    if not is_admin and uid != t.get("assigned_by"):
+        raise HTTPException(status_code=403, detail="Only the assigner or an admin can reject")
+    await db.tasks.update_one(
+        {"id": task_id},
+        {"$set": {"status": "rejected", "rejection_reason": payload.reason or "", "completed_at": None}},
+    )
+    t = await db.tasks.find_one({"id": task_id})
+    return await _enrich_task(t)
+
+
+# ── Comments ──────────────────────────────────────────────────────────────────
+@router.get("/{task_id}/comments")
+async def list_comments(task_id: str, user: dict = Depends(get_current_user)):
+    t = await db.tasks.find_one({"id": task_id}, {"_id": 0, "id": 1})
+    if not t:
+        raise HTTPException(status_code=404, detail="Task not found")
+    docs = await db.task_comments.find({"task_id": task_id}).sort("created_at", 1).to_list(1000)
+    for d in docs:
+        d.pop("_id", None)
+    return docs
+
+
+@router.post("/{task_id}/comments")
+async def add_comment(task_id: str, payload: CommentCreate, user: dict = Depends(get_current_user)):
+    if not payload.message.strip():
+        raise HTTPException(status_code=400, detail="Message is required")
+    t = await db.tasks.find_one({"id": task_id}, {"_id": 0, "id": 1})
+    if not t:
+        raise HTTPException(status_code=404, detail="Task not found")
+    uid = _current_user_id(user)
+    display = await _find_user_display(uid)
+    comment = {
+        "id": str(uuid.uuid4()),
+        "task_id": task_id,
+        "user_id": uid,
+        "user_name": display["name"] or user.get("email", ""),
+        "message": payload.message.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.task_comments.insert_one(comment)
+    comment.pop("_id", None)
+    return comment

@@ -156,6 +156,75 @@ const AdminLayout = ({ children, title }) => {
   );
 };
 
+// ── Role-driven KPI strip with time filter (Today / Week / Month / Year) ────
+const SCOPE_LABELS = { today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year' };
+const KPI_UNIT_FMT = (val, unit) => {
+  if (val === null || val === undefined) return '—';
+  if (unit === '₹') return `₹${Number(val).toLocaleString('en-IN')}`;
+  if (unit === '%') return `${val}%`;
+  if (unit === 'hours') return `${val} hrs`;
+  return Number(val).toLocaleString('en-IN');
+};
+
+const MyKpisWidget = () => {
+  const { getAuthHeaders } = useAuth();
+  const [scope, setScope] = useState('today');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    axios.get(`${API}/me/performance?scope=${scope}`, { headers: getAuthHeaders() })
+      .then(r => setData(r.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [scope, getAuthHeaders]);
+
+  const kpis = data?.kpis || [];
+
+  return (
+    <div className="mb-6" data-testid="my-kpis-widget">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="font-semibold text-slate-900 text-lg">My KPIs</h3>
+          <p className="text-xs text-slate-500">Live snapshot of the metrics defined on your role.</p>
+        </div>
+        <div className="inline-flex bg-white border rounded-lg p-0.5 text-xs" data-testid="my-kpis-scope">
+          {Object.entries(SCOPE_LABELS).map(([v, l]) => (
+            <button key={v}
+              onClick={() => setScope(v)}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${scope === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              data-testid={`my-kpis-scope-${v}`}
+            >{l}</button>
+          ))}
+        </div>
+      </div>
+      {loading ? (
+        <div className="text-center py-6 text-slate-400 text-sm">Loading KPIs…</div>
+      ) : kpis.length === 0 ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-slate-700">
+          No KPIs configured for your role yet. An admin can assign KPIs under <Link to="/admin/users" className="underline text-blue-600">Users &amp; Roles</Link>.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3" data-testid="my-kpis-grid">
+          {kpis.map(k => (
+            <div key={k.id}
+              className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"
+              data-testid={`my-kpi-${k.id}`}
+            >
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1">{k.category}</p>
+              <p className="text-xs text-slate-600 mb-1.5">{k.label}</p>
+              <p className="text-2xl font-bold text-slate-900" data-testid={`my-kpi-value-${k.id}`}>
+                {KPI_UNIT_FMT(k.value, k.unit)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Today's Tasks widget (shown on Admin Dashboard) ──────────────────────────
 const TodaysTasksWidget = () => {
   const { getAuthHeaders } = useAuth();
@@ -331,7 +400,10 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Stats Grid */}
+          {/* Role-driven KPI strip (with time filter) */}
+          <MyKpisWidget />
+
+          {/* Legacy CRM snapshot */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
             {statCards.map((stat, index) => (
               <Link 
