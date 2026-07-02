@@ -101,6 +101,7 @@ const AdminUsers = () => {
     password: '',
     role_id: '',
     city: '',
+    reports_to: '',
     permissions: [],
     is_active: true
   });
@@ -236,6 +237,7 @@ const AdminUsers = () => {
       password: '',
       role_id: '',
       city: '',
+      reports_to: '',
       permissions: [],
       is_active: true
     });
@@ -504,6 +506,7 @@ const AdminUsers = () => {
                             password: '',
                             role_id: user.role_id || '',
                             city: user.city || '',
+                            reports_to: user.reports_to || '',
                             permissions: user.permissions || [],
                             is_active: user.is_active !== false
                           });
@@ -706,6 +709,27 @@ const AdminUsers = () => {
                 />
                 <p className="text-xs text-slate-500 mt-1">Used for location-based assignment</p>
               </div>
+            </div>
+
+            {/* Reports To (Manager) */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Reports To (Manager)</label>
+              <select
+                value={userForm.reports_to}
+                onChange={(e) => setUserForm({ ...userForm, reports_to: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg"
+                data-testid="reports-to-select"
+              >
+                <option value="">— None —</option>
+                {users
+                  .filter(u => !editUser || u.id !== editUser.id)
+                  .map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Select the team member this user reports to</p>
             </div>
 
             {/* Show permissions for selected role */}

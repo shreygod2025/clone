@@ -49,6 +49,7 @@ class TeamUser(BaseModel):
     role: str = "team_member"
     role_id: str = ""  # Reference to roles collection
     city: str = ""  # City for location-based assignment
+    reports_to: str = ""  # id of another team_user this user reports to (manager)
     is_active: bool = True
     permissions: List[str] = []  # ['students', 'schools', 'educators', 'growth_partners']
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -61,6 +62,7 @@ class TeamUserCreate(BaseModel):
     username: str
     role_id: str = ""
     city: str = ""
+    reports_to: str = ""  # id of manager (another team_user)
     permissions: List[str] = []
 
 class TeamUserUpdate(BaseModel):
@@ -71,6 +73,7 @@ class TeamUserUpdate(BaseModel):
     is_active: Optional[bool] = None
     role_id: Optional[str] = None
     city: Optional[str] = None
+    reports_to: Optional[str] = None  # id of manager (another team_user); pass "" to clear
     permissions: Optional[List[str]] = None
 
 # Center User Models
@@ -221,6 +224,7 @@ async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_curren
         password_hash=bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
         role_id=data.role_id,
         city=data.city,
+        reports_to=data.reports_to,
         permissions=data.permissions
     )
     doc = team_user.model_dump()
