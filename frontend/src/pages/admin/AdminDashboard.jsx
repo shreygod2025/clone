@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
   Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2, Send, ShoppingBag,
-  CheckSquare, FolderKanban
+  CheckSquare, FolderKanban, Bell
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -21,8 +21,10 @@ const AdminLayout = ({ children, title }) => {
 
   // All navigation items with permission keys
   const allNavItems = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null }, // Always visible
-    { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null }, // Always visible
+    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null },
+    { path: '/admin/tasks', icon: CheckSquare, label: 'Tasks', permission: null },
+    { path: '/admin/projects', icon: FolderKanban, label: 'Projects', permission: null },
+    { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null },
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
@@ -31,8 +33,6 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
-    { path: '/admin/tasks', icon: CheckSquare, label: 'Tasks', permission: null },
-    { path: '/admin/projects', icon: FolderKanban, label: 'Projects', permission: null },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
@@ -144,14 +144,110 @@ const AdminLayout = ({ children, title }) => {
       {/* Main Content */}
       <main className={`lg:ml-64 ${isAIChat ? 'pt-0' : 'pt-14'} lg:pt-0 min-h-screen`}>
         <div className={isAIChat ? '' : 'p-4 lg:p-8'}>
-          {title && !isAIChat && (
-            <h1 className="text-2xl font-bold text-[#1E3A5F] mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              {title}
-            </h1>
+          {!isAIChat && (
+            <div className="flex items-center justify-between mb-6">
+              {title ? (
+                <h1 className="text-2xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  {title}
+                </h1>
+              ) : <div />}
+              <NotificationBell />
+            </div>
           )}
           {children}
         </div>
       </main>
+    </div>
+  );
+};
+
+// ── Notification bell ────────────────────────────────────────────────────────
+const NotificationBell = () => {
+  const { getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState([]);
+  const [unread, setUnread] = useState(0);
+
+  const load = useCallback(async () => {
+    try {
+      const [l, c] = await Promise.all([
+        axios.get(`${API}/notifications?limit=20`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/notifications/unread-count`, { headers: getAuthHeaders() }),
+      ]);
+      setItems(l.data || []);
+      setUnread(c.data?.count || 0);
+    } catch { /* noop */ }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const markRead = async (id) => {
+    try {
+      await axios.patch(`${API}/notifications/${id}/read`, {}, { headers: getAuthHeaders() });
+      load();
+    } catch { /* noop */ }
+  };
+
+  const markAll = async () => {
+    try {
+      await axios.post(`${API}/notifications/read-all`, {}, { headers: getAuthHeaders() });
+      load();
+    } catch { /* noop */ }
+  };
+
+  const openItem = async (n) => {
+    if (!n.is_read) await markRead(n.id);
+    setOpen(false);
+    if (n.cta_path) navigate(n.cta_path);
+  };
+
+  return (
+    <div className="relative" data-testid="notification-bell-container">
+      <button onClick={() => setOpen(v => !v)}
+        className="relative p-2 rounded-lg hover:bg-slate-100"
+        data-testid="notification-bell">
+        <Bell className="w-5 h-5 text-slate-700" />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center font-bold"
+            data-testid="notification-unread-count">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border z-50 max-h-[70vh] overflow-hidden flex flex-col"
+          data-testid="notification-dropdown">
+          <div className="flex items-center justify-between p-3 border-b">
+            <p className="text-sm font-semibold text-slate-900">Notifications</p>
+            {unread > 0 && (
+              <button onClick={markAll}
+                className="text-xs text-blue-600 hover:underline"
+                data-testid="notification-mark-all">
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div className="overflow-y-auto">
+            {items.length === 0 ? (
+              <p className="p-6 text-xs text-slate-400 text-center">No notifications yet.</p>
+            ) : items.map(n => (
+              <button key={n.id}
+                onClick={() => openItem(n)}
+                className={`w-full text-left px-3 py-2.5 border-b hover:bg-slate-50 ${n.is_read ? 'bg-white' : 'bg-blue-50/60'}`}
+                data-testid={`notification-item-${n.id}`}>
+                <p className="text-sm font-medium text-slate-900">{n.title}</p>
+                {n.message && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>}
+                <p className="text-[10px] text-slate-400 mt-1">{new Date(n.created_at).toLocaleString('en-IN')}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -266,7 +362,16 @@ const TodaysTasksWidget = () => {
             <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{overdue.length} overdue</span>
           )}
         </h3>
-        <Link to="/admin/tasks" className="text-xs text-blue-600 hover:underline">View all →</Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/admin/tasks?new=1"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800"
+            data-testid="dashboard-add-task-btn"
+          >
+            + Add Task
+          </Link>
+          <Link to="/admin/tasks" className="text-xs text-blue-600 hover:underline">View all →</Link>
+        </div>
       </div>
 
       {today.length === 0 && overdue.length === 0 ? (
@@ -402,24 +507,6 @@ const AdminDashboard = () => {
 
           {/* Role-driven KPI strip (with time filter) */}
           <MyKpisWidget />
-
-          {/* Legacy CRM snapshot */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            {statCards.map((stat, index) => (
-              <Link 
-                key={index} 
-                to={stat.link || '#'}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all group cursor-pointer"
-                data-testid={`stat-${index}`}
-              >
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                  <stat.icon className="w-5 h-5 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-[#1E3A5F]">{stat.value}</p>
-                <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
-              </Link>
-            ))}
-          </div>
 
           {/* Today's Tasks */}
           <TodaysTasksWidget />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -21,6 +22,7 @@ const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'
 
 const AdminProjects = () => {
   const { getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,13 +113,20 @@ const AdminProjects = () => {
               const S = STATUS_META[p.status] || STATUS_META.active;
               const pct = p.task_count ? Math.round((p.task_done / p.task_count) * 100) : 0;
               return (
-                <Card key={p.id} className="p-5 bg-white hover:shadow-md transition-shadow" data-testid={`project-card-${p.id}`}>
+                <Card
+                  key={p.id}
+                  className="p-5 bg-white hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/admin/projects/${p.id}`)}
+                  data-testid={`project-card-${p.id}`}
+                >
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
                       <h3 className="font-semibold text-slate-900 truncate">{p.name}</h3>
                     </div>
-                    <button onClick={() => deleteProject(p)} className="p-1 text-slate-400 hover:text-red-600" title="Delete">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteProject(p); }}
+                      className="p-1 text-slate-400 hover:text-red-600" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

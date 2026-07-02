@@ -18,6 +18,11 @@ from datetime import datetime, timezone, timedelta
 import uuid
 
 from routes.shared import db, get_current_user
+from routes.inapp_notifications import create_notification
+try:
+    from routes.scheduled_tasks import run_materializer
+except Exception:
+    run_materializer = None  # type: ignore
 
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -173,6 +178,15 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
         "rejection_reason": None,
     }
     await db.tasks.insert_one(task)
+    # In-app notify assignee (skipped if actor == assignee)
+    await create_notification(
+        user_id=data.assigned_to,
+        type_="task_assigned",
+        title=f"New task: {task['title']}",
+        message=f"Assigned by {user.get('name') or user.get('email','')}",
+        task_id=task["id"],
+        actor_id=_current_user_id(user),
+    )
     return await _enrich_task(task)
 
 
@@ -187,6 +201,13 @@ async def list_tasks(
 ):
     uid = _current_user_id(user)
     is_admin = user.get("role") == "admin"
+
+    # Materialize any due recurring tasks for this user before listing
+    if run_materializer:
+        try:
+            await run_materializer(uid)
+        except Exception:
+            pass
 
     query: dict = {}
     if filter == "my":
@@ -290,6 +311,16 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         if data.assigned_to and not await _user_exists(data.assigned_to):
             raise HTTPException(status_code=404, detail="Assignee not found")
         updates["assigned_to"] = data.assigned_to
+        # Notify the new assignee
+        if data.assigned_to and data.assigned_to != t.get("assigned_to"):
+            await create_notification(
+                user_id=data.assigned_to,
+                type_="task_reassigned",
+                title=f"Reassigned: {t.get('title')}",
+                message=f"Reassigned by {user.get('name') or user.get('email','')}",
+                task_id=task_id,
+                actor_id=uid,
+            )
 
     if updates:
         await db.tasks.update_one({"id": task_id}, {"$set": updates})
@@ -338,6 +369,15 @@ async def submit_task(task_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Only the assignee can submit this task")
     await db.tasks.update_one({"id": task_id}, {"$set": {"status": "pending_approval"}})
     t = await db.tasks.find_one({"id": task_id})
+    # Notify the assigner that the task is ready for approval
+    await create_notification(
+        user_id=t.get("assigned_by") or "",
+        type_="task_submitted",
+        title=f"Ready for approval: {t.get('title')}",
+        message="Please review and approve/reject.",
+        task_id=task_id,
+        actor_id=_current_user_id(user),
+    )
     return await _enrich_task(t)
 
 
@@ -360,6 +400,13 @@ async def approve_task(task_id: str, user: dict = Depends(get_current_user)):
         }},
     )
     t = await db.tasks.find_one({"id": task_id})
+    await create_notification(
+        user_id=t.get("assigned_to") or "",
+        type_="task_approved",
+        title=f"Approved: {t.get('title')}",
+        task_id=task_id,
+        actor_id=_current_user_id(user),
+    )
     return await _enrich_task(t)
 
 
@@ -378,6 +425,14 @@ async def reject_task(task_id: str, payload: RejectPayload, user: dict = Depends
         {"$set": {"status": "rejected", "rejection_reason": payload.reason or "", "completed_at": None}},
     )
     t = await db.tasks.find_one({"id": task_id})
+    await create_notification(
+        user_id=t.get("assigned_to") or "",
+        type_="task_rejected",
+        title=f"Rejected: {t.get('title')}",
+        message=payload.reason or "",
+        task_id=task_id,
+        actor_id=_current_user_id(user),
+    )
     return await _enrich_task(t)
 
 
@@ -412,4 +467,17 @@ async def add_comment(task_id: str, payload: CommentCreate, user: dict = Depends
     }
     await db.task_comments.insert_one(comment)
     comment.pop("_id", None)
+    # Notify all participants (assignee + assigner) except the author
+    t = await db.tasks.find_one({"id": task_id}, {"_id": 0, "assigned_to": 1, "assigned_by": 1, "title": 1})
+    recipients = set(filter(None, [t.get("assigned_to"), t.get("assigned_by")]))
+    recipients.discard(uid)
+    for r in recipients:
+        await create_notification(
+            user_id=r,
+            type_="task_comment",
+            title=f"New comment on: {t.get('title')}",
+            message=payload.message.strip()[:120],
+            task_id=task_id,
+            actor_id=uid,
+        )
     return comment

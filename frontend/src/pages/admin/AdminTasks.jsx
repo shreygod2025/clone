@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -121,6 +122,7 @@ const AdminTasks = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [detailTask, setDetailTask] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const emptyForm = () => ({
     title: '', description: '',
@@ -141,6 +143,17 @@ const AdminTasks = () => {
   }, [filter, getAuthHeaders]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // Auto-open create modal when navigated with ?new=1 (e.g. from Dashboard)
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setForm(emptyForm());
+      setShowCreate(true);
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     axios.get(`${API}/team-users`, { headers: getAuthHeaders() })

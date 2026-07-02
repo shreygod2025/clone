@@ -21,14 +21,16 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 VALID_STATUSES = ["active", "on_hold", "completed", "archived"]
+MILESTONE_STATUSES = ["pending", "in_progress", "completed"]
+KB_TYPES = ["note", "link"]
 
 
 class ProjectCreate(BaseModel):
     name: str
     description: str = ""
-    color: str = "#3B82F6"  # default blue
+    color: str = "#3B82F6"
     status: str = "active"
-    lead_id: str = ""       # team_user.id — project lead
+    lead_id: str = ""
     member_ids: List[str] = []
     start_date: Optional[str] = None
     end_date: Optional[str] = None
@@ -43,6 +45,37 @@ class ProjectUpdate(BaseModel):
     member_ids: Optional[List[str]] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+
+
+class MilestoneCreate(BaseModel):
+    title: str
+    description: str = ""
+    due_date: Optional[str] = None
+    status: str = "pending"
+    order: int = 0
+
+
+class MilestoneUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    order: Optional[int] = None
+
+
+class KbCreate(BaseModel):
+    type: str = "note"       # note | link
+    title: str
+    content: str = ""        # for notes
+    url: str = ""            # for links
+    is_pinned: bool = False
+
+
+class KbUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    url: Optional[str] = None
+    is_pinned: Optional[bool] = None
 
 
 def _current_user_id(user: dict) -> str:
@@ -189,5 +222,118 @@ async def delete_project(project_id: str, user: dict = Depends(get_current_user)
 
     # Unlink tasks (don't cascade delete tasks — just clear their project_id)
     await db.tasks.update_many({"project_id": project_id}, {"$set": {"project_id": None}})
+    await db.milestones.delete_many({"project_id": project_id})
+    await db.project_kb.delete_many({"project_id": project_id})
     await db.projects.delete_one({"id": project_id})
+    return {"ok": True}
+
+
+# ── Milestones ────────────────────────────────────────────────────────────────
+@router.get("/{project_id}/milestones")
+async def list_milestones(project_id: str, user: dict = Depends(get_current_user)):
+    if not await db.projects.find_one({"id": project_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Project not found")
+    docs = await db.milestones.find({"project_id": project_id}).sort([("order", 1), ("created_at", 1)]).to_list(500)
+    for d in docs:
+        d.pop("_id", None)
+    return docs
+
+
+@router.post("/{project_id}/milestones")
+async def create_milestone(project_id: str, data: MilestoneCreate, user: dict = Depends(get_current_user)):
+    if not await db.projects.find_one({"id": project_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Project not found")
+    if data.status not in MILESTONE_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {data.status}")
+    ms = {
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        "title": data.title.strip(),
+        "description": data.description,
+        "due_date": data.due_date,
+        "status": data.status,
+        "order": data.order,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.milestones.insert_one(ms)
+    ms.pop("_id", None)
+    return ms
+
+
+@router.patch("/milestones/{milestone_id}")
+async def update_milestone(milestone_id: str, data: MilestoneUpdate, user: dict = Depends(get_current_user)):
+    if not await db.milestones.find_one({"id": milestone_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    updates = {k: v for k, v in data.model_dump().items() if v is not None}
+    if "status" in updates and updates["status"] not in MILESTONE_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {updates['status']}")
+    if updates:
+        await db.milestones.update_one({"id": milestone_id}, {"$set": updates})
+    ms = await db.milestones.find_one({"id": milestone_id}, {"_id": 0})
+    return ms
+
+
+@router.delete("/milestones/{milestone_id}")
+async def delete_milestone(milestone_id: str, user: dict = Depends(get_current_user)):
+    res = await db.milestones.delete_one({"id": milestone_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    return {"ok": True}
+
+
+# ── Project Knowledge Base ────────────────────────────────────────────────────
+@router.get("/{project_id}/kb")
+async def list_kb(project_id: str, user: dict = Depends(get_current_user)):
+    if not await db.projects.find_one({"id": project_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Project not found")
+    docs = await db.project_kb.find({"project_id": project_id}).sort([("is_pinned", -1), ("created_at", -1)]).to_list(500)
+    for d in docs:
+        d.pop("_id", None)
+    return docs
+
+
+@router.post("/{project_id}/kb")
+async def create_kb_entry(project_id: str, data: KbCreate, user: dict = Depends(get_current_user)):
+    if not await db.projects.find_one({"id": project_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Project not found")
+    if data.type not in KB_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid type: {data.type}")
+    if not data.title.strip():
+        raise HTTPException(status_code=400, detail="Title required")
+    display = await _find_user_display(_current_user_id(user))
+    entry = {
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        "type": data.type,
+        "title": data.title.strip(),
+        "content": data.content,
+        "url": data.url,
+        "is_pinned": bool(data.is_pinned),
+        "created_by": _current_user_id(user),
+        "created_by_name": display["name"] or user.get("email", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.project_kb.insert_one(entry)
+    entry.pop("_id", None)
+    return entry
+
+
+@router.patch("/kb/{entry_id}")
+async def update_kb_entry(entry_id: str, data: KbUpdate, user: dict = Depends(get_current_user)):
+    if not await db.project_kb.find_one({"id": entry_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="KB entry not found")
+    updates = {k: v for k, v in data.model_dump().items() if v is not None}
+    if updates:
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.project_kb.update_one({"id": entry_id}, {"$set": updates})
+    doc = await db.project_kb.find_one({"id": entry_id}, {"_id": 0})
+    return doc
+
+
+@router.delete("/kb/{entry_id}")
+async def delete_kb_entry(entry_id: str, user: dict = Depends(get_current_user)):
+    res = await db.project_kb.delete_one({"id": entry_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="KB entry not found")
     return {"ok": True}

@@ -4064,6 +4064,8 @@ from routes.unified_search import router as unified_search_router
 from routes.kpis import router as kpis_router
 from routes.tasks import router as tasks_router
 from routes.projects import router as projects_router
+from routes.inapp_notifications import router as inapp_notifications_router
+from routes.scheduled_tasks import router as scheduled_tasks_router
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4103,6 +4105,8 @@ api_router.include_router(unified_search_router)
 api_router.include_router(kpis_router)
 api_router.include_router(tasks_router)
 api_router.include_router(projects_router)
+api_router.include_router(inapp_notifications_router)
+api_router.include_router(scheduled_tasks_router)
 
 # Public receipt portal (no auth — phone+OTP gated, used by oll.co/receipt)
 from routes.public_receipts import router as public_receipts_router
