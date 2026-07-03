@@ -411,6 +411,7 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
 // ── Fixed-position dropdown menu (avoids overflow-hidden clipping) ───────────
 const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
   const [pos, setPos] = useState({ top: 0, left: 0, width: 200 });
+  const popupRef = useRef(null);
   useEffect(() => {
     if (!anchorRef?.current) return;
     const r = anchorRef.current.getBoundingClientRect();
@@ -421,6 +422,7 @@ const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
   useEffect(() => {
     const onDown = (e) => {
       if (anchorRef?.current?.contains(e.target)) return;
+      if (popupRef.current?.contains(e.target)) return;
       onClose();
     };
     document.addEventListener('mousedown', onDown);
@@ -428,10 +430,10 @@ const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
   }, [anchorRef, onClose]);
   return (
     <div
+      ref={popupRef}
       className="fixed z-[200] bg-white border border-slate-200 rounded-lg shadow-xl py-1"
       style={{ top: pos.top, left: pos.left, width: pos.width }}
       data-testid={testid}
-      onClick={(e) => e.stopPropagation()}
     >
       {children}
     </div>
@@ -455,7 +457,8 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
     }
   }, [expanded, hasSubtasks, task.id, getAuthHeaders]);
 
-  // ── Self-assigned tasks bypass approval; others need approval when marked done ──
+  // Ownership: assignee is the OWNER of the task; only they can mark it complete.
+  // Assigner (or admin) can only APPROVE when status = pending_approval.
   const isSelfAssigned = task.assigned_to === task.assigned_by;
   const isAssignee = currentUserId === task.assigned_to;
   const isApprover = currentUserId === task.assigned_by;
@@ -466,14 +469,14 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
       if (task.status === 'pending_approval' && (isApprover || isAdmin)) {
         await axios.post(`${API}/tasks/${task.id}/approve`, {}, { headers: getAuthHeaders() });
         toast.success('Approved & completed');
-      } else if (isSelfAssigned || isApprover || isAdmin) {
+      } else if (isAssignee && isSelfAssigned) {
         await axios.patch(`${API}/tasks/${task.id}`, { status: 'completed' }, { headers: getAuthHeaders() });
         toast.success('Marked complete');
       } else if (isAssignee) {
         await axios.post(`${API}/tasks/${task.id}/submit`, {}, { headers: getAuthHeaders() });
         toast.success('Submitted for approval');
       } else {
-        toast.error('Not allowed');
+        toast.error('Only the task owner can mark this complete');
         return;
       }
       onStatus('__reload__');
@@ -482,8 +485,11 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
     }
   };
 
-  const canAct = isAssignee || isApprover || isAdmin;
-  const canComplete = canAct && task.status !== 'completed';
+  // Show the complete/approve icon only for people who can act right now
+  const canComplete = task.status !== 'completed' && (
+    isAssignee ||
+    (task.status === 'pending_approval' && (isApprover || isAdmin))
+  );
   const attachmentCount = (task.attachments || []).length + (task.gdrive_link ? 1 : 0);
   const tagList = Array.isArray(task.tags) ? task.tags : [];
   const descSnippet = (task.description || '').trim().split('\n')[0].slice(0, 140);
@@ -562,9 +568,9 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           </button>
         </div>
 
-        {/* Due date — prominent pill */}
-        {task.due_date && (
-          <div className="pt-1 hidden sm:block">
+        {/* Due date — fixed width slot for alignment */}
+        <div className="hidden sm:flex items-start justify-end pt-1 w-[76px] shrink-0">
+          {task.due_date && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
               overdue
                 ? 'bg-red-50 text-red-700 border-red-200'
@@ -573,18 +579,18 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
               <Calendar className="w-3 h-3" />
               {fmtDate(task.due_date)}
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Status pill */}
-        <div className="hidden md:block pt-1">
+        {/* Status pill — fixed width slot */}
+        <div className="hidden md:flex items-start justify-start pt-1 w-[130px] shrink-0">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${S.pill}`}>
             <S.icon className="w-3 h-3" /> {S.label}
           </span>
         </div>
 
-        {/* Assignee block: big assignee + small "by X" */}
-        <div className="flex items-center gap-2 pt-0.5 min-w-[130px] max-w-[210px]">
+        {/* Assignee block — fixed width slot */}
+        <div className="flex items-center gap-2 pt-0.5 w-[180px] shrink-0">
           <Avatar name={task.assigned_to_name} />
           <div className="min-w-0 leading-tight">
             <p className="text-sm font-semibold text-slate-800 truncate" title={task.assigned_to_name}>
@@ -599,26 +605,28 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           </div>
         </div>
 
-        {/* Complete button (direct) */}
-        {canComplete && (
-          <button
-            onClick={completeTask}
-            title={
-              task.status === 'pending_approval' && (isApprover || isAdmin) ? 'Approve'
-              : isSelfAssigned || isApprover || isAdmin ? 'Mark complete'
-              : 'Submit for approval'
-            }
-            className={`p-1.5 rounded-lg transition-all opacity-70 group-hover:opacity-100 hover:bg-green-50 hover:text-green-700 ${
-              task.status === 'pending_approval' && (isApprover || isAdmin) ? 'text-amber-600 opacity-100' : 'text-slate-400'
-            }`}
-            data-testid={`task-complete-${task.id}`}
-          >
-            <CheckCircle2 className="w-5 h-5" />
-          </button>
-        )}
+        {/* Complete action — fixed width slot */}
+        <div className="pt-1 w-[32px] shrink-0 flex justify-center">
+          {canComplete && (
+            <button
+              onClick={completeTask}
+              title={
+                task.status === 'pending_approval' && (isApprover || isAdmin) ? 'Approve'
+                : isSelfAssigned ? 'Mark complete'
+                : 'Submit for approval'
+              }
+              className={`p-1.5 rounded-lg transition-all opacity-70 group-hover:opacity-100 hover:bg-green-50 hover:text-green-700 ${
+                task.status === 'pending_approval' && (isApprover || isAdmin) ? 'text-amber-600 opacity-100' : 'text-slate-400'
+              }`}
+              data-testid={`task-complete-${task.id}`}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
-        {/* 3-dot menu (fixed-position popup — never clipped) */}
-        <div className="pt-1">
+        {/* 3-dot menu — fixed width slot */}
+        <div className="pt-1 w-[28px] shrink-0">
           <button
             ref={menuBtnRef}
             onClick={(e) => { e.stopPropagation(); setMenuOpen(o => !o); }}
@@ -725,12 +733,10 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
                      && task.assigned_to !== task.assigned_by
                      && ['pending', 'in_progress', 'rejected'].includes(task.status);
   const canApprove = (isAdmin || currentUserId === task.assigned_by) && task.status === 'pending_approval';
-  // Assignee-of-self OR assigner OR admin can directly mark complete (bypass approval)
-  const canComplete = task.status !== 'completed' && (
-    (currentUserId === task.assigned_to && task.assigned_to === task.assigned_by) ||
-    currentUserId === task.assigned_by ||
-    isAdmin
-  );
+  // Only the assignee who owns a self-assigned task can directly mark complete
+  const canComplete = task.status !== 'completed'
+                      && currentUserId === task.assigned_to
+                      && task.assigned_to === task.assigned_by;
 
   const markComplete = async () => {
     try {

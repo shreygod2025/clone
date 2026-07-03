@@ -1,5 +1,33 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 3) — Task Menu / Ownership / Alignment Fixes 🔧
+**Status: COMPLETE — verified end-to-end**
+
+### Bugs fixed
+1. **Add sub-task & Delete task buttons dead in 3-dot menu**
+   - Root cause: `FloatingMenu`'s document `mousedown` listener closed the popup before the child `click` handler could fire (because the popup wasn't in the anchor's DOM subtree)
+   - Fix: added `popupRef` and skipped close when the mousedown target is inside the popup itself
+   - Removed stray `onClick={e => e.stopPropagation()}` on the wrapper (no longer needed)
+
+2. **Assigner/admin should NOT be able to mark someone else's task complete**
+   - Rule now enforced: **the assignee is the OWNER of the task**
+     - Self-assigned (assignee === assigner) → assignee marks complete directly
+     - Someone-else assigned → assignee **submits for approval** → assigner or admin **approves** (only when status = `pending_approval`)
+     - Assigner viewing an in-progress task no longer sees the Complete icon
+   - `canComplete` (row + detail modal) now requires either:
+     - `currentUserId === task.assigned_to` (assignee), OR
+     - `task.status === 'pending_approval' && (isApprover || isAdmin)` (approver on submitted task)
+   - Detail modal's Mark Complete button only shows for self-assigned tasks
+
+3. **Row alignment broken when due date / status missing**
+   - Root cause: conditional rendering caused columns to reflow horizontally per row
+   - Fix: converted trailing columns into **fixed-width slots** with `w-[76px]` (due date), `w-[130px]` (status), `w-[180px]` (assignee), `w-[32px]` (complete), `w-[28px]` (menu). Empty cells still occupy the slot.
+
+### Files touched
+- `/app/frontend/src/pages/admin/AdminTasks.jsx`
+
+
+
 ## 2026-07-03 — Task Page: Menu Fix + Assignment Display + Sorting 📋
 **Status: COMPLETE — Screenshot verified**
 
