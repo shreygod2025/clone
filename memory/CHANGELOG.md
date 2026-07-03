@@ -1,5 +1,46 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 8) — Added 12 new KPIs (Renewal, HR, Educator HR, Growth Partners) 📊
+**Status: COMPLETE — verified end-to-end via direct compute functions**
+
+### New KPI catalog entries in `/app/backend/routes/kpis.py`
+
+**Sales — B2B (2 new):**
+- `b2b_renewal_rate` — `(customers − lost) / customers × 100 %`  (unit: %)
+- `b2b_lost_schools` — count of schools with status ∈ {archived, lost, churned}
+
+**HR (3 new, org-wide):**
+- `hr_team_openings` — `team_requirements` created in period
+- `hr_openings_filled` — `team_applications` with status ∈ {hired, onboarded, onboarding} created in period
+- `hr_openings_over_deadline` — `team_requirements` still `is_active=True` and `created_at > 30 days ago` (**snapshot**)
+
+**Educator HR (3 new, org-wide):**
+- `edu_requirements` — `open_requirements` created in period
+- `edu_requirements_fulfilled` — `educator_onboarding` docs created in period
+- `edu_requirements_over_deadline` — active `open_requirements` older than 30 days (**snapshot**)
+
+**Growth Partners (3 new, per-user if `assigned_to` exists on doc, else org-wide):**
+- `gp_leads` — `growth_partners` created in period
+- `gp_onboarded` — status ∈ {onboarding, active, converted}
+- `gp_conversions` — status ∈ {converted, active}
+
+### Compute functions added
+- `_compute_b2b_metrics` extended with renewal / lost math
+- `_compute_hr_metrics` (new)
+- `_compute_educator_hr_metrics` (new)
+- `_compute_growth_partner_metrics` (new)
+- Dispatcher `_compute_selected_metrics` now routes prefixes `hr_`, `edu_`, `gp_`
+
+### Verified via direct backend call
+- HR: openings=1, filled=5, over_deadline=1
+- Educator HR: requirements=2, fulfilled=0, over_deadline=2
+- Growth Partners: leads=31, onboarded=17, conversions=4
+- B2B renewal rate=15.0%, lost_schools=17
+
+Existing Users & Roles UI consumes `/api/kpis/catalog` dynamically, so all 12 new KPIs are now selectable when configuring a role.
+
+
+
 ## 2026-07-03 (round 7) — Performance Picker + Snapshot KPIs + Dashboard Slider 📈
 **Status: COMPLETE — verified end-to-end**
 

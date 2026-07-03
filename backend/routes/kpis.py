@@ -34,6 +34,23 @@ KPI_CATALOG = [
     {"id": "b2b_conversion_rate", "label": "Conversion rate (%)", "category": "Sales — B2B", "unit": "%"},
     {"id": "b2b_revenue_generated", "label": "Revenue generated (₹)", "category": "Sales — B2B", "unit": "₹"},
     {"id": "b2b_avg_deal_size", "label": "Avg deal size (₹)", "category": "Sales — B2B", "unit": "₹"},
+    {"id": "b2b_renewal_rate", "label": "Renewal rate (%)", "category": "Sales — B2B", "unit": "%"},
+    {"id": "b2b_lost_schools", "label": "No. of lost schools", "category": "Sales — B2B", "unit": "count"},
+
+    # HR — sourced from `team_requirements` + `team_applications`
+    {"id": "hr_team_openings", "label": "Team openings", "category": "HR", "unit": "count"},
+    {"id": "hr_openings_filled", "label": "Openings filled", "category": "HR", "unit": "count"},
+    {"id": "hr_openings_over_deadline", "label": "Openings over deadline", "category": "HR", "unit": "count", "aggregation": "snapshot"},
+
+    # Educator HR — sourced from `open_requirements` + `educator_onboarding`
+    {"id": "edu_requirements", "label": "Educator requirements", "category": "Educator HR", "unit": "count"},
+    {"id": "edu_requirements_fulfilled", "label": "Requirements fulfilled", "category": "Educator HR", "unit": "count"},
+    {"id": "edu_requirements_over_deadline", "label": "Requirements over deadline", "category": "Educator HR", "unit": "count", "aggregation": "snapshot"},
+
+    # Growth Partners — sourced from `growth_partners`
+    {"id": "gp_leads", "label": "Growth partner leads", "category": "Growth Partners", "unit": "count"},
+    {"id": "gp_onboarded", "label": "New growth partners onboarded", "category": "Growth Partners", "unit": "count"},
+    {"id": "gp_conversions", "label": "Conversions", "category": "Growth Partners", "unit": "count"},
 
     # Sales B2C — sourced from `inquiry_leads` (inquiry_type = student)
     {"id": "b2c_leads_assigned", "label": "No. of student leads assigned", "category": "Sales — B2C", "unit": "count"},
@@ -216,7 +233,7 @@ async def _compute_b2b_metrics(user_id: str, start_iso: str, end_iso: str) -> di
 
     assigned = await coll.count_documents(base)
     onboarded_docs = await coll.find(
-        {**base, "status": {"$in": ["converted", "onboarded", "ONBOARDED"]}},
+        {**base, "status": {"$in": ["converted", "onboarded", "ONBOARDED", "renewed", "active"]}},
         {"_id": 0, "conversion_amount": 1, "onboarding_data": 1}
     ).to_list(2000)
     onboarded = len(onboarded_docs)
@@ -234,12 +251,99 @@ async def _compute_b2b_metrics(user_id: str, start_iso: str, end_iso: str) -> di
     conversion_rate = round((onboarded / assigned * 100.0), 1) if assigned else 0.0
     avg_deal = round(revenue / onboarded, 0) if onboarded else 0
 
+    # Renewal / Retention (%) — of schools ever assigned to this user, how many
+    # are still active (not archived/lost) among those that were customers at least once
+    total_customers = await coll.count_documents({
+        "assigned_to": user_id,
+        "status": {"$in": ["converted", "onboarded", "ONBOARDED", "renewed", "active", "archived"]},
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    lost = await coll.count_documents({
+        "assigned_to": user_id,
+        "status": {"$in": ["archived", "lost", "churned"]},
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    renewal_rate = round(((total_customers - lost) / total_customers * 100.0), 1) if total_customers else 0.0
+
     return {
         "b2b_leads_assigned": assigned,
         "b2b_schools_onboarded": onboarded,
         "b2b_conversion_rate": conversion_rate,
         "b2b_revenue_generated": round(revenue, 2),
         "b2b_avg_deal_size": avg_deal,
+        "b2b_renewal_rate": renewal_rate,
+        "b2b_lost_schools": lost,
+    }
+
+
+async def _compute_hr_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
+    """HR — team openings (team_requirements) + hires (team_applications with status=hired).
+
+    Note: these two collections don't have an `assigned_to` column, so the
+    metrics are org-wide (visible to any team member with the HR role).
+    """
+    openings = await db.team_requirements.count_documents({
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    filled = await db.team_applications.count_documents({
+        "status": {"$in": ["hired", "onboarded", "onboarding"]},
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    # Over-deadline = still active + created > 30 days ago (snapshot)
+    thirty_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    over_deadline = await db.team_requirements.count_documents({
+        "is_active": True,
+        "created_at": {"$lt": thirty_ago},
+    })
+    return {
+        "hr_team_openings": openings,
+        "hr_openings_filled": filled,
+        "hr_openings_over_deadline": over_deadline,
+    }
+
+
+async def _compute_educator_hr_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
+    """Educator HR — open_requirements + educator_onboarding + educator_applications."""
+    reqs = await db.open_requirements.count_documents({
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    fulfilled = await db.educator_onboarding.count_documents({
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    })
+    thirty_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    over_deadline = await db.open_requirements.count_documents({
+        "is_active": True,
+        "created_at": {"$lt": thirty_ago},
+    })
+    return {
+        "edu_requirements": reqs,
+        "edu_requirements_fulfilled": fulfilled,
+        "edu_requirements_over_deadline": over_deadline,
+    }
+
+
+async def _compute_growth_partner_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
+    """Growth Partners — sourced from `growth_partners`."""
+    coll = db.growth_partners
+    base = {"created_at": {"$gte": start_iso, "$lte": end_iso}}
+    # If growth_partners has assigned_to, scope to it; else org-wide
+    sample = await coll.find_one({}, {"_id": 0, "assigned_to": 1})
+    if sample and "assigned_to" in sample:
+        base["assigned_to"] = user_id
+
+    leads = await coll.count_documents(base)
+    onboarded = await coll.count_documents({
+        **base,
+        "status": {"$in": ["onboarding", "active", "converted"]},
+    })
+    conversions = await coll.count_documents({
+        **base,
+        "status": {"$in": ["converted", "active"]},
+    })
+    return {
+        "gp_leads": leads,
+        "gp_onboarded": onboarded,
+        "gp_conversions": conversions,
     }
 
 
@@ -605,6 +709,9 @@ async def _compute_selected_metrics(
     needs_b2b = any(k.startswith("b2b_") for k in role_kpi_ids)
     needs_b2c = any(k.startswith("b2c_") for k in role_kpi_ids)
     needs_tasks = any(k.startswith("tasks_") or k.startswith("projects_") for k in role_kpi_ids)
+    needs_hr = any(k.startswith("hr_") for k in role_kpi_ids)
+    needs_edu = any(k.startswith("edu_") for k in role_kpi_ids)
+    needs_gp = any(k.startswith("gp_") for k in role_kpi_ids)
     if needs_support:
         metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
     if needs_b2b:
@@ -613,6 +720,12 @@ async def _compute_selected_metrics(
         metrics.update(await _compute_b2c_metrics(user_id, start_iso, end_iso))
     if needs_tasks:
         metrics.update(await _compute_task_metrics(user_id, start_iso, end_iso))
+    if needs_hr:
+        metrics.update(await _compute_hr_metrics(user_id, start_iso, end_iso))
+    if needs_edu:
+        metrics.update(await _compute_educator_hr_metrics(user_id, start_iso, end_iso))
+    if needs_gp:
+        metrics.update(await _compute_growth_partner_metrics(user_id, start_iso, end_iso))
     return metrics
 
 
