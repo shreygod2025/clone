@@ -1,5 +1,43 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 6) — My Performance Page with Time-Series Charts 📊
+**Status: COMPLETE — verified end-to-end**
+
+### Backend
+Added two endpoints to `/app/backend/routes/kpis.py`:
+- `GET /api/me/performance/timeseries?scope=month|quarter|year` — current user
+- `GET /api/users/{user_id}/performance/timeseries?scope=...` — admin/manager view
+Response contains:
+- `buckets`: array of `{label, sub}` (weeks / months / quarters)
+- `kpis`: per-KPI series `{id, label, category, unit, series: [{label, sub, value}], trend, total, avg, display_value}`
+
+Bucket logic (`_buckets_for_scope`):
+- **month** → weekly buckets (Wk 1..N) clipped to the calendar month, Mon-Sun aligned
+- **quarter** → 3 monthly buckets (Jan/Feb/Mar or Apr/May/Jun etc.) for the quarter containing `ref`
+- **year** → 4 quarterly buckets (Q1..Q4) for the year containing `ref`
+
+### Frontend — `UserPerformance.jsx` rewritten
+- Component accepts `mode="admin"` (default, reads `:id` from URL) or `mode="me"` (uses logged-in user)
+- **Scope tabs** (Month / Quarter / Year) as pill-style toggle in a rounded container
+- Each KPI renders as a Card with:
+  - Icon + category + label
+  - **Trend pill** with % change (green ↑ up, red ↓ down, slate = no change)
+  - Large display value (sum for counts/currency, average for %/hours)
+  - **Recharts AreaChart** with gradient fill, colored by trend direction, hover tooltip
+- Fully responsive (`grid-cols-1 lg:grid-cols-2`, mobile-friendly paddings)
+
+### Routing & sidebar
+- Added route `/admin/me/performance` → `<UserPerformance mode="me" />`
+- Added sidebar link **"My Performance"** (BarChart3 icon, `permission: null` so all team members see it)
+
+### Files touched
+- `/app/backend/routes/kpis.py`
+- `/app/frontend/src/pages/admin/UserPerformance.jsx` (rewritten)
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` (sidebar item)
+- `/app/frontend/src/App.js` (new route)
+
+
+
 ## 2026-07-03 (round 5) — Task Cards: Edit + Start + Shared Component + Mobile 🎯
 **Status: COMPLETE — verified end-to-end**
 

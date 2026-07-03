@@ -369,22 +369,17 @@ async def get_my_performance(
 ):
     """Return the current user's performance for a scoped time range.
 
-    Used by the Admin Dashboard KPI strip. Falls back gracefully when the current
-    user is an admin (from `admins` collection) with no role KPIs — returns
-    the full task-delivery block as a sensible default so the Dashboard is not
-    blank.
+    Used by the Admin Dashboard KPI strip.
     """
     uid = user.get("id") or user.get("user_id") or ""
     if not uid:
         raise HTTPException(status_code=400, detail="Missing user id in token")
 
-    # Lookup role: prefer team_users' role_id; admins may not have a role_id
     tu = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1})
     role_id = (tu or {}).get("role_id") or ""
     role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
     role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
 
-    # For admins without a role, default to the Task & Project Delivery block
     if not role_kpi_ids:
         role_kpi_ids = [
             "tasks_assigned", "tasks_completed", "tasks_overdue",
@@ -403,6 +398,193 @@ async def get_my_performance(
         "kpis": kpis_out,
         "metrics": metrics,
     }
+
+
+# ── Time-series buckets ───────────────────────────────────────────────────────
+def _buckets_for_scope(scope: str, ref_iso: Optional[str]) -> list:
+    """Return list of {label, start_iso, end_iso} for the requested scope.
+
+    - month   → weekly buckets covering the calendar month of ref
+    - quarter → 3 monthly buckets of the quarter containing ref
+    - year    → 4 quarterly buckets (Q1..Q4) of the year containing ref
+    """
+    if ref_iso:
+        try:
+            ref = datetime.strptime(ref_iso[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid ref date; use YYYY-MM-DD")
+    else:
+        ref = datetime.now(timezone.utc)
+
+    buckets = []
+    if scope == "month":
+        y, m = ref.year, ref.month
+        last_day = monthrange(y, m)[1]
+        # Week buckets aligned to calendar (Mon-Sun); may partially spill outside month
+        # We keep buckets inside the calendar month (start/end clipped to month bounds).
+        month_start = datetime(y, m, 1, tzinfo=timezone.utc)
+        month_end = datetime(y, m, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+        # First week: month_start → next Sunday (weekday 6)
+        wk_start = month_start
+        wk_idx = 1
+        while wk_start <= month_end:
+            days_to_sunday = 6 - wk_start.weekday()
+            wk_end = (wk_start + timedelta(days=days_to_sunday)).replace(hour=23, minute=59, second=59, microsecond=999999)
+            if wk_end > month_end:
+                wk_end = month_end
+            buckets.append({
+                "label": f"Wk {wk_idx}",
+                "sub":   f"{wk_start.strftime('%d %b')} – {wk_end.strftime('%d %b')}",
+                "start_iso": wk_start.isoformat(),
+                "end_iso":   wk_end.isoformat(),
+            })
+            wk_start = (wk_end + timedelta(microseconds=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            wk_idx += 1
+    elif scope == "quarter":
+        y = ref.year
+        q = (ref.month - 1) // 3  # 0..3
+        first_month = q * 3 + 1
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        for i in range(3):
+            m = first_month + i
+            last_day = monthrange(y, m)[1]
+            buckets.append({
+                "label": months[m - 1],
+                "sub":   f"{months[m - 1]} {y}",
+                "start_iso": datetime(y, m, 1, tzinfo=timezone.utc).isoformat(),
+                "end_iso":   datetime(y, m, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc).isoformat(),
+            })
+    elif scope == "year":
+        y = ref.year
+        for q_idx in range(4):
+            start_m = q_idx * 3 + 1
+            end_m = start_m + 2
+            last_day = monthrange(y, end_m)[1]
+            buckets.append({
+                "label": f"Q{q_idx + 1}",
+                "sub":   f"Q{q_idx + 1} {y}",
+                "start_iso": datetime(y, start_m, 1, tzinfo=timezone.utc).isoformat(),
+                "end_iso":   datetime(y, end_m, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc).isoformat(),
+            })
+    else:
+        raise HTTPException(status_code=400, detail="scope must be month | quarter | year")
+    return buckets
+
+
+async def _timeseries_payload(uid: str, scope: str, ref_iso: Optional[str]) -> dict:
+    """Compute the KPI catalog + time-series buckets payload for a user."""
+    target = await db.team_users.find_one({"id": uid}, {"_id": 0})
+    role_id = (target or {}).get("role_id") or ""
+    role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
+    role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
+
+    if not role_kpi_ids:
+        role_kpi_ids = [
+            "tasks_assigned", "tasks_completed", "tasks_overdue",
+            "projects_leading", "projects_member_of",
+        ]
+
+    buckets = _buckets_for_scope(scope, ref_iso)
+
+    # Compute metrics for each bucket in parallel-friendly sequential loop
+    bucket_metrics = []
+    totals: dict = {kid: 0 for kid in role_kpi_ids}
+    for b in buckets:
+        m = await _compute_selected_metrics(uid, role_kpi_ids, b["start_iso"], b["end_iso"])
+        bucket_metrics.append(m)
+        for kid in role_kpi_ids:
+            v = m.get(kid, 0) or 0
+            try:
+                totals[kid] += float(v)
+            except (TypeError, ValueError):
+                pass
+
+    # Shape per-KPI series
+    kpi_series = []
+    for kid in role_kpi_ids:
+        meta = KPI_BY_ID.get(kid)
+        if not meta:
+            continue
+        series = []
+        for i, b in enumerate(buckets):
+            series.append({
+                "label": b["label"],
+                "sub":   b["sub"],
+                "value": bucket_metrics[i].get(kid, 0),
+            })
+        # Trend: last vs previous bucket
+        trend = 0
+        if len(series) >= 2:
+            last = series[-1]["value"] or 0
+            prev = series[-2]["value"] or 0
+            try:
+                trend = float(last) - float(prev)
+            except (TypeError, ValueError):
+                trend = 0
+        # Average across non-null buckets (for rate/hour KPIs — sum doesn't make sense)
+        avg = 0
+        nonzero = [s["value"] for s in series if s["value"] not in (None, 0)]
+        if nonzero:
+            try:
+                avg = round(sum(float(v) for v in nonzero) / len(nonzero), 2)
+            except (TypeError, ValueError):
+                avg = 0
+
+        total_val = totals.get(kid, 0)
+        # For rate/percent/hours KPIs, prefer the average; for counts use the sum
+        display = avg if meta.get("unit") in ("%", "hours") else total_val
+
+        kpi_series.append({
+            **meta,
+            "series": series,
+            "trend": trend,
+            "total": total_val,
+            "avg": avg,
+            "display_value": display,
+        })
+
+    return {
+        "user": {
+            "id": (target or {}).get("id", uid),
+            "name": (target or {}).get("name", ""),
+            "email": (target or {}).get("email", ""),
+            "role_id": role_id,
+            "role_name": (role_doc or {}).get("name", ""),
+        },
+        "scope": scope,
+        "ref": ref_iso,
+        "buckets": [{"label": b["label"], "sub": b["sub"]} for b in buckets],
+        "kpis": kpi_series,
+    }
+
+
+@router.get("/me/performance/timeseries")
+async def get_my_performance_timeseries(
+    scope: str = Query("month", pattern="^(month|quarter|year)$"),
+    ref: Optional[str] = Query(None, description="Anchor date YYYY-MM-DD; defaults to today"),
+    user: dict = Depends(get_current_user),
+):
+    """Time-series performance for the current user across weeks/months/quarters."""
+    uid = user.get("id") or user.get("user_id") or ""
+    if not uid:
+        raise HTTPException(status_code=400, detail="Missing user id in token")
+    return await _timeseries_payload(uid, scope, ref)
+
+
+@router.get("/users/{user_id}/performance/timeseries")
+async def get_user_performance_timeseries(
+    user_id: str,
+    scope: str = Query("month", pattern="^(month|quarter|year)$"),
+    ref: Optional[str] = Query(None, description="Anchor date YYYY-MM-DD; defaults to today"),
+    user: dict = Depends(get_current_user),
+):
+    """Time-series performance for a specific user (admin/manager only)."""
+    target = await db.team_users.find_one({"id": user_id}, {"_id": 0, "id": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not await _is_admin_or_manager_of(user, user_id):
+        raise HTTPException(status_code=403, detail="Not allowed to view this user's performance")
+    return await _timeseries_payload(user_id, scope, ref)
 
 
 # ── Shared metric routing ─────────────────────────────────────────────────────

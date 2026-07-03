@@ -285,6 +285,7 @@ function App() {
               <Route path="/admin/team-onboarding" element={<ProtectedRoute><AdminTeamOnboarding /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
               <Route path="/admin/users/:id/performance" element={<ProtectedRoute><UserPerformance /></ProtectedRoute>} />
+              <Route path="/admin/me/performance" element={<ProtectedRoute><UserPerformance mode="me" /></ProtectedRoute>} />
               <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasks /></ProtectedRoute>} />
               <Route path="/admin/projects" element={<ProtectedRoute><AdminProjects /></ProtectedRoute>} />
               <Route path="/admin/projects/:id" element={<ProtectedRoute><AdminProjectDetail /></ProtectedRoute>} />
