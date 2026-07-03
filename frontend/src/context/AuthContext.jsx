@@ -66,11 +66,17 @@ export const AuthProvider = ({ children }) => {
     const response = await axios.post(`${API}/auth/login`, { email, password });
     const { access_token, user: userData } = response.data;
     localStorage.setItem('oll_token', access_token);
-    localStorage.setItem('oll_user', JSON.stringify(userData)); // Cache user data
-    setUser(userData);
+    // Fetch enriched profile (adds is_manager, etc.) — falls back to login payload if it fails
+    let fullUser = userData;
+    try {
+      const meRes = await axios.get(`${API}/auth/me`, { headers: { Authorization: `Bearer ${access_token}` } });
+      fullUser = meRes.data;
+    } catch (_) { /* fall back to login payload */ }
+    localStorage.setItem('oll_user', JSON.stringify(fullUser));
+    setUser(fullUser);
     setIsAuthenticated(true);
     verifyAttempted.current = false; // Reset for future verifications
-    return userData;
+    return fullUser;
   };
 
   const register = async (email, password, name) => {

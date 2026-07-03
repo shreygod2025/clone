@@ -26,7 +26,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null },
     { path: '/admin/tasks', icon: CheckSquare, label: 'Tasks', permission: null },
     { path: '/admin/projects', icon: FolderKanban, label: 'Projects', permission: null },
-    { path: '/admin/team', icon: Users, label: 'My Team', permission: null },
+    { path: '/admin/team', icon: Users, label: 'My Team', permission: null, requiresManager: true },
     { path: '/admin/me/performance', icon: BarChart3, label: 'My Performance', permission: null },
     { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null },
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
@@ -53,12 +53,15 @@ const AdminLayout = ({ children, title }) => {
 
   // Filter nav items based on user role and permissions
   const navItems = allNavItems.filter(item => {
-    // Admin sees everything
+    // Manager-only items — hidden from non-managers regardless of role
+    if (item.requiresManager && !user?.is_manager) return false;
+
+    // Admin sees everything (except manager-only above)
     if (user?.role === 'admin') return true;
-    
+
     // Dashboard is always visible
     if (item.permission === null) return true;
-    
+
     // Check if team member has permission
     const userPermissions = user?.permissions || [];
     return userPermissions.includes(item.permission);

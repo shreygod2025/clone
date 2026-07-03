@@ -200,7 +200,15 @@ async def login_admin(data: AdminLogin):
 
 @router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
-    return user
+    # Attach is_manager flag so the frontend can hide "My Team" for non-managers.
+    # Admins are always managers; team members only if someone has them as reports_to.
+    uid = user.get("id") or ""
+    if user.get("role") == "admin":
+        is_manager = True
+    else:
+        reports_count = await db.team_users.count_documents({"reports_to": uid, "is_active": {"$ne": False}})
+        is_manager = reports_count > 0
+    return {**user, "is_manager": is_manager}
 
 @router.post("/team-users")
 async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_current_user)):
