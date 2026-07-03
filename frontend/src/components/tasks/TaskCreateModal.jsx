@@ -283,7 +283,7 @@ export const AttachmentsPanel = ({ attachments = [], onChange, getAuthHeaders, c
 };
 
 // ── Main modal ───────────────────────────────────────────────────────────────
-const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '', existingTask = null }) => {
+const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '', existingTask = null, defaultAssigneeId = '' }) => {
   const isEdit = !!existingTask;
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -327,7 +327,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       setForm({
         title: '',
         description: '',
-        assigned_to: currentUser?.id || '',
+        assigned_to: defaultAssigneeId || currentUser?.id || '',
         priority: 'medium',
         due_date: '',
         project_id: defaultProjectId || '',

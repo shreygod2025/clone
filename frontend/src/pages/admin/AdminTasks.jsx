@@ -85,11 +85,15 @@ const AdminTasks = () => {
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/tasks?filter=${filter}`, { headers: getAuthHeaders() });
+      const assigneeFilter = searchParams.get('assignee') || '';
+      const url = assigneeFilter
+        ? `${API}/tasks?filter=team&assignee=${assigneeFilter}`
+        : `${API}/tasks?filter=${filter}`;
+      const res = await axios.get(url, { headers: getAuthHeaders() });
       setTasks(res.data || []);
     } catch { toast.error('Failed to load tasks'); }
     finally { setLoading(false); }
-  }, [filter, getAuthHeaders]);
+  }, [filter, getAuthHeaders, searchParams]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 

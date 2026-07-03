@@ -1,5 +1,39 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 10) — My Team page (Manager + Admin view) 👥
+**Status: COMPLETE — screenshots verified**
+
+### Backend
+- New endpoint `GET /api/team/my-team` in `/app/backend/routes/users.py`:
+  - **Admin** → returns every active team_user
+  - **Manager** (any user with `reports_to == current_user.id`) → returns those direct reports
+  - **Regular member** → returns empty (`scope: "none"`)
+  - Each member enriched with real-time counts: `tasks_assigned_open`, `tasks_pending_approval`, `tasks_completed`, `projects_leading`, `projects_member_of`, plus role name and manager name
+- `GET /api/tasks?assignee={user_id}` now accepts an explicit `assignee` filter. Admins can view any user's tasks; managers can view their reports; anyone else → 403
+
+### Frontend
+- New page `/app/frontend/src/pages/admin/AdminMyTeam.jsx` at route `/admin/team`:
+  - Header shows "Team Overview" (admin) or "My Team" (manager)
+  - Search input (name/email/role) + 4 summary tiles (Open / Pending Review / Completed / Leading)
+  - Each member rendered as a **card** with avatar + role + contact info + "Lead" badge + 6-cell stats grid + three action buttons:
+    - **Assign Task** → opens `TaskCreateModal` with the assignee chip pre-filled via new `defaultAssigneeId` prop
+    - **View Tasks** → deep-links to `/admin/tasks?assignee={id}` (tasks list scoped to that user)
+    - **Performance** icon → opens `/admin/users/{id}/performance` (existing per-user performance page)
+- `AdminTasks.jsx` reads the `?assignee=` URL param and forwards it to the tasks endpoint
+- `TaskCreateModal.jsx` accepts `defaultAssigneeId` prop
+- Sidebar: added "My Team" (Users icon) link between Projects and My Performance, `permission: null` so both managers and admins see it
+
+### Files touched
+- `/app/backend/routes/users.py` (new endpoint at bottom)
+- `/app/backend/routes/tasks.py` (assignee query param)
+- `/app/frontend/src/pages/admin/AdminMyTeam.jsx` (new)
+- `/app/frontend/src/pages/admin/AdminTasks.jsx` (loadTasks reads ?assignee)
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` (sidebar link)
+- `/app/frontend/src/components/tasks/TaskCreateModal.jsx` (defaultAssigneeId prop)
+- `/app/frontend/src/App.js` (route + lazy import)
+
+
+
 ## 2026-07-03 (round 9) — Categorized Performance + Project-window KPIs + Weekly Task Widget 🎨
 **Status: COMPLETE — screenshots verified**
 

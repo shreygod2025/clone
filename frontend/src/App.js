@@ -104,6 +104,7 @@ const AdminGPOnboarding = lazy(() => import("./pages/admin/AdminGPOnboarding"));
 const AdminTeamApplications = lazy(() => import("./pages/admin/AdminTeamApplications"));
 const AdminTeamOnboarding = lazy(() => import("./pages/admin/AdminTeamOnboarding"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminMyTeam = lazy(() => import("./pages/admin/AdminMyTeam"));
 const UserPerformance = lazy(() => import("./pages/admin/UserPerformance"));
 const AdminTasks = lazy(() => import("./pages/admin/AdminTasks"));
 const AdminProjects = lazy(() => import("./pages/admin/AdminProjects"));
@@ -286,6 +287,7 @@ function App() {
               <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
               <Route path="/admin/users/:id/performance" element={<ProtectedRoute><UserPerformance /></ProtectedRoute>} />
               <Route path="/admin/me/performance" element={<ProtectedRoute><UserPerformance mode="me" /></ProtectedRoute>} />
+              <Route path="/admin/team" element={<ProtectedRoute><AdminMyTeam /></ProtectedRoute>} />
               <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasks /></ProtectedRoute>} />
               <Route path="/admin/projects" element={<ProtectedRoute><AdminProjects /></ProtectedRoute>} />
               <Route path="/admin/projects/:id" element={<ProtectedRoute><AdminProjectDetail /></ProtectedRoute>} />

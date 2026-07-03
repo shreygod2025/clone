@@ -211,6 +211,7 @@ async def list_tasks(
     filter: str = Query("my", pattern="^(my|by_me|team|all)$"),
     status: Optional[str] = None,
     project_id: Optional[str] = None,
+    assignee: Optional[str] = None,
     include_subtasks: bool = False,
     parent_task_id: Optional[str] = None,
     user: dict = Depends(get_current_user),
@@ -240,6 +241,18 @@ async def list_tasks(
     elif filter == "all":
         if not is_admin:
             query["$or"] = [{"assigned_to": uid}, {"assigned_by": uid}]
+
+    # Explicit assignee filter (admins & managers can drill into one user's tasks)
+    if assignee:
+        if is_admin or assignee == uid:
+            query["assigned_to"] = assignee
+        else:
+            # allow managers to filter by their reports
+            reports = await _list_reports_of(uid)
+            if assignee in reports:
+                query["assigned_to"] = assignee
+            else:
+                raise HTTPException(status_code=403, detail="Not allowed to view this user's tasks")
 
     if status:
         query["status"] = status

@@ -792,3 +792,85 @@ async def get_school_student_receipt(payment_id: str):
         "created_at": payment.get("created_at")
     }
 
+
+
+# ── My Team (manager & admin view) ────────────────────────────────────────────
+@router.get("/team/my-team")
+async def get_my_team(user: dict = Depends(get_current_user)):
+    """Return the team the current user manages.
+
+    - **admin** (from `admins` collection): sees every team_user
+    - **manager** (any team_user is `reports_to = current user`): sees those direct reports
+    - **regular member**: empty list
+
+    Each row includes real-time stats:
+      - `tasks_assigned_open` (not completed & not pending_approval)
+      - `tasks_pending_approval`
+      - `tasks_completed`
+      - `projects_leading`
+      - `projects_member_of`
+    """
+    uid = user.get("id") or ""
+    is_admin_user = bool(await db.admins.find_one({"id": uid}, {"_id": 0, "id": 1}))
+
+    if is_admin_user:
+        # Admin sees everyone
+        members = await db.team_users.find({"is_active": {"$ne": False}}, {"_id": 0, "password_hash": 0, "password": 0}).to_list(1000)
+        scope = "admin"
+    else:
+        members = await db.team_users.find({"reports_to": uid, "is_active": {"$ne": False}}, {"_id": 0, "password_hash": 0, "password": 0}).to_list(1000)
+        scope = "manager" if members else "none"
+
+    # Enrich each member with counts (in parallel via asyncio.gather)
+    async def _enrich(m):
+        mid = m.get("id")
+        # role name
+        role_doc = None
+        if m.get("role_id"):
+            role_doc = await db.roles.find_one({"id": m["role_id"]}, {"_id": 0, "name": 1})
+        role_name = (role_doc or {}).get("name") or m.get("role") or "team_member"
+
+        # Manager name
+        mgr_name = ""
+        if m.get("reports_to"):
+            mgr = await db.team_users.find_one({"id": m["reports_to"]}, {"_id": 0, "name": 1}) \
+                  or await db.admins.find_one({"id": m["reports_to"]}, {"_id": 0, "name": 1})
+            mgr_name = (mgr or {}).get("name", "")
+
+        # Counts
+        tasks_open, tasks_pr, tasks_done, proj_lead, proj_member = await asyncio.gather(
+            db.tasks.count_documents({"assigned_to": mid, "status": {"$in": ["pending", "in_progress", "rejected"]}}),
+            db.tasks.count_documents({"assigned_to": mid, "status": "pending_approval"}),
+            db.tasks.count_documents({"assigned_to": mid, "status": "completed"}),
+            db.projects.count_documents({"lead_id": mid}),
+            db.projects.count_documents({"$or": [{"member_ids": mid}, {"lead_id": mid}]}),
+        )
+        return {
+            "id": mid,
+            "name": m.get("name", ""),
+            "email": m.get("email", ""),
+            "phone": m.get("phone", ""),
+            "role_name": role_name,
+            "manager_name": mgr_name,
+            "reports_to": m.get("reports_to", ""),
+            "is_active": m.get("is_active", True),
+            "tasks_assigned_open": tasks_open,
+            "tasks_pending_approval": tasks_pr,
+            "tasks_completed": tasks_done,
+            "projects_leading": proj_lead,
+            "projects_member_of": proj_member,
+        }
+
+    enriched = await asyncio.gather(*[_enrich(m) for m in members])
+    # Sort: managers first, then by name
+    def sort_key(row):
+        # A user is a manager if any others report to them (approximate via projects_leading > 0 as proxy)
+        return (0 if row["projects_leading"] > 0 else 1, row["name"].lower())
+    enriched.sort(key=sort_key)
+    return {
+        "scope": scope,
+        "current_user_id": uid,
+        "is_admin": is_admin_user,
+        "count": len(enriched),
+        "members": enriched,
+    }
