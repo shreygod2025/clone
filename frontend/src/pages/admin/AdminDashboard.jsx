@@ -304,14 +304,18 @@ const MyKpisWidget = () => {
           No KPIs configured for your role yet. An admin can assign KPIs under <Link to="/admin/users" className="underline text-blue-600">Users &amp; Roles</Link>.
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3" data-testid="my-kpis-grid">
+        <div
+          className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory -mx-1 px-1 scrollbar-thin scrollbar-thumb-slate-200"
+          data-testid="my-kpis-grid"
+          style={{ scrollbarWidth: 'thin' }}
+        >
           {kpis.map(k => (
             <div key={k.id}
-              className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow snap-start shrink-0 w-[210px]"
               data-testid={`my-kpi-${k.id}`}
             >
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1">{k.category}</p>
-              <p className="text-xs text-slate-600 mb-1.5">{k.label}</p>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1 truncate">{k.category}</p>
+              <p className="text-xs text-slate-600 mb-1.5 truncate" title={k.label}>{k.label}</p>
               <p className="text-2xl font-bold text-slate-900" data-testid={`my-kpi-value-${k.id}`}>
                 {KPI_UNIT_FMT(k.value, k.unit)}
               </p>

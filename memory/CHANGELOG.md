@@ -1,5 +1,33 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 7) — Performance Picker + Snapshot KPIs + Dashboard Slider 📈
+**Status: COMPLETE — verified end-to-end**
+
+### 1. Ref-date picker on Performance page
+- **Month scope** → Month + Year dropdowns
+- **Quarter scope** → Quarter (Q1–Q4) + Year dropdowns
+- **Year scope** → Year dropdown only
+- Each change re-fetches with the correct `ref=YYYY-MM-DD` query string, so users can drill into any past period.
+
+### 2. Fixed "Projects assigned to" (and similar snapshot KPIs)
+- Added `aggregation` field to KPI catalog entries. New value `"snapshot"` used for KPIs whose queries don't have a time filter:
+  - `tasks_overdue` — real-time snapshot of currently-overdue open tasks
+  - `projects_member_of` — all-time count of projects the user is a member of OR leads
+  - `projects_leading` — all-time count of projects the user leads
+- In `_timeseries_payload`, snapshot KPIs use the **last-bucket value** for `display_value` (no summing).
+- **Also fixed the query** for `projects_member_of` to include both `member_ids` and `lead_id` (previously missed leads-only projects).
+
+### 3. Dashboard — one-line horizontal KPI slider
+- Replaced the responsive grid (`grid-cols-2 md:grid-cols-3 lg:grid-cols-5`) with a `flex overflow-x-auto snap-x` horizontal scrolling strip.
+- Each card is `w-[210px]` with `snap-start` — swipe or scroll horizontally on any device.
+
+### Files touched
+- `/app/backend/routes/kpis.py` (KPI catalog + timeseries snapshot logic + member/lead OR query)
+- `/app/frontend/src/pages/admin/UserPerformance.jsx` (month/quarter/year pickers + ref builder)
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` (dashboard KPI horizontal slider)
+
+
+
 ## 2026-07-03 (round 6) — My Performance Page with Time-Series Charts 📊
 **Status: COMPLETE — verified end-to-end**
 

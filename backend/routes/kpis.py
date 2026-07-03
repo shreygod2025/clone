@@ -44,9 +44,9 @@ KPI_CATALOG = [
     # Task & Project Delivery — sourced from `tasks` and `projects`
     {"id": "tasks_assigned", "label": "Tasks assigned", "category": "Task & Project Delivery", "unit": "count"},
     {"id": "tasks_completed", "label": "Tasks completed", "category": "Task & Project Delivery", "unit": "count"},
-    {"id": "tasks_overdue", "label": "Tasks overdue", "category": "Task & Project Delivery", "unit": "count"},
-    {"id": "projects_member_of", "label": "Projects assigned to", "category": "Task & Project Delivery", "unit": "count"},
-    {"id": "projects_leading", "label": "Projects leading", "category": "Task & Project Delivery", "unit": "count"},
+    {"id": "tasks_overdue", "label": "Tasks overdue", "category": "Task & Project Delivery", "unit": "count", "aggregation": "snapshot"},
+    {"id": "projects_member_of", "label": "Projects assigned to", "category": "Task & Project Delivery", "unit": "count", "aggregation": "snapshot"},
+    {"id": "projects_leading", "label": "Projects leading", "category": "Task & Project Delivery", "unit": "count", "aggregation": "snapshot"},
 ]
 
 KPI_BY_ID = {k["id"]: k for k in KPI_CATALOG}
@@ -301,7 +301,9 @@ async def _compute_task_metrics(user_id: str, start_iso: str, end_iso: str) -> d
         "due_date": {"$lt": now_iso, "$ne": None},
         "status": {"$ne": "completed"},
     })
-    projects_member_of = await db.projects.count_documents({"member_ids": user_id})
+    projects_member_of = await db.projects.count_documents({
+        "$or": [{"member_ids": user_id}, {"lead_id": user_id}]
+    })
     projects_leading = await db.projects.count_documents({"lead_id": user_id})
 
     return {
@@ -531,8 +533,15 @@ async def _timeseries_payload(uid: str, scope: str, ref_iso: Optional[str]) -> d
                 avg = 0
 
         total_val = totals.get(kid, 0)
-        # For rate/percent/hours KPIs, prefer the average; for counts use the sum
-        display = avg if meta.get("unit") in ("%", "hours") else total_val
+        aggregation = meta.get("aggregation", "sum")
+        # For snapshot KPIs (project counts, current overdue) — display current count only
+        if aggregation == "snapshot":
+            display = series[-1]["value"] if series else 0
+        elif meta.get("unit") in ("%", "hours"):
+            # Rate/hour KPIs → average across non-zero buckets
+            display = avg
+        else:
+            display = total_val
 
         kpi_series.append({
             **meta,

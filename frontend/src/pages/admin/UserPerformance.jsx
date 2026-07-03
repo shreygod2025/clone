@@ -41,6 +41,8 @@ const formatValue = (val, unit) => {
 const trendColor = (t) => (t > 0 ? 'text-green-600' : t < 0 ? 'text-red-600' : 'text-slate-400');
 const TrendIcon = ({ t }) => (t > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : t < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />);
 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 const UserPerformance = ({ mode = 'admin' }) => {
   // mode = 'admin' (view any user by :id) OR 'me' (view self, no :id in URL)
   const { id: routeUserId } = useParams();
@@ -50,17 +52,31 @@ const UserPerformance = ({ mode = 'admin' }) => {
   const userId = selfMode ? (authUser?.id || '') : routeUserId;
 
   const [scope, setScope] = useState('month');
+  const now = new Date();
+  const [selMonth, setSelMonth] = useState(now.getMonth() + 1);   // 1..12
+  const [selQuarter, setSelQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);  // 1..4
+  const [selYear, setSelYear] = useState(now.getFullYear());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [allUsers, setAllUsers] = useState([]);
+
+  // Compute the ref date (YYYY-MM-DD) from the current picker selection
+  const buildRef = () => {
+    let m;
+    if (scope === 'month') m = selMonth;
+    else if (scope === 'quarter') m = (selQuarter - 1) * 3 + 1;
+    else m = 1; // year
+    return `${selYear}-${String(m).padStart(2, '0')}-01`;
+  };
 
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
+      const ref = buildRef();
       const url = selfMode
-        ? `${API}/me/performance/timeseries?scope=${scope}`
-        : `${API}/users/${userId}/performance/timeseries?scope=${scope}`;
+        ? `${API}/me/performance/timeseries?scope=${scope}&ref=${ref}`
+        : `${API}/users/${userId}/performance/timeseries?scope=${scope}&ref=${ref}`;
       const res = await axios.get(url, { headers: getAuthHeaders() });
       setData(res.data);
     } catch (err) {
@@ -69,7 +85,8 @@ const UserPerformance = ({ mode = 'admin' }) => {
     } finally {
       setLoading(false);
     }
-  }, [userId, scope, selfMode, getAuthHeaders]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, scope, selMonth, selQuarter, selYear, selfMode]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -86,6 +103,8 @@ const UserPerformance = ({ mode = 'admin' }) => {
   };
 
   const scopeSub = SCOPE_TABS.find(t => t.key === scope)?.sub;
+  const years = [];
+  for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) years.push(y);
 
   return (
     <AdminLayout>
@@ -131,23 +150,61 @@ const UserPerformance = ({ mode = 'admin' }) => {
           </div>
         </div>
 
-        {/* Scope tabs */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-1 inline-flex" data-testid="scope-tabs">
-          {SCOPE_TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setScope(t.key)}
-              className={`px-4 sm:px-6 py-2 rounded-xl text-sm font-medium transition-all ${
-                scope === t.key
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              data-testid={`scope-tab-${t.key}`}
+        {/* Scope tabs + Ref picker */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="bg-white border border-slate-200 rounded-2xl p-1 inline-flex" data-testid="scope-tabs">
+            {SCOPE_TABS.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setScope(t.key)}
+                className={`px-4 sm:px-6 py-2 rounded-xl text-sm font-medium transition-all ${
+                  scope === t.key
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                data-testid={`scope-tab-${t.key}`}
+              >
+                {t.label}
+                <span className="hidden sm:inline text-[10px] ml-1.5 opacity-70">by {t.sub}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Ref picker — swaps based on scope */}
+          <div className="flex items-center gap-2" data-testid="ref-picker">
+            {scope === 'month' && (
+              <select
+                value={selMonth}
+                onChange={(e) => setSelMonth(Number(e.target.value))}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                data-testid="month-picker"
+              >
+                {MONTHS.map((m, i) => (
+                  <option key={i} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            )}
+            {scope === 'quarter' && (
+              <select
+                value={selQuarter}
+                onChange={(e) => setSelQuarter(Number(e.target.value))}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                data-testid="quarter-picker"
+              >
+                {[1,2,3,4].map(q => (
+                  <option key={q} value={q}>Q{q}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={selYear}
+              onChange={(e) => setSelYear(Number(e.target.value))}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+              data-testid="year-picker"
             >
-              {t.label}
-              <span className="hidden sm:inline text-[10px] ml-1.5 opacity-70">by {t.sub}</span>
-            </button>
-          ))}
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Loading */}
