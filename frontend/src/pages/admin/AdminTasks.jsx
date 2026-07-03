@@ -9,7 +9,7 @@ import {
   Plus, Calendar, Trash2, X, Search,
   CheckCircle2, Circle, Clock, MessageSquare, ChevronDown, ChevronRight,
   Check, XCircle, Send, ListChecks, Link2, MoreHorizontal, AlertCircle,
-  Sparkles, Paperclip, FileText
+  Sparkles, Paperclip, FileText, Edit2, Play
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -75,6 +75,7 @@ const AdminTasks = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [detailTask, setDetailTask] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,7 +182,7 @@ const AdminTasks = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6 max-w-[1600px] mx-auto space-y-5" data-testid="admin-tasks-page">
+      <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-5" data-testid="admin-tasks-page">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
@@ -250,12 +251,12 @@ const AdminTasks = () => {
               />
             ))}
             <div className="flex-1" />
-            <div className="relative">
+            <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input
                 value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search tasks…"
-                className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm w-64 outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
+                className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm w-full outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
                 data-testid="tasks-search-input"
               />
             </div>
@@ -295,6 +296,7 @@ const AdminTasks = () => {
                   onDelete={deleteTask}
                   onStatus={updateStatus}
                   onAddSubtask={openCreate}
+                  onEdit={setEditingTask}
                   getAuthHeaders={getAuthHeaders}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
@@ -313,6 +315,7 @@ const AdminTasks = () => {
                   onDelete={() => deleteTask(t)}
                   onStatus={(s) => updateStatus(t, s)}
                   onAddSubtask={() => openCreate(t)}
+                  onEdit={() => setEditingTask(t)}
                   getAuthHeaders={getAuthHeaders}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
@@ -329,6 +332,15 @@ const AdminTasks = () => {
           onCreated={() => loadTasks()}
           currentUser={user}
           parentTask={subTaskParent}
+        />
+
+        {/* Edit modal (same shared component in edit mode) */}
+        <TaskCreateModal
+          open={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          onCreated={() => loadTasks()}
+          currentUser={user}
+          existingTask={editingTask}
         />
 
         {/* Detail modal */}
@@ -369,7 +381,7 @@ const StatusChip = ({ label, count, active, onClick, dot, testid }) => (
 );
 
 // ── Status section (grouped card container) ──────────────────────────────────
-const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId, isAdmin }) => {
+const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin }) => {
   const [collapsed, setCollapsed] = useState(false);
   const S = STATUS_META[statusKey];
 
@@ -396,6 +408,7 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
               onDelete={() => onDelete(t)}
               onStatus={(s) => onStatus(t, s)}
               onAddSubtask={() => onAddSubtask(t)}
+              onEdit={() => onEdit(t)}
               getAuthHeaders={getAuthHeaders}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
@@ -409,12 +422,15 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
 
 // ── Task card row (the star of the redesign) ─────────────────────────────────
 // ── Fixed-position dropdown menu (avoids overflow-hidden clipping) ───────────
-const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
+export const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
   const [pos, setPos] = useState({ top: 0, left: 0, width: 200 });
   const popupRef = useRef(null);
   useEffect(() => {
-    if (!anchorRef?.current) return;
-    const r = anchorRef.current.getBoundingClientRect();
+    const anchor = anchorRef?.current;
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect();
+    // Fall back to visible viewport center if the anchor is off-screen (hidden)
+    if (r.width === 0 && r.height === 0) return;
     const width = 200;
     const left = Math.min(r.right - width, window.innerWidth - width - 8);
     setPos({ top: r.bottom + 4, left: Math.max(8, left), width });
@@ -434,13 +450,14 @@ const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
       className="fixed z-[200] bg-white border border-slate-200 rounded-lg shadow-xl py-1"
       style={{ top: pos.top, left: pos.left, width: pos.width }}
       data-testid={testid}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       {children}
     </div>
   );
 };
 
-const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId, isAdmin }) => {
+export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin }) => {
   const S = STATUS_META[task.status] || STATUS_META.pending;
   const P = PRIORITY_META[task.priority] || PRIORITY_META.medium;
   const overdue = isOverdue(task);
@@ -448,6 +465,7 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
   const [subtasks, setSubtasks] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef(null);
+  const menuBtnRefMobile = useRef(null);
 
   useEffect(() => {
     if (expanded && hasSubtasks) {
@@ -458,7 +476,6 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
   }, [expanded, hasSubtasks, task.id, getAuthHeaders]);
 
   // Ownership: assignee is the OWNER of the task; only they can mark it complete.
-  // Assigner (or admin) can only APPROVE when status = pending_approval.
   const isSelfAssigned = task.assigned_to === task.assigned_by;
   const isAssignee = currentUserId === task.assigned_to;
   const isApprover = currentUserId === task.assigned_by;
@@ -485,44 +502,50 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
     }
   };
 
-  // Show the complete/approve icon only for people who can act right now
+  const startTask = async (e) => {
+    e?.stopPropagation();
+    try {
+      await axios.patch(`${API}/tasks/${task.id}`, { status: 'in_progress' }, { headers: getAuthHeaders() });
+      toast.success('Task in progress');
+      onStatus('__reload__');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed');
+    }
+  };
+
   const canComplete = task.status !== 'completed' && (
     isAssignee ||
     (task.status === 'pending_approval' && (isApprover || isAdmin))
   );
+  const canStart = task.status === 'pending' && isAssignee;
+  const canEdit = isAssignee || isApprover || isAdmin;
+
   const attachmentCount = (task.attachments || []).length + (task.gdrive_link ? 1 : 0);
   const tagList = Array.isArray(task.tags) ? task.tags : [];
   const descSnippet = (task.description || '').trim().split('\n')[0].slice(0, 140);
 
   return (
     <div data-testid={`task-row-${task.id}`}
-      className="group relative px-4 py-3 hover:bg-slate-50/60 transition-colors">
-      <div className="flex items-start gap-3">
-        {/* Expand chevron + status icon */}
-        <div className="flex items-center gap-1 pt-1">
-          {hasSubtasks ? (
+      className="group relative px-3 sm:px-4 py-3 hover:bg-slate-50/60 transition-colors">
+      {/* ── Desktop / tablet layout (sm+) ────────────────────────────────── */}
+      <div className="hidden sm:flex items-start gap-3">
+        {/* Expand chevron */}
+        <div className="flex items-center pt-1 w-5 shrink-0">
+          {hasSubtasks && (
             <button onClick={onToggle}
               className="p-0.5 hover:bg-slate-200 rounded transition"
               data-testid={`task-expand-${task.id}`}>
               {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-500" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />}
             </button>
-          ) : <span className="inline-block w-4" />}
-          <div
-            title={S.label}
-            className={`w-4 h-4 rounded-full ring-2 ring-offset-1 flex items-center justify-center transition-all ${S.ring} ${
-              task.status === 'completed' ? S.dot : 'bg-white'
-            }`}
-          >
-            {task.status === 'completed' && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
-          </div>
+          )}
         </div>
 
         {/* Priority dot */}
-        <div className="flex flex-col items-center pt-2">
+        <div className="flex flex-col items-center pt-2 w-2 shrink-0">
           <span className={`w-2 h-2 rounded-full ${P.dot}`} title={`${P.label} priority`} />
         </div>
 
-        {/* Main content: title + description snippet + tag row */}
+        {/* Main content */}
         <div className="flex-1 min-w-0">
           <button onClick={onOpen} className="text-left w-full block">
             <div className="flex items-center gap-2 flex-wrap">
@@ -582,8 +605,8 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           </button>
         </div>
 
-        {/* Due date — fixed width slot for alignment */}
-        <div className="hidden sm:flex items-start justify-end pt-1 w-[76px] shrink-0">
+        {/* Due date */}
+        <div className="flex items-start justify-end pt-1 w-[76px] shrink-0">
           {task.due_date && (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
               overdue
@@ -596,30 +619,28 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           )}
         </div>
 
-        {/* Status pill — fixed width slot */}
+        {/* Status pill */}
         <div className="hidden md:flex items-start justify-start pt-1 w-[130px] shrink-0">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${S.pill}`}>
             <S.icon className="w-3 h-3" /> {S.label}
           </span>
         </div>
 
-        {/* Assignee block — fixed width slot */}
-        <div className="flex items-center gap-2 pt-0.5 w-[180px] shrink-0">
-          <Avatar name={task.assigned_to_name} />
-          <div className="min-w-0 leading-tight">
-            <p className="text-sm font-semibold text-slate-800 truncate" title={task.assigned_to_name}>
-              {task.assigned_to_name || 'Unassigned'}
-              {task.assigned_to === currentUserId && <span className="text-[10px] text-blue-600 font-medium ml-1">(you)</span>}
-            </p>
-            {task.assigned_by_name && task.assigned_by !== task.assigned_to && (
-              <p className="text-[10px] text-slate-400 truncate" title={`Assigned by ${task.assigned_by_name}`}>
-                by {task.assigned_by === currentUserId ? 'you' : task.assigned_by_name}
-              </p>
-            )}
-          </div>
+        {/* Start (in-progress) button */}
+        <div className="pt-1 w-[32px] shrink-0 flex justify-center">
+          {canStart && (
+            <button
+              onClick={startTask}
+              title="Start task"
+              className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 opacity-70 group-hover:opacity-100 transition-all"
+              data-testid={`task-start-${task.id}`}
+            >
+              <Play className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* Complete action — fixed width slot */}
+        {/* Complete / approve button */}
         <div className="pt-1 w-[32px] shrink-0 flex justify-center">
           {canComplete && (
             <button
@@ -639,7 +660,23 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           )}
         </div>
 
-        {/* 3-dot menu — fixed width slot */}
+        {/* Assignee */}
+        <div className="flex items-center gap-2 pt-0.5 w-[180px] shrink-0">
+          <Avatar name={task.assigned_to_name} />
+          <div className="min-w-0 leading-tight">
+            <p className="text-sm font-semibold text-slate-800 truncate" title={task.assigned_to_name}>
+              {task.assigned_to_name || 'Unassigned'}
+              {task.assigned_to === currentUserId && <span className="text-[10px] text-blue-600 font-medium ml-1">(you)</span>}
+            </p>
+            {task.assigned_by_name && task.assigned_by !== task.assigned_to && (
+              <p className="text-[10px] text-slate-400 truncate" title={`Assigned by ${task.assigned_by_name}`}>
+                by {task.assigned_by === currentUserId ? 'you' : task.assigned_by_name}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* 3-dot menu */}
         <div className="pt-1 w-[28px] shrink-0">
           <button
             ref={menuBtnRef}
@@ -651,6 +688,15 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           </button>
           {menuOpen && (
             <FloatingMenu anchorRef={menuBtnRef} onClose={() => setMenuOpen(false)} testid={`task-menu-popup-${task.id}`}>
+              {canEdit && onEdit && (
+                <button
+                  onClick={() => { setMenuOpen(false); onEdit(); }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  data-testid={`task-edit-${task.id}`}
+                >
+                  <Edit2 className="w-3.5 h-3.5" /> Edit task
+                </button>
+              )}
               <button
                 onClick={() => { setMenuOpen(false); onAddSubtask(); }}
                 className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
@@ -677,18 +723,122 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
         </div>
       </div>
 
-      {/* Nested subtasks */}
+      {/* ── Mobile layout (< sm) ────────────────────────────────────────── */}
+      <div className="sm:hidden">
+        <div className="flex items-start gap-2">
+          <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${P.dot}`} title={`${P.label} priority`} />
+          <button onClick={onOpen} className="flex-1 min-w-0 text-left">
+            <p className="font-semibold text-slate-900 line-clamp-2">{task.title}</p>
+            {descSnippet && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{descSnippet}</p>}
+          </button>
+          <button
+            ref={menuBtnRefMobile}
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(o => !o); }}
+            className="p-1 rounded hover:bg-slate-200 shrink-0"
+            data-testid={`task-menu-m-${task.id}`}
+          >
+            <MoreHorizontal className="w-4 h-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 mt-2 ml-4 flex-wrap">
+          {task.project_name && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+              style={{ backgroundColor: (task.project_color || '#64748b') + '20', color: task.project_color || '#334155' }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: task.project_color || '#64748b' }} />
+              {task.project_name}
+            </span>
+          )}
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${S.pill}`}>
+            <S.icon className="w-2.5 h-2.5" /> {S.label}
+          </span>
+          {task.due_date && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+              overdue ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'
+            }`}>
+              <Calendar className="w-2.5 h-2.5" /> {fmtDate(task.due_date)}
+            </span>
+          )}
+          {overdue && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+              <AlertCircle className="w-2.5 h-2.5" /> Overdue
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-2 ml-4">
+          <div className="flex items-center gap-1.5">
+            <Avatar name={task.assigned_to_name} size="xs" />
+            <div className="leading-tight">
+              <p className="text-xs font-semibold text-slate-800 truncate max-w-[140px]">
+                {task.assigned_to_name}
+                {task.assigned_to === currentUserId && <span className="text-[10px] text-blue-600 ml-1">(you)</span>}
+              </p>
+              {task.assigned_by_name && task.assigned_by !== task.assigned_to && (
+                <p className="text-[9px] text-slate-400 truncate max-w-[140px]">
+                  by {task.assigned_by === currentUserId ? 'you' : task.assigned_by_name}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {canStart && (
+              <button onClick={startTask}
+                className="p-1.5 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100"
+                data-testid={`task-start-m-${task.id}`}>
+                <Play className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canComplete && (
+              <button onClick={completeTask}
+                className={`p-1.5 rounded-lg ${
+                  task.status === 'pending_approval' && (isApprover || isAdmin)
+                    ? 'text-amber-600 bg-amber-50'
+                    : 'text-green-600 bg-green-50'
+                } hover:opacity-80`}
+                data-testid={`task-complete-m-${task.id}`}>
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+        {menuOpen && (
+          <FloatingMenu anchorRef={menuBtnRefMobile} onClose={() => setMenuOpen(false)} testid={`task-menu-popup-m-${task.id}`}>
+            {canEdit && onEdit && (
+              <button onClick={() => { setMenuOpen(false); onEdit(); }}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                <Edit2 className="w-3.5 h-3.5" /> Edit task
+              </button>
+            )}
+            <button onClick={() => { setMenuOpen(false); onAddSubtask(); }}
+              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5" /> Add sub-task
+            </button>
+            <button onClick={() => { setMenuOpen(false); onOpen(); }}
+              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+              <MessageSquare className="w-3.5 h-3.5" /> Open detail
+            </button>
+            <div className="h-px bg-slate-100 my-1" />
+            <button onClick={() => { setMenuOpen(false); onDelete(); }}
+              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+              <Trash2 className="w-3.5 h-3.5" /> Delete task
+            </button>
+          </FloatingMenu>
+        )}
+      </div>
+
+      {/* Nested subtasks (both layouts) */}
       {expanded && subtasks.length > 0 && (
-        <div className="mt-2 ml-12 border-l-2 border-slate-100 pl-4 space-y-1.5">
+        <div className="mt-2 ml-6 sm:ml-12 border-l-2 border-slate-100 pl-3 sm:pl-4 space-y-1.5">
           {subtasks.map(st => {
             const SS = STATUS_META[st.status] || STATUS_META.pending;
             return (
               <div key={st.id} className="flex items-center gap-2 py-1 text-xs" data-testid={`task-subtask-row-${st.id}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${SS.dot}`} />
                 <span className="flex-1 text-slate-700 truncate">{st.title}</span>
-                <span className="text-slate-500">{st.assigned_to_name || '—'}</span>
+                <span className="text-slate-500 hidden sm:inline">{st.assigned_to_name || '—'}</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${SS.pill}`}>{SS.label}</span>
-                {st.due_date && <span className="text-slate-500">{fmtDate(st.due_date)}</span>}
+                {st.due_date && <span className="text-slate-500 hidden sm:inline">{fmtDate(st.due_date)}</span>}
               </div>
             );
           })}

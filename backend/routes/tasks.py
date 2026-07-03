@@ -302,7 +302,7 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         raise HTTPException(status_code=403, detail="Not allowed to modify this task")
 
     updates: dict = {}
-    for field in ("title", "description", "priority", "due_date", "project_id", "tags", "gdrive_link", "attachments"):
+    for field in ("title", "description", "priority", "due_date", "project_id", "tags", "gdrive_link", "attachments", "assigned_to"):
         v = getattr(data, field)
         if v is not None:
             updates[field] = v

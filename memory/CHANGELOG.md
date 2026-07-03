@@ -1,5 +1,42 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 5) — Task Cards: Edit + Start + Shared Component + Mobile 🎯
+**Status: COMPLETE — verified end-to-end**
+
+### Features
+1. **Edit task** — `TaskCreateModal` now doubles as an **edit modal** via a new `existingTask` prop:
+   - Header switches to "Edit task"
+   - Fields pre-filled from the task
+   - Footer button becomes "Save Changes" (`⌘+ENTER TO SAVE`)
+   - Submits via `PATCH /api/tasks/:id` (backend `TaskUpdate` now supports `assigned_to` in the update loop)
+   - "Edit task" appears as the top item in the 3-dot menu (visible to assignee, assigner, and admin)
+2. **Start task** — dedicated `Play` icon button appears on pending tasks assigned to the current user. One click → PATCH `status: in_progress`.
+3. **Reordering** — status pill → **Start (▶)** → **Complete (✓)** → assignee → menu. Both action buttons are now next to the status pill (as requested).
+4. **Removed** the empty left status circle on task cards (visual clutter; the priority dot alone is enough).
+
+### Shared component
+- `TaskCard` and `FloatingMenu` are now `export`ed from `AdminTasks.jsx`.
+- `AdminProjectDetail.jsx` **reuses `TaskCard` directly** for its Tasks section — same design, same functionality (edit, start, complete, delete, sub-task).
+- Added a prominent **"Add Task"** button (blue, matching Tasks page) in the project's Tasks section header.
+
+### Mobile responsive
+- Task cards ship two layouts:
+  - **≥ sm**: multi-column row with fixed-width slots
+  - **< sm**: stacked layout — title + description → chips (project/status/date) → assignee + action buttons + menu
+- Container paddings reduced on mobile (`p-4 sm:p-6`)
+- Search input becomes full-width on mobile
+
+### Bug fixed
+- `FloatingMenu` clicks (Add sub-task, Edit, Delete) were being killed by the document-level `mousedown` outside-click handler race. Added `onMouseDown={e => e.stopPropagation()}` on the popup wrapper so mousedown never bubbles to `document`. The menu now closes only on genuine outside clicks.
+
+### Files touched
+- `/app/backend/routes/tasks.py` (added `assigned_to` to update loop)
+- `/app/frontend/src/components/tasks/TaskCreateModal.jsx` (edit mode via `existingTask`)
+- `/app/frontend/src/pages/admin/AdminTasks.jsx` (rewritten TaskCard: no left circle, mobile layout, Start/Edit actions, FloatingMenu bugfix, exports)
+- `/app/frontend/src/pages/admin/AdminProjectDetail.jsx` (imports shared `TaskCard`, Add Task button)
+
+
+
 ## 2026-07-03 (round 4) — Project Detail: Stacked Sections + In-Place Task Modal 🗂️
 **Status: COMPLETE — verified**
 

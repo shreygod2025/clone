@@ -6,9 +6,10 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
+import { TaskCard } from './AdminTasks';
 import {
   ArrowLeft, Plus, Trash2, Users as UsersIcon, Calendar, CheckCircle2,
-  Circle, Clock, Pin, ExternalLink, Edit2, StickyNote, Link2, X
+  Circle, Clock, Pin, ExternalLink, Edit2, StickyNote, Link2, X, ListChecks
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -30,9 +31,15 @@ const AdminProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, getAuthHeaders } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const currentUserId = user?.id;
+
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [subTaskParent, setSubTaskParent] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(new Set());
 
   const [tasks, setTasks] = useState([]);
   const [milestones, setMilestones] = useState([]);
@@ -58,6 +65,24 @@ const AdminProjectDetail = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  const deleteTaskFn = async (task) => {
+    if (!window.confirm(`Delete task "${task.title}"?`)) return;
+    try {
+      await axios.delete(`${API}/tasks/${task.id}`, { headers: getAuthHeaders() });
+      toast.success('Deleted');
+      load();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); }
+  };
+
+  const openAddSubtask = (parent) => { setSubTaskParent(parent); setShowTaskModal(true); };
+  const toggleExpand = (tid) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(tid)) next.delete(tid); else next.add(tid);
+      return next;
+    });
+  };
+
   if (loading || !project) {
     return <AdminLayout><div className="p-6 text-slate-500 text-sm">Loading…</div></AdminLayout>;
   }
@@ -67,26 +92,26 @@ const AdminProjectDetail = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6 max-w-6xl mx-auto space-y-5" data-testid="admin-project-detail-page">
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5" data-testid="admin-project-detail-page">
         <button onClick={() => navigate('/admin/projects')}
           className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
           data-testid="back-to-projects-btn">
           <ArrowLeft className="w-4 h-4" /> Back to Projects
         </button>
 
-        <div className="bg-white rounded-2xl p-6 border shadow-sm">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border shadow-sm">
           <div className="flex items-start gap-4 mb-4">
             <div className="w-4 h-4 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: project.color }} />
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900" data-testid="project-name">{project.name}</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900" data-testid="project-name">{project.name}</h1>
               {project.description && <p className="text-sm text-slate-600 mt-1">{project.description}</p>}
               <div className="flex items-center gap-3 mt-3 flex-wrap text-xs">
                 <span className={`px-2 py-0.5 rounded-full font-medium ${S.color}`}>{S.label}</span>
                 <span className="text-slate-500">Lead: <strong className="text-slate-800">{project.lead_name || '—'}</strong></span>
                 <span className="text-slate-500 inline-flex items-center gap-1"><UsersIcon className="w-3 h-3" /> {(project.members || []).length} members</span>
                 <span className="text-slate-500">Tasks: <strong>{project.task_done}/{project.task_count}</strong></span>
-                {project.start_date && <span className="text-slate-500">Start: {project.start_date}</span>}
-                {project.end_date && <span className="text-slate-500">End: {project.end_date}</span>}
+                {project.start_date && <span className="text-slate-500 hidden sm:inline">Start: {project.start_date}</span>}
+                {project.end_date && <span className="text-slate-500 hidden sm:inline">End: {project.end_date}</span>}
               </div>
             </div>
           </div>
@@ -102,8 +127,31 @@ const AdminProjectDetail = () => {
         </section>
 
         <section data-testid="project-section-tasks">
-          <SectionHeader title="Tasks" count={tasks.length} />
-          <TasksTab tasks={tasks} onAdd={() => setShowTaskModal(true)} />
+          <div className="flex items-center justify-between mb-2 px-1">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-lg font-bold text-slate-900">Tasks</h2>
+              <span className="text-xs text-slate-400 font-medium">{tasks.length}</span>
+            </div>
+            <button
+              onClick={() => { setSubTaskParent(null); setShowTaskModal(true); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium shadow-sm shadow-blue-500/20"
+              data-testid="project-add-task-btn"
+            >
+              <Plus className="w-4 h-4" /> Add Task
+            </button>
+          </div>
+          <ProjectTasksList
+            tasks={tasks}
+            expandedIds={expandedIds}
+            toggleExpand={toggleExpand}
+            onDelete={deleteTaskFn}
+            onReload={load}
+            onAddSubtask={openAddSubtask}
+            onEdit={setEditingTask}
+            getAuthHeaders={getAuthHeaders}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+          />
         </section>
 
         <section data-testid="project-section-milestones">
@@ -119,13 +167,57 @@ const AdminProjectDetail = () => {
         {/* Inline task-create modal (no redirect) */}
         <TaskCreateModal
           open={showTaskModal}
-          onClose={() => setShowTaskModal(false)}
+          onClose={() => { setShowTaskModal(false); setSubTaskParent(null); }}
           onCreated={() => load()}
           currentUser={user}
           defaultProjectId={id}
+          parentTask={subTaskParent}
+        />
+
+        {/* Edit modal */}
+        <TaskCreateModal
+          open={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          onCreated={() => load()}
+          currentUser={user}
+          existingTask={editingTask}
         />
       </div>
     </AdminLayout>
+  );
+};
+
+// ── Project tasks list (uses shared TaskCard) ────────────────────────────────
+const ProjectTasksList = ({ tasks, expandedIds, toggleExpand, onDelete, onReload, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin }) => {
+  if (tasks.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl py-12 text-center">
+        <div className="w-10 h-10 rounded-full bg-slate-100 mx-auto flex items-center justify-center mb-2">
+          <ListChecks className="w-5 h-5 text-slate-400" />
+        </div>
+        <p className="text-sm text-slate-500">No tasks yet.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
+      {tasks.map(t => (
+        <TaskCard
+          key={t.id}
+          task={t}
+          expanded={expandedIds.has(t.id)}
+          onToggle={() => toggleExpand(t.id)}
+          onOpen={() => onEdit(t)}
+          onDelete={() => onDelete(t)}
+          onStatus={(s) => { if (s === '__reload__') onReload(); }}
+          onAddSubtask={() => onAddSubtask(t)}
+          onEdit={() => onEdit(t)}
+          getAuthHeaders={getAuthHeaders}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+        />
+      ))}
+    </div>
   );
 };
 
@@ -161,43 +253,6 @@ const OverviewTab = ({ project, milestones, tasks, kb }) => (
       </div>
     </Card>
   </div>
-);
-
-// ── Tasks tab ────────────────────────────────────────────────────────────────
-const TasksTab = ({ tasks, onAdd }) => (
-  <Card className="p-5">
-    <div className="flex items-center justify-between mb-3">
-      <h3 className="text-sm font-semibold text-slate-900">Tasks in this project ({tasks.length})</h3>
-      <button onClick={onAdd} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-        data-testid="project-add-task-btn">
-        <Plus className="w-3 h-3" /> Add task
-      </button>
-    </div>
-    {tasks.length === 0 ? (
-      <p className="text-xs text-slate-400 italic text-center py-6">No tasks yet.</p>
-    ) : (
-      <div className="space-y-1 divide-y">
-        {tasks.map(t => (
-          <div key={t.id} className="py-2 flex items-center justify-between text-sm">
-            <div className="min-w-0">
-              <p className="font-medium text-slate-900 truncate">{t.title}</p>
-              {t.description && <p className="text-xs text-slate-500 truncate">{t.description.split('\n')[0].slice(0, 100)}</p>}
-            </div>
-            <div className="flex items-center gap-3 text-xs text-slate-500 shrink-0">
-              <span>{t.assigned_to_name}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                t.status === 'completed' ? 'bg-green-100 text-green-700' :
-                t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                t.status === 'pending_approval' ? 'bg-amber-100 text-amber-700' :
-                t.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                'bg-slate-100 text-slate-700'
-              }`}>{t.status.replace('_', ' ')}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </Card>
 );
 
 // ── Milestones tab ───────────────────────────────────────────────────────────

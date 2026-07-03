@@ -283,7 +283,8 @@ export const AttachmentsPanel = ({ attachments = [], onChange, getAuthHeaders, c
 };
 
 // ── Main modal ───────────────────────────────────────────────────────────────
-const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '' }) => {
+const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '', existingTask = null }) => {
+  const isEdit = !!existingTask;
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [form, setForm] = useState(null);
@@ -307,19 +308,36 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
 
   useEffect(() => {
     if (!open) return;
-    setForm({
-      title: '',
-      description: '',
-      assigned_to: currentUser?.id || '',
-      priority: 'medium',
-      due_date: '',
-      project_id: defaultProjectId || '',
-      parent_task_id: parentTask?.id || null,
-      tags: '',
-      gdrive_link: '',
-      repeat_freq: '',
-      attachments: [],
-    });
+    if (isEdit) {
+      // Prefill from existing task
+      setForm({
+        title: existingTask.title || '',
+        description: existingTask.description || '',
+        assigned_to: existingTask.assigned_to || currentUser?.id || '',
+        priority: existingTask.priority || 'medium',
+        due_date: existingTask.due_date ? existingTask.due_date.slice(0, 10) : '',
+        project_id: existingTask.project_id || '',
+        parent_task_id: existingTask.parent_task_id || null,
+        tags: Array.isArray(existingTask.tags) ? existingTask.tags.join(', ') : '',
+        gdrive_link: existingTask.gdrive_link || '',
+        repeat_freq: '',
+        attachments: existingTask.attachments || [],
+      });
+    } else {
+      setForm({
+        title: '',
+        description: '',
+        assigned_to: currentUser?.id || '',
+        priority: 'medium',
+        due_date: '',
+        project_id: defaultProjectId || '',
+        parent_task_id: parentTask?.id || null,
+        tags: '',
+        gdrive_link: '',
+        repeat_freq: '',
+        attachments: [],
+      });
+    }
     setOpenPanel(null);
 
     axios.get(`${API}/team-users`, { headers: getAuthHeaders() })
@@ -335,7 +353,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
     axios.get(`${API}/projects`, { headers: getAuthHeaders() })
       .then(r => setProjects(r.data || []))
       .catch(() => {});
-  }, [open, currentUser, parentTask, defaultProjectId]);
+  }, [open, currentUser, parentTask, defaultProjectId, existingTask, isEdit]);
 
   useEffect(() => {
     if (!open) return;
@@ -367,32 +385,38 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         priority: form.priority,
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
         project_id: form.project_id || null,
-        parent_task_id: form.parent_task_id || null,
         tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         gdrive_link: form.gdrive_link || null,
         attachments: form.attachments || [],
       };
-      const created = await axios.post(`${API}/tasks`, body, { headers: getAuthHeaders() });
 
-      if (form.repeat_freq && !form.parent_task_id) {
-        try {
-          await axios.post(`${API}/scheduled-tasks`, {
-            title: form.title.trim(),
-            description: form.description,
-            priority: form.priority,
-            frequency: form.repeat_freq,
-            assigned_to: form.assigned_to,
-            project_id: form.project_id || null,
-            is_active: true,
-          }, { headers: getAuthHeaders() });
-        } catch { /* non-blocking */ }
+      let result;
+      if (isEdit) {
+        result = await axios.patch(`${API}/tasks/${existingTask.id}`, body, { headers: getAuthHeaders() });
+      } else {
+        body.parent_task_id = form.parent_task_id || null;
+        result = await axios.post(`${API}/tasks`, body, { headers: getAuthHeaders() });
+
+        if (form.repeat_freq && !form.parent_task_id) {
+          try {
+            await axios.post(`${API}/scheduled-tasks`, {
+              title: form.title.trim(),
+              description: form.description,
+              priority: form.priority,
+              frequency: form.repeat_freq,
+              assigned_to: form.assigned_to,
+              project_id: form.project_id || null,
+              is_active: true,
+            }, { headers: getAuthHeaders() });
+          } catch { /* non-blocking */ }
+        }
       }
 
-      toast.success(form.parent_task_id ? 'Sub-task created' : 'Task created');
-      onCreated?.(created.data);
+      toast.success(isEdit ? 'Task updated' : form.parent_task_id ? 'Sub-task created' : 'Task created');
+      onCreated?.(result.data);
       onClose();
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to create task');
+      toast.error(e?.response?.data?.detail || (isEdit ? 'Failed to update task' : 'Failed to create task'));
     } finally {
       setSubmitting(false);
     }
@@ -418,7 +442,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <p className="text-xs font-semibold text-blue-600">
-            {form.parent_task_id ? 'New sub-task' : 'New task'}
+            {isEdit ? 'Edit task' : form.parent_task_id ? 'New sub-task' : 'New task'}
           </p>
           <button onClick={onClose} className="p-1 rounded hover:bg-slate-100" data-testid="new-task-close">
             <X className="w-4 h-4 text-slate-500" />
@@ -491,13 +515,13 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         </div>
 
         <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-t rounded-b-2xl">
-          <p className="text-[10px] text-slate-400 tracking-wider font-medium">⌘ + ENTER TO CREATE</p>
+          <p className="text-[10px] text-slate-400 tracking-wider font-medium">⌘ + ENTER TO {isEdit ? 'SAVE' : 'CREATE'}</p>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-1.5 border rounded-lg text-sm hover:bg-white">Cancel</button>
             <button onClick={handleSubmit} disabled={submitting}
               className="px-5 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white rounded-lg text-sm font-medium"
               data-testid="task-submit-btn">
-              {submitting ? 'Creating…' : 'Create Task'}
+              {submitting ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Task')}
             </button>
           </div>
         </div>
