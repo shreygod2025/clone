@@ -1,6 +1,36 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+
+### Latest Changes (2026-07-03) — Per-School Session & Attendance Reports 📊
+
+**New feature**: A "Reports" action button appears on every school card in the School CRM for `converted`, `active`, and `renewed` schools. Clicking opens a dedicated per-school Reports page at `/admin/schools/:schoolId/reports` that shows every session pulled from the new FastAPI CheckIn API (`repo-explorer-196.preview.emergentagent.com/api`) merged with attendance data.
+
+**Reports page shows per session**:
+- Session date + scheduled start/end time
+- Actual reached time (from attendance.reached_time / check_in_time)
+- Late minutes (computed) + attendance classification: on time / late<15 / late / early / absent / no check-in
+- Educator name & email; backup educator when `original_educator_id` is set (reassignment)
+- Session mode (offline/online) + completion status
+- Check-in location name + photo-verified flag
+- 6 aggregate stat tiles above the table + CSV export
+
+**External API integration**:
+- Migrated `CHECKIN_BASE_URL` in `/app/backend/.env` from Supabase Edge Function to the new FastAPI CheckIn API
+- Updated `CHECKIN_API_KEY` — new key has scopes `attendance:read/write`, `sessions:read/write`, `educators:read/write`, `timetables:read/write`
+- `/app/backend/routes/checkin_api.py` — env-driven `CHECKIN_BASE_URL`, added `GET /api/schools/{school_id}/reports` endpoint that fetches sessions per `timetable_id`, fetches attendance per involved `user_id`, merges by `session_id`, computes late minutes + classification
+- Existing endpoints (`/schools/{id}/checkin-sessions`, `/schools/{id}/timetable`) continue to work
+
+**Files added / changed**:
+- `/app/backend/.env` — `CHECKIN_BASE_URL` added, `CHECKIN_API_KEY` updated
+- `/app/backend/routes/checkin_api.py` — env-driven base URL, new `/reports` endpoint (+ helpers `_classify_late`, `_minutes_late`, `_fetch_all_pages`)
+- NEW `/app/frontend/src/pages/admin/SchoolReports.jsx` — Reports page (stats bar, filters, table, mobile cards, CSV export, pagination)
+- `/app/frontend/src/pages/admin/AdminSchoolCRM.jsx` — new `reportsButton` element wired into `converted`, `active`, `renewed` action rows; button is auto-disabled when the school has no linked `checkin_timetable_id(s)` with a tooltip explaining why
+- `/app/frontend/src/App.js` — route `/admin/schools/:schoolId/reports` registered
+
+**Smoke verified**: Endpoint returns HTTP 200 with correctly enriched sessions for a linked school (`Sudarshan Daga School`). Frontend page renders header, 6 stat tiles, filter bar, and session row. Reports button visible on all 4 active school cards (disabled tooltip shown for schools without linked timetables).
+
+
 ### Latest Changes (2026-07-02) — Role KPIs & Per-User Performance Page
 
 **New feature**: (1) Roles now have a **Performance KPIs** section — admins pick from a fixed catalog when creating/editing a role. (2) Every user row in `/admin/users` has a new **Performance** action button (chart icon) that opens `/admin/users/:id/performance`, showing that user's KPI cards computed from records where `assigned_to == user.id`, with month & year pickers and a user-switcher dropdown.

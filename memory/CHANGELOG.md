@@ -1,5 +1,41 @@
 # OLL Backend Changelog
 
+
+## 2026-07-03 (round 11) — Per-School Session & Attendance Reports 📊
+**Status: COMPLETE — smoke tested (both endpoint + UI)**
+
+### External integration migration
+- **Old**: Supabase Edge Function CheckIn API (`X-API-Key: dlp_...`)
+- **New**: FastAPI CheckIn API at `https://repo-explorer-196.preview.emergentagent.com/api`
+  - Auth: `X-API-Key: oll_alOS9HbyYNnZMGXJDXKURe7FnUdxZhR60GrRPXkJqho`
+  - Scopes on this key: `attendance:read/write`, `sessions:read/write`, `educators:read/write`, `timetables:read/write`
+  - Verified working: `/sessions`, `/educators`, `/attendance`, `/timetables` (all with `X-API-Key`)
+  - Server-side filters: `?timetable_id=` (works), `?user_id=` (works on attendance), `?session_id=` (works). `school_name`, `start_date`, `end_date` filters are IGNORED by the API → we filter client-side.
+
+### Backend
+- `.env` — added `CHECKIN_BASE_URL`, updated `CHECKIN_API_KEY` to new value
+- `checkin_api.py` — `CHECKIN_BASE_URL` now reads from env (falls back to legacy Supabase URL if unset)
+- **NEW endpoint**: `GET /api/schools/{school_id}/reports`
+  - Merges CheckIn sessions + attendance for the school
+  - Resolves timetables via school's stored `checkin_timetable_ids` (or fallback to case-insensitive `school_name` match against all timetables)
+  - Enriches each session with: `educator` (name/email), `backup_educator` (from `original_educator_id`), `actual` block (`reached_time`, `checkout_time`, `late_minutes`, `location_name`, `photo_path`), and `attendance_status` (`on_time`/`late_lt_15`/`late`/`early`/`absent`/`no_data`)
+  - Returns `stats`: total / completed / on_time / late / absent / reassigned
+  - Supports `status`, `start_date`, `end_date` query params + pagination
+
+### Frontend
+- **NEW page** `/app/frontend/src/pages/admin/SchoolReports.jsx` at route `/admin/schools/:schoolId/reports`
+  - Header w/ school name + Back button
+  - 6-tile stat bar (Total / Completed / On time / Late / No check-in / Reassigned)
+  - Filters: search (educator/date/location), attendance status dropdown, date range picker
+  - Desktop table + Mobile card layout
+  - CSV export
+  - Pagination
+- `AdminSchoolCRM.jsx` — new shared `reportsButton` that appears in the action row for `converted`, `active`, and `renewed` status cards. Auto-disabled with tooltip when the school has no linked `checkin_timetable_id(s)`.
+
+### Data-testids added
+`school-reports-page`, `reports-back-btn`, `reports-school-name`, `reports-refresh-btn`, `reports-export-csv-btn`, `reports-search-input`, `reports-status-filter`, `reports-start-date`, `reports-end-date`, `reports-clear-filters`, `reports-{schoolId}` (list button), `stat-total`, `stat-completed`, `stat-on-time`, `stat-late`, `stat-absent`, `stat-reassigned`, `session-row-{id}`, `session-card-{id}`, `reports-prev-page`, `reports-next-page`
+
+
 ## 2026-07-03 (round 10) — My Team page (Manager + Admin view) 👥
 **Status: COMPLETE — screenshots verified**
 

@@ -13,6 +13,7 @@ import { format, addDays, startOfDay } from 'date-fns';
 import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
 import Papa from 'papaparse';
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { generateProposalDocument } from '../../utils/proposalPdfGenerator';
 import { generateMOUDocument } from '../../utils/mouPdfGenerator';
@@ -481,6 +482,7 @@ const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
 };
 
 const AdminSchoolCRM = () => {
+  const navigate = useNavigate();
   const { getAuthHeaders, user } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
@@ -4316,6 +4318,28 @@ ${FOOTER}</div></body></html>`
       </button>
     );
 
+    // Reports button — opens the per-school Reports page (sessions + attendance)
+    // Only surfaced for statuses where the school actually has running sessions
+    // (converted / active / renewed). Requires a linked CheckIn timetable.
+    const hasLinkedTimetable = !!(inquiry.checkin_timetable_id
+      || (inquiry.checkin_timetable_ids && inquiry.checkin_timetable_ids.length > 0));
+    const reportsButton = (
+      <button
+        onClick={() => navigate(`/admin/schools/${inquiry.id}/reports`)}
+        disabled={!hasLinkedTimetable}
+        title={hasLinkedTimetable ? 'Session & attendance reports' : 'Link a timetable to enable reports'}
+        className={`text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
+          hasLinkedTimetable
+            ? 'bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-700'
+            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+        }`}
+        data-testid={`reports-${inquiry.id}`}
+      >
+        <BarChart3 className="w-3 h-3" />
+        Reports
+      </button>
+    );
+
     // Followup button
     const followupButton = inquiry.status !== 'converted' && (
       <button
@@ -4517,6 +4541,7 @@ ${FOOTER}</div></body></html>`
             {changeStageButton}
             {raiseTicketButton}
             {documentsButton}
+            {reportsButton}
             {baseButtons}
           </div>
         );
@@ -4545,6 +4570,7 @@ ${FOOTER}</div></body></html>`
               <CalendarDays className="w-3 h-3" />
               Sessions
             </button>
+            {reportsButton}
             <button
               onClick={() => setShowAssignRMModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
@@ -4650,6 +4676,7 @@ ${FOOTER}</div></body></html>`
               Lost
             </button>
             {documentsButton}
+            {reportsButton}
             {baseButtons}
           </div>
         );
