@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import axios from 'axios';
 import CitySearch from '../../components/CitySearch';
+import BulkEmailModal from '../../components/BulkEmailModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -83,6 +84,10 @@ const AdminUsers = () => {
   const [cityFilter, setCityFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Bulk email modal
+  const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState(new Set());
   
   // User modals
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -452,6 +457,33 @@ const AdminUsers = () => {
             <Plus className="w-4 h-4 mr-2" />
             Add {activeTab === 'users' ? 'User' : 'Role'}
           </Button>
+          {activeTab === 'users' && (
+            <Button
+              onClick={() => {
+                const recipients = filteredUsers
+                  .filter(u => selectedUserIds.has(u.id) && u.email)
+                  .map(u => ({ email: u.email, name: u.name || '' }));
+                if (recipients.length === 0) {
+                  // If nothing selected, offer to email ALL filtered active users
+                  const allRecipients = filteredUsers
+                    .filter(u => u.email && u.is_active !== false)
+                    .map(u => ({ email: u.email, name: u.name || '' }));
+                  if (allRecipients.length === 0) {
+                    toast.error('No users with email in the current view');
+                    return;
+                  }
+                  if (!window.confirm(`No users selected. Send to all ${allRecipients.length} active user(s) in the current view?`)) return;
+                  setSelectedUserIds(new Set(filteredUsers.filter(u => u.email && u.is_active !== false).map(u => u.id)));
+                }
+                setShowBulkEmailModal(true);
+              }}
+              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+              data-testid="bulk-email-team-btn"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Bulk Email {selectedUserIds.size > 0 && `(${selectedUserIds.size})`}
+            </Button>
+          )}
         </div>
 
         {/* Users Tab */}
@@ -460,6 +492,23 @@ const AdminUsers = () => {
             <table className="w-full min-w-[800px]">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-4 py-3 text-left w-8">
+                    <input
+                      type="checkbox"
+                      checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.has(u.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUserIds(new Set([...selectedUserIds, ...filteredUsers.filter(u => u.email).map(u => u.id)]));
+                        } else {
+                          const next = new Set(selectedUserIds);
+                          filteredUsers.forEach(u => next.delete(u.id));
+                          setSelectedUserIds(next);
+                        }
+                      }}
+                      className="w-4 h-4 accent-[#1E3A5F] cursor-pointer"
+                      data-testid="select-all-users-checkbox"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">User</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Username</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Role</th>
@@ -471,6 +520,20 @@ const AdminUsers = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.map(user => (
                   <tr key={user.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.has(user.id)}
+                        disabled={!user.email}
+                        onChange={(e) => {
+                          const next = new Set(selectedUserIds);
+                          if (e.target.checked) next.add(user.id); else next.delete(user.id);
+                          setSelectedUserIds(next);
+                        }}
+                        className="w-4 h-4 accent-[#1E3A5F] cursor-pointer disabled:opacity-40"
+                        data-testid={`select-user-${user.id}`}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#1E3A5F] flex items-center justify-center text-white font-medium">
@@ -959,6 +1022,18 @@ const AdminUsers = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Email Modal */}
+      <BulkEmailModal
+        open={showBulkEmailModal}
+        onClose={() => setShowBulkEmailModal(false)}
+        recipients={users.filter(u => selectedUserIds.has(u.id) && u.email).map(u => ({ email: u.email, name: u.name || '' }))}
+        mode="bulk"
+        onSent={() => {
+          toast.success('Bulk email sent to team members');
+          setSelectedUserIds(new Set());
+        }}
+      />
     </AdminLayout>
   );
 };
