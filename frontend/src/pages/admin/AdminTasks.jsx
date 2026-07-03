@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import TaskCreateModal, { AttachmentsPanel } from '../../components/tasks/TaskCreateModal';
@@ -71,7 +71,7 @@ const AdminTasks = () => {
 
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(isAdmin ? 'team' : 'my');
+  const [filter, setFilter] = useState(isAdmin ? 'team' : 'all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -136,6 +136,7 @@ const AdminTasks = () => {
     });
   };
 
+  const PRIORITY_WEIGHT = { urgent: 4, high: 3, medium: 2, low: 1 };
   const filteredTasks = useMemo(() => {
     let list = tasks;
     if (statusFilter !== 'all') list = list.filter(t => t.status === statusFilter);
@@ -143,11 +144,21 @@ const AdminTasks = () => {
       const s = query.toLowerCase();
       list = list.filter(t =>
         t.title?.toLowerCase().includes(s) ||
-        t.code?.toLowerCase().includes(s) ||
+        t.description?.toLowerCase().includes(s) ||
         t.assigned_to_name?.toLowerCase().includes(s)
       );
     }
-    return list;
+    // Sort: earliest due_date first (nulls last), then priority DESC
+    const sorted = [...list].sort((a, b) => {
+      const aDue = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+      const bDue = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+      if (aDue !== bDue) return aDue - bDue;
+      const aP = PRIORITY_WEIGHT[a.priority] || 0;
+      const bP = PRIORITY_WEIGHT[b.priority] || 0;
+      return bP - aP;
+    });
+    return sorted;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, statusFilter, query]);
 
   const counts = useMemo(() => {
@@ -166,7 +177,7 @@ const AdminTasks = () => {
 
   const filterOptions = isAdmin
     ? [{ v: 'team', l: 'All Team' }, { v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }]
-    : [{ v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }, { v: 'team', l: 'My direct reports' }];
+    : [{ v: 'all', l: 'All Tasks' }, { v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }];
 
   return (
     <AdminLayout>
@@ -286,11 +297,12 @@ const AdminTasks = () => {
                   onAddSubtask={openCreate}
                   getAuthHeaders={getAuthHeaders}
                   currentUserId={currentUserId}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
               {filteredTasks.map(t => (
                 <TaskCard
                   key={t.id}
@@ -303,6 +315,7 @@ const AdminTasks = () => {
                   onAddSubtask={() => openCreate(t)}
                   getAuthHeaders={getAuthHeaders}
                   currentUserId={currentUserId}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>
@@ -356,15 +369,15 @@ const StatusChip = ({ label, count, active, onClick, dot, testid }) => (
 );
 
 // ── Status section (grouped card container) ──────────────────────────────────
-const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId }) => {
+const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId, isAdmin }) => {
   const [collapsed, setCollapsed] = useState(false);
   const S = STATUS_META[statusKey];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden" data-testid={`section-${statusKey}`}>
+    <div className="bg-white border border-slate-200 rounded-2xl" data-testid={`section-${statusKey}`}>
       <button
         onClick={() => setCollapsed(c => !c)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 hover:bg-slate-50"
+        className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 hover:bg-slate-50 rounded-t-2xl"
       >
         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         <span className={`w-2 h-2 rounded-full ${S.dot}`} />
@@ -385,6 +398,7 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
               onAddSubtask={() => onAddSubtask(t)}
               getAuthHeaders={getAuthHeaders}
               currentUserId={currentUserId}
+              isAdmin={isAdmin}
             />
           ))}
         </div>
@@ -394,13 +408,44 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
 };
 
 // ── Task card row (the star of the redesign) ─────────────────────────────────
-const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId }) => {
+// ── Fixed-position dropdown menu (avoids overflow-hidden clipping) ───────────
+const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 200 });
+  useEffect(() => {
+    if (!anchorRef?.current) return;
+    const r = anchorRef.current.getBoundingClientRect();
+    const width = 200;
+    const left = Math.min(r.right - width, window.innerWidth - width - 8);
+    setPos({ top: r.bottom + 4, left: Math.max(8, left), width });
+  }, [anchorRef]);
+  useEffect(() => {
+    const onDown = (e) => {
+      if (anchorRef?.current?.contains(e.target)) return;
+      onClose();
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [anchorRef, onClose]);
+  return (
+    <div
+      className="fixed z-[200] bg-white border border-slate-200 rounded-lg shadow-xl py-1"
+      style={{ top: pos.top, left: pos.left, width: pos.width }}
+      data-testid={testid}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>
+  );
+};
+
+const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId, isAdmin }) => {
   const S = STATUS_META[task.status] || STATUS_META.pending;
   const P = PRIORITY_META[task.priority] || PRIORITY_META.medium;
   const overdue = isOverdue(task);
   const hasSubtasks = (task.subtask_total || 0) > 0;
   const [subtasks, setSubtasks] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuBtnRef = useRef(null);
 
   useEffect(() => {
     if (expanded && hasSubtasks) {
@@ -418,18 +463,18 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
   const completeTask = async (e) => {
     e?.stopPropagation();
     try {
-      if (task.status === 'pending_approval' && isApprover) {
-        // Approver approves
+      if (task.status === 'pending_approval' && (isApprover || isAdmin)) {
         await axios.post(`${API}/tasks/${task.id}/approve`, {}, { headers: getAuthHeaders() });
         toast.success('Approved & completed');
-      } else if (isSelfAssigned || !isAssignee) {
-        // Self-assigned OR admin marking any task → straight to completed
+      } else if (isSelfAssigned || isApprover || isAdmin) {
         await axios.patch(`${API}/tasks/${task.id}`, { status: 'completed' }, { headers: getAuthHeaders() });
         toast.success('Marked complete');
-      } else {
-        // Assignee on someone else's task → submit for approval
+      } else if (isAssignee) {
         await axios.post(`${API}/tasks/${task.id}/submit`, {}, { headers: getAuthHeaders() });
         toast.success('Submitted for approval');
+      } else {
+        toast.error('Not allowed');
+        return;
       }
       onStatus('__reload__');
     } catch (err) {
@@ -437,16 +482,18 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
     }
   };
 
-  const canComplete = task.status !== 'completed';
+  const canAct = isAssignee || isApprover || isAdmin;
+  const canComplete = canAct && task.status !== 'completed';
   const attachmentCount = (task.attachments || []).length + (task.gdrive_link ? 1 : 0);
   const tagList = Array.isArray(task.tags) ? task.tags : [];
+  const descSnippet = (task.description || '').trim().split('\n')[0].slice(0, 140);
 
   return (
     <div data-testid={`task-row-${task.id}`}
       className="group relative px-4 py-3 hover:bg-slate-50/60 transition-colors">
       <div className="flex items-start gap-3">
         {/* Expand chevron + status icon */}
-        <div className="flex items-center gap-1 pt-0.5">
+        <div className="flex items-center gap-1 pt-1">
           {hasSubtasks ? (
             <button onClick={onToggle}
               className="p-0.5 hover:bg-slate-200 rounded transition"
@@ -465,15 +512,15 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
         </div>
 
         {/* Priority dot */}
-        <div className="flex flex-col items-center pt-1.5">
+        <div className="flex flex-col items-center pt-2">
           <span className={`w-2 h-2 rounded-full ${P.dot}`} title={`${P.label} priority`} />
         </div>
 
-        {/* Main content: title + tags + subtle meta */}
+        {/* Main content: title + description snippet + tag row */}
         <div className="flex-1 min-w-0">
-          <button onClick={onOpen} className="text-left w-full">
+          <button onClick={onOpen} className="text-left w-full block">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
+              <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
                 {task.title}
               </span>
               {overdue && (
@@ -483,7 +530,13 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
               )}
             </div>
 
-            <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 flex-wrap">
+            {descSnippet && (
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1 max-w-[70ch]">
+                {descSnippet}{(task.description || '').length > 140 ? '…' : ''}
+              </p>
+            )}
+
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500 flex-wrap">
               {hasSubtasks && (
                 <span className="inline-flex items-center gap-1">
                   <ListChecks className="w-3 h-3" /> {task.subtask_done || 0}/{task.subtask_total}
@@ -511,7 +564,7 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
 
         {/* Due date — prominent pill */}
         {task.due_date && (
-          <div className="pt-0.5 hidden sm:block">
+          <div className="pt-1 hidden sm:block">
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
               overdue
                 ? 'bg-red-50 text-red-700 border-red-200'
@@ -524,15 +577,26 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
         )}
 
         {/* Status pill */}
-        <div className="hidden md:block pt-0.5">
+        <div className="hidden md:block pt-1">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${S.pill}`}>
             <S.icon className="w-3 h-3" /> {S.label}
           </span>
         </div>
 
-        {/* Assignee avatar */}
-        <div className="pt-0.5">
+        {/* Assignee block: big assignee + small "by X" */}
+        <div className="flex items-center gap-2 pt-0.5 min-w-[130px] max-w-[210px]">
           <Avatar name={task.assigned_to_name} />
+          <div className="min-w-0 leading-tight">
+            <p className="text-sm font-semibold text-slate-800 truncate" title={task.assigned_to_name}>
+              {task.assigned_to_name || 'Unassigned'}
+              {task.assigned_to === currentUserId && <span className="text-[10px] text-blue-600 font-medium ml-1">(you)</span>}
+            </p>
+            {task.assigned_by_name && task.assigned_by !== task.assigned_to && (
+              <p className="text-[10px] text-slate-400 truncate" title={`Assigned by ${task.assigned_by_name}`}>
+                by {task.assigned_by === currentUserId ? 'you' : task.assigned_by_name}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Complete button (direct) */}
@@ -540,12 +604,12 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           <button
             onClick={completeTask}
             title={
-              task.status === 'pending_approval' && isApprover ? 'Approve'
-              : isSelfAssigned || !isAssignee ? 'Mark complete'
+              task.status === 'pending_approval' && (isApprover || isAdmin) ? 'Approve'
+              : isSelfAssigned || isApprover || isAdmin ? 'Mark complete'
               : 'Submit for approval'
             }
-            className={`p-1.5 rounded-lg transition-all opacity-60 group-hover:opacity-100 hover:bg-green-50 hover:text-green-700 ${
-              task.status === 'pending_approval' && isApprover ? 'text-amber-600 opacity-100' : 'text-slate-400'
+            className={`p-1.5 rounded-lg transition-all opacity-70 group-hover:opacity-100 hover:bg-green-50 hover:text-green-700 ${
+              task.status === 'pending_approval' && (isApprover || isAdmin) ? 'text-amber-600 opacity-100' : 'text-slate-400'
             }`}
             data-testid={`task-complete-${task.id}`}
           >
@@ -553,9 +617,10 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           </button>
         )}
 
-        {/* 3-dot menu */}
-        <div className="pt-1 relative">
+        {/* 3-dot menu (fixed-position popup — never clipped) */}
+        <div className="pt-1">
           <button
+            ref={menuBtnRef}
             onClick={(e) => { e.stopPropagation(); setMenuOpen(o => !o); }}
             className="p-1 rounded hover:bg-slate-200 opacity-0 group-hover:opacity-100 transition-opacity"
             data-testid={`task-menu-${task.id}`}
@@ -563,32 +628,29 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
             <MoreHorizontal className="w-4 h-4 text-slate-500" />
           </button>
           {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[180px]">
-                <button
-                  onClick={() => { setMenuOpen(false); onAddSubtask(); }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  data-testid={`task-subtask-${task.id}`}
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add sub-task
-                </button>
-                <button
-                  onClick={() => { setMenuOpen(false); onOpen(); }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" /> Open detail
-                </button>
-                <div className="h-px bg-slate-100 my-1" />
-                <button
-                  onClick={() => { setMenuOpen(false); onDelete(); }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                  data-testid={`task-delete-${task.id}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete task
-                </button>
-              </div>
-            </>
+            <FloatingMenu anchorRef={menuBtnRef} onClose={() => setMenuOpen(false)} testid={`task-menu-popup-${task.id}`}>
+              <button
+                onClick={() => { setMenuOpen(false); onAddSubtask(); }}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                data-testid={`task-subtask-${task.id}`}
+              >
+                <Plus className="w-3.5 h-3.5" /> Add sub-task
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); onOpen(); }}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+              >
+                <MessageSquare className="w-3.5 h-3.5" /> Open detail
+              </button>
+              <div className="h-px bg-slate-100 my-1" />
+              <button
+                onClick={() => { setMenuOpen(false); onDelete(); }}
+                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                data-testid={`task-delete-${task.id}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete task
+              </button>
+            </FloatingMenu>
           )}
         </div>
       </div>
@@ -663,10 +725,12 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
                      && task.assigned_to !== task.assigned_by
                      && ['pending', 'in_progress', 'rejected'].includes(task.status);
   const canApprove = (isAdmin || currentUserId === task.assigned_by) && task.status === 'pending_approval';
-  const canComplete = (currentUserId === task.assigned_to
-                       && task.assigned_to === task.assigned_by
-                       && task.status !== 'completed')
-                       || (isAdmin && task.status !== 'completed');
+  // Assignee-of-self OR assigner OR admin can directly mark complete (bypass approval)
+  const canComplete = task.status !== 'completed' && (
+    (currentUserId === task.assigned_to && task.assigned_to === task.assigned_by) ||
+    currentUserId === task.assigned_by ||
+    isAdmin
+  );
 
   const markComplete = async () => {
     try {

@@ -1,5 +1,30 @@
 # OLL Backend Changelog
 
+## 2026-07-03 — Task Page: Menu Fix + Assignment Display + Sorting 📋
+**Status: COMPLETE — Screenshot verified**
+
+### Fixes
+1. **3-dot popup no longer clipped** — introduced `<FloatingMenu>` that renders with `position: fixed` at button's `getBoundingClientRect()`, escaping any `overflow-hidden` parent. Also removed `overflow-hidden` from `StatusSection` container.
+2. **Assigner can now complete someone else's task**:
+   - Row card: `completeTask()` now allows `isApprover || isAdmin` → direct PATCH `status: 'completed'`
+   - Detail modal: `canComplete` expanded to include `currentUserId === task.assigned_by || isAdmin`
+   - `canComplete` is now gated on `canAct` (assignee || approver || admin) to prevent unauthorized clicks
+3. **Card layout enrichment**:
+   - **Description snippet** (first line, up to 140 chars) shown below title with `line-clamp-1`
+   - **Big assignee name** (semibold, `text-sm`) with avatar + `(you)` badge when applicable
+   - **Small "by X" line** (`text-[10px]` slate-400) below assignee — hidden when self-assigned
+4. **Scope filter overhaul**:
+   - Non-admin default changed from `my` → `all` (tasks assigned to me + by me)
+   - "My direct reports" option **removed**; replaced with "All Tasks" as the first option
+   - Admin filter options unchanged (All Team / Assigned to me / Assigned by me)
+5. **Sort order**: due-date ASC (nulls last), then priority DESC (urgent > high > medium > low)
+6. Search now also matches inside the task description
+
+### Files touched
+- `/app/frontend/src/pages/admin/AdminTasks.jsx` (FloatingMenu component, TaskCard rewrite, TaskDetailModal canComplete fix, filterOptions update, sort logic)
+
+
+
 ## 2026-07-03 — Task Attachments + UX Refinements 🎯
 **Status: COMPLETE — Backend + Frontend verified end-to-end**
 
