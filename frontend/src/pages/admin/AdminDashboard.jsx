@@ -7,7 +7,7 @@ import {
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
   Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2, Send, ShoppingBag,
-  CheckSquare, FolderKanban, Bell
+  CheckSquare, FolderKanban, Bell, Trophy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -37,6 +37,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
+    { path: '/admin/success-stories', icon: Trophy, label: 'Success Stories', permission: null },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
@@ -264,6 +265,73 @@ const KPI_UNIT_FMT = (val, unit) => {
   if (unit === '%') return `${val}%`;
   if (unit === 'hours') return `${val} hrs`;
   return Number(val).toLocaleString('en-IN');
+};
+
+const SuccessStoriesWidget = ({ totalCount }) => {
+  const { getAuthHeaders } = useAuth();
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    axios.get(`${API}/success-stories/stats`, { headers: getAuthHeaders() })
+      .then(r => setStats(r.data))
+      .catch(() => setStats(null));
+  }, [getAuthHeaders]);
+
+  const levels = [
+    { n: 1, label: 'Creator', gradient: 'from-slate-400 to-slate-500' },
+    { n: 2, label: 'Published', gradient: 'from-blue-400 to-blue-500' },
+    { n: 3, label: 'Recognition', gradient: 'from-indigo-500 to-indigo-600' },
+    { n: 4, label: 'Impact', gradient: 'from-amber-500 to-orange-500' },
+    { n: 5, label: 'Transformation', gradient: 'from-fuchsia-500 to-rose-500' },
+  ];
+
+  return (
+    <div className="mb-6" data-testid="success-stories-widget">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="font-semibold text-slate-900 text-lg flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-500" />
+            Verified Success Stories
+          </h3>
+          <p className="text-xs text-slate-500">Measurable, externally validated wins from OLL learners.</p>
+        </div>
+        <Link
+          to="/admin/success-stories"
+          className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-medium"
+          data-testid="success-stories-view-all"
+        >
+          View all →
+        </Link>
+      </div>
+      <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-wrap gap-3">
+        <Link
+          to="/admin/success-stories"
+          className="flex-shrink-0 bg-gradient-to-br from-amber-500 to-yellow-500 text-white rounded-xl px-5 py-3 min-w-[120px] hover:shadow-lg transition-shadow"
+          data-testid="stat-success-stories"
+        >
+          <div className="text-xs uppercase tracking-wide opacity-80">Total</div>
+          <div className="text-3xl font-bold">{totalCount}</div>
+        </Link>
+        <div className="flex flex-wrap gap-2 flex-1">
+          {levels.map(l => {
+            const count = stats?.by_level?.[String(l.n)] ?? 0;
+            return (
+              <Link
+                key={l.n}
+                to={`/admin/success-stories?level=${l.n}`}
+                className={`flex-1 min-w-[110px] rounded-xl px-3 py-2 bg-gradient-to-br ${l.gradient} text-white hover:shadow-md transition-shadow`}
+                data-testid={`success-stories-level-${l.n}`}
+              >
+                <div className="text-[10px] uppercase tracking-wide opacity-80">Level {l.n}</div>
+                <div className="text-xs font-medium">{l.label}</div>
+                <div className="text-xl font-bold mt-1">{count}</div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const MyKpisWidget = () => {
@@ -531,6 +599,9 @@ const AdminDashboard = () => {
 
           {/* Role-driven KPI strip (with time filter) */}
           <MyKpisWidget />
+
+          {/* Verified Success Stories — visible to every team member */}
+          <SuccessStoriesWidget totalCount={stats.success_stories_count || 0} />
 
           {/* Today's Tasks */}
           <TodaysTasksWidget />

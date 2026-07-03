@@ -759,6 +759,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
             "overdue_schools": overdue_data["overdue_schools"],
             "overdue_educators": overdue_data["overdue_educators"],
             "total_overdue": overdue_data["total_overdue"],
+            "success_stories_count": await db.success_stories.count_documents({"is_published": True}),
             "is_team_member": True
         }
     
@@ -809,6 +810,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "overdue_schools": overdue_data["overdue_schools"],
         "overdue_educators": overdue_data["overdue_educators"],
         "total_overdue": overdue_data["total_overdue"],
+        "success_stories_count": await db.success_stories.count_documents({"is_published": True}),
         "is_team_member": False
     }
 

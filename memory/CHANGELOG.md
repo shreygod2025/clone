@@ -1,6 +1,29 @@
 # OLL Backend Changelog
 
 
+## 2026-07-03 (round 12) — Verified Success Stories 🏆
+**Status: COMPLETE — smoke tested (backend + admin UI + dashboard widget + public page all rendering)**
+
+### Concept
+"A Verified Success Story is a measurable, externally validated achievement that demonstrates a child has applied their skills to create real-world value." OLL Success Ladder — Level 1 Creator → Level 2 Published → Level 3 Recognition → Level 4 Impact → Level 5 Transformation (flagship).
+
+### Backend
+- NEW `/app/backend/routes/success_stories.py` — full CRUD (`POST/GET/PATCH/DELETE /api/success-stories`), stats (`/api/success-stories/stats`), public list (`/api/public/success-stories`, `/api/public/success-stories/{id}`, `/api/public/success-stories/stats/summary`). Write ops gated to `role == "admin"`; list is available to any authenticated team member; `/public/*` requires no auth. Fields: student_name, age, school_name, image_url, level (1-5), story (HTML), excerpt, tags[], attachments[], evidence_links[], verification_notes (internal), is_published, is_flagship (auto-true for Level 5), level_name (auto), created_by/created_by_name/created_at/updated_at.
+- Registered `success_stories_router` in `server.py`.
+- `/api/dashboard/stats` — added `success_stories_count` (published only) to both team-member and admin payloads so every logged-in user sees the count.
+
+### Frontend
+- **Sidebar nav item** — `Success Stories` added under Support Center in `AdminLayout` sidebar (`icon: Trophy`, no permission required — visible to every team member).
+- **Dashboard widget** — new `SuccessStoriesWidget` rendered between `MyKpisWidget` and `TodaysTasksWidget` for every user (team + admin). Shows total tile + one tile per level (Creator/Published/Recognition/Impact/Transformation), each linking into the admin page pre-filtered by level.
+- NEW `/app/frontend/src/pages/admin/AdminSuccessStories.jsx` at `/admin/success-stories` — level cards (act as filters), search, story grid, Add Story button (admin only), Edit + Delete + View controls per card. `StoryModal` supports image upload (Cloudinary via `/api/upload`), multiple attachment uploads (certificates/proofs), evidence URL list, tag list, rich text story body via existing `RichTextEditor` (Tiptap), and publish toggle.
+- NEW `/app/frontend/src/pages/SuccessStoriesPage.jsx` at public `/success-stories` — hero, level ladder (interactive filter), Flagship section for Level 5, main grid, story detail modal with evidence links, full CTA, `Navbar` + `Footer`. Includes `<Helmet>` SEO metadata + canonical `https://oll.co/success-stories`.
+- Routes registered in `App.js`: `/success-stories` (public) + `/admin/success-stories` (protected).
+
+### Data-testids added
+`success-stories-widget`, `success-stories-view-all`, `stat-success-stories`, `success-stories-level-{n}`, `admin-success-stories-page`, `add-success-story-btn`, `level-filter-{n}`, `success-stories-search`, `success-stories-level-select`, `success-stories-loading`, `success-stories-empty`, `story-card-{id}`, `view-story-{id}`, `edit-story-{id}`, `delete-story-{id}`, `story-modal`, `story-name-input`, `story-age-input`, `story-school-input`, `story-excerpt-input`, `story-tag-input`, `story-link-input`, `story-verification-input`, `story-image-input`, `upload-image-btn`, `remove-image-btn`, `upload-attachment-btn`, `story-attachment-input`, `add-tag-btn`, `add-link-btn`, `level-btn-{n}`, `story-publish-toggle`, `story-cancel-btn`, `story-save-btn`, `view-story-modal`, `public-story-card-{id}`, `public-level-filter-{n}`, `public-clear-filter`, `public-story-detail`, `public-story-close`.
+
+
+
 ## 2026-07-03 (round 11) — Per-School Session & Attendance Reports 📊
 **Status: COMPLETE — smoke tested (both endpoint + UI)**
 

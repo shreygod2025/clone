@@ -2,6 +2,25 @@
 ## Product Requirements Document
 
 
+### Latest Changes (2026-07-03 pt2) — Verified Success Stories 🏆
+
+**New feature**: A full Verified Success Stories system with 5-level ladder (Creator → Published → Recognition → Impact → Transformation). Admins can add/edit/delete stories with student photo, name, age, school, level, rich text story, tags, evidence URLs, and file attachments (certificates, revenue proofs, media). Every team member sees a live count on their dashboard and can browse the full internal gallery. Level-5 stories are auto-flagged as flagship. Published stories are surfaced on the public `oll.co/success-stories` page.
+
+**Backend** (`/app/backend/routes/success_stories.py`):
+- Full CRUD under `/api/success-stories` (admin-only writes; all authed users can read).
+- Public endpoints under `/api/public/success-stories(/{id})` and `/api/public/success-stories/stats/summary` (no auth required, internal `verification_notes` stripped).
+- `success_stories_count` (published only) added to `/api/dashboard/stats` for both team-member + admin views.
+
+**Frontend**:
+- New sidebar item `Success Stories` (Trophy icon, visible to all team members).
+- New `SuccessStoriesWidget` on Admin Dashboard between KPIs and Today's Tasks — total + per-level tiles.
+- NEW `/app/frontend/src/pages/admin/AdminSuccessStories.jsx` at `/admin/success-stories` — grid + level filters + create/edit modal using existing `RichTextEditor` (Tiptap) + `/api/upload` (Cloudinary) for image & attachments.
+- NEW `/app/frontend/src/pages/SuccessStoriesPage.jsx` at public `/success-stories` — hero, level ladder filter, Flagship (Level 5) highlight, story cards, detail modal, SEO metadata + canonical.
+
+**Verified**: Backend endpoints return correct payloads, dashboard widget shows Level 3 count = 1 for seeded story, admin page renders cards + level filters, public `oll.co/success-stories` page renders hero + ladder + story card + detail modal.
+
+
+
 ### Latest Changes (2026-07-03) — Per-School Session & Attendance Reports 📊
 
 **New feature**: A "Reports" action button appears on every school card in the School CRM for `converted`, `active`, and `renewed` schools. Clicking opens a dedicated per-school Reports page at `/admin/schools/:schoolId/reports` that shows every session pulled from the new FastAPI CheckIn API (`repo-explorer-196.preview.emergentagent.com/api`) merged with attendance data.
