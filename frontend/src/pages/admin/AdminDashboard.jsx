@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
+import { TaskCard } from './AdminTasks';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
@@ -327,18 +328,21 @@ const MyKpisWidget = () => {
   );
 };
 
-// ── Today's Tasks widget (shown on Admin Dashboard) ──────────────────────────
+// ── This Week's Tasks widget (shown on Admin Dashboard) ──────────────────────
 const TodaysTasksWidget = () => {
   const { user, getAuthHeaders } = useAuth();
   const [today, setToday] = useState([]);
+  const [thisWeek, setThisWeek] = useState([]);
   const [overdue, setOverdue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   const reload = () => {
     axios.get(`${API}/tasks/today`, { headers: getAuthHeaders() })
       .then(r => {
         setToday(r.data?.today || []);
+        setThisWeek(r.data?.this_week || []);
         setOverdue(r.data?.overdue || []);
       })
       .catch(() => {})
@@ -350,26 +354,29 @@ const TodaysTasksWidget = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const advance = async (t) => {
-    const next = t.status === 'pending' ? 'in_progress' : 'completed';
+  const deleteTask = async (t) => {
+    if (!window.confirm(`Delete task "${t.title}"?`)) return;
     try {
-      await axios.patch(`${API}/tasks/${t.id}`, { status: next }, { headers: getAuthHeaders() });
-      // Refresh
-      const r = await axios.get(`${API}/tasks/today`, { headers: getAuthHeaders() });
-      setToday(r.data?.today || []);
-      setOverdue(r.data?.overdue || []);
+      await axios.delete(`${API}/tasks/${t.id}`, { headers: getAuthHeaders() });
+      reload();
     } catch { /* noop */ }
   };
 
   if (loading) return null;
 
+  // Priority order: Overdue first, then Today, then rest of week (each already sorted by backend)
+  const rows = [...overdue, ...today, ...thisWeek];
+
   return (
     <div className="mb-8" data-testid="todays-tasks-widget">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2 flex-wrap">
           <Calendar className="w-5 h-5 text-slate-600" />
-          Today&apos;s Tasks
-          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{today.length}</span>
+          This Week&apos;s Tasks
+          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{rows.length}</span>
+          {today.length > 0 && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{today.length} today</span>
+          )}
           {overdue.length > 0 && (
             <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{overdue.length} overdue</span>
           )}
@@ -377,7 +384,7 @@ const TodaysTasksWidget = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg shadow-sm shadow-blue-500/20"
             data-testid="dashboard-add-task-btn"
           >
             + Add Task
@@ -386,36 +393,27 @@ const TodaysTasksWidget = () => {
         </div>
       </div>
 
-      {today.length === 0 && overdue.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="bg-white rounded-xl border p-6 text-center text-slate-500 text-sm">
-          No tasks due today. Nice work.
+          Nothing due this week. Nice work.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border divide-y">
-          {[...overdue, ...today].map(t => (
-            <div key={t.id} className="flex items-center gap-3 p-3 hover:bg-slate-50" data-testid={`dashboard-task-${t.id}`}>
-              <div className={`w-2 h-2 rounded-full ${
-                t.priority === 'urgent' ? 'bg-red-500' :
-                t.priority === 'high' ? 'bg-amber-500' :
-                t.priority === 'medium' ? 'bg-blue-500' : 'bg-slate-300'
-              }`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{t.title}</p>
-                <p className="text-xs text-slate-500">
-                  {t.code}{t.due_date ? ` · Due ${new Date(t.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}
-                  {overdue.some(o => o.id === t.id) && <span className="text-red-600 font-medium"> · Overdue</span>}
-                </p>
-              </div>
-              {t.status !== 'completed' && (
-                <button
-                  onClick={() => advance(t)}
-                  className="text-xs font-medium text-blue-600 hover:underline shrink-0"
-                  data-testid={`dashboard-task-advance-${t.id}`}
-                >
-                  {t.status === 'pending' ? 'Start' : 'Complete'}
-                </button>
-              )}
-            </div>
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          {rows.map(t => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              expanded={false}
+              onToggle={() => {}}
+              onOpen={() => setEditingTask(t)}
+              onDelete={() => deleteTask(t)}
+              onStatus={(s) => { if (s === '__reload__') reload(); }}
+              onAddSubtask={() => setShowCreate(true)}
+              onEdit={() => setEditingTask(t)}
+              getAuthHeaders={getAuthHeaders}
+              currentUserId={user?.id}
+              isAdmin={user?.role === 'admin'}
+            />
           ))}
         </div>
       )}
@@ -424,6 +422,13 @@ const TodaysTasksWidget = () => {
         onClose={() => setShowCreate(false)}
         onCreated={reload}
         currentUser={user}
+      />
+      <TaskCreateModal
+        open={!!editingTask}
+        onClose={() => setEditingTask(null)}
+        onCreated={reload}
+        currentUser={user}
+        existingTask={editingTask}
       />
     </div>
   );

@@ -59,11 +59,11 @@ KPI_CATALOG = [
     {"id": "b2c_revenue_generated", "label": "Revenue generated (₹)", "category": "Sales — B2C", "unit": "₹"},
 
     # Task & Project Delivery — sourced from `tasks` and `projects`
-    {"id": "tasks_assigned", "label": "Tasks assigned", "category": "Task & Project Delivery", "unit": "count"},
-    {"id": "tasks_completed", "label": "Tasks completed", "category": "Task & Project Delivery", "unit": "count"},
-    {"id": "tasks_overdue", "label": "Tasks overdue", "category": "Task & Project Delivery", "unit": "count", "aggregation": "snapshot"},
-    {"id": "projects_member_of", "label": "Projects assigned to", "category": "Task & Project Delivery", "unit": "count", "aggregation": "snapshot"},
-    {"id": "projects_leading", "label": "Projects leading", "category": "Task & Project Delivery", "unit": "count", "aggregation": "snapshot"},
+    {"id": "tasks_assigned", "label": "Tasks assigned", "category": "Tasks & Responsibilities", "unit": "count"},
+    {"id": "tasks_completed", "label": "Tasks completed", "category": "Tasks & Responsibilities", "unit": "count"},
+    {"id": "tasks_overdue", "label": "Tasks overdue", "category": "Tasks & Responsibilities", "unit": "count", "aggregation": "snapshot"},
+    {"id": "projects_member_of", "label": "Projects assigned to", "category": "Tasks & Responsibilities", "unit": "count", "aggregation": "max"},
+    {"id": "projects_leading", "label": "Projects leading", "category": "Tasks & Responsibilities", "unit": "count", "aggregation": "max"},
 ]
 
 KPI_BY_ID = {k["id"]: k for k in KPI_CATALOG}
@@ -383,12 +383,14 @@ async def _compute_b2c_metrics(user_id: str, start_iso: str, end_iso: str) -> di
 async def _compute_task_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
     """Task & Project Delivery metrics.
 
-    - tasks_assigned:   tasks with assigned_to=user AND created_at in month
-    - tasks_completed:  tasks with assigned_to=user AND completed_at in month
+    - tasks_assigned:   tasks with assigned_to=user AND created_at in period
+    - tasks_completed:  tasks with assigned_to=user AND completed_at in period
     - tasks_overdue:    tasks with assigned_to=user AND due_date < now AND status != completed
-                        (real-time snapshot — not month-scoped so admin sees the live count)
-    - projects_member_of: projects where member_ids contains user (all-time)
-    - projects_leading:   projects where lead_id == user (all-time)
+                        (real-time snapshot — not period-scoped so the live count is shown)
+    - projects_member_of / projects_leading: count of projects the user is member/lead of
+      AND whose active window (start_date .. end_date) intersects the bucket period.
+      A project overlaps a bucket when start_date <= period_end AND
+      (end_date is null OR end_date >= period_start).
     """
     tasks_assigned = await db.tasks.count_documents({
         "assigned_to": user_id,
@@ -405,10 +407,30 @@ async def _compute_task_metrics(user_id: str, start_iso: str, end_iso: str) -> d
         "due_date": {"$lt": now_iso, "$ne": None},
         "status": {"$ne": "completed"},
     })
+
+    # Project overlap — dates in `projects` are stored as ISO date strings (YYYY-MM-DD)
+    period_start_date = start_iso[:10]
+    period_end_date = end_iso[:10]
+    overlap_conds = [
+        # start_date <= period_end (either not set or set and ≤ end)
+        {"$or": [{"start_date": None}, {"start_date": {"$exists": False}},
+                 {"start_date": {"$lte": period_end_date}}]},
+        # end_date >= period_start (or not set)
+        {"$or": [{"end_date": None}, {"end_date": {"$exists": False}},
+                 {"end_date": {"$gte": period_start_date}}]},
+    ]
     projects_member_of = await db.projects.count_documents({
-        "$or": [{"member_ids": user_id}, {"lead_id": user_id}]
+        "$and": [
+            {"$or": [{"member_ids": user_id}, {"lead_id": user_id}]},
+            *overlap_conds,
+        ]
     })
-    projects_leading = await db.projects.count_documents({"lead_id": user_id})
+    projects_leading = await db.projects.count_documents({
+        "$and": [
+            {"lead_id": user_id},
+            *overlap_conds,
+        ]
+    })
 
     return {
         "tasks_assigned": tasks_assigned,
@@ -638,9 +660,13 @@ async def _timeseries_payload(uid: str, scope: str, ref_iso: Optional[str]) -> d
 
         total_val = totals.get(kid, 0)
         aggregation = meta.get("aggregation", "sum")
-        # For snapshot KPIs (project counts, current overdue) — display current count only
+        # For snapshot KPIs (currently overdue etc.) — display current count only
         if aggregation == "snapshot":
             display = series[-1]["value"] if series else 0
+        elif aggregation == "max":
+            # Peak concurrent (used for project counts) — display the highest observed
+            values = [s["value"] for s in series if s["value"] is not None]
+            display = max(values) if values else 0
         elif meta.get("unit") in ("%", "hours"):
             # Rate/hour KPIs → average across non-zero buckets
             display = avg

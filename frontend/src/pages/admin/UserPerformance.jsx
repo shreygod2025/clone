@@ -43,6 +43,18 @@ const TrendIcon = ({ t }) => (t > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : t
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// ── Per-category theming (color used for chart stroke + gradient) ───────────
+const CATEGORY_THEME = {
+  'Tasks & Responsibilities': { color: '#3b82f6', badge: 'bg-blue-50 text-blue-700 border-blue-100' },       // blue
+  'Support Center':           { color: '#f59e0b', badge: 'bg-amber-50 text-amber-700 border-amber-100' },     // amber
+  'Sales — B2B':              { color: '#10b981', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100' }, // emerald
+  'Sales — B2C':              { color: '#06b6d4', badge: 'bg-cyan-50 text-cyan-700 border-cyan-100' },        // cyan
+  'HR':                       { color: '#a855f7', badge: 'bg-purple-50 text-purple-700 border-purple-100' },   // purple
+  'Educator HR':              { color: '#ec4899', badge: 'bg-pink-50 text-pink-700 border-pink-100' },        // pink
+  'Growth Partners':          { color: '#f97316', badge: 'bg-orange-50 text-orange-700 border-orange-100' },   // orange
+};
+const themeFor = (cat) => CATEGORY_THEME[cat] || { color: '#64748b', badge: 'bg-slate-50 text-slate-700 border-slate-100' };
+
 const UserPerformance = ({ mode = 'admin' }) => {
   // mode = 'admin' (view any user by :id) OR 'me' (view self, no :id in URL)
   const { id: routeUserId } = useParams();
@@ -227,14 +239,39 @@ const UserPerformance = ({ mode = 'admin' }) => {
           </Card>
         )}
 
-        {/* KPI charts grid */}
-        {!loading && data && (data.kpis || []).length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="kpi-grid">
-            {data.kpis.map(kpi => (
-              <KpiChartCard key={kpi.id} kpi={kpi} scopeSub={scopeSub} />
-            ))}
-          </div>
-        )}
+        {/* KPI grouped by category */}
+        {!loading && data && (data.kpis || []).length > 0 && (() => {
+          // Group by category preserving KPI order
+          const groups = new Map();
+          for (const kpi of data.kpis) {
+            const cat = kpi.category || 'Other';
+            if (!groups.has(cat)) groups.set(cat, []);
+            groups.get(cat).push(kpi);
+          }
+          return (
+            <div className="space-y-6" data-testid="kpi-groups">
+              {Array.from(groups.entries()).map(([cat, kpis]) => {
+                const theme = themeFor(cat);
+                return (
+                  <section key={cat} data-testid={`kpi-category-${cat.toLowerCase().replace(/\W+/g,'-')}`}>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.color }} />
+                      <h2 className="text-base font-bold text-slate-900">{cat}</h2>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${theme.badge}`}>
+                        {kpis.length} {kpis.length === 1 ? 'metric' : 'metrics'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {kpis.map(kpi => (
+                        <KpiChartCard key={kpi.id} kpi={kpi} scopeSub={scopeSub} theme={theme} />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {!loading && data && data.buckets && (
           <p className="text-xs text-slate-400 text-center pt-2">
@@ -247,7 +284,7 @@ const UserPerformance = ({ mode = 'admin' }) => {
 };
 
 // ── One KPI chart card ───────────────────────────────────────────────────────
-const KpiChartCard = ({ kpi, scopeSub }) => {
+const KpiChartCard = ({ kpi, scopeSub, theme }) => {
   const Icon = iconFor(kpi);
   const data = (kpi.series || []).map(pt => ({
     label: pt.label,
@@ -267,14 +304,16 @@ const KpiChartCard = ({ kpi, scopeSub }) => {
   else if (lastVal !== 0) pctChange = 100;
 
   const gradientId = `grad-${kpi.id}`;
-  const strokeColor = trend > 0 ? '#10b981' : trend < 0 ? '#ef4444' : '#3b82f6';
+  // Chart color uses the CATEGORY theme; trend pill still colors by direction
+  const strokeColor = theme?.color || '#3b82f6';
 
   return (
     <Card className="p-5 bg-white" data-testid={`kpi-card-${kpi.id}`}>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-slate-700" />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: strokeColor + '20' }}>
+            <Icon className="w-4 h-4" style={{ color: strokeColor }} />
           </div>
           <div>
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{kpi.category}</p>

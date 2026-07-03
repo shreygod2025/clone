@@ -1,5 +1,39 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 9) — Categorized Performance + Project-window KPIs + Weekly Task Widget 🎨
+**Status: COMPLETE — screenshots verified**
+
+### Performance page — categorized layout with color theming
+- KPIs are now **grouped by category** into individual sections. Each section has a colored dot + title + `N metrics` pill.
+- Chart strokes, gradient fills, and icon backgrounds now use the **category color**:
+  - Tasks & Responsibilities → blue (`#3b82f6`)
+  - Support Center → amber (`#f59e0b`)
+  - Sales — B2B → emerald (`#10b981`)
+  - Sales — B2C → cyan (`#06b6d4`)
+  - HR → purple (`#a855f7`)
+  - Educator HR → pink (`#ec4899`)
+  - Growth Partners → orange (`#f97316`)
+- KPI catalog category renamed `Task & Project Delivery` → `Tasks & Responsibilities`
+
+### Projects KPI — active-window overlap
+`projects_member_of` + `projects_leading` no longer return an all-time snapshot. For each time bucket, a project is counted only when its `start_date` ≤ `bucket_end` and (`end_date` is null OR `end_date` ≥ `bucket_start`). Aggregation changed from `snapshot` to `max` so the header display shows peak concurrent projects during the scope (not the sum).
+
+### Dashboard — "This Week's Tasks" (was "Today's Tasks")
+Backend `/api/tasks/today` now returns three arrays:
+- `today` — due today
+- `this_week` — due later this week (Mon–Sun, excluding today)
+- `overdue` — due < today AND not completed
+
+Widget rendered as a full-width card list using the shared `<TaskCard>` component — same rich design as the Tasks page (priority dot, overdue chip, due-date pill, status pill, Start/Complete actions, 3-dot menu with Edit/Delete). Overdue rows appear first, then today, then rest of week.
+
+### Files touched
+- `/app/backend/routes/kpis.py` (category rename, project window overlap logic, `max` aggregation)
+- `/app/backend/routes/tasks.py` (`/tasks/today` returns `today` + `this_week` + `overdue`)
+- `/app/frontend/src/pages/admin/UserPerformance.jsx` (category grouping + theming)
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` (widget uses shared `TaskCard`)
+
+
+
 ## 2026-07-03 (round 8) — Added 12 new KPIs (Renewal, HR, Educator HR, Growth Partners) 📊
 **Status: COMPLETE — verified end-to-end via direct compute functions**
 

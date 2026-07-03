@@ -258,28 +258,50 @@ async def list_tasks(
 
 @router.get("/today")
 async def list_todays_tasks(user: dict = Depends(get_current_user)):
-    """Tasks assigned to the current user with due_date == today (or overdue and not done)."""
-    uid = _current_user_id(user)
-    today = datetime.now(timezone.utc).date()
-    start = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc).isoformat()
-    end = datetime.combine(today, datetime.max.time(), tzinfo=timezone.utc).isoformat()
+    """Return the current user's tasks organised for the dashboard.
 
-    # Tasks due today (any status)
+    Buckets returned:
+      - today:      due within today's UTC range
+      - this_week:  due after today but within this ISO week (Mon–Sun)
+      - overdue:    due < today AND not completed
+    """
+    uid = _current_user_id(user)
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    start_today = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc).isoformat()
+    end_today = datetime.combine(today, datetime.max.time(), tzinfo=timezone.utc).isoformat()
+
+    # This week — from tomorrow's start through Sunday's end
+    weekday = today.weekday()  # Mon=0
+    days_left = 6 - weekday
+    from datetime import timedelta as _td
+    tomorrow = today + _td(days=1)
+    week_end = today + _td(days=days_left)
+    start_week = datetime.combine(tomorrow, datetime.min.time(), tzinfo=timezone.utc).isoformat()
+    end_week = datetime.combine(week_end, datetime.max.time(), tzinfo=timezone.utc).isoformat()
+
     due_today = await db.tasks.find({
         "assigned_to": uid,
-        "due_date": {"$gte": start, "$lte": end},
+        "due_date": {"$gte": start_today, "$lte": end_today},
     }).sort("priority", -1).to_list(500)
 
-    # Overdue and still open
+    this_week = await db.tasks.find({
+        "assigned_to": uid,
+        "status": {"$ne": "completed"},
+        "due_date": {"$gte": start_week, "$lte": end_week},
+    }).sort("due_date", 1).to_list(500)
+
     overdue = await db.tasks.find({
         "assigned_to": uid,
-        "due_date": {"$lt": start},
+        "due_date": {"$lt": start_today},
         "status": {"$ne": "completed"},
     }).sort("due_date", 1).to_list(500)
 
-    enriched_today = [await _enrich_task(t) for t in due_today]
-    enriched_overdue = [await _enrich_task(t) for t in overdue]
-    return {"today": enriched_today, "overdue": enriched_overdue}
+    return {
+        "today":     [await _enrich_task(t) for t in due_today],
+        "this_week": [await _enrich_task(t) for t in this_week],
+        "overdue":   [await _enrich_task(t) for t in overdue],
+    }
 
 
 @router.get("/{task_id}")
