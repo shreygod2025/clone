@@ -131,6 +131,16 @@ async def _enrich_task(t: dict) -> dict:
     else:
         t["comment_count"] = 0
 
+    # Project name/color (for display in task card)
+    pid = t.get("project_id")
+    if pid:
+        proj = await db.projects.find_one({"id": pid}, {"_id": 0, "name": 1, "color": 1})
+        t["project_name"] = (proj or {}).get("name")
+        t["project_color"] = (proj or {}).get("color")
+    else:
+        t["project_name"] = None
+        t["project_color"] = None
+
     return t
 
 

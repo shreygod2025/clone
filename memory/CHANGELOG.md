@@ -1,5 +1,22 @@
 # OLL Backend Changelog
 
+## 2026-07-03 (round 4) — Project Detail: Stacked Sections + In-Place Task Modal 🗂️
+**Status: COMPLETE — verified**
+
+### Changes
+1. **AdminProjectDetail.jsx** — removed the tab strip (Overview / Tasks / Milestones / Knowledge Base). All four sections now render **stacked vertically** on the same page with a `<SectionHeader>` per section (title + count). Users can scroll through everything without switching contexts.
+2. **Add task from project** — was `<Link to="/admin/tasks?new=1">` which navigated away. Replaced with in-place `<TaskCreateModal>` triggered by an "+ Add task" button. Uses `defaultProjectId={id}` so the project is pre-selected in the modal chip. On create, calls `load()` to refresh the tasks list.
+3. **Project name chip on task cards** — 
+   - Backend `_enrich_task()` now returns `project_name` and `project_color` when `project_id` is set
+   - `AdminTasks.jsx` `TaskCard` shows a small colored pill next to the task title (background = project color at 20% opacity, dot in solid color) with `data-testid="task-project-{id}"`
+
+### Files touched
+- `/app/backend/routes/tasks.py` (project enrichment)
+- `/app/frontend/src/pages/admin/AdminProjectDetail.jsx` (tabs → stacked sections, inline modal)
+- `/app/frontend/src/pages/admin/AdminTasks.jsx` (project chip in card)
+
+
+
 ## 2026-07-03 (round 3) — Task Menu / Ownership / Alignment Fixes 🔧
 **Status: COMPLETE — verified end-to-end**
 

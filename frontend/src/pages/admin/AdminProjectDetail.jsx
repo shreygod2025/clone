@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
+import TaskCreateModal from '../../components/tasks/TaskCreateModal';
 import {
   ArrowLeft, Plus, Trash2, Users as UsersIcon, Calendar, CheckCircle2,
   Circle, Clock, Pin, ExternalLink, Edit2, StickyNote, Link2, X
@@ -28,10 +29,10 @@ const MS_STATUS = {
 const AdminProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getAuthHeaders } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [project, setProject] = useState(null);
-  const [tab, setTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   const [tasks, setTasks] = useState([]);
   const [milestones, setMilestones] = useState([]);
@@ -94,36 +95,47 @@ const AdminProjectDetail = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 border-b" data-testid="project-tabs">
-          {['overview', 'tasks', 'milestones', 'kb'].map(t => (
-            <button key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                tab === t ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-              data-testid={`project-tab-${t}`}>
-              {t === 'kb' ? 'Knowledge Base' : t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'overview' && (
+        {/* All sections stacked (no tabs) */}
+        <section data-testid="project-section-overview">
+          <SectionHeader title="Overview" />
           <OverviewTab project={project} milestones={milestones} tasks={tasks} kb={kb} />
-        )}
-        {tab === 'tasks' && (
-          <TasksTab tasks={tasks} projectId={id} onRefresh={load} />
-        )}
-        {tab === 'milestones' && (
+        </section>
+
+        <section data-testid="project-section-tasks">
+          <SectionHeader title="Tasks" count={tasks.length} />
+          <TasksTab tasks={tasks} onAdd={() => setShowTaskModal(true)} />
+        </section>
+
+        <section data-testid="project-section-milestones">
+          <SectionHeader title="Milestones" count={milestones.length} />
           <MilestonesTab milestones={milestones} projectId={id} onRefresh={load} getAuthHeaders={getAuthHeaders} />
-        )}
-        {tab === 'kb' && (
+        </section>
+
+        <section data-testid="project-section-kb">
+          <SectionHeader title="Knowledge Base" count={kb.length} />
           <KbTab entries={kb} projectId={id} onRefresh={load} getAuthHeaders={getAuthHeaders} />
-        )}
+        </section>
+
+        {/* Inline task-create modal (no redirect) */}
+        <TaskCreateModal
+          open={showTaskModal}
+          onClose={() => setShowTaskModal(false)}
+          onCreated={() => load()}
+          currentUser={user}
+          defaultProjectId={id}
+        />
       </div>
     </AdminLayout>
   );
 };
+
+// ── Section header (used between stacked sections) ───────────────────────────
+const SectionHeader = ({ title, count }) => (
+  <div className="flex items-baseline gap-2 mb-2 px-1">
+    <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+    {count !== undefined && <span className="text-xs text-slate-400 font-medium">{count}</span>}
+  </div>
+);
 
 // ── Overview ─────────────────────────────────────────────────────────────────
 const OverviewTab = ({ project, milestones, tasks, kb }) => (
@@ -152,11 +164,14 @@ const OverviewTab = ({ project, milestones, tasks, kb }) => (
 );
 
 // ── Tasks tab ────────────────────────────────────────────────────────────────
-const TasksTab = ({ tasks, projectId }) => (
+const TasksTab = ({ tasks, onAdd }) => (
   <Card className="p-5">
     <div className="flex items-center justify-between mb-3">
       <h3 className="text-sm font-semibold text-slate-900">Tasks in this project ({tasks.length})</h3>
-      <Link to="/admin/tasks?new=1" className="text-xs text-blue-600 hover:underline">+ Add task</Link>
+      <button onClick={onAdd} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+        data-testid="project-add-task-btn">
+        <Plus className="w-3 h-3" /> Add task
+      </button>
     </div>
     {tasks.length === 0 ? (
       <p className="text-xs text-slate-400 italic text-center py-6">No tasks yet.</p>
@@ -165,8 +180,8 @@ const TasksTab = ({ tasks, projectId }) => (
         {tasks.map(t => (
           <div key={t.id} className="py-2 flex items-center justify-between text-sm">
             <div className="min-w-0">
-              <p className="text-xs text-slate-400 font-mono">{t.code}</p>
               <p className="font-medium text-slate-900 truncate">{t.title}</p>
+              {t.description && <p className="text-xs text-slate-500 truncate">{t.description.split('\n')[0].slice(0, 100)}</p>}
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-500 shrink-0">
               <span>{t.assigned_to_name}</span>

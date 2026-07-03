@@ -529,6 +529,20 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
               <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
                 {task.title}
               </span>
+              {task.project_name && (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                  style={{
+                    backgroundColor: (task.project_color || '#64748b') + '20',
+                    color: task.project_color || '#334155',
+                  }}
+                  data-testid={`task-project-${task.id}`}
+                  title={`Project: ${task.project_name}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: task.project_color || '#64748b' }} />
+                  {task.project_name}
+                </span>
+              )}
               {overdue && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
                   <AlertCircle className="w-2.5 h-2.5" /> Overdue
