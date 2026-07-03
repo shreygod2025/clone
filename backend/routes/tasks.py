@@ -44,6 +44,7 @@ class TaskCreate(BaseModel):
     parent_task_id: Optional[str] = None  # NEW — for sub-tasks
     tags: List[str] = []
     gdrive_link: Optional[str] = None
+    attachments: List[dict] = []  # [{name, url, kind: 'file'|'link'}]
 
 
 class TaskUpdate(BaseModel):
@@ -57,6 +58,7 @@ class TaskUpdate(BaseModel):
     parent_task_id: Optional[str] = None
     tags: Optional[List[str]] = None
     gdrive_link: Optional[str] = None
+    attachments: Optional[List[dict]] = None
 
 
 class CommentCreate(BaseModel):
@@ -176,6 +178,7 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
         "parent_task_id": data.parent_task_id,
         "tags": data.tags or [],
         "gdrive_link": data.gdrive_link,
+        "attachments": data.attachments or [],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
         "rejection_reason": None,
@@ -289,7 +292,7 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         raise HTTPException(status_code=403, detail="Not allowed to modify this task")
 
     updates: dict = {}
-    for field in ("title", "description", "priority", "due_date", "project_id", "tags", "gdrive_link"):
+    for field in ("title", "description", "priority", "due_date", "project_id", "tags", "gdrive_link", "attachments"):
         v = getattr(data, field)
         if v is not None:
             updates[field] = v

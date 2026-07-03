@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
-import TaskCreateModal from '../../components/tasks/TaskCreateModal';
+import TaskCreateModal, { AttachmentsPanel } from '../../components/tasks/TaskCreateModal';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import {
   Plus, Calendar, Trash2, X, Search,
   CheckCircle2, Circle, Clock, MessageSquare, ChevronDown, ChevronRight,
   Check, XCircle, Send, ListChecks, Link2, MoreHorizontal, AlertCircle,
-  Sparkles
+  Sparkles, Paperclip, FileText
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -107,6 +107,11 @@ const AdminTasks = () => {
   };
 
   const updateStatus = async (task, status) => {
+    if (status === '__reload__') {
+      loadTasks();
+      if (detailTask?.id === task?.id) setDetailTask(null);
+      return;
+    }
     try {
       await axios.patch(`${API}/tasks/${task.id}`, { status }, { headers: getAuthHeaders() });
       loadTasks();
@@ -280,6 +285,7 @@ const AdminTasks = () => {
                   onStatus={updateStatus}
                   onAddSubtask={openCreate}
                   getAuthHeaders={getAuthHeaders}
+                  currentUserId={currentUserId}
                 />
               ))}
             </div>
@@ -296,6 +302,7 @@ const AdminTasks = () => {
                   onStatus={(s) => updateStatus(t, s)}
                   onAddSubtask={() => openCreate(t)}
                   getAuthHeaders={getAuthHeaders}
+                  currentUserId={currentUserId}
                 />
               ))}
             </div>
@@ -349,7 +356,7 @@ const StatusChip = ({ label, count, active, onClick, dot, testid }) => (
 );
 
 // ── Status section (grouped card container) ──────────────────────────────────
-const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders }) => {
+const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId }) => {
   const [collapsed, setCollapsed] = useState(false);
   const S = STATUS_META[statusKey];
 
@@ -377,6 +384,7 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
               onStatus={(s) => onStatus(t, s)}
               onAddSubtask={() => onAddSubtask(t)}
               getAuthHeaders={getAuthHeaders}
+              currentUserId={currentUserId}
             />
           ))}
         </div>
@@ -386,7 +394,7 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
 };
 
 // ── Task card row (the star of the redesign) ─────────────────────────────────
-const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders }) => {
+const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, getAuthHeaders, currentUserId }) => {
   const S = STATUS_META[task.status] || STATUS_META.pending;
   const P = PRIORITY_META[task.priority] || PRIORITY_META.medium;
   const overdue = isOverdue(task);
@@ -402,22 +410,42 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
     }
   }, [expanded, hasSubtasks, task.id, getAuthHeaders]);
 
-  const nextStatus = task.status === 'pending' ? 'in_progress'
-    : task.status === 'in_progress' ? 'completed'
-    : task.status === 'rejected' ? 'in_progress'
-    : null;
-  const nextLabel = task.status === 'pending' ? 'Start'
-    : task.status === 'in_progress' ? 'Complete'
-    : task.status === 'rejected' ? 'Retry'
-    : null;
+  // ── Self-assigned tasks bypass approval; others need approval when marked done ──
+  const isSelfAssigned = task.assigned_to === task.assigned_by;
+  const isAssignee = currentUserId === task.assigned_to;
+  const isApprover = currentUserId === task.assigned_by;
 
+  const completeTask = async (e) => {
+    e?.stopPropagation();
+    try {
+      if (task.status === 'pending_approval' && isApprover) {
+        // Approver approves
+        await axios.post(`${API}/tasks/${task.id}/approve`, {}, { headers: getAuthHeaders() });
+        toast.success('Approved & completed');
+      } else if (isSelfAssigned || !isAssignee) {
+        // Self-assigned OR admin marking any task → straight to completed
+        await axios.patch(`${API}/tasks/${task.id}`, { status: 'completed' }, { headers: getAuthHeaders() });
+        toast.success('Marked complete');
+      } else {
+        // Assignee on someone else's task → submit for approval
+        await axios.post(`${API}/tasks/${task.id}/submit`, {}, { headers: getAuthHeaders() });
+        toast.success('Submitted for approval');
+      }
+      onStatus('__reload__');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed');
+    }
+  };
+
+  const canComplete = task.status !== 'completed';
+  const attachmentCount = (task.attachments || []).length + (task.gdrive_link ? 1 : 0);
   const tagList = Array.isArray(task.tags) ? task.tags : [];
 
   return (
     <div data-testid={`task-row-${task.id}`}
       className="group relative px-4 py-3 hover:bg-slate-50/60 transition-colors">
       <div className="flex items-start gap-3">
-        {/* Status dot / expand chevron column */}
+        {/* Expand chevron + status icon */}
         <div className="flex items-center gap-1 pt-0.5">
           {hasSubtasks ? (
             <button onClick={onToggle}
@@ -426,16 +454,14 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
               {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-500" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />}
             </button>
           ) : <span className="inline-block w-4" />}
-          <button
-            onClick={() => nextStatus && onStatus(nextStatus)}
-            title={nextStatus ? `Mark as ${nextLabel}` : S.label}
+          <div
+            title={S.label}
             className={`w-4 h-4 rounded-full ring-2 ring-offset-1 flex items-center justify-center transition-all ${S.ring} ${
-              task.status === 'completed' ? S.dot : 'bg-white hover:bg-slate-100'
+              task.status === 'completed' ? S.dot : 'bg-white'
             }`}
-            data-testid={`task-advance-${task.id}`}
           >
             {task.status === 'completed' && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
-          </button>
+          </div>
         </div>
 
         {/* Priority dot */}
@@ -443,14 +469,13 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           <span className={`w-2 h-2 rounded-full ${P.dot}`} title={`${P.label} priority`} />
         </div>
 
-        {/* Main content: title + meta + tags */}
+        {/* Main content: title + tags + subtle meta */}
         <div className="flex-1 min-w-0">
           <button onClick={onOpen} className="text-left w-full">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
                 {task.title}
               </span>
-              <span className="text-[10px] font-mono text-slate-400 tracking-tight">{task.code}</span>
               {overdue && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
                   <AlertCircle className="w-2.5 h-2.5" /> Overdue
@@ -459,11 +484,6 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
             </div>
 
             <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 flex-wrap">
-              {task.due_date && (
-                <span className={`inline-flex items-center gap-1 ${overdue ? 'text-red-600 font-medium' : ''}`}>
-                  <Calendar className="w-3 h-3" /> {fmtDate(task.due_date)}
-                </span>
-              )}
               {hasSubtasks && (
                 <span className="inline-flex items-center gap-1">
                   <ListChecks className="w-3 h-3" /> {task.subtask_done || 0}/{task.subtask_total}
@@ -474,9 +494,9 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
                   <MessageSquare className="w-3 h-3" /> {task.comment_count}
                 </span>
               )}
-              {task.gdrive_link && (
+              {attachmentCount > 0 && (
                 <span className="inline-flex items-center gap-1">
-                  <Link2 className="w-3 h-3" /> Drive
+                  <Paperclip className="w-3 h-3" /> {attachmentCount}
                 </span>
               )}
               {tagList.slice(0, 3).map((tg, i) => (
@@ -488,6 +508,20 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
             </div>
           </button>
         </div>
+
+        {/* Due date — prominent pill */}
+        {task.due_date && (
+          <div className="pt-0.5 hidden sm:block">
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
+              overdue
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : 'bg-slate-50 text-slate-700 border-slate-200'
+            }`} data-testid={`task-due-${task.id}`}>
+              <Calendar className="w-3 h-3" />
+              {fmtDate(task.due_date)}
+            </span>
+          </div>
+        )}
 
         {/* Status pill */}
         <div className="hidden md:block pt-0.5">
@@ -501,7 +535,25 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           <Avatar name={task.assigned_to_name} />
         </div>
 
-        {/* Row actions (visible on hover) */}
+        {/* Complete button (direct) */}
+        {canComplete && (
+          <button
+            onClick={completeTask}
+            title={
+              task.status === 'pending_approval' && isApprover ? 'Approve'
+              : isSelfAssigned || !isAssignee ? 'Mark complete'
+              : 'Submit for approval'
+            }
+            className={`p-1.5 rounded-lg transition-all opacity-60 group-hover:opacity-100 hover:bg-green-50 hover:text-green-700 ${
+              task.status === 'pending_approval' && isApprover ? 'text-amber-600 opacity-100' : 'text-slate-400'
+            }`}
+            data-testid={`task-complete-${task.id}`}
+          >
+            <CheckCircle2 className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* 3-dot menu */}
         <div className="pt-1 relative">
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen(o => !o); }}
@@ -513,15 +565,7 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[160px]">
-                {nextStatus && (
-                  <button
-                    onClick={() => { setMenuOpen(false); onStatus(nextStatus); }}
-                    className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <Check className="w-3.5 h-3.5" /> {nextLabel}
-                  </button>
-                )}
+              <div className="absolute right-0 top-8 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[180px]">
                 <button
                   onClick={() => { setMenuOpen(false); onAddSubtask(); }}
                   className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
@@ -541,7 +585,7 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
                   className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                   data-testid={`task-delete-${task.id}`}
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                  <Trash2 className="w-3.5 h-3.5" /> Delete task
                 </button>
               </div>
             </>
@@ -557,7 +601,6 @@ const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddS
             return (
               <div key={st.id} className="flex items-center gap-2 py-1 text-xs" data-testid={`task-subtask-row-${st.id}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${SS.dot}`} />
-                <span className="text-slate-400 font-mono text-[10px]">{st.code}</span>
                 <span className="flex-1 text-slate-700 truncate">{st.title}</span>
                 <span className="text-slate-500">{st.assigned_to_name || '—'}</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${SS.pill}`}>{SS.label}</span>
@@ -616,8 +659,29 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
     } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
 
-  const canSubmit  = currentUserId === task.assigned_to && ['pending', 'in_progress', 'rejected'].includes(task.status);
+  const canSubmit  = currentUserId === task.assigned_to
+                     && task.assigned_to !== task.assigned_by
+                     && ['pending', 'in_progress', 'rejected'].includes(task.status);
   const canApprove = (isAdmin || currentUserId === task.assigned_by) && task.status === 'pending_approval';
+  const canComplete = (currentUserId === task.assigned_to
+                       && task.assigned_to === task.assigned_by
+                       && task.status !== 'completed')
+                       || (isAdmin && task.status !== 'completed');
+
+  const markComplete = async () => {
+    try {
+      await axios.patch(`${API}/tasks/${task.id}`, { status: 'completed' }, { headers: getAuthHeaders() });
+      toast.success('Marked complete');
+      onClose();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); }
+  };
+
+  const saveAttachments = async (newAttachments) => {
+    try {
+      await axios.patch(`${API}/tasks/${task.id}`, { attachments: newAttachments }, { headers: getAuthHeaders() });
+      task.attachments = newAttachments; // local sync
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Failed to save'); }
+  };
 
   const S = STATUS_META[task.status] || STATUS_META.pending;
 
@@ -626,12 +690,16 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
       <div className="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()} data-testid="task-detail-modal">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
-            <p className="text-xs font-mono text-slate-400 mb-1">{task.code}</p>
             <h2 className="text-xl font-bold text-slate-900">{task.title}</h2>
             <div className="flex items-center gap-2 mt-2 text-sm flex-wrap">
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${S.pill}`}>
                 <S.icon className="w-3 h-3" /> {S.label}
               </span>
+              {task.due_date && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                  <Calendar className="w-3 h-3" /> {fmtDate(task.due_date)}
+                </span>
+              )}
               <span className="text-slate-400">•</span>
               <div className="flex items-center gap-1.5">
                 <Avatar name={task.assigned_to_name} size="xs" />
@@ -651,7 +719,23 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
           </div>
         )}
 
+        {/* Attachments */}
+        <div className="mb-4">
+          <AttachmentsPanel
+            attachments={task.attachments || []}
+            onChange={saveAttachments}
+            getAuthHeaders={getAuthHeaders}
+          />
+        </div>
+
         <div className="flex gap-2 mb-4 flex-wrap">
+          {canComplete && (
+            <button onClick={markComplete}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 font-medium"
+              data-testid="task-mark-complete-btn">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
+            </button>
+          )}
           {canSubmit && (
             <button onClick={submit}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-sm hover:bg-amber-200"

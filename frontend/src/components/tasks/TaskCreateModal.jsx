@@ -3,7 +3,8 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import {
   Calendar, User as UserIcon, Flag, X, Search, ChevronDown, Check,
-  Repeat, Link2, Tag as TagIcon, FolderKanban as FolderIcon
+  Repeat, Link2, Tag as TagIcon, FolderKanban as FolderIcon,
+  Paperclip, Upload, FileText, Trash2
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -164,6 +165,123 @@ const DueDatePicker = ({ value, onChange }) => {
   );
 };
 
+// ── Attachments panel (real file upload + link) ──────────────────────────────
+export const AttachmentsPanel = ({ attachments = [], onChange, getAuthHeaders, compact = false }) => {
+  const [uploading, setUploading] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkName, setLinkName] = useState('');
+  const fileInputRef = useRef(null);
+
+  const add = (att) => onChange([...(attachments || []), att]);
+  const remove = (idx) => onChange(attachments.filter((_, i) => i !== idx));
+
+  const onPickFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large (max 10 MB)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await axios.post(`${API}/upload?type=task`, fd, {
+        headers: { ...getAuthHeaders() },
+      });
+      add({ name: file.name, url: res.data.url, kind: 'file', size: file.size });
+      toast.success('File attached');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submitLink = () => {
+    const url = linkUrl.trim();
+    if (!url) return;
+    add({ name: linkName.trim() || url, url, kind: 'link' });
+    setLinkUrl(''); setLinkName(''); setLinkOpen(false);
+    toast.success('Link added');
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-testid="attachments-panel">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase inline-flex items-center gap-1">
+          <Paperclip className="w-3 h-3" /> Attachments
+        </span>
+        {attachments.length > 0 && (
+          <span className="text-[10px] text-slate-400 font-medium">{attachments.length} added</span>
+        )}
+      </div>
+
+      {attachments.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {attachments.map((a, i) => (
+            <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs" data-testid={`attachment-item-${i}`}>
+              {a.kind === 'link'
+                ? <Link2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                : <FileText className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              }
+              <a href={a.url} target="_blank" rel="noopener noreferrer"
+                className="flex-1 truncate text-slate-700 hover:text-blue-600 hover:underline">
+                {a.name || a.url}
+              </a>
+              <button type="button" onClick={() => remove(i)}
+                className="p-0.5 text-slate-400 hover:text-red-600" data-testid={`attachment-remove-${i}`}>
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={compact ? 'flex gap-2' : 'grid grid-cols-2 gap-2'}>
+        <button type="button" onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex items-center justify-center gap-1 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-dashed border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-60"
+          data-testid="attachment-upload-btn">
+          <Upload className="w-3.5 h-3.5" />
+          {uploading ? 'Uploading…' : 'Upload file'}
+        </button>
+        <button type="button" onClick={() => setLinkOpen(o => !o)}
+          className="inline-flex items-center justify-center gap-1 py-2 text-xs font-medium text-slate-600 bg-white border border-dashed border-slate-200 rounded-lg hover:bg-slate-100"
+          data-testid="attachment-link-btn">
+          <Link2 className="w-3.5 h-3.5" /> Add link
+        </button>
+      </div>
+
+      {linkOpen && (
+        <div className="mt-2 p-2 bg-white border border-slate-200 rounded-lg space-y-1.5" data-testid="attachment-link-form">
+          <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
+            placeholder="https://drive.google.com/…"
+            className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs outline-none focus:ring-1 focus:ring-blue-300"
+            autoFocus data-testid="attachment-link-url" />
+          <input type="text" value={linkName} onChange={e => setLinkName(e.target.value)}
+            placeholder="Label (optional)"
+            className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs outline-none focus:ring-1 focus:ring-blue-300"
+            data-testid="attachment-link-name" />
+          <div className="flex gap-1.5 justify-end">
+            <button type="button" onClick={() => { setLinkOpen(false); setLinkUrl(''); setLinkName(''); }}
+              className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+            <button type="button" onClick={submitLink}
+              className="px-2.5 py-1 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600"
+              data-testid="attachment-link-save">Add</button>
+          </div>
+        </div>
+      )}
+
+      <input ref={fileInputRef} type="file" hidden onChange={onPickFile}
+        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx,.xls,.csv"
+        data-testid="attachment-file-input" />
+    </div>
+  );
+};
+
 // ── Main modal ───────────────────────────────────────────────────────────────
 const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '' }) => {
   const [users, setUsers] = useState([]);
@@ -200,6 +318,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       tags: '',
       gdrive_link: '',
       repeat_freq: '',
+      attachments: [],
     });
     setOpenPanel(null);
 
@@ -251,6 +370,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         parent_task_id: form.parent_task_id || null,
         tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         gdrive_link: form.gdrive_link || null,
+        attachments: form.attachments || [],
       };
       const created = await axios.post(`${API}/tasks`, body, { headers: getAuthHeaders() });
 
@@ -363,28 +483,11 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
               active={!!form.tags} testid="chip-tags" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="rounded-xl border bg-slate-50/70 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">📎 Attachments</span>
-                <span className="text-[10px] text-slate-400 bg-white px-1.5 py-0.5 rounded-full border">Soon</span>
-              </div>
-              <button type="button" disabled
-                className="w-full py-2 text-xs font-medium text-blue-500 bg-blue-50/60 border border-dashed border-blue-200 rounded-lg cursor-not-allowed opacity-70">
-                + Attach files
-              </button>
-            </div>
-            <div className="rounded-xl border bg-slate-50/70 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">🎙 Voice Note</span>
-                <span className="text-[10px] text-slate-400 bg-white px-1.5 py-0.5 rounded-full border">Soon</span>
-              </div>
-              <button type="button" disabled
-                className="w-full py-2 text-xs font-medium text-red-500 bg-red-50/50 border border-dashed border-red-200 rounded-lg cursor-not-allowed opacity-70">
-                🎙 Record
-              </button>
-            </div>
-          </div>
+          <AttachmentsPanel
+            attachments={form.attachments}
+            onChange={(atts) => setForm({ ...form, attachments: atts })}
+            getAuthHeaders={getAuthHeaders}
+          />
         </div>
 
         <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-t rounded-b-2xl">

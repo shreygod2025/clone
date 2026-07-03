@@ -1,5 +1,37 @@
 # OLL Backend Changelog
 
+## 2026-07-03 — Task Attachments + UX Refinements 🎯
+**Status: COMPLETE — Backend + Frontend verified end-to-end**
+
+### Backend (`/app/backend/routes/tasks.py`)
+- Added `attachments: List[dict]` field to `TaskCreate` + `TaskUpdate` models
+- Attachments persist on create + update (`PATCH /api/tasks/:id`)
+- Each attachment: `{name, url, kind: 'file'|'link', size?}`
+
+### Frontend UX changes (per user request)
+1. **Hide task IDs (TSK-XXXX codes)** — removed from list cards and detail modal header
+2. **Move due date outside** — now a prominent bordered pill on the right side of each card (red variant when overdue)
+3. **Direct-complete flow** with smart routing:
+   - **Self-assigned** (`assigned_to === assigned_by`) → PATCH `status: 'completed'` directly (no approval)
+   - **Assigned by someone else** → POST `/tasks/:id/submit` (goes to `pending_approval`)
+   - **Approver clicks complete on pending_approval** → POST `/tasks/:id/approve`
+4. **Complete icon** (`CheckCircle2`) added per-row, visible on hover
+5. **Delete moved to 3-dot menu** (was already there; removed the redundant status-advance action)
+6. **Attachments panel** in TaskCreateModal is now fully functional:
+   - "Upload file" → posts to `/api/upload?type=task` (Cloudinary, 10MB limit)
+   - "Add link" → inline URL input with optional label
+   - Files listed with type icon (📄 file / 🔗 link), click to open in new tab, trash-icon to remove
+   - "Voice Note" section removed
+7. **Attachments in TaskDetailModal** — view + add + remove after task creation (auto-saves on change)
+8. **Attachment count** shown on each task card (paperclip icon)
+
+### Verified
+- Backend: created task with 2 attachments (file + link) — round-trip preserved
+- Frontend: detail modal displays both, upload/add-link buttons visible, Mark Complete button present for self-assigned
+- Direct-complete PATCH → status `completed` + `completed_at` stamp
+
+
+
 ## 2026-07-02 — Task Page UI Redesign (Card/List Hybrid) 🎨
 **Status: COMPLETE — Screenshot verified**
 
