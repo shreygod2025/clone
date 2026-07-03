@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -81,26 +81,30 @@ const UserPerformance = ({ mode = 'admin' }) => {
     return `${selYear}-${String(m).padStart(2, '0')}-01`;
   };
 
-  const load = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
-    try {
-      const ref = buildRef();
-      const url = selfMode
-        ? `${API}/me/performance/timeseries?scope=${scope}&ref=${ref}`
-        : `${API}/users/${userId}/performance/timeseries?scope=${scope}&ref=${ref}`;
-      const res = await axios.get(url, { headers: getAuthHeaders() });
-      setData(res.data);
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Failed to load performance');
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const run = async () => {
+      if (!userId) return;
+      setLoading(true);
+      try {
+        const ref = buildRef();
+        const url = selfMode
+          ? `${API}/me/performance/timeseries?scope=${scope}&ref=${ref}`
+          : `${API}/users/${userId}/performance/timeseries?scope=${scope}&ref=${ref}`;
+        const res = await axios.get(url, { headers: getAuthHeaders(), signal: controller.signal });
+        if (!cancelled) setData(res.data);
+      } catch (err) {
+        if (cancelled || axios.isCancel(err) || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+        toast.error(err?.response?.data?.detail || 'Failed to load performance');
+        setData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; controller.abort(); };
   }, [userId, scope, selMonth, selQuarter, selYear, selfMode]);
-
-  useEffect(() => { load(); }, [load]);
 
   // Load user switcher list only for admin/manager mode
   useEffect(() => {

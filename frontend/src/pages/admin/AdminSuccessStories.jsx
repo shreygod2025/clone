@@ -46,6 +46,7 @@ const AdminSuccessStories = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [stories, setStories] = useState([]);
+  const [levelCounts, setLevelCounts] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState(searchParams.get('level') || 'all');
@@ -59,8 +60,20 @@ const AdminSuccessStories = () => {
       const params = new URLSearchParams();
       if (levelFilter !== 'all') params.append('level', levelFilter);
       if (search) params.append('search', search);
-      const res = await axios.get(`${API}/success-stories?${params.toString()}`, { headers: getAuthHeaders() });
-      setStories(res.data || []);
+      const [listRes, statsRes] = await Promise.all([
+        axios.get(`${API}/success-stories?${params.toString()}`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/success-stories/stats`, { headers: getAuthHeaders() }).catch(() => ({ data: null })),
+      ]);
+      setStories(listRes.data || []);
+      if (statsRes.data?.by_level) {
+        setLevelCounts({
+          1: statsRes.data.by_level['1'] || 0,
+          2: statsRes.data.by_level['2'] || 0,
+          3: statsRes.data.by_level['3'] || 0,
+          4: statsRes.data.by_level['4'] || 0,
+          5: statsRes.data.by_level['5'] || 0,
+        });
+      }
     } catch (err) {
       toast.error('Failed to load stories');
     } finally {
@@ -108,7 +121,7 @@ const AdminSuccessStories = () => {
         {/* Level cards row */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           {LEVELS.map(l => {
-            const count = stories.filter(s => s.level === l.n).length;
+            const count = levelCounts[l.n] || 0;
             const active = levelFilter === String(l.n);
             return (
               <button

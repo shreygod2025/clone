@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -52,77 +52,118 @@ const SchoolReports = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 50;
 
-  const fetchReports = async ({ silent = false } = {}) => {
-    if (!silent) setLoading(true); else setRefreshing(true);
-    setError('');
+  // Debounce search input so we don't hammer the backend on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to page 1 whenever a filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, startDate, endDate]);
+
+  const buildParams = (overrides = {}) => {
+    const p = new URLSearchParams({
+      page: String(overrides.page ?? page),
+      per_page: String(overrides.per_page ?? perPage),
+    });
+    if (startDate) p.append('start_date', startDate);
+    if (endDate) p.append('end_date', endDate);
+    if (statusFilter !== 'all') p.append('attendance_status', statusFilter);
+    if (debouncedSearch) p.append('search', debouncedSearch);
+    return p;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const fetchReports = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await axios.get(
+          `${API}/api/schools/${schoolId}/reports?${buildParams().toString()}`,
+          { headers: getAuthHeaders(), signal: controller.signal }
+        );
+        if (!cancelled) setData(res.data);
+      } catch (err) {
+        if (cancelled || axios.isCancel(err) || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+        const msg = err?.response?.data?.detail || err?.message || 'Failed to load reports';
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchReports();
+    return () => { cancelled = true; controller.abort(); };
+  }, [schoolId, page, startDate, endDate, statusFilter, debouncedSearch]);
+
+  const refreshManual = async () => {
+    setRefreshing(true);
     try {
-      const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
-      if (startDate) params.append('start_date', startDate);
-      if (endDate) params.append('end_date', endDate);
       const res = await axios.get(
-        `${API}/api/schools/${schoolId}/reports?${params.toString()}`,
+        `${API}/api/schools/${schoolId}/reports?${buildParams().toString()}`,
         { headers: getAuthHeaders() }
       );
       setData(res.data);
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || 'Failed to load reports';
-      setError(msg);
-      toast.error(msg);
+      toast.error(err?.response?.data?.detail || 'Refresh failed');
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchReports();
-  }, [schoolId, page, startDate, endDate]);
-
   const rows = data?.sessions || [];
   const stats = data?.stats || { total: 0, completed: 0, on_time: 0, late: 0, absent: 0, reassigned: 0 };
 
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (statusFilter !== 'all' && r.attendance_status?.key !== statusFilter) return false;
-      if (!q) return true;
-      const hay = [
-        r.session_date, r.status, r.mode,
-        r.educator?.name, r.educator?.email,
-        r.backup_educator?.name, r.backup_educator?.email,
-        r.actual?.location_name,
-      ].filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    });
-  }, [rows, search, statusFilter]);
+  // Server already applies filters/pagination; render `rows` directly.
+  const filteredRows = rows;
 
-  const exportCsv = () => {
-    if (!filteredRows.length) return;
-    const header = [
-      'Session Date', 'Scheduled Start', 'Scheduled End', 'Reached', 'Checked Out',
-      'Status', 'Attendance', 'Late (min)', 'Educator', 'Educator Email',
-      'Backup Educator', 'Mode', 'Location',
-    ];
-    const rowsCsv = filteredRows.map(r => [
-      r.session_date, r.start_time, r.end_time,
-      r.actual?.reached_time || '', r.actual?.checkout_time || '',
-      r.status || '', r.attendance_status?.label || '',
-      r.actual?.late_minutes ?? '',
-      r.educator?.name || '', r.educator?.email || '',
-      r.backup_educator?.name || '', r.mode || '',
-      r.actual?.location_name || '',
-    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
-    const csv = [header.join(','), ...rowsCsv].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(data?.school_name || 'school').replace(/[^a-z0-9]+/gi, '_')}_reports.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      // Pull the FULL filtered set (bypass pagination) for a complete CSV
+      const res = await axios.get(
+        `${API}/api/schools/${schoolId}/reports?${buildParams({ page: 1, per_page: 5000 }).toString()}`,
+        { headers: getAuthHeaders() }
+      );
+      const allRows = res.data?.sessions || [];
+      if (!allRows.length) { toast.error('No rows to export'); return; }
+      const header = [
+        'Session Date', 'Scheduled Start', 'Scheduled End', 'Reached', 'Checked Out',
+        'Status', 'Attendance', 'Late (min)', 'Educator', 'Educator Email',
+        'Backup Educator', 'Mode', 'Location',
+      ];
+      const rowsCsv = allRows.map(r => [
+        r.session_date, r.start_time, r.end_time,
+        r.actual?.reached_time || '', r.actual?.checkout_time || '',
+        r.status || '', r.attendance_status?.label || '',
+        r.actual?.late_minutes ?? '',
+        r.educator?.name || '', r.educator?.email || '',
+        r.backup_educator?.name || '', r.mode || '',
+        r.actual?.location_name || '',
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+      const csv = [header.join(','), ...rowsCsv].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(data?.school_name || 'school').replace(/[^a-z0-9]+/gi, '_')}_reports.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${allRows.length} rows`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -150,7 +191,7 @@ const SchoolReports = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => fetchReports({ silent: true })}
+              onClick={refreshManual}
               disabled={refreshing}
               className="text-xs px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 font-medium"
               data-testid="reports-refresh-btn"
@@ -160,12 +201,12 @@ const SchoolReports = () => {
             </button>
             <button
               onClick={exportCsv}
-              disabled={!filteredRows.length}
+              disabled={!filteredRows.length || exporting}
               className="text-xs px-3 py-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center gap-1.5 font-medium disabled:opacity-40"
               data-testid="reports-export-csv-btn"
             >
-              <Download className="w-3.5 h-3.5" />
-              CSV
+              <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
+              {exporting ? 'Exporting…' : 'CSV'}
             </button>
           </div>
         </div>
@@ -209,7 +250,7 @@ const SchoolReports = () => {
           <Input
             type="date"
             value={startDate}
-            onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+            onChange={(e) => setStartDate(e.target.value)}
             className="h-9 text-sm w-[140px]"
             data-testid="reports-start-date"
           />
@@ -217,13 +258,13 @@ const SchoolReports = () => {
           <Input
             type="date"
             value={endDate}
-            onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+            onChange={(e) => setEndDate(e.target.value)}
             className="h-9 text-sm w-[140px]"
             data-testid="reports-end-date"
           />
           {(startDate || endDate || search || statusFilter !== 'all') && (
             <Button
-              onClick={() => { setStartDate(''); setEndDate(''); setSearch(''); setStatusFilter('all'); setPage(1); }}
+              onClick={() => { setStartDate(''); setEndDate(''); setSearch(''); setStatusFilter('all'); }}
               variant="ghost"
               className="h-9 text-xs"
               data-testid="reports-clear-filters"

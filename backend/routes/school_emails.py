@@ -455,7 +455,12 @@ async def send_payment_email(school_id: str, data: dict, user: dict = Depends(ge
 
 @router.post("/schools/contacts/bulk-email")
 async def send_bulk_email(data: dict, user: dict = Depends(get_current_user)):
-    """Send a bulk email to selected contacts."""
+    """Send a bulk email to selected contacts. Admin-only to prevent misuse from
+    the OLL domain (a low-permission team member could otherwise blast any
+    address with OLL-branded HTML)."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can send bulk emails")
+
     contacts = data.get("contacts", [])   # [{email, name}, ...]
     subject = data.get("subject", "")
     body_html = data.get("body_html", "")

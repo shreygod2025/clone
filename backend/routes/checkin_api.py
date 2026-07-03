@@ -1,14 +1,18 @@
 """
 Proxy routes for the external Check-in / Timetable API.
-Base URL: https://{CHECKIN_PROJECT_ID}.supabase.co/functions/v1
+Base URL: env CHECKIN_BASE_URL
 Auth: X-API-Key header
 """
 import os
+import asyncio
+import logging
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from database import db
 from routes.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -21,32 +25,46 @@ CHECKIN_API_KEY  = os.environ.get("CHECKIN_API_KEY", "")
 def _checkin_headers():
     return {"X-API-Key": CHECKIN_API_KEY, "Content-Type": "application/json"}
 
-async def _checkin_get(path: str, params: dict = None):
-    async with httpx.AsyncClient(timeout=20) as client:
+def _upstream_error(status_code: int, body_text: str, method: str, path: str) -> HTTPException:
+    """Return a sanitized HTTPException while preserving the raw body only in logs."""
+    logger.warning("CheckIn API %s %s → %s: %s", method, path, status_code, body_text[:500])
+    if status_code == 401:
+        return HTTPException(status_code=502, detail="CheckIn API rejected our credentials")
+    if status_code == 404:
+        return HTTPException(status_code=404, detail="Resource not found in CheckIn API")
+    if status_code >= 500:
+        return HTTPException(status_code=502, detail="CheckIn API is currently unavailable")
+    return HTTPException(status_code=502, detail=f"CheckIn API error ({status_code})")
+
+async def _checkin_get(path: str, params: dict = None, client: Optional[httpx.AsyncClient] = None):
+    if client is not None:
         r = await client.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
+    else:
+        async with httpx.AsyncClient(timeout=20) as c:
+            r = await c.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
     if r.status_code >= 400:
-        raise HTTPException(status_code=r.status_code, detail=r.text)
+        raise _upstream_error(r.status_code, r.text, "GET", path)
     return r.json()
 
 async def _checkin_post(path: str, body: dict):
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.post(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
     if r.status_code >= 400:
-        raise HTTPException(status_code=r.status_code, detail=r.text)
+        raise _upstream_error(r.status_code, r.text, "POST", path)
     return r.json()
 
 async def _checkin_put(path: str, body: dict):
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.put(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
     if r.status_code >= 400:
-        raise HTTPException(status_code=r.status_code, detail=r.text)
+        raise _upstream_error(r.status_code, r.text, "PUT", path)
     return r.json()
 
 async def _checkin_delete(path: str):
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.delete(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers())
     if r.status_code >= 400 and r.status_code != 204:
-        raise HTTPException(status_code=r.status_code, detail=r.text)
+        raise _upstream_error(r.status_code, r.text, "DELETE", path)
     return {"success": True}
 
 
@@ -360,13 +378,14 @@ def _minutes_late(session_date: Optional[str], start_time: Optional[str], reache
         return None
 
 
-async def _fetch_all_pages(path: str, params: dict, per_page: int = 500, hard_cap: int = 5000) -> list:
-    """Fetch all pages of a paginated CheckIn endpoint. Returns merged data list."""
+async def _fetch_all_pages(path: str, params: dict, per_page: int = 500, hard_cap: int = 5000, client: Optional[httpx.AsyncClient] = None) -> list:
+    """Fetch all pages of a paginated CheckIn endpoint. Returns merged data list.
+    Pass a shared `client` when calling in a hot loop to avoid re-opening TCP + TLS."""
     all_items: list = []
     page = 1
     while True:
         q = {**params, "page": page, "per_page": per_page}
-        resp = await _checkin_get(path, q)
+        resp = await _checkin_get(path, q, client=client)
         batch = resp.get("data", []) or []
         all_items.extend(batch)
         meta = resp.get("meta") or {}
@@ -385,20 +404,24 @@ async def get_school_reports(
     status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    search: Optional[str] = None,
+    attendance_status: Optional[str] = None,  # on_time | late_lt_15 | late | early | absent | no_data
     page: int = 1,
-    per_page: int = 50,
+    per_page: int = Query(50, ge=1, le=5000),
     user: dict = Depends(get_current_user),
 ):
     """
     Enriched per-school session report merging CheckIn sessions with attendance.
 
-    Each row contains:
-      • session_date, scheduled start/end
-      • educator name (+ email) and backup (original) educator when session was reassigned
-      • actual reached time and check-out time from attendance
-      • late_status: on_time / late_lt_15 / late / early / absent / no_data
-      • late_minutes (negative when early)
-      • checkin_location_name + photo_path (proof)
+    Each row contains scheduled vs actual times, educator + backup, late minutes,
+    and an attendance classification. Server-side filters (`status`, date range,
+    `search`, `attendance_status`) apply BEFORE pagination so the client can
+    reliably page or export the full filtered set.
+
+    Performance: session fetches per timetable, educator lookup, and attendance
+    fetches per involved user all run concurrently via `asyncio.gather` on a
+    shared `httpx.AsyncClient` (keep-alive), instead of the previous serial
+    fan-out that could easily exceed 60 s for busy schools.
     """
     school = await db.school_inquiries.find_one(
         {"id": school_id},
@@ -414,73 +437,106 @@ async def get_school_reports(
     legacy = school.get("checkin_timetable_id")
     if legacy and legacy not in timetable_ids:
         timetable_ids.append(legacy)
-    if not timetable_ids:
-        # Fallback: match all timetables by exact (case-insensitive) school_name
-        all_tts = await _fetch_all_pages("/timetables", {}, per_page=100, hard_cap=2000)
-        target = school_name.strip().lower()
-        timetable_ids = [t["id"] for t in all_tts if (t.get("school_name") or "").strip().lower() == target]
 
-    if not timetable_ids:
-        return {
-            "school_id": school_id,
-            "school_name": school_name,
-            "sessions": [],
-            "meta": {"total": 0, "page": page, "per_page": per_page},
-            "note": "No timetable linked. Link a timetable from the onboarding workflow first.",
-        }
+    async with httpx.AsyncClient(timeout=25, limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)) as client:
+        if not timetable_ids:
+            # Fallback: match all timetables by exact (case-insensitive) school_name
+            all_tts = await _fetch_all_pages("/timetables", {}, per_page=100, hard_cap=2000, client=client)
+            target = school_name.strip().lower()
+            timetable_ids = [t["id"] for t in all_tts if (t.get("school_name") or "").strip().lower() == target]
 
-    # Fetch all sessions across the school's timetables ------------------------
-    all_sessions: list = []
-    for tid in timetable_ids:
-        params: dict = {"timetable_id": tid}
+        if not timetable_ids:
+            return {
+                "school_id": school_id,
+                "school_name": school_name,
+                "sessions": [],
+                "meta": {"total": 0, "page": page, "per_page": per_page},
+                "note": "No timetable linked. Link a timetable from the onboarding workflow first.",
+            }
+
+        # PARALLEL: fetch sessions for every timetable at once ------------------
+        base_session_params: dict = {}
         if status:
-            params["status"] = status
+            base_session_params["status"] = status
         if start_date:
-            params["start_date"] = start_date
+            base_session_params["start_date"] = start_date
         if end_date:
-            params["end_date"] = end_date
-        rows = await _fetch_all_pages("/sessions", params, per_page=500, hard_cap=5000)
-        all_sessions.extend(rows)
+            base_session_params["end_date"] = end_date
 
-    # Filter by date range client-side too (server ignores date filters)
-    def _in_range(sd: str) -> bool:
-        if not sd:
+        session_batches = await asyncio.gather(
+            *[
+                _fetch_all_pages(
+                    "/sessions",
+                    {**base_session_params, "timetable_id": tid},
+                    per_page=500, hard_cap=5000, client=client,
+                )
+                for tid in timetable_ids
+            ],
+            return_exceptions=True,
+        )
+        all_sessions: list = []
+        for batch in session_batches:
+            if isinstance(batch, Exception):
+                logger.warning("Sessions batch failed for school %s: %s", school_id, batch)
+                continue
+            all_sessions.extend(batch)
+
+        # Client-side date range filter (server ignores date filters)
+        def _in_range(sd: str) -> bool:
+            if not sd:
+                return True
+            if start_date and sd < start_date:
+                return False
+            if end_date and sd > end_date:
+                return False
             return True
-        if start_date and sd < start_date:
-            return False
-        if end_date and sd > end_date:
-            return False
-        return True
 
-    all_sessions = [s for s in all_sessions if _in_range(s.get("session_date") or "")]
+        all_sessions = [s for s in all_sessions if _in_range(s.get("session_date") or "")]
+        all_sessions.sort(key=lambda s: (s.get("session_date") or "", s.get("start_time") or ""), reverse=True)
 
-    # Sort newest first
-    all_sessions.sort(key=lambda s: (s.get("session_date") or "", s.get("start_time") or ""), reverse=True)
+        # PARALLEL: fetch educators AND attendance for all involved educators at once ------
+        involved_users: set = set()
+        for s in all_sessions:
+            if s.get("educator_id"):
+                involved_users.add(s["educator_id"])
+            if s.get("original_educator_id"):
+                involved_users.add(s["original_educator_id"])
 
-    # Fetch educators once (map id -> name/email) ------------------------------
-    educators = await _fetch_all_pages("/educators", {}, per_page=500, hard_cap=2000)
+        # Cap fan-out safety net
+        MAX_USERS = 50
+        involved_users_list = list(involved_users)[:MAX_USERS]
+
+        educators_task = _fetch_all_pages("/educators", {}, per_page=500, hard_cap=2000, client=client)
+        attendance_tasks = [
+            _fetch_all_pages("/attendance", {"user_id": uid}, per_page=500, hard_cap=2000, client=client)
+            for uid in involved_users_list
+        ]
+        results = await asyncio.gather(educators_task, *attendance_tasks, return_exceptions=True)
+        educators_result = results[0]
+        attendance_results = results[1:]
+
+    # Build educator map ------------------------------------------------------
+    if isinstance(educators_result, Exception):
+        logger.warning("Educators fetch failed for school %s: %s", school_id, educators_result)
+        educators = []
+    else:
+        educators = educators_result
     edu_map = {e["id"]: {"id": e["id"], "name": e.get("full_name"), "email": e.get("email")} for e in educators if e.get("id")}
 
-    # Fetch attendance for these sessions in bulk (server ignores school_name).
-    # Strategy: pull attendance filtered by user_id for every distinct educator involved,
-    # then index by session_id. Fewer requests than 1-per-session.
-    involved_users: set = set()
-    for s in all_sessions:
-        if s.get("educator_id"):
-            involved_users.add(s["educator_id"])
-        if s.get("original_educator_id"):
-            involved_users.add(s["original_educator_id"])
-
+    # Build attendance-by-session index (limit to our school's session_ids to
+    # avoid a rogue user_id pulling in cross-school records)
+    our_session_ids = {s["id"] for s in all_sessions if s.get("id")}
     attendance_by_session: dict = {}
-    for uid in involved_users:
-        rows = await _fetch_all_pages("/attendance", {"user_id": uid}, per_page=500, hard_cap=2000)
-        for row in rows:
+    for rows in attendance_results:
+        if isinstance(rows, Exception):
+            continue
+        for row in rows or []:
             sid = row.get("session_id")
-            if sid:
-                # Keep the earliest check-in for that session (first arrival)
-                existing = attendance_by_session.get(sid)
-                if not existing or (row.get("check_in_time") or "") < (existing.get("check_in_time") or ""):
-                    attendance_by_session[sid] = row
+            if not sid or sid not in our_session_ids:
+                continue
+            existing = attendance_by_session.get(sid)
+            if not existing or (row.get("check_in_time") or "") < (existing.get("check_in_time") or ""):
+                attendance_by_session[sid] = row
 
     # Build enriched rows ------------------------------------------------------
     rows_out: list = []
@@ -519,7 +575,7 @@ async def get_school_reports(
             "attendance_status": classification,
         })
 
-    # Aggregate stats over ALL matching sessions (before pagination) -----------
+    # Aggregate stats over ALL matching sessions (before further filtering) ----
     stats = {
         "total": len(rows_out),
         "completed": sum(1 for r in rows_out if r.get("iscompleted")),
@@ -528,6 +584,24 @@ async def get_school_reports(
         "absent": sum(1 for r in rows_out if r["attendance_status"]["key"] in ("absent", "no_data") and (r.get("iscompleted") or (r.get("session_date") or "") < __import__("datetime").datetime.now().strftime("%Y-%m-%d"))),
         "reassigned": sum(1 for r in rows_out if r.get("was_reassigned")),
     }
+
+    # Server-side attendance_status + search filter (post-enrichment) --------
+    if attendance_status:
+        rows_out = [r for r in rows_out if r["attendance_status"]["key"] == attendance_status]
+    if search:
+        needle = search.strip().lower()
+        def _hay(r: dict) -> str:
+            parts = [
+                r.get("session_date") or "",
+                r.get("status") or "",
+                r.get("mode") or "",
+                (r.get("educator") or {}).get("name") or "",
+                (r.get("educator") or {}).get("email") or "",
+                (r.get("backup_educator") or {}).get("name") or "",
+                (r.get("actual") or {}).get("location_name") or "",
+            ]
+            return " ".join(parts).lower()
+        rows_out = [r for r in rows_out if needle in _hay(r)]
 
     # Paginate ----------------------------------------------------------------
     total = len(rows_out)
