@@ -4067,6 +4067,7 @@ from routes.projects import router as projects_router
 from routes.inapp_notifications import router as inapp_notifications_router
 from routes.scheduled_tasks import router as scheduled_tasks_router
 from routes.success_stories import router as success_stories_router
+from routes.salaries import router as salaries_router
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4109,6 +4110,7 @@ api_router.include_router(projects_router)
 api_router.include_router(inapp_notifications_router)
 api_router.include_router(scheduled_tasks_router)
 api_router.include_router(success_stories_router)
+api_router.include_router(salaries_router)
 
 # Public receipt portal (no auth — phone+OTP gated, used by oll.co/receipt)
 from routes.public_receipts import router as public_receipts_router

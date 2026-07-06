@@ -3,7 +3,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Plus, User, Mail, Key, Shield, CheckCircle, XCircle, 
-  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3
+  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3, FileSpreadsheet
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import CitySearch from '../../components/CitySearch';
 import BulkEmailModal from '../../components/BulkEmailModal';
+import ImportSalariesModal from '../../components/ImportSalariesModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -88,6 +89,9 @@ const AdminUsers = () => {
   // Bulk email modal
   const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState(new Set());
+
+  // Salary import modal
+  const [showSalaryImportModal, setShowSalaryImportModal] = useState(false);
   
   // User modals
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -458,8 +462,18 @@ const AdminUsers = () => {
             Add {activeTab === 'users' ? 'User' : 'Role'}
           </Button>
           {activeTab === 'users' && (
-            <Button
-              onClick={() => {
+            <>
+              <Button
+                onClick={() => setShowSalaryImportModal(true)}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                data-testid="import-salaries-btn"
+                title="Import team salary Excel/CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Import Salaries
+              </Button>
+              <Button
+                onClick={() => {
                 const recipients = filteredUsers
                   .filter(u => selectedUserIds.has(u.id) && u.email)
                   .map(u => ({ email: u.email, name: u.name || '' }));
@@ -483,6 +497,7 @@ const AdminUsers = () => {
               <Mail className="w-4 h-4 mr-2" />
               Bulk Email {selectedUserIds.size > 0 && `(${selectedUserIds.size})`}
             </Button>
+            </>
           )}
         </div>
 
@@ -1033,6 +1048,13 @@ const AdminUsers = () => {
           toast.success('Bulk email sent to team members');
           setSelectedUserIds(new Set());
         }}
+      />
+
+      {/* Salary Import Modal */}
+      <ImportSalariesModal
+        open={showSalaryImportModal}
+        onClose={() => setShowSalaryImportModal(false)}
+        onImported={() => { /* stay open so admin can see the summary */ }}
       />
     </AdminLayout>
   );

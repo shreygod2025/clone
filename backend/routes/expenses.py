@@ -28,6 +28,7 @@ EXPENSE_CATEGORIES = [
     {"id": "office_expense", "name": "Office Expense", "description": "Office supplies, utilities and day-to-day office costs"},
     {"id": "rent", "name": "Rent", "description": "Office, warehouse or facility rent"},
     {"id": "employee_welfare", "name": "Employee Welfare", "description": "Employee benefits, meals, team activities and welfare"},
+    {"id": "salary", "name": "Team Salary", "description": "Team member salary + incentives (auto-created from Users → Import Salaries)"},
     {"id": "other", "name": "Other Expenses", "description": "Miscellaneous expenses"},
 ]
 

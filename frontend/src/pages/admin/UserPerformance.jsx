@@ -7,10 +7,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
+  BarChart, Bar, Legend,
 } from 'recharts';
 import {
   BarChart3, TrendingUp, TrendingDown, Minus, Clock, CheckCircle2, AlertTriangle,
-  Users as UsersIcon, IndianRupee, ArrowLeft, Sparkles,
+  Users as UsersIcon, IndianRupee, ArrowLeft, Sparkles, Wallet, PiggyBank,
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -282,6 +283,9 @@ const UserPerformance = ({ mode = 'admin' }) => {
             Showing {data.buckets.length} {scopeSub} · Trend compares the last {scopeSub.replace(/s$/, '')} against the previous one.
           </p>
         )}
+
+        {/* Financial Growth (monthly salary + incentives) */}
+        <FinancialGrowthSection userId={userId} selfMode={selfMode} />
       </div>
     </AdminLayout>
   );
@@ -373,5 +377,150 @@ const KpiChartCard = ({ kpi, scopeSub, theme }) => {
     </Card>
   );
 };
+
+
+// ─── Financial Growth section ────────────────────────────────────────────
+const FinancialGrowthSection = ({ userId, selfMode }) => {
+  const { getAuthHeaders } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const load = async () => {
+      if (!userId) return;
+      setLoading(true);
+      setForbidden(false);
+      try {
+        const url = selfMode
+          ? `${API}/me/salaries/timeseries?months=12`
+          : `${API}/users/${userId}/salaries/timeseries?months=12`;
+        const res = await axios.get(url, { headers: getAuthHeaders(), signal: controller.signal });
+        if (!cancelled) setData(res.data);
+      } catch (err) {
+        if (cancelled || axios.isCancel(err) || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+        if (err?.response?.status === 403) {
+          setForbidden(true);
+        } else {
+          setData({ records: [], summary: { total_base: 0, total_incentive: 0, total_deduction: 0, total_net: 0, growth_pct: null, records_count: 0 } });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; controller.abort(); };
+  }, [userId, selfMode, getAuthHeaders]);
+
+  if (forbidden) return null; // silently hide when user isn't allowed to see finance
+
+  const records = data?.records || [];
+  const summary = data?.summary || {};
+  const chartData = records.map(r => ({
+    month: (r.month || '').slice(2),  // "26-01"
+    base: Number(r.base_salary || 0),
+    incentive: Number(r.incentive || 0),
+    deduction: Number(r.deduction || 0),
+    net: Number(r.net_paid || 0),
+  }));
+
+  const fmt = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
+  const growthTone = (summary.growth_pct ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600';
+
+  return (
+    <Card className="p-4 md:p-5 mt-6" data-testid="financial-growth-section">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Wallet className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Financial Growth</span>
+          </div>
+          <h2 className="text-lg md:text-xl font-bold text-slate-900">Monthly compensation over time</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Base salary + incentive minus deductions, mirrored to the Expenses ledger.</p>
+        </div>
+        {summary.growth_pct !== null && summary.growth_pct !== undefined && (
+          <div className={`flex items-center gap-1 text-sm font-semibold ${growthTone}`}>
+            {summary.growth_pct >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            {summary.growth_pct >= 0 ? '+' : ''}{summary.growth_pct}% growth
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8 text-sm text-slate-500">Loading compensation…</div>
+      ) : records.length === 0 ? (
+        <div className="bg-slate-50 border border-dashed border-slate-200 rounded-lg p-6 text-center text-sm text-slate-500" data-testid="financial-growth-empty">
+          <PiggyBank className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          No salary records yet. {selfMode ? 'Ask an admin to import your salary sheet.' : 'Import a salary sheet from Users & Roles → Import Salaries.'}
+        </div>
+      ) : (
+        <>
+          {/* Summary tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4">
+            <SumTile label="Total base" value={fmt(summary.total_base)} tone="bg-blue-50 text-blue-800 border-blue-100" testid="summary-base" />
+            <SumTile label="Total incentive" value={fmt(summary.total_incentive)} tone="bg-emerald-50 text-emerald-800 border-emerald-100" testid="summary-incentive" />
+            <SumTile label="Total deduction" value={fmt(summary.total_deduction)} tone="bg-red-50 text-red-800 border-red-100" testid="summary-deduction" />
+            <SumTile label="Total net paid" value={fmt(summary.total_net)} tone="bg-slate-900 text-white border-slate-900" testid="summary-net" />
+          </div>
+
+          {/* Stacked bar chart */}
+          <div className="h-56" data-testid="financial-growth-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 5, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => v >= 1000 ? `${Math.round(v/1000)}k` : v} />
+                <Tooltip
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                  formatter={(v, name) => [fmt(v), name]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
+                <Bar dataKey="base" stackId="pay" name="Base" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="incentive" stackId="pay" name="Incentive" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Monthly table */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-slate-500 uppercase tracking-wide">
+                <tr>
+                  <th className="text-left py-2 px-2 font-medium">Month</th>
+                  <th className="text-right py-2 px-2 font-medium">Base</th>
+                  <th className="text-right py-2 px-2 font-medium">Incentive</th>
+                  <th className="text-right py-2 px-2 font-medium">Deduction</th>
+                  <th className="text-right py-2 px-2 font-medium">Net paid</th>
+                  <th className="text-left py-2 px-2 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[...records].reverse().map(r => (
+                  <tr key={r.id} data-testid={`salary-row-${r.id}`}>
+                    <td className="py-1.5 px-2 font-medium text-slate-800">{r.month}</td>
+                    <td className="py-1.5 px-2 text-right text-slate-700">{fmt(r.base_salary)}</td>
+                    <td className="py-1.5 px-2 text-right text-emerald-700">{fmt(r.incentive)}</td>
+                    <td className="py-1.5 px-2 text-right text-red-700">{fmt(r.deduction)}</td>
+                    <td className="py-1.5 px-2 text-right font-semibold text-slate-900">{fmt(r.net_paid)}</td>
+                    <td className="py-1.5 px-2 text-slate-500 truncate max-w-[200px]">{r.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+};
+
+const SumTile = ({ label, value, tone, testid }) => (
+  <div className={`rounded-xl border p-2.5 ${tone}`} data-testid={testid}>
+    <div className="text-[10px] uppercase tracking-wide opacity-80">{label}</div>
+    <div className="text-base md:text-lg font-bold mt-0.5">{value}</div>
+  </div>
+);
 
 export default UserPerformance;
