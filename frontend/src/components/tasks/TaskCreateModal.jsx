@@ -321,6 +321,8 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         tags: Array.isArray(existingTask.tags) ? existingTask.tags.join(', ') : '',
         gdrive_link: existingTask.gdrive_link || '',
         repeat_freq: '',
+        repeat_day_of_week: existingTask.repeat_day_of_week ?? null,
+        repeat_day_of_month: existingTask.repeat_day_of_month ?? null,
         attachments: existingTask.attachments || [],
       });
     } else {
@@ -335,6 +337,8 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         tags: '',
         gdrive_link: '',
         repeat_freq: '',
+        repeat_day_of_week: null,
+        repeat_day_of_month: null,
         attachments: [],
       });
     }
@@ -404,6 +408,11 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
               description: form.description,
               priority: form.priority,
               frequency: form.repeat_freq,
+              // Convert JS getDay() (Sun=0..Sat=6) to backend format (Mon=0..Sun=6)
+              days_of_week: form.repeat_freq === 'weekly' && form.repeat_day_of_week !== null && form.repeat_day_of_week !== undefined
+                ? [(form.repeat_day_of_week + 6) % 7]
+                : [],
+              day_of_month: form.repeat_freq === 'monthly' ? form.repeat_day_of_month : null,
               assigned_to: form.assigned_to,
               project_id: form.project_id || null,
               is_active: true,
@@ -495,7 +504,15 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
           <div className="flex flex-wrap items-center gap-2">
             <Chip ref={chipRefs.repeat} onClick={() => togglePanel('repeat')}
               icon={Repeat}
-              label={form.repeat_freq ? `Repeat: ${form.repeat_freq}` : 'Repeat'}
+              label={
+                form.repeat_freq
+                  ? (form.repeat_freq === 'weekly' && form.repeat_day_of_week !== null && form.repeat_day_of_week !== undefined
+                      ? `Repeat: weekly (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][form.repeat_day_of_week] || '?'})`
+                      : form.repeat_freq === 'monthly' && form.repeat_day_of_month
+                      ? `Repeat: monthly (day ${form.repeat_day_of_month})`
+                      : `Repeat: ${form.repeat_freq}`)
+                  : 'Repeat'
+              }
               active={!!form.repeat_freq} testid="chip-repeat" />
             <Chip ref={chipRefs.drive} onClick={() => togglePanel('drive')}
               icon={Link2}
@@ -579,12 +596,21 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         </Popover>
       )}
       {openPanel === 'repeat' && (
-        <Popover anchor={chipRefs.repeat} onClose={closePanel} testid="panel-repeat" width={240}>
-          <div className="space-y-1">
+        <Popover anchor={chipRefs.repeat} onClose={closePanel} testid="panel-repeat" width={260}>
+          <div className="space-y-2">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Frequency</p>
             {[{ v: '', l: 'No repeat' }, { v: 'daily', l: 'Every day' }, { v: 'weekly', l: 'Every week' }, { v: 'monthly', l: 'Every month' }].map(o => (
               <button key={o.v || 'none'} type="button"
-                onClick={() => { setForm({ ...form, repeat_freq: o.v }); closePanel(); }}
+                onClick={() => {
+                  setForm(prev => ({
+                    ...prev,
+                    repeat_freq: o.v,
+                    // reset day fields when frequency changes
+                    repeat_day_of_week: o.v === 'weekly' ? (prev.repeat_day_of_week ?? new Date().getDay()) : null,
+                    repeat_day_of_month: o.v === 'monthly' ? (prev.repeat_day_of_month ?? new Date().getDate()) : null,
+                  }));
+                  if (!o.v) closePanel();
+                }}
                 className={`w-full text-left px-2 py-1.5 rounded text-sm hover:bg-slate-50 ${
                   form.repeat_freq === o.v ? 'bg-blue-50 text-blue-700' : ''
                 }`}
@@ -592,6 +618,56 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
                 {o.l}
               </button>
             ))}
+
+            {form.repeat_freq === 'weekly' && (
+              <div className="pt-2 border-t border-slate-100" data-testid="repeat-weekly-day-picker">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Day of week</p>
+                <div className="grid grid-cols-7 gap-1">
+                  {['S','M','T','W','T','F','S'].map((letter, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setForm({ ...form, repeat_day_of_week: i })}
+                      className={`h-8 rounded text-xs font-semibold border transition-colors ${
+                        form.repeat_day_of_week === i
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                      data-testid={`repeat-weekday-${i}`}
+                      title={['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][i]}
+                    >
+                      {letter}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1.5">
+                  Runs every {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][form.repeat_day_of_week ?? new Date().getDay()]}
+                </p>
+              </div>
+            )}
+
+            {form.repeat_freq === 'monthly' && (
+              <div className="pt-2 border-t border-slate-100" data-testid="repeat-monthly-day-picker">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Day of month</p>
+                <select
+                  value={form.repeat_day_of_month || new Date().getDate()}
+                  onChange={(e) => setForm({ ...form, repeat_day_of_month: Number(e.target.value) })}
+                  className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm"
+                  data-testid="repeat-day-of-month-select"
+                >
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={d}>
+                      {d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : d === 21 ? 'st' : d === 22 ? 'nd' : d === 23 ? 'rd' : d === 31 ? 'st' : 'th'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1.5">
+                  {(form.repeat_day_of_month || new Date().getDate()) > 28
+                    ? 'Skipped in months without this date (e.g. Feb).'
+                    : 'Runs on this day every month.'}
+                </p>
+              </div>
+            )}
           </div>
         </Popover>
       )}

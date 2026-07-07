@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/card';
 import {
   Plus, Users as UsersIcon, X, Trash2, CheckCircle2, Clock, Archive, PauseCircle
 } from 'lucide-react';
+import UserPicker from '../../components/UserPicker';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -21,7 +22,7 @@ const STATUS_META = {
 const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444', '#0EA5E9', '#6366F1'];
 
 const AdminProjects = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -188,11 +189,14 @@ const AdminProjects = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Lead</p>
-                    <select value={form.lead_id} onChange={e => setForm({ ...form, lead_id: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm" data-testid="project-lead-select">
-                      <option value="">Select lead</option>
-                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
+                    <UserPicker
+                      users={users}
+                      value={form.lead_id}
+                      onChange={(id) => setForm({ ...form, lead_id: id })}
+                      currentUser={currentUser}
+                      placeholder="Select project lead"
+                      testid="project-lead-picker"
+                    />
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Status</p>
