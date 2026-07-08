@@ -68,7 +68,17 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # Then check team_users collection
         team_user = await db.team_users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
         if team_user:
-            team_user["role"] = "team_member"
+            # If this team member has been assigned a role that grants full admin
+            # access, treat them as an admin for the purposes of every downstream
+            # gate. This makes the "Admin" system role a proper promotion — no
+            # re-login required, and no need to sprinkle role_id checks all over
+            # the codebase.
+            effective_role = "team_member"
+            if team_user.get("role_id"):
+                role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0, "grants_full_access": 1, "is_active": 1})
+                if role_doc and role_doc.get("grants_full_access") and role_doc.get("is_active", True):
+                    effective_role = "admin"
+            team_user["role"] = effective_role
             return team_user
         
         # Check center_users collection

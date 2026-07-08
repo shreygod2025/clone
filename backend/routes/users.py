@@ -121,6 +121,7 @@ class Role(BaseModel):
     kpis: List[str] = []  # KPI ids from KPI_CATALOG (see routes/kpis.py)
     is_system: bool = False
     is_active: bool = True
+    grants_full_access: bool = False  # Users with this role get admin-level access
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -161,12 +162,20 @@ async def login_admin(data: AdminLogin):
             raise HTTPException(status_code=401, detail="User account is disabled")
         
         if bcrypt.checkpw(data.password.encode('utf-8'), team_user.get("password_hash", "").encode('utf-8')):
-            token = create_access_token({"sub": data.email, "role": "team_member", "user_id": team_user["id"]})
+            # If this team member is assigned a role that grants full admin access,
+            # elevate them in the JWT so every existing `role == "admin"` gate works.
+            effective_role = "team_member"
+            role_doc = None
+            if team_user.get("role_id"):
+                role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0})
+                if role_doc and role_doc.get("grants_full_access") and role_doc.get("is_active", True):
+                    effective_role = "admin"
+            token = create_access_token({"sub": data.email, "role": effective_role, "user_id": team_user["id"]})
             user = AdminUser(
-                id=team_user["id"], 
-                email=team_user["email"], 
-                name=team_user["name"], 
-                role="team_member",
+                id=team_user["id"],
+                email=team_user["email"],
+                name=team_user["name"],
+                role=effective_role,
                 username=team_user.get("username", ""),
                 permissions=team_user.get("permissions", [])
             )
@@ -336,7 +345,8 @@ async def create_role(data: dict, user: dict = Depends(get_current_user)):
         permissions=data.get("permissions", []),
         kpis=data.get("kpis", []),
         is_system=data.get("is_system", False),
-        is_active=data.get("is_active", True)
+        is_active=data.get("is_active", True),
+        grants_full_access=data.get("grants_full_access", False),
     )
     
     doc = role.model_dump()

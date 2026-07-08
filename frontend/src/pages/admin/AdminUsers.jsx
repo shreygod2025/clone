@@ -123,7 +123,8 @@ const AdminUsers = () => {
     description: '',
     permissions: [],
     kpis: [],
-    is_active: true
+    is_active: true,
+    grants_full_access: false,
   });
 
   // KPI catalog (grouped by category) for role builder
@@ -309,7 +310,8 @@ const AdminUsers = () => {
       description: '',
       permissions: [],
       kpis: [],
-      is_active: true
+      is_active: true,
+      grants_full_access: false,
     });
   };
 
@@ -658,11 +660,21 @@ const AdminUsers = () => {
                 }`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-[#1E3A5F] text-lg">{role.name}</h3>
                         {role.is_system && (
                           <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
                             System
+                          </span>
+                        )}
+                        {role.grants_full_access && (
+                          <span
+                            className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-medium inline-flex items-center gap-1"
+                            title="Users with this role get full admin access across every CRM, task, and performance dashboard."
+                            data-testid={`role-full-access-badge-${role.id}`}
+                          >
+                            <Shield className="w-3 h-3" />
+                            Full Access
                           </span>
                         )}
                       </div>
@@ -691,7 +703,8 @@ const AdminUsers = () => {
                             description: role.description || '',
                             permissions: role.permissions || [],
                             kpis: role.kpis || [],
-                            is_active: role.is_active !== false
+                            is_active: role.is_active !== false,
+                            grants_full_access: !!role.grants_full_access,
                           });
                           setShowAddRoleModal(true);
                         }}
@@ -942,7 +955,7 @@ const AdminUsers = () => {
             {/* KPI Selection (for performance tracking) */}
             <div>
               <label className="block text-sm font-medium mb-2">Performance KPIs</label>
-              <p className="text-xs text-slate-500 mb-2">Select the KPIs to track for users under this role. Visible on each user's Performance page.</p>
+              <p className="text-xs text-slate-500 mb-2">Select the KPIs to track for users under this role. Visible on each user&apos;s Performance page.</p>
               <div className="space-y-3 max-h-72 overflow-y-auto border rounded-lg p-3" data-testid="role-kpi-selector">
                 {Object.keys(kpiCatalog.grouped || {}).length === 0 && (
                   <p className="text-xs text-slate-500 italic">Loading KPI catalog…</p>
@@ -977,6 +990,32 @@ const AdminUsers = () => {
               </div>
               <p className="text-xs text-slate-500 mt-1">Selected: {(roleForm.kpis || []).length}</p>
             </div>
+
+            {/* Full admin access toggle */}
+            <label
+              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                roleForm.grants_full_access
+                  ? 'bg-amber-50 border-amber-300'
+                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+              }`}
+              data-testid="role-grants-full-access-toggle"
+            >
+              <input
+                type="checkbox"
+                checked={!!roleForm.grants_full_access}
+                onChange={(e) => setRoleForm({ ...roleForm, grants_full_access: e.target.checked })}
+                className="mt-0.5 accent-amber-600"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-amber-600" />
+                  <span className="font-semibold text-slate-800">Grants full admin access</span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Anyone assigned this role can see every CRM (students, schools, educators, growth partners), every support query, every team member&apos;s tasks &amp; performance, and every finance/compensation record — same as the platform owner. Use sparingly.
+                </p>
+              </div>
+            </label>
 
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowAddRoleModal(false)} className="flex-1">

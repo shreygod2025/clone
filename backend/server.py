@@ -4249,6 +4249,42 @@ async def startup_db_client():
     # Fire-and-forget — indexes are built while the server is already live
     _db_index_task = asyncio.create_task(_create_db_indexes())
 
+    # Seed the default "Admin" system role — a role that, when assigned to a
+    # team member, elevates them to full admin access (all CRMs, all tasks,
+    # all performance, all queries).
+    try:
+        existing = await db.roles.find_one({"grants_full_access": True})
+        if not existing:
+            # Idempotent: don't create a duplicate if a role named "Admin" already
+            # exists — just upgrade it in place.
+            existing_named = await db.roles.find_one({"name": {"$regex": "^admin$", "$options": "i"}})
+            if existing_named:
+                await db.roles.update_one(
+                    {"id": existing_named["id"]},
+                    {"$set": {
+                        "is_system": True,
+                        "is_active": True,
+                        "grants_full_access": True,
+                        "description": existing_named.get("description") or "Full admin access — sees every CRM, every task, every user's performance, every support query.",
+                    }},
+                )
+                print("[STARTUP] Upgraded existing 'Admin' role → system + grants_full_access")
+            else:
+                await db.roles.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "name": "Admin",
+                    "description": "Full admin access — sees every CRM, every task, every user's performance, every support query.",
+                    "permissions": ["students", "schools", "educators", "support", "growth_partners", "team_applications", "reports", "expenses", "orders", "success_stories"],
+                    "kpis": [],
+                    "is_system": True,
+                    "is_active": True,
+                    "grants_full_access": True,
+                    "created_at": datetime.now(timezone.utc),
+                })
+                print("[STARTUP] Seeded default 'Admin' system role")
+    except Exception as e:
+        print(f"[STARTUP] Failed to seed Admin system role: {e}")
+
     # Start the payment sync scheduler
     # Defer first run by 5 minutes so it never fires during the health-check window
     if PAYMENT_SYNC_ENABLED and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
