@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
 import { TaskCard } from './AdminTasks';
+import UserPicker from '../../components/UserPicker';
 import {
   ArrowLeft, Plus, Trash2, Users as UsersIcon, Calendar, CheckCircle2,
   Circle, Clock, Pin, ExternalLink, Edit2, StickyNote, Link2, X, ListChecks
@@ -44,6 +45,7 @@ const AdminProjectDetail = () => {
   const [tasks, setTasks] = useState([]);
   const [milestones, setMilestones] = useState([]);
   const [kb, setKb] = useState([]);
+  const [showEditProject, setShowEditProject] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,6 +91,7 @@ const AdminProjectDetail = () => {
 
   const S = STATUS_META[project.status] || STATUS_META.active;
   const pct = project.task_count ? Math.round((project.task_done / project.task_count) * 100) : 0;
+  const canEdit = isAdmin || currentUserId === project.lead_id || currentUserId === project.created_by;
 
   return (
     <AdminLayout>
@@ -114,6 +117,16 @@ const AdminProjectDetail = () => {
                 {project.end_date && <span className="text-slate-500 hidden sm:inline">End: {project.end_date}</span>}
               </div>
             </div>
+            {canEdit && (
+              <button
+                onClick={() => setShowEditProject(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium shrink-0"
+                data-testid="edit-project-btn"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
           </div>
           <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: project.color }} />
@@ -173,6 +186,17 @@ const AdminProjectDetail = () => {
           defaultProjectId={id}
           parentTask={subTaskParent}
         />
+
+        {/* Edit Project modal */}
+        {showEditProject && (
+          <EditProjectModal
+            project={project}
+            onClose={() => setShowEditProject(false)}
+            onSaved={() => { setShowEditProject(false); load(); }}
+            getAuthHeaders={getAuthHeaders}
+            currentUser={user}
+          />
+        )}
 
         {/* Edit modal */}
         <TaskCreateModal
@@ -465,3 +489,254 @@ const KbTab = ({ entries, projectId, onRefresh, getAuthHeaders }) => {
 };
 
 export default AdminProjectDetail;
+
+
+// ─── Edit Project modal ─────────────────────────────────────────────────────
+const PROJECT_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444', '#0EA5E9', '#6366F1'];
+const PROJECT_STATUSES = [
+  { v: 'active', l: 'Active' },
+  { v: 'on_hold', l: 'On Hold' },
+  { v: 'completed', l: 'Completed' },
+  { v: 'archived', l: 'Archived' },
+];
+
+const EditProjectModal = ({ project, onClose, onSaved, getAuthHeaders, currentUser }) => {
+  const [users, setUsers] = useState([]);
+  const [form, setForm] = useState({
+    name: project.name || '',
+    description: project.description || '',
+    color: project.color || PROJECT_COLORS[0],
+    status: project.status || 'active',
+    lead_id: project.lead_id || '',
+    member_ids: project.member_ids || [],
+    start_date: project.start_date || '',
+    end_date: project.end_date || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+
+  useEffect(() => {
+    axios.get(`${API}/team-users`, { headers: getAuthHeaders() })
+      .then(r => setUsers(r.data || []))
+      .catch(() => setUsers([]));
+  }, [getAuthHeaders]);
+
+  const toggleMember = (id) => {
+    setForm(f => ({
+      ...f,
+      member_ids: f.member_ids.includes(id)
+        ? f.member_ids.filter(x => x !== id)
+        : [...f.member_ids, id],
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('Project name is required'); return; }
+    setSaving(true);
+    try {
+      await axios.patch(`${API}/projects/${project.id}`, {
+        name: form.name.trim(),
+        description: form.description,
+        color: form.color,
+        status: form.status,
+        lead_id: form.lead_id,
+        member_ids: form.member_ids,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+      }, { headers: getAuthHeaders() });
+      toast.success('Project updated');
+      onSaved?.();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Failed to update project');
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${project.name}"? All tasks under this project keep their data but lose the project link.`)) return;
+    setSaving(true);
+    try {
+      await axios.delete(`${API}/projects/${project.id}`, { headers: getAuthHeaders() });
+      toast.success('Project deleted');
+      window.location.href = '/admin/projects';
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Failed to delete');
+      setSaving(false);
+    }
+  };
+
+  const filteredUsers = memberSearch
+    ? users.filter(u =>
+        (u.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(memberSearch.toLowerCase())
+      )
+    : users;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start md:items-center justify-center p-0 md:p-6 overflow-y-auto"
+      onClick={onClose}
+      data-testid="edit-project-modal"
+    >
+      <div
+        className="bg-white w-full md:max-w-lg md:rounded-2xl shadow-2xl overflow-hidden my-0 md:my-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Edit Project</h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded" data-testid="edit-project-close">
+            <X className="w-4 h-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          <input
+            type="text"
+            value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            placeholder="Project name"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            data-testid="edit-project-name"
+          />
+          <textarea
+            value={form.description}
+            onChange={e => setForm({ ...form, description: e.target.value })}
+            placeholder="Description"
+            rows={3}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            data-testid="edit-project-description"
+          />
+
+          <div>
+            <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Color</p>
+            <div className="flex gap-2">
+              {PROJECT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setForm({ ...form, color: c })}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === c ? 'ring-2 ring-offset-2 ring-slate-900 border-white' : 'border-white'}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Lead</p>
+              <UserPicker
+                users={users}
+                value={form.lead_id}
+                onChange={id => setForm({ ...form, lead_id: id })}
+                currentUser={currentUser}
+                placeholder="Select project lead"
+                testid="edit-project-lead-picker"
+              />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Status</p>
+              <select
+                value={form.status}
+                onChange={e => setForm({ ...form, status: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                data-testid="edit-project-status"
+              >
+                {PROJECT_STATUSES.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">Start date</p>
+              <input
+                type="date"
+                value={form.start_date}
+                onChange={e => setForm({ ...form, start_date: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                data-testid="edit-project-start-date"
+              />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase mb-1.5">End date</p>
+              <input
+                type="date"
+                value={form.end_date}
+                onChange={e => setForm({ ...form, end_date: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                data-testid="edit-project-end-date"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">
+                Members <span className="text-slate-400">({form.member_ids.length})</span>
+              </p>
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={e => setMemberSearch(e.target.value)}
+                placeholder="Search…"
+                className="text-xs px-2 py-1 border border-slate-200 rounded"
+                data-testid="edit-project-member-search"
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-4 text-xs text-slate-400">No users found</div>
+              ) : filteredUsers.map(u => (
+                <label
+                  key={u.id}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50 ${form.member_ids.includes(u.id) ? 'bg-blue-50/60' : ''}`}
+                  data-testid={`edit-project-member-${u.id}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.member_ids.includes(u.id)}
+                    onChange={() => toggleMember(u.id)}
+                    className="accent-blue-600"
+                  />
+                  <span className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-800 truncate">{u.name}</div>
+                    {u.email && <div className="text-[10px] text-slate-400 truncate">{u.email}</div>}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-2">
+          <button
+            onClick={handleDelete}
+            disabled={saving}
+            className="text-xs px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1"
+            data-testid="edit-project-delete"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="text-sm px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
+              data-testid="edit-project-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="text-sm px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              data-testid="edit-project-save"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

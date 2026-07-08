@@ -168,11 +168,18 @@ async def list_projects(
     user: dict = Depends(get_current_user),
 ):
     uid = _current_user_id(user)
+    is_admin = user.get("role") == "admin"
     query: dict = {}
     if status:
         query["status"] = status
-    if mine:
-        query["$or"] = [{"lead_id": uid}, {"member_ids": uid}]
+    # Non-admins can only see projects they lead, are a member of, or created.
+    # `mine=True` from the frontend is now redundant for them but still honoured.
+    if not is_admin or mine:
+        query["$or"] = [
+            {"lead_id": uid},
+            {"member_ids": uid},
+            {"created_by": uid},
+        ]
     docs = await db.projects.find(query).sort("created_at", -1).to_list(500)
     return [await _enrich_project(p, with_task_stats=True) for p in docs]
 
@@ -182,6 +189,11 @@ async def get_project(project_id: str, user: dict = Depends(get_current_user)):
     p = await db.projects.find_one({"id": project_id})
     if not p:
         raise HTTPException(status_code=404, detail="Project not found")
+    # Non-admins can only view projects they're on
+    if user.get("role") != "admin":
+        uid = _current_user_id(user)
+        if uid not in (p.get("lead_id"), p.get("created_by")) and uid not in (p.get("member_ids") or []):
+            raise HTTPException(status_code=403, detail="You are not a member of this project")
     return await _enrich_project(p, with_task_stats=True)
 
 

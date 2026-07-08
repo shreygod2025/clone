@@ -226,8 +226,19 @@ async def list_tasks(
         except Exception:
             pass
 
+    # When browsing tasks *inside a specific project*, non-admin project members
+    # should see EVERY task in that project (not just ones assigned to/by them).
+    # This lets the project detail page show the full team's work.
+    project_scope_unlocked = False
+    if project_id and not is_admin:
+        proj = await db.projects.find_one({"id": project_id}, {"_id": 0, "lead_id": 1, "member_ids": 1, "created_by": 1})
+        if proj and (uid == proj.get("lead_id") or uid == proj.get("created_by") or uid in (proj.get("member_ids") or [])):
+            project_scope_unlocked = True
+
     query: dict = {}
-    if filter == "my":
+    if project_scope_unlocked:
+        pass  # no per-user restriction — the project_id filter below does the scoping
+    elif filter == "my":
         query["assigned_to"] = uid
     elif filter == "by_me":
         query["assigned_by"] = uid
