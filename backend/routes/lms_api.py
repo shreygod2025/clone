@@ -146,27 +146,15 @@ async def import_lms_schools(user: dict = Depends(get_current_user)):
 
 
 # ── Per-school report ────────────────────────────────────────────────────────
-@router.get("/schools/{school_id}/lms-report")
-async def get_school_lms_report(
-    school_id: str,
-    month: Optional[str] = Query(None, description="YYYY-MM · omit or send 'all' for full history"),
-    class_id: Optional[str] = None,
-    user: dict = Depends(get_current_user),
+async def _build_school_lms_report(
+    school: dict,
+    month: Optional[str],
+    class_id: Optional[str],
 ):
-    """Full LMS report for one CRM school:
-      • school summary + per-class totals + student roster
-      • teacher list
-      • class-wise track sheet (date, time, topic, %, teacher feedback)
-
-    Filterable by `month` (YYYY-MM) and `class_id`.
+    """Shared builder used by the admin (auth) and public (share-token) endpoints.
+    `school` must contain `id`, `school_name`, `lms_school_id`.
     """
-    school = await db.school_inquiries.find_one(
-        {"id": school_id},
-        {"_id": 0, "school_name": 1, "lms_school_id": 1},
-    )
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-
+    school_id = school.get("id")
     lms_id = school.get("lms_school_id")
     if not lms_id:
         return {
@@ -335,3 +323,100 @@ async def get_school_lms_report(
             "total_sessions": len(rows),
         },
     }
+
+
+
+@router.get("/schools/{school_id}/lms-report")
+async def get_school_lms_report(
+    school_id: str,
+    month: Optional[str] = Query(None, description="YYYY-MM · omit or send 'all' for full history"),
+    class_id: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Authenticated per-school LMS report (admin / team). See
+    `_build_school_lms_report` for shape."""
+    school = await db.school_inquiries.find_one(
+        {"id": school_id},
+        {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},
+    )
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    return await _build_school_lms_report(school, month, class_id)
+
+
+# ── Public shareable LMS report ─────────────────────────────────────────────
+import secrets
+
+
+@router.post("/schools/{school_id}/lms-report/share")
+async def create_lms_report_share_link(
+    school_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Create (or return the existing) share token for this school's LMS
+    report. Anyone with the token can view the report via
+    `/api/public/lms-report/{token}` (no auth). Admin only."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    school = await db.school_inquiries.find_one(
+        {"id": school_id},
+        {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1, "lms_report_share_token": 1},
+    )
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    if not school.get("lms_school_id"):
+        raise HTTPException(status_code=400, detail="School is not linked to the LMS")
+
+    token = school.get("lms_report_share_token")
+    if not token:
+        token = secrets.token_urlsafe(24)
+        await db.school_inquiries.update_one(
+            {"id": school_id},
+            {"$set": {
+                "lms_report_share_token": token,
+                "lms_report_share_created_at": datetime.now(timezone.utc).isoformat(),
+                "lms_report_share_created_by": user.get("user_id") or user.get("id"),
+            }},
+        )
+    return {"token": token, "school_name": school.get("school_name")}
+
+
+@router.delete("/schools/{school_id}/lms-report/share")
+async def revoke_lms_report_share_link(
+    school_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Revoke the share token so the public link stops working. Admin only."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$unset": {
+            "lms_report_share_token": "",
+            "lms_report_share_created_at": "",
+            "lms_report_share_created_by": "",
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="School not found")
+    return {"revoked": True}
+
+
+@router.get("/public/lms-report/{token}")
+async def public_lms_report(
+    token: str,
+    month: Optional[str] = Query(None),
+    class_id: Optional[str] = None,
+):
+    """PUBLIC (no auth) — Anyone with a valid share token can view this
+    school's LMS report. Same payload shape as the authed endpoint."""
+    if not token or len(token) < 20:
+        raise HTTPException(status_code=404, detail="Invalid share link")
+    school = await db.school_inquiries.find_one(
+        {"lms_report_share_token": token},
+        {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},
+    )
+    if not school:
+        raise HTTPException(status_code=404, detail="Share link not found or revoked")
+    return await _build_school_lms_report(school, month, class_id)

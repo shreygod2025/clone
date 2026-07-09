@@ -99,6 +99,7 @@ const AdminLinkPreviewTester = lazy(() => import("./pages/admin/AdminLinkPreview
 const AdminSchoolCRM = lazy(() => import("./pages/admin/AdminSchoolCRM"));
 const SchoolReports = lazy(() => import("./pages/admin/SchoolReports"));
 const LMSSchoolReport = lazy(() => import("./pages/admin/LMSSchoolReport"));
+const PublicLMSReport = lazy(() => import("./pages/PublicLMSReport"));
 const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingTracker"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
@@ -282,6 +283,7 @@ function App() {
               <Route path="/admin/success-stories" element={<ProtectedRoute><AdminSuccessStories /></ProtectedRoute>} />
               <Route path="/admin/schools/:schoolId/reports" element={<ProtectedRoute><SchoolReports /></ProtectedRoute>} />
               <Route path="/admin/schools/:schoolId/lms-report" element={<ProtectedRoute><LMSSchoolReport /></ProtectedRoute>} />
+              <Route path="/public/lms-report/:token" element={<PublicLMSReport />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
               <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute><SchoolPaymentTracker /></ProtectedRoute>} />
