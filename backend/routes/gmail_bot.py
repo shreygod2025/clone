@@ -648,7 +648,7 @@ Return ONLY valid JSON (no prose, no markdown fences):
 {
   "is_query": true|false,
   "inquiry_type": "student" | "school" | "educator" | "growth_partner" | "general",
-  "query_type": "demo_related" | "payment" | "course_info" | "ongoing_classes" | "technical" | "kit_related" | "partnership" | "feedback" | "educator_query" | "admission" | "scheduling" | "other",
+  "query_type": "demo_related" | "payment" | "course_info" | "ongoing_classes" | "technical" | "kit_related" | "lms" | "partnership" | "feedback" | "educator_query" | "admission" | "scheduling" | "other",
   "related_to": "<sub-category slug>",
   "priority": "high" | "normal" | "low",
   "subject_summary": "≤80-char distilled subject"
@@ -698,6 +698,7 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
   - ongoing_classes    → currently-enrolled student issues: missed class, teacher issue, reschedule, progress
   - technical          → login bug, app issue, video/audio, payment-gateway error
   - kit_related        → robotics kit components missing/damaged/delayed
+  - lms                → LMS (lms.oll.co) login / credentials / password / username / LMS bugs
   - partnership        → school MoU, centre/franchise enquiry, bulk enrolment, sponsorship
   - feedback           → thank-you / praise / complaint about quality
   - educator_query     → teacher application status, training, payment, scheduling
@@ -712,6 +713,7 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
   ongoing_classes: class_reschedule | class_missed | teacher_issue | class_quality | progress_report | batch_change | other
   technical:       login_issue | app_bug | video_issue | payment_gateway | notification_issue | other
   kit_related:     components_missing | delivery_delay | component_damaged | quality_issues | other
+  lms:             dont_know_credentials | forgot_password | forgot_username | lms_bug | lms_link | other
   partnership:     school_partnership | center_partnership | franchise_inquiry | bulk_enrollment | other
   educator_query:  application_status | training_support | student_issue | schedule_query | other
   admission:       new_admission | admission_process | document_submission | seat_availability | other
@@ -729,7 +731,9 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
   - NEVER default everything to "partnership" + "student". Match the actual content.
   - "Receipt not received" → query_type=payment, related_to=invoice_request, inquiry_type=student
   - "Sponsorship request" → query_type=partnership, related_to=other, inquiry_type=general
-  - "Login credentials for daughter" → query_type=technical, related_to=login_issue, inquiry_type=student
+  - "Login credentials for daughter" → query_type=lms, related_to=dont_know_credentials, inquiry_type=student
+  - "Forgot LMS password" → query_type=lms, related_to=forgot_password, inquiry_type=student
+  - "LMS not working / bug on lms.oll.co" → query_type=lms, related_to=lms_bug, inquiry_type=student
   - "Apply to teach" → query_type=educator_query, related_to=application_status, inquiry_type=educator
 """
 
@@ -737,7 +741,7 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
 # ── Defensive defaults for when LLM returns an unknown enum value ─────────
 VALID_QUERY_TYPES = {
     "demo_related", "payment", "course_info", "ongoing_classes", "technical",
-    "kit_related", "partnership", "feedback", "educator_query", "admission",
+    "kit_related", "lms", "partnership", "feedback", "educator_query", "admission",
     "scheduling", "other",
 }
 VALID_INQUIRY_TYPES = {"student", "school", "educator", "growth_partner", "general", "teacher", "team"}
@@ -748,6 +752,7 @@ VALID_RELATED_TO = {
     "ongoing_classes": {"class_reschedule","class_missed","teacher_issue","class_quality","progress_report","batch_change","other"},
     "technical":       {"login_issue","app_bug","video_issue","payment_gateway","notification_issue","other"},
     "kit_related":     {"components_missing","delivery_delay","component_damaged","quality_issues","other"},
+    "lms":             {"dont_know_credentials","forgot_password","forgot_username","lms_bug","lms_link","other"},
     "partnership":     {"school_partnership","center_partnership","franchise_inquiry","bulk_enrollment","other"},
     "educator_query":  {"application_status","training_support","student_issue","schedule_query","other"},
     "admission":       {"new_admission","admission_process","document_submission","seat_availability","other"},

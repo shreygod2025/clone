@@ -33,6 +33,7 @@ const QUERY_TYPES = [
   { value: 'ongoing_classes', label: 'Ongoing Classes', icon: HelpCircle, color: 'bg-indigo-100 text-indigo-700' },
   { value: 'technical', label: 'Technical', icon: Wrench, color: 'bg-orange-100 text-orange-700' },
   { value: 'kit_related', label: 'Kit Related', icon: Package, color: 'bg-amber-100 text-amber-800' },
+  { value: 'lms', label: 'LMS', icon: GraduationCap, color: 'bg-indigo-100 text-indigo-700' },
   { value: 'partnership', label: 'Partnership', icon: Building2, color: 'bg-cyan-100 text-cyan-700' },
   { value: 'feedback', label: 'Feedback', icon: ThumbsUp, color: 'bg-yellow-100 text-yellow-700' },
   { value: 'educator_query', label: 'Educator Query', icon: UserPlus, color: 'bg-red-100 text-red-700' },
@@ -91,6 +92,14 @@ const RELATED_TO_OPTIONS = {
     { value: 'delivery_delay', label: 'Delivery Delay' },
     { value: 'component_damaged', label: 'Component Damaged' },
     { value: 'quality_issues', label: 'Quality Issues' },
+    { value: 'other', label: 'Other' },
+  ],
+  lms: [
+    { value: 'dont_know_credentials', label: "Don't know username / password" },
+    { value: 'forgot_password', label: 'Forgot / change password' },
+    { value: 'forgot_username', label: 'Forgot username' },
+    { value: 'lms_bug', label: 'Facing a bug' },
+    { value: 'lms_link', label: 'Need link to LMS' },
     { value: 'other', label: 'Other' },
   ],
 
