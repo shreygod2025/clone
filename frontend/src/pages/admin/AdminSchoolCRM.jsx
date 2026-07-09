@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CalendarDays, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature } from 'lucide-react';
+import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CalendarDays, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature, GraduationCap } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -4340,6 +4340,19 @@ ${FOOTER}</div></body></html>`
       </button>
     );
 
+    // LMS Reports button — visible when the school is linked to the LMS
+    const lmsReportsButton = inquiry.lms_school_id ? (
+      <button
+        onClick={() => navigate(`/admin/schools/${inquiry.id}/lms-report`)}
+        title="LMS class-wise track sheet + teachers"
+        className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+        data-testid={`lms-report-${inquiry.id}`}
+      >
+        <GraduationCap className="w-3 h-3" />
+        LMS
+      </button>
+    ) : null;
+
     // Followup button
     const followupButton = inquiry.status !== 'converted' && (
       <button
@@ -4542,6 +4555,7 @@ ${FOOTER}</div></body></html>`
             {raiseTicketButton}
             {documentsButton}
             {reportsButton}
+            {lmsReportsButton}
             {baseButtons}
           </div>
         );
@@ -4571,6 +4585,7 @@ ${FOOTER}</div></body></html>`
               Sessions
             </button>
             {reportsButton}
+            {lmsReportsButton}
             <button
               onClick={() => setShowAssignRMModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
@@ -4677,6 +4692,7 @@ ${FOOTER}</div></body></html>`
             </button>
             {documentsButton}
             {reportsButton}
+            {lmsReportsButton}
             {baseButtons}
           </div>
         );
