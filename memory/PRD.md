@@ -2,6 +2,28 @@
 ## Product Requirements Document
 
 
+### Latest Fix (2026-07-09) — Reports Button Fallback to LMS 🛠️
+
+**Bug**: "Reports" button in School CRM was disabled across all stages because
+active schools had `lms_school_id` populated (from LMS sync) but no
+`checkin_timetable_id`. The button previously required a linked CheckIn
+timetable.
+
+**Fix** (`/app/frontend/src/pages/admin/AdminSchoolCRM.jsx`):
+- Reports button is now enabled when EITHER a CheckIn timetable OR an LMS
+  school link exists.
+- Click routes to `/admin/schools/{id}/reports` when CheckIn is linked, else
+  gracefully falls through to `/admin/schools/{id}/lms-report`.
+- The dedicated indigo "LMS" shortcut button now only surfaces when BOTH
+  sources are linked (avoids redundancy).
+
+**Verified**: Under Active Schools (25 cards), 21 Reports buttons are enabled
+(all schools with LMS linked); LMS-only school (Seth A.R Jaipuria Alambagh)
+routes to the LMS Class-wise Track Sheet page which loads 1 class, 1 teacher,
+22 sessions.
+
+
+
 ### Latest Changes (2026-07-03 pt2) — Verified Success Stories 🏆
 
 **New feature**: A full Verified Success Stories system with 5-level ladder (Creator → Published → Recognition → Impact → Transformation). Admins can add/edit/delete stories with student photo, name, age, school, level, rich text story, tags, evidence URLs, and file attachments (certificates, revenue proofs, media). Every team member sees a live count on their dashboard and can browse the full internal gallery. Level-5 stories are auto-flagged as flagship. Published stories are surfaced on the public `oll.co/success-stories` page.

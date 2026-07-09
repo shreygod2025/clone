@@ -4319,17 +4319,26 @@ ${FOOTER}</div></body></html>`
     );
 
     // Reports button — opens the per-school Reports page (sessions + attendance)
-    // Only surfaced for statuses where the school actually has running sessions
-    // (converted / active / renewed). Requires a linked CheckIn timetable.
+    // Enabled when the school has either a linked CheckIn timetable OR an LMS
+    // school link. If only LMS is available, it routes to the LMS report page
+    // as a graceful fallback.
     const hasLinkedTimetable = !!(inquiry.checkin_timetable_id
       || (inquiry.checkin_timetable_ids && inquiry.checkin_timetable_ids.length > 0));
+    const hasLmsLink = !!inquiry.lms_school_id;
+    const hasAnyReport = hasLinkedTimetable || hasLmsLink;
+    const reportsPath = hasLinkedTimetable
+      ? `/admin/schools/${inquiry.id}/reports`
+      : `/admin/schools/${inquiry.id}/lms-report`;
+    const reportsTitle = hasLinkedTimetable
+      ? 'Session & attendance reports'
+      : (hasLmsLink ? 'LMS class-wise track sheet' : 'Link a timetable or LMS to enable reports');
     const reportsButton = (
       <button
-        onClick={() => navigate(`/admin/schools/${inquiry.id}/reports`)}
-        disabled={!hasLinkedTimetable}
-        title={hasLinkedTimetable ? 'Session & attendance reports' : 'Link a timetable to enable reports'}
+        onClick={() => navigate(reportsPath)}
+        disabled={!hasAnyReport}
+        title={reportsTitle}
         className={`text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
-          hasLinkedTimetable
+          hasAnyReport
             ? 'bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-700'
             : 'bg-slate-100 text-slate-400 cursor-not-allowed'
         }`}
@@ -4340,8 +4349,11 @@ ${FOOTER}</div></body></html>`
       </button>
     );
 
-    // LMS Reports button — visible when the school is linked to the LMS
-    const lmsReportsButton = inquiry.lms_school_id ? (
+    // Dedicated LMS Reports button — only shown when BOTH CheckIn and LMS are
+    // linked, so users can jump directly to LMS while the primary Reports
+    // button still routes to CheckIn. When only LMS is linked, the Reports
+    // button itself opens the LMS report, so this dedicated shortcut is hidden.
+    const lmsReportsButton = (hasLmsLink && hasLinkedTimetable) ? (
       <button
         onClick={() => navigate(`/admin/schools/${inquiry.id}/lms-report`)}
         title="LMS class-wise track sheet + teachers"
