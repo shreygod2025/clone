@@ -51,7 +51,10 @@ const SchoolSupportFlow = ({ onBack }) => {
   ];
 
   const lmsSubCategories = [
-    { id: 'lost_password', label: 'Lost login ID / Password', action: 'form' },
+    { id: 'dont_know_credentials', label: "Don't know username / password", action: 'form' },
+    { id: 'forgot_password', label: 'Forgot / change password', action: 'form' },
+    { id: 'forgot_username', label: 'Forgot username', action: 'form' },
+    { id: 'lms_bug', label: 'Facing a bug', action: 'form' },
     { id: 'lms_link', label: 'Need link to LMS', action: 'link' },
   ];
 
@@ -285,7 +288,7 @@ const SchoolSupportFlow = ({ onBack }) => {
   const renderForm = () => {
     const needsProof = subSubCategory === 'damaged_on_delivery';
     const needsReason = subCategory === 'refund';
-    const isPasswordReset = subCategory === 'lost_password';
+    const isPasswordReset = ['dont_know_credentials', 'forgot_password', 'forgot_username'].includes(subCategory);
 
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -427,7 +430,7 @@ const SchoolSupportFlow = ({ onBack }) => {
       </div>
       <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Query Submitted!</h2>
       <p className="text-slate-600 mb-6">
-        {subCategory === 'lost_password' 
+        {['dont_know_credentials', 'forgot_password', 'forgot_username'].includes(subCategory)
           ? 'We will send your login details to your WhatsApp shortly.'
           : subCategory === 'invoice'
           ? 'We will send the invoice to your contact details.'
