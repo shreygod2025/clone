@@ -224,8 +224,17 @@ async def get_school_lms_report(
             months_set.add(d)
     available_months = sorted(months_set, reverse=True)
 
-    # Group filtered rows by class
+    # Group filtered rows by class.
+    # We also build a class_name lookup from the UNFILTERED rows so a class
+    # keeps its readable name even if the current filter hides its sessions
+    # or the LMS /reports endpoint (`classes_meta`) is unavailable.
     classes_meta = {c["id"]: c for c in (report.get("classes") or [])}
+    class_name_from_rows: dict[str, str] = {}
+    for r in all_rows:
+        cid = r.get("class_id")
+        cname = r.get("class_name") or r.get("class") or r.get("classroom_name")
+        if cid and cname and cid not in class_name_from_rows:
+            class_name_from_rows[cid] = cname
     grouped: dict[str, list] = defaultdict(list)
     for r in rows:
         cid = r.get("class_id") or "_none"
@@ -245,6 +254,7 @@ async def get_school_lms_report(
             "educator_id": r.get("educator_id"),
             "is_oll_teacher": r.get("is_oll_teacher"),
             "project_name": r.get("project_name"),
+            "class_name": r.get("class_name") or r.get("class") or r.get("classroom_name"),
         })
 
     # Newest first per class
@@ -256,7 +266,12 @@ async def get_school_lms_report(
         meta = classes_meta.get(cid, {})
         classes_out.append({
             "class_id": cid,
-            "class_name": meta.get("name") or (sessions[0].get("class_name") if sessions else None) or cid,
+            "class_name": (
+                meta.get("name")
+                or class_name_from_rows.get(cid)
+                or (sessions[0].get("class_name") if sessions else None)
+                or cid
+            ),
             "student_count": meta.get("student_count"),
             "total_xp": meta.get("total_xp"),
             "avg_xp": meta.get("avg_xp"),
