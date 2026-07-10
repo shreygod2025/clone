@@ -730,6 +730,57 @@ const AdminOrders = () => {
     return 'invoice';
   };
 
+  // ── Student invoice PDF ───────────────────────────────────────────────
+  // Generates a PDF invoice for any student payment on the fly. If the
+  // student is linked to a school we reuse the school's Bill To settings;
+  // otherwise we synthesise a Bill To from the student's own name / contact
+  // so the invoice is always downloadable regardless of upstream data.
+  const handleDownloadStudentInvoice = async (payment) => {
+    setGeneratingInvoice(payment.id);
+    try {
+      let schoolData = null;
+      if (payment.school_id) {
+        schoolData = schoolDataCache.current[payment.school_id];
+        if (!schoolData) {
+          try {
+            const r = await axios.get(`${API}/orders/school-details/${payment.school_id}`, { headers: getAuthHeaders() });
+            schoolData = r.data;
+            schoolDataCache.current[payment.school_id] = schoolData;
+          } catch { /* fall through to individual */ }
+        }
+      }
+
+      if (!schoolData) {
+        schoolData = {
+          name: payment.student_name || 'Student',
+          onboarding_data: { gst_type: payment.gst_type || 'exclusive_18' },
+          invoice_bill_to: {
+            name: payment.student_name || 'Student',
+            address: [payment.address, payment.city, payment.state].filter(Boolean).join(', '),
+            gstin: '',
+          },
+        };
+      }
+
+      const { invoiceNo } = await generateInvoicePDF(
+        payment,
+        schoolData,
+        {
+          nameOverride: schoolData?.invoice_name_override || '',
+          billTo: schoolData?.invoice_bill_to?.name || schoolData?.invoice_bill_to?.address ? schoolData.invoice_bill_to : null,
+          shipTo: schoolData?.invoice_ship_to?.name || schoolData?.invoice_ship_to?.address ? schoolData.invoice_ship_to : null,
+          placeOfSupply: schoolData?.invoice_place_of_supply || null,
+        },
+      );
+      toast.success(`Invoice ${invoiceNo} downloaded`);
+    } catch (err) {
+      console.error('Student invoice generation error:', err);
+      toast.error('Failed to generate invoice');
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
   // Send Invoice Email handler
   const handleSendInvoiceEmail = async () => {
     if (!sendEmailModal) return;
@@ -1817,6 +1868,16 @@ const AdminOrders = () => {
                               <Receipt className="w-4 h-4 text-green-600" />
                             </button>
                           )}
+                          {/* Download PDF Invoice (always available) */}
+                          <button
+                            onClick={() => handleDownloadStudentInvoice(payment)}
+                            disabled={generatingInvoice === payment.id}
+                            className="p-1.5 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-60"
+                            title="Download PDF Invoice"
+                            data-testid={`download-student-invoice-${payment.id}`}
+                          >
+                            <FileText className={`w-4 h-4 text-indigo-600 ${generatingInvoice === payment.id ? 'animate-pulse' : ''}`} />
+                          </button>
                           {/* Sync Button - Only show for non-PAID payments */}
                           {payment.status !== 'paid' && payment.status !== 'PAID' && (
                             <Button

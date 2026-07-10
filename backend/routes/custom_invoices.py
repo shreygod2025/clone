@@ -64,6 +64,28 @@ async def create_custom_invoice(
 
     pdf_base64 = payload.get("pdf_base64") or ""
     invoice_no = await _next_custom_invoice_number()
+
+    # ── Payment status normalisation ────────────────────────────────────
+    total_amount = float(payload.get("total_amount") or 0)
+    payment_status = (payload.get("payment_status") or "pending").strip().lower()
+    if payment_status not in {"pending", "paid", "partial"}:
+        payment_status = "pending"
+    raw_paid = payload.get("paid_amount")
+    try:
+        paid_amount = float(raw_paid) if raw_paid not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        paid_amount = 0.0
+    if payment_status == "paid":
+        paid_amount = total_amount
+    elif payment_status == "pending":
+        paid_amount = 0.0
+    else:  # partial
+        paid_amount = max(0.0, min(paid_amount, total_amount))
+
+    invoice_date = (payload.get("invoice_date") or "").strip()
+    if not invoice_date:
+        invoice_date = datetime.now(timezone.utc).date().isoformat()
+
     doc = {
         "id": str(uuid.uuid4()),
         "invoice_no": invoice_no,
@@ -73,9 +95,13 @@ async def create_custom_invoice(
         "state": (payload.get("state") or "").strip(),
         "gst_type": (payload.get("gst_type") or "").strip(),
         "line_items": line_items,
-        "total_amount": float(payload.get("total_amount") or 0),
+        "total_amount": total_amount,
         "notes": (payload.get("notes") or "").strip(),
         "pdf_base64": pdf_base64,
+        # New: invoice date + payment status
+        "invoice_date": invoice_date,
+        "payment_status": payment_status,
+        "paid_amount": paid_amount,
         "created_by": user.get("email", "admin"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -121,6 +147,49 @@ async def download_custom_invoice_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{safe_name}.pdf"'},
     )
+
+
+@router.patch("/admin/custom-invoices/{invoice_id}/status")
+async def update_custom_invoice_status(
+    invoice_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Update just the `payment_status` + `paid_amount` for a custom invoice.
+    Used by the accounts team to mark a pending invoice as partial / paid
+    without having to regenerate the PDF."""
+    doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0, "total_amount": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Custom invoice not found")
+
+    status = (payload.get("payment_status") or "").strip().lower()
+    if status not in {"pending", "paid", "partial"}:
+        raise HTTPException(status_code=400, detail="Invalid payment_status")
+
+    total = float(doc.get("total_amount") or 0)
+    try:
+        paid = float(payload.get("paid_amount") or 0)
+    except (TypeError, ValueError):
+        paid = 0.0
+    if status == "paid":
+        paid = total
+    elif status == "pending":
+        paid = 0.0
+    else:  # partial
+        paid = max(0.0, min(paid, total))
+        if paid <= 0:
+            raise HTTPException(status_code=400, detail="Partial status requires paid_amount > 0")
+
+    await db.custom_invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "payment_status": status,
+            "paid_amount": paid,
+            "status_updated_at": datetime.now(timezone.utc).isoformat(),
+            "status_updated_by": user.get("email", "admin"),
+        }},
+    )
+    return {"ok": True, "payment_status": status, "paid_amount": paid}
 
 
 @router.delete("/admin/custom-invoices/{invoice_id}")

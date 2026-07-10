@@ -28,6 +28,7 @@ const getAuthHeaders = () => {
 };
 
 export default function CustomInvoiceModal({ open, onClose }) {
+  const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     // Bill To
     customer_name: '',
@@ -42,12 +43,18 @@ export default function CustomInvoiceModal({ open, onClose }) {
     // Place of supply (drives IGST/CGST+SGST math)
     place_of_supply: 'Maharashtra',
     gst_type: 'exclusive_18',
+    // Invoice metadata
+    invoice_date: today,
+    payment_status: 'pending',       // pending | paid | partial
+    paid_amount: '',                 // used when payment_status === 'partial'
     notes: '',
   });
   const [items, setItems] = useState([emptyRow()]);
   const [generating, setGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [statusEditing, setStatusEditing] = useState(null); // { id, payment_status, paid_amount }
+  const [savingStatus, setSavingStatus] = useState(false);
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -107,6 +114,9 @@ export default function CustomInvoiceModal({ open, onClose }) {
 
       // Fabricate payment + schoolData structures the existing PDF generator understands.
       const fakeSchoolId = `custom-${Date.now()}`;
+      // The PDF generator uses `payment.payment_date` as the invoice date.
+      // Convert YYYY-MM-DD → ISO so the toLocaleDateString call renders correctly.
+      const invoiceDateISO = form.invoice_date ? new Date(form.invoice_date).toISOString() : new Date().toISOString();
       const fakePayment = {
         school_id: fakeSchoolId,
         school_name: form.customer_name,
@@ -115,7 +125,9 @@ export default function CustomInvoiceModal({ open, onClose }) {
         tranche_index: 0,
         tranche_info: '',
         due_date: '',
-        status: 'pending',
+        status: form.payment_status === 'paid' ? 'paid' : form.payment_status === 'partial' ? 'partial' : 'pending',
+        paid_amount: form.payment_status === 'partial' ? Number(form.paid_amount || 0) : (form.payment_status === 'paid' ? totalAmount : 0),
+        payment_date: invoiceDateISO,
         qty: valid.reduce((s, r) => s + Number(r.qty || 0), 0),
       };
       // The schoolData is now mostly a carrier — billTo / shipTo overrides drive
@@ -175,6 +187,12 @@ export default function CustomInvoiceModal({ open, onClose }) {
           total_amount: totalAmount,
           generated_invoice_no: invoiceNo,
           pdf_base64: base64,
+          // Invoice metadata
+          invoice_date: form.invoice_date || today,
+          payment_status: form.payment_status,
+          paid_amount: form.payment_status === 'partial'
+            ? Number(form.paid_amount || 0)
+            : (form.payment_status === 'paid' ? totalAmount : 0),
         }, { headers: getAuthHeaders() });
         toast.success(`Custom invoice saved · ${invoiceNo}`);
       } catch (saveErr) {
@@ -197,6 +215,9 @@ export default function CustomInvoiceModal({ open, onClose }) {
         ship_to_state: 'Maharashtra',
         place_of_supply: 'Maharashtra',
         gst_type: 'exclusive_18',
+        invoice_date: today,
+        payment_status: 'pending',
+        paid_amount: '',
         notes: '',
       });
       setItems([emptyRow()]);
@@ -225,6 +246,45 @@ export default function CustomInvoiceModal({ open, onClose }) {
     } catch (err) {
       toast.error('Failed to download invoice');
     }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!statusEditing) return;
+    setSavingStatus(true);
+    try {
+      const body = {
+        payment_status: statusEditing.payment_status,
+        paid_amount: statusEditing.payment_status === 'partial'
+          ? Number(statusEditing.paid_amount || 0)
+          : (statusEditing.payment_status === 'paid' ? Number(statusEditing.total_amount || 0) : 0),
+      };
+      await axios.patch(`${API}/admin/custom-invoices/${statusEditing.id}/status`, body, { headers: getAuthHeaders() });
+      toast.success('Payment status updated');
+      setStatusEditing(null);
+      await loadHistory();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to update status');
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const statusPill = (row) => {
+    const s = row.payment_status || 'pending';
+    const map = {
+      paid:    { label: 'Paid',    css: 'bg-emerald-100 text-emerald-800' },
+      partial: { label: 'Partial', css: 'bg-amber-100 text-amber-800' },
+      pending: { label: 'Pending', css: 'bg-slate-100 text-slate-700' },
+    };
+    const cfg = map[s] || map.pending;
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.css}`}>
+        {cfg.label}
+        {s === 'partial' && row.paid_amount > 0 && (
+          <span className="ml-1 opacity-80">· ₹{Number(row.paid_amount).toLocaleString('en-IN')}</span>
+        )}
+      </span>
+    );
   };
 
   return (
@@ -351,6 +411,67 @@ export default function CustomInvoiceModal({ open, onClose }) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* ── Invoice Date & Payment Status ─────────────────────── */}
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Invoice Metadata</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-700">Invoice Date *</label>
+                <Input
+                  type="date"
+                  value={form.invoice_date}
+                  onChange={(e) => setForm(prev => ({ ...prev, invoice_date: e.target.value }))}
+                  className="mt-1"
+                  data-testid="custom-invoice-date"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">Payment Status *</label>
+                <select
+                  value={form.payment_status}
+                  onChange={(e) => setForm(prev => ({
+                    ...prev,
+                    payment_status: e.target.value,
+                    paid_amount: e.target.value === 'partial' ? prev.paid_amount : '',
+                  }))}
+                  className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                  data-testid="custom-invoice-payment-status"
+                >
+                  <option value="pending">Payment Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="partial">Partially Paid</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">
+                  Amount Received{form.payment_status === 'partial' ? ' *' : ' (auto)'}
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder={form.payment_status === 'partial' ? 'e.g. 5000' : ''}
+                  value={
+                    form.payment_status === 'paid'
+                      ? ((subtotal + (form.gst_type === 'exclusive_18' || form.gst_type === 'exclusive' ? gstAmount : 0)) || 0).toFixed(2)
+                      : form.payment_status === 'pending'
+                      ? '0'
+                      : form.paid_amount
+                  }
+                  disabled={form.payment_status !== 'partial'}
+                  onChange={(e) => setForm(prev => ({ ...prev, paid_amount: e.target.value }))}
+                  className="mt-1 disabled:opacity-60"
+                  data-testid="custom-invoice-paid-amount"
+                />
+                {form.payment_status === 'partial' && Number(form.paid_amount || 0) > 0 && (
+                  <p className="text-[11px] text-emerald-700 mt-1">
+                    Balance: ₹{Math.max(0, (subtotal + (form.gst_type === 'exclusive_18' || form.gst_type === 'exclusive' ? gstAmount : 0)) - Number(form.paid_amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* ── Place of Supply (drives GST math) ─────────────────── */}
@@ -553,7 +674,8 @@ export default function CustomInvoiceModal({ open, onClose }) {
                       <th className="px-3 py-2">Invoice #</th>
                       <th className="px-3 py-2">Customer</th>
                       <th className="px-3 py-2 text-right">Total</th>
-                      <th className="px-3 py-2">Created</th>
+                      <th className="px-3 py-2">Invoice Date</th>
+                      <th className="px-3 py-2">Status</th>
                       <th className="px-3 py-2"></th>
                     </tr>
                   </thead>
@@ -566,9 +688,23 @@ export default function CustomInvoiceModal({ open, onClose }) {
                           ₹{Number(row.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="px-3 py-2 text-slate-500">
-                          {row.created_at ? new Date(row.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+                          {(row.invoice_date || row.created_at) ? new Date(row.invoice_date || row.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2">{statusPill(row)}</td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setStatusEditing({
+                              id: row.id,
+                              total_amount: row.total_amount,
+                              payment_status: row.payment_status || 'pending',
+                              paid_amount: row.paid_amount || '',
+                            })}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700 mr-1"
+                            data-testid={`custom-invoice-edit-status-${row.id}`}
+                          >
+                            Status
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDownloadHistory(row.id, row.invoice_no)}
@@ -585,6 +721,84 @@ export default function CustomInvoiceModal({ open, onClose }) {
               </div>
             )}
           </div>
+          {/* Payment status edit sheet */}
+          {statusEditing && (
+            <div
+              className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+              onClick={() => !savingStatus && setStatusEditing(null)}
+              data-testid="custom-invoice-status-editor-backdrop"
+            >
+              <div
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+                data-testid="custom-invoice-status-editor"
+              >
+                <h3 className="text-base font-bold text-slate-900 mb-1">Update Payment Status</h3>
+                <p className="text-xs text-slate-500 mb-4">
+                  Total: <span className="font-semibold text-slate-800">
+                    ₹{Number(statusEditing.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Payment Status</label>
+                    <select
+                      value={statusEditing.payment_status}
+                      onChange={(e) => setStatusEditing(prev => ({
+                        ...prev,
+                        payment_status: e.target.value,
+                        paid_amount: e.target.value === 'partial' ? prev.paid_amount : '',
+                      }))}
+                      className="mt-1 w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                      data-testid="custom-invoice-edit-status-select"
+                    >
+                      <option value="pending">Payment Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="partial">Partially Paid</option>
+                    </select>
+                  </div>
+                  {statusEditing.payment_status === 'partial' && (
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Amount Received *</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={statusEditing.paid_amount}
+                        onChange={(e) => setStatusEditing(prev => ({ ...prev, paid_amount: e.target.value }))}
+                        className="mt-1"
+                        data-testid="custom-invoice-edit-status-amount"
+                      />
+                      {Number(statusEditing.paid_amount || 0) > 0 && (
+                        <p className="text-[11px] text-emerald-700 mt-1">
+                          Balance: ₹{Math.max(0, Number(statusEditing.total_amount || 0) - Number(statusEditing.paid_amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 mt-5">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStatusEditing(null)}
+                    disabled={savingStatus}
+                    data-testid="custom-invoice-edit-status-cancel"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUpdateStatus}
+                    disabled={savingStatus || (statusEditing.payment_status === 'partial' && !(Number(statusEditing.paid_amount) > 0))}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    data-testid="custom-invoice-edit-status-save"
+                  >
+                    {savingStatus ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
