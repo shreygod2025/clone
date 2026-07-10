@@ -4068,7 +4068,7 @@ from routes.inapp_notifications import router as inapp_notifications_router
 from routes.scheduled_tasks import router as scheduled_tasks_router
 from routes.success_stories import router as success_stories_router
 from routes.salaries import router as salaries_router
-from routes.lms_api import router as lms_router
+from routes.lms_api import router as lms_router, run_lms_sync_scheduled
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4410,6 +4410,21 @@ async def startup_db_client():
         replace_existing=True,
     )
     print("[STARTUP] Accounts reminder cron scheduled — fires daily at 9:00 AM IST (03:30 UTC)")
+
+    # ── LMS Daily Sync ────────────────────────────────────────────────────
+    # Runs every day at 6:00 PM IST (= 12:30 UTC) to pull the latest
+    # track-sheet from the OLL LMS, create new school_inquiries rows for
+    # freshly onboarded LMS schools, link matching CRM schools by name,
+    # and refresh `last_lms_sync_at` on every linked row. Failures are
+    # logged and do not crash the scheduler.
+    scheduler.add_job(
+        run_lms_sync_scheduled,
+        trigger=CronTrigger(hour=12, minute=30, timezone="UTC"),  # 6:00 PM IST
+        id="lms_daily_sync_job",
+        name="LMS Daily Sync — Import Schools + Refresh Track Sheets",
+        replace_existing=True,
+    )
+    print("[STARTUP] LMS daily sync cron scheduled — fires daily at 6:00 PM IST (12:30 UTC)")
 
     # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
     # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)

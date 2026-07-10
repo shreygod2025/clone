@@ -65,18 +65,14 @@ def _norm(s: str | None) -> str:
 
 
 # ── Sample school import ────────────────────────────────────────────────────
-@router.post("/lms/import-schools")
-async def import_lms_schools(user: dict = Depends(get_current_user)):
-    """Fetch every unique school from the LMS track-sheet + insert or link
-    them in `school_inquiries`. Idempotent — safe to run multiple times.
-    Requires admin."""
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-
+async def _run_lms_import() -> dict:
+    """Core sync logic — pulls every LMS school and creates or links them
+    in `school_inquiries`. Idempotent. Used by both the manual endpoint and
+    the daily 6PM IST cron. Also stamps `last_lms_sync_at` on the linked
+    schools so the CRM can show "last synced" timestamps."""
     track = await _lms_get("/external/track-sheet")
     rows = track if isinstance(track, list) else (track.get("data") or track.get("rows") or [])
 
-    # Collapse to unique LMS schools
     lms_schools: dict[str, str] = {}
     for r in rows:
         sid = r.get("school_id")
@@ -90,13 +86,16 @@ async def import_lms_schools(user: dict = Depends(get_current_user)):
     now = datetime.now(timezone.utc).isoformat()
 
     for lms_id, name in lms_schools.items():
-        # Already linked?
         already = await db.school_inquiries.find_one({"lms_school_id": lms_id}, {"_id": 0, "id": 1})
         if already:
+            # Refresh the sync timestamp on existing linked rows.
+            await db.school_inquiries.update_one(
+                {"id": already["id"]},
+                {"$set": {"last_lms_sync_at": now}},
+            )
             skipped.append({"lms_school_id": lms_id, "name": name, "reason": "already linked"})
             continue
 
-        # Try case-insensitive name match to an existing CRM school
         match = await db.school_inquiries.find_one(
             {"school_name": {"$regex": f"^{name.strip()}$", "$options": "i"}},
             {"_id": 0, "id": 1},
@@ -104,12 +103,11 @@ async def import_lms_schools(user: dict = Depends(get_current_user)):
         if match:
             await db.school_inquiries.update_one(
                 {"id": match["id"]},
-                {"$set": {"lms_school_id": lms_id, "updated_at": now}},
+                {"$set": {"lms_school_id": lms_id, "last_lms_sync_at": now, "updated_at": now}},
             )
             linked += 1
             continue
 
-        # Otherwise seed a sample school
         import uuid
         doc = {
             "id": str(uuid.uuid4()),
@@ -131,18 +129,60 @@ async def import_lms_schools(user: dict = Depends(get_current_user)):
             "assigned_to_name": "",
             "activity_log": [{"action": "created_from_lms", "at": now}],
             "lms_school_id": lms_id,
+            "last_lms_sync_at": now,
             "created_at": now,
             "updated_at": now,
         }
         await db.school_inquiries.insert_one(doc)
         created += 1
 
-    return {
+    result = {
         "created": created,
         "linked": linked,
         "skipped": skipped,
         "total_lms_schools": len(lms_schools),
+        "synced_at": now,
     }
+    # Persist a global sync record for CRM header display + observability.
+    await db.system_state.update_one(
+        {"_id": "lms_sync"},
+        {"$set": {
+            "last_sync_at": now,
+            "last_created": created,
+            "last_linked": linked,
+            "last_total": len(lms_schools),
+        }},
+        upsert=True,
+    )
+    return result
+
+
+async def run_lms_sync_scheduled():
+    """Cron entrypoint — daily 6:00 PM IST. Wraps `_run_lms_import` with
+    logging so scheduler failures don't crash the loop."""
+    try:
+        result = await _run_lms_import()
+        logger.info(
+            "[LMS-SYNC] daily import complete · created=%s linked=%s total=%s",
+            result["created"], result["linked"], result["total_lms_schools"],
+        )
+    except Exception as e:
+        logger.exception("[LMS-SYNC] daily import failed: %s", e)
+
+
+@router.post("/lms/import-schools")
+async def import_lms_schools(user: dict = Depends(get_current_user)):
+    """Manual trigger — same logic as the 6PM IST daily cron. Admin only."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return await _run_lms_import()
+
+
+@router.get("/lms/sync-status")
+async def lms_sync_status(user: dict = Depends(get_current_user)):
+    """Latest sync metadata for the CRM header ("Last synced …" pill)."""
+    doc = await db.system_state.find_one({"_id": "lms_sync"}, {"_id": 0})
+    return doc or {"last_sync_at": None}
 
 
 # ── Per-school report ────────────────────────────────────────────────────────

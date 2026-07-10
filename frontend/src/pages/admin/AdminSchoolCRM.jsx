@@ -518,6 +518,9 @@ const AdminSchoolCRM = () => {
   const [showFollowupModal, setShowFollowupModal] = useState(null);
   const [showOnboardModal, setShowOnboardModal] = useState(null);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  // LMS sync state — feeds the "Sync LMS" button + last-synced pill
+  const [lmsSyncing, setLmsSyncing] = useState(false);
+  const [lmsSyncStatus, setLmsSyncStatus] = useState(null); // { last_sync_at, last_created, last_linked, last_total }
   const [showEditOnboardingModal, setShowEditOnboardingModal] = useState(null);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(null);
   const [showOnboardingWorkflowModal, setShowOnboardingWorkflowModal] = useState(null);
@@ -802,6 +805,7 @@ const AdminSchoolCRM = () => {
     fetchTeamUsers();
     fetchOfferings();
     fetchRelationshipManagers();
+    fetchLmsSyncStatus();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -3605,6 +3609,37 @@ ${FOOTER}</div></body></html>`
     }
   };
 
+  // ── LMS sync ────────────────────────────────────────────────────────────
+  const fetchLmsSyncStatus = async () => {
+    try {
+      const res = await axios.get(`${API}/lms/sync-status`, { headers: getAuthHeaders() });
+      setLmsSyncStatus(res.data || null);
+    } catch (err) {
+      // Non-fatal — the button still works if this call fails
+    }
+  };
+
+  const handleLmsSync = async () => {
+    if (lmsSyncing) return;
+    setLmsSyncing(true);
+    const toastId = toast.loading('Syncing schools from LMS…');
+    try {
+      const res = await axios.post(`${API}/lms/import-schools`, {}, { headers: getAuthHeaders() });
+      const { created = 0, linked = 0, total_lms_schools = 0 } = res.data || {};
+      toast.success(
+        `LMS sync complete · ${created} new · ${linked} linked · ${total_lms_schools} total`,
+        { id: toastId }
+      );
+      fetchInquiries();
+      fetchLmsSyncStatus();
+    } catch (err) {
+      const msg = err?.response?.data?.detail || 'LMS sync failed. Check API key or try again.';
+      toast.error(msg, { id: toastId });
+    } finally {
+      setLmsSyncing(false);
+    }
+  };
+
   // Fetch onboarding data for editing
   const handleEditOnboarding = async (school) => {
     // First check if school has onboarding_data directly (for renewed/converted schools)
@@ -4934,6 +4969,22 @@ ${FOOTER}</div></body></html>`
                   <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">Bulk</span> Import
                 </Button>
               )}
+              <Button
+                onClick={handleLmsSync}
+                disabled={lmsSyncing}
+                variant="outline"
+                className="flex items-center gap-2 flex-1 sm:flex-none justify-center border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
+                data-testid="lms-sync-btn"
+                title={
+                  lmsSyncStatus?.last_sync_at
+                    ? `Last synced ${new Date(lmsSyncStatus.last_sync_at).toLocaleString()} · daily 6 PM IST`
+                    : 'Sync schools from LMS · runs daily at 6 PM IST'
+                }
+              >
+                <GraduationCap className={`w-4 h-4 ${lmsSyncing ? 'animate-pulse' : ''}`} />
+                <span className="hidden sm:inline">{lmsSyncing ? 'Syncing…' : 'Sync LMS'}</span>
+                <span className="sm:hidden">{lmsSyncing ? '…' : 'LMS'}</span>
+              </Button>
               <Button
                 variant="outline"
                 onClick={exportSchoolsToCSV}
