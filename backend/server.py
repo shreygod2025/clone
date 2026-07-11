@@ -4068,7 +4068,7 @@ from routes.inapp_notifications import router as inapp_notifications_router
 from routes.scheduled_tasks import router as scheduled_tasks_router
 from routes.success_stories import router as success_stories_router
 from routes.salaries import router as salaries_router
-from routes.lms_api import router as lms_router, run_lms_sync_scheduled
+from routes.lms_api import router as lms_router, run_lms_sync_scheduled, run_lms_feedback_sync_scheduled
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4425,6 +4425,19 @@ async def startup_db_client():
         replace_existing=True,
     )
     print("[STARTUP] LMS daily sync cron scheduled — fires daily at 6:00 PM IST (12:30 UTC)")
+
+    # ── LMS Feedback Sync ─────────────────────────────────────────────────
+    # Runs 5 minutes after the school sync (6:05 PM IST) so freshly synced
+    # schools already exist before we mirror LMS feedback tickets into the
+    # Support Center under the `lms` category.
+    scheduler.add_job(
+        run_lms_feedback_sync_scheduled,
+        trigger=CronTrigger(hour=12, minute=35, timezone="UTC"),  # 6:05 PM IST
+        id="lms_feedback_sync_job",
+        name="LMS Feedback Sync — Mirror bugs/feedback into Support Center",
+        replace_existing=True,
+    )
+    print("[STARTUP] LMS feedback sync cron scheduled — fires daily at 6:05 PM IST (12:35 UTC)")
 
     # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
     # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)

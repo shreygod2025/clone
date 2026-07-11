@@ -460,3 +460,168 @@ async def public_lms_report(
     if not school:
         raise HTTPException(status_code=404, detail="Share link not found or revoked")
     return await _build_school_lms_report(school, month, class_id)
+
+
+
+# ── LMS user lookup (credentials) ────────────────────────────────────────────
+@router.get("/lms/schools-with-users")
+async def list_lms_linked_schools(user: dict = Depends(get_current_user)):
+    """Return every CRM school that's linked to an LMS school. Feeds the
+    credential-lookup school picker in Admin Support Center."""
+    rows = await db.school_inquiries.find(
+        {"lms_school_id": {"$exists": True, "$ne": None, "$ne": ""}},
+        {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},
+    ).sort("school_name", 1).to_list(length=1000)
+    return {"count": len(rows), "schools": rows}
+
+
+@router.get("/lms/schools/{school_id}/users")
+async def get_lms_school_users(
+    school_id: str,
+    q: Optional[str] = Query(None, description="Case-insensitive filter on username / name"),
+    role: Optional[str] = Query(None, description="Filter by role: school | student | teacher"),
+    user: dict = Depends(get_current_user),
+):
+    """Proxy to the LMS `/external/schools/{lms_id}/users` endpoint, which
+    returns every LMS user (school admin, students, teachers) — including
+    the plain-text password. Used by the "View LMS Credentials" action in
+    support tickets so the admin can quickly read back a user's login for
+    forgot-password / forgot-username tickets.
+
+    Password *changes* are not exposed by the LMS API; admins must reset via
+    the LMS admin console. The frontend surfaces a link accordingly.
+    """
+    school = await db.school_inquiries.find_one(
+        {"id": school_id},
+        {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},
+    )
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found in CRM")
+    lms_id = school.get("lms_school_id")
+    if not lms_id:
+        raise HTTPException(status_code=400, detail="This school is not linked to the LMS")
+
+    data = await _lms_get(f"/external/schools/{lms_id}/users")
+    users = data.get("users") or []
+    if role:
+        users = [u for u in users if (u.get("role") or "").lower() == role.lower()]
+    if q:
+        needle = q.strip().lower()
+        users = [
+            u for u in users
+            if needle in (u.get("username") or "").lower()
+            or needle in (u.get("name") or "").lower()
+        ]
+    return {
+        "school_id": school_id,
+        "school_name": school.get("school_name"),
+        "lms_school_id": lms_id,
+        "count": len(users),
+        "users": users,
+    }
+
+
+# ── LMS feedback → Support tickets sync ─────────────────────────────────────
+def _feedback_to_related(fb_type: str) -> str:
+    """Map LMS feedback_type → OLL support sub-category slug."""
+    t = (fb_type or "").strip().lower()
+    if t in ("bug", "issue", "error"):
+        return "lms_bug"
+    if t in ("change_password", "password", "credentials"):
+        return "forgot_password"
+    return "other"
+
+
+async def _sync_lms_feedback() -> dict:
+    """Fetch the latest LMS feedback items and mirror any new ones into
+    `support_queries` as tickets under category `lms`. Dedupes on
+    `lms_feedback_id`. Runs from both the manual button and the daily cron."""
+    import uuid
+    from routes.support import get_next_ticket_number
+
+    data = await _lms_get("/external/feedback")
+    items = data.get("items") or []
+    now = datetime.now(timezone.utc).isoformat()
+    created = 0
+    skipped = 0
+
+    for fb in items:
+        fid = fb.get("id")
+        if not fid:
+            continue
+        exists = await db.support_queries.find_one({"lms_feedback_id": fid}, {"_id": 0, "id": 1})
+        if exists:
+            skipped += 1
+            continue
+
+        related_to = _feedback_to_related(fb.get("feedback_type"))
+        priority = "high" if related_to == "lms_bug" else "normal"
+        subject_bits = [fb.get("feedback_type") or "feedback", fb.get("username") or fb.get("user_name") or ""]
+        subject_summary = " · ".join([s for s in subject_bits if s]).strip(" ·")
+
+        doc = {
+            "id": str(uuid.uuid4()),
+            "name": fb.get("user_name") or fb.get("username") or "LMS User",
+            "phone": fb.get("contact_phone") or "",
+            "email": fb.get("contact_email") or "",
+            "query_type": "lms",
+            "related_to": related_to,
+            "inquiry_type": (fb.get("user_role") or "student").lower(),
+            "message": fb.get("message") or "",
+            "query_details": fb.get("message") or "",
+            "priority": priority,
+            "status": "open",
+            "source": "lms_feedback",
+            "subject": subject_summary or None,
+            "attachments": (
+                [{"name": "LMS screenshot", "url": fb.get("screenshot_url"), "type": "image/*"}]
+                if fb.get("screenshot_url") else []
+            ),
+            # LMS-specific metadata (used for later re-sync / UI enrichment)
+            "lms_feedback_id": fid,
+            "lms_school_id": fb.get("school_id"),
+            "lms_school_name": fb.get("school_name"),
+            "lms_username": fb.get("username"),
+            "lms_user_role": fb.get("user_role"),
+            "lms_feedback_type": fb.get("feedback_type"),
+            "created_by": "system",
+            "created_by_name": "LMS Feedback Sync",
+            "viewers": [],
+            "created_at": fb.get("created_at") or now,
+            "updated_at": now,
+            "comments": [],
+            "assigned_to": None,
+            "ticket_number": await get_next_ticket_number(),
+        }
+        await db.support_queries.insert_one(doc)
+        created += 1
+
+    await db.system_state.update_one(
+        {"_id": "lms_feedback_sync"},
+        {"$set": {"last_sync_at": now, "last_created": created, "last_total": len(items)}},
+        upsert=True,
+    )
+    return {"created": created, "skipped": skipped, "total": len(items), "synced_at": now}
+
+
+async def run_lms_feedback_sync_scheduled():
+    try:
+        result = await _sync_lms_feedback()
+        logger.info("[LMS-FEEDBACK-SYNC] created=%s skipped=%s total=%s",
+                    result["created"], result["skipped"], result["total"])
+    except Exception as e:
+        logger.exception("[LMS-FEEDBACK-SYNC] failed: %s", e)
+
+
+@router.post("/lms/sync-feedback")
+async def sync_lms_feedback(user: dict = Depends(get_current_user)):
+    """Manual trigger — same logic as the daily 6 PM IST cron. Admin only."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return await _sync_lms_feedback()
+
+
+@router.get("/lms/feedback-sync-status")
+async def lms_feedback_sync_status(user: dict = Depends(get_current_user)):
+    doc = await db.system_state.find_one({"_id": "lms_feedback_sync"}, {"_id": 0})
+    return doc or {"last_sync_at": None}
