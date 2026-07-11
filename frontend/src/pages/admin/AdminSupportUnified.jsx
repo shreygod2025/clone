@@ -259,8 +259,6 @@ const AdminSupportUnified = () => {
   const [showGmailReply, setShowGmailReply] = useState(null);
   // LMS credentials lookup modal — { ticket, preselectedSchoolLmsId, preselectedUsername }
   const [showLmsCredentialsModal, setShowLmsCredentialsModal] = useState(null);
-  // LMS feedback sync (header button)
-  const [lmsFeedbackSyncing, setLmsFeedbackSyncing] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -1344,37 +1342,10 @@ const AdminSupportUnified = () => {
           </span>
         </button>
         
-        {/* Sync LMS Feedback Button — mirrors LMS bugs/feedback as tickets */}
-        <Button
-          onClick={async () => {
-            if (lmsFeedbackSyncing) return;
-            setLmsFeedbackSyncing(true);
-            const toastId = toast.loading('Syncing LMS feedback…');
-            try {
-              const res = await axios.post(`${API}/lms/sync-feedback`, {}, { headers: getAuthHeaders() });
-              const { created = 0, skipped = 0, total = 0 } = res.data || {};
-              toast.success(`LMS feedback synced · ${created} new · ${skipped} existing · ${total} total`, { id: toastId });
-              fetchAllQueries();
-            } catch (err) {
-              toast.error(err?.response?.data?.detail || 'LMS feedback sync failed', { id: toastId });
-            } finally {
-              setLmsFeedbackSyncing(false);
-            }
-          }}
-          disabled={lmsFeedbackSyncing}
-          variant="outline"
-          className="ml-auto flex items-center gap-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
-          data-testid="lms-feedback-sync-btn"
-          title="Pull latest feedback/bugs from LMS as tickets · daily 6:05 PM IST"
-        >
-          <GraduationCap className={`w-4 h-4 ${lmsFeedbackSyncing ? 'animate-pulse' : ''}`} />
-          {lmsFeedbackSyncing ? 'Syncing…' : 'Sync LMS Feedback'}
-        </Button>
-
         {/* Create Ticket Button */}
         <Button
           onClick={() => setShowCreateModal(true)}
-          className="bg-[#D63031] hover:bg-red-600"
+          className="ml-auto bg-[#D63031] hover:bg-red-600"
           data-testid="create-ticket-btn"
         >
           <Plus className="w-4 h-4 mr-2" />
