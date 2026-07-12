@@ -5,10 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-// Both assets are served from the app's own /public folder so they load on
-// any device (mobile included) and never break if the upstream CDN rotates.
+// Served from the app's own /public folder so it loads reliably on any device.
 const HERO_IMG = '/images/discover-hero.png';
-const OLL_LOGO = '/oll_logo_invoice.png';
 
 const PLANS = [
   {
@@ -76,18 +74,6 @@ const DiscoverPayment = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white" data-testid="discover-page">
-      {/* Top brand strip */}
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center">
-          <img
-            src={OLL_LOGO}
-            alt="OLL"
-            className="h-8 md:h-10 w-auto"
-            data-testid="discover-brand-logo"
-          />
-        </div>
-      </div>
-
       {/* Hero image */}
       <div className="max-w-5xl mx-auto px-4 pt-6">
         <img
