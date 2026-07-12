@@ -3250,26 +3250,63 @@ ${FOOTER}</div></body></html>`
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleUpdateOnboardingStep = async (schoolId, stepKey, data) => {
+  // Debounce buffer for onboarding-step field edits.
+  // Every keystroke used to PATCH + refetch inquiries + toast → made the whole
+  // modal feel like it was reloading. Now we update the visible modal state
+  // instantly and only hit the API 700 ms after the user stops typing.
+  const stepDebounceTimersRef = useRef({});
+
+  const handleUpdateOnboardingStep = async (schoolId, stepKey, patch, { silent = false } = {}) => {
     try {
-      await axios.patch(`${API}/schools/${schoolId}/onboarding-step/${stepKey}`, data, {
+      await axios.patch(`${API}/schools/${schoolId}/onboarding-step/${stepKey}`, patch, {
         headers: getAuthHeaders()
       });
-      toast.success('Step updated');
-      fetchInquiries();
-      // Refresh modal data
-      const response = await axios.get(`${API}/schools/${schoolId}/onboarding`, {
-        headers: getAuthHeaders()
-      });
-      if (showOnboardingWorkflowModal) {
-        setShowOnboardingWorkflowModal({
-          ...showOnboardingWorkflowModal,
-          onboarding_workflow: response.data.workflow
+      if (!silent) {
+        toast.success('Step updated');
+        // Only refresh the full inquiries list on explicit / non-typing updates
+        // (button clicks, checkbox toggles). Debounced text edits are silent
+        // because the modal already holds the optimistic value.
+        fetchInquiries();
+        const response = await axios.get(`${API}/schools/${schoolId}/onboarding`, {
+          headers: getAuthHeaders()
         });
+        setShowOnboardingWorkflowModal(prev => (prev ? {
+          ...prev,
+          onboarding_workflow: response.data.workflow
+        } : prev));
       }
     } catch (error) {
-      toast.error('Failed to update step');
+      if (!silent) toast.error('Failed to update step');
     }
+  };
+
+  // Merge a single field into the modal's step data optimistically, then
+  // debounce a silent PATCH so we don't hammer the server on every keystroke.
+  const handleStepFieldChange = (schoolId, stepKey, field, value) => {
+    // 1. Optimistic UI — update the modal's local snapshot immediately so
+    //    the input keeps focus and shows the latest typed character.
+    setShowOnboardingWorkflowModal(prev => {
+      if (!prev?.onboarding_workflow?.steps?.[stepKey]) return prev;
+      const nextSteps = { ...prev.onboarding_workflow.steps };
+      nextSteps[stepKey] = {
+        ...nextSteps[stepKey],
+        data: { ...(nextSteps[stepKey].data || {}), [field]: value },
+      };
+      return {
+        ...prev,
+        onboarding_workflow: { ...prev.onboarding_workflow, steps: nextSteps },
+      };
+    });
+
+    // 2. Debounced silent PATCH — collapses rapid keystrokes into a single
+    //    server round-trip 700 ms after the user stops typing.
+    const timerKey = `${schoolId}::${stepKey}::${field}`;
+    if (stepDebounceTimersRef.current[timerKey]) {
+      clearTimeout(stepDebounceTimersRef.current[timerKey]);
+    }
+    stepDebounceTimersRef.current[timerKey] = setTimeout(() => {
+      handleUpdateOnboardingStep(schoolId, stepKey, { data: { [field]: value } }, { silent: true });
+    }, 700);
   };
 
   const handleRegenerateWorkflow = async (schoolId) => {
@@ -11778,9 +11815,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="date"
                                 value={step.data?.dispatch_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { dispatch_date: e.target.value } }
+                                  'dispatch_date', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -11790,9 +11827,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="date"
                                 value={step.data?.delivery_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { delivery_date: e.target.value } }
+                                  'delivery_date', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -11803,9 +11840,9 @@ ${FOOTER}</div></body></html>`
                             <div className="flex gap-2">
                               <Input
                                 value={step.data?.tracking_link || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { tracking_link: e.target.value } }
+                                  'tracking_link', e.target.value,
                                 )}
                                 placeholder="Enter tracking URL"
                                 className="h-9 flex-1"
@@ -11860,9 +11897,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="date"
                                 value={step.data?.training_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { training_date: e.target.value } }
+                                  'training_date', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -11872,9 +11909,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="number"
                                 value={step.data?.teachers_count || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { teachers_count: e.target.value } }
+                                  'teachers_count', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -11913,9 +11950,9 @@ ${FOOTER}</div></body></html>`
                           <p>Add holidays, competitions, and exhibition dates for the school year.</p>
                           <Textarea
                             value={step.data?.notes || ''}
-                            onChange={(e) => handleUpdateOnboardingStep(
+                            onChange={(e) => handleStepFieldChange(
                               showOnboardingWorkflowModal.id, key,
-                              { data: { notes: e.target.value } }
+                              'notes', e.target.value,
                             )}
                             placeholder="Enter calendar notes, dates, events..."
                             className="mt-2 min-h-[60px]"
@@ -12134,9 +12171,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="date"
                                 value={step.data?.mou_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { mou_date: e.target.value } }
+                                  'mou_date', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -12145,9 +12182,9 @@ ${FOOTER}</div></body></html>`
                               <label className="text-xs text-slate-500">Document Link</label>
                               <Input
                                 value={step.data?.document_link || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { document_link: e.target.value } }
+                                  'document_link', e.target.value,
                                 )}
                                 placeholder="MOU document URL"
                                 className="h-9"
@@ -12192,9 +12229,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="date"
                                 value={step.data?.confirmation_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { confirmation_date: e.target.value } }
+                                  'confirmation_date', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -12203,9 +12240,9 @@ ${FOOTER}</div></body></html>`
                               <label className="text-xs text-slate-500">Confirmed By</label>
                               <Input
                                 value={step.data?.confirmed_by || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { confirmed_by: e.target.value } }
+                                  'confirmed_by', e.target.value,
                                 )}
                                 placeholder="Name of confirming person"
                                 className="h-9"
@@ -12216,9 +12253,9 @@ ${FOOTER}</div></body></html>`
                             <label className="text-xs text-slate-500">Feedback</label>
                             <Textarea
                               value={step.data?.feedback || ''}
-                              onChange={(e) => handleUpdateOnboardingStep(
+                              onChange={(e) => handleStepFieldChange(
                                 showOnboardingWorkflowModal.id, key,
-                                { data: { feedback: e.target.value } }
+                                'feedback', e.target.value,
                               )}
                               placeholder="School feedback or notes..."
                               className="min-h-[60px]"
@@ -12236,9 +12273,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="date"
                                 value={step.data?.distribution_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { distribution_date: e.target.value } }
+                                  'distribution_date', e.target.value,
                                 )}
                                 className="h-9"
                               />
@@ -12248,9 +12285,9 @@ ${FOOTER}</div></body></html>`
                               <Input
                                 type="number"
                                 value={step.data?.students_count || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
+                                onChange={(e) => handleStepFieldChange(
                                   showOnboardingWorkflowModal.id, key,
-                                  { data: { students_count: e.target.value } }
+                                  'students_count', e.target.value,
                                 )}
                                 className="h-9"
                               />
