@@ -32,8 +32,6 @@ const DiscoverPayment = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     student_name: '',
-    parent_email: '',
-    parent_name: '',
     parent_phone: '',
     plan: 'annual',
   });
@@ -43,7 +41,8 @@ const DiscoverPayment = () => {
 
   const validate = () => {
     if (form.student_name.trim().length < 2) return 'Please enter the student\u2019s name';
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.parent_email)) return 'Please enter a valid parent email';
+    const digits = (form.parent_phone || '').replace(/\D/g, '');
+    if (digits.length < 10) return 'Please enter a valid 10-digit parent phone number';
     if (!['monthly', 'annual'].includes(form.plan)) return 'Please choose a plan';
     return null;
   };
@@ -105,34 +104,13 @@ const DiscoverPayment = () => {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-700">Parent Email *</label>
-              <input
-                type="email"
-                value={form.parent_email}
-                onChange={(e) => update('parent_email', e.target.value)}
-                placeholder="parent@example.com"
-                className="mt-1 w-full h-11 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                data-testid="discover-input-parent-email"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">Parent Name (optional)</label>
-              <input
-                type="text"
-                value={form.parent_name}
-                onChange={(e) => update('parent_name', e.target.value)}
-                placeholder="Full name"
-                className="mt-1 w-full h-11 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                data-testid="discover-input-parent-name"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">Parent Phone (optional)</label>
+              <label className="text-xs font-medium text-slate-700">Parent Phone *</label>
               <input
                 type="tel"
                 value={form.parent_phone}
-                onChange={(e) => update('parent_phone', e.target.value)}
+                onChange={(e) => update('parent_phone', e.target.value.replace(/[^\d+\s-]/g, ''))}
                 placeholder="10-digit mobile"
+                inputMode="numeric"
                 className="mt-1 w-full h-11 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 data-testid="discover-input-parent-phone"
               />
@@ -204,7 +182,7 @@ const DiscoverPayment = () => {
         </div>
 
         <div className="text-center text-xs text-slate-400">
-          Questions? Email <a href="mailto:hello@oll.co" className="text-red-600 hover:underline">hello@oll.co</a>
+          Questions? Email <a href="mailto:info@oll.co" className="text-red-600 hover:underline">info@oll.co</a>
         </div>
       </div>
     </div>

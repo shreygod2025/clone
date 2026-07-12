@@ -59,9 +59,9 @@ def _cf_client():
 
 class DiscoverBooking(BaseModel):
     student_name: str = Field(..., min_length=2, max_length=120)
-    parent_email: EmailStr
+    parent_phone: str = Field(..., min_length=10, max_length=20)
+    parent_email: Optional[EmailStr] = None
     parent_name: Optional[str] = Field(default="", max_length=120)
-    parent_phone: Optional[str] = Field(default="", max_length=20)
     plan: str = Field(..., pattern=r"^(monthly|annual)$")
 
 
@@ -72,18 +72,30 @@ class DiscoverPaymentInit(BaseModel):
 
 @router.post("/discover/create-booking")
 async def create_booking(data: DiscoverBooking):
+    # Phone is now the primary identifier. Basic 10-digit sanity check.
+    digits = re.sub(r"\D", "", data.parent_phone or "")
+    if len(digits) < 10:
+        raise HTTPException(status_code=400, detail="Please enter a valid 10-digit phone number")
+
     plan = PLANS[data.plan]
     booking_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+
+    # Email is optional now — synthesise a placeholder Cashfree can accept.
+    email = (data.parent_email or "").strip().lower() if data.parent_email else ""
+    if not email:
+        last10 = digits[-10:]
+        email = f"discover+{last10}@oll.co"
+
     doc = {
         "id": booking_id,
         "name": data.student_name.strip(),
         "student_name": data.student_name.strip(),
-        "email": data.parent_email.lower().strip(),
-        "parent_email": data.parent_email.lower().strip(),
+        "email": email,
+        "parent_email": email,
         "parent_name": (data.parent_name or "").strip(),
-        "phone": (data.parent_phone or "").strip(),
-        "parent_phone": (data.parent_phone or "").strip(),
+        "phone": data.parent_phone.strip(),
+        "parent_phone": data.parent_phone.strip(),
         # Fields required by the StudentInquiry response model
         "learner_type": "individual",
         "age_group": "8-14",
