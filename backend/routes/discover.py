@@ -169,19 +169,22 @@ async def initiate_payment(data: DiscoverPaymentInit):
         if not api_response.data:
             raise HTTPException(status_code=500, detail="Payment gateway error")
         payment_session_id = api_response.data.payment_session_id
-        payment_link = f"https://payments.cashfree.com/forms/{payment_session_id}"
 
         await db.student_inquiries.update_one(
             {"id": booking["id"]},
             {"$set": {
                 "cashfree_order_id": order_id,
                 "cashfree_payment_session_id": payment_session_id,
-                "payment_link": payment_link,
                 "payment_status": "initiated",
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        return {"order_id": order_id, "payment_link": payment_link, "payment_session_id": payment_session_id}
+        return {
+            "success": True,
+            "order_id": order_id,
+            "payment_session_id": payment_session_id,
+            "environment": "production" if CASHFREE_ENVIRONMENT == "PRODUCTION" else "sandbox",
+        }
     except HTTPException:
         raise
     except Exception as e:

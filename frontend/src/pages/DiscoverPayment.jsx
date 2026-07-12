@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -29,13 +28,25 @@ const PLANS = [
 ];
 
 const DiscoverPayment = () => {
-  const navigate = useNavigate();
   const [form, setForm] = useState({
     student_name: '',
     parent_phone: '',
     plan: 'annual',
   });
   const [busy, setBusy] = useState(false);
+  const [cashfreeReady, setCashfreeReady] = useState(false);
+
+  // Load Cashfree v3 JS SDK once. We use the SDK's `checkout()` method with
+  // paymentSessionId — the legacy /forms/<session> URL returns "Invalid form".
+  useEffect(() => {
+    if (window.Cashfree) { setCashfreeReady(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+    script.async = true;
+    script.onload = () => setCashfreeReady(true);
+    script.onerror = () => toast.error('Payment SDK failed to load — please refresh');
+    document.head.appendChild(script);
+  }, []);
 
   const update = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -50,6 +61,10 @@ const DiscoverPayment = () => {
   const handlePay = async () => {
     const err = validate();
     if (err) { toast.error(err); return; }
+    if (!cashfreeReady || !window.Cashfree) {
+      toast.error('Payment SDK is still loading — try again in a second');
+      return;
+    }
     setBusy(true);
     try {
       const create = await axios.post(`${API}/discover/create-booking`, form);
@@ -58,10 +73,27 @@ const DiscoverPayment = () => {
         booking_id: bookingId,
         frontend_url: window.location.origin,
       });
-      if (init.data?.payment_link) {
-        window.location.href = init.data.payment_link;
-      } else {
-        toast.error('Could not open payment gateway. Please try again.');
+      const { payment_session_id, environment, order_id } = init.data || {};
+      if (!payment_session_id) {
+        toast.error('Could not initialise the payment session.');
+        return;
+      }
+
+      const cashfree = window.Cashfree({
+        mode: environment === 'production' ? 'production' : 'sandbox',
+      });
+      const result = await cashfree.checkout({
+        paymentSessionId: payment_session_id,
+        redirectTarget: '_self',
+      });
+
+      if (result?.error) {
+        toast.error(result.error.message || 'Payment was not completed. Please try again.');
+      } else if (result?.redirect) {
+        // Cashfree is redirecting to its checkout / back to return URL
+      } else if (order_id) {
+        // Fallback: navigate to our own success page which polls verify
+        window.location.href = `${window.location.origin}/discover/success?order_id=${order_id}&booking_id=${bookingId}`;
       }
     } catch (e) {
       const msg = e?.response?.data?.detail || 'Something went wrong. Please try again.';
