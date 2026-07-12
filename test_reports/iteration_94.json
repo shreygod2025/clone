@@ -1,0 +1,31 @@
+{
+  "summary": "Iter94 — verified BUG FIX #1 (onboarding modal debounced typing) via Playwright + 4 SEC fixes via 18 pytest cases. All 18 backend security tests PASSED (LMS credentials admin-gate, custom-invoices admin-gate, portal-token 401/403/200 on /user/bookings, reschedule, cancel, /school-student/profile GET+PATCH, /school-student/receipt, public LMS report regression). Frontend typing bug is FIXED — typed 'abc123' burst into MOU Document Link inside the Onboarding Workflow modal for a Converted school (Gokuldham High School): input kept focus, all 6 chars preserved, ZERO 'Step updated' toasts during typing, and only 1 PATCH /schools/{id}/onboarding-step/mou_signing fired for the entire burst (vs pre-fix expected 6 PATCH + 6 toasts + 6 refetches).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter94_security_and_portal_token.py",
+    "/app/test_reports/pytest/iter94_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth_utils._normalize_phone strips '+', spaces, dashes, and leading 91/0 — good coverage. Consider also handling '+91-XXXXX-XXXXX' hyphenated formats explicitly if inbound sources vary.",
+    "routes/users.py verify_otp returns portal_token in ALL branches (summer_camp / school_student / default) — good, no exception path leaks user data without token.",
+    "handleStepFieldChange stores debounce timers per (schoolId, stepKey, field) — correct, prevents debounce clobbering across different fields.",
+    "handleUpdateOnboardingStep(silent) skips fetchInquiries when silent — good, but consider a final non-silent refetch after modal close to sync progress-bar counters on the cards. (Not blocking — cards re-fetch on next interaction.)",
+    "lms_api.py get_lms_school_users uses inline `if user.get('role') != 'admin'` — consistent with custom_invoices._require_admin. Consider extracting a shared `require_admin` dependency to DRY the check across future routes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter94_security_and_portal_token.py (new pytest suite, 18 cases)"
+  ],
+  "success_rate": { "backend": "100% (18/18)", "frontend": "100% — typing bug fix verified via burst + rapid keyboard typing" },
+  "test_credentials": "admin@oll.co / Dagaji03@ ; team_member john@oll.co / test1234 (used for 403 checks). Portal-token tests inject OTP row directly into mongo.otp_tokens (bypasses AiSensy WhatsApp).",
+  "seed_data_creation": "Inserted 3 short-lived OTP entries in mongo.otp_tokens for phones 9998887771, 9998887772, 9998887779 (used by verify-otp) — they auto-expire in 10 min. No lasting seed data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reuse /app/backend/tests/test_iter94_security_and_portal_token.py for portal-token regression. It exercises 401/403/200 on all portal endpoints and asserts the /public/lms-report path still returns 404 (not 401/403). For onboarding-modal typing regressions, open a Converted school's 'View →' onboarding button and burst-type into 'MOU document URL' — expect ≤1 PATCH per debounce window and no per-keystroke 'Step updated' toast. Playwright's synthetic typing is slow (each type() call ~1s due to React rerender overhead) so use page.keyboard.type(text, delay=0) or JS setNativeValue burst as done in this iteration.",
+  "rca of the issue": "N/A — both the debouncing bug fix and the four security enforcement points are working as designed."
+}

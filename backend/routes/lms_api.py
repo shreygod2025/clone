@@ -490,7 +490,16 @@ async def get_lms_school_users(
 
     Password *changes* are not exposed by the LMS API; admins must reset via
     the LMS admin console. The frontend surfaces a link accordingly.
+
+    ADMIN ONLY — plaintext credentials must not be readable by lower-privilege
+    staff roles (security review SEC-002).
     """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    logger.info(
+        "[LMS-CRED-LOOKUP] user=%s school=%s role_filter=%s q=%s",
+        user.get("email") or user.get("user_id"), school_id, role, q,
+    )
     school = await db.school_inquiries.find_one(
         {"id": school_id},
         {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},

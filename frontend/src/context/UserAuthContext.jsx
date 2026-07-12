@@ -40,8 +40,12 @@ export const UserAuthProvider = ({ children }) => {
         user_type: userType, // Ensure user_type is always set
         phone: phone
       };
+      // Store the phone-scoped portal token so downstream `/user/*` and
+      // `/school-student/*` calls can prove ownership (SEC-001 fix).
+      const portalToken = response.data?.portal_token;
       setUser(userData);
       localStorage.setItem('oll_user', JSON.stringify(userData));
+      if (portalToken) localStorage.setItem('oll_portal_token', portalToken);
       return { success: true, user: userData };
     } catch (error) {
       return { success: false, message: error.response?.data?.detail || 'Invalid OTP' };
@@ -79,6 +83,14 @@ export const UserAuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('oll_user');
     localStorage.removeItem('oll_token');
+    localStorage.removeItem('oll_portal_token');
+  };
+
+  // Attach the portal token to a request config as X-Portal-Token so the
+  // backend can verify the caller owns the phone in the URL.
+  const withPortalAuth = (extraHeaders = {}) => {
+    const t = localStorage.getItem('oll_portal_token');
+    return { headers: { ...(t ? { 'X-Portal-Token': t } : {}), ...extraHeaders } };
   };
 
   const updateUserBooking = (bookingData) => {
@@ -103,7 +115,8 @@ export const UserAuthProvider = ({ children }) => {
       verifyOTP,
       educatorLogin,
       logout,
-      updateUserBooking
+      updateUserBooking,
+      withPortalAuth,
     }}>
       {children}
     </UserAuthContext.Provider>

@@ -21,8 +21,13 @@ const SchoolStudentDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   
-  // Get phone from session storage (set during OTP login)
+  // Get phone + portal token from session/local storage (set during OTP login).
+  // The portal token proves ownership of this phone to the backend (SEC-001).
   const phone = sessionStorage.getItem('school_student_phone');
+  const portalAuth = () => {
+    const t = localStorage.getItem('oll_portal_token');
+    return t ? { headers: { 'X-Portal-Token': t } } : {};
+  };
   
   useEffect(() => {
     if (!phone) {
@@ -36,7 +41,7 @@ const SchoolStudentDashboard = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/school-student/profile/${phone}`);
+      const res = await axios.get(`${API}/school-student/profile/${phone}`, portalAuth());
       setProfile(res.data);
       setPayments(res.data.payments || []);
       setEditData({
@@ -66,7 +71,7 @@ const SchoolStudentDashboard = () => {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      await axios.patch(`${API}/school-student/profile/${phone}`, editData);
+      await axios.patch(`${API}/school-student/profile/${phone}`, editData, portalAuth());
       toast.success('Profile updated successfully!');
       setEditMode(false);
       fetchProfile();

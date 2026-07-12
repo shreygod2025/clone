@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _require_admin(user: dict) -> None:
+    """Custom invoices are financial records — restrict CRUD to admins only
+    (security review SEC-003)."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+
 async def _next_custom_invoice_number() -> str:
     """Atomic counter → returns sequential 'OLL{YEAR}/CUST-NNNN'."""
     now = datetime.now(timezone.utc)
@@ -54,6 +61,7 @@ async def create_custom_invoice(
         pdf_base64 (str — the PDF the frontend just generated)
         notes (str, optional)
     """
+    _require_admin(user)
     customer_name = (payload.get("customer_name") or "").strip()
     if not customer_name:
         raise HTTPException(status_code=400, detail="customer_name is required")
@@ -118,6 +126,7 @@ async def list_custom_invoices(
     user: dict = Depends(get_current_user),
 ):
     """List recent custom invoices (without the inline PDF base64)."""
+    _require_admin(user)
     rows = await db.custom_invoices.find(
         {},
         {"_id": 0, "pdf_base64": 0},
@@ -131,6 +140,7 @@ async def download_custom_invoice_pdf(
     user: dict = Depends(get_current_user),
 ):
     """Stream back the saved PDF for re-download."""
+    _require_admin(user)
     doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Custom invoice not found")
@@ -158,6 +168,7 @@ async def update_custom_invoice_status(
     """Update just the `payment_status` + `paid_amount` for a custom invoice.
     Used by the accounts team to mark a pending invoice as partial / paid
     without having to regenerate the PDF."""
+    _require_admin(user)
     doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0, "total_amount": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Custom invoice not found")
@@ -197,6 +208,7 @@ async def delete_custom_invoice(
     invoice_id: str,
     user: dict = Depends(get_current_user),
 ):
+    _require_admin(user)
     res = await db.custom_invoices.delete_one({"id": invoice_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Custom invoice not found")

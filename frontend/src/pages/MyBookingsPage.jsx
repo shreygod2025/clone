@@ -27,7 +27,7 @@ const COURSES_DATA = [
 
 const MyBookingsPage = () => {
   const navigate = useNavigate();
-  const { user, isLoggedIn, logout, loading: authLoading } = useUserAuth();
+  const { user, isLoggedIn, logout, loading: authLoading, withPortalAuth } = useUserAuth();
   const [bookings, setBookings] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [studentInfo, setStudentInfo] = useState(null);
@@ -118,7 +118,7 @@ const MyBookingsPage = () => {
   const fetchSchoolReceipts = async () => {
     if (!user?.phone) return;
     try {
-      const response = await axios.get(`${API}/school-student/profile/${user.phone}`);
+      const response = await axios.get(`${API}/school-student/profile/${user.phone}`, withPortalAuth());
       setSchoolReceipts(response.data);
       // Auto-switch to school receipts tab if they have completed payments
       const completedPayments = response.data?.payments?.filter(p => ['PAID', 'REFUNDED'].includes(p.status));
@@ -156,7 +156,7 @@ const MyBookingsPage = () => {
     }
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/user/bookings/${user.phone}?user_type=${user.user_type || 'student'}`);
+      const response = await axios.get(`${API}/user/bookings/${user.phone}?user_type=${user.user_type || 'student'}`, withPortalAuth());
       // Sort bookings by date - earliest upcoming first
       const sortedBookings = (response.data || []).sort((a, b) => {
         const dateA = a.demo_date || a.meeting_date || '9999-12-31';
@@ -189,7 +189,7 @@ const MyBookingsPage = () => {
         user_type: user.user_type,
         new_date: format(newDate, 'yyyy-MM-dd'),
         new_time: newTime
-      });
+      }, withPortalAuth());
       toast.success('Booking rescheduled successfully!');
       setShowReschedule(false);
       setSelectedBooking(null);
@@ -214,7 +214,7 @@ const MyBookingsPage = () => {
         booking_id: selectedBooking.id,
         user_type: user.user_type,
         reason: cancelReason
-      });
+      }, withPortalAuth());
       toast.success('Demo cancelled successfully');
       setShowCancelModal(false);
       setSelectedBooking(null);

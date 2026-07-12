@@ -6,7 +6,7 @@ import jwt
 import bcrypt
 import logging
 from datetime import datetime, timezone, timedelta
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from config import JWT_SECRET, ALGORITHM, ACCESS_TOKEN_EXPIRE_HOURS
@@ -81,3 +81,76 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") not in ("admin", "super_admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
+
+
+# ── Portal (parent/student) tokens ─────────────────────────────────────────
+# Portal tokens are short-lived JWTs issued after OTP verification. They are
+# scoped to a single phone number so a parent can only read/edit *their* own
+# child's records, not anyone else's (security review SEC-001 fixed BOLA
+# gap where any phone/booking id was directly accessible without auth).
+
+# Reuse the same HTTPBearer but without auto-error so we can allow both
+# `Authorization: Bearer <token>` and `X-Portal-Token: <token>` headers.
+_portal_bearer = HTTPBearer(auto_error=False)
+
+
+def create_portal_token(phone: str, hours: int = 12) -> str:
+    """Issue a phone-scoped portal token. Only the owner of this phone can
+    call downstream `/user/*` and `/school-student/*` endpoints."""
+    return jwt.encode(
+        {
+            "kind": "portal",
+            "phone": phone,
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(hours=hours),
+        },
+        JWT_SECRET,
+        algorithm=ALGORITHM,
+    )
+
+
+def _normalize_phone(p: str) -> str:
+    """Loose comparison — strip spaces, plus, leading country code so
+    91-formatted, 0-prefixed, and bare 10-digit numbers all match."""
+    if not p:
+        return ""
+    p = str(p).replace("+", "").replace(" ", "").replace("-", "").strip()
+    if p.startswith("91") and len(p) == 12:
+        p = p[2:]
+    if p.startswith("0") and len(p) == 11:
+        p = p[1:]
+    return p
+
+
+async def get_portal_phone(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(_portal_bearer),
+) -> str:
+    """Dependency for `/user/*` and `/school-student/*` portal endpoints.
+    Returns the phone the token is scoped to, or raises 401.
+
+    Accepts either `Authorization: Bearer <portal_token>` or the fallback
+    `X-Portal-Token` header so we can move the frontend at our own pace
+    without breaking the admin token flow that also lives on Authorization.
+    """
+    token = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    else:
+        token = request.headers.get("X-Portal-Token")
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Portal token required — please verify OTP again")
+    payload = decode_token(token)
+    if payload.get("kind") != "portal" or not payload.get("phone"):
+        raise HTTPException(status_code=401, detail="Not a portal token")
+    return payload["phone"]
+
+
+def assert_portal_owns_phone(token_phone: str, url_phone: str) -> None:
+    """Verify the token's phone matches the one in the URL/booking record."""
+    if _normalize_phone(token_phone) != _normalize_phone(url_phone):
+        raise HTTPException(
+            status_code=403,
+            detail="This portal session is not authorized for that phone number",
+        )

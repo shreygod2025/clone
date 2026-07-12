@@ -12,6 +12,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 from .shared import db, get_current_user, hash_password, verify_password, create_access_token
+from auth_utils import (
+    create_portal_token,
+    get_portal_phone,
+    assert_portal_owns_phone,
+    _normalize_phone,
+)
 from database import otp_store_new, otp_verify, otp_send_allowed
 
 router = APIRouter()
@@ -613,6 +619,9 @@ async def verify_otp(data: OTPVerify):
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
 
+    # Issue a phone-scoped portal token so downstream `/user/*` and
+    # `/school-student/*` calls can prove ownership (SEC-001 fix).
+    portal_token = create_portal_token(data.phone)
     # Summer Camp parent — return booking data directly
     if data.user_type == "summer_camp":
         phone_clean = data.phone.replace("+91", "").replace(" ", "").strip()
@@ -628,6 +637,7 @@ async def verify_otp(data: OTPVerify):
             "user_type": "summer_camp",
             "user": booking,
             "is_registered": booking is not None,
+            "portal_token": portal_token,
         }
     
     # Find or create user based on phone and type
@@ -656,7 +666,8 @@ async def verify_otp(data: OTPVerify):
             "division": user_data.get("division") if user_data else None,
             "school_name": user_data.get("school_name") if user_data else None,
             "payments": bookings,
-            "is_registered": user_data is not None
+            "is_registered": user_data is not None,
+            "portal_token": portal_token,
         }
     
     return {
@@ -665,11 +676,17 @@ async def verify_otp(data: OTPVerify):
         "name": user_data.get("name") or user_data.get("contact_name") if user_data else None,
         "email": user_data.get("email") if user_data else None,
         "bookings": bookings,
-        "is_registered": user_data is not None
+        "is_registered": user_data is not None,
+        "portal_token": portal_token,
     }
 
 @router.get("/user/bookings/{phone}")
-async def get_user_bookings(phone: str, user_type: str = "student"):
+async def get_user_bookings(
+    phone: str,
+    user_type: str = "student",
+    token_phone: str = Depends(get_portal_phone),
+):
+    assert_portal_owns_phone(token_phone, phone)
     collection_map = {
         "student": "student_inquiries",
         "educator": "educator_applications",
@@ -680,33 +697,39 @@ async def get_user_bookings(phone: str, user_type: str = "student"):
     return bookings
 
 @router.post("/user/reschedule")
-async def reschedule_booking(data: dict):
+async def reschedule_booking(data: dict, token_phone: str = Depends(get_portal_phone)):
     collection_map = {
         "student": "student_inquiries",
         "educator": "educator_applications",
         "school": "school_inquiries"
     }
     collection = collection_map.get(data.get("user_type", "student"), "student_inquiries")
-    
+
     booking_id = data.get("booking_id")
     new_date = data.get("new_date")
     new_time = data.get("new_time")
-    
+
     if not booking_id or not new_date or not new_time:
         raise HTTPException(status_code=400, detail="Missing required fields")
-    
+
+    # Ownership check — the token phone must match the booking's phone
+    booking = await db[collection].find_one({"id": booking_id}, {"_id": 0, "phone": 1})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    assert_portal_owns_phone(token_phone, booking.get("phone", ""))
+
     update_data = {
         "demo_date" if data.get("user_type") == "student" else "meeting_date": new_date,
         "demo_time" if data.get("user_type") == "student" else "meeting_time": new_time,
         "status": "rescheduled",
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
-    
+
     await db[collection].update_one({"id": booking_id}, {"$set": update_data})
     return {"message": "Booking rescheduled successfully"}
 
 @router.post("/user/cancel-booking")
-async def cancel_booking(data: dict):
+async def cancel_booking(data: dict, token_phone: str = Depends(get_portal_phone)):
     """Cancel a booking with reason"""
     collection_map = {
         "student": "student_inquiries",
@@ -714,12 +737,18 @@ async def cancel_booking(data: dict):
         "school": "school_inquiries"
     }
     collection = collection_map.get(data.get("user_type", "student"), "student_inquiries")
-    
+
     booking_id = data.get("booking_id")
     reason = data.get("reason", "not specified")
-    
+
     if not booking_id:
         raise HTTPException(status_code=400, detail="Missing booking_id")
+
+    # Ownership check — the token phone must match the booking's phone
+    booking = await db[collection].find_one({"id": booking_id}, {"_id": 0, "phone": 1})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    assert_portal_owns_phone(token_phone, booking.get("phone", ""))
     
     update_data = {
         "status": "cancelled",
@@ -732,8 +761,9 @@ async def cancel_booking(data: dict):
     return {"message": "Booking cancelled successfully"}
 
 @router.get("/school-student/profile/{phone}")
-async def get_school_student_profile(phone: str):
+async def get_school_student_profile(phone: str, token_phone: str = Depends(get_portal_phone)):
     """Get school student profile and payment history"""
+    assert_portal_owns_phone(token_phone, phone)
     # Find all payments for this phone
     payments = await db.school_student_payments.find(
         {"phone": phone}, 
@@ -758,8 +788,9 @@ async def get_school_student_profile(phone: str):
     }
 
 @router.patch("/school-student/profile/{phone}")
-async def update_school_student_profile(phone: str, data: dict):
+async def update_school_student_profile(phone: str, data: dict, token_phone: str = Depends(get_portal_phone)):
     """Update school student profile details"""
+    assert_portal_owns_phone(token_phone, phone)
     allowed_fields = ["student_name", "email", "grade", "division"]
     update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
     
@@ -780,16 +811,19 @@ async def update_school_student_profile(phone: str, data: dict):
     return {"message": "Profile updated successfully", "modified_count": result.modified_count}
 
 @router.get("/school-student/receipt/{payment_id}")
-async def get_school_student_receipt(payment_id: str):
+async def get_school_student_receipt(payment_id: str, token_phone: str = Depends(get_portal_phone)):
     """Get a specific payment receipt"""
     payment = await db.school_student_payments.find_one(
         {"id": payment_id},
         {"_id": 0}
     )
-    
+
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
-    
+
+    # Ownership check — the token phone must match the payment's phone
+    assert_portal_owns_phone(token_phone, payment.get("phone", ""))
+
     # Only return paid payments as receipts
     if payment.get("status") != "PAID":
         raise HTTPException(status_code=400, detail="Receipt only available for completed payments")

@@ -61,8 +61,13 @@ const SchoolStudentLogin = () => {
         return;
       }
       
-      // Store phone in session for the dashboard
+      // Store phone + portal token for the dashboard. The portal token
+      // proves ownership of this phone on downstream /school-student/*
+      // calls (SEC-001 fix).
       sessionStorage.setItem('school_student_phone', phone);
+      if (res.data?.portal_token) {
+        localStorage.setItem('oll_portal_token', res.data.portal_token);
+      }
       toast.success('Login successful!');
       navigate('/school-student/dashboard');
     } catch (error) {
