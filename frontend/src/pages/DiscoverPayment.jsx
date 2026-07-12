@@ -5,7 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const HERO_IMG = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/y7ilz188_image.png';
+// Both assets are served from the app's own /public folder so they load on
+// any device (mobile included) and never break if the upstream CDN rotates.
+const HERO_IMG = '/images/discover-hero.png';
+const OLL_LOGO = '/oll_logo_invoice.png';
 
 const PLANS = [
   {
@@ -75,11 +78,13 @@ const DiscoverPayment = () => {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white" data-testid="discover-page">
       {/* Top brand strip */}
       <div className="bg-white border-b border-slate-100">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#D63031] text-white flex items-center justify-center font-bold text-sm">
-            OLL
-          </div>
-          <span className="text-sm font-semibold text-slate-800">OLL — Skills for All</span>
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center">
+          <img
+            src={OLL_LOGO}
+            alt="OLL"
+            className="h-8 md:h-10 w-auto"
+            data-testid="discover-brand-logo"
+          />
         </div>
       </div>
 
@@ -88,7 +93,9 @@ const DiscoverPayment = () => {
         <img
           src={HERO_IMG}
           alt="52 Weeks Skills — a new skill every week for your child"
-          className="w-full rounded-2xl shadow-sm border border-slate-100"
+          loading="eager"
+          decoding="async"
+          className="block w-full h-auto max-w-full rounded-2xl shadow-sm border border-slate-100"
           data-testid="discover-hero-image"
         />
       </div>
