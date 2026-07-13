@@ -52,6 +52,7 @@ async def _send_task_email(
     try:
         api_key = await _get_resend_key()
         if not api_key or not to_email:
+            logger.info("[task-email] no key or no recipient — skipped (to=%s)", to_email)
             return
         html = f"""
         <div style="font-family: Inter, Arial, sans-serif; max-width: 560px; margin: 0 auto; background:#f8fafc;">
@@ -70,7 +71,7 @@ async def _send_task_email(
         </div>
         """
         async with httpx.AsyncClient(timeout=8.0) as client:
-            await client.post(
+            resp = await client.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
@@ -80,6 +81,10 @@ async def _send_task_email(
                     "html": html,
                 },
             )
+            if resp.status_code >= 400:
+                logger.warning("[task-email] resend %s to=%s body=%s", resp.status_code, to_email, resp.text[:300])
+            else:
+                logger.info("[task-email] sent to=%s status=%s", to_email, resp.status_code)
     except Exception as e:
         logger.warning("[task-email] failed to send to %s: %s", to_email, e)
 
@@ -114,10 +119,17 @@ async def create_notification(
         await db.notifications_inapp.insert_one(doc)
 
         # Fire-and-forget email — don't block the API on Resend latency.
-        user = await db.users.find_one(
-            {"$or": [{"id": user_id}, {"user_id": user_id}]},
-            {"_id": 0, "email": 1, "name": 1, "full_name": 1},
-        )
+        # Users live across three collections in this app: `team_users` (bulk),
+        # `admins` (system admins), and `users` (legacy). Mirror _user_exists()
+        # in routes/tasks.py and check all three in order of frequency.
+        user = None
+        for coll in ("team_users", "admins", "users"):
+            user = await db[coll].find_one(
+                {"$or": [{"id": user_id}, {"user_id": user_id}]},
+                {"_id": 0, "email": 1, "name": 1, "full_name": 1},
+            )
+            if user:
+                break
         if user and user.get("email"):
             cta_url = f"{APP_BASE_URL.rstrip('/')}{cta_path or '/admin/tasks'}"
             cta_label = {
@@ -129,6 +141,7 @@ async def create_notification(
                 "task_reassigned":   "Open Task",
                 "approval_required": "Review & Approve",
             }.get(type_, "Open in App")
+            logger.info("[task-email] queued to=%s type=%s task=%s", user["email"], type_, task_id)
             asyncio.create_task(_send_task_email(
                 to_email=user["email"],
                 to_name=user.get("name") or user.get("full_name") or "",
@@ -138,6 +151,8 @@ async def create_notification(
                 cta_label=cta_label,
                 cta_url=cta_url,
             ))
+        else:
+            logger.info("[task-email] SKIPPED user_id=%s (no email on record)", user_id)
     except Exception as e:
         logger.warning("[create_notification] soft-failed: %s", e)
 

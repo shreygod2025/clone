@@ -25,6 +25,9 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://camp-lead-capture.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = os.getenv("TEST_ADMIN_EMAIL", "admin@oll.co")
 ADMIN_PASSWORD = os.getenv("TEST_ADMIN_PASSWORD", "Dagaji03@")
+# Python's logging module writes to stderr → supervisor captures it in backend.err.log.
+# uvicorn access logs go to backend.out.log. We want the app logger stream.
+BACKEND_LOG = "/var/log/supervisor/backend.err.log"
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
@@ -82,7 +85,7 @@ class TestTaskAssignmentEmail:
 
         # Capture log offset BEFORE task creation so we can scan the delta.
         try:
-            before_size = os.path.getsize("/var/log/supervisor/backend.out.log")
+            before_size = os.path.getsize("/var/log/supervisor/backend.err.log")
         except OSError:
             before_size = 0
 
@@ -113,15 +116,44 @@ class TestTaskAssignmentEmail:
         # notifications by having no auth… no, only assignee sees them.)
         # Simpler: interrogate the log for any post-fix warning.
         try:
-            with open("/var/log/supervisor/backend.out.log", "rb") as fh:
+            with open("/var/log/supervisor/backend.err.log", "rb") as fh:
                 fh.seek(before_size)
                 delta = fh.read().decode("utf-8", "replace")
         except OSError:
             delta = ""
 
-        # Assertion: no failures logged during our task creation window.
+        # Assertion: no unhandled failures logged during our task creation window.
         assert "[task-email] failed" not in delta, (
             f"Resend email dispatch failed:\n{delta[-2000:]}"
+        )
+
+        # ── REFIX Assertion: [task-email] queued log line MUST appear —
+        # proves the recipient lookup (multi-collection) succeeded and the
+        # httpx dispatch task was scheduled. This is the concrete signal
+        # that the iter99 collection-mismatch bug is fixed.
+        assert "[task-email] queued to=" in delta, (
+            f"Expected `[task-email] queued to=` in backend log after task "
+            f"creation — recipient lookup may still be broken.\nDelta:\n{delta[-3000:]}"
+        )
+
+        # Also assert that the dispatch itself was attempted (either 2xx OR
+        # 4xx from Resend — both prove the httpx.post() ran). Allow a
+        # slightly longer window in case Resend is slow.
+        dispatch_seen = ("[task-email] sent to=" in delta) or ("[task-email] resend " in delta)
+        if not dispatch_seen:
+            # Give async task a bit more time then re-read.
+            time.sleep(4)
+            try:
+                with open("/var/log/supervisor/backend.err.log", "rb") as fh:
+                    fh.seek(before_size)
+                    delta = fh.read().decode("utf-8", "replace")
+            except OSError:
+                pass
+            dispatch_seen = ("[task-email] sent to=" in delta) or ("[task-email] resend " in delta)
+        assert dispatch_seen, (
+            f"Expected `[task-email] sent` or `[task-email] resend <status>` "
+            f"log line proving httpx.post() to Resend was reached.\n"
+            f"Delta:\n{delta[-3000:]}"
         )
 
         # Assertion 2: create_notification code path is exercised — we can
@@ -149,6 +181,10 @@ class TestTaskAssignmentEmail:
         before = c_before.json().get("count", 0)
 
         title = f"TEST_iter99 self {uuid.uuid4().hex[:6]}"
+        try:
+            before_size = os.path.getsize("/var/log/supervisor/backend.err.log")
+        except OSError:
+            before_size = 0
         r = requests.post(
             f"{BASE_URL}/api/tasks",
             headers=admin_headers,
@@ -175,6 +211,20 @@ class TestTaskAssignmentEmail:
         )
         after = c_after.json().get("count", 0)
         assert after == before, f"Self-notification should be skipped; before={before} after={after}"
+
+        # Log delta must NOT show any [task-email] queued/sent for this self-assignment.
+        try:
+            with open("/var/log/supervisor/backend.err.log", "rb") as fh:
+                fh.seek(before_size)
+                delta = fh.read().decode("utf-8", "replace")
+        except OSError:
+            delta = ""
+        assert "[task-email] queued to=" not in delta, (
+            f"Self-assignment should not queue an email dispatch.\n{delta[-1500:]}"
+        )
+        assert "[task-email] sent to=" not in delta, (
+            f"Self-assignment should not send an email.\n{delta[-1500:]}"
+        )
 
         requests.delete(f"{BASE_URL}/api/tasks/{tid}", headers=admin_headers, timeout=15)
 

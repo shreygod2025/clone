@@ -1,0 +1,41 @@
+{
+  "summary": "REFIX VERIFIED — Iter100. The iter99 collection-mismatch bug (recipient lookup only checked empty db.users) is fixed. create_notification() now iterates db.team_users → db.admins → db.users, and both new observability log lines fire in production: `[task-email] queued to=<email> type=task_assigned task=<id>` immediately at queue time, and `[task-email] sent to=<email> status=200` after the httpx.post() to Resend completes successfully. Self-assignment path still correctly emits zero logs and zero notifications. All 9/9 pytest cases green.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "logging channels",
+        "issue": "Python logger.info() output lands in /var/log/supervisor/backend.err.log (stderr), while uvicorn access logs go to backend.out.log. Iter99 test scanned backend.out.log and would have false-negatived on the fix; test now targets backend.err.log. Consider consolidating (e.g. add StreamHandler to stdout) if this trips up future testers/on-call."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_task_email_iter99.py",
+    "/app/test_reports/pytest/iter100.xml"
+  ],
+  "action_items": [
+    "None blocking. Optional: rename test_task_email_iter99.py → test_task_email.py now that the fix is stable (currently pinned to iter99 nomenclature).",
+    "Optional: unify Python app logging with uvicorn access logging into a single supervisor stream (either both to stdout or both to stderr) so tail/grep works predictably."
+  ],
+  "critical_code_review_comments": [
+    "Multi-collection resolver in create_notification() correctly mirrors _user_exists() pattern from routes/tasks.py — ordering (team_users → admins → users) is sensible given team_users has 17 docs and users has 0.",
+    "Logs are now positive-path observable: `[task-email] queued` before dispatch, `[task-email] sent status=200` OR `[task-email] resend <status> body=...` after. Good separation for ops.",
+    "Fire-and-forget via asyncio.create_task() is fine here; Resend httpx call has 8s timeout so it can't leak indefinitely. Exceptions still caught and logged as `[task-email] failed` — no unhandled task warnings expected.",
+    "APP_BASE_URL still defaults to https://oll.co when neither FRONTEND_URL nor APP_URL is set — verify that's the intended production CTA target."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_task_email_iter99.py"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "n/a (backend-only run)"},
+  "test_credentials": "admin@oll.co / Dagaji03@ (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "One test task 'TEST_iter100 email <hex>' created and deleted per run, assigned to team_user Anushree Sharma (anushree.gp@test.com). One TEST_iter100 self-assignment task created and deleted. Resend actually accepted the email (status=200 seen in log).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Task-email dispatch is fully working end-to-end. Backend log evidence per test run: `[task-email] queued to=anushree.gp@test.com type=task_assigned task=<uuid>` immediately, followed by `[task-email] sent to=anushree.gp@test.com status=200` ~200ms later. Test file at /app/backend/tests/test_task_email_iter99.py now scans backend.err.log (Python logger stream) — not backend.out.log (uvicorn access log). If future iterations move logging config, update BACKEND_LOG constant at top of that file.",
+  "rca of the issue": {
+    "symptom": "Iter99 pytest passed but user still reported no emails.",
+    "root_cause": "create_notification() looked up recipient in db.users which had 0 docs; real assignees live in db.team_users. Silent skip, no email.",
+    "mitigation": "Fixed in this iter — multi-collection resolver + queued/sent/resend observability logs. Verified via pytest + direct log grep."
+  }
+}
