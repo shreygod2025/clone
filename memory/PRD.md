@@ -2,6 +2,47 @@
 ## Product Requirements Document
 
 
+### Latest Fix (2026-07-13 pt2) — Paste-LMS-ID Fallback for Manual Link 🎯
+
+**Follow-up issue reported by user**: Even after unioning `track-sheet` +
+`feedback` (previous fix), some LMS-registered schools were still missing
+from the Link modal — e.g. "Asian World School" (4 teachers, 0 sessions,
+no feedback yet). Confirmed the LMS API has NO "list all schools"
+endpoint (`GET /external/schools` → 405; only `POST` is allowed, and POST
+creates schools).
+
+**Fix — manual paste-and-verify fallback**:
+
+**Backend** (`/app/backend/routes/lms_api.py`):
+- New endpoint: `GET /api/lms/schools/{lms_id}/verify` (admin-only).
+- Probes `/external/schools/{id}/users` on the LMS; returns 200 with
+  `{lms_school_id, school_name, users_count, linked_to}` when valid,
+  404 when the LMS says "School not found".
+- Extracts the school's display name from the user with `role=school`
+  (LMS doesn't return it at the top level).
+
+**Frontend** (`LinkLmsSchoolModal.jsx`):
+- New "Can't find your school?" section with a paste-UUID input +
+  Verify button.
+- On successful verify: shows a confirmation row with the school name,
+  UUID, existing-link warning (if any), and Link / Move here / Merge
+  actions — reusing the exact same `PATCH /schools/{id}/link-lms`
+  endpoint as the discoverable list.
+- Full parity with the standard list flow: transfers, merges, and
+  self-link short-circuits all work identically.
+
+**Verified**:
+- `GET /verify` with known UUID → 200 (school_name resolved, linked_to
+  metadata populated).
+- `GET /verify` with random UUID → 404.
+- Auth gate still enforced (admin-only).
+- Lint clean (Python + JS).
+
+**Admin workflow to link a hidden school** (like Asian World School):
+1. Open the LMS admin console, copy the school's UUID from its detail URL.
+2. In CRM: open the school → "Sync LMS" → paste UUID → Verify → Link.
+
+
 ### Latest Fix (2026-07-13) — LMS Manual Link: Fetch ALL Schools 🎯
 
 **Issue**: The "Link LMS School" manual-link modal (`LinkLmsSchoolModal.jsx`)
@@ -9,31 +50,16 @@ only listed LMS schools that had at least one recorded session
 (`/external/track-sheet`). Admins couldn't pre-map CRM schools to LMS
 schools that were registered but hadn't started sessions yet.
 
-**Root cause**: The LMS API does not expose a canonical "list all schools"
-endpoint. `GET /api/external/schools` is method-not-allowed (POST only, and
-POST creates a new school). The `/external/track-sheet` proxy therefore
-only surfaces schools with sessions.
-
 **Fix** (`/app/backend/routes/lms_api.py :: list_all_lms_schools`):
 - `GET /api/lms/all-schools` now unions two LMS sources in parallel:
-  `/external/track-sheet` (schools with sessions) + `/external/feedback`
-  (schools where users have submitted feedback). The union is a strict
-  superset of either source alone.
-- Each returned row carries a `sources: string[]` field noting where it
-  came from (`track-sheet`, `feedback`, or both).
-- Feedback source is best-effort — if it fails, the endpoint still
-  returns the track-sheet result unchanged (no regression).
+  `/external/track-sheet` + `/external/feedback`. Adds a `sources[]`
+  field per row so UI can label origin. Feedback is best-effort.
 
 **Frontend** (`LinkLmsSchoolModal.jsx`):
-- Renders a subtle "no sessions yet" badge next to schools that appear
-  only via feedback, so admins understand why they can now see them.
+- "No sessions yet" badge for feedback-only schools.
 
-**Verified** (curl end-to-end via preview URL):
-- Count grew from 28 (track-sheet only) → 29 (union). Jankidevi Public
-  School (feedback-only) now surfaces.
-- `?q=janki` search filter correctly returns the feedback-only row.
-- Unauthed access still returns 403.
-- Lint clean (Python + JS).
+
+
 
 
 ### Live Test — Task-Notification Email (2026-07-13) ✅

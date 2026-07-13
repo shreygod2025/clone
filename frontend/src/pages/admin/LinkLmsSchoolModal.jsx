@@ -27,10 +27,23 @@ export default function LinkLmsSchoolModal({ open, crmSchool, onClose, onLinked 
   const [linkingId, setLinkingId] = useState(null);
   const [error, setError] = useState('');
 
+  // Manual paste-LMS-School-ID fallback: the LMS API doesn't expose a
+  // "list all schools" endpoint, so freshly-onboarded schools with no
+  // sessions or feedback yet (e.g. "Asian World School") never appear
+  // in the discoverable list. Admins can grab the school's UUID from
+  // the LMS admin console and paste it here — we probe /users to verify.
+  const [pasteId, setPasteId] = useState('');
+  const [pasteBusy, setPasteBusy] = useState(false);
+  const [pasteResult, setPasteResult] = useState(null); // {lms_school_id, school_name, linked_to}
+  const [pasteError, setPasteError] = useState('');
+
   useEffect(() => {
     if (!open || !crmSchool) return;
     setQ(crmSchool.school_name || '');
     setError('');
+    setPasteId('');
+    setPasteResult(null);
+    setPasteError('');
     (async () => {
       setLoading(true);
       try {
@@ -71,6 +84,33 @@ export default function LinkLmsSchoolModal({ open, crmSchool, onClose, onLinked 
       toast.error(e?.response?.data?.detail || 'Could not link LMS school');
     } finally {
       setLinkingId(null);
+    }
+  };
+
+  const verifyPastedId = async () => {
+    const id = pasteId.trim();
+    setPasteError('');
+    setPasteResult(null);
+    if (!id) {
+      setPasteError('Paste a school UUID from the LMS.');
+      return;
+    }
+    setPasteBusy(true);
+    try {
+      const res = await axios.get(
+        `${API}/lms/schools/${encodeURIComponent(id)}/verify`,
+        { headers: getAuthHeaders() },
+      );
+      setPasteResult(res.data);
+    } catch (e) {
+      const detail = e?.response?.data?.detail;
+      setPasteError(
+        e?.response?.status === 404
+          ? 'The LMS does not recognise this School ID.'
+          : (detail || 'Could not verify this School ID.')
+      );
+    } finally {
+      setPasteBusy(false);
     }
   };
 
@@ -196,6 +236,99 @@ export default function LinkLmsSchoolModal({ open, crmSchool, onClose, onLinked 
               })}
             </div>
           )}
+
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 space-y-2">
+            <div className="text-xs text-slate-600">
+              <span className="font-medium text-slate-800">Can&apos;t find your school?</span> Some LMS
+              schools (e.g. no sessions yet) aren&apos;t in the discoverable list. Grab the school&apos;s UUID
+              from the LMS admin console and paste it here.
+            </div>
+            <div className="flex items-stretch gap-2">
+              <Input
+                value={pasteId}
+                onChange={(e) => { setPasteId(e.target.value); setPasteResult(null); setPasteError(''); }}
+                placeholder="LMS School UUID (e.g. 0548607b-a643-4431-…)"
+                className="font-mono text-xs"
+                data-testid="link-lms-paste-id"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={verifyPastedId}
+                disabled={pasteBusy || !pasteId.trim()}
+                data-testid="link-lms-verify-btn"
+              >
+                {pasteBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Verify'}
+              </Button>
+            </div>
+            {pasteError && (
+              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 flex items-start gap-1.5">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                <span data-testid="link-lms-paste-error">{pasteError}</span>
+              </div>
+            )}
+            {pasteResult && (
+              <div
+                className="flex items-center gap-3 bg-white border border-emerald-200 rounded-lg px-3 py-2"
+                data-testid="link-lms-paste-result"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-slate-900 truncate">
+                    {pasteResult.school_name || <span className="text-slate-500 italic">Unnamed school</span>}
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-mono truncate">
+                    {pasteResult.lms_school_id}
+                    {pasteResult.linked_to && pasteResult.linked_to.crm_school_id !== crmSchool?.id && (
+                      <span className="ml-1.5 text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 font-sans">
+                        currently linked → {pasteResult.linked_to.crm_school_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {pasteResult.linked_to?.crm_school_id === crmSchool?.id ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                    <CheckCircle2 className="w-3 h-3" /> Linked here
+                  </span>
+                ) : pasteResult.linked_to ? (
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={linkingId === pasteResult.lms_school_id}
+                      onClick={() => link({ lms_school_id: pasteResult.lms_school_id }, false)}
+                      className="text-[11px] px-2 py-1 h-auto"
+                      data-testid="link-lms-paste-transfer"
+                    >
+                      Move here
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={linkingId === pasteResult.lms_school_id}
+                      onClick={() => link({ lms_school_id: pasteResult.lms_school_id }, true)}
+                      className="text-[11px] px-2 py-1 h-auto bg-red-600 hover:bg-red-700 text-white"
+                      data-testid="link-lms-paste-merge"
+                      title="Delete the other CRM row and move the LMS link here"
+                    >
+                      Merge
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={linkingId === pasteResult.lms_school_id}
+                    onClick={() => link({ lms_school_id: pasteResult.lms_school_id }, false)}
+                    className="text-[11px] px-2 py-1 h-auto bg-indigo-600 hover:bg-indigo-700 text-white"
+                    data-testid="link-lms-paste-link"
+                  >
+                    {linkingId === pasteResult.lms_school_id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Link this'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end pt-2 border-t border-slate-100">
             <Button variant="outline" onClick={onClose} data-testid="link-lms-close">

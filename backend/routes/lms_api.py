@@ -236,6 +236,57 @@ async def list_all_lms_schools(
     return {"count": len(schools), "schools": schools}
 
 
+@router.get("/lms/schools/{lms_school_id}/verify")
+async def verify_lms_school_id(
+    lms_school_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Probe the LMS to confirm a school with this UUID exists.
+
+    Used by the Link modal's "Paste LMS School ID" fallback so admins can
+    link CRM schools to LMS schools that don't yet have sessions or
+    feedback (e.g. freshly-onboarded schools) — the only way the LMS
+    surfaces those is via per-school endpoints like /users and /reports.
+
+    Returns 200 with `{lms_school_id, school_name, users_count, linked_to}`
+    when valid; 404 when the LMS says "School not found".
+    """
+    lms_id = (lms_school_id or "").strip()
+    if not lms_id:
+        raise HTTPException(status_code=400, detail="lms_school_id is required")
+
+    try:
+        data = await _lms_get(f"/external/schools/{lms_id}/users")
+    except HTTPException as e:
+        # Bubble up as-is (404 → 404, 502 → 502, etc.)
+        raise e
+
+    users = data.get("users") or []
+    # The LMS response doesn't include the school's display name at the
+    # top level, but the user with role="school" carries it in `name`.
+    school_name: Optional[str] = None
+    for u in users:
+        if (u.get("role") or "").lower() == "school":
+            # LMS occasionally prefixes with a stray quote — trim non-word chars.
+            raw = (u.get("name") or "").strip()
+            school_name = raw.lstrip('"').lstrip("'").strip() or None
+            break
+
+    linked = await db.school_inquiries.find_one(
+        {"lms_school_id": lms_id},
+        {"_id": 0, "id": 1, "school_name": 1},
+    )
+    return {
+        "lms_school_id": lms_id,
+        "school_name": school_name,
+        "users_count": len(users),
+        "linked_to": (
+            {"crm_school_id": linked["id"], "crm_school_name": linked.get("school_name")}
+            if linked else None
+        ),
+    }
+
+
 @router.patch("/schools/{school_id}/link-lms")
 async def link_lms_school(
     school_id: str,
