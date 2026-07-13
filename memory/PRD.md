@@ -2,6 +2,49 @@
 ## Product Requirements Document
 
 
+### Latest Fix (2026-07-13) — LMS Manual Link: Fetch ALL Schools 🎯
+
+**Issue**: The "Link LMS School" manual-link modal (`LinkLmsSchoolModal.jsx`)
+only listed LMS schools that had at least one recorded session
+(`/external/track-sheet`). Admins couldn't pre-map CRM schools to LMS
+schools that were registered but hadn't started sessions yet.
+
+**Root cause**: The LMS API does not expose a canonical "list all schools"
+endpoint. `GET /api/external/schools` is method-not-allowed (POST only, and
+POST creates a new school). The `/external/track-sheet` proxy therefore
+only surfaces schools with sessions.
+
+**Fix** (`/app/backend/routes/lms_api.py :: list_all_lms_schools`):
+- `GET /api/lms/all-schools` now unions two LMS sources in parallel:
+  `/external/track-sheet` (schools with sessions) + `/external/feedback`
+  (schools where users have submitted feedback). The union is a strict
+  superset of either source alone.
+- Each returned row carries a `sources: string[]` field noting where it
+  came from (`track-sheet`, `feedback`, or both).
+- Feedback source is best-effort — if it fails, the endpoint still
+  returns the track-sheet result unchanged (no regression).
+
+**Frontend** (`LinkLmsSchoolModal.jsx`):
+- Renders a subtle "no sessions yet" badge next to schools that appear
+  only via feedback, so admins understand why they can now see them.
+
+**Verified** (curl end-to-end via preview URL):
+- Count grew from 28 (track-sheet only) → 29 (union). Jankidevi Public
+  School (feedback-only) now surfaces.
+- `?q=janki` search filter correctly returns the feedback-only row.
+- Unauthed access still returns 403.
+- Lint clean (Python + JS).
+
+
+### Live Test — Task-Notification Email (2026-07-13) ✅
+
+Dispatched a live task-assignment email to `shreyaan@oll.co` via
+`/app/backend/tests/send_test_task_email.py` (uses the exact
+`_send_task_email` + `_get_resend_key` code path used by `POST /api/tasks`).
+Resend returned `HTTP 200 OK`. Verified by `testing_agent_v3_fork`
+(iteration 101). Bug fully resolved.
+
+
 ### Latest Fix (2026-07-09) — Reports Button Fallback to LMS 🛠️
 
 **Bug**: "Reports" button in School CRM was disabled across all stages because

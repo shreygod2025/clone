@@ -162,18 +162,64 @@ async def list_all_lms_schools(
     q: Optional[str] = Query(None, description="Substring search on school name"),
     user: dict = Depends(get_current_user),
 ):
-    """List every unique school from the LMS track-sheet. Used by the
-    "Link LMS School" manual-sync modal so admins can pick the right LMS
-    school when the name doesn't auto-match a CRM record."""
-    data = await _lms_get("/external/track-sheet")
-    rows = data if isinstance(data, list) else (data.get("data") or data.get("rows") or [])
+    """List every school we can discover from the LMS.
+
+    The LMS API does not expose a canonical "list all schools" endpoint,
+    so we union the two authoritative sources it *does* expose:
+
+      • `/external/track-sheet` — every school that has at least one session
+      • `/external/feedback`    — every school any user has left feedback for
+
+    The union is a strict superset of either alone. If the LMS later adds a
+    real "list all" endpoint, drop the merge and hit that instead.
+
+    Used by the "Link LMS School" manual-link modal so admins can pick the
+    right LMS school even when the name doesn't auto-match a CRM record and
+    even when the school has no sessions yet (via the feedback source).
+    """
+    import asyncio
+
+    async with httpx.AsyncClient(timeout=25) as client:
+        track_task = _lms_get("/external/track-sheet", client=client)
+        # Feedback is best-effort — never let it break the primary source.
+        fb_task = _lms_get("/external/feedback", client=client)
+        track_res, fb_res = await asyncio.gather(track_task, fb_task, return_exceptions=True)
+
+    if isinstance(track_res, Exception):
+        # If the primary source itself fails, surface that — same behaviour as before.
+        raise track_res
+
+    rows = track_res if isinstance(track_res, list) else (track_res.get("data") or track_res.get("rows") or [])
     seen: dict[str, str] = {}
+    sources: dict[str, set] = {}  # per-school id -> which LMS sources it came from
     for r in rows:
         sid = r.get("school_id")
         name = r.get("school_name")
         if sid and name and sid not in seen:
             seen[sid] = name
-    schools = [{"lms_school_id": sid, "school_name": name} for sid, name in seen.items()]
+            sources.setdefault(sid, set()).add("track-sheet")
+
+    if isinstance(fb_res, Exception):
+        logger.info("[lms/all-schools] feedback source unavailable (%s) — using track-sheet only", fb_res)
+    else:
+        fb_items = fb_res.get("items") if isinstance(fb_res, dict) else fb_res
+        for r in (fb_items or []):
+            sid = r.get("school_id")
+            name = r.get("school_name")
+            if not sid or not name:
+                continue
+            if sid not in seen:
+                seen[sid] = name
+            sources.setdefault(sid, set()).add("feedback")
+
+    schools = [
+        {
+            "lms_school_id": sid,
+            "school_name": name,
+            "sources": sorted(sources.get(sid, set())),
+        }
+        for sid, name in seen.items()
+    ]
     needle = (q or "").strip().lower()
     if needle:
         schools = [s for s in schools if needle in s["school_name"].lower()]

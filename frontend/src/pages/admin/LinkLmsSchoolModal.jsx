@@ -132,7 +132,18 @@ export default function LinkLmsSchoolModal({ open, crmSchool, onClose, onLinked 
                       <GraduationCap className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-slate-900 truncate">{s.school_name}</div>
+                      <div className="text-sm font-medium text-slate-900 truncate flex items-center gap-1.5">
+                        {s.school_name}
+                        {Array.isArray(s.sources) && s.sources.length === 1 && s.sources[0] === 'feedback' && (
+                          <span
+                            className="text-[10px] font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5"
+                            title="Visible via LMS feedback — no sessions recorded yet"
+                            data-testid={`lms-school-no-sessions-${s.lms_school_id}`}
+                          >
+                            no sessions yet
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[11px] text-slate-500 font-mono truncate">
                         {s.lms_school_id.slice(0, 12)}…
                         {alreadyLinked && !linkedToThisSchool && (
