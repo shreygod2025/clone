@@ -1,0 +1,33 @@
+{
+  "summary": "Iter98 — Manual LMS-to-CRM school link (backend + frontend). All 7 backend pytest cases pass, and the frontend manual-link flow (button, modal, search, transfer/merge affordances, close) works end-to-end on Active Schools cards.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter98_manual_lms_link.py",
+    "/app/test_reports/pytest/iter98.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PATCH /schools/{id}/link-lms currently accepts a raw dict payload — consider a Pydantic model (LinkLmsPayload) so 400s are enforced by schema instead of manual strip checks.",
+    "DELETE /schools/{id}/link-lms uses matched_count==0 to 404 but does not check if lms_school_id was actually present; behaviour still correct but response is silently identical for both cases (minor UX).",
+    "AdminSchoolCRM.jsx is 13.3k lines — well past the 700-line guideline; the LinkLms button/state should ideally live in a small hook or component for maintainability.",
+    "LinkLmsSchoolModal shows only the first 100 filtered results silently — add a hint like 'showing top 100 of N' so admins know to refine when list is truncated."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter98_manual_lms_link.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / Dagaji03@ (as documented in /app/memory/test_credentials.md)",
+  "seed_data_creation": "Backend tests create disposable TEST_* CRM schools via POST /api/schools/inquiry and clean them up in finally blocks. On the transfer/merge cases the LMS ID currently linked to a real CRM row gets moved to the test row and then unlinked; the daily/next auto-sync will re-link the real row via name-match, so no manual data restoration required.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "26 real LMS schools available; only one is genuinely orphan (no CRM link). All others are already linked so the PATCH endpoint is exercised as a transfer during tests. LinkLmsSchoolModal renders max 100 filtered rows. School inquiry create endpoint is POST /api/schools/inquiry (singular). support_needed must be a list.",
+  "verified_behaviours": {
+    "GET_/api/lms/all-schools": "200 with count+schools[], includes linked_to for pre-linked rows; ?q= narrows the list",
+    "PATCH_/api/schools/{id}/link-lms_unauthenticated": "401/403",
+    "PATCH_link_persists_across_import-schools": "manual-linked CRM row retained, no duplicate created after POST /api/lms/import-schools",
+    "PATCH_transfer_delete_previous_false": "prior CRM row's lms_school_id unset; target gets it",
+    "PATCH_merge_delete_previous_true": "prior CRM row deleted; target gets the link",
+    "DELETE_/api/schools/{id}/link-lms": "clears lms_school_id, lms_link_manual, lms_linked_at, lms_linked_by, last_lms_sync_at",
+    "FE_link-lms-<id>_buttons": "visible on Active/Converted cards; label reads 'Sync LMS' or 'LMS linked'",
+    "FE_modal": "opens with data-testid link-lms-modal; search filters live; link-lms-transfer-<lms_id> + link-lms-merge-<lms_id> present for already-linked rows; link-lms-btn-<lms_id> present for orphans; close returns to list"
+  }
+}

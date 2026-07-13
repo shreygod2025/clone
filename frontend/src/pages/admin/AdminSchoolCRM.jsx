@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
+import LinkLmsSchoolModal from './LinkLmsSchoolModal';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CalendarDays, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature, GraduationCap } from 'lucide-react';
+import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CalendarDays, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature, GraduationCap, Link } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -521,6 +522,8 @@ const AdminSchoolCRM = () => {
   // LMS sync state — feeds the "Sync LMS" button + last-synced pill
   const [lmsSyncing, setLmsSyncing] = useState(false);
   const [lmsSyncStatus, setLmsSyncStatus] = useState(null); // { last_sync_at, last_created, last_linked, last_total }
+  // Manual LMS-link picker modal
+  const [showLinkLmsModal, setShowLinkLmsModal] = useState(null); // holds the CRM school object
   const [showEditOnboardingModal, setShowEditOnboardingModal] = useState(null);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(null);
   const [showOnboardingWorkflowModal, setShowOnboardingWorkflowModal] = useState(null);
@@ -4437,6 +4440,24 @@ ${FOOTER}</div></body></html>`
       </button>
     ) : null;
 
+    // Link/Sync LMS school — opens the manual-link picker modal. Label
+    // reflects whether an LMS school is already linked.
+    const linkLmsButton = (
+      <button
+        onClick={() => setShowLinkLmsModal(inquiry)}
+        title={hasLmsLink ? 'Change the LMS school this record is linked to' : 'Manually link an LMS school to this record'}
+        className={`text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
+          hasLmsLink
+            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+        }`}
+        data-testid={`link-lms-${inquiry.id}`}
+      >
+        <Link className="w-3 h-3" />
+        {hasLmsLink ? 'LMS linked' : 'Sync LMS'}
+      </button>
+    );
+
     // Followup button
     const followupButton = inquiry.status !== 'converted' && (
       <button
@@ -4640,6 +4661,7 @@ ${FOOTER}</div></body></html>`
             {documentsButton}
             {reportsButton}
             {lmsReportsButton}
+            {linkLmsButton}
             {baseButtons}
           </div>
         );
@@ -4670,6 +4692,7 @@ ${FOOTER}</div></body></html>`
             </button>
             {reportsButton}
             {lmsReportsButton}
+            {linkLmsButton}
             <button
               onClick={() => setShowAssignRMModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
@@ -4777,6 +4800,7 @@ ${FOOTER}</div></body></html>`
             {documentsButton}
             {reportsButton}
             {lmsReportsButton}
+            {linkLmsButton}
             {baseButtons}
           </div>
         );
@@ -13310,6 +13334,14 @@ ${FOOTER}</div></body></html>`
           </div>
         </div>
       )}
+
+      {/* Manual LMS-link picker */}
+      <LinkLmsSchoolModal
+        open={!!showLinkLmsModal}
+        crmSchool={showLinkLmsModal}
+        onClose={() => setShowLinkLmsModal(null)}
+        onLinked={() => fetchInquiries()}
+      />
 
       {/* ─────────────────────────────────────────────────────────────────── */}
     </AdminLayout>

@@ -157,6 +157,127 @@ async def _run_lms_import() -> dict:
     return result
 
 
+@router.get("/lms/all-schools")
+async def list_all_lms_schools(
+    q: Optional[str] = Query(None, description="Substring search on school name"),
+    user: dict = Depends(get_current_user),
+):
+    """List every unique school from the LMS track-sheet. Used by the
+    "Link LMS School" manual-sync modal so admins can pick the right LMS
+    school when the name doesn't auto-match a CRM record."""
+    data = await _lms_get("/external/track-sheet")
+    rows = data if isinstance(data, list) else (data.get("data") or data.get("rows") or [])
+    seen: dict[str, str] = {}
+    for r in rows:
+        sid = r.get("school_id")
+        name = r.get("school_name")
+        if sid and name and sid not in seen:
+            seen[sid] = name
+    schools = [{"lms_school_id": sid, "school_name": name} for sid, name in seen.items()]
+    needle = (q or "").strip().lower()
+    if needle:
+        schools = [s for s in schools if needle in s["school_name"].lower()]
+    schools.sort(key=lambda s: s["school_name"].lower())
+
+    # Enrich each with whether some CRM school already links to it
+    linked_docs = await db.school_inquiries.find(
+        {"lms_school_id": {"$in": [s["lms_school_id"] for s in schools]}},
+        {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},
+    ).to_list(length=2000)
+    linked_map = {d["lms_school_id"]: {"crm_school_id": d["id"], "crm_school_name": d.get("school_name")} for d in linked_docs}
+    for s in schools:
+        s["linked_to"] = linked_map.get(s["lms_school_id"])
+    return {"count": len(schools), "schools": schools}
+
+
+@router.patch("/schools/{school_id}/link-lms")
+async def link_lms_school(
+    school_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Manually link a CRM school to a specific LMS school. If the given
+    LMS id is currently linked to a different CRM school, that link is
+    transferred (source of truth is this endpoint). Optionally deletes
+    the previously auto-created duplicate CRM row when
+    `delete_previous=true` is passed.
+
+    The manual link is marked with `lms_link_manual=true` and is durable
+    across future auto-syncs (the daily cron short-circuits on existing
+    `lms_school_id` matches, so no duplicates will be created)."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    lms_id = (payload.get("lms_school_id") or "").strip()
+    if not lms_id:
+        raise HTTPException(status_code=400, detail="lms_school_id is required")
+    delete_prev = bool(payload.get("delete_previous"))
+
+    target = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0, "id": 1, "school_name": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="CRM school not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    transferred_from: Optional[dict] = None
+
+    prior = await db.school_inquiries.find_one(
+        {"lms_school_id": lms_id, "id": {"$ne": school_id}},
+        {"_id": 0, "id": 1, "school_name": 1},
+    )
+    if prior:
+        transferred_from = prior
+        if delete_prev:
+            await db.school_inquiries.delete_one({"id": prior["id"]})
+        else:
+            await db.school_inquiries.update_one(
+                {"id": prior["id"]},
+                {"$unset": {"lms_school_id": "", "last_lms_sync_at": ""},
+                 "$set": {"updated_at": now}},
+            )
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "lms_school_id": lms_id,
+            "lms_link_manual": True,
+            "lms_linked_at": now,
+            "lms_linked_by": user.get("email") or user.get("user_id"),
+            "last_lms_sync_at": now,
+            "updated_at": now,
+        }},
+    )
+    return {
+        "ok": True,
+        "school_id": school_id,
+        "lms_school_id": lms_id,
+        "transferred_from": transferred_from,
+        "deleted_previous": bool(prior and delete_prev),
+    }
+
+
+@router.delete("/schools/{school_id}/link-lms")
+async def unlink_lms_school(
+    school_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Remove the LMS link from a CRM school. Also clears the manual flag."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    res = await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$unset": {
+            "lms_school_id": "",
+            "lms_link_manual": "",
+            "lms_linked_at": "",
+            "lms_linked_by": "",
+            "last_lms_sync_at": "",
+        }, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="CRM school not found")
+    return {"ok": True}
+
+
 async def run_lms_sync_scheduled():
     """Cron entrypoint — daily 6:00 PM IST. Wraps `_run_lms_import` with
     logging so scheduler failures don't crash the loop."""
@@ -469,7 +590,7 @@ async def list_lms_linked_schools(user: dict = Depends(get_current_user)):
     """Return every CRM school that's linked to an LMS school. Feeds the
     credential-lookup school picker in Admin Support Center."""
     rows = await db.school_inquiries.find(
-        {"lms_school_id": {"$exists": True, "$ne": None, "$ne": ""}},
+        {"lms_school_id": {"$exists": True, "$nin": [None, ""]}},
         {"_id": 0, "id": 1, "school_name": 1, "lms_school_id": 1},
     ).sort("school_name", 1).to_list(length=1000)
     return {"count": len(rows), "schools": rows}
