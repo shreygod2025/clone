@@ -2,6 +2,52 @@
 ## Product Requirements Document
 
 
+### Latest Fix (2026-07-14) — Educator Profile Verification Modal 🎯
+
+**Issue**: The Educator Profile Verification modal was showing `N/A` for
+most fields (Bio, T-Shirt Size, Aadhaar, PAN, Address, Emergency Contact,
+Bank Details) and `Missing` for uploaded documents (Profile Photo,
+Aadhaar, PAN, Bank Document) — even when the data was actually saved in
+MongoDB.
+
+**Root cause**:
+1. The **Profile Details** summary in `AdminEducators.jsx` (line ~1780)
+   was reading from `viewEducator.*` — the `educator_applications`
+   collection — which does not carry those fields. They live in the
+   `educator_onboarding` collection (`selectedOnboarding.*`).
+2. `fetchOnboardingDetails` and the entire Document Verification section
+   were gated on `viewEducator.status === 'onboarded'`. Every record
+   with `interview_failed`, `active`, `demo_scheduled`, `hr_done`, etc.
+   never triggered the fetch, so `selectedOnboarding` stayed `null`.
+
+**Fix**:
+- **Frontend** (`AdminEducators.jsx`):
+  - `fetchOnboardingDetails` now fires whenever a modal opens (any status).
+  - Profile Details block rewritten to read every field from
+    `selectedOnboarding` — Bio, T-Shirt Size, Address, Emergency Contact,
+    Bank Details, Aadhar/PAN, Contract & Docs verification. Only renders
+    when at least one field is populated.
+  - Document Verification section no longer gated on
+    `status === 'onboarded'`; it shows for any record with populated
+    onboarding data.
+- **Backend** (`educators.py :: get_educator_onboarding`):
+  - Added `logging` with a structured line
+    `[educator-onboarding] served id=… populated=N/16 fields=[…]`
+    for observability of the exact fields being served.
+  - WARN log on 404 (`educator not found`) and orphan-onboarding cases.
+  - Docstring documents all 16 profile-verification fields.
+
+**Verified end-to-end** (`testing_agent_v3_fork` iteration 102, 100/100):
+- Usha Bihani (status=interview_failed) now shows real data: bio,
+  XS t-shirt, Magnum Towers address, emergency contact SHREYAAN
+  SUDARSHAN DAGA, SBI bank, ****1234 acct, Aadhar ****2345, PAN 12345,
+  Docs Verified Yes, Contract Accepted.
+- 3 uploaded documents show "View ↗"; bank_document (genuinely empty)
+  shows "Missing" — exactly the expected behaviour.
+- Empty educator (TEST_DirectOnboard) correctly hides Profile Details.
+- Backend logs confirm `populated=15/16 fields=[...]`.
+
+
 ### Latest Fix (2026-07-13 pt2) — Paste-LMS-ID Fallback for Manual Link 🎯
 
 **Follow-up issue reported by user**: Even after unioning `track-sheet` +
