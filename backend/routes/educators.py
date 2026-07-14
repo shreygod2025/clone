@@ -27,6 +27,8 @@ from .shared import (
 import resend
 from .notifications import send_whatsapp_notification, send_demo_confirmation_notifications
 
+logger = logging.getLogger(__name__)
+
 # OTP types needed by educator routes
 from database import otp_store_new, otp_verify, otp_send_allowed
 
@@ -985,15 +987,25 @@ By clicking "I Accept", you confirm that you have read, understood, and agree to
 
 @router.get("/educator/onboarding/{educator_id}")
 async def get_educator_onboarding(educator_id: str):
-    """Get onboarding progress for an educator"""
+    """Get onboarding progress for an educator.
+
+    Returns `{onboarding, educator}` — never null onboarding. If no record
+    exists yet, one is created (all fields default to empty strings/False).
+    All the profile-verification fields (bio, tshirt_size, aadhar_number,
+    pan_number, address_line*, emergency_contact_*, bank_name,
+    account_holder_name, account_number, ifsc_code, profile_photo,
+    aadhar_document, pan_document, bank_document, contract_accepted,
+    documents_verified) are stored on the returned `onboarding` object.
+    """
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
-    
+
     if not onboarding:
         # Create new onboarding record for educators without one
         educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
         if not educator:
+            logger.warning("[educator-onboarding] educator not found id=%s", educator_id)
             raise HTTPException(status_code=404, detail="Educator not found")
-        
+
         new_onboarding = EducatorOnboarding(educator_id=educator_id)
         doc = new_onboarding.model_dump()
         doc['started_at'] = doc['started_at'].isoformat()
@@ -1001,10 +1013,29 @@ async def get_educator_onboarding(educator_id: str):
         await db.educator_onboarding.insert_one(doc)
         doc.pop('_id', None)  # Remove MongoDB ObjectId before returning
         onboarding = doc
-    
+        logger.info("[educator-onboarding] auto-created empty record for id=%s", educator_id)
+    else:
+        # Observability: track which populated fields are being returned so
+        # empty modals (all N/A) are diagnosable from logs alone.
+        populated = [
+            k for k in (
+                "bio", "tshirt_size", "aadhar_number", "pan_number",
+                "address_line1", "emergency_contact_name", "bank_name",
+                "account_holder_name", "account_number", "ifsc_code",
+                "profile_photo", "aadhar_document", "pan_document",
+                "bank_document", "contract_accepted", "documents_verified",
+            ) if onboarding.get(k)
+        ]
+        logger.info(
+            "[educator-onboarding] served id=%s populated=%d/16 fields=%s",
+            educator_id, len(populated), populated,
+        )
+
     # Get educator details
     educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
-    
+    if not educator:
+        logger.warning("[educator-onboarding] educator_applications row missing for id=%s (onboarding exists)", educator_id)
+
     return {
         "onboarding": onboarding,
         "educator": educator

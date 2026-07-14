@@ -1,0 +1,16 @@
+{
+  "summary": "Verified Educator Profile Verification modal fix. Backend GET /api/educator/onboarding/{id} returns full onboarding for Usha with logged populated=15/16 fields; 404+WARN for unknown id; empty onboarding returned for empty educator. Frontend modal now correctly renders Profile Details from selectedOnboarding for Usha (status=interview_failed, found under Archived tab), shows Bio 'Shreyaan is the goat...', T-Shirt XS, Address Magnum Towers..., Emergency SHREYAAN SUDARSHAN DAGA + phone + Father, Bank SBI, Account Holder Shrey, Account No ****1234, IFSC SBI, Aadhar ****2345, PAN 12345, Docs Verified Yes, Contract Accepted. Document Verification block shows 3 View ↗ links (Profile Photo, Aadhar, PAN) and 'Missing' text for Bank Document. For empty educator TEST_DirectOnboard (no populated onboarding), Profile Details block is correctly NOT rendered.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": ["AdminEducators.jsx is 3226 lines — recommend splitting into smaller subcomponents (EducatorModal, ProfileSummary, DocumentVerification) for maintainability."],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / Dagaji03@ (as provided)",
+  "seed_data_creation": "None — used existing Usha Bihani (c7c6d779) and empty educator (8e42e1c7).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Usha Bihani has status=interview_failed and is listed under the 'Archived' tab (not Applicants). Search 'shreyaan' to locate the correct record (there are 2 'Usha Bihani' entries in Archived). Click the 'View' button on the card to open the modal — clicking the card row does not open the modal. Backend log grep: `grep 'educator-onboarding' /var/log/supervisor/backend.err.log`.",
+  "rca of the issue": "Original bug caused by (a) Profile Details block reading from viewEducator (educator_applications collection) instead of selectedOnboarding (educator_onboarding collection); (b) fetchOnboardingDetails gated on status==='onboarded'. Fix now unconditionally fetches onboarding when modal opens and renders block based on `selectedOnboarding` fields with a hasAny check. Verified working end-to-end."
+}

@@ -148,9 +148,14 @@ const AdminEducators = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Auto-load onboarding details when viewing an onboarding educator
+  // Always fetch onboarding data whenever the modal opens — the
+  // profile / documents live in `educator_onboarding` regardless of the
+  // applicant's current status (interview_failed, active, demo_scheduled,
+  // onboarded, …). Previously this only ran for `status === 'onboarded'`
+  // which is why the verification modal displayed N/A for populated
+  // records.
   useEffect(() => {
-    if (viewEducator && viewEducator.status === 'onboarded') {
+    if (viewEducator?.id) {
       fetchOnboardingDetails(viewEducator.id);
     } else {
       setSelectedOnboarding(null);
@@ -1776,113 +1781,135 @@ const AdminEducators = () => {
                     </div>
                   )}
 
-                  {/* Profile Details - For Active/Onboarded educators with profile data */}
-                  {(viewEducator.status === 'active' || viewEducator.status === 'onboarded') && (viewEducator.profile_photo || viewEducator.bio || viewEducator.bank_name || viewEducator.aadhar_number) && (
-                    <div className="border-t pt-4">
-                      <h4 className="font-semibold text-[#1E3A5F] mb-3">Profile Details</h4>
-                      <div className="space-y-3">
-                        {/* Profile Photo & Bio */}
-                        <div className="flex gap-3">
-                          {viewEducator.profile_photo ? (
-                            <img src={viewEducator.profile_photo} alt="Profile" className="w-16 h-16 rounded-lg object-cover" />
-                          ) : (
-                            <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                              <User className="w-6 h-6" />
+                  {/* Profile Details — always show when onboarding data exists.
+                       Fields live in the `educator_onboarding` collection
+                       (`selectedOnboarding`), NOT on the application record. */}
+                  {(() => {
+                    const o = selectedOnboarding || {};
+                    const hasAny =
+                      o.profile_photo || o.bio || o.bank_name || o.aadhar_number ||
+                      o.pan_number || o.tshirt_size || o.address_line1 ||
+                      o.emergency_contact_name || o.account_holder_name ||
+                      o.contract_accepted || o.documents_verified;
+                    if (!hasAny) return null;
+                    return (
+                      <div className="border-t pt-4" data-testid="educator-profile-summary">
+                        <h4 className="font-semibold text-[#1E3A5F] mb-3">Profile Details</h4>
+                        <div className="space-y-3">
+                          {/* Profile Photo & Bio */}
+                          <div className="flex gap-3">
+                            {o.profile_photo ? (
+                              <img
+                                src={o.profile_photo}
+                                alt="Profile"
+                                className="w-16 h-16 rounded-lg object-cover"
+                                data-testid="edu-summary-photo"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                                <User className="w-6 h-6" />
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <p className="text-sm text-slate-700" data-testid="edu-summary-bio">
+                                {o.bio || 'No bio provided'}
+                              </p>
                             </div>
-                          )}
-                          <div className="flex-1">
-                            <p className="text-sm text-slate-700">{viewEducator.bio || 'No bio provided'}</p>
                           </div>
-                        </div>
-                        
-                        {/* Personal Details */}
-                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 rounded-lg p-3">
-                          <div>
-                            <span className="text-slate-500">T-Shirt Size:</span>
-                            <span className="ml-1 font-medium">{viewEducator.tshirt_size || 'N/A'}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Available:</span>
-                            <span className={`ml-1 font-medium ${viewEducator.is_available !== false ? 'text-green-600' : 'text-red-600'}`}>
-                              {viewEducator.is_available !== false ? 'Yes' : 'No'}
-                            </span>
-                          </div>
-                          {viewEducator.address_line1 && (
-                            <div className="col-span-2">
-                              <span className="text-slate-500">Address:</span>
-                              <span className="ml-1 font-medium">
-                                {viewEducator.address_line1}{viewEducator.address_line2 && `, ${viewEducator.address_line2}`}, {viewEducator.city}, {viewEducator.state} - {viewEducator.pincode}
+
+                          {/* Personal Details */}
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-slate-500">T-Shirt Size:</span>
+                              <span className="ml-1 font-medium">{o.tshirt_size || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Available:</span>
+                              <span className={`ml-1 font-medium ${viewEducator.is_available !== false ? 'text-green-600' : 'text-red-600'}`}>
+                                {viewEducator.is_available !== false ? 'Yes' : 'No'}
                               </span>
                             </div>
+                            {o.address_line1 && (
+                              <div className="col-span-2">
+                                <span className="text-slate-500">Address:</span>
+                                <span className="ml-1 font-medium">
+                                  {o.address_line1}{o.address_line2 && `, ${o.address_line2}`}
+                                  {o.city && `, ${o.city}`}{o.state && `, ${o.state}`}
+                                  {o.pincode && ` - ${o.pincode}`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Emergency Contact */}
+                          {o.emergency_contact_name && (
+                            <div className="grid grid-cols-3 gap-2 text-xs bg-red-50 rounded-lg p-3">
+                              <div>
+                                <span className="text-red-400">Emergency Name:</span>
+                                <span className="ml-1 font-medium text-red-700">{o.emergency_contact_name}</span>
+                              </div>
+                              <div>
+                                <span className="text-red-400">Phone:</span>
+                                <span className="ml-1 font-medium text-red-700">{o.emergency_contact_phone || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-red-400">Relation:</span>
+                                <span className="ml-1 font-medium text-red-700">{o.emergency_contact_relation || 'N/A'}</span>
+                              </div>
+                            </div>
                           )}
-                        </div>
-                        
-                        {/* Emergency Contact */}
-                        {viewEducator.emergency_contact_name && (
-                          <div className="grid grid-cols-3 gap-2 text-xs bg-red-50 rounded-lg p-3">
+
+                          {/* Bank Details */}
+                          {o.bank_name && (
+                            <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
+                              <div>
+                                <span className="text-green-500">Bank:</span>
+                                <span className="ml-1 font-medium text-green-700">{o.bank_name}</span>
+                              </div>
+                              <div>
+                                <span className="text-green-500">Account Holder:</span>
+                                <span className="ml-1 font-medium text-green-700">{o.account_holder_name || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-green-500">Account No:</span>
+                                <span className="ml-1 font-medium text-green-700">{o.account_number ? '****' + o.account_number.slice(-4) : 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-green-500">IFSC:</span>
+                                <span className="ml-1 font-medium text-green-700">{o.ifsc_code || 'N/A'}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Documents */}
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-blue-50 rounded-lg p-3">
                             <div>
-                              <span className="text-red-400">Emergency Name:</span>
-                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_name}</span>
+                              <span className="text-blue-500">Aadhar:</span>
+                              <span className="ml-1 font-medium text-blue-700">
+                                {o.aadhar_number ? '****' + o.aadhar_number.slice(-4) : 'N/A'}
+                              </span>
                             </div>
                             <div>
-                              <span className="text-red-400">Phone:</span>
-                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_phone}</span>
+                              <span className="text-blue-500">PAN:</span>
+                              <span className="ml-1 font-medium text-blue-700">{o.pan_number || 'N/A'}</span>
                             </div>
                             <div>
-                              <span className="text-red-400">Relation:</span>
-                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_relation}</span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Bank Details */}
-                        {viewEducator.bank_name && (
-                          <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
-                            <div>
-                              <span className="text-green-500">Bank:</span>
-                              <span className="ml-1 font-medium text-green-700">{viewEducator.bank_name}</span>
+                              <span className="text-blue-500">Docs Verified:</span>
+                              <span className={`ml-1 font-medium ${o.documents_verified ? 'text-green-600' : 'text-orange-600'}`}>
+                                {o.documents_verified ? 'Yes' : 'Pending'}
+                              </span>
                             </div>
                             <div>
-                              <span className="text-green-500">Account Holder:</span>
-                              <span className="ml-1 font-medium text-green-700">{viewEducator.account_holder_name}</span>
+                              <span className="text-blue-500">Contract:</span>
+                              <span className={`ml-1 font-medium ${o.contract_accepted ? 'text-green-600' : 'text-orange-600'}`}>
+                                {o.contract_accepted ? 'Accepted' : 'Pending'}
+                              </span>
                             </div>
-                            <div>
-                              <span className="text-green-500">Account No:</span>
-                              <span className="ml-1 font-medium text-green-700">{viewEducator.account_number ? '****' + viewEducator.account_number.slice(-4) : 'N/A'}</span>
-                            </div>
-                            <div>
-                              <span className="text-green-500">IFSC:</span>
-                              <span className="ml-1 font-medium text-green-700">{viewEducator.ifsc_code}</span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Documents */}
-                        <div className="grid grid-cols-2 gap-2 text-xs bg-blue-50 rounded-lg p-3">
-                          <div>
-                            <span className="text-blue-500">Aadhar:</span>
-                            <span className="ml-1 font-medium text-blue-700">{viewEducator.aadhar_number ? '****' + viewEducator.aadhar_number.slice(-4) : 'N/A'}</span>
-                          </div>
-                          <div>
-                            <span className="text-blue-500">PAN:</span>
-                            <span className="ml-1 font-medium text-blue-700">{viewEducator.pan_number || 'N/A'}</span>
-                          </div>
-                          <div>
-                            <span className="text-blue-500">Docs Verified:</span>
-                            <span className={`ml-1 font-medium ${viewEducator.documents_verified ? 'text-green-600' : 'text-orange-600'}`}>
-                              {viewEducator.documents_verified ? 'Yes' : 'Pending'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-blue-500">Contract:</span>
-                            <span className={`ml-1 font-medium ${viewEducator.contract_accepted ? 'text-green-600' : 'text-orange-600'}`}>
-                              {viewEducator.contract_accepted ? 'Accepted' : 'Pending'}
-                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Comments Section */}
                   <div className="border-t pt-4">
@@ -1986,8 +2013,25 @@ const AdminEducators = () => {
                     </div>
                   </div>
 
-                  {/* Document Verification Section - Only for onboarding educators */}
-                  {viewEducator.status === 'onboarded' && (
+                  {/* Document Verification Section — visible whenever the
+                       educator has any onboarding data (photo, bio, docs,
+                       bank, etc.) or has already been marked onboarded.
+                       Previously this was gated on status==='onboarded'
+                       only, which hid populated records with other statuses
+                       (interview_failed, active, demo_scheduled, …). */}
+                  {(() => {
+                    const o = selectedOnboarding;
+                    const shouldShow =
+                      viewEducator.status === 'onboarded' ||
+                      (o && (
+                        o.profile_photo || o.bio || o.aadhar_number ||
+                        o.pan_number || o.bank_name || o.tshirt_size ||
+                        o.address_line1 || o.emergency_contact_name ||
+                        o.contract_accepted || o.documents_verified ||
+                        o.aadhar_document || o.pan_document || o.bank_document
+                      ));
+                    if (!shouldShow) return null;
+                    return (
                     <div className="border-t pt-4">
                       <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
@@ -2196,7 +2240,8 @@ const AdminEducators = () => {
                         </div>
                       )}
                     </div>
-                  )}
+                    );
+                  })()}
 
                   <div className="pt-4 border-t">
                     <div className="flex items-center gap-4 text-sm text-slate-500">
