@@ -215,6 +215,17 @@ const EducatorOnboarding = () => {
   };
 
   const saveProgress = async (data = {}) => {
+    // Persist form + step data. Previously this swallowed errors silently
+    // via console.error only — the educator could type bank details,
+    // click Next after a transient network blip, and the UI would happily
+    // advance to the next step even though the PATCH threw and no data
+    // was written. That produced production "Bank Details N/A" complaints
+    // like Ronit Ambre's (2026-07-14) with no server-side trace of a save.
+    //
+    // Now:
+    //   • Returns `true` on success, `false` on failure.
+    //   • Surfaces a toast on failure so the educator knows to retry.
+    //   • Callers (e.g. handleStepComplete) can gate step completion on it.
     setSaving(true);
     try {
       const educatorId = user?.educator_id || user?.id;
@@ -224,8 +235,14 @@ const EducatorOnboarding = () => {
         video_progress: videoProgress,
         video_uploads: videoUploads
       }, { headers: getAuthHeaders() });
+      return true;
     } catch (error) {
       console.error('Failed to save:', error);
+      const detail = error?.response?.data?.detail;
+      toast.error(
+        `Couldn't save your details — ${detail || 'network error'}. Please retry.`
+      );
+      return false;
     } finally {
       setSaving(false);
     }
@@ -235,8 +252,14 @@ const EducatorOnboarding = () => {
     if (completing) return; // prevent double-trigger
     setCompleting(true);
     try {
-      // 1. Save form data first (await so it doesn't race with complete-step)
-      await saveProgress(extraData);
+      // 1. Save form data first (await so it doesn't race with complete-step).
+      //    Abort if the save failed — otherwise we'd mark the step "complete"
+      //    on the server while the fields are still empty (root cause of the
+      //    "Bank Details N/A" production issue).
+      const saved = await saveProgress(extraData);
+      if (!saved) {
+        return; // toast was already shown inside saveProgress
+      }
 
       // 2. Mark step complete on backend
       const educatorId = user?.educator_id || user?.id;
