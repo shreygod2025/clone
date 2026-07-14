@@ -1872,7 +1872,12 @@ const AdminEducators = () => {
                               </div>
                               <div>
                                 <span className="text-green-500">Account No:</span>
-                                <span className="ml-1 font-medium text-green-700">{o.account_number ? '****' + o.account_number.slice(-4) : 'N/A'}</span>
+                                <span
+                                  className="ml-1 font-mono font-medium text-green-700 select-all"
+                                  data-testid="edu-summary-account-number"
+                                >
+                                  {o.account_number || 'N/A'}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-green-500">IFSC:</span>
@@ -2146,7 +2151,12 @@ const AdminEducators = () => {
                               </div>
                               <div>
                                 <span className="text-slate-500">Account No:</span>
-                                <span className="ml-1 font-medium">{selectedOnboarding.account_number ? '****' + selectedOnboarding.account_number.slice(-4) : 'N/A'}</span>
+                                <span
+                                  className="ml-1 font-mono font-medium select-all"
+                                  data-testid="edu-verify-account-number"
+                                >
+                                  {selectedOnboarding.account_number || 'N/A'}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-slate-500">IFSC:</span>
