@@ -1394,14 +1394,31 @@ const AdminEducators = () => {
               data-testid={`educator-card-${educator.id}`}
             >
               <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F]">{educator.name}</h3>
-                  <p className="text-sm text-slate-500 flex items-center gap-1">
-                    <Mail className="w-3 h-3" /> {educator.email}
-                  </p>
-                  <p className="text-sm text-slate-500 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> {educator.phone}
-                  </p>
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  {educator.profile_photo ? (
+                    <img
+                      src={educator.profile_photo}
+                      alt={educator.name}
+                      className="w-11 h-11 rounded-full object-cover flex-shrink-0 border border-slate-200"
+                      data-testid={`educator-avatar-${educator.id}`}
+                    />
+                  ) : (
+                    <div
+                      className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400"
+                      data-testid={`educator-avatar-${educator.id}`}
+                    >
+                      <User className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-[#1E3A5F] truncate">{educator.name}</h3>
+                    <p className="text-sm text-slate-500 flex items-center gap-1 truncate">
+                      <Mail className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{educator.email}</span>
+                    </p>
+                    <p className="text-sm text-slate-500 flex items-center gap-1">
+                      <Phone className="w-3 h-3 flex-shrink-0" /> {educator.phone}
+                    </p>
+                  </div>
                 </div>
                 {educator.requirement_title && (
                   <span className="px-2 py-1 rounded text-xs font-medium bg-[#D63031]/10 text-[#D63031]">
@@ -1436,7 +1453,27 @@ const AdminEducators = () => {
                 )}
                 {educator.city && (
                   <p className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-400" /> {educator.city}
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    {educator.city}{educator.state && `, ${educator.state}`}
+                  </p>
+                )}
+                {(educator.availability || educator.experience) && (
+                  <p className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                    {educator.availability && (
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" /> {educator.availability}
+                      </span>
+                    )}
+                    {educator.experience && (
+                      <span className="inline-flex items-center gap-1">
+                        <Briefcase className="w-3 h-3 text-slate-400" /> {educator.experience}
+                      </span>
+                    )}
+                  </p>
+                )}
+                {educator.documents_verified && (
+                  <p className="flex items-center gap-1 text-green-600 text-xs" data-testid={`educator-docs-verified-${educator.id}`}>
+                    <CheckCircle2 className="w-3 h-3" /> Documents verified
                   </p>
                 )}
                 {educator.demo_date && (

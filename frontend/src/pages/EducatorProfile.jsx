@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserAuth } from '../context/UserAuthContext';
 import { 
   User, Phone, Mail, MapPin, Camera, Save, ArrowLeft,
   Building2, CreditCard, FileText, Shield, Edit2, CheckCircle2,
-  AlertCircle, Loader2, Upload, Eye, EyeOff
+  AlertCircle, Loader2, Upload, Eye, EyeOff, Trash2, RefreshCw, ImageIcon
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -17,6 +17,175 @@ import Navbar from '../components/Navbar';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+const DOC_LABELS = {
+  profile_photo: 'Profile Photo',
+  aadhar_document: 'Aadhaar Card',
+  pan_document: 'PAN Card',
+  bank_document: 'Bank Document',
+};
+
+const formatBytes = (bytes) => {
+  if (!bytes && bytes !== 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatUploadedAt = (iso) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString();
+  } catch {
+    return iso;
+  }
+};
+
+/**
+ * Uploadable document block. Renders (in order):
+ *   • header row (icon + label)
+ *   • optional child slot (number inputs for Aadhaar/PAN)
+ *   • uploaded-file status row  →  filename · size · uploaded_at · View
+ *   • action row  →  Upload / Replace  •  Delete
+ */
+const DocFileBlock = ({
+  docType,
+  label,
+  hint,
+  accept,
+  url,
+  meta,
+  uploading,
+  onUpload,
+  onDelete,
+  icon,
+  previewIsImage = false,
+  children,
+}) => {
+  const inputRef = React.useRef(null);
+  const hasFile = !!url;
+
+  const handlePick = () => {
+    if (inputRef.current) inputRef.current.click();
+  };
+
+  const handleChange = (e) => {
+    const f = e.target.files?.[0];
+    if (f) onUpload(docType, f);
+    if (e.target) e.target.value = ''; // allow re-uploading the same filename
+  };
+
+  return (
+    <div
+      className="border border-slate-200 rounded-lg p-4 bg-white"
+      data-testid={`doc-block-${docType}`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h4 className="font-medium text-slate-800 flex items-center gap-2 text-sm">
+            {icon || <FileText className="w-4 h-4" />} {label}
+          </h4>
+          {hint && <p className="text-[11px] text-slate-500 mt-0.5">{hint}</p>}
+        </div>
+        {hasFile && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+            <CheckCircle2 className="w-3 h-3" /> Uploaded
+          </span>
+        )}
+      </div>
+
+      {children && <div className="mb-3">{children}</div>}
+
+      {hasFile ? (
+        <div className="rounded-md border border-slate-100 bg-slate-50 p-2.5 mb-3">
+          <div className="flex items-start gap-2.5">
+            {previewIsImage ? (
+              <img
+                src={url}
+                alt={label}
+                className="w-10 h-10 rounded object-cover flex-shrink-0"
+                data-testid={`doc-preview-${docType}`}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded bg-slate-200 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-4 h-4 text-slate-500" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0 text-xs">
+              <p
+                className="font-medium text-slate-800 truncate"
+                title={meta?.original_name || ''}
+                data-testid={`doc-name-${docType}`}
+              >
+                {meta?.original_name || 'Document uploaded'}
+              </p>
+              <p className="text-slate-500 mt-0.5">
+                {meta?.size ? formatBytes(meta.size) : ''}
+                {meta?.size && meta?.uploaded_at ? ' · ' : ''}
+                {meta?.uploaded_at ? `uploaded ${formatUploadedAt(meta.uploaded_at)}` : ''}
+              </p>
+            </div>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-indigo-600 hover:underline whitespace-nowrap flex items-center gap-1"
+              data-testid={`doc-view-${docType}`}
+            >
+              <Eye className="w-3 h-3" /> View
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-500 px-3 py-2.5 mb-3 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5" /> No file uploaded yet.
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept={accept}
+        onChange={handleChange}
+        data-testid={`doc-input-${docType}`}
+      />
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={hasFile ? 'outline' : 'default'}
+          onClick={handlePick}
+          disabled={uploading}
+          className="text-xs"
+          data-testid={`doc-upload-${docType}`}
+        >
+          {uploading ? (
+            <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading…</>
+          ) : hasFile ? (
+            <><RefreshCw className="w-3 h-3 mr-1" /> Replace</>
+          ) : (
+            <><Upload className="w-3 h-3 mr-1" /> Upload</>
+          )}
+        </Button>
+        {hasFile && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => onDelete(docType)}
+            disabled={uploading}
+            className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+            data-testid={`doc-delete-${docType}`}
+          >
+            <Trash2 className="w-3 h-3 mr-1" /> Delete
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const EducatorProfile = () => {
   const navigate = useNavigate();
@@ -143,23 +312,86 @@ const EducatorProfile = () => {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    await uploadDocument('profile_photo', file);
+    // Reset input so re-selecting the same file works.
+    if (e.target) e.target.value = '';
+  };
 
-    const formDataUpload = new FormData();
-    formDataUpload.append('file', file);
+  // Generic doc upload for the Documents tab (profile_photo, aadhar_document,
+  // pan_document, bank_document). Uses the dedicated educator-scoped endpoint
+  // that (a) enforces 50 MB & PDF/JPG/JPEG/PNG, (b) destroys the previous
+  // Cloudinary asset when replacing, (c) indexes the upload in `uploaded_files`
+  // so Admin > Uploaded Documents picks it up automatically.
+  const [uploadingDoc, setUploadingDoc] = useState(null); // current doc_type being uploaded, if any
 
+  const uploadDocument = async (docType, file) => {
+    if (!file) return;
+
+    // Client-side validation (server enforces authoritatively).
+    const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Only PDF, JPG, JPEG, and PNG files are allowed.');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error(`File too large (max 50 MB, got ${(file.size / (1024 * 1024)).toFixed(1)} MB).`);
+      return;
+    }
+    if (docType === 'profile_photo' && !file.type.startsWith('image/')) {
+      toast.error('Profile photo must be an image.');
+      return;
+    }
+
+    setUploadingDoc(docType);
     try {
-      const res = await axios.post(`${API}/upload`, formDataUpload, {
-        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-      });
-      
-      await axios.patch(`${API}/educator/profile`, {
-        profile_photo: res.data.url
-      }, { headers: getAuthHeaders() });
-      
-      toast.success('Profile photo updated');
-      fetchProfile();
+      const fd = new FormData();
+      fd.append('doc_type', docType);
+      fd.append('file', file);
+      const res = await axios.post(
+        `${API}/educator/profile/documents/upload`,
+        fd,
+        { headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' } },
+      );
+      toast.success(`${DOC_LABELS[docType] || 'Document'} uploaded.`);
+      // Optimistically merge into profile so UI updates instantly.
+      setProfile((prev) => ({
+        ...(prev || {}),
+        [docType]: res.data.url,
+        document_meta: {
+          ...((prev && prev.document_meta) || {}),
+          [docType]: {
+            original_name: res.data.original_name,
+            size: res.data.size,
+            uploaded_at: res.data.uploaded_at,
+          },
+        },
+      }));
     } catch (error) {
-      toast.error('Failed to upload photo');
+      toast.error(error?.response?.data?.detail || 'Failed to upload document.');
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  const deleteDocument = async (docType) => {
+    if (!window.confirm(`Delete ${DOC_LABELS[docType] || 'this document'}?`)) return;
+    try {
+      await axios.delete(
+        `${API}/educator/profile/documents/${docType}`,
+        { headers: getAuthHeaders() },
+      );
+      toast.success(`${DOC_LABELS[docType] || 'Document'} removed.`);
+      setProfile((prev) => {
+        const next = { ...(prev || {}) };
+        delete next[docType];
+        if (next.document_meta) {
+          next.document_meta = { ...next.document_meta };
+          delete next.document_meta[docType];
+        }
+        return next;
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to delete document.');
     }
   };
 
@@ -595,79 +827,101 @@ const EducatorProfile = () => {
             
             {/* Documents Tab */}
             {activeTab === 'documents' && (
-              <div className="space-y-6">
+              <div className="space-y-6" data-testid="educator-documents-tab">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-800">Identity Documents</h3>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Identity Documents</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Upload Aadhaar, PAN, profile photo, and bank proof. PDF, JPG, JPEG, PNG · max 50 MB each.
+                    </p>
+                  </div>
                   {profile?.documents_verified && (
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Verified
                     </span>
                   )}
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Aadhar Card */}
-                  <div className="border border-slate-200 rounded-lg p-4">
-                    <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
-                      <FileText className="w-4 h-4" /> Aadhar Card
-                    </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm text-slate-600 mb-1">Aadhar Number</label>
-                        <Input 
-                          value={docData.aadhar_number}
-                          onChange={(e) => setDocData({...docData, aadhar_number: e.target.value})}
-                          placeholder="XXXX XXXX XXXX"
-                          maxLength={12}
-                        />
-                        {profile?.aadhar_number_masked && (
-                          <p className="text-xs text-slate-500 mt-1">Current: {profile.aadhar_number_masked}</p>
-                        )}
-                      </div>
-                      {profile?.aadhar_document && (
-                        <div className="flex items-center gap-2 p-2 bg-green-50 rounded">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-green-700">Document uploaded</span>
-                          <a href={profile.aadhar_document} target="_blank" rel="noreferrer" className="text-blue-600 text-sm ml-auto">
-                            View
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* PAN Card */}
-                  <div className="border border-slate-200 rounded-lg p-4">
-                    <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
-                      <FileText className="w-4 h-4" /> PAN Card
-                    </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm text-slate-600 mb-1">PAN Number</label>
-                        <Input 
-                          value={docData.pan_number}
-                          onChange={(e) => setDocData({...docData, pan_number: e.target.value.toUpperCase()})}
-                          placeholder="ABCDE1234F"
-                          maxLength={10}
-                        />
-                      </div>
-                      {profile?.pan_document && (
-                        <div className="flex items-center gap-2 p-2 bg-green-50 rounded">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-green-700">Document uploaded</span>
-                          <a href={profile.pan_document} target="_blank" rel="noreferrer" className="text-blue-600 text-sm ml-auto">
-                            View
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+
+                {/* Aadhaar & PAN numbers (kept alongside file uploads) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DocFileBlock
+                    docType="aadhar_document"
+                    label="Aadhaar Card"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*"
+                    url={profile?.aadhar_document}
+                    meta={profile?.document_meta?.aadhar_document}
+                    uploading={uploadingDoc === 'aadhar_document'}
+                    onUpload={uploadDocument}
+                    onDelete={deleteDocument}
+                  >
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Aadhaar Number</label>
+                    <Input
+                      value={docData.aadhar_number}
+                      onChange={(e) => setDocData({ ...docData, aadhar_number: e.target.value })}
+                      placeholder="XXXX XXXX XXXX"
+                      maxLength={12}
+                      data-testid="educator-aadhar-number-input"
+                    />
+                    {profile?.aadhar_number_masked && (
+                      <p className="text-[11px] text-slate-500 mt-1">Current: {profile.aadhar_number_masked}</p>
+                    )}
+                  </DocFileBlock>
+
+                  <DocFileBlock
+                    docType="pan_document"
+                    label="PAN Card"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*"
+                    url={profile?.pan_document}
+                    meta={profile?.document_meta?.pan_document}
+                    uploading={uploadingDoc === 'pan_document'}
+                    onUpload={uploadDocument}
+                    onDelete={deleteDocument}
+                  >
+                    <label className="block text-xs font-medium text-slate-600 mb-1">PAN Number</label>
+                    <Input
+                      value={docData.pan_number}
+                      onChange={(e) => setDocData({ ...docData, pan_number: e.target.value.toUpperCase() })}
+                      placeholder="ABCDE1234F"
+                      maxLength={10}
+                      data-testid="educator-pan-number-input"
+                    />
+                  </DocFileBlock>
+
+                  <DocFileBlock
+                    docType="profile_photo"
+                    label="Profile Photo"
+                    accept=".jpg,.jpeg,.png,image/*"
+                    url={profile?.profile_photo}
+                    meta={profile?.document_meta?.profile_photo}
+                    uploading={uploadingDoc === 'profile_photo'}
+                    onUpload={uploadDocument}
+                    onDelete={deleteDocument}
+                    icon={<ImageIcon className="w-4 h-4" />}
+                    previewIsImage
+                  />
+
+                  <DocFileBlock
+                    docType="bank_document"
+                    label="Bank Document"
+                    hint="Cancelled cheque or passbook first page"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*"
+                    url={profile?.bank_document}
+                    meta={profile?.document_meta?.bank_document}
+                    uploading={uploadingDoc === 'bank_document'}
+                    onUpload={uploadDocument}
+                    onDelete={deleteDocument}
+                    icon={<CreditCard className="w-4 h-4" />}
+                  />
                 </div>
-                
+
                 <div className="flex justify-end pt-4">
-                  <Button onClick={handleSaveDocuments} disabled={saving}>
+                  <Button
+                    onClick={handleSaveDocuments}
+                    disabled={saving}
+                    data-testid="educator-save-doc-numbers"
+                  >
                     {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    Update Documents
+                    Save Aadhaar / PAN Numbers
                   </Button>
                 </div>
               </div>

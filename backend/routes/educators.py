@@ -14,7 +14,7 @@ import logging
 from io import BytesIO
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, EmailStr
 
@@ -809,7 +809,7 @@ async def get_educator_applications(
     query = {}
     if status:
         query["status"] = status
-    
+
     # For team members, only show leads they added or assigned to them
     # UNLESS for_assignment=true (need to see all onboarded educators for dropdown)
     if user.get("role") == "team_member" and not for_assignment:
@@ -818,8 +818,39 @@ async def get_educator_applications(
             {"added_by": user_id},
             {"assigned_to": user_id}
         ]
-    
+
     applications = await db.educator_applications.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+    # Merge in `educator_onboarding` fields so every admin tab (Applicant,
+    # Onboarding, Active, Archived, …) sees the SAME profile data regardless
+    # of the applicant's workflow status. Only fields missing on the
+    # application row are filled from onboarding — the application row wins
+    # when both have values (e.g. name/email/phone that live on both).
+    if applications:
+        educator_ids = [a["id"] for a in applications if a.get("id")]
+        onboarding_docs = await db.educator_onboarding.find(
+            {"educator_id": {"$in": educator_ids}},
+            {"_id": 0},
+        ).to_list(length=len(educator_ids))
+        onb_by_id = {o["educator_id"]: o for o in onboarding_docs if o.get("educator_id")}
+        merge_fields = [
+            'profile_photo', 'bio', 'tshirt_size',
+            'address_line1', 'address_line2', 'city', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+            'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
+            'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+            'contract_accepted', 'contract_accepted_at', 'digital_signature',
+            'documents_verified', 'documents_verified_at',
+        ]
+        for app in applications:
+            onb = onb_by_id.get(app.get("id"))
+            if not onb:
+                continue
+            for f in merge_fields:
+                v = onb.get(f)
+                if v not in (None, "", 0, False) and not app.get(f):
+                    app[f] = v
+
     for app in applications:
         if isinstance(app.get('created_at'), str):
             app['created_at'] = datetime.fromisoformat(app['created_at'])
@@ -2252,34 +2283,60 @@ async def educator_notify_student_not_joined(inquiry_id: str, user: dict = Depen
 
 @router.get("/educator/profile")
 async def get_educator_profile(user: dict = Depends(get_current_user)):
-    """Get educator's complete profile including onboarding data"""
+    """Get educator's complete profile including onboarding data.
+
+    Always merges `educator_onboarding` fields (bio, address, docs, bank,
+    contract, tshirt, emergency contact, etc.) into the response — the
+    caller-facing "Profile" is a UNION of both collections. Previously
+    the merge was gated on `status in ["onboarded", "onboarding"]`, which
+    left the educator's own Documents/Bank tab empty for any other status
+    (applicant, active, archived, interview_failed, demo_scheduled…).
+    """
     educator_id = user.get("educator_id") or user.get("id")
-    
+
     if not educator_id:
         raise HTTPException(status_code=403, detail="Educator not found")
-    
-    # Get educator application with all fields
+
     educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
     if not educator:
         raise HTTPException(status_code=404, detail="Educator not found")
-    
-    # If educator is in onboarding/active and doesn't have profile data, check onboarding collection
-    if educator.get("status") in ["onboarded", "onboarding"] and not educator.get("profile_photo"):
-        onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
-        if onboarding:
-            # Merge onboarding data with educator data for response
-            profile_fields = [
-                'profile_photo', 'bio', 'tshirt_size', 
-                'address_line1', 'address_line2', 'city', 'state', 'pincode',
-                'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
-                'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
-                'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
-                'contract_accepted', 'contract_accepted_at', 'digital_signature'
-            ]
-            for field in profile_fields:
-                if onboarding.get(field) and not educator.get(field):
-                    educator[field] = onboarding[field]
-    
+
+    # Always merge onboarding data — regardless of workflow status.
+    onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+    if onboarding:
+        profile_fields = [
+            'profile_photo', 'bio', 'tshirt_size',
+            'address_line1', 'address_line2', 'city', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+            'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
+            'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+            'contract_accepted', 'contract_accepted_at', 'digital_signature',
+            'documents_verified', 'documents_verified_at', 'verification_notes',
+        ]
+        for field in profile_fields:
+            if onboarding.get(field) and not educator.get(field):
+                educator[field] = onboarding[field]
+
+    # Attach document upload metadata (original filename + uploaded_at + size)
+    # so the profile UI can display "aadhar.pdf · uploaded 3 days ago".
+    doc_meta = await db.uploaded_files.find(
+        {"educator_id": educator_id, "doc_type": {"$in": [
+            "profile_photo", "aadhar_document", "pan_document", "bank_document"
+        ]}},
+        {"_id": 0, "doc_type": 1, "original_name": 1, "size": 1, "uploaded_at": 1, "cloudinary_url": 1},
+    ).sort("uploaded_at", -1).to_list(length=50)
+    # Keep only the newest per doc_type (list is sorted desc)
+    latest_by_type: dict = {}
+    for d in doc_meta:
+        t = d.get("doc_type")
+        if t and t not in latest_by_type:
+            latest_by_type[t] = {
+                "original_name": d.get("original_name"),
+                "size": d.get("size"),
+                "uploaded_at": d.get("uploaded_at"),
+            }
+    educator["document_meta"] = latest_by_type
+
     # Mask sensitive info for security (only show last 4 digits)
     if educator.get("account_number"):
         acc_num = educator["account_number"]
@@ -2287,7 +2344,7 @@ async def get_educator_profile(user: dict = Depends(get_current_user)):
     if educator.get("aadhar_number"):
         aadhar = educator["aadhar_number"]
         educator["aadhar_number_masked"] = f"****{aadhar[-4:]}" if len(aadhar) > 4 else "****"
-    
+
     return educator
 
 @router.patch("/educator/profile")
@@ -2403,6 +2460,243 @@ async def update_educator_documents(data: dict, user: dict = Depends(get_current
     )
     
     return {"success": True, "message": "Documents updated. They will be verified soon."}
+
+
+# ── Educator document upload / delete ──────────────────────────────────────────
+# The educator-facing profile page (`/educator-profile → Documents tab`) uses
+# these endpoints to upload/replace/delete the four canonical documents:
+#   • profile_photo   — profile picture (image only)
+#   • aadhar_document — Aadhaar card scan
+#   • pan_document    — PAN card scan
+#   • bank_document   — cancelled cheque / passbook
+#
+# Contract:
+#   POST   /api/educator/profile/documents/upload         (multipart: file, doc_type)
+#   DELETE /api/educator/profile/documents/{doc_type}
+#
+# Guarantees:
+#   • Only the authenticated educator can touch their own docs.
+#   • Replace = same doc_type upload → old Cloudinary asset is destroyed
+#     and the `uploaded_files` marker for that doc_type is deleted, so no
+#     orphans, no duplicates.
+#   • On upload we write:
+#       – `educator_onboarding.<doc_type>`         → primary source
+#       – `educator_applications.<doc_type>`        → for legacy admin cards
+#       – `uploaded_files` row  {educator_id, doc_type, original_name, size,
+#          uploaded_at, cloudinary_url, cloudinary_public_id, resource_type}
+#         so Admin > Uploaded Documents lists the file automatically.
+
+_EDUCATOR_DOC_TYPES = {
+    "profile_photo",
+    "aadhar_document",
+    "pan_document",
+    "bank_document",
+}
+_EDUCATOR_DOC_ALLOWED_EXT = {".pdf", ".jpg", ".jpeg", ".png"}
+_EDUCATOR_DOC_IMAGE_EXT = {".jpg", ".jpeg", ".png"}
+_EDUCATOR_DOC_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
+
+
+def _require_educator(user: dict) -> str:
+    """Return the educator_id from an authenticated user or raise 403."""
+    if (user or {}).get("role") != "educator":
+        raise HTTPException(status_code=403, detail="Educator access required")
+    educator_id = user.get("educator_id") or user.get("id")
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    return educator_id
+
+
+@router.post("/educator/profile/documents/upload")
+async def upload_educator_document(
+    doc_type: str = Form(...),
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """Upload / replace one of the four educator identity documents."""
+    from pathlib import Path as _Path
+    from io import BytesIO as _BytesIO
+    # Lazy import so we don't cross-couple routes packages.
+    from .misc import _get_cloudinary
+
+    educator_id = _require_educator(user)
+
+    if doc_type not in _EDUCATOR_DOC_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid doc_type. Must be one of: {sorted(_EDUCATOR_DOC_TYPES)}",
+        )
+
+    file_ext = _Path(file.filename or "").suffix.lower()
+    if file_ext not in _EDUCATOR_DOC_ALLOWED_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF, JPG, JPEG, and PNG files are allowed.",
+        )
+    # profile_photo must be an image
+    if doc_type == "profile_photo" and file_ext not in _EDUCATOR_DOC_IMAGE_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail="Profile photo must be an image (JPG, JPEG, or PNG).",
+        )
+
+    content = await file.read()
+    size = len(content)
+    if size > _EDUCATOR_DOC_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large (max 50 MB, got {size / (1024 * 1024):.1f} MB).",
+        )
+
+    # 1. Destroy previous Cloudinary asset for this (educator_id, doc_type)
+    #    so replacements don't leave orphans.
+    previous = await db.uploaded_files.find_one(
+        {"educator_id": educator_id, "doc_type": doc_type},
+        {"_id": 0, "cloudinary_public_id": 1, "resource_type": 1, "filename": 1},
+    )
+    if previous and previous.get("cloudinary_public_id"):
+        try:
+            _get_cloudinary().uploader.destroy(
+                previous["cloudinary_public_id"],
+                resource_type=previous.get("resource_type") or "image",
+                invalidate=True,
+            )
+        except Exception as e:
+            # Don't fail the upload if cleanup of the old asset fails;
+            # just log and press on.
+            logger.warning(
+                "[educator-doc] failed to destroy previous asset "
+                "educator_id=%s doc_type=%s public_id=%s err=%s",
+                educator_id, doc_type, previous.get("cloudinary_public_id"), e,
+            )
+
+    # 2. Upload the new asset.
+    unique_id = f"educator_{doc_type}_{educator_id[:8]}_{uuid.uuid4().hex[:8]}{file_ext}"
+    folder = f"oll_educator_docs/{educator_id}"
+    resource_type = "image" if file_ext in _EDUCATOR_DOC_IMAGE_EXT else "raw"
+    try:
+        result = _get_cloudinary().uploader.upload(
+            _BytesIO(content),
+            public_id=unique_id,
+            folder=folder,
+            resource_type=resource_type,
+            overwrite=True,
+        )
+    except Exception as e:
+        logger.error(
+            "[educator-doc] cloudinary upload failed educator_id=%s doc_type=%s err=%s",
+            educator_id, doc_type, e,
+        )
+        raise HTTPException(status_code=502, detail="Upload failed. Please retry.")
+
+    file_url = result.get("secure_url")
+    cloudinary_public_id = result.get("public_id")
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # 3. Replace the previous uploaded_files row (single-row-per-doc invariant).
+    await db.uploaded_files.delete_many(
+        {"educator_id": educator_id, "doc_type": doc_type}
+    )
+    await db.uploaded_files.insert_one({
+        "id": str(uuid.uuid4()),
+        "educator_id": educator_id,
+        "doc_type": doc_type,
+        "filename": unique_id,
+        "original_name": file.filename,
+        "cloudinary_public_id": cloudinary_public_id,
+        "cloudinary_url": file_url,
+        "resource_type": resource_type,
+        "size": size,
+        "type": "educator_document",  # so the general Admin > Uploaded Documents view can filter
+        "uploaded_at": now_iso,
+    })
+
+    # 4. Persist the URL onto the educator's onboarding row (canonical) and
+    #    also mirror on the application row for backward-compat cards.
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {
+            "$set": {
+                doc_type: file_url,
+                "last_activity": now_iso,
+                "documents_verified": False,  # re-verify after any doc change
+            },
+            "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "educator_id": educator_id,
+                "started_at": now_iso,
+                "status": "in_progress",
+                "current_step": 1,
+                "completed_steps": [],
+            },
+        },
+        upsert=True,
+    )
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": {doc_type: file_url, "updated_at": now_iso}},
+    )
+
+    logger.info(
+        "[educator-doc] uploaded educator_id=%s doc_type=%s size=%d public_id=%s",
+        educator_id, doc_type, size, cloudinary_public_id,
+    )
+    return {
+        "success": True,
+        "doc_type": doc_type,
+        "url": file_url,
+        "original_name": file.filename,
+        "size": size,
+        "uploaded_at": now_iso,
+    }
+
+
+@router.delete("/educator/profile/documents/{doc_type}")
+async def delete_educator_document(doc_type: str, user: dict = Depends(get_current_user)):
+    """Delete an educator's uploaded document."""
+    from .misc import _get_cloudinary
+
+    educator_id = _require_educator(user)
+
+    if doc_type not in _EDUCATOR_DOC_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid doc_type. Must be one of: {sorted(_EDUCATOR_DOC_TYPES)}",
+        )
+
+    marker = await db.uploaded_files.find_one(
+        {"educator_id": educator_id, "doc_type": doc_type},
+        {"_id": 0, "cloudinary_public_id": 1, "resource_type": 1},
+    )
+    if marker and marker.get("cloudinary_public_id"):
+        try:
+            _get_cloudinary().uploader.destroy(
+                marker["cloudinary_public_id"],
+                resource_type=marker.get("resource_type") or "image",
+                invalidate=True,
+            )
+        except Exception as e:
+            logger.warning(
+                "[educator-doc] destroy on delete failed educator_id=%s doc_type=%s err=%s",
+                educator_id, doc_type, e,
+            )
+
+    await db.uploaded_files.delete_many(
+        {"educator_id": educator_id, "doc_type": doc_type}
+    )
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {doc_type: "", "last_activity": now_iso}},
+    )
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": {doc_type: "", "updated_at": now_iso}},
+    )
+
+    logger.info("[educator-doc] deleted educator_id=%s doc_type=%s", educator_id, doc_type)
+    return {"success": True, "doc_type": doc_type}
+
 
 @router.post("/admin/notify-not-joined/{inquiry_id}")
 async def admin_notify_not_joined(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
