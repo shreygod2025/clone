@@ -2,6 +2,68 @@
 ## Product Requirements Document
 
 
+### Latest Fix (2026-07-15) — Educator Document Uploads + Cross-Section Data Consistency 🎯
+
+**Ask 1**: Enhance the existing Identity Documents section in the educator
+`/educator-profile` Documents tab with full upload functionality — same UI,
+richer capabilities.
+
+**Ask 2**: Ensure every educator-related admin section (Applications, Active,
+Onboarding, Archived, View Profile) shows the same profile data — single
+source of truth.
+
+**Backend** (`/app/backend/routes/educators.py`):
+- New `POST /api/educator/profile/documents/upload` (multipart:
+  `doc_type` ∈ {profile_photo, aadhar_document, pan_document,
+  bank_document}, `file`). Validates PDF/JPG/JPEG/PNG, 50 MB max.
+  On replace: destroys the previous Cloudinary asset and its
+  `uploaded_files` row → no duplicates. Writes URL to
+  `educator_onboarding.<doc_type>` and mirrors on
+  `educator_applications.<doc_type>`. Also inserts a marker row
+  into `uploaded_files` tagged with `educator_id`, `doc_type`,
+  `original_name`, `size`, `uploaded_at`, `cloudinary_public_id`
+  so Admin > Uploaded Documents lists it automatically.
+- New `DELETE /api/educator/profile/documents/{doc_type}` — destroys
+  Cloudinary asset + removes marker + unsets URL fields.
+- Both endpoints gated on `role == "educator"` — admins cannot use
+  them (403 "Educator access required").
+- `GET /api/educator/profile` now **always** merges `educator_onboarding`
+  fields regardless of status. Also returns `document_meta` dict with
+  `{original_name, size, uploaded_at}` per uploaded doc.
+- `GET /api/educators/applications` now merges every application row
+  with its corresponding `educator_onboarding` doc. Every admin tab
+  (Applicant/Onboarding/Active/Archived) now sees the same fields —
+  photo, bio, address, emergency contact, bank details, docs,
+  contract, documents_verified — regardless of workflow status.
+
+**Frontend** — Educator side (`/app/frontend/src/pages/EducatorProfile.jsx`):
+- Rewrote Documents tab: 4 `DocFileBlock` cards
+  (Aadhaar / PAN / Profile Photo / Bank Document). Each block has:
+  Upload (or Replace when a file exists), View link, Delete button,
+  and shows filename · size · uploaded_at metadata. Existing Aadhaar
+  and PAN Number inputs preserved.
+- New `uploadDocument()` and `deleteDocument()` handlers with
+  client-side pre-validation + toast feedback.
+- Photo upload on the header camera button now routes through the
+  same endpoint (single canonical upload path).
+
+**Frontend** — Admin side (`/app/frontend/src/pages/admin/AdminEducators.jsx`):
+- Educator cards now render a **profile-photo avatar**, `city, state`,
+  `availability`, `experience`, and a green **"Documents verified"** badge
+  when applicable — surfaced on every tab because the API now merges
+  onboarding data into every row.
+
+**Verified end-to-end** (`testing_agent_v3_fork` iteration 103, 100/100):
+- Backend: 9/9 pytest cases pass covering upload/replace/delete,
+  auth gating, file-type + size validation, profile merge,
+  applications merge.
+- Frontend: Documents tab renders correctly, upload/replace/delete
+  flow works with correct toasts + metadata, admin cards show all
+  new fields (Usha Bihani in Archived tab renders with avatar, city,
+  green docs badge).
+
+
+### Latest Fix (2026-07-14 pt2) — Silent-Save Bug in Educator Onboarding ✅
 ### Latest Fix (2026-07-14) — Educator Profile Verification Modal 🎯
 
 **Issue**: The Educator Profile Verification modal was showing `N/A` for
