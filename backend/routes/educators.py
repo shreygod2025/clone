@@ -1067,6 +1067,30 @@ async def get_educator_onboarding(educator_id: str):
     if not educator:
         logger.warning("[educator-onboarding] educator_applications row missing for id=%s (onboarding exists)", educator_id)
 
+    # Backfill onboarding with fields that live only on the application row
+    # (e.g. bank details entered via a legacy admin form). This makes the
+    # returned `onboarding` object the single source of truth every admin
+    # tab reads from — no more "bank added but shows N/A" surprises when
+    # data lives in one collection but the modal reads from the other.
+    if educator and onboarding:
+        backfill_fields = [
+            'profile_photo', 'bio', 'tshirt_size',
+            'address_line1', 'address_line2', 'city', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+            'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document',
+            'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+        ]
+        filled = []
+        for f in backfill_fields:
+            if not onboarding.get(f) and educator.get(f):
+                onboarding[f] = educator[f]
+                filled.append(f)
+        if filled:
+            logger.info(
+                "[educator-onboarding] backfilled from application id=%s fields=%s",
+                educator_id, filled,
+            )
+
     return {
         "onboarding": onboarding,
         "educator": educator
