@@ -1818,17 +1818,13 @@ const AdminEducators = () => {
                     </div>
                   )}
 
-                  {/* Profile Details — always show when onboarding data exists.
-                       Fields live in the `educator_onboarding` collection
-                       (`selectedOnboarding`), NOT on the application record. */}
+                  {/* Profile Details — ALWAYS rendered so admins see the
+                       complete profile skeleton (fields with no value show
+                       N/A). This makes it obvious at a glance what info the
+                       educator still owes us. Data source: `selectedOnboarding`
+                       (which the backend backfills from educator_applications). */}
                   {(() => {
                     const o = selectedOnboarding || {};
-                    const hasAny =
-                      o.profile_photo || o.bio || o.bank_name || o.aadhar_number ||
-                      o.pan_number || o.tshirt_size || o.address_line1 ||
-                      o.emergency_contact_name || o.account_holder_name ||
-                      o.contract_accepted || o.documents_verified;
-                    if (!hasAny) return null;
                     return (
                       <div className="border-t pt-4" data-testid="educator-profile-summary">
                         <h4 className="font-semibold text-[#1E3A5F] mb-3">Profile Details</h4>
@@ -1878,50 +1874,46 @@ const AdminEducators = () => {
                             )}
                           </div>
 
-                          {/* Emergency Contact */}
-                          {o.emergency_contact_name && (
-                            <div className="grid grid-cols-3 gap-2 text-xs bg-red-50 rounded-lg p-3">
-                              <div>
-                                <span className="text-red-400">Emergency Name:</span>
-                                <span className="ml-1 font-medium text-red-700">{o.emergency_contact_name}</span>
-                              </div>
-                              <div>
-                                <span className="text-red-400">Phone:</span>
-                                <span className="ml-1 font-medium text-red-700">{o.emergency_contact_phone || 'N/A'}</span>
-                              </div>
-                              <div>
-                                <span className="text-red-400">Relation:</span>
-                                <span className="ml-1 font-medium text-red-700">{o.emergency_contact_relation || 'N/A'}</span>
-                              </div>
+                          {/* Emergency Contact — always visible */}
+                          <div className="grid grid-cols-3 gap-2 text-xs bg-red-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-red-400">Emergency Name:</span>
+                              <span className="ml-1 font-medium text-red-700">{o.emergency_contact_name || 'N/A'}</span>
                             </div>
-                          )}
+                            <div>
+                              <span className="text-red-400">Phone:</span>
+                              <span className="ml-1 font-medium text-red-700">{o.emergency_contact_phone || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-400">Relation:</span>
+                              <span className="ml-1 font-medium text-red-700">{o.emergency_contact_relation || 'N/A'}</span>
+                            </div>
+                          </div>
 
-                          {/* Bank Details */}
-                          {o.bank_name && (
-                            <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
-                              <div>
-                                <span className="text-green-500">Bank:</span>
-                                <span className="ml-1 font-medium text-green-700">{o.bank_name}</span>
-                              </div>
-                              <div>
-                                <span className="text-green-500">Account Holder:</span>
-                                <span className="ml-1 font-medium text-green-700">{o.account_holder_name || 'N/A'}</span>
-                              </div>
-                              <div>
-                                <span className="text-green-500">Account No:</span>
-                                <span
-                                  className="ml-1 font-mono font-medium text-green-700 select-all"
-                                  data-testid="edu-summary-account-number"
-                                >
-                                  {o.account_number || 'N/A'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-green-500">IFSC:</span>
-                                <span className="ml-1 font-medium text-green-700">{o.ifsc_code || 'N/A'}</span>
-                              </div>
+                          {/* Bank Details — always visible */}
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-green-500">Bank:</span>
+                              <span className="ml-1 font-medium text-green-700">{o.bank_name || 'N/A'}</span>
                             </div>
-                          )}
+                            <div>
+                              <span className="text-green-500">Account Holder:</span>
+                              <span className="ml-1 font-medium text-green-700">{o.account_holder_name || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">Account No:</span>
+                              <span
+                                className="ml-1 font-mono font-medium text-green-700 select-all"
+                                data-testid="edu-summary-account-number"
+                              >
+                                {o.account_number || 'N/A'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">IFSC:</span>
+                              <span className="ml-1 font-medium text-green-700">{o.ifsc_code || 'N/A'}</span>
+                            </div>
+                          </div>
 
                           {/* Documents */}
                           <div className="grid grid-cols-2 gap-2 text-xs bg-blue-50 rounded-lg p-3">
@@ -2055,24 +2047,11 @@ const AdminEducators = () => {
                     </div>
                   </div>
 
-                  {/* Document Verification Section — visible whenever the
-                       educator has any onboarding data (photo, bio, docs,
-                       bank, etc.) or has already been marked onboarded.
-                       Previously this was gated on status==='onboarded'
-                       only, which hid populated records with other statuses
-                       (interview_failed, active, demo_scheduled, …). */}
+                  {/* Document Verification — ALWAYS visible so admins see
+                       the full profile skeleton (Missing / N/A shown for
+                       what hasn't been uploaded yet). This matches the
+                       Profile Details block above. */}
                   {(() => {
-                    const o = selectedOnboarding;
-                    const shouldShow =
-                      viewEducator.status === 'onboarded' ||
-                      (o && (
-                        o.profile_photo || o.bio || o.aadhar_number ||
-                        o.pan_number || o.bank_name || o.tshirt_size ||
-                        o.address_line1 || o.emergency_contact_name ||
-                        o.contract_accepted || o.documents_verified ||
-                        o.aadhar_document || o.pan_document || o.bank_document
-                      ));
-                    if (!shouldShow) return null;
                     return (
                     <div className="border-t pt-4">
                       <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
