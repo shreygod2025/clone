@@ -483,6 +483,9 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
   const isSelfAssigned = task.assigned_to === task.assigned_by;
   const isAssignee = currentUserId === task.assigned_to;
   const isApprover = currentUserId === task.assigned_by;
+  // Deletion is restricted to the task creator (or admin). Assignees cannot
+  // delete tasks assigned to them — mirrors the backend guard in tasks.py.
+  const canDelete = isAdmin || isApprover;
 
   const completeTask = async (e) => {
     e?.stopPropagation();
@@ -715,13 +718,15 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
                 <MessageSquare className="w-3.5 h-3.5" /> Open detail
               </button>
               <div className="h-px bg-slate-100 my-1" />
-              <button
-                onClick={() => { setMenuOpen(false); onDelete(); }}
-                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                data-testid={`task-delete-${task.id}`}
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Delete task
-              </button>
+              {canDelete && (
+                <button
+                  onClick={() => { setMenuOpen(false); onDelete(); }}
+                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  data-testid={`task-delete-${task.id}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete task
+                </button>
+              )}
             </FloatingMenu>
           )}
         </div>
@@ -823,10 +828,13 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
               <MessageSquare className="w-3.5 h-3.5" /> Open detail
             </button>
             <div className="h-px bg-slate-100 my-1" />
-            <button onClick={() => { setMenuOpen(false); onDelete(); }}
-              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-              <Trash2 className="w-3.5 h-3.5" /> Delete task
-            </button>
+            {canDelete && (
+              <button onClick={() => { setMenuOpen(false); onDelete(); }}
+                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                data-testid={`task-delete-mobile-${task.id}`}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete task
+              </button>
+            )}
           </FloatingMenu>
         )}
       </div>

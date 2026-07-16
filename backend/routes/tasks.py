@@ -392,14 +392,25 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
 
 @router.delete("/{task_id}")
 async def delete_task(task_id: str, user: dict = Depends(get_current_user)):
+    """Delete a task.
+
+    Authorization: only the task **creator** (`assigned_by`) or an admin
+    may delete. Assignees (`assigned_to`) are explicitly NOT allowed to
+    delete — they can only work on / submit / decline the task. This
+    prevents a team member from wiping a task their manager assigned to
+    them.
+    """
     t = await db.tasks.find_one({"id": task_id})
     if not t:
         raise HTTPException(status_code=404, detail="Task not found")
 
     uid = _current_user_id(user)
     is_admin = user.get("role") == "admin"
-    if not is_admin and uid not in (t.get("assigned_to"), t.get("assigned_by")):
-        raise HTTPException(status_code=403, detail="Not allowed to delete this task")
+    if not is_admin and uid != t.get("assigned_by"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the task creator or an admin can delete this task.",
+        )
 
     # Cascade delete sub-tasks & comments
     await db.tasks.delete_many({"parent_task_id": task_id})
