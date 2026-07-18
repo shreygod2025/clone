@@ -1101,34 +1101,41 @@ async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingU
     """Update onboarding progress"""
     update_data = {k: v for k, v in data.model_dump().items() if v is not None and v != "" and v != {}}
     update_data['last_activity'] = datetime.now(timezone.utc).isoformat()
-    
+
     # Check if contract is being accepted
     if data.contract_accepted:
         update_data['contract_accepted_at'] = datetime.now(timezone.utc).isoformat()
-    
+
+    # Defaults for a brand-new onboarding row. MongoDB rejects any key
+    # that appears in BOTH `$set` and `$setOnInsert` (WriteError 40 —
+    # "Updating the path 'X' would create a conflict at 'X'"), so we
+    # strip conflicts from the defaults before running the upsert.
+    _defaults = {
+        "id": str(uuid.uuid4()),
+        "current_step": 1,
+        "completed_steps": [],
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "status": "in_progress",
+        "documents_verified": False,
+        "welcome_video_watched": False,
+        "video_progress": {},
+        "video_uploads": {},
+    }
+    set_on_insert = {k: v for k, v in _defaults.items() if k not in update_data}
+
     # Use upsert to create record if it doesn't exist
     result = await db.educator_onboarding.update_one(
-        {"educator_id": educator_id}, 
+        {"educator_id": educator_id},
         {
             "$set": update_data,
-            "$setOnInsert": {
-                "id": str(uuid.uuid4()),
-                "current_step": 1,
-                "completed_steps": [],
-                "started_at": datetime.now(timezone.utc).isoformat(),
-                "status": "in_progress",
-                "documents_verified": False,
-                "welcome_video_watched": False,
-                "video_progress": {},
-                "video_uploads": {}
-            }
+            "$setOnInsert": set_on_insert,
         },
-        upsert=True
+        upsert=True,
     )
-    
-    # No need to re-set educator_id separately — it's already in $set via update_data context
-    # (educator_id is the query field so MongoDB includes it in upserted document)
-    
+
+    # No need to re-set educator_id separately — it's already in the query
+    # (MongoDB includes it in the upserted document automatically).
+
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     return onboarding
 

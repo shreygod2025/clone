@@ -238,10 +238,16 @@ const EducatorOnboarding = () => {
       return true;
     } catch (error) {
       console.error('Failed to save:', error);
+      const status = error?.response?.status;
       const detail = error?.response?.data?.detail;
-      toast.error(
-        `Couldn't save your details — ${detail || 'network error'}. Please retry.`
-      );
+      // Include HTTP status when present so ops can diagnose from screenshots.
+      // A missing `error.response` is a true network / CORS failure.
+      const msg = detail
+        ? `${detail}${status ? ` (HTTP ${status})` : ''}`
+        : status
+          ? `Save failed with HTTP ${status}. Please retry.`
+          : 'Network error — please check your connection and retry.';
+      toast.error(`Couldn't save your details — ${msg}`);
       return false;
     } finally {
       setSaving(false);
