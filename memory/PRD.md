@@ -2,6 +2,50 @@
 ## Product Requirements Document
 
 
+### Latest Feature (2026-07-22) — Project-Wise Expense Mapping 🎯
+
+**Ask**: Allow admins to link an expense to a project (optional), see all
+expenses linked to a project on the Project Detail page with a running
+total, and preserve existing "general" expenses (no project link).
+
+**Backend** (`/app/backend/routes/expenses.py`):
+- `POST /api/school-expenses` now accepts optional `project_id`; validates
+  it against `projects` collection and caches `project_name` on the row.
+- `PATCH /api/school-expenses/{id}` accepts assign / change / unset
+  (empty string) of `project_id` with automatic `project_name` refresh.
+- `GET /api/school-expenses` accepts `project_id` filter.
+- New `GET /api/school-expenses/project/{project_id}` — returns
+  `{project_id, project_name, count, total, expenses[]}`.
+- Compound index on `(project_id, expense_date desc)` for fast lookups.
+
+**Frontend — Admin Expenses** (`AdminExpenses.jsx`):
+- New "Project (optional)" dropdown in the Add/Edit modal — lists all
+  active projects. Empty selection = general expense.
+- New "All Projects" filter alongside school/category filters.
+- New "Project" column on the table (indigo pill with project name).
+- CSV export includes the Project column.
+- Search now includes `project_name`.
+
+**Frontend — Project Detail** (`AdminProjectDetail.jsx`):
+- New "Expenses" section under Knowledge Base with:
+  Total Project Expenses (₹ formatted), entry count, "Open in Expenses"
+  quick-link, and a table with Date / Category / Description / Vendor /
+  Amount / Status / Attachments columns + a footer total row.
+- Friendly empty state when a project has no linked expenses.
+
+**Verified end-to-end** (`testing_agent_v3_fork` iteration 104 — 100/100):
+- 10/10 pytest tests pass covering POST/PATCH/GET/filter/summary +
+  bogus-project 404s.
+- UI verified: form dropdown, filter, column chip, Project Detail
+  card with populated + empty states.
+- No regression to existing general expenses / filters / search / CSV.
+
+**Data safety**: fully additive schema. Existing expense rows (no
+`project_id` field) continue to render as "general" and never appear
+under any project. No migration needed.
+
+
+### Latest Security Fix (2026-07-21) — HIGH + MEDIUM Vulnerabilities Patched 🔒
 ### Latest Fix (2026-07-15) — Educator Document Uploads + Cross-Section Data Consistency 🎯
 
 **Ask 1**: Enhance the existing Identity Documents section in the educator
