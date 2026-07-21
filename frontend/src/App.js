@@ -102,6 +102,8 @@ const LMSSchoolReport = lazy(() => import("./pages/admin/LMSSchoolReport"));
 const PublicLMSReport = lazy(() => import("./pages/PublicLMSReport"));
 const DiscoverPayment = lazy(() => import("./pages/DiscoverPayment"));
 const DiscoverSuccess = lazy(() => import("./pages/DiscoverSuccess"));
+const FriendshipDayLanding = lazy(() => import("./pages/FriendshipDayLanding"));
+const FriendshipDaySuccess = lazy(() => import("./pages/FriendshipDaySuccess"));
 const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingTracker"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
@@ -288,6 +290,8 @@ function App() {
               <Route path="/public/lms-report/:token" element={<PublicLMSReport />} />
               <Route path="/discover" element={<DiscoverPayment />} />
               <Route path="/discover/success" element={<DiscoverSuccess />} />
+              <Route path="/friendship-day" element={<FriendshipDayLanding />} />
+              <Route path="/friendship-day/success" element={<FriendshipDaySuccess />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
               <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute><SchoolPaymentTracker /></ProtectedRoute>} />

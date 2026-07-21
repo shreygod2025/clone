@@ -23,7 +23,13 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, EmailStr, Field
 
-from .shared import db, get_current_user, require_admin
+from .shared import db, get_current_user
+
+
+async def _admin(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
 
 try:
     from cashfree_pg.api_client import Cashfree
@@ -41,6 +47,13 @@ CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
 CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")
 CASHFREE_ENVIRONMENT = os.getenv("CASHFREE_ENVIRONMENT", "SANDBOX")
 CASHFREE_API_VERSION = "2023-08-01"
+
+if CASHFREE_AVAILABLE and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
+    Cashfree.XClientId = CASHFREE_APP_ID
+    Cashfree.XClientSecret = CASHFREE_SECRET_KEY
+    Cashfree.XEnvironment = (
+        Cashfree.PRODUCTION if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.SANDBOX
+    )
 
 WORKSHOPS = {
     "bracelet": {"name": "Design a 3D Friendship Bracelet", "amount": 499.0},
@@ -202,7 +215,7 @@ async def initiate_payment(data: FDPayInit):
             {"id": reg["id"]},
             {"$set": {"cashfree_order_id": order_id, "cashfree_payment_session_id": payment_session_id, "updated_at": datetime.now(timezone.utc).isoformat()}},
         )
-        return {"order_id": order_id, "payment_session_id": payment_session_id, "amount": reg["amount"]}
+        return {"order_id": order_id, "payment_session_id": payment_session_id, "amount": reg["amount"], "environment": "production" if CASHFREE_ENVIRONMENT == "PRODUCTION" else "sandbox"}
     except Exception as e:
         logger.exception("[friendship-day] payment init failed: %s", e)
         raise HTTPException(status_code=502, detail="Could not initiate payment")
@@ -284,6 +297,83 @@ async def webhook(request: Request):
     return {"ok": True}
 
 
+# ── Public verify (used by success page) ──────────────────────────────────────
+@router.get("/friendship-day/verify/{order_id}")
+async def verify_payment(order_id: str):
+    reg = await db.friendship_day_registrations.find_one({"cashfree_order_id": order_id}, {"_id": 0})
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg.get("payment_status") == "paid":
+        return {
+            "payment_status": "paid",
+            "full_name": reg.get("full_name"),
+            "workshop_name": reg.get("workshop_name"),
+            "center_name": reg.get("center_name"),
+            "amount": reg.get("amount"),
+        }
+    # Fallback: query Cashfree directly (webhook may not have fired yet)
+    try:
+        resp = await asyncio.to_thread(_cf_client().PGFetchOrder, CASHFREE_API_VERSION, order_id, None, None)
+        cf_status = (resp.data.order_status or "").upper() if resp and resp.data else ""
+        if cf_status == "PAID":
+            await db.friendship_day_registrations.update_one(
+                {"id": reg["id"]},
+                {"$set": {
+                    "payment_status": "paid",
+                    "paid_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            # Mirror into student_inquiries so Student CRM has this participant.
+            now_iso = datetime.now(timezone.utc).isoformat()
+            await db.student_inquiries.update_one(
+                {"email": reg["email"], "phone": reg["phone"]},
+                {"$set": {
+                    "name": reg["full_name"], "email": reg["email"], "phone": reg["phone"],
+                    "age_group": str(reg["age"]), "city": reg.get("center_name", ""),
+                    "skill": "Friendship Day Workshop",
+                    "programs_interested": ["Friendship Day Workshop"],
+                    "learner_type": "individual", "learning_mode": "offline",
+                    "learning_goal": reg["workshop_name"],
+                    "source": SOURCE, "source_ref": "oll.co/friendship-day",
+                    "campaign": CAMPAIGN,
+                    "payment_status": "paid",
+                    "amount_paid": reg["amount"], "amount": reg["amount"],
+                    "updated_at": now_iso,
+                }, "$setOnInsert": {
+                    "id": str(uuid.uuid4()),
+                    "status": "converted",
+                    "created_at": now_iso,
+                }},
+                upsert=True,
+            )
+            return {
+                "payment_status": "paid",
+                "full_name": reg.get("full_name"),
+                "workshop_name": reg.get("workshop_name"),
+                "center_name": reg.get("center_name"),
+                "amount": reg.get("amount"),
+            }
+    except Exception as e:
+        logger.warning("[friendship-day] verify fallback failed: %s", e)
+    return {
+        "payment_status": reg.get("payment_status", "pending"),
+        "full_name": reg.get("full_name"),
+        "workshop_name": reg.get("workshop_name"),
+        "center_name": reg.get("center_name"),
+        "amount": reg.get("amount"),
+    }
+
+
+@router.get("/friendship-day/catalog")
+async def catalog():
+    """Public: return available workshops + centers for the landing page dropdowns."""
+    return {
+        "workshops": [{"key": k, "name": v["name"], "amount": v["amount"]} for k, v in WORKSHOPS.items()],
+        "centers": [{"key": k, "name": v} for k, v in CENTERS.items()],
+    }
+
+
 # ── Admin ─────────────────────────────────────────────────────────────────────
 @router.get("/admin/friendship-day/registrations")
 async def list_registrations(
@@ -293,7 +383,7 @@ async def list_registrations(
     payment_status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(_admin),
 ):
     query = {}
     if workshop: query["workshop"] = workshop
@@ -315,7 +405,7 @@ async def list_registrations(
 
 
 @router.get("/admin/friendship-day/summary")
-async def summary(user: dict = Depends(require_admin)):
+async def summary(user: dict = Depends(_admin)):
     total = await db.friendship_day_registrations.count_documents({})
     paid = await db.friendship_day_registrations.count_documents({"payment_status": "paid"})
     pending = await db.friendship_day_registrations.count_documents({"payment_status": "pending"})
@@ -348,7 +438,7 @@ class FDStatusUpdate(BaseModel):
 
 
 @router.patch("/admin/friendship-day/registrations/{reg_id}")
-async def update_registration(reg_id: str, data: FDStatusUpdate, user: dict = Depends(require_admin)):
+async def update_registration(reg_id: str, data: FDStatusUpdate, user: dict = Depends(_admin)):
     res = await db.friendship_day_registrations.update_one(
         {"id": reg_id},
         {"$set": {"payment_status": data.payment_status, "updated_at": datetime.now(timezone.utc).isoformat()}},
@@ -356,3 +446,47 @@ async def update_registration(reg_id: str, data: FDStatusUpdate, user: dict = De
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Registration not found")
     return {"ok": True}
+
+
+
+@router.get("/admin/friendship-day/registrations.csv")
+async def export_registrations_csv(
+    q: Optional[str] = None,
+    workshop: Optional[str] = None,
+    center: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    user: dict = Depends(_admin),
+):
+    from fastapi.responses import Response
+    import csv, io
+    query = {}
+    if workshop: query["workshop"] = workshop
+    if center: query["center"] = center
+    if payment_status: query["payment_status"] = payment_status
+    if q:
+        needle = re.escape(q.strip())
+        query["$or"] = [
+            {"full_name": {"$regex": needle, "$options": "i"}},
+            {"email": {"$regex": needle, "$options": "i"}},
+            {"phone": {"$regex": needle, "$options": "i"}},
+        ]
+    rows = await db.friendship_day_registrations.find(query, {"_id": 0}).sort("created_at", -1).to_list(length=10000)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Created At", "Name", "Email", "Phone", "Age", "Workshop", "Center",
+                "Amount", "Payment Status", "Paid At", "Knows OLL", "Participated Before",
+                "Previous Workshop", "Address", "Cashfree Order ID"])
+    for r in rows:
+        w.writerow([
+            r.get("created_at",""), r.get("full_name",""), r.get("email",""), r.get("phone",""),
+            r.get("age",""), r.get("workshop_name",""), r.get("center_name",""),
+            r.get("amount",""), r.get("payment_status",""), r.get("paid_at",""),
+            "Yes" if r.get("knows_oll") else "No",
+            "Yes" if r.get("participated_before") else "No",
+            r.get("previous_workshop",""), r.get("address",""), r.get("cashfree_order_id",""),
+        ])
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="friendship-day-registrations.csv"'},
+    )

@@ -18,6 +18,7 @@ import SocialMediaInternCRM from './SocialMediaInternCRM';
 import FutureSkillsCRMTab from './FutureSkillsCRMTab';
 import AiFoundationsCRMTab from './AiFoundationsCRMTab';
 import FathersDayWorkshopCRMTab from './FathersDayWorkshopCRMTab';
+import FriendshipDayCRMTab from './FriendshipDayCRMTab';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -38,6 +39,7 @@ const STATUS_SECTIONS = [
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
   { value: 'summer_camp', label: '🏕️ Summer Camp', color: 'bg-orange-500' },
   { value: 'fathers_day_workshop', label: '👨‍👦 Father\'s Day Workshop', color: 'bg-amber-600' },
+  { value: 'friendship_day_workshop', label: '💛 Friendship Day Workshop', color: 'bg-rose-500' },
   { value: 'future_skills', label: '🤖 Future Skills', color: 'bg-gradient-to-r from-[#D63031] to-[#1E3A5F]' },
   { value: 'ai_foundations', label: '✨ AI Foundations', color: 'bg-blue-600' },
   { value: 'social_media_intern', label: '🎬 Social Media Intern', color: 'bg-lime-500' },
@@ -1506,6 +1508,8 @@ const AdminStudentCRM = () => {
         <AiFoundationsCRMTab getAuthHeaders={getAuthHeaders} />
       ) : activeSection === 'fathers_day_workshop' ? (
         <FathersDayWorkshopCRMTab getAuthHeaders={getAuthHeaders} />
+      ) : activeSection === 'friendship_day_workshop' ? (
+        <FriendshipDayCRMTab getAuthHeaders={getAuthHeaders} />
       ) : activeSection === 'summer_camp' ? (
         <div>
           {/* Sub-tabs */}

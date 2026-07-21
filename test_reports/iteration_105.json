@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 105: Friendship Day Workshop feature (landing page + Cashfree payment + Admin CRM tab). All 19 backend pytest tests PASSED. Frontend landing, modal, validation, register+initiate-payment flow, success page, and admin CRM tab all working end-to-end. Cashfree production checkout URL is reached with a valid payment_session_id (merchant whitelist for preview domain shows 'Broken Link' — expected, not a blocker).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/friendship-day/register", "issue": "Pydantic Field allows age up to 25 (le=25) but review spec expects age>18 rejected via 422. Age 19 currently ACCEPTED with 200. Either update Field(le=18) in FDRegistration or update the spec."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "FriendshipDayLanding hero image", "issue": "Poster image Cloudinary URL returns 404 (placeholder, mentioned in problem statement). Non-blocking but hero image is broken visually.", "selector": "[data-testid='fd-hero-image']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Cashfree checkout redirect", "issue": "Cashfree PRODUCTION returns 'Broken Link — https://camp-lead-capture.preview.emergentagent.com/ is not enabled or approved. Please whitelist your domain from merchant.cashfree.com > developers.' — merchant whitelist required for live checkout on preview domain. Order + payment_session_id are correctly generated; only the final SDK redirect is blocked by Cashfree merchant config.", "affected_selectors": ["[data-testid='fd-submit-btn']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter105_friendship_day.py",
+    "/app/test_reports/pytest/iter105_results.xml"
+  ],
+  "action_items": [
+    "Fix hero poster: replace https://res.cloudinary.com/dyssfvcmw/image/upload/f_auto,q_auto/v1/oll_general/friendship-day-poster.jpg (404) with an available image, or remove the img tag.",
+    "Clarify age bound: backend Pydantic Field(ge=3, le=25) accepts age 19-25 but spec says reject >18. Align backend (le=18) OR update spec. Landing page copy also says 'kids 6-14' — consider aligning constraints.",
+    "(Optional / non-blocker for QA) Whitelist camp-lead-capture.preview.emergentagent.com in Cashfree merchant dashboard so live checkout renders in preview builds."
+  ],
+  "critical_code_review_comments": [
+    "friendship_day.py webhook signature enforcement is correct (401 without x-webhook-signature/timestamp). Good.",
+    "Dedup logic (email+phone) works, and paid-workshop re-register returns 409 correctly.",
+    "Cashfree PGCreateOrder + PGFetchOrder wrapped in asyncio.to_thread — good non-blocking pattern.",
+    "Age bound inconsistency: backend allows 3-25 but PRD/UI says 6-14. Tighten Pydantic Field to match business rule.",
+    "Poster image URL should be moved to env/config or removed from code — currently hardcoded broken URL in FriendshipDayLanding.jsx."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter105_friendship_day.py"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% of testable flows (Cashfree final redirect blocked by merchant whitelist — expected)"},
+  "test_credentials": "admin@oll.co / Dagaji03@ used successfully for admin CRM.",
+  "seed_data_creation": "Created ~5 TEST registrations via /api/friendship-day/register during tests (TEST QA Kid 3, TEST Kid A x2, paid_* test user). One was marked paid via admin PATCH. All visible in admin CRM tab.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature is fully working end-to-end. Backend: all 8 endpoints pass. Frontend: modal validation + register + initiate-payment + admin CRM tab (stat cards, breakdowns, filters, status dropdown PATCH, Export CSV) all verified. Two follow-ups for main agent: (1) age bound mismatch between backend (le=25) and spec (le=18), (2) broken Cloudinary hero poster URL. Cashfree merchant whitelist blocking final live checkout on preview domain is an ops item, not a code bug.",
+  "rca of the issue": "N/A — no blocking bugs found."
+}

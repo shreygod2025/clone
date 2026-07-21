@@ -4070,6 +4070,7 @@ from routes.success_stories import router as success_stories_router
 from routes.salaries import router as salaries_router
 from routes.lms_api import router as lms_router, run_lms_sync_scheduled, run_lms_feedback_sync_scheduled
 from routes.discover import router as discover_router
+from routes.friendship_day import router as friendship_day_router
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -4115,6 +4116,7 @@ api_router.include_router(success_stories_router)
 api_router.include_router(salaries_router)
 api_router.include_router(lms_router)
 api_router.include_router(discover_router)
+api_router.include_router(friendship_day_router)
 
 # Public receipt portal (no auth — phone+OTP gated, used by oll.co/receipt)
 from routes.public_receipts import router as public_receipts_router
