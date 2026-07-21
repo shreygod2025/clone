@@ -722,7 +722,12 @@ const AdminSupportUnified = () => {
         await axios.patch(`${API}/inquiry/queries/${query.id}`, payload, {
           headers: getAuthHeaders()
         });
-      } else if (query._source === 'user_support') {
+      } else if (query._source === 'user_support' || query._source === 'educator') {
+        // Both user_support and educator queries live in the same
+        // `support_queries` collection (backend distinguishes via `type`).
+        // Missing the `educator` branch was the cause of "Status updated"
+        // toast succeeding while the row silently updated the wrong
+        // collection — the ticket then stayed in the Overdue tab.
         await axios.patch(`${API}/support/queries/${query.id}`, payload, {
           headers: getAuthHeaders()
         });
@@ -761,7 +766,7 @@ const AdminSupportUnified = () => {
         setShowReplyModal(null);
         setReplyText('');
         setReplyAttachment(null);
-      } else if (showReplyModal._source === 'user_support') {
+      } else if (showReplyModal._source === 'user_support' || showReplyModal._source === 'educator') {
         // Use new replies endpoint for chat-style conversation
         await axios.post(`${API}/support/queries/${showReplyModal.id}/replies`, { 
           text: replyText,
