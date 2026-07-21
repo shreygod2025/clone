@@ -2,6 +2,7 @@
 Misc routes: Data Center, Public Autocomplete, Content, Cities, Centers, Inquiry, Admin, Upload, Health.
 """
 import os
+import time
 import uuid
 import asyncio
 import httpx
@@ -1720,9 +1721,15 @@ async def remove_whitelisted_ip(ip_address: str, user: dict = Depends(get_curren
 @router.get("/cloudinary/signature")
 async def get_cloudinary_signature(
     resource_type: str = Query("raw", enum=["image", "video", "raw"]),
-    folder: str = Query("oll_uploads")
+    folder: str = Query("oll_uploads"),
+    user: dict = Depends(get_current_user),
 ):
-    """Generate signed upload parameters for Cloudinary"""
+    """Generate signed upload parameters for Cloudinary.
+
+    SEC-003: authenticated callers only — anonymous access would let anyone
+    mint signed upload tokens against our Cloudinary account (bandwidth /
+    storage abuse and content-hosting on our domain).
+    """
     ALLOWED_FOLDERS = ("oll_uploads", "oll_documents", "oll_images", "oll_mou", "oll_invoices")
     if not any(folder.startswith(f) for f in ALLOWED_FOLDERS):
         folder = "oll_uploads"
@@ -1749,12 +1756,27 @@ async def get_cloudinary_signature(
 
 # File Upload Endpoint - Uses Cloudinary for cloud storage
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...), type: str = "general"):
-    """Upload a file to Cloudinary cloud storage"""
-    
+async def upload_file(
+    file: UploadFile = File(...),
+    type: str = "general",
+    user: dict = Depends(get_current_user),
+):
+    """Upload a file to Cloudinary cloud storage.
+
+    SEC-003: authenticated callers only — anonymous access would let
+    anyone burn Cloudinary storage/bandwidth and host content on our
+    domain.
+    """
+
+    # SEC-003 hardening: only allowlisted `type` values so a caller can't
+    # scatter uploads across arbitrary Cloudinary folders.
+    ALLOWED_TYPES = {"general", "documents", "images", "mou", "invoices", "profile", "attachments"}
+    if type not in ALLOWED_TYPES:
+        type = "general"
+
     allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.xlsx', '.xls', '.csv'}
     file_ext = Path(file.filename).suffix.lower()
-    
+
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail="File type not allowed")
     

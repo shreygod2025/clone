@@ -557,7 +557,9 @@ async def clear_auto_synced_expenses(user: dict = Depends(get_current_user)):
 # ========================
 
 PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendorplus-4.emergent.host/api/external")
-PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg")
+# SEC-004: no fallback API key. If the env var is unset, `fetch_po_data`
+# fails closed with a clear 503 so we never expose a baked-in key.
+PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "")
 # Production tracking URL domain (replace preview URLs with production)
 PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendorplus-4.emergent.host")
 
@@ -572,6 +574,13 @@ def transform_tracking_url(url: str) -> str:
 
 async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.0):
     """Helper function to fetch data from PO API"""
+    if not PO_API_KEY:
+        # SEC-004: fail closed when the env var isn't set instead of
+        # falling back to a hardcoded key.
+        raise HTTPException(
+            status_code=503,
+            detail="Procurement service is not configured. Contact an administrator.",
+        )
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
