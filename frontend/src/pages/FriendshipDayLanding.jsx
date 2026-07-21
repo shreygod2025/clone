@@ -8,9 +8,9 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Hero — placeholder OLL branded poster (swap URL to hotlink the flyer)
-const HERO_IMG = 'https://res.cloudinary.com/dyssfvcmw/image/upload/f_auto,q_auto/v1/oll_general/friendship-day-poster.jpg';
-const HERO_FALLBACK = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80';
+// Hero — swap HERO_IMG to hotlink the official flyer once available
+const HERO_IMG = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80';
+const HERO_FALLBACK = 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=1200&q=80';
 
 // Workshop dates — edit these when the flyer specifies exact dates
 const WORKSHOP_DATES = 'Saturday, 1 Aug & Sunday, 2 Aug 2026';

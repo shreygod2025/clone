@@ -1,6 +1,28 @@
 # OLL Backend Changelog
 
 
+## 2026-02-21 — OLL Friendship Day Workshop Landing Page & CRM 💛
+**Status: COMPLETE — testing_agent iteration 105 · 19/19 backend pytest PASSED · frontend end-to-end verified**
+
+### What was built
+- **Public landing page** at `/friendship-day` (`/app/frontend/src/pages/FriendshipDayLanding.jsx`) — mobile-first, sticky CTA, hero, 3 workshop cards (Bracelet ₹499 / Digital Card ₹499 / Combo ₹799 with "Best value" badge), highlights, center listings, FAQ accordion. RegistrationModal with strict client-side validation (10-digit phone, age 3-18, valid email, required workshop + center), live "Order summary" panel, `knows_oll` / `participated_before` optional survey with reveal for `previous_workshop`.
+- **Success page** at `/friendship-day/success` (`/app/frontend/src/pages/FriendshipDaySuccess.jsx`) — polls `/api/friendship-day/verify/{order_id}` with a Cashfree fallback fetch, shows confirmed booking or pending state.
+- **Backend** `/app/backend/routes/friendship_day.py` — 8 endpoints, wired via `api_router.include_router(friendship_day_router)`:
+  - Public: `GET /friendship-day/catalog`, `POST /register` (dedupe by email+phone; 409 on paid re-register; workshop_history log), `POST /initiate-payment` (Cashfree PGCreateOrder), `POST /webhook` (HMAC `x-webhook-signature` REQUIRED — 401 without), `GET /verify/{order_id}` (with Cashfree PGFetchOrder fallback + mirror into `student_inquiries` on paid).
+  - Admin: `GET /admin/friendship-day/summary` (total/paid/pending/revenue + by_workshop + by_center breakdowns), `GET /admin/friendship-day/registrations` (filters: q, workshop, center, payment_status, start_date, end_date), `PATCH /admin/friendship-day/registrations/{id}` (status transitions), `GET /admin/friendship-day/registrations.csv` (attachment).
+- **Student CRM integration** (`AdminStudentCRM.jsx`) — added `friendship_day_workshop` section with rose-500 pill; renders new `FriendshipDayCRMTab` (`/app/frontend/src/pages/admin/FriendshipDayCRMTab.jsx`) featuring stat cards, workshop & center breakdown cards, status filter tabs (All/Pending/Paid/Failed), search + workshop + center dropdowns, refresh, Export CSV, and inline status dropdown per row.
+
+### Security
+- Cashfree webhook enforces HMAC signature (SEC-002 pattern) — verified 401 without headers.
+- Admin endpoints gated by `_admin` dependency (rejects non-admin roles with 403).
+
+### Follow-ups noted
+- Cashfree merchant dashboard must whitelist the preview domain for the final SDK redirect to render in preview builds — production checkout works after `Deploy`.
+- Hero image is a placeholder Unsplash URL — swap `HERO_IMG` constant in `FriendshipDayLanding.jsx` when official flyer is provided.
+- Workshop dates constant `WORKSHOP_DATES` set to "Saturday, 1 Aug & Sunday, 2 Aug 2026" — edit the constant to match confirmed schedule.
+
+
+
 ## 2026-07-03 (round 12) — Verified Success Stories 🏆
 **Status: COMPLETE — smoke tested (backend + admin UI + dashboard widget + public page all rendering)**
 

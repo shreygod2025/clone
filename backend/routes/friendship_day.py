@@ -79,7 +79,7 @@ class FDRegistration(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=120)
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=15)
-    age: int = Field(..., ge=3, le=25)
+    age: int = Field(..., ge=3, le=18)
     address: str = Field(..., min_length=5, max_length=500)
     workshop: str = Field(..., pattern=r"^(bracelet|card|combo)$")
     center: str = Field(..., pattern=r"^(kandivali|mira_road)$")
