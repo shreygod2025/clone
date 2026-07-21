@@ -52,6 +52,7 @@ const AdminExpenses = () => {
   const [editingExpense, setEditingExpense] = useState(null);
   const [filters, setFilters] = useState({
     school_id: '',
+    project_id: '',
     category: '',
     start_date: '',
     end_date: ''
@@ -65,6 +66,7 @@ const AdminExpenses = () => {
 
   const [expenseForm, setExpenseForm] = useState({
     school_id: '',
+    project_id: '',
     category: '',
     amount: '',
     description: '',
@@ -81,6 +83,10 @@ const AdminExpenses = () => {
     partial_payment_date: '',
     invoice_file_url: ''
   });
+
+  // Project mapping (2026-07-22): active projects fed into the form dropdown
+  // and used to render the linked-project chip on each expense row.
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -105,23 +111,31 @@ const AdminExpenses = () => {
       // Build expense query params
       const params = new URLSearchParams();
       if (filters.school_id) params.append('school_id', filters.school_id);
+      if (filters.project_id) params.append('project_id', filters.project_id);
       if (filters.category) params.append('category', filters.category);
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
       const summaryQuery = filters.school_id ? `?school_id=${filters.school_id}` : '';
 
       // Run all API calls in parallel for faster load
-      const [catRes, schoolsRes, expRes, summaryRes] = await Promise.all([
+      const [catRes, schoolsRes, expRes, summaryRes, projectsRes] = await Promise.all([
         axios.get(`${API}/school-expenses/categories`, { headers }),
         axios.get(`${API}/schools/names`, { headers }),
         axios.get(`${API}/school-expenses?${params.toString()}`, { headers }),
-        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers })
+        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers }),
+        // Active projects for the mapping dropdown. Silent-swallow errors so
+        // the expenses page still renders if projects service is temporarily
+        // unavailable (defence in depth).
+        axios.get(`${API}/projects?status=active`, { headers }).catch(() => ({ data: [] })),
       ]);
 
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
 
       const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
       setSchools(Array.isArray(schoolsList) ? schoolsList : []);
+
+      const projectsList = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+      setProjects(projectsList);
 
       const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
       setExpenses(expenseData);
@@ -246,6 +260,7 @@ const AdminExpenses = () => {
   const resetForm = () => {
     setExpenseForm({
       school_id: '',
+      project_id: '',
       category: '',
       amount: '',
       description: '',
@@ -269,6 +284,7 @@ const AdminExpenses = () => {
     setEditingExpense(expense);
     setExpenseForm({
       school_id: expense.school_id,
+      project_id: expense.project_id || '',
       category: expense.category,
       amount: expense.amount,
       description: expense.description || '',
@@ -342,6 +358,7 @@ const AdminExpenses = () => {
     const query = searchQuery.toLowerCase();
     return (
       exp.school_name?.toLowerCase().includes(query) ||
+      exp.project_name?.toLowerCase().includes(query) ||
       exp.category_name?.toLowerCase().includes(query) ||
       exp.description?.toLowerCase().includes(query) ||
       exp.vendor_name?.toLowerCase().includes(query)
@@ -349,10 +366,11 @@ const AdminExpenses = () => {
   });
 
   const exportExpensesToCSV = () => {
-    const headers = ['Date', 'School', 'PO Number', 'Category', 'Description', 'Vendor', 'Subtotal', 'GST', 'Total', 'Status'];
+    const headers = ['Date', 'School', 'Project', 'PO Number', 'Category', 'Description', 'Vendor', 'Subtotal', 'GST', 'Total', 'Status'];
     const rows = filteredExpenses.map(exp => [
       exp.expense_date ? format(new Date(exp.expense_date), 'dd MMM yyyy') : '',
       exp.school_name || '',
+      exp.project_name || '',
       exp.po_number || '',
       exp.category_name || '',
       exp.description || '',
@@ -534,7 +552,20 @@ const AdminExpenses = () => {
               <option key={school.id} value={school.id}>{school.school_name}</option>
             ))}
           </select>
-          
+
+          <select
+            value={filters.project_id}
+            onChange={(e) => setFilters({...filters, project_id: e.target.value})}
+            className="h-10 px-3 border border-slate-200 rounded-lg min-w-[180px]"
+            data-testid="expense-filter-project"
+          >
+            <option value="">All Projects</option>
+            <option value="__none__" disabled>—</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+
           <select
             value={filters.category}
             onChange={(e) => setFilters({...filters, category: e.target.value})}
@@ -562,7 +593,7 @@ const AdminExpenses = () => {
             placeholder="End Date"
           />
           
-          <Button variant="outline" onClick={() => setFilters({ school_id: '', category: '', start_date: '', end_date: '' })}>
+          <Button variant="outline" onClick={() => setFilters({ school_id: '', project_id: '', category: '', start_date: '', end_date: '' })}>
             <X className="w-4 h-4 mr-1" />
             Clear
           </Button>
@@ -610,6 +641,7 @@ const AdminExpenses = () => {
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Date</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">School</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Project</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Category</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Description</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Vendor</th>
@@ -640,6 +672,19 @@ const AdminExpenses = () => {
                     <p className="font-medium text-slate-800 text-sm">{expense.school_name}</p>
                     {expense.po_number && (
                       <p className="text-xs text-slate-500">PO: {expense.po_number}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {expense.project_name ? (
+                      <span
+                        className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 whitespace-nowrap"
+                        data-testid={`expense-project-chip-${expense.id}`}
+                        title={expense.project_name}
+                      >
+                        {expense.project_name}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -771,7 +816,7 @@ const AdminExpenses = () => {
               ))}
               {filteredExpenses.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan="12" className="px-4 py-8 text-center text-slate-500">
                     No expenses found
                   </td>
                 </tr>
@@ -846,7 +891,30 @@ const AdminExpenses = () => {
                 </div>
               )}
             </div>
-            
+
+            {/* Project Selection — optional. Empty = general expense. */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Project <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <select
+                value={expenseForm.project_id}
+                onChange={(e) => setExpenseForm({ ...expenseForm, project_id: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30"
+                data-testid="expense-project-select"
+              >
+                <option value="">— No project (general expense) —</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {expenseForm.project_id && (
+                <p className="text-[11px] text-slate-500 mt-1">
+                  This expense will appear on the linked project&apos;s Expenses tab.
+                </p>
+              )}
+            </div>
+
             {/* Category Selection */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Expense Category *</label>

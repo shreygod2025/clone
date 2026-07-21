@@ -43,6 +43,7 @@ async def get_school_expense_categories(user: dict = Depends(get_current_user)):
 @router.get("/school-expenses")
 async def get_all_school_expenses(
     school_id: Optional[str] = None,
+    project_id: Optional[str] = None,
     category: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -60,10 +61,16 @@ async def get_all_school_expenses(
     Fix: ensure an index on `expense_date` exists on first call (idempotent —
     `create_index` is a no-op when the index already exists) and accept
     `limit` / `skip` so the frontend can paginate.
+
+    Project mapping (2026-07-22): callers can filter by `project_id`.
+    Expenses without a `project_id` are treated as "General" and never
+    surface in project-scoped listings.
     """
     query = {}
     if school_id:
         query["school_id"] = school_id
+    if project_id:
+        query["project_id"] = project_id
     if category:
         query["category"] = category
     if start_date:
@@ -77,6 +84,7 @@ async def get_all_school_expenses(
     # Idempotent: MongoDB skips if already present. Cheap (~1ms).
     await db.school_expenses.create_index([("expense_date", -1)])
     await db.school_expenses.create_index([("school_id", 1), ("expense_date", -1)])
+    await db.school_expenses.create_index([("project_id", 1), ("expense_date", -1)])
 
     cursor = (
         db.school_expenses
@@ -426,17 +434,33 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
 
 @router.post("/school-expenses")
 async def create_school_expense(data: dict, user: dict = Depends(get_current_user)):
-    """Create a new expense entry"""    # Get school info (optional)
+    """Create a new expense entry.
+
+    Optional `project_id` maps the expense to a project. When present, we
+    look the project up once and store `project_name` alongside so listings
+    don't need a second query. Empty/missing `project_id` = general
+    expense — hidden from project-scoped views.
+    """
     school = None
     if data.get("school_id"):
         school = await db.school_inquiries.find_one({"id": data.get("school_id")}, {"_id": 0})
         if not school:
             raise HTTPException(status_code=404, detail="School not found")
 
+    project_id = (data.get("project_id") or "").strip()
+    project_name = ""
+    if project_id:
+        project = await db.projects.find_one({"id": project_id}, {"_id": 0, "name": 1})
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        project_name = project.get("name") or ""
+
     expense = {
         "id": str(uuid.uuid4()),
         "school_id": data.get("school_id", ""),
         "school_name": school.get("school_name", "Unknown School") if school else "General",
+        "project_id": project_id,
+        "project_name": project_name,
         "category": data.get("category"),
         "category_name": next((c["name"] for c in EXPENSE_CATEGORIES if c["id"] == data.get("category")), data.get("category")),
         "amount": float(data.get("amount", 0)),
@@ -459,7 +483,7 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
-    
+
     await db.school_expenses.insert_one(expense)
     expense.pop('_id', None)  # Remove MongoDB ObjectId before returning
     return {"message": "Expense created successfully", "expense": expense}
@@ -467,22 +491,65 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
 
 @router.patch("/school-expenses/{expense_id}")
 async def update_school_expense(expense_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update an expense entry"""
+    """Update an expense entry.
+
+    `project_id` can be assigned, changed, or removed (empty string). When
+    changed, the cached `project_name` is refreshed automatically.
+    """
     update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
-    
-    allowed_fields = ["amount", "description", "expense_date", "invoice_number", 
+
+    allowed_fields = ["amount", "description", "expense_date", "invoice_number",
                       "vendor_name", "payment_status", "payment_mode", "notes", "attachments", "category",
                       "expense_breakup_type", "expense_breakup_value", "expected_payment_date",
                       "partial_amount_paid", "partial_payment_date", "invoice_file_url"]
-    
+
     for field in allowed_fields:
         if field in data:
             update_data[field] = data[field]
             if field == "category":
                 update_data["category_name"] = next((c["name"] for c in EXPENSE_CATEGORIES if c["id"] == data[field]), data[field])
-    
+
+    # project_id — accept explicit unset (empty string) as well as reassignment.
+    if "project_id" in data:
+        new_pid = (data.get("project_id") or "").strip()
+        update_data["project_id"] = new_pid
+        if new_pid:
+            project = await db.projects.find_one({"id": new_pid}, {"_id": 0, "name": 1})
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+            update_data["project_name"] = project.get("name") or ""
+        else:
+            update_data["project_name"] = ""
+
     await db.school_expenses.update_one({"id": expense_id}, {"$set": update_data})
     return {"message": "Expense updated successfully"}
+
+
+@router.get("/school-expenses/project/{project_id}")
+async def get_project_expenses(project_id: str, user: dict = Depends(get_current_user)):
+    """List all expenses linked to a project + summary total.
+
+    Used by the Project Details → Expenses tab.
+    """
+    # Verify project exists (returns 404 for typos rather than empty list).
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0, "name": 1})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    expenses = (
+        await db.school_expenses
+        .find({"project_id": project_id}, {"_id": 0})
+        .sort("expense_date", -1)
+        .to_list(length=None)
+    )
+    total = sum(float(e.get("amount") or 0) for e in expenses)
+    return {
+        "project_id": project_id,
+        "project_name": project.get("name") or "",
+        "count": len(expenses),
+        "total": total,
+        "expenses": expenses,
+    }
 
 
 @router.delete("/school-expenses/{expense_id}")
