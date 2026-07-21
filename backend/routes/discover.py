@@ -5,11 +5,14 @@ Direct-online enrolment: monthly (₹3,000) or annual (₹30,000 = ₹2,500 × 1
 Records land in `student_inquiries` so they show up in the Student CRM.
 """
 import asyncio
+import hashlib
+import hmac
 import logging
 import os
 import re
 import time
 import uuid
+from base64 import b64encode
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -194,7 +197,40 @@ async def initiate_payment(data: DiscoverPaymentInit):
 
 @router.post("/discover/webhook")
 async def webhook(request: Request):
-    payload = await request.json()
+    """Cashfree payment webhook for /discover bookings.
+
+    SEC-002: verify HMAC-SHA256 signature before trusting the payload,
+    and re-verify the order server-side with Cashfree's PGFetchOrder API
+    before marking a booking as paid — prevents attackers with a valid
+    order_id from POSTing a forged PAYMENT_SUCCESS_WEBHOOK.
+    """
+    body_bytes = await request.body()
+    body_str = body_bytes.decode('utf-8')
+
+    timestamp = request.headers.get('x-webhook-timestamp', '')
+    received_signature = request.headers.get('x-webhook-signature', '')
+
+    if not CASHFREE_SECRET_KEY:
+        logging.error("[discover] CASHFREE_SECRET_KEY not configured — rejecting webhook")
+        raise HTTPException(status_code=503, detail="Webhook verification unavailable")
+    if not timestamp or not received_signature:
+        logging.warning("[discover] webhook missing signature/timestamp headers — rejecting")
+        raise HTTPException(status_code=401, detail="Missing webhook signature")
+
+    signed_payload = f"{timestamp}.{body_str}"
+    computed_hash = hmac.new(
+        CASHFREE_SECRET_KEY.encode('utf-8'),
+        signed_payload.encode('utf-8'),
+        hashlib.sha256,
+    ).digest()
+    computed_signature = b64encode(computed_hash).decode('utf-8')
+
+    if not hmac.compare_digest(computed_signature, received_signature):
+        logging.warning("[discover] invalid webhook signature — rejecting")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    import json as _json
+    payload = _json.loads(body_str)
     data = payload.get("data", {}) or {}
     order = data.get("order", {}) or {}
     payment = data.get("payment", {}) or {}
@@ -208,6 +244,18 @@ async def webhook(request: Request):
 
     status = (payment.get("payment_status") or "").upper()
     if status == "SUCCESS":
+        # Defence-in-depth: even after a valid signature, re-verify the
+        # order status directly with Cashfree before marking paid. This
+        # neutralises any leaked/reused signing key scenario.
+        try:
+            cf_resp = await asyncio.to_thread(_cf_client().PGFetchOrder, CASHFREE_API_VERSION, order_id, None, None)
+            cf_status = (cf_resp.data.order_status or "").upper() if cf_resp and cf_resp.data else ""
+        except Exception as e:
+            logging.warning("[discover] webhook PGFetchOrder failed order=%s err=%s — refusing to mark paid", order_id, e)
+            raise HTTPException(status_code=502, detail="Could not verify order with gateway")
+        if cf_status != "PAID":
+            logging.warning("[discover] webhook claims SUCCESS but gateway says %s for order=%s — refusing", cf_status, order_id)
+            return {"ok": False, "reason": f"gateway status is {cf_status}"}
         await db.student_inquiries.update_one(
             {"id": booking["id"]},
             {"$set": {

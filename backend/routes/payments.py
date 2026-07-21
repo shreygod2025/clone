@@ -755,20 +755,29 @@ async def cashfree_webhook(request: Request):
         # Get signature headers
         timestamp = request.headers.get('x-webhook-timestamp', '')
         received_signature = request.headers.get('x-webhook-signature', '')
-        
-        # Verify signature if present
-        if timestamp and received_signature and CASHFREE_SECRET_KEY:
-            signed_payload = f"{timestamp}.{body_str}"
-            computed_hash = hmac.new(
-                CASHFREE_SECRET_KEY.encode('utf-8'),
-                signed_payload.encode('utf-8'),
-                hashlib.sha256
-            ).digest()
-            computed_signature = b64encode(computed_hash).decode('utf-8')
-            
-            if not hmac.compare_digest(computed_signature, received_signature):
-                logging.warning("Invalid webhook signature")
-                # Don't raise error, just log - some webhooks may come without signature during testing
+
+        # SEC-002: MUST verify signature — reject anything unsigned or with
+        # a bad signature. Previously we only logged a warning and continued,
+        # which let anyone POST a forged PAYMENT_SUCCESS_WEBHOOK against any
+        # `order_id` they knew and get marked paid without paying.
+        if not CASHFREE_SECRET_KEY:
+            logging.error("CASHFREE_SECRET_KEY not configured — rejecting webhook")
+            raise HTTPException(status_code=503, detail="Webhook verification unavailable")
+        if not timestamp or not received_signature:
+            logging.warning("Cashfree webhook missing signature/timestamp headers — rejecting")
+            raise HTTPException(status_code=401, detail="Missing webhook signature")
+
+        signed_payload = f"{timestamp}.{body_str}"
+        computed_hash = hmac.new(
+            CASHFREE_SECRET_KEY.encode('utf-8'),
+            signed_payload.encode('utf-8'),
+            hashlib.sha256,
+        ).digest()
+        computed_signature = b64encode(computed_hash).decode('utf-8')
+
+        if not hmac.compare_digest(computed_signature, received_signature):
+            logging.warning("Invalid Cashfree webhook signature — rejecting")
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
         
         # Parse webhook data
         webhook_data = json.loads(body_str)
@@ -798,6 +807,21 @@ async def cashfree_webhook(request: Request):
             }
             
             if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
+                # SEC-002 defence-in-depth: even with a valid signature,
+                # re-verify the order status directly with Cashfree before
+                # marking paid. Neutralises any leaked/reused key scenario.
+                try:
+                    cf_resp = await asyncio.to_thread(
+                        get_cashfree_client().PGFetchOrder,
+                        "2023-08-01", order_id, None, None,
+                    )
+                    cf_status = (cf_resp.data.order_status or "").upper() if cf_resp and cf_resp.data else ""
+                except Exception as e:
+                    logging.warning("[payments] webhook PGFetchOrder failed order=%s err=%s — refusing to mark paid", order_id, e)
+                    raise HTTPException(status_code=502, detail="Could not verify order with gateway")
+                if cf_status != "PAID":
+                    logging.warning("[payments] webhook claims SUCCESS but gateway says %s for order=%s — refusing", cf_status, order_id)
+                    return {"status": "rejected", "reason": f"gateway status is {cf_status}"}
                 update_data["status"] = "PAID"
                 update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
                 update_data["payment_method"] = f"Cashfree - {payment_method_details}"
@@ -878,6 +902,11 @@ async def cashfree_webhook(request: Request):
         
         return {"status": "success", "message": "Webhook processed"}
         
+    except HTTPException:
+        # Re-raise HTTPExceptions (esp. 401 from signature check) so the
+        # gateway sees the actual failure — the outer catch-all below
+        # would otherwise swallow them into a 200 "status: error" body.
+        raise
     except json.JSONDecodeError:
         logging.error("Invalid JSON in webhook payload")
         return {"status": "error", "message": "Invalid JSON"}
@@ -1288,11 +1317,37 @@ async def create_school_student_payment_session(data: dict):
 
 @router.post("/school-payment/webhook")
 async def school_payment_webhook(request: Request):
-    """Handle Cashfree webhook for school student payments"""
+    """Handle Cashfree webhook for school student payments.
+
+    SEC-002: enforce HMAC-SHA256 signature + server-side re-verification
+    before marking anything paid — the school-payment/webhook was
+    previously unprotected, letting forged webhooks mark school-student
+    payments PAID for free.
+    """
     try:
         body = await request.body()
         body_str = body.decode('utf-8')
-        
+
+        # SEC-002: signature check.
+        timestamp = request.headers.get('x-webhook-timestamp', '')
+        received_signature = request.headers.get('x-webhook-signature', '')
+        if not CASHFREE_SECRET_KEY:
+            logging.error("CASHFREE_SECRET_KEY not configured — rejecting school webhook")
+            raise HTTPException(status_code=503, detail="Webhook verification unavailable")
+        if not timestamp or not received_signature:
+            logging.warning("School payment webhook missing signature/timestamp headers — rejecting")
+            raise HTTPException(status_code=401, detail="Missing webhook signature")
+        signed_payload = f"{timestamp}.{body_str}"
+        computed_hash = hmac.new(
+            CASHFREE_SECRET_KEY.encode('utf-8'),
+            signed_payload.encode('utf-8'),
+            hashlib.sha256,
+        ).digest()
+        computed_signature = b64encode(computed_hash).decode('utf-8')
+        if not hmac.compare_digest(computed_signature, received_signature):
+            logging.warning("Invalid school-payment webhook signature — rejecting")
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
         webhook_data = json.loads(body_str)
         event_type = webhook_data.get('type', '')
         order_data = webhook_data.get('data', {}).get('order', {})
@@ -1318,6 +1373,19 @@ async def school_payment_webhook(request: Request):
             }
             
             if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
+                # SEC-002 defence-in-depth
+                try:
+                    cf_resp = await asyncio.to_thread(
+                        get_cashfree_client().PGFetchOrder,
+                        "2023-08-01", order_id, None, None,
+                    )
+                    cf_status = (cf_resp.data.order_status or "").upper() if cf_resp and cf_resp.data else ""
+                except Exception as e:
+                    logging.warning("[school-payment] webhook PGFetchOrder failed order=%s err=%s — refusing to mark paid", order_id, e)
+                    raise HTTPException(status_code=502, detail="Could not verify order with gateway")
+                if cf_status != "PAID":
+                    logging.warning("[school-payment] webhook claims SUCCESS but gateway says %s for order=%s — refusing", cf_status, order_id)
+                    return {"status": "rejected", "reason": f"gateway status is {cf_status}"}
                 update_data["status"] = "PAID"
                 update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
                 update_data["transaction_id"] = cf_payment_id
@@ -1341,6 +1409,8 @@ async def school_payment_webhook(request: Request):
                         )
 
         return {"status": "success"}
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"School payment webhook error: {str(e)}")
         return {"status": "error", "message": str(e)}

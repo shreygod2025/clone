@@ -1016,9 +1016,53 @@ By clicking "I Accept", you confirm that you have read, understood, and agree to
         """
     }
 
+def _assert_onboarding_owner_or_admin(user: dict, educator_id: str):
+    """SEC-001: authorization gate for educator onboarding routes.
+
+    Allow only:
+      • the educator themselves (role='educator' AND their id matches), or
+      • an admin (role='admin').
+
+    Everyone else — including team_member, student, and unauthenticated
+    callers — is rejected. Educator UUIDs leak in onboarding email links
+    so anonymous access is unsafe.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    role = user.get("role")
+    if role == "admin":
+        return
+    if role == "educator":
+        my_id = user.get("educator_id") or user.get("id") or user.get("user_id")
+        if my_id == educator_id:
+            return
+    raise HTTPException(
+        status_code=403,
+        detail="You may only access your own onboarding record.",
+    )
+
+
+# SEC-001: fields on `EducatorOnboardingUpdate` that admins verify — must
+# NOT be settable by the educator (self-approval / self-status-change would
+# defeat the review process).
+_ONBOARDING_ADMIN_ONLY_FIELDS = {
+    "documents_verified",
+    "verification_notes",
+    "status",
+    "quiz_passed",
+    "assessment_passed",
+    "completed_steps",   # progression is driven by the /complete-step endpoint
+}
+
+
 @router.get("/educator/onboarding/{educator_id}")
-async def get_educator_onboarding(educator_id: str):
+async def get_educator_onboarding(
+    educator_id: str,
+    user: dict = Depends(get_current_user),
+):
     """Get onboarding progress for an educator.
+
+    Auth: educator (self) or admin (SEC-001).
 
     Returns `{onboarding, educator}` — never null onboarding. If no record
     exists yet, one is created (all fields default to empty strings/False).
@@ -1028,6 +1072,7 @@ async def get_educator_onboarding(educator_id: str):
     aadhar_document, pan_document, bank_document, contract_accepted,
     documents_verified) are stored on the returned `onboarding` object.
     """
+    _assert_onboarding_owner_or_admin(user, educator_id)
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
 
     if not onboarding:
@@ -1097,9 +1142,25 @@ async def get_educator_onboarding(educator_id: str):
     }
 
 @router.patch("/educator/onboarding/{educator_id}")
-async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingUpdate):
-    """Update onboarding progress"""
+async def update_educator_onboarding(
+    educator_id: str,
+    data: EducatorOnboardingUpdate,
+    user: dict = Depends(get_current_user),
+):
+    """Update onboarding progress.
+
+    Auth: educator (self) or admin (SEC-001). Admin-only fields
+    (`documents_verified`, `verification_notes`, `status`, quiz/assessment
+    flags, `completed_steps`) are silently stripped when the caller is not
+    an admin so an educator cannot self-approve their verification.
+    """
+    _assert_onboarding_owner_or_admin(user, educator_id)
+
     update_data = {k: v for k, v in data.model_dump().items() if v is not None and v != "" and v != {}}
+    # Strip admin-only fields when the caller is not an admin.
+    if user.get("role") != "admin":
+        for f in _ONBOARDING_ADMIN_ONLY_FIELDS:
+            update_data.pop(f, None)
     update_data['last_activity'] = datetime.now(timezone.utc).isoformat()
 
     # Check if contract is being accepted
@@ -1140,8 +1201,16 @@ async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingU
     return onboarding
 
 @router.post("/educator/onboarding/{educator_id}/complete-step")
-async def complete_onboarding_step(educator_id: str, data: dict):
-    """Mark a step as completed and move to next"""
+async def complete_onboarding_step(
+    educator_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Mark a step as completed and move to next.
+
+    Auth: educator (self) or admin (SEC-001).
+    """
+    _assert_onboarding_owner_or_admin(user, educator_id)
     step = data.get("step")
     
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
