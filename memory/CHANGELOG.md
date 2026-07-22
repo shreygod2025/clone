@@ -1,6 +1,14 @@
 # OLL Backend Changelog
 
 
+## 2026-02-21 (round 2) — Friendship Day updates 💛
+**Status: COMPLETE — iteration 106 · 6/6 backend PASS · frontend all flows verified**
+- Hero image replaced with the official Friendship Day flyer (hotlinked from customer-assets).
+- Date normalised to **Sunday, 2nd August 2026** across landing, event details, form, order summary and success page — all references to "Saturday" / "1 Aug" removed.
+- "As Seen On" section added (Kaun Banega Crorepati, Shark Tank India, STEM Accredited) using the user-provided transparent PNGs; equal height, hover scale + drop-shadow, fully responsive.
+- Cashfree "Broken Link" issue mitigated: `return_url` now forced to `CASHFREE_RETURN_BASE_URL` (default `https://oll.co` — the whitelisted domain). On preview builds Cashfree checkout opens in a `_modal` (rather than `_self` full-page redirect) so the broken-link screen stays contained in the modal and the app remains functional. Production behaviour unchanged.
+- Student CRM mirror hardened: `_mirror_paid_to_student_crm` helper called from webhook, `/verify/{order_id}`, and admin PATCH. Upsert by `{email, phone}` + `$addToSet` on `workshop_history` (workshop, workshop_name, center, center_name, amount, payment_status, campaign, registered_at, paid_at, registration_id).
+
 ## 2026-02-21 — OLL Friendship Day Workshop Landing Page & CRM 💛
 **Status: COMPLETE — testing_agent iteration 105 · 19/19 backend pytest PASSED · frontend end-to-end verified**
 
