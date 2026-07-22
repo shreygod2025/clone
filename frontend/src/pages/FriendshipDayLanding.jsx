@@ -8,12 +8,19 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Hero — swap HERO_IMG to hotlink the official flyer once available
-const HERO_IMG = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80';
+// Hero — official Friendship Day flyer
+const HERO_IMG = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wqisxdqr_WhatsApp%20Image%202026-07-22%20at%209.51.11%20AM.jpeg';
 const HERO_FALLBACK = 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=1200&q=80';
 
-// Workshop dates — edit these when the flyer specifies exact dates
-const WORKSHOP_DATES = 'Saturday, 1 Aug & Sunday, 2 Aug 2026';
+// Event date — single confirmed date
+const WORKSHOP_DATES = 'Sunday, 2nd August 2026';
+
+// "As Seen On" logos (transparent PNGs)
+const AS_SEEN_LOGOS = [
+  { name: 'Kaun Banega Crorepati', src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/jx3fnrhd_3.png' },
+  { name: 'Shark Tank India',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/1rcosycu_1.png' },
+  { name: 'STEM Accredited Educational Experience', src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/r6tt9qmw_2.png' },
+];
 
 const HIGHLIGHTS = [
   { icon: Heart,   title: 'Celebrate Friendship',  desc: 'Hands-on projects designed around friendship & bonding' },
@@ -25,7 +32,7 @@ const HIGHLIGHTS = [
 const FAQS = [
   { q: 'Who can join?', a: 'Kids aged 6 to 14. We adapt the difficulty by age group inside the session.' },
   { q: 'Do we bring anything?', a: 'No — all materials (3D pen filament, laptops, kits) are provided at the venue.' },
-  { q: 'What is the schedule?', a: 'Each workshop is ~2 hours. Mega Combo runs across both days for the same child.' },
+  { q: 'What is the schedule?', a: 'The workshop runs on Sunday, 2nd August 2026 — a hands-on ~2 hour session. The Mega Combo covers both projects in a single extended session.' },
   { q: 'Refund policy?', a: 'Full refund available up to 48 hours before the workshop. Reschedules always free.' },
 ];
 
@@ -112,13 +119,22 @@ const FriendshipDayLanding = () => {
       const cashfree = window.Cashfree({
         mode: environment === 'production' ? 'production' : 'sandbox',
       });
+      const isPreview = !/^(oll\.co|www\.oll\.co|eventmate-19\.emergent\.host)$/.test(window.location.hostname);
       const result = await cashfree.checkout({
         paymentSessionId: payment_session_id,
-        redirectTarget: '_self',
+        redirectTarget: isPreview ? '_modal' : '_self',
       });
 
       if (result?.error) {
-        toast.error(result.error.message || 'Payment was not completed. Please try again.');
+        const msg = result.error.message || '';
+        if (/not enabled|whitelist|approved/i.test(msg)) {
+          toast.error('Preview build — Cashfree needs this domain whitelisted. Payments work on the live site.');
+        } else {
+          toast.error(msg || 'Payment was not completed. Please try again.');
+        }
+      } else if (result?.paymentDetails?.paymentMessage) {
+        // Modal was closed with a status
+        window.location.href = `${window.location.origin}/friendship-day/success?order_id=${order_id}&registration_id=${registrationId}`;
       } else if (!result?.redirect && order_id) {
         window.location.href = `${window.location.origin}/friendship-day/success?order_id=${order_id}&registration_id=${registrationId}`;
       }
@@ -179,16 +195,40 @@ const FriendshipDayLanding = () => {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Secure Cashfree checkout · UPI · Cards · Netbanking
             </div>
           </div>
-          <div className="rounded-2xl overflow-hidden shadow-lg border border-amber-100">
+          <div className="rounded-2xl overflow-hidden shadow-lg border border-amber-100 bg-white">
             <img
               src={HERO_IMG}
-              alt="OLL Friendship Day Workshop"
-              className="block w-full h-auto"
+              alt="OLL Friendship Day Workshop — Sunday 2nd August 2026"
+              className="block w-full h-auto object-contain"
               loading="eager"
               onError={(e) => { e.currentTarget.src = HERO_FALLBACK; }}
               data-testid="fd-hero-image"
             />
           </div>
+        </div>
+      </section>
+
+      {/* As Seen On */}
+      <section className="max-w-6xl mx-auto px-4 py-6 md:py-8" data-testid="fd-as-seen-on">
+        <div className="text-center">
+          <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500">As Seen On</div>
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-4 sm:gap-8 items-center justify-items-center">
+          {AS_SEEN_LOGOS.map((logo) => (
+            <div
+              key={logo.name}
+              className="flex items-center justify-center h-14 sm:h-16 md:h-20 w-full transition-transform duration-300 ease-out hover:scale-110 hover:drop-shadow-lg"
+              data-testid={`fd-logo-${logo.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
+            >
+              <img
+                src={logo.src}
+                alt={logo.name}
+                title={logo.name}
+                className="max-h-full max-w-[110px] sm:max-w-[140px] md:max-w-[160px] object-contain"
+                loading="lazy"
+              />
+            </div>
+          ))}
         </div>
       </section>
 

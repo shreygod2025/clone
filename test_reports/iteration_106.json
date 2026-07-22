@@ -1,0 +1,26 @@
+{
+  "summary": "Iteration 106 Friendship Day updates verified end-to-end. Backend: 6/6 pytest tests PASSED covering catalog(2 centers/3 workshops), dedupe with workshop_history append, third-register-after-paid → 409, admin PATCH → Student CRM mirror (upsert by email+phone with workshop_history entry containing all required keys), webhook signature enforcement, and Cashfree order verification (return_url starts with https://oll.co/). Frontend: Hero flyer loads from customer-assets-v7afamib (naturalWidth=1399), date text 'Sunday, 2nd August 2026' present with NO forbidden Saturday/1 Aug variants, both centers visible, As Seen On section with all 3 logos (KBC, Shark Tank India, STEM Accredited) present and rendered from customer-assets-v7afamib. Modal opens on hero CTA, order summary updates live (₹499 bracelet / ₹799 combo). On preview build, Cashfree checkout opens in MODAL (redirectTarget='_modal') and the URL stays at /friendship-day even when Cashfree returns 'Broken Link' — exactly as designed (broken link contained inside modal).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter106_friendship_day.py",
+    "/app/test_reports/pytest/iter106.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Cashfree return_url is correctly forced to https://oll.co via CASHFREE_RETURN_BASE_URL env default in friendship_day.py:191 — verified by direct PGFetchOrder call.",
+    "redirectTarget='_modal' toggle in FriendshipDayLanding.jsx:122-125 correctly whitelists oll.co & eventmate-19.emergent.host for full-page redirect and uses modal on all other preview hosts.",
+    "_mirror_paid_to_student_crm helper uses $set/$setOnInsert/$addToSet correctly — no duplicate workshop_history entries on re-mark-paid because $addToSet dedupes on full sub-doc.",
+    "Minor: StudentInquiry pydantic model has extra='ignore' so payment_status and workshop_history fields aren't exposed via GET /api/students/inquiries. Not a blocker for Friendship Day CRM tab (which uses its own admin endpoint), but a general-purpose /students/inquiries consumer wouldn't see the mirrored fields."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter106_friendship_day.py"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% of testable flows (Cashfree merchant whitelist for preview domain remains ops item — contained in modal by design)"},
+  "test_credentials": "admin@oll.co / Dagaji03@ used successfully.",
+  "seed_data_creation": "Created several TEST_* Friendship Day registrations and one TEST CRMMirror Child mirrored to student_inquiries with workshop_history entries.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All items in iter106 spec pass. Backend Cashfree order confirmed to have return_url on oll.co. Preview build now opens Cashfree in modal so 'Broken Link' stays contained. workshop_history mirror to student_inquiries is functional (verified via direct MongoDB read). If retesting, note that the /api/students/inquiries endpoint strips extra fields via StudentInquiry.extra='ignore' — verify mirror via DB or Friendship Day CRM admin endpoint.",
+  "rca of the issue": "N/A — no blocking bugs."
+}

@@ -185,6 +185,10 @@ async def initiate_payment(data: FDPayInit):
 
     order_id = f"FD-{reg['id'][:8]}-{int(time.time())}"
     frontend_url = (data.frontend_url or os.getenv("FRONTEND_URL", "https://oll.co")).rstrip("/")
+    # Cashfree only accepts return_url on a merchant-whitelisted domain. Force the
+    # official production domain (or CASHFREE_RETURN_BASE_URL env) so preview builds
+    # also produce a valid checkout session instead of the "Broken Link" page.
+    return_base = os.getenv("CASHFREE_RETURN_BASE_URL", "https://oll.co").rstrip("/")
     cf_phone = reg["phone"] if len(reg["phone"]) == 10 else "9999999999"
     cf_name = reg["full_name"] if len(reg["full_name"]) >= 3 else "OLL Parent"
 
@@ -196,8 +200,8 @@ async def initiate_payment(data: FDPayInit):
             customer_phone=cf_phone,
         )
         order_meta = OrderMeta(
-            return_url=f"{frontend_url}/friendship-day/success?order_id={order_id}&registration_id={reg['id']}",
-            notify_url=f"{frontend_url}/api/friendship-day/webhook",
+            return_url=f"{return_base}/friendship-day/success?order_id={order_id}&registration_id={reg['id']}",
+            notify_url=f"{return_base}/api/friendship-day/webhook",
         )
         req = CreateOrderRequest(
             order_id=order_id,
@@ -286,6 +290,19 @@ async def webhook(request: Request):
                 "id": str(uuid.uuid4()),
                 "status": "converted",
                 "created_at": datetime.now(timezone.utc).isoformat(),
+            }, "$addToSet": {
+                "workshop_history": {
+                    "workshop": reg["workshop"],
+                    "workshop_name": reg["workshop_name"],
+                    "center": reg["center"],
+                    "center_name": reg.get("center_name", ""),
+                    "amount": reg["amount"],
+                    "payment_status": "paid",
+                    "campaign": CAMPAIGN,
+                    "registered_at": reg.get("created_at"),
+                    "paid_at": datetime.now(timezone.utc).isoformat(),
+                    "registration_id": reg["id"],
+                },
             }},
             upsert=True,
         )
@@ -344,6 +361,19 @@ async def verify_payment(order_id: str):
                     "id": str(uuid.uuid4()),
                     "status": "converted",
                     "created_at": now_iso,
+                }, "$addToSet": {
+                    "workshop_history": {
+                        "workshop": reg["workshop"],
+                        "workshop_name": reg["workshop_name"],
+                        "center": reg["center"],
+                        "center_name": reg.get("center_name", ""),
+                        "amount": reg["amount"],
+                        "payment_status": "paid",
+                        "campaign": CAMPAIGN,
+                        "registered_at": reg.get("created_at"),
+                        "paid_at": now_iso,
+                        "registration_id": reg["id"],
+                    },
                 }},
                 upsert=True,
             )
@@ -437,14 +467,61 @@ class FDStatusUpdate(BaseModel):
     payment_status: str = Field(..., pattern=r"^(pending|paid|failed|refunded)$")
 
 
+async def _mirror_paid_to_student_crm(reg: dict, when_iso: Optional[str] = None) -> None:
+    """Upsert the student in student_inquiries and append workshop_history."""
+    when_iso = when_iso or datetime.now(timezone.utc).isoformat()
+    await db.student_inquiries.update_one(
+        {"email": reg["email"], "phone": reg["phone"]},
+        {"$set": {
+            "name": reg["full_name"], "email": reg["email"], "phone": reg["phone"],
+            "age_group": str(reg["age"]), "city": reg.get("center_name", ""),
+            "skill": "Friendship Day Workshop",
+            "programs_interested": ["Friendship Day Workshop"],
+            "learner_type": "individual", "learning_mode": "offline",
+            "learning_goal": reg["workshop_name"],
+            "source": SOURCE, "source_ref": "oll.co/friendship-day",
+            "campaign": CAMPAIGN,
+            "payment_status": "paid",
+            "amount_paid": reg["amount"], "amount": reg["amount"],
+            "updated_at": when_iso,
+        }, "$setOnInsert": {
+            "id": str(uuid.uuid4()),
+            "status": "converted",
+            "created_at": when_iso,
+        }, "$addToSet": {
+            "workshop_history": {
+                "workshop": reg["workshop"],
+                "workshop_name": reg["workshop_name"],
+                "center": reg["center"],
+                "center_name": reg.get("center_name", ""),
+                "amount": reg["amount"],
+                "payment_status": "paid",
+                "campaign": CAMPAIGN,
+                "registered_at": reg.get("created_at"),
+                "paid_at": when_iso,
+                "registration_id": reg["id"],
+            },
+        }},
+        upsert=True,
+    )
+
+
 @router.patch("/admin/friendship-day/registrations/{reg_id}")
 async def update_registration(reg_id: str, data: FDStatusUpdate, user: dict = Depends(_admin)):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    update_set: dict = {"payment_status": data.payment_status, "updated_at": now_iso}
+    if data.payment_status == "paid":
+        update_set["paid_at"] = now_iso
     res = await db.friendship_day_registrations.update_one(
-        {"id": reg_id},
-        {"$set": {"payment_status": data.payment_status, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"id": reg_id}, {"$set": update_set},
     )
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Registration not found")
+    # If admin marks as paid manually, mirror to Student CRM.
+    if data.payment_status == "paid":
+        reg = await db.friendship_day_registrations.find_one({"id": reg_id}, {"_id": 0})
+        if reg:
+            await _mirror_paid_to_student_crm(reg, now_iso)
     return {"ok": True}
 
 
