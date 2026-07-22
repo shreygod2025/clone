@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OLL · Secure Payment</title>
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#fffbeb,#fff,#fff1f2);min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;color:#334155}
+    .card{background:#fff;border:1px solid #fde68a;border-radius:16px;padding:32px 28px;max-width:380px;width:calc(100% - 32px);box-shadow:0 10px 30px rgba(0,0,0,.05)}
+    .spinner{width:36px;height:36px;border:3px solid #fde68a;border-top-color:#D63031;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite}
+    @keyframes s{to{transform:rotate(360deg)}}
+    h1{font-size:18px;margin:0 0 6px;color:#0f172a;font-weight:700}
+    p{font-size:13px;margin:0;color:#64748b;line-height:1.55}
+    .err{color:#D63031}
+    a{color:#D63031;text-decoration:none;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="card" id="c">
+    <div class="spinner"></div>
+    <h1>Redirecting to secure payment…</h1>
+    <p>Powered by Cashfree · UPI · Cards · Netbanking</p>
+  </div>
+  <script>
+    (function(){
+      var params = new URLSearchParams(window.location.search);
+      var sid = params.get('sid');
+      var mode = params.get('mode') === 'sandbox' ? 'sandbox' : 'production';
+      var card = document.getElementById('c');
+      if (!sid) {
+        card.innerHTML = '<h1 class="err">Missing payment session</h1><p>Please go back and try again.</p>';
+        return;
+      }
+      try {
+        var cf = window.Cashfree({ mode: mode });
+        cf.checkout({ paymentSessionId: sid, redirectTarget: '_self' })
+          .then(function(res){
+            if (res && res.error) {
+              card.innerHTML = '<h1 class="err">Payment could not be started</h1><p>' + (res.error.message || 'Please retry from the booking page.') + '</p>';
+            }
+          })
+          .catch(function(e){
+            card.innerHTML = '<h1 class="err">Payment gateway error</h1><p>' + (e && e.message ? e.message : 'Please retry.') + '</p>';
+          });
+      } catch(e){
+        card.innerHTML = '<h1 class="err">Payment gateway not ready</h1><p>' + (e && e.message ? e.message : 'Please retry.') + '</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

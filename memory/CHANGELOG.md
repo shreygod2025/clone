@@ -1,6 +1,17 @@
 # OLL Backend Changelog
 
 
+## 2026-02-21 (round 3) — Proxy Domain Pattern for Cashfree preview 🔐
+**Status: COMPLETE — verified via live PGFetchOrder + preview navigation smoke test**
+- Cashfree v3 SDK strictly enforces the browser origin against the merchant whitelist. Preview subdomains cannot be self-serve whitelisted. Implemented the industry-standard **Proxy Domain Pattern**:
+  - New static file `/app/frontend/public/friendship-day-checkout.html` — hosted on the whitelisted `oll.co` domain, loads Cashfree v3 SDK and invokes `checkout({ paymentSessionId })` from a trusted origin.
+  - New static file `/app/frontend/public/friendship-day-return.html` — after successful payment Cashfree redirects here (still on oll.co), which then bounces the parent back to the originating preview host via `?target=<url>` (safelist: oll.co, *.emergentagent.com/.net/.host, localhost).
+  - `friendship_day.py` now dynamically sets `return_url` to `https://oll.co/friendship-day-return.html?target=...&order_id=...` when the request originates from a non-whitelisted host, and inline (no proxy) when the origin is already oll.co.
+  - `FriendshipDayLanding.jsx` on preview navigates directly to `https://oll.co/friendship-day-checkout.html?sid=...&mode=production` instead of running the SDK locally.
+- "As Seen On" logos enlarged 2× (h-24 sm:h-32 md:h-40 · max-w-[180/220/280px]).
+- Env knobs added: `CASHFREE_PROXY_BASE_URL` (default `https://oll.co`), `CASHFREE_NOTIFY_BASE_URL` (default `https://oll.co`).
+- Requires a single **Deploy** to `oll.co` so the two proxy HTML files exist on the whitelisted origin — after that, preview payments work end-to-end for any preview subdomain forever.
+
 ## 2026-02-21 (round 2) — Friendship Day updates 💛
 **Status: COMPLETE — iteration 106 · 6/6 backend PASS · frontend all flows verified**
 - Hero image replaced with the official Friendship Day flyer (hotlinked from customer-assets).

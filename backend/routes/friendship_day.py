@@ -185,10 +185,21 @@ async def initiate_payment(data: FDPayInit):
 
     order_id = f"FD-{reg['id'][:8]}-{int(time.time())}"
     frontend_url = (data.frontend_url or os.getenv("FRONTEND_URL", "https://oll.co")).rstrip("/")
-    # Cashfree only accepts return_url on a merchant-whitelisted domain. Force the
-    # official production domain (or CASHFREE_RETURN_BASE_URL env) so preview builds
-    # also produce a valid checkout session instead of the "Broken Link" page.
-    return_base = os.getenv("CASHFREE_RETURN_BASE_URL", "https://oll.co").rstrip("/")
+    # Cashfree only accepts return_url on a merchant-whitelisted domain (oll.co).
+    # When the request comes from a non-whitelisted host (preview/staging), use the
+    # `/friendship-day-return.html` proxy hosted on oll.co which then bounces the
+    # user back to the originating preview host with the order_id.
+    proxy_base = os.getenv("CASHFREE_PROXY_BASE_URL", "https://oll.co").rstrip("/")
+    from urllib.parse import urlparse, quote
+    parsed = urlparse(frontend_url)
+    host = (parsed.hostname or "").lower()
+    is_whitelisted = host in ("oll.co", "www.oll.co") or host.endswith(".oll.co")
+    if is_whitelisted:
+        return_url = f"{frontend_url}/friendship-day/success?order_id={order_id}&registration_id={reg['id']}"
+    else:
+        target = f"{frontend_url}/friendship-day/success"
+        return_url = f"{proxy_base}/friendship-day-return.html?target={quote(target, safe='')}&order_id={order_id}&registration_id={reg['id']}"
+    notify_base = os.getenv("CASHFREE_NOTIFY_BASE_URL", "https://oll.co").rstrip("/")
     cf_phone = reg["phone"] if len(reg["phone"]) == 10 else "9999999999"
     cf_name = reg["full_name"] if len(reg["full_name"]) >= 3 else "OLL Parent"
 
@@ -200,8 +211,8 @@ async def initiate_payment(data: FDPayInit):
             customer_phone=cf_phone,
         )
         order_meta = OrderMeta(
-            return_url=f"{return_base}/friendship-day/success?order_id={order_id}&registration_id={reg['id']}",
-            notify_url=f"{return_base}/api/friendship-day/webhook",
+            return_url=return_url,
+            notify_url=f"{notify_base}/api/friendship-day/webhook",
         )
         req = CreateOrderRequest(
             order_id=order_id,

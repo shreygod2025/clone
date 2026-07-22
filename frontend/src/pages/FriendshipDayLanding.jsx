@@ -116,25 +116,28 @@ const FriendshipDayLanding = () => {
         return;
       }
 
+      const isWhitelisted = /^(oll\.co|www\.oll\.co)$/.test(window.location.hostname);
+      if (!isWhitelisted) {
+        // Cashfree merchant whitelist only covers oll.co. Route the checkout via
+        // the static proxy hosted on oll.co so the SDK loads from a whitelisted
+        // origin. After payment, the proxy return page bounces the parent back
+        // to this preview host at /friendship-day/success with the order_id.
+        const proxyBase = 'https://oll.co';
+        window.location.href = `${proxyBase}/friendship-day-checkout.html?sid=${encodeURIComponent(payment_session_id)}&mode=${environment === 'production' ? 'production' : 'sandbox'}`;
+        return;
+      }
+
+      // Whitelisted origin (production oll.co) — run the SDK inline.
       const cashfree = window.Cashfree({
         mode: environment === 'production' ? 'production' : 'sandbox',
       });
-      const isPreview = !/^(oll\.co|www\.oll\.co|eventmate-19\.emergent\.host)$/.test(window.location.hostname);
       const result = await cashfree.checkout({
         paymentSessionId: payment_session_id,
-        redirectTarget: isPreview ? '_modal' : '_self',
+        redirectTarget: '_self',
       });
 
       if (result?.error) {
-        const msg = result.error.message || '';
-        if (/not enabled|whitelist|approved/i.test(msg)) {
-          toast.error('Preview build — Cashfree needs this domain whitelisted. Payments work on the live site.');
-        } else {
-          toast.error(msg || 'Payment was not completed. Please try again.');
-        }
-      } else if (result?.paymentDetails?.paymentMessage) {
-        // Modal was closed with a status
-        window.location.href = `${window.location.origin}/friendship-day/success?order_id=${order_id}&registration_id=${registrationId}`;
+        toast.error(result.error.message || 'Payment was not completed. Please try again.');
       } else if (!result?.redirect && order_id) {
         window.location.href = `${window.location.origin}/friendship-day/success?order_id=${order_id}&registration_id=${registrationId}`;
       }
