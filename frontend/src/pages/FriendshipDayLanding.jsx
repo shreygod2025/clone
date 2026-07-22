@@ -209,22 +209,22 @@ const FriendshipDayLanding = () => {
       </section>
 
       {/* As Seen On */}
-      <section className="max-w-6xl mx-auto px-4 py-6 md:py-8" data-testid="fd-as-seen-on">
+      <section className="max-w-6xl mx-auto px-4 py-8 md:py-12" data-testid="fd-as-seen-on">
         <div className="text-center">
-          <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500">As Seen On</div>
+          <div className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-slate-500">As Seen On</div>
         </div>
-        <div className="mt-5 grid grid-cols-3 gap-4 sm:gap-8 items-center justify-items-center">
+        <div className="mt-8 grid grid-cols-3 gap-6 sm:gap-10 md:gap-16 items-center justify-items-center">
           {AS_SEEN_LOGOS.map((logo) => (
             <div
               key={logo.name}
-              className="flex items-center justify-center h-14 sm:h-16 md:h-20 w-full transition-transform duration-300 ease-out hover:scale-110 hover:drop-shadow-lg"
+              className="flex items-center justify-center h-24 sm:h-32 md:h-40 w-full transition-transform duration-300 ease-out hover:scale-110 hover:drop-shadow-2xl"
               data-testid={`fd-logo-${logo.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
             >
               <img
                 src={logo.src}
                 alt={logo.name}
                 title={logo.name}
-                className="max-h-full max-w-[110px] sm:max-w-[140px] md:max-w-[160px] object-contain"
+                className="max-h-full max-w-[180px] sm:max-w-[220px] md:max-w-[280px] object-contain"
                 loading="lazy"
               />
             </div>
