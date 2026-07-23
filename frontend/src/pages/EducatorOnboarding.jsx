@@ -234,7 +234,7 @@ const EducatorOnboarding = () => {
         ...data,
         video_progress: videoProgress,
         video_uploads: videoUploads
-      }, { headers: getAuthHeaders() });
+      }, { headers: getAuthHeaders(), timeout: 45000 });
       return true;
     } catch (error) {
       console.error('Failed to save:', error);
@@ -262,17 +262,26 @@ const EducatorOnboarding = () => {
       //    Abort if the save failed — otherwise we'd mark the step "complete"
       //    on the server while the fields are still empty (root cause of the
       //    "Bank Details N/A" production issue).
-      const saved = await saveProgress(extraData);
-      if (!saved) {
-        return; // toast was already shown inside saveProgress
+      //
+      //    EXCEPTION: The Welcome step (step 1) has no form fields — the user
+      //    just watched a video. Sending a huge empty formData PATCH here
+      //    doubled the network cost and was causing "network error" toasts
+      //    on slow mobile connections (production issue, 2026-07-22).
+      //    Skip the save on step 1 and only mark it complete.
+      if (step !== 1) {
+        const saved = await saveProgress(extraData);
+        if (!saved) {
+          return; // toast was already shown inside saveProgress
+        }
       }
 
-      // 2. Mark step complete on backend
+      // 2. Mark step complete on backend (with a sane timeout so slow
+      //    mobile networks fail loudly instead of hanging silently).
       const educatorId = user?.educator_id || user?.id;
       const response = await axios.post(
         `${API}/educator/onboarding/${educatorId}/complete-step`,
         { step },
-        { headers: getAuthHeaders() }
+        { headers: getAuthHeaders(), timeout: 30000 }
       );
 
       const nextStep = response.data.next_step;
@@ -287,7 +296,14 @@ const EducatorOnboarding = () => {
       await fetchOnboardingData();
       if (nextStep) setCurrentStep(nextStep); // re-apply after fetch
     } catch (error) {
-      toast.error('Failed to complete step');
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail;
+      const msg = detail
+        ? `${detail}${status ? ` (HTTP ${status})` : ''}`
+        : status
+          ? `Failed with HTTP ${status}. Please retry.`
+          : 'Network error — please check your connection and retry.';
+      toast.error(`Couldn't continue — ${msg}`);
     } finally {
       setCompleting(false);
     }
