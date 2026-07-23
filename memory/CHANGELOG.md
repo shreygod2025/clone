@@ -1,6 +1,26 @@
 # OLL Backend Changelog
 
 
+## 2026-02-23 (round 2) — Tasks module WhatsApp notifications 🔔
+**Status: COMPLETE — full E2E verified (all 3 flows call AiSensy with correct payloads)**
+
+### What was built
+- New helper `_notify_task_whatsapp(task, template_key, assigner_id)` in `/app/backend/routes/tasks.py` — silently no-ops for self-assignment or when the assignee has no phone, otherwise fires an AiSensy campaign with 6 params:
+  `{{1}} assignee_name` · `{{2}} task_title` · `{{3}} priority (UPPERCASE)` · `{{4}} due_date` · `{{5}} assigned_by_name` · `{{6}} task_link (deep link)`.
+- Wired into three flows:
+  - `POST /api/tasks` → `task_assigned`
+  - `PATCH /api/tasks/{id}` with new `assigned_to` → `task_reassigned`
+  - `PATCH /api/tasks/{id}` with new `due_date` (and no reassignment) → `task_due_date_updated` (also fires in-app notification)
+- Extended `_find_user_display()` to also return `phone` from `team_users`/`admins` collections.
+- Added the three template keys (`task_assigned`, `task_reassigned`, `task_due_date_updated`) to `routes/notifications.py` (canonical) + `server.py` mirror.
+- `os` import added; `FRONTEND_URL` env used to build `/admin/tasks?open=<task_id>` deep link.
+
+### AiSensy campaigns to create (5-min one-time setup)
+Suggested body (identical for all 3 with different intro):
+> Hi {{1}}, [task_assigned: A new task has been assigned to you] · Title: {{2}} · Priority: {{3}} · Due: {{4}} · Assigned by: {{5}} · Open: {{6}}
+
+
+
 ## 2026-02-23 — Educators → Applicants: Demo Priority, WhatsApp Reminders, Mandatory Bio + City 👩‍🏫
 **Status: COMPLETE — iteration 107 · 13/13 backend pytest PASSED · frontend flows verified**
 

@@ -56,6 +56,16 @@ WHATSAPP_TEMPLATES = {
     "social_media_intern_confirmation": "social_media_intern_confirmation",
     "social_media_intern_seat_reserved": "social_media_intern_seat_reserved",
     "social_media_intern_lead_followup": "social_media_intern_lead_followup",
+
+    # Educator applicant demo reminders (day of HR demo)
+    "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
+    "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
+
+    # Tasks module — assignee notifications
+    # AiSensy campaign params: [assignee_name, task_title, priority, due_date, assigned_by_name, task_link]
+    "task_assigned": "task_assigned",
+    "task_reassigned": "task_reassigned",
+    "task_due_date_updated": "task_due_date_updated",
 }
 
 async def send_whatsapp_notification(

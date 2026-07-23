@@ -227,6 +227,11 @@ WHATSAPP_TEMPLATES = {
     # Educator applicant demo reminders (2026-02-23: sent on day of HR demo)
     "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
     "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
+
+    # Tasks module — assignee notifications
+    "task_assigned": "task_assigned",
+    "task_reassigned": "task_reassigned",
+    "task_due_date_updated": "task_due_date_updated",
 }
 
 async def send_whatsapp_notification(

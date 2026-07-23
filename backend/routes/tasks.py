@@ -16,9 +16,11 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 import uuid
+import os
 
 from routes.shared import db, get_current_user
 from routes.inapp_notifications import create_notification
+from routes.notifications import send_whatsapp_notification
 try:
     from routes.scheduled_tasks import run_materializer
 except Exception:
@@ -87,16 +89,16 @@ async def _next_task_code() -> str:
 
 
 async def _find_user_display(user_id: str) -> dict:
-    """Look up a user by id in team_users OR admins collection and return {name, email}."""
+    """Look up a user by id in team_users OR admins collection and return {name, email, phone}."""
     if not user_id:
-        return {"name": "", "email": ""}
-    u = await db.team_users.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+        return {"name": "", "email": "", "phone": ""}
+    u = await db.team_users.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
     if u:
-        return {"name": u.get("name", ""), "email": u.get("email", "")}
-    a = await db.admins.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+        return {"name": u.get("name", ""), "email": u.get("email", ""), "phone": u.get("phone", "")}
+    a = await db.admins.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
     if a:
-        return {"name": a.get("name", ""), "email": a.get("email", "")}
-    return {"name": "", "email": ""}
+        return {"name": a.get("name", ""), "email": a.get("email", ""), "phone": a.get("phone", "")}
+    return {"name": "", "email": "", "phone": ""}
 
 
 async def _user_exists(user_id: str) -> bool:
@@ -107,6 +109,54 @@ async def _user_exists(user_id: str) -> bool:
     if await db.admins.find_one({"id": user_id}, {"_id": 0, "id": 1}):
         return True
     return False
+
+
+async def _notify_task_whatsapp(task: dict, template_key: str, assigner_id: str) -> None:
+    """Send a WhatsApp message to the assignee.
+
+    Silently no-ops when:
+      - actor is the same person as the assignee (self-assignment)
+      - assignee has no phone on file
+      - assignee document is missing
+      - AiSensy campaign is not configured (returns success:false — we just log)
+
+    Template params (6) — the AiSensy campaign body MUST use these in order:
+      {{1}} assignee_name
+      {{2}} task_title
+      {{3}} priority (UPPERCASE)
+      {{4}} due_date (YYYY-MM-DD or 'no deadline')
+      {{5}} assigned_by_name
+      {{6}} task_link (deep link to /tasks?open=<task_id>)
+    """
+    try:
+        assignee_id = task.get("assigned_to") or ""
+        if not assignee_id or assignee_id == assigner_id:
+            return  # skip self-assignment noise
+        assignee = await _find_user_display(assignee_id)
+        assignee_phone = (assignee.get("phone") or "").strip()
+        if not assignee_phone or assignee_phone.lower() in ("none", "null"):
+            return
+        assigner = await _find_user_display(assigner_id) if assigner_id else {"name": "OLL Admin"}
+        base_url = os.environ.get("FRONTEND_URL", "https://oll.co").rstrip("/")
+        task_link = f"{base_url}/admin/tasks?open={task.get('id')}"
+        params = [
+            assignee.get("name") or "Team",
+            task.get("title") or "New Task",
+            (task.get("priority") or "medium").upper(),
+            task.get("due_date") or "no deadline",
+            assigner.get("name") or "OLL Admin",
+            task_link,
+        ]
+        result = await send_whatsapp_notification(
+            phone=assignee_phone,
+            template_key=template_key,
+            params=params,
+            user_name=assignee.get("name") or "Team",
+        )
+        if not result.get("success"):
+            print(f"[TASKS-WA] {template_key} → {assignee_phone} failed: {result.get('message')}")
+    except Exception as e:
+        print(f"[TASKS-WA] {template_key} exception: {e}")
 
 
 async def _enrich_task(t: dict) -> dict:
@@ -203,6 +253,8 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
         task_id=task["id"],
         actor_id=_current_user_id(user),
     )
+    # WhatsApp notify assignee (task_assigned template)
+    await _notify_task_whatsapp(task, "task_assigned", _current_user_id(user))
     return await _enrich_task(task)
 
 
@@ -384,9 +436,32 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
                 actor_id=uid,
             )
 
+    # Track whether we need to fire WhatsApp for reassignment / due-date change
+    old_assignee = t.get("assigned_to")
+    old_due_date = t.get("due_date")
+
     if updates:
         await db.tasks.update_one({"id": task_id}, {"$set": updates})
         t = await db.tasks.find_one({"id": task_id})
+
+    # Fire WhatsApp on reassignment (new assignee)
+    if data.assigned_to is not None and data.assigned_to and data.assigned_to != old_assignee:
+        await _notify_task_whatsapp(t, "task_reassigned", uid)
+
+    # Fire WhatsApp on due_date change (only if the task was NOT just reassigned —
+    # otherwise the reassign notification already carries the new due_date)
+    elif data.due_date is not None and data.due_date != old_due_date and t.get("assigned_to"):
+        await _notify_task_whatsapp(t, "task_due_date_updated", uid)
+        # In-app notification too
+        await create_notification(
+            user_id=t.get("assigned_to"),
+            type_="task_due_date_updated",
+            title=f"Due date updated: {t.get('title')}",
+            message=f"New due date: {data.due_date or 'no deadline'}",
+            task_id=task_id,
+            actor_id=uid,
+        )
+
     return await _enrich_task(t)
 
 
