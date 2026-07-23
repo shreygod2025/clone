@@ -76,6 +76,7 @@ const EducatorFunnel = () => {
     grades_comfortable: [],
     city: '',
     other_city: '',
+    bio: '',
     teaching_mode: [],
     availability: [],
     demo_date: null,
@@ -221,6 +222,14 @@ const EducatorFunnel = () => {
     }
     if (formData.phone.length < 10) {
       toast.error('Please enter a valid phone number');
+      return;
+    }
+    if (!formData.city || !formData.city.trim()) {
+      toast.error('Please select your city');
+      return;
+    }
+    if (!formData.bio || formData.bio.trim().length < 30) {
+      toast.error('Please write a short bio (at least 30 characters) — helps us shortlist you faster');
       return;
     }
     if (!formData.demo_date || !formData.demo_time) {
@@ -661,7 +670,7 @@ const EducatorFunnel = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">City</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">City *</label>
                       <CitySearch
                         value={formData.city}
                         onChange={handleCityChange}
@@ -669,6 +678,28 @@ const EducatorFunnel = () => {
                         data-testid="educator-city"
                         className="w-full"
                       />
+                    </div>
+                  </div>
+
+                  {/* Bio — mandatory */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                      About Yourself *
+                      <span className="ml-2 text-[10px] font-normal text-slate-500">
+                        (min 30 chars — teaching style, subjects, why you enjoy teaching)
+                      </span>
+                    </label>
+                    <textarea
+                      value={formData.bio}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                      placeholder="Example: I have 4+ years teaching experience with children aged 8-14. I specialise in Robotics & Coding and love making complex concepts fun through hands-on projects."
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                      data-testid="educator-bio"
+                      maxLength={800}
+                    />
+                    <div className={`text-[10px] mt-1 text-right ${formData.bio.trim().length < 30 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                      {formData.bio.trim().length}/30 characters minimum · {800 - formData.bio.length} left
                     </div>
                   </div>
 

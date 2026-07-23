@@ -200,6 +200,7 @@ class EducatorApplicationCreate(BaseModel):
     city: str = ""
     teaching_mode: str = ""  # online, offline_home, offline_center
     availability: str = ""
+    bio: str = ""
     demo_ready: bool = False
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
@@ -211,6 +212,23 @@ class EducatorApplicationCreate(BaseModel):
     assigned_to: str = ""
     notes: str = ""
     referred_by: Optional[str] = None       # educator_application id of the referrer (from ?ref=...)
+
+    @model_validator(mode='after')
+    def validate_bio_and_city(self):
+        """Bio and City are mandatory for public applications (2026-02-23 requirement).
+
+        Skipped for requirement-linked applications where city is inherited from
+        the requirement (the applicant does not pick a city) and for admin-added
+        rows (`added_by` is non-empty).
+        """
+        is_requirement_based = bool(self.requirement_id)
+        is_admin_added = bool(self.added_by)
+        if not is_requirement_based and not is_admin_added:
+            if not (self.bio or "").strip() or len((self.bio or "").strip()) < 30:
+                raise ValueError("Please write a short bio (at least 30 characters).")
+            if not (self.city or "").strip():
+                raise ValueError("Please select your city.")
+        return self
 
 class EducatorApplicationUpdate(BaseModel):
     status: Optional[str] = None
@@ -603,6 +621,7 @@ async def create_educator_application(data: EducatorApplicationCreate, backgroun
                 "city": data.city or existing.get("city", ""),
                 "teaching_mode": data.teaching_mode or existing.get("teaching_mode", ""),
                 "availability": data.availability or existing.get("availability", ""),
+                "bio": data.bio or existing.get("bio", ""),
                 "notes": data.notes or existing.get("notes", ""),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -724,6 +743,7 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP, backg
             "city": application.city or existing.get("city", ""),
             "teaching_mode": application.teaching_mode or existing.get("teaching_mode", ""),
             "availability": application.availability or existing.get("availability", ""),
+            "bio": application.bio or existing.get("bio", ""),
             "notes": application.notes or existing.get("notes", ""),
             "phone_verified": True,
             "updated_at": datetime.now(timezone.utc).isoformat(),

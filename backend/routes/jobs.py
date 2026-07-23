@@ -50,6 +50,10 @@ WHATSAPP_TEMPLATES = {
     # School CRM meeting reminders
     "school_meeting_reminder_24hours": "school_meeting_reminder_24hours",
     "school_meeting_reminder_2hours": "school_meeting_reminder_2hours",
+
+    # Educator applicant demo reminders
+    "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
+    "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
 }
 
 async def send_whatsapp_notification(
@@ -968,4 +972,136 @@ async def admin_sync_po_costs(
 
 
 
+
+
+
+# ── Educator Applicant Demo Reminders ─────────────────────────────────────────
+# Sends WhatsApp reminders on the day of the HR demo to (a) the applicant and
+# (b) the assigned Educator HR. Idempotent per-day: writes an
+# `applicant_demo_reminder_sent_on` field so re-running the cron on the same
+# day does not spam either party. Callable via cron or the admin trigger
+# button in AdminEducators.
+@router.post("/jobs/send-educator-applicant-demo-reminders")
+async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, user: dict = Depends(get_current_user)):
+    """Send WhatsApp demo reminders for today's HR demos.
+
+    Auth: JOB_SECRET query param (for cron) OR admin session.
+    """
+    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
+    is_cron = secret == JOB_SECRET
+    is_admin = user and user.get("role") in ("admin", "super_admin")
+    if not (is_cron or is_admin):
+        raise HTTPException(status_code=403, detail="Admin or valid job secret required")
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    apps = await db.educator_applications.find({
+        "demo_date": today,
+        "status": {"$in": ["demo_scheduled", "new"]},
+        "applicant_demo_reminder_sent_on": {"$ne": today},
+    }, {"_id": 0}).to_list(500)
+
+    sent_applicant = 0
+    sent_hr = 0
+    errors: List[str] = []
+    for app in apps:
+        applicant_name = app.get("name") or "Applicant"
+        demo_time = app.get("demo_time") or "TBD"
+        demo_date = app.get("demo_date") or today
+        meeting_link = app.get("meeting_link") or ""
+        params = [applicant_name, demo_date, demo_time, meeting_link or "-"]
+
+        # 1) Notify the applicant
+        applicant_phone = app.get("phone")
+        if applicant_phone:
+            res = await send_whatsapp_notification(
+                phone=applicant_phone,
+                template_key="educator_applicant_demo_reminder",
+                params=params,
+                user_name=applicant_name,
+            )
+            if res.get("success"):
+                sent_applicant += 1
+            else:
+                errors.append(f"applicant {app.get('id')}: {res.get('message')}")
+
+        # 2) Notify assigned Educator HR (falls back to team_users lookup)
+        hr_phone = None
+        assigned_to = app.get("assigned_to") or ""
+        if assigned_to:
+            hr_user = await db.team_users.find_one({"id": assigned_to}, {"_id": 0, "phone": 1, "name": 1})
+            if not hr_user:
+                hr_user = await db.users.find_one({"id": assigned_to}, {"_id": 0, "phone": 1, "name": 1})
+            if hr_user:
+                hr_phone = hr_user.get("phone")
+        if hr_phone:
+            res = await send_whatsapp_notification(
+                phone=hr_phone,
+                template_key="educator_applicant_demo_reminder_hr",
+                params=params,
+                user_name="Educator HR",
+            )
+            if res.get("success"):
+                sent_hr += 1
+            else:
+                errors.append(f"hr {app.get('id')}: {res.get('message')}")
+
+        # Mark reminder as sent today (idempotent per day)
+        await db.educator_applications.update_one(
+            {"id": app["id"]},
+            {"$set": {"applicant_demo_reminder_sent_on": today}},
+        )
+
+    return {
+        "success": True,
+        "checked": len(apps),
+        "sent_applicant": sent_applicant,
+        "sent_hr": sent_hr,
+        "errors": errors[:20],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# Single-applicant on-demand trigger for the "Send reminder now" button
+@router.post("/jobs/send-educator-applicant-demo-reminder/{app_id}")
+async def send_single_applicant_demo_reminder(app_id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    app = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
+    if not app:
+        raise HTTPException(status_code=404, detail="Applicant not found")
+    if not app.get("demo_date"):
+        raise HTTPException(status_code=400, detail="No demo scheduled for this applicant")
+
+    applicant_name = app.get("name") or "Applicant"
+    demo_time = app.get("demo_time") or "TBD"
+    demo_date = app.get("demo_date")
+    meeting_link = app.get("meeting_link") or "-"
+    params = [applicant_name, demo_date, demo_time, meeting_link]
+    result = {"applicant": None, "hr": None}
+
+    if app.get("phone"):
+        result["applicant"] = await send_whatsapp_notification(
+            phone=app["phone"], template_key="educator_applicant_demo_reminder",
+            params=params, user_name=applicant_name,
+        )
+
+    assigned_to = app.get("assigned_to") or ""
+    hr_phone = None
+    if assigned_to:
+        hr_user = await db.team_users.find_one({"id": assigned_to}, {"_id": 0, "phone": 1})
+        if not hr_user:
+            hr_user = await db.users.find_one({"id": assigned_to}, {"_id": 0, "phone": 1})
+        if hr_user:
+            hr_phone = hr_user.get("phone")
+    if hr_phone:
+        result["hr"] = await send_whatsapp_notification(
+            phone=hr_phone, template_key="educator_applicant_demo_reminder_hr",
+            params=params, user_name="Educator HR",
+        )
+
+    await db.educator_applications.update_one(
+        {"id": app_id},
+        {"$set": {"applicant_demo_reminder_sent_on": datetime.now(timezone.utc).date().isoformat()}},
+    )
+    return {"success": True, "detail": result}
 

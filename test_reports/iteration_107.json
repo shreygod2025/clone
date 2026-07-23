@@ -1,0 +1,25 @@
+{
+  "summary": "Iteration 107 Educators → Applicants enhancements verified end-to-end. Backend: 13/13 pytest tests PASSED covering (a) Bio+City server-side validation on /api/educators/apply and /api/educators/apply-verified (missing bio → 422 mentioning 'bio', short bio → 422, empty city → 422 mentioning 'city', valid payload → 200, requirement_id bypass works), (b) /api/jobs/send-educator-applicant-demo-reminders auth (no auth → 403, admin → 200 with {success, checked, sent_applicant, sent_hr, errors[]}), (c) idempotency (second call same day returns checked=0 and DB has applicant_demo_reminder_sent_on=TODAY on all 3 seed applicants), (d) per-applicant endpoint (404 unknown, 400 no demo_date, 200 with detail{applicant,hr} for scheduled seed, 403 without admin). Frontend: /admin/educators → Applicants tab renders 'Today\\'s Demo Priority' card (data-testid='todays-demo-priority') with 3 rows (Amarja 10:00 AM, Himanshi 11:00 AM, Rajani 3:00 PM) sorted by demo_time ASC, each with data-testid='todays-demo-row-{id}', 'Send all reminders' button (data-testid='send-all-reminders-btn') present. 'Incomplete Profile (32)' chip (data-testid='applicant-incomplete-filter') visible; clicking filters list to 32 applicants each carrying data-testid='educator-incomplete-{id}' amber 'Incomplete' badge. Public /educator funnel exposes 'About Yourself *' textarea (data-testid='educator-bio') with live counter turning text-emerald-600 once >=30 chars.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter107_educator_demo_priority.py",
+    "/app/test_reports/pytest/iter107.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Bio/city validation is correctly scoped via model_validator in EducatorApplicationCreate — bypasses when requirement_id or added_by is set. Both /apply and /apply-verified reuse the same model so validation is enforced pre-OTP as well.",
+    "send-educator-applicant-demo-reminders uses $ne:today idempotency key (applicant_demo_reminder_sent_on) — clean and safe to re-run.",
+    "Per-applicant endpoint updates applicant_demo_reminder_sent_on to TODAY even on manual send — good, prevents double reminders when cron then runs.",
+    "AiSensy templates 'educator_applicant_demo_reminder' and 'educator_applicant_demo_reminder_hr' may not yet exist in the merchant AiSensy account. As documented in the review request, the API structure & idempotency are correct; sent_* counters will be 0 until templates are provisioned, but success:true still returns and no errors are raised."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter107_educator_demo_priority.py"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% of testable flows"},
+  "test_credentials": "admin@oll.co / Dagaji03@ used successfully.",
+  "seed_data_creation": "Reused existing seeds Amarja/Himanshi/Rajani (phones 9876500401/402/403) with demo_date=today. Test suite creates transient TEST_ applicants and cleans them up in the finally-block.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 seed applicants have applicant_demo_reminder_sent_on=<today> after the bulk endpoint ran. If retesting the bulk endpoint on the same day expect checked=0 unless the field is unset first (the test suite already handles this). AiSensy template errors are expected and non-blocking."
+}

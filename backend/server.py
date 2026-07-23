@@ -223,6 +223,10 @@ WHATSAPP_TEMPLATES = {
     # School CRM meeting reminders
     "school_meeting_reminder_24hours": "school_meeting_reminder_24hours",
     "school_meeting_reminder_2hours": "school_meeting_reminder_2hours",
+
+    # Educator applicant demo reminders (2026-02-23: sent on day of HR demo)
+    "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
+    "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
 }
 
 async def send_whatsapp_notification(
