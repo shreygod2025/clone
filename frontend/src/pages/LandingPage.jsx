@@ -359,8 +359,8 @@ const LandingPage = () => {
           </div>
 
           <div
-            onClick={() => navigate('/workshops/fathers-day-robotics')}
-            data-testid="workshop-card-fathers-day"
+            onClick={() => navigate('/friendship-day')}
+            data-testid="workshop-card-friendship-day"
             style={{
               cursor: 'pointer',
               borderRadius: '1.5rem',
@@ -376,42 +376,54 @@ const LandingPage = () => {
             <div className="workshop-card-grid">
               <div style={{ padding: '2rem 1.75rem 2rem 2rem', color: '#0F2960', fontFamily: "'Fredoka', sans-serif" }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, background: '#FFFFFF', border: '2px solid #1E40AF', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#1E40AF', marginBottom: '1rem' }}>
-                  Father's Day · 1-Day Event
+                  Friendship Day · 1-Day Event
                 </span>
                 <h3 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, color: '#0F2960', fontSize: 'clamp(1.45rem, 3.4vw, 1.95rem)', lineHeight: 1.15, marginBottom: '0.55rem' }}>
-                  Father's Day Robotics Workshop
+                  Friendship Day Workshop
                 </h3>
                 <p style={{ color: '#475569', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '1rem', maxWidth: 480 }}>
-                  Bond with your child building a real robot together. Screen-free · take-home memories.
+                  Celebrate Friendship Day with fun workshops! Choose to Design a 3D Friendship Bracelet, Code a Digital Friendship Card, or experience both workshops in one exciting event.
                 </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1rem' }}>
                   {[
-                    { icon: '📅', text: 'Sun, 21 June' },
-                    { icon: '⏰', text: '2 hours' },
-                    { icon: '📍', text: 'Mumbai' },
-                    { icon: '👨‍👦', text: 'Ages 4 – 12' },
+                    { icon: '📅', text: 'Sun, 2 Aug 2026' },
+                    { icon: '📍', text: 'Kandivali & Mira Road' },
+                    { icon: '⏱️', text: '1 hour per workshop' },
+                    { icon: '👧', text: 'Ages 6+ Years' },
                   ].map(p => (
                     <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: '#FFFFFF', border: '2px solid rgba(30,64,175,0.20)', fontSize: '0.78rem', fontWeight: 600, color: '#1E40AF' }}>
                       <span>{p.icon}</span>{p.text}
                     </span>
                   ))}
                 </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
+                  {[
+                    { icon: '🎨', text: 'Design a 3D Friendship Bracelet' },
+                    { icon: '💻', text: 'Code a Digital Friendship Card' },
+                    { icon: '⭐', text: 'Attend Both (Combo)' },
+                  ].map(p => (
+                    <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: '#FEF3F2', border: '2px solid rgba(214,48,49,0.25)', fontSize: '0.78rem', fontWeight: 600, color: '#D63031' }}>
+                      <span>{p.icon}</span>{p.text}
+                    </span>
+                  ))}
+                </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigate('/workshops/fathers-day-robotics'); }}
+                    onClick={(e) => { e.stopPropagation(); navigate('/friendship-day'); }}
                     className="hp-cta-btn"
                     style={{ background: '#1E40AF', color: '#fff', fontFamily: "'Fredoka', sans-serif", fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(30,64,175,0.35)' }}
+                    data-testid="workshop-card-friendship-day-enroll"
                   >
                     Enroll Now →
                   </button>
                   <div style={{ fontSize: '0.72rem', color: '#1E40AF', fontWeight: 600 }}>Limited seats</div>
                 </div>
               </div>
-              {/* Right side — real workshop photo */}
+              {/* Right side — official Friendship Day flyer */}
               <div style={{
                 minHeight: 240,
                 backgroundColor: '#0F2960',
-                backgroundImage: 'url(https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2t1vu6l9_ChatGPT%20Image%20Jun%204%2C%202026%2C%2012_50_47%20PM.png)',
+                backgroundImage: 'url(https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wqisxdqr_WhatsApp%20Image%202026-07-22%20at%209.51.11%20AM.jpeg)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',

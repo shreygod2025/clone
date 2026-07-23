@@ -81,6 +81,7 @@ class FDRegistration(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     age: int = Field(..., ge=3, le=18)
     address: str = Field(..., min_length=5, max_length=500)
+    school_name: str = Field("", max_length=200)
     workshop: str = Field(..., pattern=r"^(bracelet|card|combo)$")
     center: str = Field(..., pattern=r"^(kandivali|mira_road)$")
     knows_oll: bool = False
@@ -127,6 +128,7 @@ async def register(data: FDRegistration):
                 "full_name": data.full_name.strip(),
                 "age": data.age,
                 "address": data.address.strip(),
+                "school_name": (data.school_name or "").strip(),
                 "workshop": data.workshop,
                 "workshop_name": workshop["name"],
                 "center": data.center,
@@ -149,6 +151,7 @@ async def register(data: FDRegistration):
             "phone": phone_digits,
             "age": data.age,
             "address": data.address.strip(),
+            "school_name": (data.school_name or "").strip(),
             "workshop": data.workshop,
             "workshop_name": workshop["name"],
             "center": data.center,
@@ -561,13 +564,13 @@ async def export_registrations_csv(
     rows = await db.friendship_day_registrations.find(query, {"_id": 0}).sort("created_at", -1).to_list(length=10000)
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["Created At", "Name", "Email", "Phone", "Age", "Workshop", "Center",
+    w.writerow(["Created At", "Name", "Email", "Phone", "Age", "School", "Workshop", "Center",
                 "Amount", "Payment Status", "Paid At", "Knows OLL", "Participated Before",
                 "Previous Workshop", "Address", "Cashfree Order ID"])
     for r in rows:
         w.writerow([
             r.get("created_at",""), r.get("full_name",""), r.get("email",""), r.get("phone",""),
-            r.get("age",""), r.get("workshop_name",""), r.get("center_name",""),
+            r.get("age",""), r.get("school_name",""), r.get("workshop_name",""), r.get("center_name",""),
             r.get("amount",""), r.get("payment_status",""), r.get("paid_at",""),
             "Yes" if r.get("knows_oll") else "No",
             "Yes" if r.get("participated_before") else "No",

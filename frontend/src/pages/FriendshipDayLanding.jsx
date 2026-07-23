@@ -43,7 +43,7 @@ const FriendshipDayLanding = () => {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', age: '',
-    address: '', workshop: '', center: '',
+    school_name: '', address: '', workshop: '', center: '',
     knows_oll: false, participated_before: false, previous_workshop: '',
   });
 
@@ -84,6 +84,7 @@ const FriendshipDayLanding = () => {
     const age = parseInt(form.age, 10);
     if (isNaN(age) || age < 3 || age > 18) return 'Age should be between 3 and 18';
     if (form.address.trim().length < 5) return 'Please enter your address';
+    if (form.school_name.trim().length < 2) return 'Please enter the child\u2019s school name';
     if (!form.workshop) return 'Please choose a workshop';
     if (!form.center) return 'Please choose a center';
     return null;
@@ -416,6 +417,16 @@ const RegistrationModal = ({ form, update, catalog, selectedWorkshop, selectedCe
               />
             </Field>
           </div>
+          <Field label="School Name *" icon={Users}>
+            <input
+              type="text"
+              value={form.school_name}
+              onChange={e => update('school_name', e.target.value)}
+              placeholder="e.g. EuroKids Preschool, Kandivali"
+              className="w-full h-11 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D63031]"
+              data-testid="fd-input-school-name"
+            />
+          </Field>
           <Field label="Address *" icon={Home}>
             <textarea
               value={form.address}
