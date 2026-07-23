@@ -4035,7 +4035,7 @@ from routes.social_media_intern import router as social_media_intern_router
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
-from routes.jobs import router as jobs_router
+from routes.jobs import router as jobs_router, scheduled_educator_applicant_demo_reminders
 from routes.expenses import router as expenses_router, transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
 from routes.admin_keys import router as admin_keys_router
 from routes.daily_report import router as daily_report_router, send_daily_reports
@@ -4346,6 +4346,30 @@ async def startup_db_client():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2)
     )
     print("[STARTUP] School meeting reminders scheduled — runs every 15 minutes")
+
+    # Schedule Educator Applicant demo reminders every 30 minutes.
+    # On the day of an HR demo, sends WhatsApp to both the applicant and the
+    # assigned Educator HR. Idempotent per-day via applicant_demo_reminder_sent_on.
+    scheduler.add_job(
+        scheduled_educator_applicant_demo_reminders,
+        trigger=IntervalTrigger(minutes=30),
+        id="educator_applicant_demo_reminders_job",
+        name="Educator Applicant Demo Reminders",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2)
+    )
+    print("[STARTUP] Educator applicant demo reminders scheduled — runs every 30 minutes")
+
+    # Also fire once daily at 8:00 AM IST (02:30 UTC) so morning demos get a
+    # reliable early nudge even if the 30-min ticker just skipped a slot.
+    scheduler.add_job(
+        scheduled_educator_applicant_demo_reminders,
+        trigger=CronTrigger(hour=2, minute=30, timezone="UTC"),
+        id="educator_applicant_demo_reminders_daily_job",
+        name="Educator Applicant Demo Reminders (Daily 8 AM IST)",
+        replace_existing=True
+    )
+    print("[STARTUP] Educator applicant demo reminders — daily 8 AM IST cron registered")
 
     # Schedule School CRM daily digest — fires at 8:30 AM IST (03:00 UTC)
     scheduler.add_job(

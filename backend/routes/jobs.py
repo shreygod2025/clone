@@ -981,18 +981,11 @@ async def admin_sync_po_costs(
 # `applicant_demo_reminder_sent_on` field so re-running the cron on the same
 # day does not spam either party. Callable via cron or the admin trigger
 # button in AdminEducators.
-@router.post("/jobs/send-educator-applicant-demo-reminders")
-async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, user: dict = Depends(get_current_user)):
-    """Send WhatsApp demo reminders for today's HR demos.
 
-    Auth: JOB_SECRET query param (for cron) OR admin session.
-    """
-    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
-    is_cron = secret == JOB_SECRET
-    is_admin = user and user.get("role") in ("admin", "super_admin")
-    if not (is_cron or is_admin):
-        raise HTTPException(status_code=403, detail="Admin or valid job secret required")
-
+async def _send_applicant_demo_reminders_internal() -> dict:
+    """Core worker — no auth. Called from the API endpoint AND the APScheduler
+    job in `server.py`. Sends reminders to applicant + assigned HR for every
+    applicant with demo_date == today (UTC) that hasn't been notified today."""
     today = datetime.now(timezone.utc).date().isoformat()
     apps = await db.educator_applications.find({
         "demo_date": today,
@@ -1010,7 +1003,6 @@ async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, u
         meeting_link = app.get("meeting_link") or ""
         params = [applicant_name, demo_date, demo_time, meeting_link or "-"]
 
-        # 1) Notify the applicant
         applicant_phone = app.get("phone")
         if applicant_phone:
             res = await send_whatsapp_notification(
@@ -1024,7 +1016,6 @@ async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, u
             else:
                 errors.append(f"applicant {app.get('id')}: {res.get('message')}")
 
-        # 2) Notify assigned Educator HR (falls back to team_users lookup)
         hr_phone = None
         assigned_to = app.get("assigned_to") or ""
         if assigned_to:
@@ -1045,7 +1036,6 @@ async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, u
             else:
                 errors.append(f"hr {app.get('id')}: {res.get('message')}")
 
-        # Mark reminder as sent today (idempotent per day)
         await db.educator_applications.update_one(
             {"id": app["id"]},
             {"$set": {"applicant_demo_reminder_sent_on": today}},
@@ -1059,6 +1049,30 @@ async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, u
         "errors": errors[:20],
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+async def scheduled_educator_applicant_demo_reminders():
+    """APScheduler entry point (invoked by server.py startup)."""
+    try:
+        result = await _send_applicant_demo_reminders_internal()
+        if result.get("checked"):
+            print(f"[SCHEDULER] Applicant demo reminders — checked={result['checked']} applicant_sent={result['sent_applicant']} hr_sent={result['sent_hr']} errors={len(result['errors'])}")
+    except Exception as e:
+        print(f"[SCHEDULER] Applicant demo reminders failed: {e}")
+
+
+@router.post("/jobs/send-educator-applicant-demo-reminders")
+async def send_educator_applicant_demo_reminders(secret: Optional[str] = None, user: dict = Depends(get_current_user)):
+    """Send WhatsApp demo reminders for today's HR demos.
+
+    Auth: JOB_SECRET query param (for cron) OR admin session.
+    """
+    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
+    is_cron = secret == JOB_SECRET
+    is_admin = user and user.get("role") in ("admin", "super_admin")
+    if not (is_cron or is_admin):
+        raise HTTPException(status_code=403, detail="Admin or valid job secret required")
+    return await _send_applicant_demo_reminders_internal()
 
 
 # Single-applicant on-demand trigger for the "Send reminder now" button
