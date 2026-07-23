@@ -1,6 +1,21 @@
 # OLL Backend Changelog
 
 
+## 2026-02-23 — Educators → Applicants: Demo Priority, WhatsApp Reminders, Mandatory Bio + City 👩‍🏫
+**Status: COMPLETE — iteration 107 · 13/13 backend pytest PASSED · frontend flows verified**
+
+### What was built
+- **Today's Demo Priority section** (`AdminEducators.jsx` — Applicants tab). Renders only when there are demos scheduled for today's date; sorted by `demo_time` ASC (Amarja 10:00 → Himanshi 11:00 → Rajani 15:00), numbered pills, live "Join" links + per-row reminder button. Header carries a bulk **"Send all reminders"** button.
+- **WhatsApp Demo Reminders** — new `jobs.py` endpoints:
+  - `POST /api/jobs/send-educator-applicant-demo-reminders` (admin OR JOB_SECRET cron) — for every applicant with `demo_date=today` and status in ('new','demo_scheduled'), sends WhatsApp to the applicant AND to the assigned Educator HR (`team_users.phone` / `users.phone`). Idempotent per day via `applicant_demo_reminder_sent_on`.
+  - `POST /api/jobs/send-educator-applicant-demo-reminder/{app_id}` — admin-only per-applicant trigger for the inline row button.
+  - Two new AiSensy template keys added to both `server.py` and `jobs.py` (`educator_applicant_demo_reminder`, `educator_applicant_demo_reminder_hr`) — user must create matching AiSensy campaigns with params `[applicant_name, demo_date, demo_time, meeting_link]`.
+- **Mandatory Bio + City** at application time — `EducatorApplicationCreate.model_validator` rejects payloads with `bio<30 chars` or empty `city` UNLESS the application is requirement-linked (`requirement_id`) or admin-added (`added_by`). Enforced on both `/api/educators/apply` and `/api/educators/apply-verified`. Client-side `EducatorFunnel.handleProceedToOTP` blocks OTP send with a targeted toast before making the API call.
+- **Incomplete Profile flag & filter** — Applicants tab now has an `AlertTriangle` chip **"Incomplete Profile (N)"** that filters to applicants missing bio/city. Every card in any Applicants view carries an amber **"Incomplete"** badge (with tooltip listing missing fields) when applicable.
+- Applicant `bio` field is now persisted on re-application and on `apply-verified` (previously silently dropped in the update path).
+
+
+
 ## 2026-02-21 (round 3) — Proxy Domain Pattern for Cashfree preview 🔐
 **Status: COMPLETE — verified via live PGFetchOrder + preview navigation smoke test**
 - Cashfree v3 SDK strictly enforces the browser origin against the merchant whitelist. Preview subdomains cannot be self-serve whitelisted. Implemented the industry-standard **Proxy Domain Pattern**:
