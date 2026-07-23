@@ -61,11 +61,13 @@ WHATSAPP_TEMPLATES = {
     "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
     "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
 
-    # Tasks module — assignee notifications
-    # AiSensy campaign params: [assignee_name, task_title, priority, due_date, assigned_by_name, task_link]
-    "task_assigned": "task_assigned",
-    "task_reassigned": "task_reassigned",
-    "task_due_date_updated": "task_due_date_updated",
+    # Tasks module — reuse the already-approved `support_ticket_added` AiSensy
+    # campaign for now. It accepts 5 params: [name, ticket_id, subject, priority, school_name].
+    # We map task fields into those slots so notifications go out immediately
+    # without waiting on new AiSensy campaign approval.
+    "task_assigned": "support_ticket_added",
+    "task_reassigned": "support_ticket_added",
+    "task_due_date_updated": "support_ticket_added",
 }
 
 async def send_whatsapp_notification(

@@ -228,10 +228,10 @@ WHATSAPP_TEMPLATES = {
     "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
     "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
 
-    # Tasks module — assignee notifications
-    "task_assigned": "task_assigned",
-    "task_reassigned": "task_reassigned",
-    "task_due_date_updated": "task_due_date_updated",
+    # Tasks module — mirrored in routes/notifications.py (reuses support_ticket_added)
+    "task_assigned": "support_ticket_added",
+    "task_reassigned": "support_ticket_added",
+    "task_due_date_updated": "support_ticket_added",
 }
 
 async def send_whatsapp_notification(

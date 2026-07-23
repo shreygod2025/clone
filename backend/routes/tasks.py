@@ -112,26 +112,31 @@ async def _user_exists(user_id: str) -> bool:
 
 
 async def _notify_task_whatsapp(task: dict, template_key: str, assigner_id: str) -> None:
-    """Send a WhatsApp message to the assignee.
+    """Send a WhatsApp message to the assignee using the approved
+    `support_ticket_added` AiSensy campaign (5 params).
 
     Silently no-ops when:
       - actor is the same person as the assignee (self-assignment)
       - assignee has no phone on file
       - assignee document is missing
-      - AiSensy campaign is not configured (returns success:false — we just log)
 
-    Template params (6) — the AiSensy campaign body MUST use these in order:
-      {{1}} assignee_name
-      {{2}} task_title
-      {{3}} priority (UPPERCASE)
-      {{4}} due_date (YYYY-MM-DD or 'no deadline')
-      {{5}} assigned_by_name
-      {{6}} task_link (deep link to /tasks?open=<task_id>)
+    template_key drives ONLY the intro label baked into the `subject` slot so
+    the user can tell the three flows apart:
+      • task_assigned          → "New task: <title>"
+      • task_reassigned        → "Reassigned: <title>"
+      • task_due_date_updated  → "Due date updated: <title>"
+
+    Slots we pass to `support_ticket_added` (5 vars — MUST match the approved template order):
+      {{1}} name          → assignee name
+      {{2}} ticket_id     → short task code, e.g. "TASK-4862F8" (from task.code or first 6 of id)
+      {{3}} subject       → "<intro>: <task title>"
+      {{4}} priority      → HIGH / MEDIUM / LOW
+      {{5}} school_name   → "Due <date> · from <assigner> · <deep_link>"
     """
     try:
         assignee_id = task.get("assigned_to") or ""
         if not assignee_id or assignee_id == assigner_id:
-            return  # skip self-assignment noise
+            return
         assignee = await _find_user_display(assignee_id)
         assignee_phone = (assignee.get("phone") or "").strip()
         if not assignee_phone or assignee_phone.lower() in ("none", "null"):
@@ -139,22 +144,35 @@ async def _notify_task_whatsapp(task: dict, template_key: str, assigner_id: str)
         assigner = await _find_user_display(assigner_id) if assigner_id else {"name": "OLL Admin"}
         base_url = os.environ.get("FRONTEND_URL", "https://oll.co").rstrip("/")
         task_link = f"{base_url}/admin/tasks?open={task.get('id')}"
+
+        intro_by_key = {
+            "task_assigned": "New task",
+            "task_reassigned": "Reassigned",
+            "task_due_date_updated": "Due date updated",
+        }
+        intro = intro_by_key.get(template_key, "Task update")
+        title = task.get("title") or "New Task"
+        task_code = task.get("code") or (f"TASK-{task.get('id','')[:6].upper()}")
+        due = task.get("due_date") or "no deadline"
+        by = assigner.get("name") or "OLL Admin"
+
         params = [
-            assignee.get("name") or "Team",
-            task.get("title") or "New Task",
-            (task.get("priority") or "medium").upper(),
-            task.get("due_date") or "no deadline",
-            assigner.get("name") or "OLL Admin",
-            task_link,
+            assignee.get("name") or "Team",                # {{1}} name
+            task_code,                                     # {{2}} ticket_id (task code)
+            f"{intro}: {title}",                           # {{3}} subject
+            (task.get("priority") or "medium").upper(),    # {{4}} priority
+            f"Due {due} · from {by} · {task_link}",        # {{5}} school_name (extra context)
         ]
         result = await send_whatsapp_notification(
             phone=assignee_phone,
-            template_key=template_key,
+            template_key=template_key,   # resolves to support_ticket_added via WHATSAPP_TEMPLATES
             params=params,
             user_name=assignee.get("name") or "Team",
         )
         if not result.get("success"):
             print(f"[TASKS-WA] {template_key} → {assignee_phone} failed: {result.get('message')}")
+        else:
+            print(f"[TASKS-WA] {template_key} → {assignee_phone} sent (via support_ticket_added)")
     except Exception as e:
         print(f"[TASKS-WA] {template_key} exception: {e}")
 
