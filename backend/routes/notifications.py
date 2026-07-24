@@ -61,11 +61,9 @@ WHATSAPP_TEMPLATES = {
     "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
     "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
 
-    # Tasks module — reuse the already-approved `support_ticket_added` AiSensy
-    # campaign for now. It accepts 5 params: [name, ticket_id, subject, priority, school_name].
-    # We map task fields into those slots so notifications go out immediately
-    # without waiting on new AiSensy campaign approval.
-    "task_assigned": "support_ticket_added",
+    # Tasks module — dedicated AiSensy campaigns per event
+    # (falls back to `support_ticket_added` for un-migrated events)
+    "task_assigned": "New Task",
     "task_reassigned": "support_ticket_added",
     "task_due_date_updated": "support_ticket_added",
 }

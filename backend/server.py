@@ -228,8 +228,8 @@ WHATSAPP_TEMPLATES = {
     "educator_applicant_demo_reminder": "educator_applicant_demo_reminder",
     "educator_applicant_demo_reminder_hr": "educator_applicant_demo_reminder_hr",
 
-    # Tasks module — mirrored in routes/notifications.py (reuses support_ticket_added)
-    "task_assigned": "support_ticket_added",
+    # Tasks module — dedicated campaigns per event
+    "task_assigned": "New Task",
     "task_reassigned": "support_ticket_added",
     "task_due_date_updated": "support_ticket_added",
 }
