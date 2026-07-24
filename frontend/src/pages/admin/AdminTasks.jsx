@@ -839,21 +839,125 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
         )}
       </div>
 
-      {/* Nested subtasks (both layouts) */}
+      {/* Nested subtasks — each with its OWN independent status control */}
       {expanded && subtasks.length > 0 && (
         <div className="mt-2 ml-6 sm:ml-12 border-l-2 border-slate-100 pl-3 sm:pl-4 space-y-1.5">
-          {subtasks.map(st => {
-            const SS = STATUS_META[st.status] || STATUS_META.pending;
-            return (
-              <div key={st.id} className="flex items-center gap-2 py-1 text-xs" data-testid={`task-subtask-row-${st.id}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${SS.dot}`} />
-                <span className="flex-1 text-slate-700 truncate">{st.title}</span>
-                <span className="text-slate-500 hidden sm:inline">{st.assigned_to_name || '—'}</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${SS.pill}`}>{SS.label}</span>
-                {st.due_date && <span className="text-slate-500 hidden sm:inline">{fmtDate(st.due_date)}</span>}
-              </div>
-            );
-          })}
+          {subtasks.map(st => (
+            <SubtaskRow
+              key={st.id}
+              subtask={st}
+              onOpen={() => onOpen(st)}
+              getAuthHeaders={getAuthHeaders}
+              onLocalUpdate={(updated) => setSubtasks(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
+              onParentReload={() => onStatus('__reload__')}
+              isAdmin={isAdmin}
+              currentUserId={currentUserId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// ── Sub-task row: each sub-task has its own independent status control.
+// Fixes the "cannot update subtask status" bug — click the pill for an inline
+// dropdown, or click anywhere else on the row to open the full detail modal.
+const SubtaskRow = ({ subtask, onOpen, getAuthHeaders, onLocalUpdate, onParentReload, isAdmin, currentUserId }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const rowRef = useRef(null);
+  const SS = STATUS_META[subtask.status] || STATUS_META.pending;
+
+  // Users allowed to change status: admin, creator, or the assignee.
+  const canChangeStatus = isAdmin
+    || subtask.created_by === currentUserId
+    || subtask.assigned_to === currentUserId;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e) => { if (rowRef.current && !rowRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [menuOpen]);
+
+  const setStatus = async (newStatus) => {
+    if (newStatus === subtask.status) { setMenuOpen(false); return; }
+    setSaving(true);
+    try {
+      const res = await axios.patch(
+        `${API}/tasks/${subtask.id}`,
+        { status: newStatus },
+        { headers: getAuthHeaders() }
+      );
+      onLocalUpdate(res.data);
+      toast.success(`Subtask marked ${STATUS_META[newStatus]?.label || newStatus}`);
+      // Reload parent so subtask_done counter updates without losing expansion.
+      onParentReload();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Failed to update subtask');
+    } finally {
+      setSaving(false);
+      setMenuOpen(false);
+    }
+  };
+
+  return (
+    <div
+      ref={rowRef}
+      className="flex items-center gap-2 py-1 text-xs relative"
+      data-testid={`task-subtask-row-${subtask.id}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${SS.dot}`} />
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex-1 text-slate-700 truncate text-left hover:text-slate-900 hover:underline"
+        title="Open subtask details"
+        data-testid={`task-subtask-open-${subtask.id}`}
+      >
+        {subtask.title}
+      </button>
+      <span className="text-slate-500 hidden sm:inline">{subtask.assigned_to_name || '—'}</span>
+
+      {canChangeStatus ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+          disabled={saving}
+          className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${SS.pill} hover:ring-2 ${SS.ring} transition inline-flex items-center gap-1`}
+          data-testid={`task-subtask-status-btn-${subtask.id}`}
+          title="Change subtask status"
+        >
+          {saving ? '…' : SS.label}
+          <ChevronDown className="w-2.5 h-2.5" />
+        </button>
+      ) : (
+        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${SS.pill}`}>{SS.label}</span>
+      )}
+
+      {subtask.due_date && (
+        <span className="text-slate-500 hidden sm:inline">{fmtDate(subtask.due_date)}</span>
+      )}
+
+      {menuOpen && (
+        <div
+          className="absolute right-0 top-6 z-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[160px]"
+          data-testid={`task-subtask-status-menu-${subtask.id}`}
+        >
+          {Object.entries(STATUS_META).filter(([k]) => k !== 'pending_approval' && k !== 'rejected').map(([k, m]) => (
+            <button
+              key={k}
+              onClick={(e) => { e.stopPropagation(); setStatus(k); }}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center gap-2 ${k === subtask.status ? 'font-semibold text-slate-900' : 'text-slate-600'}`}
+              data-testid={`task-subtask-status-option-${subtask.id}-${k}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+              {m.label}
+              {k === subtask.status && <Check className="w-3 h-3 ml-auto text-emerald-600" />}
+            </button>
+          ))}
         </div>
       )}
     </div>
