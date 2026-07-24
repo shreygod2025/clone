@@ -112,26 +112,18 @@ async def _user_exists(user_id: str) -> bool:
 
 
 async def _notify_task_whatsapp(task: dict, template_key: str, assigner_id: str) -> None:
-    """Send a WhatsApp message to the assignee using the approved
-    `support_ticket_added` AiSensy campaign (5 params).
+    """Send a WhatsApp message to the assignee.
 
-    Silently no-ops when:
-      - actor is the same person as the assignee (self-assignment)
-      - assignee has no phone on file
-      - assignee document is missing
+    Different AiSensy campaigns per event — each with its own parameter shape:
 
-    template_key drives ONLY the intro label baked into the `subject` slot so
-    the user can tell the three flows apart:
-      • task_assigned          → "New task: <title>"
-      • task_reassigned        → "Reassigned: <title>"
-      • task_due_date_updated  → "Due date updated: <title>"
+    • task_assigned          → "New Task" campaign, 7 params in this order:
+        {{1}} task title       {{2}} priority     {{3}} user type (role)
+        {{4}} related-to       {{5}} details      {{6}} assigned by     {{7}} due date
 
-    Slots we pass to `support_ticket_added` (5 vars — MUST match the approved template order):
-      {{1}} name          → assignee name
-      {{2}} ticket_id     → short task code, e.g. "TASK-4862F8" (from task.code or first 6 of id)
-      {{3}} subject       → "<intro>: <task title>"
-      {{4}} priority      → HIGH / MEDIUM / LOW
-      {{5}} school_name   → "Due <date> · from <assigner> · <deep_link>"
+    • task_reassigned        → falls back to `support_ticket_added` (5 params)
+    • task_due_date_updated  → falls back to `support_ticket_added` (5 params)
+
+    Silently no-ops for self-assignment or when the assignee has no phone.
     """
     try:
         assignee_id = task.get("assigned_to") or ""
@@ -145,34 +137,64 @@ async def _notify_task_whatsapp(task: dict, template_key: str, assigner_id: str)
         base_url = os.environ.get("FRONTEND_URL", "https://oll.co").rstrip("/")
         task_link = f"{base_url}/admin/tasks?open={task.get('id')}"
 
-        intro_by_key = {
-            "task_assigned": "New task",
-            "task_reassigned": "Reassigned",
-            "task_due_date_updated": "Due date updated",
-        }
-        intro = intro_by_key.get(template_key, "Task update")
         title = task.get("title") or "New Task"
-        task_code = task.get("code") or (f"TASK-{task.get('id','')[:6].upper()}")
+        priority = (task.get("priority") or "medium").upper()
         due = task.get("due_date") or "no deadline"
         by = assigner.get("name") or "OLL Admin"
 
-        params = [
-            assignee.get("name") or "Team",                # {{1}} name
-            task_code,                                     # {{2}} ticket_id (task code)
-            f"{intro}: {title}",                           # {{3}} subject
-            (task.get("priority") or "medium").upper(),    # {{4}} priority
-            f"Due {due} · from {by} · {task_link}",        # {{5}} school_name (extra context)
-        ]
+        # Resolve project name (Ticket Related To)
+        project_name = "General"
+        pid = task.get("project_id")
+        if pid:
+            proj = await db.projects.find_one({"id": pid}, {"_id": 0, "name": 1})
+            if proj and proj.get("name"):
+                project_name = proj["name"]
+
+        # Resolve user type (assignee's role)
+        user_type = "Team Member"
+        assignee_role = None
+        tu = await db.team_users.find_one({"id": assignee_id}, {"_id": 0, "role": 1, "department": 1})
+        if tu:
+            assignee_role = tu.get("role") or tu.get("department")
+        if not assignee_role:
+            adm = await db.admins.find_one({"id": assignee_id}, {"_id": 0, "role": 1})
+            if adm:
+                assignee_role = adm.get("role")
+        if assignee_role:
+            user_type = str(assignee_role).replace("_", " ").title()
+
+        details = (task.get("description") or "").strip() or f"Open the task to see full details: {task_link}"
+        # AiSensy sometimes trims very long params; keep description ≤ 250 chars.
+        if len(details) > 250:
+            details = details[:247] + "…"
+
+        if template_key == "task_assigned":
+            # Matches the "New Task" campaign body: 7 vars
+            # {{1}} title, {{2}} priority, {{3}} user type, {{4}} related-to,
+            # {{5}} details, {{6}} assigned by, {{7}} due date
+            params = [title, priority, user_type, project_name, details, by, due]
+        else:
+            # `support_ticket_added` fallback (5 vars) for reassign / due-date change
+            intro = "Reassigned" if template_key == "task_reassigned" else "Due date updated"
+            task_code = task.get("code") or (f"TASK-{task.get('id','')[:6].upper()}")
+            params = [
+                assignee.get("name") or "Team",             # {{1}} name
+                task_code,                                  # {{2}} ticket_id
+                f"{intro}: {title}",                        # {{3}} subject
+                priority,                                   # {{4}} priority
+                f"Due {due} · from {by} · {task_link}",     # {{5}} school_name (extras)
+            ]
+
         result = await send_whatsapp_notification(
             phone=assignee_phone,
-            template_key=template_key,   # resolves to support_ticket_added via WHATSAPP_TEMPLATES
+            template_key=template_key,   # resolved via WHATSAPP_TEMPLATES → real AiSensy campaign
             params=params,
             user_name=assignee.get("name") or "Team",
         )
         if not result.get("success"):
             print(f"[TASKS-WA] {template_key} → {assignee_phone} failed: {result.get('message')}")
         else:
-            print(f"[TASKS-WA] {template_key} → {assignee_phone} sent (via support_ticket_added)")
+            print(f"[TASKS-WA] {template_key} → {assignee_phone} sent")
     except Exception as e:
         print(f"[TASKS-WA] {template_key} exception: {e}")
 
