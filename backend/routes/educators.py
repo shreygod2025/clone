@@ -890,6 +890,41 @@ async def update_educator_application(
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+    # ── HR Demo overlap protection ────────────────────────────────────────────
+    # If the demo date, time, or interviewer are being changed, ensure no other
+    # active applicant is already booked with the SAME interviewer at the SAME
+    # date + time. Different interviewers may share a slot.
+    prospective_date = update_data.get("demo_date") or (current_app or {}).get("demo_date")
+    prospective_time = update_data.get("demo_time") or (current_app or {}).get("demo_time")
+    prospective_interviewer = update_data.get("assigned_to") or (current_app or {}).get("assigned_to") or ""
+
+    is_scheduling = (
+        "demo_date" in update_data
+        or "demo_time" in update_data
+        or ("assigned_to" in update_data and prospective_date and prospective_time)
+        or update_data.get("status") == "demo_scheduled"
+    )
+    if is_scheduling and prospective_date and prospective_time:
+        conflict = await db.educator_applications.find_one(
+            {
+                "id": {"$ne": app_id},
+                "demo_date": prospective_date,
+                "demo_time": prospective_time,
+                "assigned_to": prospective_interviewer or "",
+                "status": {"$in": ["new", "demo_scheduled", "hr_done", "tech_scheduled"]},
+            },
+            {"_id": 0, "name": 1},
+        )
+        if conflict:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This time slot is already booked"
+                    + (f" for {conflict.get('name')}" if conflict.get("name") else "")
+                    + ". Please select another time."
+                ),
+            )
     
     # If status is changing to 'active', copy onboarding data to educator profile
     new_status = data.status
@@ -939,6 +974,35 @@ async def update_educator_application(
             await send_educator_rejected_email(application)
     
     return application
+
+
+# ── HR Demo — booked slots for a given interviewer/date ──────────────────────
+# Consumed by the schedule/reschedule UI so it can grey out taken time slots.
+# Returns 'booked_times' (HH:MM strings) already taken by other applicants
+# for the specified interviewer on the specified date.
+@router.get("/educators/hr-demo-booked-slots")
+async def get_hr_demo_booked_slots(
+    date: str,
+    interviewer: str = "",
+    exclude_id: str = "",
+    user: dict = Depends(get_current_user),
+):
+    query = {
+        "demo_date": date,
+        "assigned_to": interviewer,
+        "status": {"$in": ["new", "demo_scheduled", "hr_done", "tech_scheduled"]},
+    }
+    if exclude_id:
+        query["id"] = {"$ne": exclude_id}
+    rows = await db.educator_applications.find(query, {"_id": 0, "demo_time": 1, "name": 1, "id": 1}).to_list(200)
+    return {
+        "date": date,
+        "interviewer": interviewer,
+        "booked_times": [r.get("demo_time") for r in rows if r.get("demo_time")],
+        "bookings": rows,
+    }
+
+
 
 # Endpoint to send demo reminder email manually
 @router.post("/educators/{app_id}/send-reminder")
@@ -2024,7 +2088,30 @@ async def educator_reschedule_demo(data: dict, user: dict = Depends(get_current_
     
     if not new_date or not new_time:
         raise HTTPException(status_code=400, detail="Date and time required")
-    
+
+    # Guard against interviewer overlap on reschedule too
+    current = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0, "assigned_to": 1})
+    interviewer = (current or {}).get("assigned_to") or ""
+    conflict = await db.educator_applications.find_one(
+        {
+            "id": {"$ne": educator_id},
+            "demo_date": new_date,
+            "demo_time": new_time,
+            "assigned_to": interviewer,
+            "status": {"$in": ["new", "demo_scheduled", "hr_done", "tech_scheduled"]},
+        },
+        {"_id": 0, "name": 1},
+    )
+    if conflict:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This time slot is already booked"
+                + (f" for {conflict.get('name')}" if conflict.get("name") else "")
+                + ". Please select another time."
+            ),
+        )
+
     # Update educator application
     await db.educator_applications.update_one(
         {"id": educator_id},

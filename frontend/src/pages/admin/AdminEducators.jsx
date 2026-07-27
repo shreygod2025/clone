@@ -90,6 +90,7 @@ const AdminEducators = () => {
   const [viewEducator, setViewEducator] = useState(null);
   const [interviewDetail, setInterviewDetail] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
+  const [bookedSlots, setBookedSlots] = useState([]);
   const [showTechScheduleModal, setShowTechScheduleModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
@@ -413,6 +414,19 @@ const AdminEducators = () => {
     }
   };
 
+  // Fetch already-booked HR demo slots when date/interviewer changes
+  useEffect(() => {
+    if (!showScheduleModal || !scheduleData.date) { setBookedSlots([]); return; }
+    const dateStr = format(scheduleData.date, 'yyyy-MM-dd');
+    const interviewer = showScheduleModal.assigned_to || '';
+    axios.get(`${API}/educators/hr-demo-booked-slots`, {
+      headers: getAuthHeaders(),
+      params: { date: dateStr, interviewer, exclude_id: showScheduleModal.id || '' },
+    })
+      .then(r => setBookedSlots(r.data?.booked_times || []))
+      .catch(() => setBookedSlots([]));
+  }, [showScheduleModal, scheduleData.date, getAuthHeaders]);
+
   const handleScheduleDemo = async () => {
     if (!scheduleData.date || !scheduleData.time) {
       toast.error('Please select date and time');
@@ -431,7 +445,8 @@ const AdminEducators = () => {
       setScheduleData({ date: null, time: '' });
       fetchEducators();
     } catch (error) {
-      toast.error('Failed to schedule demo');
+      const detail = error?.response?.data?.detail;
+      toast.error(detail || 'Failed to schedule demo');
     }
   };
 
@@ -623,7 +638,8 @@ const AdminEducators = () => {
       setTechScheduleData({ date: null, time: '' });
       fetchEducators();
     } catch (error) {
-      toast.error('Failed to schedule technical demo');
+      const detail = error?.response?.data?.detail;
+      toast.error(detail || 'Failed to schedule technical demo');
     }
   };
 
@@ -745,7 +761,8 @@ const AdminEducators = () => {
       setViewEducator(null);
       fetchEducators();
     } catch (error) {
-      toast.error('Failed to update educator');
+      const detail = error?.response?.data?.detail;
+      toast.error(detail || 'Failed to update educator');
     }
   };
 
@@ -2436,21 +2453,34 @@ const AdminEducators = () => {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
               <div className="grid grid-cols-4 gap-2">
-                {TIME_SLOTS.map(time => (
-                  <button
-                    key={time}
-                    type="button"
-                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
-                      scheduleData.time === time 
-                        ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                    onClick={() => setScheduleData({...scheduleData, time})}
-                  >
-                    {time}
-                  </button>
-                ))}
+                {TIME_SLOTS.map(time => {
+                  const isBooked = bookedSlots.includes(time);
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      disabled={isBooked}
+                      title={isBooked ? 'This time slot is already booked. Please select another time.' : ''}
+                      className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                        isBooked
+                          ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed line-through'
+                          : scheduleData.time === time
+                            ? 'border-[#D63031] bg-red-50 text-[#D63031]'
+                            : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                      onClick={() => !isBooked && setScheduleData({...scheduleData, time})}
+                      data-testid={`slot-${time}`}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
               </div>
+              {bookedSlots.length > 0 && (
+                <div className="text-[11px] text-slate-500 mt-2">
+                  {bookedSlots.length} slot{bookedSlots.length === 1 ? '' : 's'} already booked for this interviewer on this date
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">
