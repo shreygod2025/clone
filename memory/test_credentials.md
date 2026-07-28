@@ -2,7 +2,7 @@
 
 ## Admin (Super Admin)
 - Email: `admin@oll.co`
-- Password: `Dagaji03@`
+- Password: `OllistheBest@2026`
 - Role: `admin` (full access)
 - Used for: All admin CRM/dashboard testing, /admin/students Friendship Day tab
 
