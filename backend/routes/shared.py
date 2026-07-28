@@ -59,22 +59,22 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 educator["educator_id"] = educator_id
                 return educator
         
-        # Check admins collection first
-        user = await db.admins.find_one({"email": email}, {"_id": 0, "password": 0})
-        if user:
-            user["role"] = "admin"
-            return user
-        
-        # Then check team_users collection
+        # 🔒 Login is restricted to `team_users`. The legacy `admins` collection
+        # is no longer consulted (audit 2026-07-28).
         team_user = await db.team_users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
         if team_user:
-            # If this team member has been assigned a role that grants full admin
-            # access, treat them as an admin for the purposes of every downstream
-            # gate. This makes the "Admin" system role a proper promotion — no
-            # re-login required, and no need to sprinkle role_id checks all over
-            # the codebase.
-            effective_role = "team_member"
-            if team_user.get("role_id"):
+            # Resolve effective role.
+            # 1. Any user whose stored role is `admin` or `super_admin` → treat
+            #    as "admin" for the purposes of every downstream gate. This makes
+            #    role-based access simple and consistent across the codebase.
+            # 2. Otherwise, if a role_id points at a Role document that grants
+            #    full access, also promote to "admin" (existing behaviour).
+            # 3. Fallback to the stored role or "team_member".
+            stored_role = team_user.get("role") or "team_member"
+            effective_role = stored_role
+            if stored_role in ("admin", "super_admin"):
+                effective_role = "admin"
+            elif team_user.get("role_id"):
                 role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0, "grants_full_access": 1, "is_active": 1})
                 if role_doc and role_doc.get("grants_full_access") and role_doc.get("is_active", True):
                     effective_role = "admin"

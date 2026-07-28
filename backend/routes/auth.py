@@ -96,28 +96,29 @@ async def register_admin(data: AdminCreate):
 
 @router.post("/login", response_model=TokenResponse)
 async def login_admin(data: AdminLogin):
-    # First check admins collection
-    admin = await db.admins.find_one({"email": data.email})
-    if admin and verify_password(data.password, admin["password"]):
-        token = create_access_token({"sub": data.email, "role": "admin"})
-        user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"), permissions=[])
-        return TokenResponse(access_token=token, user=user)
-    
-    # Then check team_users collection
+    # 🔒 Login is restricted to the `team_users` collection (= Users & Roles UI)
+    # and `center_users`. The legacy `admins` collection is NO LONGER consulted —
+    # this ensures only admins provisioned via the Users & Roles page can log in.
+    # (Audit 2026-07-28 · issue: unauthorised admin accounts were self-registered
+    # via the previously-open /register endpoint.)
+
+    # Check team_users collection (canonical source of admin/team login accounts)
     team_user = await db.team_users.find_one({"email": data.email})
     if team_user:
         if not team_user.get("is_active", True):
             raise HTTPException(status_code=401, detail="User account is disabled")
-        
+
         if bcrypt.checkpw(data.password.encode('utf-8'), team_user.get("password_hash", "").encode('utf-8')):
-            token = create_access_token({"sub": data.email, "role": "team_member", "user_id": team_user["id"]})
+            # Preserve actual role (super_admin / admin / team_member / manager …)
+            actual_role = team_user.get("role") or "team_member"
+            token = create_access_token({"sub": data.email, "role": actual_role, "user_id": team_user["id"]})
             user = AdminUser(
-                id=team_user["id"], 
-                email=team_user["email"], 
-                name=team_user["name"], 
-                role="team_member",
+                id=team_user["id"],
+                email=team_user["email"],
+                name=team_user["name"],
+                role=actual_role,
                 username=team_user.get("username", ""),
-                permissions=team_user.get("permissions", [])
+                permissions=team_user.get("permissions", []),
             )
             return TokenResponse(access_token=token, user=user)
     

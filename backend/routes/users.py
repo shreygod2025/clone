@@ -145,25 +145,26 @@ async def register_admin(data: AdminCreate):
 
 @router.post("/auth/login", response_model=TokenResponse)
 async def login_admin(data: AdminLogin):
-    # First check admins collection
-    admin = await db.admins.find_one({"email": data.email})
-    if admin and verify_password(data.password, admin["password"]):
-        token = create_access_token({"sub": data.email, "role": "admin"})
-        user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"), permissions=[])
-        return TokenResponse(access_token=token, user=user)
-    
-    # Then check team_users collection
+    # 🔒 Restricted to team_users + center_users (audit 2026-07-28). The legacy
+    # `admins` collection is no longer consulted — only accounts provisioned
+    # via the Users & Roles UI can log in.
+
+    # team_users collection (canonical source of admin/team login accounts)
     team_user = await db.team_users.find_one({"email": data.email})
     if team_user:
         if not team_user.get("is_active", True):
             raise HTTPException(status_code=401, detail="User account is disabled")
-        
+
         if bcrypt.checkpw(data.password.encode('utf-8'), team_user.get("password_hash", "").encode('utf-8')):
-            # If this team member is assigned a role that grants full admin access,
-            # elevate them in the JWT so every existing `role == "admin"` gate works.
-            effective_role = "team_member"
-            role_doc = None
-            if team_user.get("role_id"):
+            # Resolve effective role:
+            #   admin / super_admin  → "admin" for downstream gates
+            #   role_id → grants_full_access role → "admin"
+            #   else stored role or team_member
+            stored_role = team_user.get("role") or "team_member"
+            effective_role = stored_role
+            if stored_role in ("admin", "super_admin"):
+                effective_role = "admin"
+            elif team_user.get("role_id"):
                 role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0})
                 if role_doc and role_doc.get("grants_full_access") and role_doc.get("is_active", True):
                     effective_role = "admin"
