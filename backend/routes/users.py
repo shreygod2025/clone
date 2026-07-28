@@ -134,23 +134,14 @@ class Role(BaseModel):
 # ── Routes ─────────────────────────────────────────────────────────────────────
 @router.post("/auth/register", response_model=TokenResponse)
 async def register_admin(data: AdminCreate):
-    existing = await db.admins.find_one({"email": data.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    admin_data = {
-        "id": str(uuid.uuid4()),
-        "email": data.email,
-        "name": data.name,
-        "role": data.role,
-        "password": hash_password(data.password),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.admins.insert_one(admin_data)
-    
-    token = create_access_token({"sub": data.email})
-    user = AdminUser(id=admin_data["id"], email=data.email, name=data.name, role=data.role)
-    return TokenResponse(access_token=token, user=user)
+    # 🔒 Public admin self-registration is permanently DISABLED.
+    # New admins must be provisioned by an existing admin via `/api/team-users`
+    # or seeded server-side. This endpoint is kept for backwards compat but
+    # returns 403 to prevent unauthenticated privilege escalation.
+    raise HTTPException(
+        status_code=403,
+        detail="Admin self-registration is disabled. Please contact your administrator.",
+    )
 
 @router.post("/auth/login", response_model=TokenResponse)
 async def login_admin(data: AdminLogin):
