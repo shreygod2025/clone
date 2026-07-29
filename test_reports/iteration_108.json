@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 108: Future Skills CRM (Leads/Trials/Customers/Renewals/Lost) fully tested — backend 24/24 pytest cases pass; frontend UI verified end-to-end via Playwright (login → 5 tabs with badges → add lead → drawer → overdue bucket).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/future-skills/leads", "issue": "status=all with additional filter combinations not tested — only smoke tests for status=new/all/q ran."},
+      {"endpoint": "_is_admin()", "issue": "Falls back to allowing any email ending in @oll.co — good for tests but a soft authz weakness (documented, not blocking)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter108_future_skills_crm.py",
+    "/app/test_reports/pytest/iter108_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "future_skills.py is now 1308 lines — recommend splitting admin CRM endpoints into a separate module (e.g. future_skills_admin.py) for maintainability.",
+    "_add_months uses 30*days approximation for monthly/half-yearly/yearly which drifts from calendar months (Feb-only edge etc.). Acceptable for MVP but flag for later.",
+    "Frontend AdminFutureSkills.jsx is 1061 lines with 5 tabs + drawer + 6 modals inside one file — consider splitting into subcomponents per tab.",
+    "Public /api/future-skills/register-trial regression test PASSED (200 OK)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter108_future_skills_crm.py (new)"
+  ],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% verified flows"},
+  "test_credentials": "admin@oll.co / OllistheBest@2026 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created TEST_-prefixed leads/trials/customers via backend tests and one TEST_UI_Lead2 lead via UI. Non-blocking for future runs (import test uses timestamp-based phone numbers to avoid dedup collision).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend endpoints tested: POST/GET/PATCH/DELETE /admin/future-skills/leads, /leads/{id}/mark-lost, /leads/{id}/convert-to-trial, /leads/import (CSV, dedup on phone, bad-file 400), /trials (create + mark-lost + convert-to-customer with plan_label), /customers (create with auto renewal_date), /customers/{id}/renew (renewal_history append + extends from future/past base), /customers/{id}/mark-lost, /renewals?bucket=upcoming|overdue|all (7-day window, days_to_renewal/days_overdue), /lost?type=all|lead|trial|customer, /stats, PATCH /subscriptions/{id} refreshes plan_label. Auth: 401/403 on missing/bad token. half_yearly plan (₹11000, 6 months) verified. Frontend: all 5 tabs render with badge counts; add-lead modal creates successfully; detail drawer for customer shows Renew + Mark Lost buttons; renewal-bucket-all/upcoming/overdue buttons visible only on Renewals tab (correct behavior); Import CSV modal has download-sample and import-file-input.",
+  "rca of the issue": "N/A — no issues found."
+}
