@@ -2,6 +2,57 @@
 ## Product Requirements Document
 
 
+### Latest Feature (2026-07-29) — Future Skills CRM Pipeline 🚀
+
+**Ask**: Create a Future Skills admin tab with 5 sections — Leads (with source
++ import), Free Trial bookings, Active Customers (payments, plan, renewal
+date), Renewals (auto-move within 7 days of renewal + Upcoming/Overdue), and
+Lost (leads + customers with reason).
+
+**Backend** (`/app/backend/routes/future_skills.py`):
+- New `future_skills_leads` collection: {lead_ref (FSL-####), name, phone,
+  email, source, city, notes, child_age, child_grade, status:
+  new/contacted/qualified/trial_booked/converted/lost, lost_reason, lost_at}.
+- Endpoints: `POST/GET/PATCH/DELETE /api/admin/future-skills/leads`,
+  `POST .../leads/{id}/mark-lost`, `POST .../leads/{id}/convert-to-trial`,
+  `POST .../leads/import` (CSV + Excel, dedupes on phone).
+- Trials: `POST .../trials` (manual admin add), `POST .../trials/{id}/mark-lost`,
+  `POST .../trials/{id}/convert-to-customer` {plan, amount_paid, ...}.
+- Customers: `POST .../customers` (manual add with plan/amount/renewal),
+  `POST .../customers/{id}/renew` (extends renewal_date by plan months and
+  appends to `renewal_history`), `POST .../customers/{id}/mark-lost`.
+- Renewals view: `GET .../renewals?bucket=upcoming|overdue|all` — computed
+  from `renewal_date` vs. RENEWAL_WINDOW_DAYS=7. `upcoming` = within 7 days;
+  `overdue` = past due. Returns days_to_renewal / days_overdue per row.
+- Aggregated Lost view: `GET .../lost?type=all|lead|trial|customer` unions
+  lost records from all three collections with entity_type + entity_ref.
+- Stats: `GET .../stats` returns badge counts per tab.
+- PLANS updated to include `half_yearly` (₹11 000, 6 months) alongside
+  monthly (₹2 000) and yearly (₹21 000).
+
+**Frontend** (`AdminFutureSkills.jsx`, rewritten):
+- 5-tab layout: Leads · Free Trials · Active Customers · Renewals · Lost, each
+  with a live badge from `/stats`.
+- Leads tab: Add Lead modal + Import CSV/Excel modal with downloadable sample.
+- Trials tab: Add Free Trial modal.
+- Customers tab: Add Customer modal (plan dropdown auto-fills amount).
+- Renewals tab: All / Upcoming (7d) / Overdue sub-tabs; overdue rows rose-tinted.
+- Lost tab: aggregated view with LEAD/TRIAL/CUSTOMER type badges and reason.
+- Row-click opens right-drawer with edit form + contextual action buttons:
+  Convert to Trial (lead), Convert to Customer (trial), Renew + Mark Lost
+  (customer). Mark Lost modal requires a reason.
+- Convert-to-customer flow lets admin set plan, amount_paid, payment_date and
+  optionally an explicit renewal_date; auto-computes renewal if left blank.
+
+**Testing** (iteration_108.json):
+- Backend: 24/24 pytest cases pass (leads CRUD, import CSV/XLSX, convert flow,
+  renewal bucketing, lost aggregation, stats, auth-gate, plan half_yearly).
+- Frontend: Playwright E2E — login → all 5 tabs load with badges → add lead →
+  drawer opens → overdue bucket triggers rose highlight.
+- Regression: public `/api/future-skills/register-trial` still returns 200 OK.
+
+
+
 ### Latest Feature (2026-07-22) — Project-Wise Expense Mapping 🎯
 
 **Ask**: Allow admins to link an expense to a project (optional), see all
