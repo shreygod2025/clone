@@ -2,6 +2,59 @@
 ## Product Requirements Document
 
 
+### Latest Feature (2026-07-29 · pm) — Future Skills Landing + Centres/Batches 🎯
+
+**Ask**: Clean up Future Skills landing (hide login in navbar, keep only "Book
+Free Trial"), rebuild booking as a step-by-step wizard (Phone → Centre →
+Batch), remove all other extra fields, and let admins manage Centres & Batches
+from a new tab (days, timings, student counts).
+
+**Backend** (`future_skills.py`):
+- Two new collections: `future_skills_centers` {name, address, city, phone,
+  is_active} and `future_skills_batches` {center_id, name, days[],
+  start_time, end_time, skill, capacity, is_active}.
+- Public: `GET /api/future-skills/centers`, `GET /api/future-skills/batches`
+  (optional `center_id` filter) — batches include live `student_count` and
+  `center_name` / `center_city`.
+- Admin CRUD: `POST/GET/PATCH/DELETE /api/admin/future-skills/centers` and
+  `.../batches` — centres with `batch_count` roll-up, batches enriched with
+  student counts. Deleting a centre is blocked while batches exist.
+- `POST /api/future-skills/register-trial` was simplified: only `parent_phone`
+  is required; `center_id`+`batch_id` optional but resolved server-side so the
+  trial doc stores `center_id`, `preferred_center` and a `batch_label`.
+
+**Frontend — landing** (`FutureSkillsLandingPage.jsx`):
+- Switched to new `variant="futureskills"` Navbar (`components/Navbar.jsx`):
+  logo + single "Book Free Trial" button, no login / no nav links.
+
+**Frontend — booking** (`FutureSkillsBookingPage.jsx`, rewritten):
+- 3-step wizard with a progress bar:
+  1. Phone (+91 prefix, autofocus, Enter-to-continue, 10-digit validation).
+  2. Centre — cards with tick selection, loaded from `/future-skills/centers`.
+  3. Batch — cards showing days, `HH:MM–HH:MM`, `filled/capacity` and "N seats
+     left"; grouped into "At this centre" and "Other centres" for cross-centre
+     browsing. Full batches are disabled with a FULL pill.
+- All name/email/grade/skill fields removed from the trial flow (subscribe
+  mode still uses the legacy full form under `?mode=subscribe`).
+
+**Frontend — admin** (`AdminFutureSkills.jsx`):
+- New "Centres & Batches" 6th tab with summary strip (Centres · Batches ·
+  Students · Active batches), Add Centre / Add Batch buttons, centres list
+  (edit / toggle / delete) and batches table (batch name+skill, centre, days
+  + time, students progress bar coloured by fill %, status pill, actions).
+- Day picker uses Mon–Sun pill toggles; capacity default 15.
+
+**Testing done**:
+- Backend: create center → create batch → public GET centres/batches (with
+  student_count) → minimal register-trial (phone + center_id + batch_id)
+  succeeds; missing phone returns 422; student_count increments on booking.
+- Frontend smoke: landing shows only "Book Free Trial" button; booking wizard
+  advances Phone → Centre → Batch showing "Weekend Morning · Sat · Sun ·
+  10:00 – 11:30 · 1/15 students · 14 seats left"; admin Centres tab shows
+  centres/batches with student progress bar.
+
+
+
 ### Latest Feature (2026-07-29) — Future Skills CRM Pipeline 🚀
 
 **Ask**: Create a Future Skills admin tab with 5 sections — Leads (with source

@@ -308,7 +308,7 @@ const FutureSkillsLandingPage = () => {
   return (
     <div className="min-h-screen bg-white text-[#0F1E33] fs-stack" data-testid="future-skills-landing">
 
-      <Navbar showBookDemo onBookDemo={goTrial} bookDemoLabel="Book Now" />
+      <Navbar variant="futureskills" onBookDemo={goTrial} bookDemoLabel="Book Free Trial" />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="fs-reveal relative pt-8 pb-12 sm:pt-12 sm:pb-16 md:pt-20 md:pb-20 overflow-hidden">

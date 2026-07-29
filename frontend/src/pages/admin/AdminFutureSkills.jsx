@@ -4,6 +4,7 @@ import {
   Bot, Search, RefreshCw, Loader2, X, Phone, Mail, GraduationCap,
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
+  Clock, Building2, Trash2, Pencil, Power,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -18,6 +19,7 @@ const TABS = [
   { key: 'customers', label: 'Active Customers', icon: Sparkles },
   { key: 'renewals',  label: 'Renewals',         icon: RotateCcw },
   { key: 'lost',      label: 'Lost',             icon: XCircle },
+  { key: 'centers',   label: 'Centres & Batches', icon: MapPin },
 ];
 
 const LEAD_STATUSES = [
@@ -60,6 +62,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
+    if (tab === 'centers') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -198,8 +201,9 @@ const AdminFutureSkills = () => {
           })}
         </div>
 
-        {/* Toolbar */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
+        {/* Toolbar (hidden for Centers tab which has its own UI) */}
+        {tab !== 'centers' && (
+          <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           {/* Left: primary actions per tab */}
           {tab === 'leads' && (
             <>
@@ -261,9 +265,10 @@ const AdminFutureSkills = () => {
               data-testid="search-input" />
           </div>
         </div>
+        )}
 
-        {/* Stats row */}
-        {tabStats && (
+        {/* Stats row (hidden for Centers tab) */}
+        {tab !== 'centers' && tabStats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <MiniStat label="Leads"     value={tabStats.leads     || 0} accent="#1E3A5F" icon={Users}    active={tab==='leads'} />
             <MiniStat label="Trials"    value={tabStats.trials    || 0} accent="#3B82F6" icon={Calendar} active={tab==='trials'} />
@@ -274,7 +279,10 @@ const AdminFutureSkills = () => {
           </div>
         )}
 
-        {/* Table */}
+        {/* Content: Centers manager OR standard table */}
+        {tab === 'centers' ? (
+          <CentersManager getAuthHeaders={getAuthHeaders} />
+        ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {loading && rows.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
@@ -298,6 +306,7 @@ const AdminFutureSkills = () => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modals */}
@@ -1052,6 +1061,334 @@ const ConvertTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
         className="mt-4 w-full py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-convert-btn">
         {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Sparkles className="w-4 h-4" /> Convert to Customer</>}
+      </button>
+    </Modal>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// CENTERS & BATCHES MANAGER (Centres tab)
+// ═══════════════════════════════════════════════════════════════════════
+
+const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const CentersManager = ({ getAuthHeaders }) => {
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState(null); // {type:'center'|'batch', center?, batch?}
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [cRes, bRes] = await Promise.all([
+        axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() }),
+      ]);
+      setCenters(cRes.data?.centers || []);
+      setBatches(bRes.data?.batches || []);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to load');
+    } finally { setLoading(false); }
+  }, [getAuthHeaders]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const deleteCenter = async (c) => {
+    if (!window.confirm(`Delete "${c.name}"? Batches at this centre must be removed first.`)) return;
+    try {
+      await axios.delete(`${API}/admin/future-skills/centers/${c.id}`, { headers: getAuthHeaders() });
+      toast.success('Centre deleted');
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+  };
+
+  const toggleCenter = async (c) => {
+    try {
+      await axios.patch(`${API}/admin/future-skills/centers/${c.id}`, { is_active: !c.is_active }, { headers: getAuthHeaders() });
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+  };
+
+  const deleteBatch = async (b) => {
+    if (!window.confirm(`Delete batch "${b.name}"?`)) return;
+    try {
+      await axios.delete(`${API}/admin/future-skills/batches/${b.id}`, { headers: getAuthHeaders() });
+      toast.success('Batch deleted');
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+  };
+
+  const toggleBatch = async (b) => {
+    try {
+      await axios.patch(`${API}/admin/future-skills/batches/${b.id}`, { is_active: !b.is_active }, { headers: getAuthHeaders() });
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+  };
+
+  const totalStudents = batches.reduce((sum, b) => sum + (b.student_count || 0), 0);
+
+  return (
+    <div className="space-y-5" data-testid="centers-manager">
+      {/* Summary strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStat icon={Building2} label="Centres"  value={centers.length} accent="#1E3A5F" active />
+        <MiniStat icon={Calendar}  label="Batches"  value={batches.length} accent="#3B82F6" active />
+        <MiniStat icon={Users}     label="Students" value={totalStudents}   accent="#16A34A" active />
+        <MiniStat icon={Power}     label="Active batches" value={batches.filter(b => b.is_active).length} accent="#F59E0B" active />
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setModal({ type: 'center' })}
+          className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+          data-testid="add-center-btn">
+          <Plus className="w-3.5 h-3.5" /> Add Centre
+        </button>
+        <button onClick={() => setModal({ type: 'batch' })} disabled={centers.length === 0}
+          className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 disabled:opacity-50"
+          data-testid="add-batch-btn">
+          <Plus className="w-3.5 h-3.5" /> Add Batch
+        </button>
+        {centers.length === 0 && <span className="text-xs text-slate-500 self-center">Add a centre first before creating batches.</span>}
+      </div>
+
+      {/* Centers list */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="font-black text-[#1E3A5F] flex items-center gap-2"><Building2 className="w-4 h-4" /> Centres</div>
+          <span className="text-xs text-slate-500">{centers.length} total</span>
+        </div>
+        {loading ? (
+          <div className="p-10 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> Loading…</div>
+        ) : centers.length === 0 ? (
+          <div className="p-10 text-center text-slate-400" data-testid="no-centers-msg">No centres yet. Add one to start.</div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {centers.map(c => (
+              <div key={c.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50" data-testid={`center-row-${c.id}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-[#0F1E33] flex items-center gap-2">
+                    {c.name}
+                    {!c.is_active && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-black">INACTIVE</span>}
+                  </div>
+                  <div className="text-xs text-slate-500 truncate">
+                    {[c.address, c.city].filter(Boolean).join(' · ') || '—'} · {c.batch_count || 0} batch(es)
+                    {c.phone && ` · ${c.phone}`}
+                  </div>
+                </div>
+                <button onClick={() => toggleCenter(c)} title={c.is_active ? 'Deactivate' : 'Activate'}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500" data-testid={`center-toggle-${c.id}`}>
+                  <Power className="w-4 h-4" />
+                </button>
+                <button onClick={() => setModal({ type: 'center', center: c })} title="Edit"
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500" data-testid={`center-edit-${c.id}`}>
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button onClick={() => deleteCenter(c)} title="Delete"
+                  className="p-1.5 hover:bg-rose-50 rounded-lg text-rose-500" data-testid={`center-delete-${c.id}`}>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Batches list */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="font-black text-[#1E3A5F] flex items-center gap-2"><Calendar className="w-4 h-4" /> Batches</div>
+          <span className="text-xs text-slate-500">{batches.length} total · {totalStudents} student(s)</span>
+        </div>
+        {loading ? (
+          <div className="p-10 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> Loading…</div>
+        ) : batches.length === 0 ? (
+          <div className="p-10 text-center text-slate-400" data-testid="no-batches-msg">
+            No batches yet. {centers.length > 0 ? 'Add one so parents can book trials.' : 'Add a centre first.'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Batch</Th>
+                  <Th>Centre</Th>
+                  <Th>Days · Time</Th>
+                  <Th>Students</Th>
+                  <Th>Status</Th>
+                  <Th className="text-right">Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map(b => {
+                  const filled = b.student_count || 0;
+                  const cap = b.capacity || 15;
+                  const pct = Math.min(100, Math.round((filled / cap) * 100));
+                  return (
+                    <tr key={b.id} className="border-t border-slate-100 hover:bg-slate-50" data-testid={`batch-row-${b.id}`}>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-[#0F1E33]">{b.name}</div>
+                        {b.skill && <div className="text-[11px] text-slate-500">{b.skill}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-700">{b.center_name || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-slate-700 flex items-center gap-1"><Calendar className="w-3 h-3" /> {(b.days || []).join(' · ') || '—'}</div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {b.start_time || '—'} – {b.end_time || '—'}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-bold text-[#0F1E33]">{filled} / {cap}</div>
+                        <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                          <div className={`h-full ${pct >= 100 ? 'bg-rose-500' : pct >= 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold border ${b.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                          {b.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <button onClick={() => toggleBatch(b)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500" title="Toggle active" data-testid={`batch-toggle-${b.id}`}>
+                            <Power className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setModal({ type: 'batch', batch: b })} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500" title="Edit" data-testid={`batch-edit-${b.id}`}>
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => deleteBatch(b)} className="p-1.5 hover:bg-rose-50 rounded-lg text-rose-500" title="Delete" data-testid={`batch-delete-${b.id}`}>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {modal?.type === 'center' && (
+        <CenterFormModal center={modal.center} onClose={() => setModal(null)} onSaved={load} getAuthHeaders={getAuthHeaders} />
+      )}
+      {modal?.type === 'batch' && (
+        <BatchFormModal batch={modal.batch} centers={centers} onClose={() => setModal(null)} onSaved={load} getAuthHeaders={getAuthHeaders} />
+      )}
+    </div>
+  );
+};
+
+const CenterFormModal = ({ center, onClose, onSaved, getAuthHeaders }) => {
+  const editing = !!center;
+  const [f, setF] = useState(center || { name: '', address: '', city: '', phone: '', is_active: true });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!f.name?.trim()) { toast.error('Centre name required'); return; }
+    setSaving(true);
+    try {
+      if (editing) {
+        await axios.patch(`${API}/admin/future-skills/centers/${center.id}`, f, { headers: getAuthHeaders() });
+      } else {
+        await axios.post(`${API}/admin/future-skills/centers`, f, { headers: getAuthHeaders() });
+      }
+      toast.success(editing ? 'Centre updated' : 'Centre added');
+      onSaved(); onClose();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={editing ? 'Edit Centre' : 'Add Centre'} onClose={onClose} testid="center-modal">
+      <FieldGroup>
+        <TextField label="Name" value={f.name || ''} onChange={v => setF({ ...f, name: v })} required testid="center-name-input" colSpan={2} />
+        <TextField label="City" value={f.city || ''} onChange={v => setF({ ...f, city: v })} />
+        <TextField label="Phone" value={f.phone || ''} onChange={v => setF({ ...f, phone: v })} />
+        <TextField label="Address" value={f.address || ''} onChange={v => setF({ ...f, address: v })} colSpan={2} />
+      </FieldGroup>
+      <label className="flex items-center gap-2 mt-3 text-sm">
+        <input type="checkbox" checked={f.is_active !== false} onChange={e => setF({ ...f, is_active: e.target.checked })} data-testid="center-active-check" />
+        <span className="text-slate-700 font-semibold">Active — visible on public booking page</span>
+      </label>
+      <button onClick={submit} disabled={saving}
+        className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
+        data-testid="submit-center-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> {editing ? 'Update Centre' : 'Save Centre'}</>}
+      </button>
+    </Modal>
+  );
+};
+
+const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) => {
+  const editing = !!batch;
+  const [f, setF] = useState(batch ? { ...batch } : {
+    center_id: centers[0]?.id || '', name: '', days: [], start_time: '', end_time: '',
+    skill: '', capacity: 15, is_active: true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const toggleDay = (d) => {
+    setF(prev => {
+      const has = prev.days?.includes(d);
+      return { ...prev, days: has ? prev.days.filter(x => x !== d) : [...(prev.days || []), d] };
+    });
+  };
+
+  const submit = async () => {
+    if (!f.center_id) { toast.error('Pick a centre'); return; }
+    if (!f.name?.trim()) { toast.error('Batch name required'); return; }
+    setSaving(true);
+    try {
+      if (editing) {
+        await axios.patch(`${API}/admin/future-skills/batches/${batch.id}`, f, { headers: getAuthHeaders() });
+      } else {
+        await axios.post(`${API}/admin/future-skills/batches`, f, { headers: getAuthHeaders() });
+      }
+      toast.success(editing ? 'Batch updated' : 'Batch added');
+      onSaved(); onClose();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={editing ? 'Edit Batch' : 'Add Batch'} onClose={onClose} testid="batch-modal">
+      <FieldGroup>
+        <SelectField label="Centre" value={f.center_id || ''} onChange={v => setF({ ...f, center_id: v })}
+          options={centers.map(c => ({ value: c.id, label: c.name }))} testid="batch-center-select" colSpan={2} />
+        <TextField label="Batch Name" value={f.name || ''} onChange={v => setF({ ...f, name: v })} required placeholder="e.g. Weekend Morning" testid="batch-name-input" colSpan={2} />
+        <TextField label="Skill (optional)" value={f.skill || ''} onChange={v => setF({ ...f, skill: v })} placeholder="Robotics / Coding / AI" />
+        <TextField label="Capacity" type="number" value={f.capacity ?? 15} onChange={v => setF({ ...f, capacity: parseInt(v) || 0 })} testid="batch-capacity-input" />
+        <TextField label="Start Time" type="time" value={f.start_time || ''} onChange={v => setF({ ...f, start_time: v })} testid="batch-start-input" />
+        <TextField label="End Time" type="time" value={f.end_time || ''} onChange={v => setF({ ...f, end_time: v })} testid="batch-end-input" />
+      </FieldGroup>
+      <div className="mt-3">
+        <Label>Days</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {DAY_OPTIONS.map(d => (
+            <button key={d} type="button" onClick={() => toggleDay(d)}
+              className={`text-xs px-3 py-1.5 rounded-lg font-bold border-2 ${
+                f.days?.includes(d) ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+              }`}
+              data-testid={`batch-day-${d}`}>
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="flex items-center gap-2 mt-4 text-sm">
+        <input type="checkbox" checked={f.is_active !== false} onChange={e => setF({ ...f, is_active: e.target.checked })} data-testid="batch-active-check" />
+        <span className="text-slate-700 font-semibold">Active — bookable from public page</span>
+      </label>
+      <button onClick={submit} disabled={saving}
+        className="mt-4 w-full py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 flex items-center justify-center gap-2"
+        data-testid="submit-batch-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> {editing ? 'Update Batch' : 'Save Batch'}</>}
       </button>
     </Modal>
   );

@@ -139,6 +139,41 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
     );
   }
 
+  // Future Skills variant — clean nav, ONLY "Book Free Trial" (login hidden)
+  if (variant === 'futureskills') {
+    return (
+      <nav style={{
+        background: 'rgba(255,255,255,0.94)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(15,30,51,0.08)',
+        boxShadow: '0 1px 0 rgba(15,30,51,0.04)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 62 }}>
+            <Link to="/future-skills" style={{ display: 'flex', alignItems: 'center' }} data-testid="fs-nav-logo">
+              <img
+                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
+                alt="OLL Logo"
+                style={{ height: 44, width: 'auto' }}
+              />
+            </Link>
+            <button
+              onClick={() => (onBookDemo ? onBookDemo() : null)}
+              data-testid="fs-nav-book-btn"
+              className="bg-gradient-to-r from-[#D63031] to-[#1E3A5F] hover:from-[#B52828] hover:to-[#0F1E33] text-white font-bold px-5 sm:px-6 py-2.5 rounded-xl shadow-lg shadow-blue-900/20 transition-all text-sm sm:text-base"
+            >
+              {bookDemoLabel || 'Book Free Trial'}
+            </button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   // AI Foundations variant — clean nav with sticky Book Now, login hidden
   if (variant === 'aifoundations') {
     return (

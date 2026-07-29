@@ -105,12 +105,16 @@ def _is_admin(user: dict) -> bool:
 
 # ── Models ─────────────────────────────────────────────────────────────────
 class TrialBooking(BaseModel):
-    parent_name: str = Field(..., min_length=2, max_length=120)
-    parent_phone: str = Field(..., min_length=10, max_length=15)
-    parent_email: EmailStr
-    student_name: str = Field(..., min_length=2, max_length=120)
-    student_grade: str = Field(..., min_length=1, max_length=8)
-    preferred_center: Optional[str] = Field(default="", max_length=80)
+    # Simplified minimal-booking payload: only phone + center_id + batch_id required.
+    # Other fields are optional / left for admin follow-up.
+    parent_phone: str = Field(..., min_length=6, max_length=15)
+    center_id: Optional[str] = Field(default="", max_length=64)
+    batch_id: Optional[str] = Field(default="", max_length=64)
+    parent_name: Optional[str] = Field(default="", max_length=120)
+    parent_email: Optional[str] = Field(default="", max_length=120)
+    student_name: Optional[str] = Field(default="", max_length=120)
+    student_grade: Optional[str] = Field(default="", max_length=8)
+    preferred_center: Optional[str] = Field(default="", max_length=120)
     preferred_skill: Optional[str] = Field(default="", max_length=80)
     notes: Optional[str] = Field(default="", max_length=500)
     source_ref: Optional[str] = Field(default="", max_length=64)
@@ -136,22 +140,42 @@ class PaymentInit(BaseModel):
 # ── Endpoints — Trial Class ────────────────────────────────────────────────
 @router.post("/future-skills/register-trial")
 async def register_trial(data: TrialBooking):
-    """Book a free trial class — pure lead capture, no payment."""
+    """Book a free trial class — minimal payload (phone + center + batch)."""
     trial_id = str(uuid.uuid4())
     trial_ref = await _next_ref("FST")
-    norm_phone = data.parent_phone.strip()
+    norm_phone = re.sub(r"\D", "", data.parent_phone or "")
+    if len(norm_phone) < 10:
+        raise HTTPException(status_code=400, detail="Enter a valid phone number")
 
-    # Dedup on phone
+    # Resolve chosen center + batch (may be blank for backwards compat)
+    center_doc = None
+    batch_doc = None
+    if data.center_id:
+        center_doc = await db.future_skills_centers.find_one({"id": data.center_id}, {"_id": 0})
+    if data.batch_id:
+        batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
+        if batch_doc and not center_doc:
+            center_doc = await db.future_skills_centers.find_one({"id": batch_doc.get("center_id")}, {"_id": 0})
+
+    center_name = (center_doc or {}).get("name") or (data.preferred_center or "").strip()
+    batch_label = ""
+    if batch_doc:
+        days = ",".join(batch_doc.get("days", []) or [])
+        batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+
+    # Dedup on phone → nudge return_count and refresh center/batch if newly chosen
     existing = await db.future_skills_trials.find_one({"parent_phone": norm_phone}, {"_id": 0})
     if existing:
-        await db.future_skills_trials.update_one(
-            {"id": existing["id"]},
-            {"$set": {
-                "return_count": existing.get("return_count", 1) + 1,
-                "last_returned_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }}
-        )
+        update: dict = {
+            "return_count": existing.get("return_count", 1) + 1,
+            "last_returned_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if data.center_id:  update["center_id"] = data.center_id
+        if center_name:     update["preferred_center"] = center_name
+        if data.batch_id:   update["batch_id"] = data.batch_id
+        if batch_label:     update["batch_label"] = batch_label
+        await db.future_skills_trials.update_one({"id": existing["id"]}, {"$set": update})
         return {
             "trial_id": existing["id"],
             "trial_ref": existing.get("trial_ref"),
@@ -162,12 +186,15 @@ async def register_trial(data: TrialBooking):
         "id": trial_id,
         "trial_ref": trial_ref,
         "program_key": PROGRAM_KEY,
-        "parent_name": data.parent_name.strip(),
+        "parent_name": (data.parent_name or "").strip(),
         "parent_phone": norm_phone,
-        "parent_email": data.parent_email.lower(),
-        "student_name": data.student_name.strip(),
-        "student_grade": data.student_grade.strip(),
-        "preferred_center": (data.preferred_center or "").strip(),
+        "parent_email": (data.parent_email or "").strip().lower(),
+        "student_name": (data.student_name or "").strip(),
+        "student_grade": (data.student_grade or "").strip(),
+        "preferred_center": center_name,
+        "center_id": data.center_id or "",
+        "batch_id": data.batch_id or "",
+        "batch_label": batch_label,
         "preferred_skill": (data.preferred_skill or "").strip(),
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "").strip(),
@@ -178,12 +205,12 @@ async def register_trial(data: TrialBooking):
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.future_skills_trials.insert_one(doc)
-    logging.info(f"[future-skills] trial booked {trial_ref} - {data.student_name}")
+    logging.info(f"[future-skills] trial booked {trial_ref} - {norm_phone} @ {center_name or 'unassigned'}")
 
-    # Best-effort WhatsApp confirmation
+    # Best-effort WhatsApp confirmation (skips if template misconfigured)
     try:
         from .notifications import send_whatsapp_notification
-        first_name = (data.student_name or "").split()[0] or "there"
+        first_name = ((data.student_name or data.parent_name) or "there").split()[0] or "there"
         await send_whatsapp_notification(
             phone=norm_phone,
             template_key="future_skills_trial_booked",
@@ -1305,3 +1332,225 @@ async def admin_future_skills_stats(user: dict = Depends(get_current_user)):
             "customers": lost_customers,
         },
     }
+
+# ══════════════════════════════════════════════════════════════════════════
+# CENTERS & BATCHES — public read + admin CRUD
+# ══════════════════════════════════════════════════════════════════════════
+
+class CenterCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    address: Optional[str] = Field(default="", max_length=250)
+    city: Optional[str] = Field(default="", max_length=80)
+    phone: Optional[str] = Field(default="", max_length=20)
+    is_active: Optional[bool] = True
+
+
+class CenterUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class BatchCreate(BaseModel):
+    center_id: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=120)
+    days: list[str] = Field(default_factory=list)
+    start_time: Optional[str] = Field(default="", max_length=8)
+    end_time: Optional[str] = Field(default="", max_length=8)
+    skill: Optional[str] = Field(default="", max_length=80)
+    capacity: Optional[int] = Field(default=15, ge=1, le=200)
+    is_active: Optional[bool] = True
+
+
+class BatchUpdate(BaseModel):
+    center_id: Optional[str] = None
+    name: Optional[str] = None
+    days: Optional[list[str]] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    skill: Optional[str] = None
+    capacity: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+async def _batch_student_count(batch_id: str) -> int:
+    """Count of trials + active subscriptions linked to this batch."""
+    n_trials = await db.future_skills_trials.count_documents({"batch_id": batch_id})
+    n_subs = await db.future_skills_subscriptions.count_documents(
+        {"batch_id": batch_id, "crm_status": "active"}
+    )
+    return n_trials + n_subs
+
+
+# ── Public reads ──────────────────────────────────────────────────────────
+@router.get("/future-skills/centers")
+async def public_list_centers():
+    cursor = db.future_skills_centers.find({"is_active": True}, {"_id": 0}).sort("name", 1)
+    return {"centers": [c async for c in cursor]}
+
+
+@router.get("/future-skills/batches")
+async def public_list_batches(center_id: Optional[str] = Query(None)):
+    query: dict = {"is_active": True}
+    if center_id:
+        query["center_id"] = center_id
+    cursor = db.future_skills_batches.find(query, {"_id": 0}).sort("name", 1)
+    rows = [b async for b in cursor]
+    # Enrich with student counts and center names
+    center_cache: dict = {}
+    for b in rows:
+        cid = b.get("center_id")
+        if cid and cid not in center_cache:
+            c = await db.future_skills_centers.find_one({"id": cid}, {"_id": 0, "name": 1, "city": 1})
+            center_cache[cid] = c or {}
+        cinfo = center_cache.get(cid, {})
+        b["center_name"] = cinfo.get("name", "")
+        b["center_city"] = cinfo.get("city", "")
+        b["student_count"] = await _batch_student_count(b["id"])
+    return {"batches": rows}
+
+
+# ── Admin CRUD: Centers ───────────────────────────────────────────────────
+@router.post("/admin/future-skills/centers")
+async def admin_create_center(data: CenterCreate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    cid = str(uuid.uuid4())
+    doc = {
+        "id": cid,
+        "name": data.name.strip(),
+        "address": (data.address or "").strip(),
+        "city": (data.city or "").strip(),
+        "phone": (data.phone or "").strip(),
+        "is_active": bool(data.is_active),
+        "created_at": _now_iso(),
+        "updated_at": _now_iso(),
+        "created_by": user.get("email"),
+    }
+    await db.future_skills_centers.insert_one(doc)
+    doc.pop("_id", None)
+    return {"center": doc}
+
+
+@router.get("/admin/future-skills/centers")
+async def admin_list_centers(user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    cursor = db.future_skills_centers.find({}, {"_id": 0}).sort("created_at", -1)
+    centers = [c async for c in cursor]
+    # Attach batch count per center
+    for c in centers:
+        c["batch_count"] = await db.future_skills_batches.count_documents({"center_id": c["id"]})
+    return {"centers": centers}
+
+
+@router.patch("/admin/future-skills/centers/{cid}")
+async def admin_update_center(cid: str, data: CenterUpdate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    update["updated_at"] = _now_iso()
+    res = await db.future_skills_centers.update_one({"id": cid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Center not found")
+    # If center name changed, refresh cached names on batches
+    if "name" in update:
+        await db.future_skills_batches.update_many(
+            {"center_id": cid}, {"$set": {"center_name": update["name"]}}
+        )
+    c = await db.future_skills_centers.find_one({"id": cid}, {"_id": 0})
+    return {"center": c}
+
+
+@router.delete("/admin/future-skills/centers/{cid}")
+async def admin_delete_center(cid: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    n_batches = await db.future_skills_batches.count_documents({"center_id": cid})
+    if n_batches > 0:
+        raise HTTPException(status_code=400, detail=f"Delete the {n_batches} batch(es) at this center first")
+    res = await db.future_skills_centers.delete_one({"id": cid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Center not found")
+    return {"deleted": True}
+
+
+# ── Admin CRUD: Batches ───────────────────────────────────────────────────
+@router.post("/admin/future-skills/batches")
+async def admin_create_batch(data: BatchCreate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    center = await db.future_skills_centers.find_one({"id": data.center_id}, {"_id": 0})
+    if not center:
+        raise HTTPException(status_code=404, detail="Center not found")
+    bid = str(uuid.uuid4())
+    doc = {
+        "id": bid,
+        "center_id": data.center_id,
+        "center_name": center.get("name", ""),
+        "name": data.name.strip(),
+        "days": [d.strip() for d in (data.days or []) if d and d.strip()],
+        "start_time": (data.start_time or "").strip(),
+        "end_time": (data.end_time or "").strip(),
+        "skill": (data.skill or "").strip(),
+        "capacity": int(data.capacity or 15),
+        "is_active": bool(data.is_active),
+        "created_at": _now_iso(),
+        "updated_at": _now_iso(),
+        "created_by": user.get("email"),
+    }
+    await db.future_skills_batches.insert_one(doc)
+    doc.pop("_id", None)
+    doc["student_count"] = 0
+    return {"batch": doc}
+
+
+@router.get("/admin/future-skills/batches")
+async def admin_list_batches(center_id: Optional[str] = Query(None), user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    query: dict = {}
+    if center_id:
+        query["center_id"] = center_id
+    cursor = db.future_skills_batches.find(query, {"_id": 0}).sort([("center_name", 1), ("name", 1)])
+    batches = [b async for b in cursor]
+    for b in batches:
+        b["student_count"] = await _batch_student_count(b["id"])
+    return {"batches": batches}
+
+
+@router.patch("/admin/future-skills/batches/{bid}")
+async def admin_update_batch(bid: str, data: BatchUpdate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    if "center_id" in update:
+        center = await db.future_skills_centers.find_one({"id": update["center_id"]}, {"_id": 0})
+        if not center:
+            raise HTTPException(status_code=404, detail="Center not found")
+        update["center_name"] = center.get("name", "")
+    update["updated_at"] = _now_iso()
+    res = await db.future_skills_batches.update_one({"id": bid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    b = await db.future_skills_batches.find_one({"id": bid}, {"_id": 0})
+    if b:
+        b["student_count"] = await _batch_student_count(bid)
+    return {"batch": b}
+
+
+@router.delete("/admin/future-skills/batches/{bid}")
+async def admin_delete_batch(bid: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_batches.delete_one({"id": bid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return {"deleted": True}
+
