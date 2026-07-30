@@ -235,7 +235,7 @@ async def get_me(user: dict = Depends(get_current_user)):
     # Attach is_manager flag so the frontend can hide "My Team" for non-managers.
     # Admins are always managers; team members only if someone has them as reports_to.
     uid = user.get("id") or ""
-    if user.get("role") == "admin":
+    if user.get("role") in ("admin", "super_admin"):
         is_manager = True
     else:
         reports_count = await db.team_users.count_documents({"reports_to": uid, "is_active": {"$ne": False}})
@@ -880,7 +880,14 @@ async def get_my_team(user: dict = Depends(get_current_user)):
       - `projects_member_of`
     """
     uid = user.get("id") or ""
-    is_admin_user = bool(await db.admins.find_one({"id": uid}, {"_id": 0, "id": 1}))
+    # A user is "team-admin" if they exist in the admins collection OR their
+    # role is admin / super_admin (a team_user promoted via Users & Roles).
+    # Without this second check, promoting a team_user to admin would still
+    # limit them to their direct reports.
+    is_admin_user = (
+        bool(await db.admins.find_one({"id": uid}, {"_id": 0, "id": 1}))
+        or user.get("role") in ("admin", "super_admin")
+    )
 
     if is_admin_user:
         # Admin sees everyone
