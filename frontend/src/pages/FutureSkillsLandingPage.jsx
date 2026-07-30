@@ -471,31 +471,8 @@ const FutureSkillsLandingPage = () => {
       <section className="fs-reveal py-16 lg:py-20 relative">
         <TechGrid accent="#1E3A5F" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-5xl mx-auto">
-            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mb-4">The Future Skills Program</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
-              Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
-              Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
-            </p>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {[
-                { icon: Hammer,    t: 'Build by doing',     s: 'Every class produces a thing they take home or display.' },
-                { icon: Lightbulb, t: 'Curiosity-led',      s: 'Kids choose what to deepen — robots, AI, 3D, you decide.' },
-                { icon: Rocket,    t: 'Compounding skills', s: 'Today\'s line-follower becomes tomorrow\'s drone.' },
-              ].map((p, i) => (
-                <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 hover:border-[#1E3A5F] transition-all hover:-translate-y-0.5">
-                  <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-50 to-blue-50 flex items-center justify-center text-[#1E3A5F] mb-3 border border-blue-200">
-                    <p.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
-                  <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* ── Real class moments gallery ─────────────────────────── */}
-          <div className="mt-14 lg:mt-16" data-testid="fs-class-moments">
+          <div data-testid="fs-class-moments">
             <div className="flex items-end justify-between flex-wrap gap-3 mb-5">
               <div>
                 <span className="text-[10px] font-black tracking-[0.22em] uppercase text-[#D63031]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>// real moments · real builds</span>
