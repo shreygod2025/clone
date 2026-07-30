@@ -206,7 +206,7 @@ async def login_admin(data: AdminLogin):
             return TokenResponse(access_token=token, user=user)
 
     # Check Future Skills centre owners (login scoped to a single FS centre)
-    fs_center = await db.future_skills_centers.find_one({"owner_email": (data.email or "").lower()})
+    fs_center = await db.centers.find_one({"owner_email": (data.email or "").lower()})
     if fs_center and fs_center.get("owner_password_hash"):
         if not fs_center.get("is_active", True):
             raise HTTPException(status_code=401, detail="Centre is disabled")

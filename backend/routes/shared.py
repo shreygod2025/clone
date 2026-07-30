@@ -61,7 +61,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
         # Future Skills centre-owner login (scoped to a single fs centre)
         if role == "fs_center_owner" and center_id:
-            fs_center = await db.future_skills_centers.find_one(
+            fs_center = await db.centers.find_one(
                 {"id": center_id}, {"_id": 0, "owner_password_hash": 0}
             )
             if fs_center and fs_center.get("is_active", True):

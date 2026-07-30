@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +25,8 @@ const ROLE_TYPES = ['Full-time', 'Part-time', 'Internship', 'Freelance', 'Contra
 const AdminSettings = () => {
   const { getAuthHeaders, user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('team-requirements');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'team-requirements');
   const [loading, setLoading] = useState(true);
   
   // Data states

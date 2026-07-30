@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   Bot, Search, RefreshCw, Loader2, X, Phone, Mail, GraduationCap,
@@ -1107,7 +1108,7 @@ const CentersManager = ({ getAuthHeaders }) => {
   const [centers, setCenters] = useState([]);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [modal, setModal] = useState(null); // {type:'center'|'batch', center?, batch?}
+  const [modal, setModal] = useState(null); // {type:'batch'|'login', center?, batch?}
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1125,18 +1126,11 @@ const CentersManager = ({ getAuthHeaders }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  const deleteCenter = async (c) => {
-    if (!window.confirm(`Delete "${c.name}"? Batches at this centre must be removed first.`)) return;
+  const clearLogin = async (c) => {
+    if (!window.confirm(`Remove the login for "${c.name}"?`)) return;
     try {
-      await axios.delete(`${API}/admin/future-skills/centers/${c.id}`, { headers: getAuthHeaders() });
-      toast.success('Centre deleted');
-      load();
-    } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
-  };
-
-  const toggleCenter = async (c) => {
-    try {
-      await axios.patch(`${API}/admin/future-skills/centers/${c.id}`, { is_active: !c.is_active }, { headers: getAuthHeaders() });
+      await axios.patch(`${API}/admin/future-skills/centers/${c.id}/login`, { clear_login: true }, { headers: getAuthHeaders() });
+      toast.success('Login removed');
       load();
     } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
   };
@@ -1170,30 +1164,34 @@ const CentersManager = ({ getAuthHeaders }) => {
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => setModal({ type: 'center' })}
-          className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-          data-testid="add-center-btn">
-          <Plus className="w-3.5 h-3.5" /> Add Centre
-        </button>
+      <div className="flex flex-wrap gap-2 items-center">
         <button onClick={() => setModal({ type: 'batch' })} disabled={centers.length === 0}
           className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 disabled:opacity-50"
           data-testid="add-batch-btn">
           <Plus className="w-3.5 h-3.5" /> Add Batch
         </button>
-        {centers.length === 0 && <span className="text-xs text-slate-500 self-center">Add a centre first before creating batches.</span>}
+        <Link to="/admin/settings?tab=centers"
+          className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+          data-testid="manage-centres-in-settings-link">
+          <Building2 className="w-3.5 h-3.5" /> Manage centres in Settings
+        </Link>
       </div>
 
-      {/* Centers list */}
+      {/* Centres list — READ ONLY (managed in Settings). Only Set Login here. */}
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <div className="font-black text-[#1E3A5F] flex items-center gap-2"><Building2 className="w-4 h-4" /> Centres</div>
+          <div>
+            <div className="font-black text-[#1E3A5F] flex items-center gap-2"><Building2 className="w-4 h-4" /> Centres</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Managed under Admin → Settings → Centres. Set the Future Skills login here.</div>
+          </div>
           <span className="text-xs text-slate-500">{centers.length} total</span>
         </div>
         {loading ? (
           <div className="p-10 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> Loading…</div>
         ) : centers.length === 0 ? (
-          <div className="p-10 text-center text-slate-400" data-testid="no-centers-msg">No centres yet. Add one to start.</div>
+          <div className="p-10 text-center text-slate-400" data-testid="no-centers-msg">
+            No centres yet. Add one under <Link to="/admin/settings?tab=centers" className="text-[#1E3A5F] font-bold underline">Settings → Centres</Link>.
+          </div>
         ) : (
           <div className="divide-y divide-slate-100">
             {centers.map(c => (
@@ -1202,27 +1200,27 @@ const CentersManager = ({ getAuthHeaders }) => {
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[#0F1E33] flex items-center gap-2">
+                  <div className="font-bold text-[#0F1E33] flex items-center gap-2 flex-wrap">
                     {c.name}
                     {!c.is_active && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-black">INACTIVE</span>}
+                    {c.has_login && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold uppercase tracking-wider">Login set</span>}
                   </div>
                   <div className="text-xs text-slate-500 truncate">
-                    {[c.address, c.city].filter(Boolean).join(' · ') || '—'} · {c.batch_count || 0} batch(es)
-                    {c.phone && ` · ${c.phone}`}
+                    {[c.area, c.city].filter(Boolean).join(' · ') || '—'} · {c.batch_count || 0} batch(es)
+                    {c.owner_email && ` · ${c.owner_email}`}
                   </div>
                 </div>
-                <button onClick={() => toggleCenter(c)} title={c.is_active ? 'Deactivate' : 'Activate'}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500" data-testid={`center-toggle-${c.id}`}>
-                  <Power className="w-4 h-4" />
+                <button onClick={() => setModal({ type: 'login', center: c })}
+                  className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                  data-testid={`center-set-login-${c.id}`}>
+                  {c.has_login ? 'Update login' : 'Set login'}
                 </button>
-                <button onClick={() => setModal({ type: 'center', center: c })} title="Edit"
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500" data-testid={`center-edit-${c.id}`}>
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button onClick={() => deleteCenter(c)} title="Delete"
-                  className="p-1.5 hover:bg-rose-50 rounded-lg text-rose-500" data-testid={`center-delete-${c.id}`}>
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {c.has_login && (
+                  <button onClick={() => clearLogin(c)} title="Remove login"
+                    className="p-1.5 hover:bg-rose-50 rounded-lg text-rose-500" data-testid={`center-clear-login-${c.id}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -1303,8 +1301,8 @@ const CentersManager = ({ getAuthHeaders }) => {
         )}
       </div>
 
-      {modal?.type === 'center' && (
-        <CenterFormModal center={modal.center} onClose={() => setModal(null)} onSaved={load} getAuthHeaders={getAuthHeaders} />
+      {modal?.type === 'login' && (
+        <CentreLoginModal center={modal.center} onClose={() => setModal(null)} onSaved={load} getAuthHeaders={getAuthHeaders} />
       )}
       {modal?.type === 'batch' && (
         <BatchFormModal batch={modal.batch} centers={centers} onClose={() => setModal(null)} onSaved={load} getAuthHeaders={getAuthHeaders} />
@@ -1313,33 +1311,24 @@ const CentersManager = ({ getAuthHeaders }) => {
   );
 };
 
-const CenterFormModal = ({ center, onClose, onSaved, getAuthHeaders }) => {
-  const editing = !!center;
-  const [f, setF] = useState(center
-    ? { ...center, owner_password: '' }  // never prefill password
-    : { name: '', address: '', city: '', phone: '', is_active: true, owner_email: '', owner_name: '', owner_password: '' }
-  );
+const CentreLoginModal = ({ center, onClose, onSaved, getAuthHeaders }) => {
+  const [f, setF] = useState({
+    owner_email: center?.owner_email || '',
+    owner_name: center?.owner_name || '',
+    owner_password: '',
+  });
   const [saving, setSaving] = useState(false);
-  const [showCreds, setShowCreds] = useState(!editing || !!center?.owner_email);
+  const hasLogin = !!center?.owner_email;
 
   const submit = async () => {
-    if (!f.name?.trim()) { toast.error('Centre name required'); return; }
-    // If owner email is provided on create, require password
-    if (!editing && f.owner_email && !f.owner_password) {
-      toast.error('Please set a password for the centre login');
-      return;
-    }
+    if (!f.owner_email?.trim()) { toast.error('Login email is required'); return; }
+    if (!hasLogin && !f.owner_password) { toast.error('Set an initial password'); return; }
     setSaving(true);
     try {
-      const payload = { ...f };
-      // Only send owner_password if user actually typed one
-      if (!payload.owner_password) delete payload.owner_password;
-      if (editing) {
-        await axios.patch(`${API}/admin/future-skills/centers/${center.id}`, payload, { headers: getAuthHeaders() });
-      } else {
-        await axios.post(`${API}/admin/future-skills/centers`, payload, { headers: getAuthHeaders() });
-      }
-      toast.success(editing ? 'Centre updated' : 'Centre added');
+      const payload = { owner_email: f.owner_email, owner_name: f.owner_name };
+      if (f.owner_password) payload.owner_password = f.owner_password;
+      await axios.patch(`${API}/admin/future-skills/centers/${center.id}/login`, payload, { headers: getAuthHeaders() });
+      toast.success(hasLogin ? 'Login updated' : 'Login created');
       onSaved(); onClose();
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed');
@@ -1347,54 +1336,27 @@ const CenterFormModal = ({ center, onClose, onSaved, getAuthHeaders }) => {
   };
 
   return (
-    <Modal title={editing ? 'Edit Centre' : 'Add Centre'} onClose={onClose} testid="center-modal">
+    <Modal title={`${hasLogin ? 'Update' : 'Set'} Centre Login — ${center?.name}`} onClose={onClose} testid="centre-login-modal">
+      <p className="text-xs text-slate-500 mb-4">
+        This owner will log in at <span className="font-mono font-bold text-[#1E3A5F]">/admin/login</span> and see <strong>only</strong> this centre&apos;s leads, trials, customers and renewals in Future Skills CRM.
+      </p>
       <FieldGroup>
-        <TextField label="Name" value={f.name || ''} onChange={v => setF({ ...f, name: v })} required testid="center-name-input" colSpan={2} />
-        <TextField label="City" value={f.city || ''} onChange={v => setF({ ...f, city: v })} />
-        <TextField label="Phone" value={f.phone || ''} onChange={v => setF({ ...f, phone: v })} />
-        <TextField label="Address" value={f.address || ''} onChange={v => setF({ ...f, address: v })} colSpan={2} />
+        <TextField label="Owner Name" value={f.owner_name} onChange={v => setF({ ...f, owner_name: v })} testid="login-owner-name" colSpan={2} />
+        <TextField label="Login Email" value={f.owner_email} onChange={v => setF({ ...f, owner_email: v })} placeholder="owner@example.com" required testid="login-owner-email" colSpan={2} />
+        <TextField
+          label={hasLogin ? 'New Password (leave blank to keep current)' : 'Password'}
+          type="password"
+          value={f.owner_password}
+          onChange={v => setF({ ...f, owner_password: v })}
+          placeholder={hasLogin ? '••••••••' : 'Set a strong password'}
+          testid="login-owner-password"
+          colSpan={2}
+        />
       </FieldGroup>
-      <label className="flex items-center gap-2 mt-3 text-sm">
-        <input type="checkbox" checked={f.is_active !== false} onChange={e => setF({ ...f, is_active: e.target.checked })} data-testid="center-active-check" />
-        <span className="text-slate-700 font-semibold">Active — visible on public booking page</span>
-      </label>
-
-      {/* Centre owner login credentials */}
-      <div className="mt-5 pt-4 border-t border-slate-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-black text-[#1E3A5F]">Centre login</div>
-            <div className="text-[11px] text-slate-500">Optional — lets this centre&apos;s owner log in and see only their leads/trials/customers.</div>
-          </div>
-          {!showCreds && (
-            <button type="button" onClick={() => setShowCreds(true)}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700"
-              data-testid="show-creds-btn">Set login</button>
-          )}
-        </div>
-        {showCreds && (
-          <div className="mt-3">
-            <FieldGroup>
-              <TextField label="Owner Name" value={f.owner_name || ''} onChange={v => setF({ ...f, owner_name: v })} testid="center-owner-name-input" />
-              <TextField label="Login Email" value={f.owner_email || ''} onChange={v => setF({ ...f, owner_email: v })} placeholder="owner@example.com" testid="center-owner-email-input" />
-              <TextField
-                label={editing ? 'New Password (leave blank to keep current)' : 'Password'}
-                type="password"
-                value={f.owner_password || ''}
-                onChange={v => setF({ ...f, owner_password: v })}
-                placeholder={editing ? '••••••••' : 'Set a strong password'}
-                testid="center-owner-password-input"
-                colSpan={2}
-              />
-            </FieldGroup>
-          </div>
-        )}
-      </div>
-
       <button onClick={submit} disabled={saving}
         className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
-        data-testid="submit-center-btn">
-        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> {editing ? 'Update Centre' : 'Save Centre'}</>}
+        data-testid="submit-login-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> {hasLogin ? 'Update Login' : 'Create Login'}</>}
       </button>
     </Modal>
   );

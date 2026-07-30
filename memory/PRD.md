@@ -2,6 +2,55 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-30 · pm) — Reuse Settings Centres + Slim Success Page 🧹
+
+**Ask**: Add Future Skills to the admin sidebar, minimise the trial success
+page (welcome + date/day/time only), and stop asking to add centres — use
+the ones from Admin → Settings → Centres.
+
+**Backend** (`future_skills.py`, `users.py`, `shared.py`):
+- Public `GET /api/future-skills/centers` now reads from the shared
+  `centers` collection (managed under Settings → Centres) — not from the
+  now-defunct `future_skills_centers`.
+- All batch CRUD and public batch reads resolve centre names against the
+  shared `centers` collection too.
+- Removed Add / Update / Delete centre endpoints under
+  `/api/admin/future-skills/centers*`. Replaced with a single
+  `PATCH /admin/future-skills/centers/{id}/login` endpoint that attaches,
+  rotates or clears the Future Skills owner credentials on a centre doc
+  (fields `owner_email`, `owner_name`, `owner_password_hash` are stored
+  directly on the shared `centers` document).
+- Auth (users.py + shared.py) — `fs_center_owner` login now checks the
+  shared `centers` collection.
+
+**Frontend**:
+- **Admin sidebar** — added a dedicated "Future Skills" nav item (Sparkles
+  icon) between AI Chat and Student CRM.
+- **Success page** (`FutureSkillsSuccessPage.jsx`) — for trial bookings, now
+  shows ONLY a "Welcome to OLL!" heading + three info tiles: Day, next
+  occurrence Date (computed from batch days) and Time. Everything else
+  removed (no ref, no "what happens next", no soft-pitch, no ₹ tiles).
+  Legacy subscription success view kept behind `type=subscription`.
+- **Booking flow** now forwards batch details (`days`, `start`, `end`,
+  `batch`, `centre`) to the success page via URL params so the minimal view
+  can render without an extra fetch.
+- **Admin Centres tab** — removed Add-Centre modal/CTA. Centres list is
+  read-only, sourced from Settings, each row has a "Set login / Update
+  login" button + a small badge when a login is set. A "Manage centres in
+  Settings" pill links to `/admin/settings?tab=centers` (settings page now
+  respects the `?tab=` param).
+- **CentreLoginModal** — new lightweight modal with just Owner Name / Login
+  Email / Password.
+
+**Testing done**:
+- `GET /api/future-skills/centers` returns 8 centres seeded in Settings.
+- Setting a login on a centre → owner logs in via `/api/auth/login` →
+  `/auth/me` shows `role=fs_center_owner`, `center_id`, `center_name`.
+- Public booking flow end-to-end: phone → centre → batch → success page
+  renders the minimal "Welcome to OLL!" + Day / Date / Time tiles.
+
+
+
 ### Latest Update (2026-07-30 · am) — Centre-Scoped Login + CRM Filters 🔐
 
 **Ask**: Fix booking-page footer, add a centre filter in the CRM, and give

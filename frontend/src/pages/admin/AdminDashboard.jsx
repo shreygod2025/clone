@@ -29,6 +29,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/team', icon: Users, label: 'My Team', permission: null, requiresManager: true },
     { path: '/admin/me/performance', icon: BarChart3, label: 'My Performance', permission: null },
     { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null },
+    { path: '/admin/future-skills', icon: Sparkles, label: 'Future Skills', permission: null },
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },

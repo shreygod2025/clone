@@ -161,11 +161,11 @@ async def register_trial(data: TrialBooking):
     center_doc = None
     batch_doc = None
     if data.center_id:
-        center_doc = await db.future_skills_centers.find_one({"id": data.center_id}, {"_id": 0})
+        center_doc = await db.centers.find_one({"id": data.center_id}, {"_id": 0})
     if data.batch_id:
         batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
         if batch_doc and not center_doc:
-            center_doc = await db.future_skills_centers.find_one({"id": batch_doc.get("center_id")}, {"_id": 0})
+            center_doc = await db.centers.find_one({"id": batch_doc.get("center_id")}, {"_id": 0})
 
     center_name = (center_doc or {}).get("name") or (data.preferred_center or "").strip()
     batch_label = ""
@@ -1457,7 +1457,9 @@ async def _batch_student_count(batch_id: str) -> int:
 # ── Public reads ──────────────────────────────────────────────────────────
 @router.get("/future-skills/centers")
 async def public_list_centers():
-    cursor = db.future_skills_centers.find({"is_active": True}, {"_id": 0}).sort("name", 1)
+    """Live centres available for booking — sourced from the shared /centers
+    collection managed under Admin → Settings → Centres."""
+    cursor = db.centers.find({"is_active": True}, {"_id": 0, "owner_password_hash": 0}).sort("name", 1)
     return {"centers": [c async for c in cursor]}
 
 
@@ -1468,12 +1470,12 @@ async def public_list_batches(center_id: Optional[str] = Query(None)):
         query["center_id"] = center_id
     cursor = db.future_skills_batches.find(query, {"_id": 0}).sort("name", 1)
     rows = [b async for b in cursor]
-    # Enrich with student counts and center names
+    # Enrich with student counts and center names from shared centres collection
     center_cache: dict = {}
     for b in rows:
         cid = b.get("center_id")
         if cid and cid not in center_cache:
-            c = await db.future_skills_centers.find_one({"id": cid}, {"_id": 0, "name": 1, "city": 1})
+            c = await db.centers.find_one({"id": cid}, {"_id": 0, "name": 1, "city": 1})
             center_cache[cid] = c or {}
         cinfo = center_cache.get(cid, {})
         b["center_name"] = cinfo.get("name", "")
@@ -1482,87 +1484,63 @@ async def public_list_batches(center_id: Optional[str] = Query(None)):
     return {"batches": rows}
 
 
-# ── Admin CRUD: Centers ───────────────────────────────────────────────────
-@router.post("/admin/future-skills/centers")
-async def admin_create_center(data: CenterCreate, user: dict = Depends(get_current_user)):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin only")
-    cid = str(uuid.uuid4())
-    doc = {
-        "id": cid,
-        "name": data.name.strip(),
-        "address": (data.address or "").strip(),
-        "city": (data.city or "").strip(),
-        "phone": (data.phone or "").strip(),
-        "is_active": bool(data.is_active),
-        "owner_email": (data.owner_email or "").strip().lower(),
-        "owner_name": (data.owner_name or "").strip(),
-        "created_at": _now_iso(),
-        "updated_at": _now_iso(),
-        "created_by": user.get("email"),
-    }
-    if data.owner_email and data.owner_password:
-        import bcrypt as _bcrypt
-        doc["owner_password_hash"] = _bcrypt.hashpw(
-            data.owner_password.encode("utf-8"), _bcrypt.gensalt()
-        ).decode("utf-8")
-    await db.future_skills_centers.insert_one(doc)
-    doc.pop("_id", None)
-    doc.pop("owner_password_hash", None)
-    return {"center": doc}
-
-
+# ── Admin: Centres (read + set login only — full CRUD lives in Settings) ──
 @router.get("/admin/future-skills/centers")
 async def admin_list_centers(user: dict = Depends(get_current_user)):
+    """Centres available for Future Skills — reads from the shared /centers
+    collection. Full CRUD is managed under Admin → Settings → Centres so
+    Future Skills does NOT allow adding/deleting from here."""
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    cursor = db.future_skills_centers.find({}, {"_id": 0}).sort("created_at", -1)
+    cursor = db.centers.find({}, {"_id": 0, "owner_password_hash": 0}).sort("name", 1)
     centers = [c async for c in cursor]
-    # Attach batch count per center
     for c in centers:
         c["batch_count"] = await db.future_skills_batches.count_documents({"center_id": c["id"]})
+        c["has_login"] = bool(c.get("owner_email"))
     return {"centers": centers}
 
 
-@router.patch("/admin/future-skills/centers/{cid}")
-async def admin_update_center(cid: str, data: CenterUpdate, user: dict = Depends(get_current_user)):
+class CentreLoginUpdate(BaseModel):
+    owner_email: Optional[str] = None
+    owner_name: Optional[str] = None
+    owner_password: Optional[str] = None
+    clear_login: Optional[bool] = False
+
+
+@router.patch("/admin/future-skills/centers/{cid}/login")
+async def admin_set_center_login(cid: str, data: CentreLoginUpdate, user: dict = Depends(get_current_user)):
+    """Attach / rotate / clear the Future Skills owner login on an existing centre."""
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    centre = await db.centers.find_one({"id": cid}, {"_id": 0})
+    if not centre:
+        raise HTTPException(status_code=404, detail="Centre not found")
+
+    if data.clear_login:
+        await db.centers.update_one(
+            {"id": cid},
+            {"$unset": {"owner_email": "", "owner_name": "", "owner_password_hash": ""}},
+        )
+        return {"cleared": True}
+
+    update: dict = {}
+    if data.owner_email is not None:
+        update["owner_email"] = data.owner_email.strip().lower()
+    if data.owner_name is not None:
+        update["owner_name"] = data.owner_name.strip()
+    if data.owner_password:
+        import bcrypt as _bcrypt
+        update["owner_password_hash"] = _bcrypt.hashpw(
+            data.owner_password.encode("utf-8"), _bcrypt.gensalt()
+        ).decode("utf-8")
+
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update")
-    # Handle owner-password rotation
-    if "owner_password" in update:
-        pwd = update.pop("owner_password")
-        if pwd:
-            import bcrypt as _bcrypt
-            update["owner_password_hash"] = _bcrypt.hashpw(pwd.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
-    if "owner_email" in update and update["owner_email"]:
-        update["owner_email"] = update["owner_email"].strip().lower()
-    update["updated_at"] = _now_iso()
-    res = await db.future_skills_centers.update_one({"id": cid}, {"$set": update})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Center not found")
-    # If center name changed, refresh cached names on batches
-    if "name" in update:
-        await db.future_skills_batches.update_many(
-            {"center_id": cid}, {"$set": {"center_name": update["name"]}}
-        )
-    c = await db.future_skills_centers.find_one({"id": cid}, {"_id": 0, "owner_password_hash": 0})
-    return {"center": c}
 
-
-@router.delete("/admin/future-skills/centers/{cid}")
-async def admin_delete_center(cid: str, user: dict = Depends(get_current_user)):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin only")
-    n_batches = await db.future_skills_batches.count_documents({"center_id": cid})
-    if n_batches > 0:
-        raise HTTPException(status_code=400, detail=f"Delete the {n_batches} batch(es) at this center first")
-    res = await db.future_skills_centers.delete_one({"id": cid})
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Center not found")
-    return {"deleted": True}
+    await db.centers.update_one({"id": cid}, {"$set": update})
+    centre = await db.centers.find_one({"id": cid}, {"_id": 0, "owner_password_hash": 0})
+    centre["has_login"] = bool(centre.get("owner_email"))
+    return {"center": centre}
 
 
 # ── Admin CRUD: Batches ───────────────────────────────────────────────────
@@ -1570,7 +1548,7 @@ async def admin_delete_center(cid: str, user: dict = Depends(get_current_user)):
 async def admin_create_batch(data: BatchCreate, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    center = await db.future_skills_centers.find_one({"id": data.center_id}, {"_id": 0})
+    center = await db.centers.find_one({"id": data.center_id}, {"_id": 0})
     if not center:
         raise HTTPException(status_code=404, detail="Center not found")
     bid = str(uuid.uuid4())
@@ -1617,7 +1595,7 @@ async def admin_update_batch(bid: str, data: BatchUpdate, user: dict = Depends(g
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update")
     if "center_id" in update:
-        center = await db.future_skills_centers.find_one({"id": update["center_id"]}, {"_id": 0})
+        center = await db.centers.find_one({"id": update["center_id"]}, {"_id": 0})
         if not center:
             raise HTTPException(status_code=404, detail="Center not found")
         update["center_name"] = center.get("name", "")
