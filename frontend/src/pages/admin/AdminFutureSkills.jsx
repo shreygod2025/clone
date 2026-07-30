@@ -2398,9 +2398,8 @@ const EconField = ({ label, children }) => (
 const CentreEconomicsPanel = ({ getAuthHeaders }) => {
   const { user } = useAuth();
   const isCenterOwner = user?.role === 'fs_center_owner';
-  const currentMonth = new Date().toISOString().slice(0, 7);
   const [centerId, setCenterId] = useState('all');
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useState('');  // default to "All Time" so historical entries show up
   const [centers, setCenters] = useState([]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -2629,7 +2628,17 @@ const CentreEconomicsPanel = ({ getAuthHeaders }) => {
           centers={isCenterOwner ? [] : centers}
           defaultCenterId={isCenterOwner ? '' : (centerId !== 'all' ? centerId : '')}
           onClose={() => setModal(null)}
-          onSaved={() => { setModal(null); load(); }}
+          onSaved={(savedEntry) => {
+            setModal(null);
+            // If the entry's month falls outside the current month filter,
+            // auto-jump the filter so the user actually sees what they added.
+            const entryMonth = (savedEntry?.expense_date || '').slice(0, 7);
+            if (month && entryMonth && entryMonth !== month) {
+              setMonth(entryMonth); // triggers re-fetch via useEffect
+            } else {
+              load();
+            }
+          }}
           getAuthHeaders={getAuthHeaders}
         />
       )}
@@ -2682,14 +2691,17 @@ const CentreEconomicsModal = ({ type, entry, centers, defaultCenterId, onClose, 
         other_label: form.other_label,
       };
       if (!isEdit) payload.center_id = form.center_id;
+      let savedEntry;
       if (isEdit) {
         await axios.patch(`${API}/admin/future-skills/centre-economics/${entry.id}`, payload, { headers: getAuthHeaders() });
+        savedEntry = { ...entry, ...payload };
         toast.success('Entry updated');
       } else {
-        await axios.post(`${API}/admin/future-skills/centre-economics`, payload, { headers: getAuthHeaders() });
+        const r = await axios.post(`${API}/admin/future-skills/centre-economics`, payload, { headers: getAuthHeaders() });
+        savedEntry = r.data?.entry || payload;
         toast.success('Entry added & mirrored to main Expenses');
       }
-      onSaved();
+      onSaved(savedEntry);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Save failed');
     } finally { setSaving(false); }
