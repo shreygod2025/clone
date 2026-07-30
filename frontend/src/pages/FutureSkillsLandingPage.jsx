@@ -472,8 +472,7 @@ const FutureSkillsLandingPage = () => {
         <TechGrid accent="#1E3A5F" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-5xl mx-auto">
-            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">A different kind of class</span>
-            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">The Future Skills Program</h2>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mb-4">The Future Skills Program</h2>
             <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
               Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
               Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
