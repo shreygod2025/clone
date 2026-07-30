@@ -76,10 +76,8 @@ const LEVEL_OPTIONS = [
 ];
 
 const LEAD_STATUSES = [
-  { value: 'new',          label: 'New' },
-  { value: 'contacted',    label: 'Contacted' },
-  { value: 'qualified',    label: 'Qualified' },
-  { value: 'trial_booked', label: 'Trial Booked' },
+  { value: 'new',      label: 'New' },
+  { value: 'followup', label: 'Followup' },
 ];
 
 const PLAN_OPTIONS = [
@@ -105,8 +103,9 @@ const AdminFutureSkills = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [centerFilter, setCenterFilter] = useState('all');   // centre filter (admin only)
   const [centersForFilter, setCentersForFilter] = useState([]);  // for filter dropdown
+  const [batchesForFilter, setBatchesForFilter] = useState([]);  // for centre/batch column rendering
   const [selected, setSelected] = useState(null);
-  const [modal, setModal] = useState(null); // 'add-lead' | 'add-trial' | 'add-customer' | 'import' | 'renew' | 'lost' | 'convert-trial'
+  const [modal, setModal] = useState(null); // 'add-lead' | 'add-trial' | 'add-customer' | 'import' | 'renew' | 'lost' | 'convert-trial' | 'reschedule' | 'book-trial' | 'followup'
   const fileInputRef = useRef(null);
 
   // Load centres list once for the filter dropdown (admin only — owner is auto-scoped)
@@ -116,6 +115,13 @@ const AdminFutureSkills = () => {
       .then(r => setCentersForFilter(r.data?.centers || []))
       .catch(() => setCentersForFilter([]));
   }, [isCenterOwner, getAuthHeaders]);
+
+  // Load batches for centre/batch column rendering (all rows)
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatchesForFilter(r.data?.batches || []))
+      .catch(() => setBatchesForFilter([]));
+  }, [getAuthHeaders]);
 
   // ── Fetchers ─────────────────────────────────────────────────────────
   const fetchTabStats = useCallback(async () => {
@@ -196,14 +202,17 @@ const AdminFutureSkills = () => {
 
   // ── Rendering per tab ────────────────────────────────────────────────
   const STATUS_FILTER_OPTIONS =
-    tab === 'leads'   ? [{ value: 'all', label: 'All' }, { value: 'active', label: 'Active only' }, ...LEAD_STATUSES]
+    tab === 'leads'   ? [
+        { value: 'all',      label: `All (${(stats?.new || 0) + (stats?.followup || 0)})` },
+        { value: 'new',      label: `New (${stats?.new || 0})` },
+        { value: 'followup', label: `Followup (${stats?.followup || 0})` },
+      ]
     : tab === 'trials' ? [
-        { value: 'all', label: 'All' },
-        { value: 'trial_lead', label: 'Lead' },
-        { value: 'trial_contacted', label: 'Contacted' },
-        { value: 'trial_scheduled', label: 'Scheduled' },
-        { value: 'trial_attended', label: 'Attended' },
-        { value: 'converted', label: 'Converted' },
+        { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0) + (stats?.followup || 0)})` },
+        { value: 'scheduled',   label: `Scheduled (${stats?.scheduled || 0})` },
+        { value: 'rescheduled', label: `Rescheduled (${stats?.rescheduled || 0})` },
+        { value: 'completed',   label: `Completed (${stats?.completed || 0})` },
+        { value: 'followup',    label: `Followup (${stats?.followup || 0})` },
       ]
     : tab === 'lost' ? [
         { value: 'all', label: 'All types' },
@@ -350,7 +359,7 @@ const AdminFutureSkills = () => {
           {/* Search */}
           <div className="ml-auto relative flex-1 min-w-[200px] max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Search ref / name / phone / email…"
+            <input type="text" placeholder="Search ref / name / phone…"
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
               data-testid="search-input" />
@@ -391,18 +400,19 @@ const AdminFutureSkills = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} onAction={(action, r) => {
+              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} onAction={(action, r) => {
+              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'convert')    setModal({ type: 'convert-trial', trial: r });
+                if (action === 'reschedule') setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'trial' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'trial' });
               }} />}
-              {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} />}
-              {tab === 'renewals'  && <RenewalsTable rows={rows} onOpen={setSelected} />}
+              {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} />}
+              {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} />}
               {tab === 'lost'      && <LostTable rows={rows} onOpen={setSelected} />}
             </div>
           )}
@@ -419,6 +429,7 @@ const AdminFutureSkills = () => {
       {modal?.type === 'renew'        && <RenewModal      customer={modal.customer} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'lost'         && <MarkLostModal   entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'convert-trial' && <ConvertTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'reschedule'   && <RescheduleTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'book-trial'   && <BookTrialModal   lead={modal.lead} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'followup'     && <FollowupModal    entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
 
@@ -464,6 +475,10 @@ const StatusBadge = ({ status }) => {
     active:             { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'ACTIVE' },
     converted:          { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'CONVERTED' },
     new:                { c: 'bg-slate-50 text-slate-700 border-slate-200',       label: 'NEW' },
+    followup:           { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'FOLLOWUP' },
+    scheduled:          { c: 'bg-violet-50 text-violet-700 border-violet-200',    label: 'SCHEDULED' },
+    rescheduled:        { c: 'bg-indigo-50 text-indigo-700 border-indigo-200',    label: 'RESCHEDULED' },
+    completed:          { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'COMPLETED' },
     contacted:          { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'CONTACTED' },
     qualified:          { c: 'bg-blue-50 text-blue-700 border-blue-200',          label: 'QUALIFIED' },
     trial_booked:       { c: 'bg-violet-50 text-violet-700 border-violet-200',    label: 'TRIAL BOOKED' },
@@ -484,167 +499,209 @@ const Th = ({ children, className = '' }) => (
 );
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction }) => (
-  <table className="w-full text-sm">
-    <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Name</Th><Th>Phone · Email</Th><Th>Source</Th><Th>Child · Followup</Th><Th>Status</Th><Th>Actions</Th></tr>
-    </thead>
-    <tbody>
-      {rows.map(r => (
-        <tr key={r.id}
-          className="border-t border-slate-100 hover:bg-blue-50/40"
-          data-testid={`row-${r.lead_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.lead_ref}</td>
-          <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</td>
-          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-            <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.phone}</div>
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><Mail className="w-3 h-3" /> {r.email || '—'}</div>
-          </td>
-          <td className="px-4 py-3 text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</td>
-          <td className="px-4 py-3 text-xs text-slate-600 cursor-pointer" onClick={() => onOpen(r)}>
-            {r.child_age && `Age ${r.child_age}`}{(!r.child_age) && '—'}
-            {r.next_followup_date && (
-              <div className="text-[11px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> Next: {fmtDate(r.next_followup_date)}</div>
-            )}
-          </td>
-          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}><StatusBadge status={r.status} /></td>
-          <td className="px-4 py-3">
-            <div className="flex flex-wrap gap-1">
-              <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
-                data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
-                <Calendar className="w-3 h-3" /> Trial
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
-                data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
-                <Clock className="w-3 h-3" /> Followup
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
-                data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
-                <XCircle className="w-3 h-3" /> Lost
-              </button>
-            </div>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+  const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
+  const batchName  = (bid) => {
+    const b = batches.find(x => x.id === bid);
+    return b ? `${b.name}` : '';
+  };
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+        <tr><Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th></tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.id}
+            className="border-t border-slate-100 hover:bg-blue-50/40"
+            data-testid={`row-${r.lead_ref}`}>
+            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.lead_ref}</td>
+            <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</td>
+            <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.phone}</div>
+              {r.child_age && <div className="text-[11px] text-slate-500 mt-0.5">Age {r.child_age}</div>}
+            </td>
+            <td className="px-4 py-3 text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</td>
+            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || '—'}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
+            </td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+              <StatusBadge status={r.status} />
+              {r.next_followup_date && (
+                <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
+              )}
+            </td>
+            <td className="px-4 py-3">
+              <div className="flex flex-wrap gap-1">
+                <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
+                  <Calendar className="w-3 h-3" /> Trial
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
+                  <Clock className="w-3 h-3" /> Followup
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
+                  <XCircle className="w-3 h-3" /> Lost
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
-const TrialsTable = ({ rows, onOpen, onAction }) => (
-  <table className="w-full text-sm">
-    <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Student</Th><Th>Parent Contact</Th><Th>Batch · Centre</Th><Th>Status · Followup</Th><Th>Actions</Th></tr>
-    </thead>
-    <tbody>
-      {rows.map(r => (
-        <tr key={r.id}
-          className="border-t border-slate-100 hover:bg-blue-50/40"
-          data-testid={`row-${r.trial_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</td>
-          <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.student_name}</td>
-          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-            <div className="font-semibold text-[#0F1E33] text-xs">{r.parent_name || '—'}</div>
-            <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
-          </td>
-          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-            <div className="text-xs font-semibold text-slate-700 truncate max-w-[220px]">{r.batch_label || '—'}</div>
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {r.preferred_center || '—'}</div>
-          </td>
-          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-            <StatusBadge status={r.crm_status} />
-            {r.next_followup_date && (
-              <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
-            )}
-          </td>
-          <td className="px-4 py-3">
-            <div className="flex flex-wrap gap-1">
-              <button onClick={(e) => { e.stopPropagation(); onAction('convert', r); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
-                data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
-                <Sparkles className="w-3 h-3" /> Convert
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
-                data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
-                <Clock className="w-3 h-3" /> Followup
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
-                data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
-                <XCircle className="w-3 h-3" /> Lost
-              </button>
-            </div>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
+const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+  const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
+  const batchInfo = (bid, fallback) => {
+    const b = batches.find(x => x.id === bid);
+    if (b) return `${b.name} · ${(b.days || []).join('/')}`;
+    return fallback || '';
+  };
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+        <tr><Th>Ref</Th><Th>Student</Th><Th>Parent Contact</Th><Th>Centre · Batch</Th><Th>Scheduled</Th><Th>Status</Th><Th>Actions</Th></tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.id}
+            className="border-t border-slate-100 hover:bg-blue-50/40"
+            data-testid={`row-${r.trial_ref}`}>
+            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</td>
+            <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.student_name}</td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-[#0F1E33] text-xs">{r.parent_name || '—'}</div>
+              <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
+            </td>
+            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[220px]">{batchInfo(r.batch_id, r.batch_label) || '—'}</div>
+            </td>
+            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
+              {r.scheduled_at ? <span className="font-semibold text-slate-700">{fmtDate(r.scheduled_at)}</span> : <span className="text-slate-400">—</span>}
+            </td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+              <StatusBadge status={r.crm_status} />
+              {r.next_followup_date && (
+                <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
+              )}
+            </td>
+            <td className="px-4 py-3">
+              <div className="flex flex-wrap gap-1">
+                <button onClick={(e) => { e.stopPropagation(); onAction('convert', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
+                  <Sparkles className="w-3 h-3" /> Convert
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('reschedule', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center gap-1"
+                  data-testid={`row-reschedule-${r.trial_ref}`} title="Reschedule">
+                  <RotateCcw className="w-3 h-3" /> Reschedule
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
+                  <Clock className="w-3 h-3" /> Followup
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
+                  <XCircle className="w-3 h-3" /> Lost
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
-const CustomersTable = ({ rows, onOpen }) => (
-  <table className="w-full text-sm">
-    <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Plan</Th><Th>Amount Paid</Th><Th>Renewal Date</Th><Th className="text-right">Since</Th></tr>
-    </thead>
-    <tbody>
-      {rows.map(r => (
-        <tr key={r.id} onClick={() => onOpen(r)}
-          className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
-          data-testid={`row-${r.subscription_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.subscription_ref}</td>
-          <td className="px-4 py-3">
-            <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
-            <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
-          </td>
-          <td className="px-4 py-3">
-            <div className="font-bold text-[#0F1E33] text-xs">{r.plan_label}</div>
-            <div className="text-[11px] text-slate-500">{fmtMoney(r.amount)}</div>
-          </td>
-          <td className="px-4 py-3 font-bold text-emerald-700">{fmtMoney(r.amount_paid || r.amount)}</td>
-          <td className="px-4 py-3 text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</td>
-          <td className="px-4 py-3 text-right text-xs text-slate-500">{fmtDate(r.subscription_start || r.created_at)}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
+const CustomersTable = ({ rows, onOpen, centers = [], batches = [] }) => {
+  const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
+  const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Amount Paid</Th><Th>Renewal Date</Th><Th className="text-right">Since</Th></tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.id} onClick={() => onOpen(r)}
+            className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
+            data-testid={`row-${r.subscription_ref}`}>
+            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.subscription_ref}</td>
+            <td className="px-4 py-3">
+              <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
+              <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
+            </td>
+            <td className="px-4 py-3 text-xs">
+              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
+            </td>
+            <td className="px-4 py-3">
+              <div className="font-bold text-[#0F1E33] text-xs">{r.plan_label}</div>
+              <div className="text-[11px] text-slate-500">{fmtMoney(r.amount)}</div>
+            </td>
+            <td className="px-4 py-3 font-bold text-emerald-700">{fmtMoney(r.amount_paid || r.amount)}</td>
+            <td className="px-4 py-3 text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</td>
+            <td className="px-4 py-3 text-right text-xs text-slate-500">{fmtDate(r.subscription_start || r.created_at)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
-const RenewalsTable = ({ rows, onOpen }) => (
-  <table className="w-full text-sm">
-    <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Plan</Th><Th>Renewal</Th><Th>Status</Th><Th className="text-right">Action</Th></tr>
-    </thead>
-    <tbody>
-      {rows.map(r => (
-        <tr key={r.id} onClick={() => onOpen(r)}
-          className={`border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer ${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : ''}`}
-          data-testid={`row-${r.subscription_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.subscription_ref}</td>
-          <td className="px-4 py-3">
-            <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
-            <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
-          </td>
-          <td className="px-4 py-3 text-xs font-bold text-[#0F1E33]">{r.plan_label}</td>
-          <td className="px-4 py-3">
-            <div className="text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</div>
-            <div className="text-[11px] text-slate-500">
-              {r.renewal_bucket === 'overdue'
-                ? `⚠ ${r.days_overdue}d overdue`
-                : `in ${r.days_to_renewal ?? 0}d`}
-            </div>
-          </td>
-          <td className="px-4 py-3"><StatusBadge status={r.renewal_bucket} /></td>
-          <td className="px-4 py-3 text-right">
-            <ChevronRight className="w-4 h-4 text-slate-400 inline" />
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
+const RenewalsTable = ({ rows, onOpen, centers = [], batches = [] }) => {
+  const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
+  const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Renewal</Th><Th>Status</Th><Th className="text-right">Action</Th></tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.id} onClick={() => onOpen(r)}
+            className={`border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer ${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : ''}`}
+            data-testid={`row-${r.subscription_ref}`}>
+            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.subscription_ref}</td>
+            <td className="px-4 py-3">
+              <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
+              <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
+            </td>
+            <td className="px-4 py-3 text-xs">
+              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
+            </td>
+            <td className="px-4 py-3 text-xs font-bold text-[#0F1E33]">{r.plan_label}</td>
+            <td className="px-4 py-3">
+              <div className="text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</div>
+              <div className="text-[11px] text-slate-500">
+                {r.renewal_bucket === 'overdue'
+                  ? `⚠ ${r.days_overdue}d overdue`
+                  : `in ${r.days_to_renewal ?? 0}d`}
+              </div>
+            </td>
+            <td className="px-4 py-3"><StatusBadge status={r.renewal_bucket} /></td>
+            <td className="px-4 py-3 text-right">
+              <ChevronRight className="w-4 h-4 text-slate-400 inline" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
 const LostTable = ({ rows, onOpen }) => (
   <table className="w-full text-sm">
@@ -736,10 +793,10 @@ const DetailDrawer = ({ tab, entity, onClose, onAction, onSaved, getAuthHeaders 
               <FieldGroup>
                 <TextField label="Name" value={edit.name || ''} onChange={v => setEdit({ ...edit, name: v })} testid="edit-lead-name" />
                 <TextField label="Phone" value={edit.phone || ''} onChange={v => setEdit({ ...edit, phone: v })} testid="edit-lead-phone" />
-                <TextField label="Email" value={edit.email || ''} onChange={v => setEdit({ ...edit, email: v })} />
-                <TextField label="Source" value={edit.source || ''} onChange={v => setEdit({ ...edit, source: v })} />
-                <TextField label="City" value={edit.city || ''} onChange={v => setEdit({ ...edit, city: v })} />
-                <SelectField label="Status" value={edit.status || 'new'} onChange={v => setEdit({ ...edit, status: v })} options={LEAD_STATUSES} />
+                <SelectField label="Source" value={edit.source || ''} onChange={v => setEdit({ ...edit, source: v })} options={LEAD_SOURCE_OPTIONS} />
+                <SelectField label="Child Age" value={edit.child_age || ''} onChange={v => setEdit({ ...edit, child_age: v })}
+                  options={[{ value: '', label: 'Select age…' }, ...AGE_GROUP_OPTIONS.filter(o => o.value !== '')]} />
+                <SelectField label="Status" value={edit.status || 'new'} onChange={v => setEdit({ ...edit, status: v })} options={LEAD_STATUSES} colSpan={2} />
               </FieldGroup>
               <TextAreaField label="Notes" value={edit.notes || ''} onChange={v => setEdit({ ...edit, notes: v })} />
               <div className="grid grid-cols-2 gap-2 pt-2">
@@ -926,7 +983,7 @@ const Modal = ({ title, onClose, children, testid }) => (
 
 // ── Modals ────────────────────────────────────────────────────────────
 const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
-  const [f, setF] = useState({ name: '', phone: '', email: '', source: '', child_age: '', center_id: '', batch_id: '', notes: '' });
+  const [f, setF] = useState({ name: '', phone: '', source: '', child_age: '', center_id: '', batch_id: '', notes: '' });
   const [centers, setCenters] = useState([]);
   const [batches, setBatches] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -956,7 +1013,6 @@ const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
       <FieldGroup>
         <TextField label="Name (optional)" value={f.name} onChange={v => setF({ ...f, name: v })} testid="lead-name-input" />
         <TextField label="Phone" value={f.phone} onChange={v => setF({ ...f, phone: v })} required testid="lead-phone-input" />
-        <TextField label="Email" value={f.email} onChange={v => setF({ ...f, email: v })} colSpan={2} />
         <SelectField label="Source" value={f.source} onChange={v => setF({ ...f, source: v })} options={LEAD_SOURCE_OPTIONS} testid="lead-source-select" />
         <SelectField label="Child Age" value={f.child_age} onChange={v => setF({ ...f, child_age: v })}
           options={[{ value: '', label: 'Select age…' }, ...AGE_GROUP_OPTIONS.filter(o => o.value !== '')]}
@@ -1378,6 +1434,105 @@ const BookTrialModal = ({ lead, onClose, onSaved, getAuthHeaders }) => {
         data-testid="submit-book-trial-btn">
         {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Calendar className="w-4 h-4" /> Book Trial</>}
       </button>
+    </Modal>
+  );
+};
+
+// ── RESCHEDULE Trial (centre + batch + date; adds reschedule history) ──
+const RescheduleTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
+  const [f, setF] = useState({
+    center_id: trial?.center_id || '',
+    batch_id: trial?.batch_id || '',
+    scheduled_at: trial?.scheduled_at ? String(trial.scheduled_at).slice(0, 10) : '',
+    note: '',
+  });
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || [])).catch(() => {});
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatches(r.data?.batches || [])).catch(() => {});
+  }, [getAuthHeaders]);
+
+  const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
+  const selectedBatch = batches.find(b => b.id === f.batch_id);
+  const allowedDayIdx = (selectedBatch?.days || []).map(dayIndexFromName).filter(x => x !== -1);
+  const dateValid = !f.scheduled_at || !selectedBatch || allowedDayIdx.length === 0 || allowedDayIdx.includes(new Date(f.scheduled_at).getDay());
+
+  const history = Array.isArray(trial?.reschedules) ? [...trial.reschedules].reverse() : [];
+
+  const submit = async () => {
+    if (!f.scheduled_at) { toast.error('New trial date is required'); return; }
+    if (!dateValid) { toast.error(`Selected date does not match batch days (${(selectedBatch?.days || []).join(', ')})`); return; }
+    setSaving(true);
+    try {
+      await axios.post(`${API}/admin/future-skills/trials/${trial.id}/reschedule`, {
+        scheduled_at: new Date(f.scheduled_at).toISOString(),
+        batch_id: f.batch_id || '',
+        note: f.note || '',
+      }, { headers: getAuthHeaders() });
+      toast.success('Trial rescheduled');
+      onSaved();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={`Reschedule Trial — ${trial.student_name || trial.trial_ref}`} onClose={onClose} testid="reschedule-modal">
+      <div className="text-xs text-slate-600 mb-3 flex items-center gap-1.5">
+        <Clock className="w-3.5 h-3.5" />
+        <span>Currently: <b>{trial.scheduled_at ? fmtDate(trial.scheduled_at) : 'not scheduled'}</b>{trial.batch_label && <> · {trial.batch_label}</>}</span>
+      </div>
+      <FieldGroup>
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '', scheduled_at: '' })}
+          options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="reschedule-center-select" colSpan={2} />
+        <SelectField label="Batch" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v, scheduled_at: '' })}
+          options={[
+            { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
+            ...batchesForCenter.map(b => ({
+              value: b.id,
+              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+            })),
+          ]}
+          testid="reschedule-batch-select" colSpan={2} />
+        <TextField label={`New Trial Date${selectedBatch ? ` (must be ${(selectedBatch.days || []).join('/')})` : ''}`}
+          type="date" value={f.scheduled_at} onChange={v => setF({ ...f, scheduled_at: v })} required
+          testid="reschedule-date-input" colSpan={2} />
+        {f.scheduled_at && selectedBatch && !dateValid && (
+          <div className="col-span-2 text-xs text-rose-600 font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> This date does not fall on {(selectedBatch.days || []).join(', ')}.
+          </div>
+        )}
+      </FieldGroup>
+      <div className="mt-3"><TextAreaField label="Reason (optional)" value={f.note} onChange={v => setF({ ...f, note: v })} testid="reschedule-note-input" /></div>
+      <button onClick={submit} disabled={saving || (f.scheduled_at && !dateValid)}
+        className="mt-4 w-full py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
+        data-testid="submit-reschedule-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><RotateCcw className="w-4 h-4" /> Reschedule</>}
+      </button>
+
+      {history.length > 0 && (
+        <div className="mt-5">
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-2">Reschedule history ({history.length})</div>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {history.map((h, i) => (
+              <div key={i} className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs" data-testid={`reschedule-entry-${i}`}>
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-[#0F1E33]">{fmtDate(h.prev_scheduled_at) || '—'} → {fmtDate(h.new_scheduled_at)}</div>
+                  <div className="text-slate-500">{fmtDateTime(h.at)}</div>
+                </div>
+                {h.note && <div className="text-slate-700 mt-1 whitespace-pre-wrap">{h.note}</div>}
+                {h.by && <div className="text-[10px] text-slate-400 mt-0.5">by {h.by}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 };

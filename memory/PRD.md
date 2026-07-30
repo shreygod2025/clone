@@ -2,6 +2,52 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-30 · iter110) — Leads/Trials Pipeline Focus + Reschedule + Centre columns 🎯
+
+**Ask**: Tighten the CRM pipelines: Leads tab should only show active (new/followup)
+leads; drop email everywhere; Trial statuses become scheduled/rescheduled/completed/
+followup with a dedicated Reschedule action; every pipeline table (Leads, Trials,
+Customers, Renewals) surfaces Centre + Batch.
+
+**Backend** (`future_skills.py`):
+- `GET /leads` default now filters `status ∈ [new, followup]` (converted /
+  lost live in their own tabs). Response `stats` adds `new` and `followup` counts.
+- `GET /trials` response `stats` adds `scheduled`, `rescheduled`, `completed`
+  and `followup` counts. Status filter query maps `scheduled` → `[scheduled,
+  trial_scheduled]` and `completed` → `[completed, converted]` for backward
+  compatibility.
+- `POST /leads/{id}/followup` and `POST /trials/{id}/followup` — when a
+  followup is recorded, the entity's own status is auto-bumped to `followup`
+  (respecting terminal states like converted / lost / active).
+- `POST /trials/{id}/reschedule` (new) — accepts `scheduled_at`, `batch_id`,
+  `note`; sets `crm_status = rescheduled` and pushes to `reschedules[]`
+  history.
+
+**Frontend** (`AdminFutureSkills.jsx`):
+- Add Lead modal: **removed Email**. Kept Name (optional), Phone*, Source
+  dropdown, Child Age dropdown, Centre + Batch, Notes.
+- Leads table: dropped Email column; added **Centre · Batch** column. Status
+  filter now shows counts inline: `All (n)`, `New (n)`, `Followup (n)`.
+- Trials table: added Centre · Batch column and Scheduled date column. New
+  row action **Reschedule** (Calendar-with-arrow icon) opens `RescheduleTrialModal`
+  which enforces batch-day validity and shows a reschedule history log.
+- Trials filter: `All`, `Scheduled`, `Rescheduled`, `Completed`, `Followup` —
+  all with live counts from `stats`.
+- Customers + Renewals tables: added Centre · Batch column.
+- Detail drawer for Leads: removed City & Email fields; Source & Child Age
+  are now dropdowns.
+- Search placeholder shortened to "ref / name / phone…".
+- StatusBadge extended for `followup`, `scheduled`, `rescheduled`, `completed`.
+
+**Files touched**:
+- `/app/backend/routes/future_skills.py` (leads/trials stats, followup auto-status,
+  reschedule endpoint + TrialRescheduleBody model)
+- `/app/frontend/src/pages/admin/AdminFutureSkills.jsx` (AddLeadModal,
+  LeadsTable, TrialsTable, CustomersTable, RenewalsTable, RescheduleTrialModal
+  (new), STATUS_FILTER_OPTIONS with counts, LEAD_STATUSES trimmed to new/followup)
+
+
+
 ### Latest Update (2026-07-30 · pm2) — Reports Tab + Slim Trial Form + Customer Import 📊
 
 **Ask**: Add a Reports section (funnel + source breakdown + batch performance);

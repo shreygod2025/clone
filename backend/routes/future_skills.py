@@ -442,7 +442,12 @@ async def admin_list_trials(
         raise HTTPException(status_code=403, detail="Admin only")
     query: dict = {}
     if status and status != "all":
-        query["crm_status"] = status
+        if status == "scheduled":
+            query["crm_status"] = {"$in": ["scheduled", "trial_scheduled"]}
+        elif status == "completed":
+            query["crm_status"] = {"$in": ["completed", "converted"]}
+        else:
+            query["crm_status"] = status
     if q:
         rx = {"$regex": re.escape(q), "$options": "i"}
         query["$or"] = [
@@ -457,7 +462,20 @@ async def admin_list_trials(
     rows = [r async for r in cursor]
     scope_q = {"center_id": scope_cid} if scope_cid else {}
     total = await db.future_skills_trials.count_documents(scope_q)
-    return {"trials": rows, "stats": {"total": total}}
+    scheduled_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["scheduled", "trial_scheduled"]}})
+    rescheduled_count = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "rescheduled"})
+    completed_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["completed", "converted"]}})
+    followup_count    = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "followup"})
+    return {
+        "trials": rows,
+        "stats": {
+            "total": total,
+            "scheduled": scheduled_count,
+            "rescheduled": rescheduled_count,
+            "completed": completed_count,
+            "followup": followup_count,
+        },
+    }
 
 
 @router.get("/admin/future-skills/subscriptions")
@@ -684,9 +702,12 @@ async def admin_list_leads(
     query: dict = {}
     if status and status != "all":
         if status == "active":
-            query["status"] = {"$nin": ["lost", "converted"]}
+            query["status"] = {"$in": ["new", "followup"]}
         else:
             query["status"] = status
+    else:
+        # Default: only show leads that are still in play (exclude converted / lost)
+        query["status"] = {"$in": ["new", "followup"]}
     if q:
         rx = {"$regex": re.escape(q), "$options": "i"}
         query["$or"] = [
@@ -702,11 +723,20 @@ async def admin_list_leads(
     rows = [r async for r in cursor]
     scope_q = {"center_id": scope_cid} if scope_cid else {}
     total = await db.future_skills_leads.count_documents(scope_q)
-    active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$nin": ["lost", "converted"]}})
+    active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$in": ["new", "followup"]}})
+    new_count = await db.future_skills_leads.count_documents({**scope_q, "status": "new"})
+    followup_count = await db.future_skills_leads.count_documents({**scope_q, "status": "followup"})
     lost = await db.future_skills_leads.count_documents({**scope_q, "status": "lost"})
     return {
         "leads": rows,
-        "stats": {"total": total, "active": active, "lost": lost, "showing": len(rows)},
+        "stats": {
+            "total": total,
+            "active": active,
+            "new": new_count,
+            "followup": followup_count,
+            "lost": lost,
+            "showing": len(rows),
+        },
     }
 
 
@@ -817,7 +847,7 @@ class FollowupBody(BaseModel):
     outcome: Optional[str] = Field(default="", max_length=32)  # called|no_answer|interested|not_interested
 
 
-async def _record_followup(collection, entity_id: str, data: "FollowupBody", user: dict, id_field: str = "id"):
+async def _record_followup(collection, entity_id: str, data: "FollowupBody", user: dict, id_field: str = "id", status_field: Optional[str] = None):
     doc = await collection.find_one({id_field: entity_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -835,6 +865,12 @@ async def _record_followup(collection, entity_id: str, data: "FollowupBody", use
         "next_followup_date": entry["next_date"],
         "updated_at": _now_iso(),
     }
+    # Auto-bump the entity's own status field to "followup" if it's still in a fresh
+    # pipeline stage (respect "converted" / "lost" / "active" — don't downgrade).
+    if status_field:
+        current = (doc.get(status_field) or "").lower()
+        if current in ("", "new", "scheduled", "rescheduled", "trial_lead", "trial_scheduled"):
+            update_set[status_field] = "followup"
     await collection.update_one(
         {id_field: entity_id},
         {"$set": update_set, "$push": {"followups": entry}},
@@ -846,7 +882,7 @@ async def _record_followup(collection, entity_id: str, data: "FollowupBody", use
 async def admin_lead_followup(lead_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    lead = await _record_followup(db.future_skills_leads, lead_id, data, user)
+    lead = await _record_followup(db.future_skills_leads, lead_id, data, user, status_field="status")
     return {"lead": lead}
 
 
@@ -854,7 +890,57 @@ async def admin_lead_followup(lead_id: str, data: FollowupBody, user: dict = Dep
 async def admin_trial_followup(trial_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    trial = await _record_followup(db.future_skills_trials, trial_id, data, user)
+    trial = await _record_followup(db.future_skills_trials, trial_id, data, user, status_field="crm_status")
+    return {"trial": trial}
+
+
+# ── RESCHEDULE TRIAL (row-action) ──────────────────────────────────────
+class TrialRescheduleBody(BaseModel):
+    scheduled_at: str = Field(..., min_length=1, max_length=40)
+    batch_id: Optional[str] = Field(default="", max_length=64)
+    note: Optional[str] = Field(default="", max_length=1000)
+
+
+@router.post("/admin/future-skills/trials/{trial_id}/reschedule")
+async def admin_trial_reschedule(trial_id: str, data: TrialRescheduleBody, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    trial = await db.future_skills_trials.find_one({"id": trial_id}, {"_id": 0})
+    if not trial:
+        raise HTTPException(status_code=404, detail="Trial not found")
+
+    batch_label = trial.get("batch_label", "")
+    batch_id = (data.batch_id or trial.get("batch_id") or "").strip()
+    if data.batch_id and data.batch_id != trial.get("batch_id"):
+        b = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
+        if b:
+            days = ",".join(b.get("days", []) or [])
+            batch_label = f"{b.get('name','Batch')} · {days} · {b.get('start_time','')}-{b.get('end_time','')}"
+
+    history_entry = {
+        "at": _now_iso(),
+        "by": user.get("email"),
+        "prev_scheduled_at": trial.get("scheduled_at", ""),
+        "new_scheduled_at": data.scheduled_at,
+        "prev_batch_id": trial.get("batch_id", ""),
+        "new_batch_id": batch_id,
+        "note": (data.note or "").strip(),
+    }
+    await db.future_skills_trials.update_one(
+        {"id": trial_id},
+        {
+            "$set": {
+                "scheduled_at": data.scheduled_at,
+                "batch_id": batch_id,
+                "batch_label": batch_label,
+                "trial_status": "rescheduled",
+                "crm_status": "rescheduled",
+                "updated_at": _now_iso(),
+            },
+            "$push": {"reschedules": history_entry},
+        },
+    )
+    trial = await db.future_skills_trials.find_one({"id": trial_id}, {"_id": 0})
     return {"trial": trial}
 
 
