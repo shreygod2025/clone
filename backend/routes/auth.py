@@ -121,6 +121,29 @@ async def login_admin(data: AdminLogin):
                 permissions=team_user.get("permissions", []),
             )
             return TokenResponse(access_token=token, user=user)
+
+    # Check Future Skills centre owners (login scoped to a single fs centre)
+    fs_center = await db.future_skills_centers.find_one({"owner_email": (data.email or "").lower()})
+    if fs_center and fs_center.get("owner_password_hash"):
+        if not fs_center.get("is_active", True):
+            raise HTTPException(status_code=401, detail="Centre is disabled")
+        if bcrypt.checkpw(data.password.encode('utf-8'), fs_center["owner_password_hash"].encode('utf-8')):
+            token = create_access_token({
+                "sub": data.email,
+                "role": "fs_center_owner",
+                "user_id": fs_center["id"],
+                "center_id": fs_center["id"],
+                "center_name": fs_center.get("name", ""),
+            })
+            user = AdminUser(
+                id=fs_center["id"],
+                email=data.email,
+                name=fs_center.get("owner_name") or fs_center.get("name", "Centre Owner"),
+                role="fs_center_owner",
+                center_id=fs_center["id"],
+                center_name=fs_center.get("name", ""),
+            )
+            return TokenResponse(access_token=token, user=user)
     
     # Check center_users collection
     center_user = await db.center_users.find_one({"email": data.email})

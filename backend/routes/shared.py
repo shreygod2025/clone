@@ -58,6 +58,22 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 educator["role"] = "educator"
                 educator["educator_id"] = educator_id
                 return educator
+
+        # Future Skills centre-owner login (scoped to a single fs centre)
+        if role == "fs_center_owner" and center_id:
+            fs_center = await db.future_skills_centers.find_one(
+                {"id": center_id}, {"_id": 0, "owner_password_hash": 0}
+            )
+            if fs_center and fs_center.get("is_active", True):
+                return {
+                    "id": fs_center["id"],
+                    "email": email,
+                    "name": fs_center.get("owner_name") or fs_center.get("name", "Centre Owner"),
+                    "role": "fs_center_owner",
+                    "center_id": fs_center["id"],
+                    "center_name": fs_center.get("name", ""),
+                }
+            raise HTTPException(status_code=401, detail="Centre not accessible")
         
         # 🔒 Login is restricted to `team_users`. The legacy `admins` collection
         # is no longer consulted (audit 2026-07-28).

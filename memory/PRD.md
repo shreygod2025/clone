@@ -2,6 +2,52 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-30 · am) — Centre-Scoped Login + CRM Filters 🔐
+
+**Ask**: Fix booking-page footer, add a centre filter in the CRM, and give
+each centre its own login that opens straight to Future Skills CRM
+restricted to that centre's data only.
+
+**Backend** (`future_skills.py`, `users.py`, `shared.py`):
+- `future_skills_centers` gained `owner_email`, `owner_name`,
+  `owner_password_hash` fields — set from the admin Centre modal.
+- `/api/auth/login` now also checks `future_skills_centers.owner_email` and,
+  on match, issues a JWT with `role="fs_center_owner"` + `center_id`.
+- Added `_fs_scope_center_id(user)` helper. All Future Skills admin list
+  endpoints (leads, trials, subscriptions, renewals, lost, stats) now:
+  1. Accept a `center_id=` query param (used by the admin Centre filter).
+  2. Auto-inject the owner's `center_id` when the caller is `fs_center_owner`
+     — the query param is ignored, so an owner can never look at another
+     centre's data.
+- Create endpoints (leads / manual trials / manual customers) tag new docs
+  with the owner's `center_id`; convert-lead-to-trial and
+  convert-trial-to-customer flow the `center_id` forward.
+- `_is_admin` treats `fs_center_owner` as an admin so they clear the auth
+  gate on future-skills routes (they're still scoped by the helper above).
+
+**Frontend**:
+- **Booking page footer** — wrapped page in `min-h-screen flex flex-col` so
+  the Footer sits at the bottom of the viewport / scrolls into view cleanly.
+- **CRM Centre filter** — every Future Skills tab now has an "All Centres"
+  dropdown (hidden for `fs_center_owner`, who's already locked to one).
+- **Centre form modal** — Add/Edit Centre gained a collapsible "Centre login"
+  section: Owner Name, Login Email, Password (editable on create; blank-to-
+  keep on edit, or type a new one to rotate).
+- **Sidebar guard** — `AdminLayout` returns just the "Future Skills CRM" item
+  for `fs_center_owner`; `AdminDashboard` redirects them to
+  `/admin/future-skills` if they land on `/admin`.
+- **Scope banner** on the Future Skills page: "You're viewing data for
+  <Centre Name>" appears whenever a centre owner is signed in.
+
+**Testing done**:
+- Admin creates centre with owner creds → owner logs in via /api/auth/login →
+  `/auth/me` returns `role=fs_center_owner` + `center_id` → owner creates a
+  lead (auto-tagged with their center_id) → `GET /leads` returns only their
+  lead → admin logs back in and can filter `?center_id=` in the UI to see the
+  same subset.
+
+
+
 ### Latest Feature (2026-07-29 · pm) — Future Skills Landing + Centres/Batches 🎯
 
 **Ask**: Clean up Future Skills landing (hide login in navbar, keep only "Book

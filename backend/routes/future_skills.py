@@ -100,7 +100,17 @@ async def _next_ref(prefix: str) -> str:
 def _is_admin(user: dict) -> bool:
     role = (user or {}).get("role", "")
     email = (user or {}).get("email", "")
-    return role in ("admin", "super_admin") or email.endswith("@oll.co")
+    if role in ("admin", "super_admin", "fs_center_owner"):
+        return True
+    return email.endswith("@oll.co")
+
+
+def _fs_scope_center_id(user: dict) -> Optional[str]:
+    """Return the center_id a fs_center_owner is scoped to, or None for full admin."""
+    if (user or {}).get("role") == "fs_center_owner":
+        cid = user.get("center_id")
+        return cid or None
+    return None
 
 
 # ── Models ─────────────────────────────────────────────────────────────────
@@ -425,6 +435,7 @@ async def cashfree_webhook(request: Request):
 async def admin_list_trials(
     status: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
+    center_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -438,9 +449,14 @@ async def admin_list_trials(
             {"trial_ref": rx}, {"student_name": rx}, {"parent_name": rx},
             {"parent_phone": rx}, {"parent_email": rx},
         ]
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    if effective_cid:
+        query["center_id"] = effective_cid
     cursor = db.future_skills_trials.find(query, {"_id": 0}).sort("created_at", -1).limit(500)
     rows = [r async for r in cursor]
-    total = await db.future_skills_trials.count_documents({})
+    scope_q = {"center_id": scope_cid} if scope_cid else {}
+    total = await db.future_skills_trials.count_documents(scope_q)
     return {"trials": rows, "stats": {"total": total}}
 
 
@@ -448,6 +464,7 @@ async def admin_list_trials(
 async def admin_list_subs(
     status: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
+    center_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -464,12 +481,17 @@ async def admin_list_subs(
             {"subscription_ref": rx}, {"student_name": rx}, {"parent_name": rx},
             {"parent_phone": rx}, {"parent_email": rx},
         ]
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    if effective_cid:
+        query["center_id"] = effective_cid
     cursor = db.future_skills_subscriptions.find(query, {"_id": 0}).sort("created_at", -1).limit(500)
     rows = [r async for r in cursor]
-    total = await db.future_skills_subscriptions.count_documents({})
-    active = await db.future_skills_subscriptions.count_documents({"crm_status": "active"})
+    scope_q = {"center_id": scope_cid} if scope_cid else {}
+    total = await db.future_skills_subscriptions.count_documents(scope_q)
+    active = await db.future_skills_subscriptions.count_documents({**scope_q, "crm_status": "active"})
     revenue_pipeline = await db.future_skills_subscriptions.aggregate([
-        {"$match": {"crm_status": "active"}},
+        {"$match": {**scope_q, "crm_status": "active"}},
         {"$group": {"_id": None, "sum": {"$sum": "$amount"}}},
     ]).to_list(1)
     revenue = revenue_pipeline[0]["sum"] if revenue_pipeline else 0
@@ -599,6 +621,7 @@ class LeadCreate(BaseModel):
     child_age: Optional[str] = Field(default="", max_length=20)
     child_grade: Optional[str] = Field(default="", max_length=20)
     status: Optional[str] = Field(default="new", max_length=32)
+    center_id: Optional[str] = Field(default="", max_length=64)
 
 
 class LeadUpdate(BaseModel):
@@ -611,6 +634,7 @@ class LeadUpdate(BaseModel):
     child_age: Optional[str] = None
     child_grade: Optional[str] = None
     status: Optional[str] = None
+    center_id: Optional[str] = None
 
 
 @router.post("/admin/future-skills/leads")
@@ -619,6 +643,9 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
         raise HTTPException(status_code=403, detail="Admin only")
     lead_id = str(uuid.uuid4())
     lead_ref = await _next_ref("FSL")
+    # Auto-scope: if user is a fs_center_owner, force their center_id
+    scope_cid = _fs_scope_center_id(user)
+    center_id_final = scope_cid or (data.center_id or "")
     doc = {
         "id": lead_id,
         "lead_ref": lead_ref,
@@ -632,6 +659,7 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
         "child_age": (data.child_age or "").strip(),
         "child_grade": (data.child_grade or "").strip(),
         "status": (data.status or "new").strip() or "new",
+        "center_id": center_id_final,
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
         "created_by": user.get("email"),
@@ -645,6 +673,7 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
 async def admin_list_leads(
     status: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
+    center_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -661,11 +690,17 @@ async def admin_list_leads(
             {"lead_ref": rx}, {"name": rx}, {"phone": rx},
             {"email": rx}, {"source": rx}, {"city": rx},
         ]
+    # Centre scope + filter
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    if effective_cid:
+        query["center_id"] = effective_cid
     cursor = db.future_skills_leads.find(query, {"_id": 0}).sort("created_at", -1).limit(1000)
     rows = [r async for r in cursor]
-    total = await db.future_skills_leads.count_documents({})
-    active = await db.future_skills_leads.count_documents({"status": {"$nin": ["lost", "converted"]}})
-    lost = await db.future_skills_leads.count_documents({"status": "lost"})
+    scope_q = {"center_id": scope_cid} if scope_cid else {}
+    total = await db.future_skills_leads.count_documents(scope_q)
+    active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$nin": ["lost", "converted"]}})
+    lost = await db.future_skills_leads.count_documents({**scope_q, "status": "lost"})
     return {
         "leads": rows,
         "stats": {"total": total, "active": active, "lost": lost, "showing": len(rows)},
@@ -745,6 +780,7 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
         "student_name": lead.get("name", ""),
         "student_grade": lead.get("child_grade", ""),
         "preferred_center": "",
+        "center_id": lead.get("center_id", ""),
         "preferred_skill": "",
         "notes": lead.get("notes", ""),
         "source_ref": lead.get("source", ""),
@@ -884,6 +920,7 @@ class TrialCreateAdmin(BaseModel):
     notes: Optional[str] = Field(default="", max_length=1000)
     scheduled_at: Optional[str] = Field(default="", max_length=40)
     source_lead_id: Optional[str] = Field(default="", max_length=64)
+    center_id: Optional[str] = Field(default="", max_length=64)
 
 
 @router.post("/admin/future-skills/trials")
@@ -892,6 +929,8 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
         raise HTTPException(status_code=403, detail="Admin only")
     trial_id = str(uuid.uuid4())
     trial_ref = await _next_ref("FST")
+    scope_cid = _fs_scope_center_id(user)
+    center_id_final = scope_cid or (data.center_id or "")
     doc = {
         "id": trial_id,
         "trial_ref": trial_ref,
@@ -902,6 +941,7 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
         "student_name": data.student_name.strip(),
         "student_grade": (data.student_grade or "").strip(),
         "preferred_center": (data.preferred_center or "").strip(),
+        "center_id": center_id_final,
         "preferred_skill": (data.preferred_skill or "").strip(),
         "notes": (data.notes or "").strip(),
         "scheduled_at": (data.scheduled_at or "").strip(),
@@ -972,6 +1012,7 @@ async def admin_trial_convert(trial_id: str, data: TrialConvertBody, user: dict 
         "student_name": trial.get("student_name", ""),
         "student_grade": trial.get("student_grade", ""),
         "preferred_center": trial.get("preferred_center", ""),
+        "center_id": trial.get("center_id", ""),
         "notes": (data.notes or trial.get("notes", "")),
         "source_ref": trial.get("source_ref", ""),
         "source_trial_id": trial_id,
@@ -1020,6 +1061,7 @@ class CustomerCreateAdmin(BaseModel):
     payment_date: Optional[str] = None
     renewal_date: Optional[str] = None
     preferred_center: Optional[str] = Field(default="", max_length=80)
+    center_id: Optional[str] = Field(default="", max_length=64)
     notes: Optional[str] = Field(default="", max_length=1000)
     source_ref: Optional[str] = Field(default="", max_length=64)
 
@@ -1034,6 +1076,9 @@ async def admin_create_customer(data: CustomerCreateAdmin, user: dict = Depends(
     pay_dt = _parse_date(data.payment_date) or now
     ren_dt = _parse_date(data.renewal_date) or _add_months(pay_dt, plan_info["months"])
 
+    scope_cid = _fs_scope_center_id(user)
+    center_id_final = scope_cid or (data.center_id or "")
+
     sub_id = str(uuid.uuid4())
     sub_ref = await _next_ref("FSP")
     doc = {
@@ -1046,6 +1091,7 @@ async def admin_create_customer(data: CustomerCreateAdmin, user: dict = Depends(
         "student_name": data.student_name.strip(),
         "student_grade": (data.student_grade or "").strip(),
         "preferred_center": (data.preferred_center or "").strip(),
+        "center_id": center_id_final,
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "manual").strip(),
         "plan": data.plan,
@@ -1161,6 +1207,7 @@ async def admin_customer_mark_lost(sub_id: str, data: MarkLostBody, user: dict =
 async def admin_list_renewals(
     bucket: str = Query("all", pattern=r"^(all|upcoming|overdue)$"),
     q: Optional[str] = Query(None),
+    center_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1180,6 +1227,10 @@ async def admin_list_renewals(
             {"subscription_ref": rx}, {"student_name": rx}, {"parent_name": rx},
             {"parent_phone": rx}, {"parent_email": rx},
         ]
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    if effective_cid:
+        base_query["center_id"] = effective_cid
 
     cursor = db.future_skills_subscriptions.find(base_query, {"_id": 0}).limit(2000)
     all_active = [r async for r in cursor]
@@ -1225,6 +1276,7 @@ async def admin_list_renewals(
 async def admin_list_lost(
     type_filter: str = Query("all", pattern=r"^(all|lead|trial|customer)$", alias="type"),
     q: Optional[str] = Query(None),
+    center_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1234,10 +1286,14 @@ async def admin_list_lost(
         return {"$regex": re.escape(q), "$options": "i"} if q else None
     rx = make_rx()
 
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    scope_q = {"center_id": effective_cid} if effective_cid else {}
+
     rows: list = []
 
     if type_filter in ("all", "lead"):
-        query: dict = {"status": "lost"}
+        query: dict = {"status": "lost", **scope_q}
         if rx:
             query["$or"] = [
                 {"lead_ref": rx}, {"name": rx}, {"phone": rx}, {"email": rx},
@@ -1251,7 +1307,7 @@ async def admin_list_lost(
             rows.append(r)
 
     if type_filter in ("all", "trial"):
-        query = {"crm_status": "lost"}
+        query = {"crm_status": "lost", **scope_q}
         if rx:
             query["$or"] = [
                 {"trial_ref": rx}, {"parent_name": rx}, {"student_name": rx},
@@ -1266,7 +1322,7 @@ async def admin_list_lost(
             rows.append(r)
 
     if type_filter in ("all", "customer"):
-        query = {"crm_status": "lost"}
+        query = {"crm_status": "lost", **scope_q}
         if rx:
             query["$or"] = [
                 {"subscription_ref": rx}, {"parent_name": rx}, {"student_name": rx},
@@ -1287,20 +1343,27 @@ async def admin_list_lost(
 
 # ── STATS (tab badges) ────────────────────────────────────────────────────
 @router.get("/admin/future-skills/stats")
-async def admin_future_skills_stats(user: dict = Depends(get_current_user)):
+async def admin_future_skills_stats(
+    center_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
 
     now = datetime.now(timezone.utc)
     window_end = now + timedelta(days=RENEWAL_WINDOW_DAYS)
 
-    leads_active = await db.future_skills_leads.count_documents({"status": {"$nin": ["lost", "converted"]}})
-    trials_active = await db.future_skills_trials.count_documents({"crm_status": {"$nin": ["lost", "converted"]}})
-    customers_active = await db.future_skills_subscriptions.count_documents({"crm_status": "active"})
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    scope_q = {"center_id": effective_cid} if effective_cid else {}
+
+    leads_active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$nin": ["lost", "converted"]}})
+    trials_active = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$nin": ["lost", "converted"]}})
+    customers_active = await db.future_skills_subscriptions.count_documents({**scope_q, "crm_status": "active"})
 
     # Renewals — count computed
     active_subs = db.future_skills_subscriptions.find(
-        {"crm_status": "active", "renewal_date": {"$nin": [None, ""]}},
+        {**scope_q, "crm_status": "active", "renewal_date": {"$nin": [None, ""]}},
         {"_id": 0, "renewal_date": 1},
     )
     upcoming = 0
@@ -1314,9 +1377,9 @@ async def admin_future_skills_stats(user: dict = Depends(get_current_user)):
         elif ren <= window_end:
             upcoming += 1
 
-    lost_leads = await db.future_skills_leads.count_documents({"status": "lost"})
-    lost_trials = await db.future_skills_trials.count_documents({"crm_status": "lost"})
-    lost_customers = await db.future_skills_subscriptions.count_documents({"crm_status": "lost"})
+    lost_leads = await db.future_skills_leads.count_documents({**scope_q, "status": "lost"})
+    lost_trials = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "lost"})
+    lost_customers = await db.future_skills_subscriptions.count_documents({**scope_q, "crm_status": "lost"})
 
     return {
         "leads": leads_active,
@@ -1343,6 +1406,10 @@ class CenterCreate(BaseModel):
     city: Optional[str] = Field(default="", max_length=80)
     phone: Optional[str] = Field(default="", max_length=20)
     is_active: Optional[bool] = True
+    # Optional owner-login credentials — creates a centre-user for this centre
+    owner_email: Optional[str] = Field(default="", max_length=120)
+    owner_name: Optional[str] = Field(default="", max_length=120)
+    owner_password: Optional[str] = Field(default="", max_length=200)
 
 
 class CenterUpdate(BaseModel):
@@ -1351,6 +1418,9 @@ class CenterUpdate(BaseModel):
     city: Optional[str] = None
     phone: Optional[str] = None
     is_active: Optional[bool] = None
+    owner_email: Optional[str] = None
+    owner_name: Optional[str] = None
+    owner_password: Optional[str] = None  # setting this rotates the password
 
 
 class BatchCreate(BaseModel):
@@ -1425,12 +1495,20 @@ async def admin_create_center(data: CenterCreate, user: dict = Depends(get_curre
         "city": (data.city or "").strip(),
         "phone": (data.phone or "").strip(),
         "is_active": bool(data.is_active),
+        "owner_email": (data.owner_email or "").strip().lower(),
+        "owner_name": (data.owner_name or "").strip(),
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
         "created_by": user.get("email"),
     }
+    if data.owner_email and data.owner_password:
+        import bcrypt as _bcrypt
+        doc["owner_password_hash"] = _bcrypt.hashpw(
+            data.owner_password.encode("utf-8"), _bcrypt.gensalt()
+        ).decode("utf-8")
     await db.future_skills_centers.insert_one(doc)
     doc.pop("_id", None)
+    doc.pop("owner_password_hash", None)
     return {"center": doc}
 
 
@@ -1453,6 +1531,14 @@ async def admin_update_center(cid: str, data: CenterUpdate, user: dict = Depends
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update")
+    # Handle owner-password rotation
+    if "owner_password" in update:
+        pwd = update.pop("owner_password")
+        if pwd:
+            import bcrypt as _bcrypt
+            update["owner_password_hash"] = _bcrypt.hashpw(pwd.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+    if "owner_email" in update and update["owner_email"]:
+        update["owner_email"] = update["owner_email"].strip().lower()
     update["updated_at"] = _now_iso()
     res = await db.future_skills_centers.update_one({"id": cid}, {"$set": update})
     if res.matched_count == 0:
@@ -1462,7 +1548,7 @@ async def admin_update_center(cid: str, data: CenterUpdate, user: dict = Depends
         await db.future_skills_batches.update_many(
             {"center_id": cid}, {"$set": {"center_name": update["name"]}}
         )
-    c = await db.future_skills_centers.find_one({"id": cid}, {"_id": 0})
+    c = await db.future_skills_centers.find_one({"id": cid}, {"_id": 0, "owner_password_hash": 0})
     return {"center": c}
 
 

@@ -40,7 +40,8 @@ const fmtDate  = (s) => { try { return s ? format(parseISO(s), 'MMM d, yyyy') : 
 const fmtDateTime = (s) => { try { return s ? format(parseISO(s), 'MMM d · h:mm a') : '—'; } catch { return '—'; } };
 
 const AdminFutureSkills = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
+  const isCenterOwner = user?.role === 'fs_center_owner';
   const [tab, setTab] = useState('leads');
   const [renewalBucket, setRenewalBucket] = useState('all');
   const [rows, setRows] = useState([]);
@@ -49,9 +50,19 @@ const AdminFutureSkills = () => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [centerFilter, setCenterFilter] = useState('all');   // centre filter (admin only)
+  const [centersForFilter, setCentersForFilter] = useState([]);  // for filter dropdown
   const [selected, setSelected] = useState(null);
   const [modal, setModal] = useState(null); // 'add-lead' | 'add-trial' | 'add-customer' | 'import' | 'renew' | 'lost' | 'convert-trial'
   const fileInputRef = useRef(null);
+
+  // Load centres list once for the filter dropdown (admin only — owner is auto-scoped)
+  useEffect(() => {
+    if (isCenterOwner) return;
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCentersForFilter(r.data?.centers || []))
+      .catch(() => setCentersForFilter([]));
+  }, [isCenterOwner, getAuthHeaders]);
 
   // ── Fetchers ─────────────────────────────────────────────────────────
   const fetchTabStats = useCallback(async () => {
@@ -67,6 +78,7 @@ const AdminFutureSkills = () => {
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set('q', search.trim());
+      if (centerFilter && centerFilter !== 'all') params.set('center_id', centerFilter);
       let path = '';
       let dataKey = '';
       if (tab === 'leads') {
@@ -93,7 +105,7 @@ const AdminFutureSkills = () => {
     } finally {
       setLoading(false);
     }
-  }, [tab, statusFilter, search, renewalBucket, getAuthHeaders]);
+  }, [tab, statusFilter, search, renewalBucket, centerFilter, getAuthHeaders]);
 
   useEffect(() => { fetchData(); fetchTabStats(); }, [fetchData, fetchTabStats]);
 
@@ -173,9 +185,18 @@ const AdminFutureSkills = () => {
           </div>
         </div>
 
+        {/* Scope banner for centre owners */}
+        {isCenterOwner && (
+          <div className="bg-blue-50 border-2 border-blue-100 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm" data-testid="scope-banner">
+            <MapPin className="w-4 h-4 text-[#1E3A5F]" />
+            <span className="text-slate-700">You&apos;re viewing data for</span>
+            <span className="font-bold text-[#0F1E33]">{user?.center_name || 'your centre'}</span>
+          </div>
+        )}
+
         {/* Tabs with badges */}
         <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 w-fit gap-1">
-          {TABS.map(t => {
+          {TABS.filter(t => !(isCenterOwner && t.key === 'centers')).map(t => {
             const badge =
               t.key === 'leads'     ? tabStats?.leads
               : t.key === 'trials'  ? tabStats?.trials
@@ -253,6 +274,16 @@ const AdminFutureSkills = () => {
               className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
               data-testid="filter-status">
               {STATUS_FILTER_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          )}
+
+          {/* Centre filter — admin only (owners are auto-scoped) */}
+          {!isCenterOwner && (
+            <select value={centerFilter} onChange={e => setCenterFilter(e.target.value)}
+              className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="filter-center">
+              <option value="all">All Centres</option>
+              {centersForFilter.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
 
@@ -1284,17 +1315,29 @@ const CentersManager = ({ getAuthHeaders }) => {
 
 const CenterFormModal = ({ center, onClose, onSaved, getAuthHeaders }) => {
   const editing = !!center;
-  const [f, setF] = useState(center || { name: '', address: '', city: '', phone: '', is_active: true });
+  const [f, setF] = useState(center
+    ? { ...center, owner_password: '' }  // never prefill password
+    : { name: '', address: '', city: '', phone: '', is_active: true, owner_email: '', owner_name: '', owner_password: '' }
+  );
   const [saving, setSaving] = useState(false);
+  const [showCreds, setShowCreds] = useState(!editing || !!center?.owner_email);
 
   const submit = async () => {
     if (!f.name?.trim()) { toast.error('Centre name required'); return; }
+    // If owner email is provided on create, require password
+    if (!editing && f.owner_email && !f.owner_password) {
+      toast.error('Please set a password for the centre login');
+      return;
+    }
     setSaving(true);
     try {
+      const payload = { ...f };
+      // Only send owner_password if user actually typed one
+      if (!payload.owner_password) delete payload.owner_password;
       if (editing) {
-        await axios.patch(`${API}/admin/future-skills/centers/${center.id}`, f, { headers: getAuthHeaders() });
+        await axios.patch(`${API}/admin/future-skills/centers/${center.id}`, payload, { headers: getAuthHeaders() });
       } else {
-        await axios.post(`${API}/admin/future-skills/centers`, f, { headers: getAuthHeaders() });
+        await axios.post(`${API}/admin/future-skills/centers`, payload, { headers: getAuthHeaders() });
       }
       toast.success(editing ? 'Centre updated' : 'Centre added');
       onSaved(); onClose();
@@ -1315,6 +1358,39 @@ const CenterFormModal = ({ center, onClose, onSaved, getAuthHeaders }) => {
         <input type="checkbox" checked={f.is_active !== false} onChange={e => setF({ ...f, is_active: e.target.checked })} data-testid="center-active-check" />
         <span className="text-slate-700 font-semibold">Active — visible on public booking page</span>
       </label>
+
+      {/* Centre owner login credentials */}
+      <div className="mt-5 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-black text-[#1E3A5F]">Centre login</div>
+            <div className="text-[11px] text-slate-500">Optional — lets this centre&apos;s owner log in and see only their leads/trials/customers.</div>
+          </div>
+          {!showCreds && (
+            <button type="button" onClick={() => setShowCreds(true)}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700"
+              data-testid="show-creds-btn">Set login</button>
+          )}
+        </div>
+        {showCreds && (
+          <div className="mt-3">
+            <FieldGroup>
+              <TextField label="Owner Name" value={f.owner_name || ''} onChange={v => setF({ ...f, owner_name: v })} testid="center-owner-name-input" />
+              <TextField label="Login Email" value={f.owner_email || ''} onChange={v => setF({ ...f, owner_email: v })} placeholder="owner@example.com" testid="center-owner-email-input" />
+              <TextField
+                label={editing ? 'New Password (leave blank to keep current)' : 'Password'}
+                type="password"
+                value={f.owner_password || ''}
+                onChange={v => setF({ ...f, owner_password: v })}
+                placeholder={editing ? '••••••••' : 'Set a strong password'}
+                testid="center-owner-password-input"
+                colSpan={2}
+              />
+            </FieldGroup>
+          </div>
+        )}
+      </div>
+
       <button onClick={submit} disabled={saving}
         className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-center-btn">

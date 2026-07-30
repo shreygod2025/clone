@@ -52,7 +52,10 @@ const AdminLayout = ({ children, title }) => {
   ];
 
   // Filter nav items based on user role and permissions
-  const navItems = allNavItems.filter(item => {
+  const navItems = user?.role === 'fs_center_owner'
+    // Future Skills centre-owner: locked to Future Skills CRM only
+    ? [{ path: '/admin/future-skills', icon: Sparkles, label: 'Future Skills CRM', permission: null }]
+    : allNavItems.filter(item => {
     // Manager-only items — hidden from non-managers regardless of role
     if (item.requiresManager && !user?.is_manager) return false;
 
@@ -508,6 +511,13 @@ const TodaysTasksWidget = () => {
 
 const AdminDashboard = () => {
   const { user, getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
+  // fs_center_owner is scoped strictly to Future Skills CRM
+  useEffect(() => {
+    if (user?.role === 'fs_center_owner') {
+      navigate('/admin/future-skills', { replace: true });
+    }
+  }, [user, navigate]);
   const [stats, setStats] = useState({
     total_students: 0,
     total_schools: 0,

@@ -153,10 +153,10 @@ const FutureSkillsBookingPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-booking">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-booking">
       <Navbar variant="futureskills" onBookDemo={() => navigate('/future-skills/book?mode=trial')} bookDemoLabel="Book Free Trial" />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
         <Link to="/future-skills" className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-[#D63031] mb-5 transition-colors" data-testid="back-to-program-link">
           <ArrowLeft className="w-4 h-4" /> Back to program
         </Link>
@@ -400,7 +400,7 @@ const FutureSkillsBookingPage = () => {
             </aside>
           </div>
         )}
-      </div>
+      </main>
 
       <style>{`
         .fs-input{width:100%;padding:.7rem .85rem;border:2px solid #E2E8F0;border-radius:.75rem;font-size:.9rem;background:white;outline:none;transition:all .15s}
