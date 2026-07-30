@@ -1016,6 +1016,67 @@ async def admin_customer_followup(sub_id: str, data: FollowupBody, user: dict = 
     return {"subscription": sub}
 
 
+# ── NOTES (Leads / Trials / Customers) ─────────────────────────────────
+class NoteBody(BaseModel):
+    note: str = Field(..., min_length=1, max_length=2000)
+
+
+_NOTE_COLLECTIONS = {
+    "lead":     ("future_skills_leads",         "lead"),
+    "trial":    ("future_skills_trials",        "trial"),
+    "customer": ("future_skills_subscriptions", "subscription"),
+}
+
+
+@router.post("/admin/future-skills/{entity_type}/{entity_id}/notes")
+async def admin_add_note(entity_type: str, entity_id: str, data: NoteBody, user: dict = Depends(get_current_user)):
+    """Add a note to a Lead, Trial or Customer. All notes are kept as a
+    running log on `notes_log[]`, and the most recent one is mirrored to
+    `last_note` / `last_note_at` so table rows can show it inline without
+    an extra fetch."""
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    if entity_type not in _NOTE_COLLECTIONS:
+        raise HTTPException(status_code=400, detail=f"Unknown entity type '{entity_type}'")
+    coll_name, resp_key = _NOTE_COLLECTIONS[entity_type]
+    coll = getattr(db, coll_name)
+
+    doc = await coll.find_one({"id": entity_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"{entity_type.title()} not found")
+
+    entry = {"at": _now_iso(), "by": user.get("email"), "note": data.note.strip()}
+    await coll.update_one(
+        {"id": entity_id},
+        {
+            "$set": {
+                "last_note": entry["note"],
+                "last_note_at": entry["at"],
+                "last_note_by": entry["by"],
+                "updated_at": _now_iso(),
+            },
+            "$push": {"notes_log": entry},
+        },
+    )
+    updated = await coll.find_one({"id": entity_id}, {"_id": 0})
+    return {resp_key: updated}
+
+
+# ── DELETE (Leads / Trials / Customers) ────────────────────────────────
+@router.delete("/admin/future-skills/{entity_type}/{entity_id}")
+async def admin_delete_entity(entity_type: str, entity_id: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    if entity_type not in _NOTE_COLLECTIONS:
+        raise HTTPException(status_code=400, detail=f"Unknown entity type '{entity_type}'")
+    coll_name, _ = _NOTE_COLLECTIONS[entity_type]
+    coll = getattr(db, coll_name)
+    res = await coll.delete_one({"id": entity_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {"deleted": True}
+
+
 # ── MARK TRIAL ATTENDED ────────────────────────────────────────────────
 @router.post("/admin/future-skills/trials/{trial_id}/attend")
 async def admin_trial_attend(trial_id: str, user: dict = Depends(get_current_user)):

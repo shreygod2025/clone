@@ -6,7 +6,7 @@ import {
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
   Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
-  Link2 as LinkIcon, Copy, Eye,
+  Link2 as LinkIcon, Copy, Eye, FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -225,21 +225,7 @@ const AdminFutureSkills = () => {
 
   return (
     <AdminLayout title="Future Skills CRM">
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5" data-testid="admin-future-skills">
-        {/* Toolbar */}
-        <div className="flex items-center justify-end gap-2 flex-wrap">
-          <a href="/future-skills" target="_blank" rel="noopener noreferrer"
-            className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
-            data-testid="open-landing-btn">
-            <ExternalLink className="w-3.5 h-3.5" /> Open Landing
-          </a>
-          <button onClick={refreshAll} disabled={loading}
-            className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5 disabled:opacity-50"
-            data-testid="refresh-btn">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-          </button>
-        </div>
-
+      <div className="-mt-4 sm:-mt-5 p-3 sm:p-4 max-w-7xl mx-auto space-y-3" data-testid="admin-future-skills">
         {/* Scope banner for centre owners */}
         {isCenterOwner && (
           <div className="bg-blue-50 border-2 border-blue-100 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm" data-testid="scope-banner">
@@ -249,32 +235,47 @@ const AdminFutureSkills = () => {
           </div>
         )}
 
-        {/* Tabs with badges */}
-        <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 w-fit gap-1">
-          {TABS.filter(t => !(isCenterOwner && (t.key === 'centers' || t.key === 'sources'))).map(t => {
-            const badge =
-              t.key === 'leads'     ? tabStats?.leads
-              : t.key === 'trials'  ? tabStats?.trials
-              : t.key === 'customers' ? tabStats?.customers
-              : t.key === 'renewals' ? tabStats?.renewals
-              : t.key === 'lost'    ? tabStats?.lost
-              : 0;
-            return (
-              <button key={t.key}
-                onClick={() => { setTab(t.key); setStatusFilter('all'); setSelected(null); }}
-                className={`text-xs px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                  tab === t.key ? 'bg-white text-[#0F1E33] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-                data-testid={`tab-${t.key}`}>
-                <t.icon className="w-3.5 h-3.5" /> {t.label}
-                {typeof badge === 'number' && badge > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
-                    tab === t.key ? 'bg-[#D63031] text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>{badge}</span>
-                )}
-              </button>
-            );
-          })}
+        {/* Tabs + toolbar in a single row (space-tight) */}
+        <div className="flex items-center gap-2 flex-wrap justify-between">
+          <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 gap-1">
+            {TABS.filter(t => !(isCenterOwner && (t.key === 'centers' || t.key === 'sources'))).map(t => {
+              const badge =
+                t.key === 'leads'     ? tabStats?.leads
+                : t.key === 'trials'  ? tabStats?.trials
+                : t.key === 'customers' ? tabStats?.customers
+                : t.key === 'renewals' ? tabStats?.renewals
+                : t.key === 'lost'    ? tabStats?.lost
+                : 0;
+              return (
+                <button key={t.key}
+                  onClick={() => { setTab(t.key); setStatusFilter('all'); setSelected(null); }}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    tab === t.key ? 'bg-white text-[#0F1E33] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                  data-testid={`tab-${t.key}`}>
+                  <t.icon className="w-3.5 h-3.5" /> {t.label}
+                  {typeof badge === 'number' && badge > 0 && (
+                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                      tab === t.key ? 'bg-[#D63031] text-white' : 'bg-slate-200 text-slate-600'
+                    }`}>{badge}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a href="/future-skills" target="_blank" rel="noopener noreferrer"
+              className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
+              data-testid="open-landing-btn">
+              <ExternalLink className="w-3.5 h-3.5" /> Open Landing
+            </a>
+            <button onClick={refreshAll} disabled={loading}
+              className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5 disabled:opacity-50"
+              data-testid="refresh-btn">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          </div>
         </div>
 
         {/* Toolbar (hidden for Centres / Reports / Sources tabs) */}
@@ -386,13 +387,17 @@ const AdminFutureSkills = () => {
               {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
+                if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'lead' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
+                if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
               {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
                 if (action === 'convert')    setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule') setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'trial' });
+                if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'trial' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'trial' });
+                if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'trial' });
                 if (action === 'attended') {
                   try {
                     await axios.post(`${API}/admin/future-skills/trials/${r.id}/attend`, {}, { headers: getAuthHeaders() });
@@ -405,7 +410,9 @@ const AdminFutureSkills = () => {
               {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'renew')      setModal({ type: 'renew', customer: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'customer' });
+                if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
+                if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
               }} />}
               {tab === 'lost'      && <LostTable rows={rows} onOpen={setSelected} />}
             </div>
@@ -426,6 +433,8 @@ const AdminFutureSkills = () => {
       {modal?.type === 'reschedule'   && <RescheduleTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'book-trial'   && <BookTrialModal   lead={modal.lead} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'followup'     && <FollowupModal    entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'notes'        && <NotesModal       entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'delete'       && <DeleteConfirmModal entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
 
       {/* Detail drawer */}
       {selected && (
@@ -525,6 +534,11 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
               {r.next_followup_date && (
                 <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
+              {r.last_note && (
+                <div className="text-[11px] text-slate-600 mt-1 line-clamp-2 max-w-[220px]" title={r.last_note}>
+                  <span className="font-bold">📝 </span>{r.last_note}
+                </div>
+              )}
             </td>
             <td className="px-4 py-3">
               <div className="flex flex-wrap gap-1">
@@ -538,10 +552,25 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
                   data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" /> Followup
                 </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  data-testid={`row-notes-${r.lead_ref}`} title="Notes">
+                  <FileText className="w-3 h-3" /> Notes
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  data-testid={`row-edit-${r.lead_ref}`} title="Edit">
+                  <Pencil className="w-3 h-3" />
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" /> Lost
+                  <XCircle className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  data-testid={`row-delete-${r.lead_ref}`} title="Delete">
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </td>
@@ -587,6 +616,11 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
               {r.next_followup_date && (
                 <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
+              {r.last_note && (
+                <div className="text-[11px] text-slate-600 mt-1 line-clamp-2 max-w-[220px]" title={r.last_note}>
+                  <span className="font-bold">📝 </span>{r.last_note}
+                </div>
+              )}
             </td>
             <td className="px-4 py-3">
               <div className="flex flex-wrap gap-1">
@@ -605,17 +639,32 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
                 <button onClick={(e) => { e.stopPropagation(); onAction('reschedule', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center gap-1"
                   data-testid={`row-reschedule-${r.trial_ref}`} title="Reschedule">
-                  <RotateCcw className="w-3 h-3" /> Reschedule
+                  <RotateCcw className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
-                  <Clock className="w-3 h-3" /> Followup
+                  <Clock className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  data-testid={`row-trial-notes-${r.trial_ref}`} title="Notes">
+                  <FileText className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  data-testid={`row-trial-edit-${r.trial_ref}`} title="Edit">
+                  <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" /> Lost
+                  <XCircle className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  data-testid={`row-trial-delete-${r.trial_ref}`} title="Delete">
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </td>
@@ -706,10 +755,20 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) =
                   data-testid={`row-renewal-followup-${r.subscription_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" /> Followup
                 </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  data-testid={`row-renewal-notes-${r.subscription_ref}`} title="Notes">
+                  <FileText className="w-3 h-3" /> Notes
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-renewal-lost-${r.subscription_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" /> Lost
+                  <XCircle className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  data-testid={`row-renewal-delete-${r.subscription_ref}`} title="Delete">
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </td>
@@ -1614,6 +1673,84 @@ const FollowupModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders })
           </div>
         </div>
       )}
+    </Modal>
+  );
+};
+
+// ── NOTES modal (Lead / Trial / Customer) ────────────────────────────
+const NotesModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders }) => {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const history = Array.isArray(entity?.notes_log) ? [...entity.notes_log].reverse() : [];
+
+  const submit = async () => {
+    if (!note.trim()) { toast.error('Please write a note'); return; }
+    setSaving(true);
+    try {
+      await axios.post(`${API}/admin/future-skills/${entityType}/${entity.id}/notes`,
+        { note: note.trim() }, { headers: getAuthHeaders() });
+      toast.success('Note added');
+      setNote('');
+      onSaved();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+
+  const displayName = entity.name || entity.student_name || entity.parent_name || entity.lead_ref || entity.trial_ref || entity.subscription_ref;
+  return (
+    <Modal title={`Notes — ${displayName}`} onClose={onClose} testid="notes-modal">
+      <TextAreaField label="Add a note" value={note} onChange={setNote} testid="note-input" />
+      <button onClick={submit} disabled={saving}
+        className="mt-3 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
+        data-testid="submit-note-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Note</>}
+      </button>
+      {history.length > 0 && (
+        <div className="mt-5">
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-2">All notes ({history.length})</div>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {history.map((h, i) => (
+              <div key={i} className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs" data-testid={`note-entry-${i}`}>
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-slate-700 text-[10px]">{h.by || '—'}</div>
+                  <div className="text-slate-500">{fmtDateTime(h.at)}</div>
+                </div>
+                <div className="text-slate-700 mt-1 whitespace-pre-wrap">{h.note}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+// ── DELETE confirm modal ────────────────────────────────────────────────
+const DeleteConfirmModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders }) => {
+  const [saving, setSaving] = useState(false);
+  const remove = async () => {
+    setSaving(true);
+    try {
+      await axios.delete(`${API}/admin/future-skills/${entityType}/${entity.id}`, { headers: getAuthHeaders() });
+      toast.success('Deleted');
+      onSaved();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+  const label = entity.lead_ref || entity.trial_ref || entity.subscription_ref;
+  return (
+    <Modal title="Delete record?" onClose={onClose} testid="delete-confirm-modal">
+      <p className="text-sm text-slate-600">Are you sure you want to delete <b>{label}</b>? This cannot be undone.</p>
+      <div className="grid grid-cols-2 gap-2 mt-4">
+        <button onClick={onClose} className="py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">Cancel</button>
+        <button onClick={remove} disabled={saving}
+          className="py-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-60"
+          data-testid="confirm-delete-btn">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Delete
+        </button>
+      </div>
     </Modal>
   );
 };
