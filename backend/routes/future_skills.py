@@ -612,7 +612,7 @@ def _norm_phone(p: str) -> str:
 
 # ── LEADS ─────────────────────────────────────────────────────────────────
 class LeadCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=120)
+    name: Optional[str] = Field(default="", max_length=120)
     phone: str = Field(..., min_length=6, max_length=20)
     email: Optional[str] = Field(default="", max_length=120)
     source: Optional[str] = Field(default="", max_length=80)
@@ -622,6 +622,7 @@ class LeadCreate(BaseModel):
     child_grade: Optional[str] = Field(default="", max_length=20)
     status: Optional[str] = Field(default="new", max_length=32)
     center_id: Optional[str] = Field(default="", max_length=64)
+    batch_id: Optional[str] = Field(default="", max_length=64)
 
 
 class LeadUpdate(BaseModel):
@@ -635,6 +636,7 @@ class LeadUpdate(BaseModel):
     child_grade: Optional[str] = None
     status: Optional[str] = None
     center_id: Optional[str] = None
+    batch_id: Optional[str] = None
 
 
 @router.post("/admin/future-skills/leads")
@@ -650,7 +652,7 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
         "id": lead_id,
         "lead_ref": lead_ref,
         "program_key": PROGRAM_KEY,
-        "name": data.name.strip(),
+        "name": (data.name or "").strip(),
         "phone": _norm_phone(data.phone),
         "email": (data.email or "").strip().lower(),
         "source": (data.source or "").strip(),
@@ -660,6 +662,7 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
         "child_grade": (data.child_grade or "").strip(),
         "status": (data.status or "new").strip() or "new",
         "center_id": center_id_final,
+        "batch_id": (data.batch_id or "").strip(),
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
         "created_by": user.get("email"),
@@ -807,7 +810,121 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
     return {"trial": trial_doc}
 
 
-# ── LEAD IMPORT (CSV / XLSX) ──────────────────────────────────────────────
+# ── FOLLOWUP (Leads & Trials) ─────────────────────────────────────────────
+class FollowupBody(BaseModel):
+    next_date: Optional[str] = Field(default="", max_length=40)  # ISO date/datetime
+    note: Optional[str] = Field(default="", max_length=1000)
+    outcome: Optional[str] = Field(default="", max_length=32)  # called|no_answer|interested|not_interested
+
+
+async def _record_followup(collection, entity_id: str, data: "FollowupBody", user: dict, id_field: str = "id"):
+    doc = await collection.find_one({id_field: entity_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Record not found")
+    entry = {
+        "at": _now_iso(),
+        "by": user.get("email"),
+        "next_date": (data.next_date or "").strip(),
+        "note": (data.note or "").strip(),
+        "outcome": (data.outcome or "").strip(),
+    }
+    update_set: dict = {
+        "last_followup_at": entry["at"],
+        "last_followup_note": entry["note"],
+        "last_followup_outcome": entry["outcome"],
+        "next_followup_date": entry["next_date"],
+        "updated_at": _now_iso(),
+    }
+    await collection.update_one(
+        {id_field: entity_id},
+        {"$set": update_set, "$push": {"followups": entry}},
+    )
+    return await collection.find_one({id_field: entity_id}, {"_id": 0})
+
+
+@router.post("/admin/future-skills/leads/{lead_id}/followup")
+async def admin_lead_followup(lead_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    lead = await _record_followup(db.future_skills_leads, lead_id, data, user)
+    return {"lead": lead}
+
+
+@router.post("/admin/future-skills/trials/{trial_id}/followup")
+async def admin_trial_followup(trial_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    trial = await _record_followup(db.future_skills_trials, trial_id, data, user)
+    return {"trial": trial}
+
+
+# ── BOOK TRIAL FROM LEAD (row-action variant with centre / batch / date) ──
+class LeadBookTrialBody(BaseModel):
+    center_id: str = Field(..., min_length=1, max_length=64)
+    batch_id: Optional[str] = Field(default="", max_length=64)
+    scheduled_at: Optional[str] = Field(default="", max_length=40)
+
+
+@router.post("/admin/future-skills/leads/{lead_id}/book-trial")
+async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    lead = await db.future_skills_leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    center = await db.centers.find_one({"id": data.center_id}, {"_id": 0})
+    if not center:
+        raise HTTPException(status_code=404, detail="Centre not found")
+
+    batch_label = ""
+    if data.batch_id:
+        batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
+        if batch_doc:
+            days = ",".join(batch_doc.get("days", []) or [])
+            batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+
+    trial_id = str(uuid.uuid4())
+    trial_ref = await _next_ref("FST")
+    trial_doc = {
+        "id": trial_id,
+        "trial_ref": trial_ref,
+        "program_key": PROGRAM_KEY,
+        "parent_name": lead.get("name", ""),
+        "parent_phone": lead.get("phone", ""),
+        "parent_email": lead.get("email", "") or f"{lead.get('phone','x')}@lead.oll.co",
+        "student_name": lead.get("name", "") or "Student",
+        "student_grade": lead.get("child_grade", ""),
+        "student_age": lead.get("child_age", ""),
+        "preferred_center": center.get("name", ""),
+        "center_id": data.center_id,
+        "batch_id": data.batch_id or "",
+        "batch_label": batch_label,
+        "preferred_skill": "",
+        "notes": lead.get("notes", ""),
+        "source_ref": lead.get("source", ""),
+        "scheduled_at": (data.scheduled_at or "").strip(),
+        "trial_status": "scheduled" if data.scheduled_at else "requested",
+        "crm_status": "trial_scheduled" if data.scheduled_at else "trial_lead",
+        "return_count": 1,
+        "source_lead_id": lead_id,
+        "created_at": _now_iso(),
+        "updated_at": _now_iso(),
+        "created_by": user.get("email"),
+    }
+    await db.future_skills_trials.insert_one(trial_doc)
+
+    await db.future_skills_leads.update_one(
+        {"id": lead_id},
+        {"$set": {
+            "status": "converted",
+            "converted_trial_id": trial_id,
+            "converted_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }},
+    )
+    trial_doc.pop("_id", None)
+    return {"trial": trial_doc}
 @router.post("/admin/future-skills/leads/import")
 async def admin_import_leads(
     file: UploadFile = File(...),
@@ -997,6 +1114,8 @@ class TrialConvertBody(BaseModel):
     amount_paid: float = Field(..., ge=0)
     payment_date: Optional[str] = None
     renewal_date: Optional[str] = None
+    payment_mode: Optional[str] = Field(default="", max_length=32)
+    payment_status: Optional[str] = Field(default="paid", max_length=32)
     notes: Optional[str] = ""
 
 
@@ -1037,8 +1156,9 @@ async def admin_trial_convert(trial_id: str, data: TrialConvertBody, user: dict 
         "amount_paid": data.amount_paid,
         "payment_date": _iso(pay_dt),
         "renewal_date": _iso(ren_dt),
+        "payment_mode": (data.payment_mode or "").strip(),
         "kit_included": True,
-        "payment_status": "paid",
+        "payment_status": (data.payment_status or "paid").strip() or "paid",
         "crm_status": "active",
         "paid_at": _iso(pay_dt),
         "subscription_start": _iso(pay_dt),
@@ -1808,31 +1928,62 @@ async def admin_import_customers(
 # ══════════════════════════════════════════════════════════════════════════
 
 @router.get("/admin/future-skills/reports")
-async def admin_future_skills_reports(user: dict = Depends(get_current_user)):
+async def admin_future_skills_reports(
+    center_id: Optional[str] = Query(None),
+    month: Optional[str] = Query(None),  # YYYY-MM
+    user: dict = Depends(get_current_user),
+):
     """Roll-up analytics for the Future Skills program.
 
     * Funnel counts (leads → trials → paying customers) and conversion rates
     * Source breakdown for leads
     * Per-batch capacity fill, active customers, trials booked, and leads
-      that share the same centre (leads aren't yet tagged to a batch)
+    * Revenue (total + per active student) and plan breakdown
 
-    Automatically scoped to the caller's centre for fs_center_owner users.
+    Filterable by `center_id` (admin only — owners auto-scoped) and `month`
+    (YYYY-MM) to constrain revenue / plan / created-at ranges.
     """
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
 
     scope_cid = _fs_scope_center_id(user)
-    scope_q: dict = {"center_id": scope_cid} if scope_cid else {}
+    effective_cid = scope_cid or (center_id if center_id and center_id != "all" else None)
+    scope_q: dict = {"center_id": effective_cid} if effective_cid else {}
 
-    # ── Funnel ────────────────────────────────────────────────────────
-    leads_total = await db.future_skills_leads.count_documents(scope_q)
+    # ── Time window (based on `created_at` for leads/trials, `payment_date`
+    #    for revenue). Month = current month if not provided.
+    month_start: Optional[datetime] = None
+    month_end: Optional[datetime] = None
+    if month:
+        try:
+            month_start = datetime.strptime(month + "-01", "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            # First of next month
+            if month_start.month == 12:
+                month_end = month_start.replace(year=month_start.year + 1, month=1)
+            else:
+                month_end = month_start.replace(month=month_start.month + 1)
+        except Exception:
+            month_start = None
+            month_end = None
+
+    def month_range_q(field: str) -> dict:
+        if not month_start or not month_end:
+            return {}
+        return {field: {"$gte": _iso(month_start), "$lt": _iso(month_end)}}
+
+    # ── Funnel (respecting month if set on created_at) ────────────────
+    lead_q = {**scope_q, **month_range_q("created_at")}
+    trial_q = {**scope_q, **month_range_q("created_at")}
+    active_sub_q = {**scope_q, "crm_status": "active"}
+    # Revenue uses payment_date to catch when money came in
+    rev_sub_q = {**scope_q, **month_range_q("payment_date")}
+
+    leads_total = await db.future_skills_leads.count_documents(lead_q)
     leads_converted = await db.future_skills_leads.count_documents(
-        {**scope_q, "status": "converted"}
+        {**lead_q, "status": "converted"}
     )
-    trials_total = await db.future_skills_trials.count_documents(scope_q)
-    customers_active = await db.future_skills_subscriptions.count_documents(
-        {**scope_q, "crm_status": "active"}
-    )
+    trials_total = await db.future_skills_trials.count_documents(trial_q)
+    customers_active = await db.future_skills_subscriptions.count_documents(active_sub_q)
 
     def pct(n: int, d: int) -> float:
         return round((n / d) * 100, 1) if d > 0 else 0.0
@@ -1846,8 +1997,8 @@ async def admin_future_skills_reports(user: dict = Depends(get_current_user)):
         "lead_to_customer_rate":  pct(customers_active, leads_total),
     }
 
-    # ── Source breakdown (for leads) ──────────────────────────────────
-    source_pipeline: list = [{"$match": scope_q}] if scope_q else []
+    # ── Source breakdown (for leads in period) ────────────────────────
+    source_pipeline: list = [{"$match": lead_q}] if lead_q else []
     source_pipeline += [
         {"$group": {"_id": {"$ifNull": ["$source", ""]}, "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
@@ -1858,10 +2009,39 @@ async def admin_future_skills_reports(user: dict = Depends(get_current_user)):
         for r in src_rows
     ]
 
+    # ── Revenue & Plan breakdown ──────────────────────────────────────
+    plan_rows_cursor = db.future_skills_subscriptions.find(
+        {**rev_sub_q, "amount_paid": {"$gt": 0}},
+        {"_id": 0, "plan": 1, "amount_paid": 1, "amount": 1},
+    )
+    total_revenue = 0.0
+    plan_counts: dict = {"monthly": 0, "half_yearly": 0, "yearly": 0}
+    plan_revenue: dict = {"monthly": 0.0, "half_yearly": 0.0, "yearly": 0.0}
+    revenue_students = 0
+    async for r in plan_rows_cursor:
+        amt = float(r.get("amount_paid") or r.get("amount") or 0)
+        total_revenue += amt
+        revenue_students += 1
+        pk = (r.get("plan") or "monthly").lower()
+        if pk in plan_counts:
+            plan_counts[pk] += 1
+            plan_revenue[pk] += amt
+
+    plan_breakdown = [
+        {
+            "plan": k,
+            "label": PLANS.get(k, {}).get("label", k.title()),
+            "count": plan_counts[k],
+            "revenue": round(plan_revenue[k], 2),
+        }
+        for k in ("monthly", "half_yearly", "yearly")
+    ]
+    revenue_per_student = round(total_revenue / revenue_students, 2) if revenue_students else 0.0
+
     # ── Per-batch report ──────────────────────────────────────────────
     batch_q: dict = {}
-    if scope_cid:
-        batch_q["center_id"] = scope_cid
+    if effective_cid:
+        batch_q["center_id"] = effective_cid
     batches_cursor = db.future_skills_batches.find(batch_q, {"_id": 0}).sort(
         [("center_name", 1), ("name", 1)]
     )
@@ -1873,7 +2053,6 @@ async def admin_future_skills_reports(user: dict = Depends(get_current_user)):
         active_count = await db.future_skills_subscriptions.count_documents(
             {"batch_id": bid, "crm_status": "active"}
         )
-        # Leads at this centre (leads aren't tagged to individual batches)
         leads_at_centre = await db.future_skills_leads.count_documents({"center_id": cid}) if cid else 0
 
         capacity = int(b.get("capacity") or 15)
@@ -1892,6 +2071,16 @@ async def admin_future_skills_reports(user: dict = Depends(get_current_user)):
         "funnel": funnel,
         "source_breakdown": source_breakdown,
         "batches": batches,
+        "revenue": {
+            "total": round(total_revenue, 2),
+            "students": revenue_students,
+            "per_student": revenue_per_student,
+            "by_plan": plan_breakdown,
+        },
+        "filters": {
+            "center_id": effective_cid,
+            "month": month if month_start else None,
+        },
         "scope": {"center_id": scope_cid or None},
     }
 

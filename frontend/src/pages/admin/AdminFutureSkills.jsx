@@ -15,13 +15,13 @@ import { useAuth } from '../../context/AuthContext';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TABS = [
-  { key: 'reports',   label: 'Reports',          icon: BarChart3 },
   { key: 'leads',     label: 'Leads',            icon: Users },
   { key: 'trials',    label: 'Free Trials',      icon: Calendar },
   { key: 'customers', label: 'Active Customers', icon: Sparkles },
   { key: 'renewals',  label: 'Renewals',         icon: RotateCcw },
   { key: 'lost',      label: 'Lost',             icon: XCircle },
   { key: 'centers',   label: 'Centres & Batches', icon: MapPin },
+  { key: 'reports',   label: 'Reports',          icon: BarChart3 },
 ];
 
 const AGE_GROUP_OPTIONS = [
@@ -29,6 +29,43 @@ const AGE_GROUP_OPTIONS = [
   { value: '3-7',   label: '3 – 7 years' },
   { value: '8-11',  label: '8 – 11 years' },
   { value: '12-16', label: '12 – 16 years' },
+];
+
+const LEAD_SOURCE_OPTIONS = [
+  { value: '',            label: 'Select source…' },
+  { value: 'Instagram',   label: 'Instagram' },
+  { value: 'Facebook',    label: 'Facebook' },
+  { value: 'Website',     label: 'Website' },
+  { value: 'Referral',    label: 'Referral' },
+  { value: 'Walk-in',     label: 'Walk-in' },
+  { value: 'Whatsapp',    label: 'Whatsapp' },
+  { value: 'Google',      label: 'Google Search' },
+  { value: 'Cold Call',   label: 'Cold Call' },
+  { value: 'Event',       label: 'Event / Camp' },
+  { value: 'Other',       label: 'Other' },
+];
+
+const PAYMENT_MODES = [
+  { value: '',              label: 'Select mode…' },
+  { value: 'cash',          label: 'Cash' },
+  { value: 'upi',           label: 'UPI' },
+  { value: 'card',          label: 'Card' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+];
+
+const PAYMENT_STATUSES = [
+  { value: 'paid',     label: 'Paid' },
+  { value: 'partial',  label: 'Partial' },
+  { value: 'pending',  label: 'Pending' },
+  { value: 'refunded', label: 'Refunded' },
+];
+
+const FOLLOWUP_OUTCOMES = [
+  { value: '',                label: 'Select outcome…' },
+  { value: 'called',          label: 'Called' },
+  { value: 'no_answer',       label: 'No Answer' },
+  { value: 'interested',      label: 'Interested' },
+  { value: 'not_interested',  label: 'Not Interested' },
 ];
 
 const LEVEL_OPTIONS = [
@@ -58,7 +95,7 @@ const fmtDateTime = (s) => { try { return s ? format(parseISO(s), 'MMM d · h:mm
 const AdminFutureSkills = () => {
   const { getAuthHeaders, user } = useAuth();
   const isCenterOwner = user?.role === 'fs_center_owner';
-  const [tab, setTab] = useState('reports');
+  const [tab, setTab] = useState('leads');
   const [renewalBucket, setRenewalBucket] = useState('all');
   const [rows, setRows] = useState([]);
   const [stats, setStats] = useState(null);
@@ -354,8 +391,16 @@ const AdminFutureSkills = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} />}
-              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} />}
+              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} onAction={(action, r) => {
+                if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
+                if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
+                if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
+              }} />}
+              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} onAction={(action, r) => {
+                if (action === 'convert')    setModal({ type: 'convert-trial', trial: r });
+                if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'trial' });
+                if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'trial' });
+              }} />}
               {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} />}
               {tab === 'renewals'  && <RenewalsTable rows={rows} onOpen={setSelected} />}
               {tab === 'lost'      && <LostTable rows={rows} onOpen={setSelected} />}
@@ -374,6 +419,8 @@ const AdminFutureSkills = () => {
       {modal?.type === 'renew'        && <RenewModal      customer={modal.customer} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'lost'         && <MarkLostModal   entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'convert-trial' && <ConvertTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'book-trial'   && <BookTrialModal   lead={modal.lead} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'followup'     && <FollowupModal    entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
 
       {/* Detail drawer */}
       {selected && (
@@ -437,60 +484,100 @@ const Th = ({ children, className = '' }) => (
 );
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen }) => (
+const LeadsTable = ({ rows, onOpen, onAction }) => (
   <table className="w-full text-sm">
     <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Name</Th><Th>Phone · Email</Th><Th>Source · City</Th><Th>Child</Th><Th>Status</Th><Th className="text-right">Created</Th></tr>
+      <tr><Th>Ref</Th><Th>Name</Th><Th>Phone · Email</Th><Th>Source</Th><Th>Child · Followup</Th><Th>Status</Th><Th>Actions</Th></tr>
     </thead>
     <tbody>
       {rows.map(r => (
-        <tr key={r.id} onClick={() => onOpen(r)}
-          className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
+        <tr key={r.id}
+          className="border-t border-slate-100 hover:bg-blue-50/40"
           data-testid={`row-${r.lead_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.lead_ref}</td>
-          <td className="px-4 py-3 font-bold text-[#0F1E33]">{r.name}</td>
-          <td className="px-4 py-3">
+          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.lead_ref}</td>
+          <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</td>
+          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
             <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.phone}</div>
             <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><Mail className="w-3 h-3" /> {r.email || '—'}</div>
           </td>
+          <td className="px-4 py-3 text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</td>
+          <td className="px-4 py-3 text-xs text-slate-600 cursor-pointer" onClick={() => onOpen(r)}>
+            {r.child_age && `Age ${r.child_age}`}{(!r.child_age) && '—'}
+            {r.next_followup_date && (
+              <div className="text-[11px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> Next: {fmtDate(r.next_followup_date)}</div>
+            )}
+          </td>
+          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}><StatusBadge status={r.status} /></td>
           <td className="px-4 py-3">
-            <div className="text-xs font-semibold text-slate-700">{r.source || '—'}</div>
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {r.city || '—'}</div>
+            <div className="flex flex-wrap gap-1">
+              <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
+                <Calendar className="w-3 h-3" /> Trial
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
+                <Clock className="w-3 h-3" /> Followup
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
+                <XCircle className="w-3 h-3" /> Lost
+              </button>
+            </div>
           </td>
-          <td className="px-4 py-3 text-xs text-slate-600">
-            {r.child_age && `Age ${r.child_age}`}{r.child_age && r.child_grade && ' · '}{r.child_grade && `Grade ${r.child_grade}`}
-            {(!r.child_age && !r.child_grade) && '—'}
-          </td>
-          <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-          <td className="px-4 py-3 text-right text-xs text-slate-500">{fmtDateTime(r.created_at)}</td>
         </tr>
       ))}
     </tbody>
   </table>
 );
 
-const TrialsTable = ({ rows, onOpen }) => (
+const TrialsTable = ({ rows, onOpen, onAction }) => (
   <table className="w-full text-sm">
     <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Student</Th><Th>Parent Contact</Th><Th>Grade · Centre</Th><Th>Status</Th><Th className="text-right">Created</Th></tr>
+      <tr><Th>Ref</Th><Th>Student</Th><Th>Parent Contact</Th><Th>Batch · Centre</Th><Th>Status · Followup</Th><Th>Actions</Th></tr>
     </thead>
     <tbody>
       {rows.map(r => (
-        <tr key={r.id} onClick={() => onOpen(r)}
-          className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
+        <tr key={r.id}
+          className="border-t border-slate-100 hover:bg-blue-50/40"
           data-testid={`row-${r.trial_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.trial_ref}</td>
-          <td className="px-4 py-3 font-bold text-[#0F1E33]">{r.student_name}</td>
-          <td className="px-4 py-3">
-            <div className="font-semibold text-[#0F1E33] text-xs">{r.parent_name}</div>
+          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</td>
+          <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.student_name}</td>
+          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+            <div className="font-semibold text-[#0F1E33] text-xs">{r.parent_name || '—'}</div>
             <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
           </td>
-          <td className="px-4 py-3">
-            <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"><GraduationCap className="w-3 h-3" /> Grade {r.student_grade || '—'}</div>
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {r.assigned_center || r.preferred_center || '—'}</div>
+          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+            <div className="text-xs font-semibold text-slate-700 truncate max-w-[220px]">{r.batch_label || '—'}</div>
+            <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {r.preferred_center || '—'}</div>
           </td>
-          <td className="px-4 py-3"><StatusBadge status={r.crm_status} /></td>
-          <td className="px-4 py-3 text-right text-xs text-slate-500">{fmtDateTime(r.created_at)}</td>
+          <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+            <StatusBadge status={r.crm_status} />
+            {r.next_followup_date && (
+              <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
+            )}
+          </td>
+          <td className="px-4 py-3">
+            <div className="flex flex-wrap gap-1">
+              <button onClick={(e) => { e.stopPropagation(); onAction('convert', r); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
+                <Sparkles className="w-3 h-3" /> Convert
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
+                <Clock className="w-3 h-3" /> Followup
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
+                <XCircle className="w-3 h-3" /> Lost
+              </button>
+            </div>
+          </td>
         </tr>
       ))}
     </tbody>
@@ -839,10 +926,22 @@ const Modal = ({ title, onClose, children, testid }) => (
 
 // ── Modals ────────────────────────────────────────────────────────────
 const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
-  const [f, setF] = useState({ name: '', phone: '', email: '', source: '', city: '', child_age: '', child_grade: '', notes: '' });
+  const [f, setF] = useState({ name: '', phone: '', email: '', source: '', child_age: '', center_id: '', batch_id: '', notes: '' });
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || [])).catch(() => {});
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatches(r.data?.batches || [])).catch(() => {});
+  }, [getAuthHeaders]);
+
+  const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
+
   const submit = async () => {
-    if (!f.name || !f.phone) { toast.error('Name and phone required'); return; }
+    if (!f.phone) { toast.error('Phone is required'); return; }
     setSaving(true);
     try {
       await axios.post(`${API}/admin/future-skills/leads`, f, { headers: getAuthHeaders() });
@@ -855,13 +954,25 @@ const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
   return (
     <Modal title="Add Lead" onClose={onClose} testid="add-lead-modal">
       <FieldGroup>
-        <TextField label="Name" value={f.name} onChange={v => setF({ ...f, name: v })} required testid="lead-name-input" />
+        <TextField label="Name (optional)" value={f.name} onChange={v => setF({ ...f, name: v })} testid="lead-name-input" />
         <TextField label="Phone" value={f.phone} onChange={v => setF({ ...f, phone: v })} required testid="lead-phone-input" />
-        <TextField label="Email" value={f.email} onChange={v => setF({ ...f, email: v })} />
-        <TextField label="Source" value={f.source} onChange={v => setF({ ...f, source: v })} placeholder="e.g. Instagram, Referral" />
-        <TextField label="City" value={f.city} onChange={v => setF({ ...f, city: v })} />
-        <TextField label="Child Age" value={f.child_age} onChange={v => setF({ ...f, child_age: v })} />
-        <TextField label="Child Grade" value={f.child_grade} onChange={v => setF({ ...f, child_grade: v })} colSpan={2} />
+        <TextField label="Email" value={f.email} onChange={v => setF({ ...f, email: v })} colSpan={2} />
+        <SelectField label="Source" value={f.source} onChange={v => setF({ ...f, source: v })} options={LEAD_SOURCE_OPTIONS} testid="lead-source-select" />
+        <SelectField label="Child Age" value={f.child_age} onChange={v => setF({ ...f, child_age: v })}
+          options={[{ value: '', label: 'Select age…' }, ...AGE_GROUP_OPTIONS.filter(o => o.value !== '')]}
+          testid="lead-age-select" />
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '' })}
+          options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="lead-center-select" colSpan={2} />
+        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v })}
+          options={[
+            { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
+            ...batchesForCenter.map(b => ({
+              value: b.id,
+              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+            })),
+          ]}
+          testid="lead-batch-select" colSpan={2} />
       </FieldGroup>
       <div className="mt-3"><TextAreaField label="Notes" value={f.notes} onChange={v => setF({ ...f, notes: v })} /></div>
       <button onClick={submit} disabled={saving}
@@ -874,7 +985,7 @@ const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
 };
 
 const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
-  const [f, setF] = useState({ parent_phone: '', student_name: '', center_id: '', batch_id: '' });
+  const [f, setF] = useState({ parent_phone: '', student_name: '', center_id: '', batch_id: '', scheduled_at: '' });
   const [centers, setCenters] = useState([]);
   const [batches, setBatches] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -887,10 +998,14 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
   }, [getAuthHeaders]);
 
   const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
+  const selectedBatch = batches.find(b => b.id === f.batch_id);
+  const allowedDayIdx = (selectedBatch?.days || []).map(dayIndexFromName).filter(x => x !== -1);
+  const dateValid = !f.scheduled_at || !selectedBatch || allowedDayIdx.length === 0 || allowedDayIdx.includes(new Date(f.scheduled_at).getDay());
 
   const submit = async () => {
     if (!f.parent_phone) { toast.error('Parent phone required'); return; }
     if (!f.center_id) { toast.error('Please pick a centre'); return; }
+    if (f.scheduled_at && !dateValid) { toast.error(`Selected date does not match batch days (${(selectedBatch?.days || []).join(', ')})`); return; }
     setSaving(true);
     try {
       const payload = {
@@ -899,6 +1014,7 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
         student_name: (f.student_name || '').trim() || 'Student',
         center_id: f.center_id,
         batch_id: f.batch_id || '',
+        scheduled_at: f.scheduled_at ? new Date(f.scheduled_at).toISOString() : '',
       };
       await axios.post(`${API}/admin/future-skills/trials`, payload, { headers: getAuthHeaders() });
       toast.success('Trial booking added');
@@ -913,10 +1029,10 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
       <FieldGroup>
         <TextField label="Parent Phone" value={f.parent_phone} onChange={v => setF({ ...f, parent_phone: v })} required testid="trial-phone-input" colSpan={2} />
         <TextField label="Student Name (optional)" value={f.student_name} onChange={v => setF({ ...f, student_name: v })} testid="trial-student-input" colSpan={2} />
-        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '' })}
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '', scheduled_at: '' })}
           options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
           testid="trial-center-select" colSpan={2} />
-        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v })}
+        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v, scheduled_at: '' })}
           options={[
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
@@ -925,8 +1041,16 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
             })),
           ]}
           testid="trial-batch-select" colSpan={2} />
+        <TextField label={`Trial Date${selectedBatch ? ` (must be ${(selectedBatch.days || []).join('/')})` : ''}`}
+          type="date" value={f.scheduled_at} onChange={v => setF({ ...f, scheduled_at: v })}
+          testid="trial-date-input" colSpan={2} />
+        {f.scheduled_at && selectedBatch && !dateValid && (
+          <div className="col-span-2 text-xs text-rose-600 font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> This date does not fall on {(selectedBatch.days || []).join(', ')}.
+          </div>
+        )}
       </FieldGroup>
-      <button onClick={submit} disabled={saving}
+      <button onClick={submit} disabled={saving || (f.scheduled_at && !dateValid)}
         className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-add-trial-btn">
         {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Trial</>}
@@ -934,6 +1058,12 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
     </Modal>
   );
 };
+
+// Helper: convert "Mon"/"Tue"/... → JS getDay index (0=Sun)
+const DAY_TO_IDX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+function dayIndexFromName(name) {
+  return Object.prototype.hasOwnProperty.call(DAY_TO_IDX, name) ? DAY_TO_IDX[name] : -1;
+}
 
 const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -1138,7 +1268,7 @@ const MarkLostModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders })
 
 const ConvertTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
   const today = new Date().toISOString().slice(0, 10);
-  const [f, setF] = useState({ plan: 'monthly', amount_paid: 2000, payment_date: today, renewal_date: '', notes: '' });
+  const [f, setF] = useState({ plan: 'monthly', amount_paid: 2000, payment_date: today, renewal_date: '', payment_mode: '', payment_status: 'paid', notes: '' });
   const [saving, setSaving] = useState(false);
 
   const onPlanChange = (plan) => {
@@ -1167,6 +1297,8 @@ const ConvertTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
       <FieldGroup>
         <SelectField label="Plan" value={f.plan} onChange={onPlanChange} options={PLAN_OPTIONS} testid="convert-plan-select" />
         <TextField label="Amount Paid (₹)" type="number" value={f.amount_paid} onChange={v => setF({ ...f, amount_paid: parseFloat(v) || 0 })} required testid="convert-amount-input" />
+        <SelectField label="Payment Mode" value={f.payment_mode} onChange={v => setF({ ...f, payment_mode: v })} options={PAYMENT_MODES} testid="convert-mode-select" />
+        <SelectField label="Payment Status" value={f.payment_status} onChange={v => setF({ ...f, payment_status: v })} options={PAYMENT_STATUSES} testid="convert-status-select" />
         <TextField label="Payment Date" type="date" value={f.payment_date} onChange={v => setF({ ...f, payment_date: v })} />
         <TextField label="Renewal Date (auto if empty)" type="date" value={f.renewal_date} onChange={v => setF({ ...f, renewal_date: v })} />
       </FieldGroup>
@@ -1180,9 +1312,137 @@ const ConvertTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════
-// CENTERS & BATCHES MANAGER (Centres tab)
-// ═══════════════════════════════════════════════════════════════════════
+// ── BOOK TRIAL from Lead row (centre + batch + date) ──────────────────
+const BookTrialModal = ({ lead, onClose, onSaved, getAuthHeaders }) => {
+  const [f, setF] = useState({ center_id: lead?.center_id || '', batch_id: lead?.batch_id || '', scheduled_at: '' });
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || [])).catch(() => {});
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatches(r.data?.batches || [])).catch(() => {});
+  }, [getAuthHeaders]);
+
+  const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
+  const selectedBatch = batches.find(b => b.id === f.batch_id);
+  const allowedDayIdx = (selectedBatch?.days || []).map(dayIndexFromName).filter(x => x !== -1);
+  const dateValid = !f.scheduled_at || !selectedBatch || allowedDayIdx.length === 0 || allowedDayIdx.includes(new Date(f.scheduled_at).getDay());
+
+  const submit = async () => {
+    if (!f.center_id) { toast.error('Please pick a centre'); return; }
+    if (f.scheduled_at && !dateValid) { toast.error(`Date must be on ${(selectedBatch?.days || []).join(', ')}`); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        center_id: f.center_id,
+        batch_id: f.batch_id || '',
+        scheduled_at: f.scheduled_at ? new Date(f.scheduled_at).toISOString() : '',
+      };
+      await axios.post(`${API}/admin/future-skills/leads/${lead.id}/book-trial`, payload, { headers: getAuthHeaders() });
+      toast.success(`Trial booked for ${lead.name || lead.phone}`);
+      onSaved();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={`Book Trial — ${lead.name || lead.phone}`} onClose={onClose} testid="book-trial-modal">
+      <FieldGroup>
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '', scheduled_at: '' })}
+          options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="book-center-select" colSpan={2} />
+        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v, scheduled_at: '' })}
+          options={[
+            { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
+            ...batchesForCenter.map(b => ({
+              value: b.id,
+              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+            })),
+          ]}
+          testid="book-batch-select" colSpan={2} />
+        <TextField label={`Trial Date${selectedBatch ? ` (must be ${(selectedBatch.days || []).join('/')})` : ''}`}
+          type="date" value={f.scheduled_at} onChange={v => setF({ ...f, scheduled_at: v })}
+          testid="book-date-input" colSpan={2} />
+        {f.scheduled_at && selectedBatch && !dateValid && (
+          <div className="col-span-2 text-xs text-rose-600 font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> This date does not fall on {(selectedBatch.days || []).join(', ')}.
+          </div>
+        )}
+      </FieldGroup>
+      <button onClick={submit} disabled={saving || (f.scheduled_at && !dateValid)}
+        className="mt-4 w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2"
+        data-testid="submit-book-trial-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Calendar className="w-4 h-4" /> Book Trial</>}
+      </button>
+    </Modal>
+  );
+};
+
+// ── FOLLOWUP modal (Lead or Trial) ─────────────────────────────────────
+const FollowupModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders }) => {
+  const [f, setF] = useState({
+    next_date: entity?.next_followup_date ? String(entity.next_followup_date).slice(0, 10) : '',
+    note: '',
+    outcome: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const history = Array.isArray(entity?.followups) ? [...entity.followups].reverse() : [];
+
+  const submit = async () => {
+    if (!f.next_date && !f.note && !f.outcome) { toast.error('Enter a date, note or outcome'); return; }
+    setSaving(true);
+    try {
+      const path = entityType === 'lead' ? `leads/${entity.id}/followup` : `trials/${entity.id}/followup`;
+      const payload = { ...f };
+      if (payload.next_date) payload.next_date = new Date(payload.next_date).toISOString();
+      await axios.post(`${API}/admin/future-skills/${path}`, payload, { headers: getAuthHeaders() });
+      toast.success('Followup saved');
+      onSaved();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    } finally { setSaving(false); }
+  };
+
+  const displayName = entity.name || entity.student_name || entity.parent_name || entity.lead_ref || entity.trial_ref;
+  return (
+    <Modal title={`Followup — ${displayName}`} onClose={onClose} testid="followup-modal">
+      <FieldGroup>
+        <TextField label="Next Followup Date" type="date" value={f.next_date} onChange={v => setF({ ...f, next_date: v })} testid="followup-date-input" />
+        <SelectField label="Outcome" value={f.outcome} onChange={v => setF({ ...f, outcome: v })} options={FOLLOWUP_OUTCOMES} testid="followup-outcome-select" />
+      </FieldGroup>
+      <div className="mt-3"><TextAreaField label="Note" value={f.note} onChange={v => setF({ ...f, note: v })} testid="followup-note-input" /></div>
+      <button onClick={submit} disabled={saving}
+        className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
+        data-testid="submit-followup-btn">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Followup</>}
+      </button>
+
+      {history.length > 0 && (
+        <div className="mt-5">
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-2">History ({history.length})</div>
+          <div className="space-y-2 max-h-52 overflow-y-auto">
+            {history.map((h, i) => (
+              <div key={i} className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs" data-testid={`followup-entry-${i}`}>
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-[#0F1E33]">{h.outcome ? h.outcome.replace('_', ' ').toUpperCase() : 'NOTE'}</div>
+                  <div className="text-slate-500">{fmtDateTime(h.at)}</div>
+                </div>
+                {h.next_date && <div className="text-slate-600 mt-0.5">Next: {fmtDate(h.next_date)}</div>}
+                {h.note && <div className="text-slate-700 mt-1 whitespace-pre-wrap">{h.note}</div>}
+                {h.by && <div className="text-[10px] text-slate-400 mt-0.5">by {h.by}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
 
 const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -1524,30 +1784,107 @@ const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) =>
 // REPORTS PANEL
 // ═══════════════════════════════════════════════════════════════════════
 const ReportsPanel = ({ getAuthHeaders }) => {
+  const { user } = useAuth();
+  const isCenterOwner = user?.role === 'fs_center_owner';
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [centerId, setCenterId] = useState('all');
+  const [month, setMonth] = useState(currentMonth);
+  const [centers, setCenters] = useState([]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isCenterOwner) return;
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || [])).catch(() => {});
+  }, [isCenterOwner, getAuthHeaders]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axios.get(`${API}/admin/future-skills/reports`, { headers: getAuthHeaders() });
+      const params = new URLSearchParams();
+      if (centerId && centerId !== 'all') params.set('center_id', centerId);
+      if (month) params.set('month', month);
+      const r = await axios.get(`${API}/admin/future-skills/reports?${params}`, { headers: getAuthHeaders() });
       setData(r.data);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed to load reports');
     } finally { setLoading(false); }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, centerId, month]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading || !data) {
+  if (loading && !data) {
     return <div className="p-12 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading reports…</div>;
   }
+  if (!data) return null;
 
-  const { funnel, source_breakdown = [], batches = [] } = data;
+  const { funnel, source_breakdown = [], batches = [], revenue = { total: 0, students: 0, per_student: 0, by_plan: [] } } = data;
   const totalLeadSource = source_breakdown.reduce((s, r) => s + r.count, 0) || 1;
+  const revenueByPlan = revenue.by_plan || [];
+  const totalPlanCount = revenueByPlan.reduce((s, p) => s + (p.count || 0), 0) || 1;
 
   return (
     <div className="space-y-5" data-testid="reports-panel">
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
+        {!isCenterOwner && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Centre</span>
+            <select value={centerId} onChange={e => setCenterId(e.target.value)}
+              className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="reports-center-filter">
+              <option value="all">All Centres</option>
+              {centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Month</span>
+          <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+            className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            data-testid="reports-month-filter" />
+          <button onClick={() => setMonth('')}
+            className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+            data-testid="reports-month-clear">
+            All Time
+          </button>
+        </div>
+        <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+          <BarChart3 className="w-3.5 h-3.5" />
+          {month ? `Showing data for ${month}` : 'Showing lifetime data'}
+        </div>
+      </div>
+
+      {/* Revenue cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <RevenueCard label="Revenue" value={fmtMoney(revenue.total)} accent="#16A34A" icon={IndianRupee} sub={`${revenue.students} paying student${revenue.students === 1 ? '' : 's'}`} testid="revenue-total" />
+        <RevenueCard label="Revenue / student" value={fmtMoney(revenue.per_student)} accent="#1E3A5F" icon={TrendingUp} testid="revenue-per-student" />
+        <RevenueCard label="Active customers" value={funnel.customers} accent="#3B82F6" icon={Sparkles} testid="revenue-customers" />
+      </div>
+
+      {/* Plan breakdown */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-1.5">
+          <PieChart className="w-3.5 h-3.5" /> Revenue by plan
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {revenueByPlan.map(p => {
+            const pct = Math.round(((p.count || 0) / totalPlanCount) * 100);
+            return (
+              <div key={p.plan} className="rounded-xl border border-slate-100 p-3" data-testid={`plan-card-${p.plan}`}>
+                <div className="text-xs font-black text-[#0F1E33]">{p.label}</div>
+                <div className="text-2xl font-black text-[#0F1E33] mt-1">{fmtMoney(p.revenue)}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">{p.count} customer{p.count === 1 ? '' : 's'} · {pct}%</div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F]" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
@@ -1644,6 +1981,19 @@ const ReportsPanel = ({ getAuthHeaders }) => {
     </div>
   );
 };
+
+const RevenueCard = ({ icon: Icon, label, value, accent, sub, testid }) => (
+  <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3" data-testid={testid}>
+    <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${accent}15`, color: accent }}>
+      <Icon className="w-5 h-5" />
+    </div>
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
+      <div className="text-xl font-black text-[#0F1E33]">{value}</div>
+      {sub && <div className="text-[11px] text-slate-500">{sub}</div>}
+    </div>
+  </div>
+);
 
 const FunnelStep = ({ icon: Icon, label, value, accent }) => (
   <div className="rounded-xl border border-slate-100 p-3 text-center" style={{ background: `${accent}08` }}>
