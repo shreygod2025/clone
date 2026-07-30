@@ -187,9 +187,15 @@ const FAQ = [
     a: 'Those are 1-on-1 online. We\'re offline, hands-on, with a small peer group — kids learn faster from each other, and the physical kits make every concept concrete.' },
 ];
 
-// Animated background grid
+// Animated background grid — light OLL-blue gradient wash (replaces the
+// former grey wash so the hero feels warmer and on-brand).
 const TechGrid = ({ accent = '#1E3A5F' }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0"
+      style={{
+        background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 50%, #EFF6FF 100%)',
+      }}
+    />
     <div className="absolute inset-0 opacity-[0.06]"
       style={{
         backgroundImage: `linear-gradient(${accent} 1px, transparent 1px), linear-gradient(90deg, ${accent} 1px, transparent 1px)`,
@@ -240,8 +246,16 @@ const FutureSkillsLandingPage = () => {
     return () => obs.disconnect();
   }, []);
 
-  const goTrial = () => navigate('/future-skills/book?mode=trial');
-  const goSubscribe = (plan) => navigate(`/future-skills/book?mode=subscribe&plan=${plan}`);
+  const goTrial = () => {
+    const ref = new URLSearchParams(window.location.search).get('ref')
+      || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : null);
+    navigate(`/future-skills/book?mode=trial${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`);
+  };
+  const goSubscribe = (plan) => {
+    const ref = new URLSearchParams(window.location.search).get('ref')
+      || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : null);
+    navigate(`/future-skills/book?mode=subscribe&plan=${plan}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`);
+  };
 
   // ── SEO (React-19-safe imperative hook; replaces broken Helmet meta injection) ──
   useSeo({
@@ -316,9 +330,6 @@ const FutureSkillsLandingPage = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
             <div className="lg:col-span-7 space-y-5 sm:space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-[#D63031] text-[11px] sm:text-xs font-bold tracking-wide" data-testid="hero-badge">
-                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> NEW BATCHES STARTING THIS MONTH
-              </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] sm:leading-tight text-[#0F1E33]">
                 Your child won't just<br />
                 <span className="bg-gradient-to-r from-[#D63031] via-[#7B2C5C] to-[#1E3A5F] bg-clip-text text-transparent">
@@ -326,26 +337,26 @@ const FutureSkillsLandingPage = () => {
                 </span><br />
                 They'll build it.
               </h1>
-              <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-xl">
+              <p className="hidden sm:block text-base sm:text-lg lg:text-xl text-slate-600 max-w-xl">
                 Hands-on weekly classes in Robotics, Coding, AI, 3D Design & emerging tech — for Grades 1 to 10.
                 Small batches, real kits, lasting curiosity.
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-row flex-nowrap items-stretch gap-2 sm:gap-3">
                 <button
                   onClick={goTrial}
-                  className="group px-5 py-3 sm:px-7 sm:py-3.5 rounded-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F] text-white font-bold text-sm sm:text-base hover:from-[#B52828] hover:to-[#0F1E33] transition-all shadow-lg shadow-blue-900/25 hover:shadow-xl hover:shadow-blue-900/35 flex items-center gap-2"
+                  className="group flex-1 sm:flex-none px-4 py-3 sm:px-7 sm:py-3.5 rounded-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F] text-white font-bold text-sm sm:text-base hover:from-[#B52828] hover:to-[#0F1E33] transition-all shadow-lg shadow-blue-900/25 hover:shadow-xl hover:shadow-blue-900/35 flex items-center justify-center gap-2"
                   data-testid="hero-trial-btn"
                 >
-                  Book a Free Trial Class
+                  Book Free Trial
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
-                <a href="#pricing" className="px-5 py-3 sm:px-7 sm:py-3.5 rounded-full border-2 border-slate-200 hover:border-[#1E3A5F] text-[#1E3A5F] font-bold text-sm sm:text-base transition-colors flex items-center gap-2"
+                <a href="#pricing" className="flex-1 sm:flex-none px-4 py-3 sm:px-7 sm:py-3.5 rounded-full border-2 border-slate-200 hover:border-[#1E3A5F] text-[#1E3A5F] font-bold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
                   data-testid="hero-pricing-link">
                   See Pricing
                 </a>
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2 sm:pt-3 text-xs sm:text-sm text-slate-600">
-                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Once a week · 90 min</span>
+                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Once a week · 2 hours</span>
                 <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Max 10 per batch</span>
                 <span className="flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D63031]" /> Robotic kit free w/ yearly</span>
               </div>
@@ -454,6 +465,121 @@ const FutureSkillsLandingPage = () => {
           .fs-ticker-item:hover { color: #FCA5A5; }
           @keyframes fs-ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         `}</style>
+      </section>
+
+      {/* ── SOLUTION ─────────────────────────────────────────────────────── */}
+      <section className="fs-reveal py-16 lg:py-20 relative">
+        <TechGrid accent="#1E3A5F" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-5xl mx-auto">
+            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">A different kind of class</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">The Future Skills Program</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
+              Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
+              Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { icon: Hammer,    t: 'Build by doing',     s: 'Every class produces a thing they take home or display.' },
+                { icon: Lightbulb, t: 'Curiosity-led',      s: 'Kids choose what to deepen — robots, AI, 3D, you decide.' },
+                { icon: Rocket,    t: 'Compounding skills', s: 'Today\'s line-follower becomes tomorrow\'s drone.' },
+              ].map((p, i) => (
+                <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 hover:border-[#1E3A5F] transition-all hover:-translate-y-0.5">
+                  <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-50 to-blue-50 flex items-center justify-center text-[#1E3A5F] mb-3 border border-blue-200">
+                    <p.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
+                  <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Real class moments gallery ─────────────────────────── */}
+          <div className="mt-14 lg:mt-16" data-testid="fs-class-moments">
+            <div className="flex items-end justify-between flex-wrap gap-3 mb-5">
+              <div>
+                <span className="text-[10px] font-black tracking-[0.22em] uppercase text-[#D63031]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>// real moments · real builds</span>
+                <h3 className="text-xl lg:text-2xl font-black text-[#0F1E33] mt-1">Inside an OLL classroom</h3>
+              </div>
+              <span className="text-[11px] text-slate-500 italic">Tap any tile to play / view</span>
+            </div>
+
+            {/* Two stacked asymmetric mosaics — 5 tiles each */}
+            <div className="space-y-3 sm:space-y-4">
+              {[0, 5].map((startIdx) => (
+                <div key={startIdx} className="grid grid-cols-6 grid-rows-2 gap-2.5 sm:gap-3 h-[440px] sm:h-[520px]">
+                  {CLASS_MEDIA.slice(startIdx, startIdx + 5).map((m, j) => {
+                    const i = startIdx + j;
+                    // Big tile alternates side: row 1 left, row 2 right
+                    const bigOnLeft = startIdx === 0;
+                    const layouts = bigOnLeft
+                      ? [
+                          'col-span-3 row-span-2',                  // big (left)
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                        ]
+                      : [
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                          'col-span-3 row-span-2 order-first sm:order-none', // big (right on desktop, top on mobile)
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                        ];
+                    return (
+                      <button key={i} onClick={() => setMediaOpen(m)}
+                        className={`group relative ${layouts[j]} rounded-2xl overflow-hidden border-2 border-blue-100 hover:border-[#D63031] transition-all shadow-lg shadow-blue-900/10 hover:shadow-2xl bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F]`}
+                        data-testid={`class-moment-${i}`}
+                        aria-label={`View ${m.label}`}>
+                        {m.type === 'video' ? (
+                          <video src={m.src} preload="metadata" muted playsInline
+                            className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                            style={{ pointerEvents: 'none' }} />
+                        ) : (
+                          <img src={m.src} alt={m.label} loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        )}
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
+                        {/* Type pill */}
+                        <div className="absolute top-2.5 left-2.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase backdrop-blur-sm border"
+                            style={{
+                              background: m.type === 'video' ? 'rgba(214,48,49,0.65)' : 'rgba(30,58,95,0.65)',
+                              borderColor: m.type === 'video' ? '#D63031' : '#60A5FA',
+                              color: '#fff',
+                            }}>
+                            {m.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
+                            {m.type === 'video' ? 'Video' : 'Photo'}
+                          </span>
+                        </div>
+                        {/* Centered play button for videos */}
+                        {m.type === 'video' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#D63031] group-hover:border-[#D63031] transition-all shadow-2xl">
+                              <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white translate-x-0.5" />
+                            </div>
+                          </div>
+                        )}
+                        {/* Caption */}
+                        <div className="absolute bottom-0 inset-x-0 p-3 text-left">
+                          <div className="text-xs font-black text-white leading-tight">{m.label}</div>
+                          <div className="text-[10px] text-blue-200 mt-0.5 leading-snug line-clamp-2 hidden sm:block">{m.caption}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-5">
+              <span className="text-[11px] text-slate-500 italic">{CLASS_MEDIA.length} moments · captured at our centres in May 2026</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ── USP · SAFETY & TRANSPARENCY ──────────────────────────────────── */}
@@ -598,302 +724,6 @@ const FutureSkillsLandingPage = () => {
         </div>
       </section>
 
-      {/* ── SOLUTION ─────────────────────────────────────────────────────── */}
-      <section className="fs-reveal py-16 lg:py-20 relative">
-        <TechGrid accent="#1E3A5F" />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-5xl mx-auto">
-            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">A different kind of class</span>
-            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">The Future Skills Program</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
-              Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
-              Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
-            </p>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {[
-                { icon: Hammer,    t: 'Build by doing',     s: 'Every class produces a thing they take home or display.' },
-                { icon: Lightbulb, t: 'Curiosity-led',      s: 'Kids choose what to deepen — robots, AI, 3D, you decide.' },
-                { icon: Rocket,    t: 'Compounding skills', s: 'Today\'s line-follower becomes tomorrow\'s drone.' },
-              ].map((p, i) => (
-                <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 hover:border-[#1E3A5F] transition-all hover:-translate-y-0.5">
-                  <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-50 to-blue-50 flex items-center justify-center text-[#1E3A5F] mb-3 border border-blue-200">
-                    <p.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
-                  <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Real class moments gallery ─────────────────────────── */}
-          <div className="mt-14 lg:mt-16" data-testid="fs-class-moments">
-            <div className="flex items-end justify-between flex-wrap gap-3 mb-5">
-              <div>
-                <span className="text-[10px] font-black tracking-[0.22em] uppercase text-[#D63031]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>// real moments · real builds</span>
-                <h3 className="text-xl lg:text-2xl font-black text-[#0F1E33] mt-1">Inside an OLL classroom</h3>
-              </div>
-              <span className="text-[11px] text-slate-500 italic">Tap any tile to play / view</span>
-            </div>
-
-            {/* Two stacked asymmetric mosaics — 5 tiles each */}
-            <div className="space-y-3 sm:space-y-4">
-              {[0, 5].map((startIdx) => (
-                <div key={startIdx} className="grid grid-cols-6 grid-rows-2 gap-2.5 sm:gap-3 h-[440px] sm:h-[520px]">
-                  {CLASS_MEDIA.slice(startIdx, startIdx + 5).map((m, j) => {
-                    const i = startIdx + j;
-                    // Big tile alternates side: row 1 left, row 2 right
-                    const bigOnLeft = startIdx === 0;
-                    const layouts = bigOnLeft
-                      ? [
-                          'col-span-3 row-span-2',                  // big (left)
-                          'col-span-3 sm:col-span-2 row-span-1',
-                          'col-span-3 sm:col-span-1 row-span-1',
-                          'col-span-3 sm:col-span-2 row-span-1',
-                          'col-span-3 sm:col-span-1 row-span-1',
-                        ]
-                      : [
-                          'col-span-3 sm:col-span-2 row-span-1',
-                          'col-span-3 sm:col-span-1 row-span-1',
-                          'col-span-3 row-span-2 order-first sm:order-none', // big (right on desktop, top on mobile)
-                          'col-span-3 sm:col-span-2 row-span-1',
-                          'col-span-3 sm:col-span-1 row-span-1',
-                        ];
-                    return (
-                      <button key={i} onClick={() => setMediaOpen(m)}
-                        className={`group relative ${layouts[j]} rounded-2xl overflow-hidden border-2 border-blue-100 hover:border-[#D63031] transition-all shadow-lg shadow-blue-900/10 hover:shadow-2xl bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F]`}
-                        data-testid={`class-moment-${i}`}
-                        aria-label={`View ${m.label}`}>
-                        {m.type === 'video' ? (
-                          <video src={m.src} preload="metadata" muted playsInline
-                            className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-                            style={{ pointerEvents: 'none' }} />
-                        ) : (
-                          <img src={m.src} alt={m.label} loading="lazy"
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        )}
-                        {/* Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
-                        {/* Type pill */}
-                        <div className="absolute top-2.5 left-2.5">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase backdrop-blur-sm border"
-                            style={{
-                              background: m.type === 'video' ? 'rgba(214,48,49,0.65)' : 'rgba(30,58,95,0.65)',
-                              borderColor: m.type === 'video' ? '#D63031' : '#60A5FA',
-                              color: '#fff',
-                            }}>
-                            {m.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
-                            {m.type === 'video' ? 'Video' : 'Photo'}
-                          </span>
-                        </div>
-                        {/* Centered play button for videos */}
-                        {m.type === 'video' && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#D63031] group-hover:border-[#D63031] transition-all shadow-2xl">
-                              <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white translate-x-0.5" />
-                            </div>
-                          </div>
-                        )}
-                        {/* Caption */}
-                        <div className="absolute bottom-0 inset-x-0 p-3 text-left">
-                          <div className="text-xs font-black text-white leading-tight">{m.label}</div>
-                          <div className="text-[10px] text-blue-200 mt-0.5 leading-snug line-clamp-2 hidden sm:block">{m.caption}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center mt-5">
-              <span className="text-[11px] text-slate-500 italic">{CLASS_MEDIA.length} moments · captured at our centres in May 2026</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── WHAT THEY LEARN ──────────────────────────────────────────────── */}
-      <section className="fs-reveal py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">5 Tracks · 1 program</span>
-            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">What your child will actually walk away with</h2>
-            <p className="text-slate-500 mt-2 max-w-xl mx-auto text-sm">Outcome-focused, grade-mapped, taught hands-on.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {SKILLS.map((s, i) => (
-              <div key={s.key}
-                className="group relative bg-white border-2 border-slate-100 hover:border-[#1E3A5F] rounded-2xl p-6 transition-all hover:shadow-xl hover:shadow-blue-100/50 hover:-translate-y-1"
-                data-testid={`skill-card-${s.key}`}>
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D63031] to-[#1E3A5F] text-white flex items-center justify-center mb-4 shadow-lg shadow-blue-900/30">
-                  <s.icon className="w-7 h-7" />
-                </div>
-                <div className="text-[11px] font-bold tracking-wider uppercase text-[#D63031]">{s.tag}</div>
-                <h3 className="text-xl font-black text-[#0F1E33] mt-1">{s.name}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed mt-2">{s.out}</p>
-              </div>
-            ))}
-            <div className="relative bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F] text-white border-2 border-blue-900 rounded-2xl p-6">
-              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-4">
-                <Trophy className="w-7 h-7 text-[#FCA5A5]" />
-              </div>
-              <div className="text-[11px] font-bold tracking-wider uppercase text-[#FCA5A5]">Year-end</div>
-              <h3 className="text-xl font-black mt-1">Tech Showcase Project</h3>
-              <p className="text-sm text-blue-100 leading-relaxed mt-2">Every student presents their year's biggest build — robots, apps, AI projects — to parents and an industry panel.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CURRICULUM BY TIER ───────────────────────────────────────────── */}
-      <section className="fs-reveal py-16 lg:py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">Grade-mapped curriculum</span>
-            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">A different curriculum for every age.</h2>
-            <p className="text-slate-500 mt-2 max-w-xl mx-auto text-sm">Same five skill tracks, paced exactly right for your child's grade.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              {
-                tier: 'Junior',
-                grades: 'Grades 1 – 4',
-                accent: 'from-[#D63031] to-[#7B2C5C]',
-                badge: 'bg-red-50 text-[#D63031] border-red-200',
-                items: [
-                  'Story-led robotics — first robots that move, light up & beep',
-                  'Block coding (Scratch) — animations & simple games',
-                  'AI play — train an image classifier with their drawings',
-                  'Intro 3D — Tinkercad shapes, name keyrings, simple models',
-                  'Soft skills — listening, sharing kits, asking "what if?"',
-                ],
-              },
-              {
-                tier: 'Middle',
-                grades: 'Grades 5 – 7',
-                accent: 'from-[#7B2C5C] to-[#1E3A5F]',
-                badge: 'bg-gradient-to-r from-red-50 to-blue-50 text-[#7B2C5C] border-blue-200',
-                items: [
-                  'Sensor robotics — line followers, obstacle avoidance, claws',
-                  'Python intro — first scripts, console games, simple bots',
-                  'AI tools — chatbots, image gen, deepfake spotting',
-                  'Tinkercad 3D — print-ready models, mechanical assemblies',
-                  'Project showcase — a build they own and present',
-                ],
-              },
-              {
-                tier: 'Senior',
-                grades: 'Grades 8 – 10',
-                accent: 'from-[#1E3A5F] to-[#0F1E33]',
-                badge: 'bg-blue-50 text-[#1E3A5F] border-blue-200',
-                items: [
-                  'Advanced robotics + IoT — Arduino, sensors, smart-home circuits',
-                  'Python projects — automations, web scrapers, mini apps',
-                  'ML basics — train a real model, evaluate accuracy, ethics',
-                  'Fusion 360 + 3D printing — designed-to-print engineering',
-                  'Capstone build — portfolio-grade tech project for school & beyond',
-                ],
-              },
-            ].map((t, i) => (
-              <div key={t.tier}
-                className="relative bg-white border-2 border-slate-100 hover:border-[#1E3A5F] rounded-3xl p-6 transition-all hover:shadow-xl hover:shadow-blue-100/40 hover:-translate-y-1"
-                data-testid={`tier-card-${t.tier.toLowerCase()}`}>
-                <div className={`inline-flex items-center text-[10px] font-black tracking-widest uppercase px-2 py-1 rounded-full border ${t.badge}`}>
-                  {t.grades}
-                </div>
-                <h3 className={`text-2xl font-black mt-3 bg-gradient-to-r ${t.accent} bg-clip-text text-transparent`}>
-                  {t.tier} Track
-                </h3>
-                <ul className="mt-4 space-y-2.5">
-                  {t.items.map((line, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-slate-700 leading-relaxed">
-                      <Check className="w-4 h-4 text-[#D63031] flex-shrink-0 mt-0.5" /> {line}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={goTrial}
-                  className="mt-5 text-xs font-bold text-[#1E3A5F] hover:text-[#D63031] inline-flex items-center gap-1 transition-colors"
-                  data-testid={`tier-trial-${t.tier.toLowerCase()}-btn`}>
-                  Book free trial for this tier <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
-      <section className="fs-reveal py-16 lg:py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">How the program runs</span>
-            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">A rhythm that fits your week</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {HOW.map((h, i) => (
-              <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 text-center hover:border-[#1E3A5F] transition-all" data-testid={`how-${i}`}>
-                <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-50 to-blue-50 border border-blue-200 flex items-center justify-center text-[#1E3A5F] mb-3">
-                  <h.icon className="w-6 h-6" />
-                </div>
-                <h3 className="font-black text-[#0F1E33]">{h.t}</h3>
-                <p className="text-sm text-slate-500 mt-1.5 leading-snug">{h.s}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TRANSFORMATION ───────────────────────────────────────────────── */}
-      <section className="fs-reveal py-16 lg:py-20 bg-gradient-to-br from-[#0F1E33] via-[#1E3A5F] to-[#0F1E33] text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
-            backgroundSize: '64px 64px',
-          }} />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <span className="text-xs font-bold tracking-widest text-[#FCA5A5] uppercase">The transformation</span>
-            <h2 className="text-3xl lg:text-4xl font-black mt-2">From screen-stuck to skill-stacked.</h2>
-            <p className="text-blue-200 max-w-2xl mx-auto mt-2 text-sm">A 90-day shift in how your child sees themselves and tech.</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-5">
-            <div className="rounded-2xl border-2 border-[#D63031]/40 bg-[#D63031]/5 p-6">
-              <div className="text-[11px] font-bold tracking-widest uppercase text-[#FCA5A5] mb-2">Before OLL</div>
-              <ul className="space-y-3">
-                {TRANSFORM.before.map((b, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <span className="mt-0.5 w-7 h-7 rounded-lg bg-[#D63031]/20 border border-[#D63031]/40 flex items-center justify-center text-[#FCA5A5] flex-shrink-0">
-                      <b.icon className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <div className="font-bold">{b.t}</div>
-                      <div className="text-xs text-blue-200">{b.s}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-2xl border-2 border-blue-300/40 bg-blue-300/10 p-6">
-              <div className="text-[11px] font-bold tracking-widest uppercase text-blue-200 mb-2">After 3 months at OLL</div>
-              <ul className="space-y-3">
-                {TRANSFORM.after.map((a, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <span className="mt-0.5 w-7 h-7 rounded-lg bg-blue-300/20 border border-blue-200/40 flex items-center justify-center text-blue-100 flex-shrink-0">
-                      <a.icon className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <div className="font-bold">{a.t}</div>
-                      <div className="text-xs text-blue-100">{a.s}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── SOCIAL PROOF ─────────────────────────────────────────────────── */}
       <section className="fs-reveal py-16 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -994,6 +824,133 @@ const FutureSkillsLandingPage = () => {
                 <div className="text-xs font-bold text-[#0F1E33]">{t.name}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CURRICULUM BY TIER ───────────────────────────────────────────── */}
+      <section className="fs-reveal py-16 lg:py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">Grade-mapped curriculum</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">A different curriculum for every age.</h2>
+            <p className="text-slate-500 mt-2 max-w-xl mx-auto text-sm">Same five skill tracks, paced exactly right for your child's grade.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              {
+                tier: 'Junior',
+                grades: 'Ages 3 – 7',
+                accent: 'from-[#D63031] to-[#7B2C5C]',
+                badge: 'bg-red-50 text-[#D63031] border-red-200',
+                items: [
+                  'Story-led robotics — first robots that move, light up & beep',
+                  'Block coding (Scratch) — animations & simple games',
+                  'AI play — train an image classifier with their drawings',
+                  'Intro 3D — Tinkercad shapes, name keyrings, simple models',
+                  'Soft skills — listening, sharing kits, asking "what if?"',
+                ],
+              },
+              {
+                tier: 'Middle',
+                grades: 'Ages 8 – 11',
+                accent: 'from-[#7B2C5C] to-[#1E3A5F]',
+                badge: 'bg-gradient-to-r from-red-50 to-blue-50 text-[#7B2C5C] border-blue-200',
+                items: [
+                  'Sensor robotics — line followers, obstacle avoidance, claws',
+                  'Python intro — first scripts, console games, simple bots',
+                  'AI tools — chatbots, image gen, deepfake spotting',
+                  'Tinkercad 3D — print-ready models, mechanical assemblies',
+                  'Project showcase — a build they own and present',
+                ],
+              },
+              {
+                tier: 'Senior',
+                grades: 'Ages 12 – 16',
+                accent: 'from-[#1E3A5F] to-[#0F1E33]',
+                badge: 'bg-blue-50 text-[#1E3A5F] border-blue-200',
+                items: [
+                  'Advanced robotics + IoT — Arduino, sensors, smart-home circuits',
+                  'Python projects — automations, web scrapers, mini apps',
+                  'ML basics — train a real model, evaluate accuracy, ethics',
+                  'Fusion 360 + 3D printing — designed-to-print engineering',
+                  'Capstone build — portfolio-grade tech project for school & beyond',
+                ],
+              },
+            ].map((t, i) => (
+              <div key={t.tier}
+                className="relative bg-white border-2 border-slate-100 hover:border-[#1E3A5F] rounded-3xl p-6 transition-all hover:shadow-xl hover:shadow-blue-100/40 hover:-translate-y-1"
+                data-testid={`tier-card-${t.tier.toLowerCase()}`}>
+                <div className={`inline-flex items-center text-[10px] font-black tracking-widest uppercase px-2 py-1 rounded-full border ${t.badge}`}>
+                  {t.grades}
+                </div>
+                <h3 className={`text-2xl font-black mt-3 bg-gradient-to-r ${t.accent} bg-clip-text text-transparent`}>
+                  {t.tier} Track
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {t.items.map((line, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-slate-700 leading-relaxed">
+                      <Check className="w-4 h-4 text-[#D63031] flex-shrink-0 mt-0.5" /> {line}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={goTrial}
+                  className="mt-5 text-xs font-bold text-[#1E3A5F] hover:text-[#D63031] inline-flex items-center gap-1 transition-colors"
+                  data-testid={`tier-trial-${t.tier.toLowerCase()}-btn`}>
+                  Book free trial for this tier <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRANSFORMATION ───────────────────────────────────────────────── */}
+      <section className="fs-reveal py-16 lg:py-20 bg-gradient-to-br from-[#0F1E33] via-[#1E3A5F] to-[#0F1E33] text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+          }} />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-[#FCA5A5] uppercase">The transformation</span>
+            <h2 className="text-3xl lg:text-4xl font-black mt-2">From screen-stuck to skill-stacked.</h2>
+            <p className="text-blue-200 max-w-2xl mx-auto mt-2 text-sm">A 90-day shift in how your child sees themselves and tech.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="rounded-2xl border-2 border-[#D63031]/40 bg-[#D63031]/5 p-6">
+              <div className="text-[11px] font-bold tracking-widest uppercase text-[#FCA5A5] mb-2">Before OLL</div>
+              <ul className="space-y-3">
+                {TRANSFORM.before.map((b, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 w-7 h-7 rounded-lg bg-[#D63031]/20 border border-[#D63031]/40 flex items-center justify-center text-[#FCA5A5] flex-shrink-0">
+                      <b.icon className="w-3.5 h-3.5" />
+                    </span>
+                    <div>
+                      <div className="font-bold">{b.t}</div>
+                      <div className="text-xs text-blue-200">{b.s}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border-2 border-blue-300/40 bg-blue-300/10 p-6">
+              <div className="text-[11px] font-bold tracking-widest uppercase text-blue-200 mb-2">After 3 months at OLL</div>
+              <ul className="space-y-3">
+                {TRANSFORM.after.map((a, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 w-7 h-7 rounded-lg bg-blue-300/20 border border-blue-200/40 flex items-center justify-center text-blue-100 flex-shrink-0">
+                      <a.icon className="w-3.5 h-3.5" />
+                    </span>
+                    <div>
+                      <div className="font-bold">{a.t}</div>
+                      <div className="text-xs text-blue-100">{a.s}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>

@@ -151,6 +151,29 @@ class PaymentInit(BaseModel):
     frontend_url: Optional[str] = None
 
 
+# ── SOURCE LINKS ──────────────────────────────────────────────────────────
+class SourceLinkCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    slug: Optional[str] = Field(default="", max_length=64)  # auto-generated from name if empty
+    notes: Optional[str] = Field(default="", max_length=500)
+
+
+def _slugify(name: str) -> str:
+    """Convert a display name into a URL-safe slug (lowercase, hyphens)."""
+    s = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    return s[:60] or "src"
+
+
+async def _resolve_source_name(source_ref: Optional[str]) -> str:
+    """If source_ref matches a source-link slug, return the display name;
+    otherwise return the raw ref. Called on lead/trial/customer create."""
+    ref = (source_ref or "").strip()
+    if not ref:
+        return ""
+    link = await db.future_skills_source_links.find_one({"slug": ref}, {"_id": 0, "name": 1})
+    return (link.get("name") if link else ref) or ref
+
+
 # ── Endpoints — Trial Class ────────────────────────────────────────────────
 @router.post("/future-skills/register-trial")
 async def register_trial(data: TrialBooking):
@@ -196,6 +219,9 @@ async def register_trial(data: TrialBooking):
             "is_existing": True,
         }
 
+    # Resolve source_ref (slug) → display source name for CRM
+    source_display = await _resolve_source_name(data.source_ref)
+
     doc = {
         "id": trial_id,
         "trial_ref": trial_ref,
@@ -212,8 +238,9 @@ async def register_trial(data: TrialBooking):
         "preferred_skill": (data.preferred_skill or "").strip(),
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "").strip(),
-        "trial_status": "requested",
-        "crm_status": "trial_lead",
+        "source": source_display,
+        "trial_status": "scheduled" if data.batch_id else "requested",
+        "crm_status": "scheduled" if data.batch_id else "trial_lead",
         "return_count": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -637,6 +664,80 @@ def _norm_phone(p: str) -> str:
     return re.sub(r"\D", "", str(p))
 
 
+# ── SOURCE LINK ENDPOINTS ─────────────────────────────────────────────────
+@router.get("/admin/future-skills/source-links")
+async def admin_list_source_links(user: dict = Depends(get_current_user)):
+    """Return all source links with rolled-up metrics.
+
+    A source link creates a URL like `/future-skills/s/<slug>` that pre-tags any
+    subsequent lead / trial / customer created from that landing hit. We roll
+    up views, leads, trials, converted customers and lost outcomes per slug.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    links = await db.future_skills_source_links.find({}, {"_id": 0}).sort("created_at", -1).to_list(None)
+    for link in links:
+        slug = link.get("slug", "")
+        # Match by source (display name) OR source_ref (slug) so historical entries surface too
+        name = link.get("name", "")
+        q = {"$or": [{"source": name}, {"source_ref": slug}, {"source": slug}]}
+        link["metrics"] = {
+            "views":      int(link.get("views", 0) or 0),
+            "leads":      await db.future_skills_leads.count_documents(q),
+            "trials":     await db.future_skills_trials.count_documents(q),
+            "converted":  await db.future_skills_subscriptions.count_documents({**q, "crm_status": "active"}),
+            "lost":       (await db.future_skills_leads.count_documents({**q, "status": "lost"}))
+                        + (await db.future_skills_trials.count_documents({**q, "crm_status": "lost"}))
+                        + (await db.future_skills_subscriptions.count_documents({**q, "crm_status": "lost"})),
+        }
+    return {"source_links": links}
+
+
+@router.post("/admin/future-skills/source-links")
+async def admin_create_source_link(data: SourceLinkCreate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    slug = _slugify(data.slug or data.name)
+    existing = await db.future_skills_source_links.find_one({"slug": slug})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"A source link with slug '{slug}' already exists")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": data.name.strip(),
+        "slug": slug,
+        "notes": (data.notes or "").strip(),
+        "views": 0,
+        "created_at": _now_iso(),
+        "created_by": user.get("email"),
+    }
+    await db.future_skills_source_links.insert_one(doc)
+    doc.pop("_id", None)
+    return {"source_link": doc}
+
+
+@router.delete("/admin/future-skills/source-links/{link_id}")
+async def admin_delete_source_link(link_id: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_source_links.delete_one({"id": link_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Source link not found")
+    return {"deleted": True}
+
+
+@router.get("/public/future-skills/source-links/{slug}")
+async def public_get_source_link(slug: str):
+    """Public: look up a source link (used by landing page to display context)
+    and register a landing-page view for that slug."""
+    link = await db.future_skills_source_links.find_one({"slug": slug}, {"_id": 0})
+    if not link:
+        raise HTTPException(status_code=404, detail="Source not found")
+    await db.future_skills_source_links.update_one(
+        {"slug": slug}, {"$inc": {"views": 1}, "$set": {"last_view_at": _now_iso()}},
+    )
+    return {"source_link": {"slug": link["slug"], "name": link["name"]}}
+
+
 # ── LEADS ─────────────────────────────────────────────────────────────────
 class LeadCreate(BaseModel):
     name: Optional[str] = Field(default="", max_length=120)
@@ -675,6 +776,8 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
     # Auto-scope: if user is a fs_center_owner, force their center_id
     scope_cid = _fs_scope_center_id(user)
     center_id_final = scope_cid or (data.center_id or "")
+    # Resolve source: if user typed a known slug, expand to display name
+    source_display = await _resolve_source_name(data.source) if data.source else ""
     doc = {
         "id": lead_id,
         "lead_ref": lead_ref,
@@ -682,7 +785,7 @@ async def admin_create_lead(data: LeadCreate, user: dict = Depends(get_current_u
         "name": (data.name or "").strip(),
         "phone": _norm_phone(data.phone),
         "email": (data.email or "").strip().lower(),
-        "source": (data.source or "").strip(),
+        "source": source_display or (data.source or "").strip(),
         "city": (data.city or "").strip(),
         "notes": (data.notes or "").strip(),
         "child_age": (data.child_age or "").strip(),
@@ -902,6 +1005,34 @@ async def admin_trial_followup(trial_id: str, data: FollowupBody, user: dict = D
     # For trials we DO NOT auto-bump the crm_status — trials must stay in
     # scheduled / rescheduled / completed. Followup history is still captured.
     trial = await _record_followup(db.future_skills_trials, trial_id, data, user)
+    return {"trial": trial}
+
+
+@router.post("/admin/future-skills/customers/{sub_id}/followup")
+async def admin_customer_followup(sub_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    sub = await _record_followup(db.future_skills_subscriptions, sub_id, data, user)
+    return {"subscription": sub}
+
+
+# ── MARK TRIAL ATTENDED ────────────────────────────────────────────────
+@router.post("/admin/future-skills/trials/{trial_id}/attend")
+async def admin_trial_attend(trial_id: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_trials.update_one(
+        {"id": trial_id},
+        {"$set": {
+            "trial_status": "attended",
+            "crm_status": "completed",
+            "attended_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Trial not found")
+    trial = await db.future_skills_trials.find_one({"id": trial_id}, {"_id": 0})
     return {"trial": trial}
 
 

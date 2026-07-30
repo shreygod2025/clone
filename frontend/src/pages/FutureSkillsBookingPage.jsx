@@ -89,7 +89,7 @@ const FutureSkillsBookingPage = () => {
         parent_phone: cleanPhone,
         center_id: effectiveCenterId,
         batch_id: batchId,
-        source_ref: params.get('ref') || '',
+        source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
       });
       const trialRef = r.data?.trial_ref;
       toast.success("Trial booked — we'll WhatsApp you shortly!");
@@ -136,7 +136,7 @@ const FutureSkillsBookingPage = () => {
         ...subForm,
         parent_phone: subForm.parent_phone.replace(/\D/g, '').slice(-10),
         plan,
-        source_ref: params.get('ref') || '',
+        source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
       });
       const subId = sub.data?.subscription_id;
       if (!subId) throw new Error('Subscription creation failed');

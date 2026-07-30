@@ -6,6 +6,7 @@ import {
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
   Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
+  Link2 as LinkIcon, Copy, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -15,13 +16,14 @@ import { useAuth } from '../../context/AuthContext';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TABS = [
-  { key: 'leads',     label: 'Leads',            icon: Users },
-  { key: 'trials',    label: 'Free Trials',      icon: Calendar },
-  { key: 'customers', label: 'Active Customers', icon: Sparkles },
-  { key: 'renewals',  label: 'Renewals',         icon: RotateCcw },
-  { key: 'lost',      label: 'Lost',             icon: XCircle },
-  { key: 'centers',   label: 'Centres & Batches', icon: MapPin },
-  { key: 'reports',   label: 'Reports',          icon: BarChart3 },
+  { key: 'leads',        label: 'Leads',            icon: Users },
+  { key: 'trials',       label: 'Free Trials',      icon: Calendar },
+  { key: 'customers',    label: 'Active Customers', icon: Sparkles },
+  { key: 'renewals',     label: 'Renewals',         icon: RotateCcw },
+  { key: 'lost',         label: 'Lost',             icon: XCircle },
+  { key: 'centers',      label: 'Centres & Batches', icon: MapPin },
+  { key: 'sources',      label: 'Source Links',     icon: LinkIcon },
+  { key: 'reports',      label: 'Reports',          icon: BarChart3 },
 ];
 
 const AGE_GROUP_OPTIONS = [
@@ -132,7 +134,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
-    if (tab === 'centers' || tab === 'reports') { setRows([]); setStats(null); return; }
+    if (tab === 'centers' || tab === 'reports' || tab === 'sources') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -222,28 +224,20 @@ const AdminFutureSkills = () => {
     : null;
 
   return (
-    <AdminLayout title="Future Skills">
+    <AdminLayout title="Future Skills CRM">
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5" data-testid="admin-future-skills">
-        {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] flex items-center gap-2">
-              <Bot className="w-7 h-7 text-[#D63031]" /> Future Skills CRM
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Leads · Trials · Customers · Renewals · Lost — all in one place.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <a href="/future-skills" target="_blank" rel="noopener noreferrer"
-              className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
-              data-testid="open-landing-btn">
-              <ExternalLink className="w-3.5 h-3.5" /> Open Landing
-            </a>
-            <button onClick={refreshAll} disabled={loading}
-              className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5 disabled:opacity-50"
-              data-testid="refresh-btn">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
-          </div>
+        {/* Toolbar */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <a href="/future-skills" target="_blank" rel="noopener noreferrer"
+            className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
+            data-testid="open-landing-btn">
+            <ExternalLink className="w-3.5 h-3.5" /> Open Landing
+          </a>
+          <button onClick={refreshAll} disabled={loading}
+            className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5 disabled:opacity-50"
+            data-testid="refresh-btn">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
         </div>
 
         {/* Scope banner for centre owners */}
@@ -257,7 +251,7 @@ const AdminFutureSkills = () => {
 
         {/* Tabs with badges */}
         <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 w-fit gap-1">
-          {TABS.filter(t => !(isCenterOwner && t.key === 'centers')).map(t => {
+          {TABS.filter(t => !(isCenterOwner && (t.key === 'centers' || t.key === 'sources'))).map(t => {
             const badge =
               t.key === 'leads'     ? tabStats?.leads
               : t.key === 'trials'  ? tabStats?.trials
@@ -283,8 +277,8 @@ const AdminFutureSkills = () => {
           })}
         </div>
 
-        {/* Toolbar (hidden for Centres & Reports tabs) */}
-        {tab !== 'centers' && tab !== 'reports' && (
+        {/* Toolbar (hidden for Centres / Reports / Sources tabs) */}
+        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           {/* Left: primary actions per tab */}
           {tab === 'leads' && (
@@ -366,11 +360,13 @@ const AdminFutureSkills = () => {
         </div>
         )}
 
-        {/* Content: Reports OR Centers manager OR standard table */}
+        {/* Content: Reports OR Centers manager OR Sources OR standard table */}
         {tab === 'reports' ? (
           <ReportsPanel getAuthHeaders={getAuthHeaders} />
         ) : tab === 'centers' ? (
           <CentersManager getAuthHeaders={getAuthHeaders} />
+        ) : tab === 'sources' ? (
+          <SourceLinksPanel getAuthHeaders={getAuthHeaders} />
         ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {loading && rows.length === 0 ? (
@@ -392,14 +388,25 @@ const AdminFutureSkills = () => {
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
                 if (action === 'convert')    setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule') setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'trial' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'trial' });
+                if (action === 'attended') {
+                  try {
+                    await axios.post(`${API}/admin/future-skills/trials/${r.id}/attend`, {}, { headers: getAuthHeaders() });
+                    toast.success(`${r.student_name || r.trial_ref} marked attended`);
+                    refreshAll();
+                  } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+                }
               }} />}
               {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} />}
-              {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} />}
+              {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+                if (action === 'renew')      setModal({ type: 'renew', customer: r });
+                if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'customer' });
+                if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
+              }} />}
               {tab === 'lost'      && <LostTable rows={rows} onOpen={setSelected} />}
             </div>
           )}
@@ -583,6 +590,13 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
             </td>
             <td className="px-4 py-3">
               <div className="flex flex-wrap gap-1">
+                {(r.crm_status === 'scheduled' || r.crm_status === 'trial_scheduled' || r.crm_status === 'rescheduled') && (
+                  <button onClick={(e) => { e.stopPropagation(); onAction('attended', r); }}
+                    className="text-[10px] px-2 py-1 rounded-md bg-teal-100 hover:bg-teal-200 text-teal-800 font-bold flex items-center gap-1"
+                    data-testid={`row-attended-${r.trial_ref}`} title="Mark Attended → Completed">
+                    ✓ Attended
+                  </button>
+                )}
                 <button onClick={(e) => { e.stopPropagation(); onAction('convert', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
@@ -648,30 +662,30 @@ const CustomersTable = ({ rows, onOpen, centers = [], batches = [] }) => {
   );
 };
 
-const RenewalsTable = ({ rows, onOpen, centers = [], batches = [] }) => {
+const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   return (
     <table className="w-full text-sm">
       <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Renewal</Th><Th>Status</Th><Th className="text-right">Action</Th></tr>
+        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Renewal</Th><Th>Status</Th><Th>Actions</Th></tr>
       </thead>
       <tbody>
         {rows.map(r => (
-          <tr key={r.id} onClick={() => onOpen(r)}
-            className={`border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer ${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : ''}`}
+          <tr key={r.id}
+            className={`border-t border-slate-100 hover:bg-blue-50/40 ${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : ''}`}
             data-testid={`row-${r.subscription_ref}`}>
-            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.subscription_ref}</td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
               <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
             </td>
-            <td className="px-4 py-3 text-xs">
+            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
               <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
             </td>
-            <td className="px-4 py-3 text-xs font-bold text-[#0F1E33]">{r.plan_label}</td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 text-xs font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.plan_label}</td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</div>
               <div className="text-[11px] text-slate-500">
                 {r.renewal_bucket === 'overdue'
@@ -679,9 +693,25 @@ const RenewalsTable = ({ rows, onOpen, centers = [], batches = [] }) => {
                   : `in ${r.days_to_renewal ?? 0}d`}
               </div>
             </td>
-            <td className="px-4 py-3"><StatusBadge status={r.renewal_bucket} /></td>
-            <td className="px-4 py-3 text-right">
-              <ChevronRight className="w-4 h-4 text-slate-400 inline" />
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}><StatusBadge status={r.renewal_bucket} /></td>
+            <td className="px-4 py-3">
+              <div className="flex flex-wrap gap-1">
+                <button onClick={(e) => { e.stopPropagation(); onAction('renew', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  data-testid={`row-renew-${r.subscription_ref}`} title="Renew">
+                  <RotateCcw className="w-3 h-3" /> Renewed
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  data-testid={`row-renewal-followup-${r.subscription_ref}`} title="Add Followup">
+                  <Clock className="w-3 h-3" /> Followup
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  data-testid={`row-renewal-lost-${r.subscription_ref}`} title="Mark Lost">
+                  <XCircle className="w-3 h-3" /> Lost
+                </button>
+              </div>
             </td>
           </tr>
         ))}
@@ -1539,7 +1569,9 @@ const FollowupModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders })
     if (!f.next_date && !f.note && !f.outcome) { toast.error('Enter a date, note or outcome'); return; }
     setSaving(true);
     try {
-      const path = entityType === 'lead' ? `leads/${entity.id}/followup` : `trials/${entity.id}/followup`;
+      const path = entityType === 'lead' ? `leads/${entity.id}/followup`
+                 : entityType === 'trial' ? `trials/${entity.id}/followup`
+                 : `customers/${entity.id}/followup`;
       const payload = { ...f };
       if (payload.next_date) payload.next_date = new Date(payload.next_date).toISOString();
       await axios.post(`${API}/admin/future-skills/${path}`, payload, { headers: getAuthHeaders() });
@@ -2153,6 +2185,195 @@ const RateBadge = ({ label, pct }) => (
     <div className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
   </div>
 );
+
+// ═══════════════════════════════════════════════════════════════════════
+// SOURCE LINKS PANEL — trackable landing-page links with per-source metrics
+// ═══════════════════════════════════════════════════════════════════════
+const SourceLinksPanel = ({ getAuthHeaders }) => {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get(`${API}/admin/future-skills/source-links`, { headers: getAuthHeaders() });
+      setLinks(r.data?.source_links || []);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to load');
+    } finally { setLoading(false); }
+  }, [getAuthHeaders]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const submit = async () => {
+    if (!name.trim()) { toast.error('Source name is required'); return; }
+    setSaving(true);
+    try {
+      await axios.post(`${API}/admin/future-skills/source-links`,
+        { name: name.trim(), slug: slug.trim(), notes: notes.trim() },
+        { headers: getAuthHeaders() });
+      toast.success('Source link created');
+      setShowAdd(false); setName(''); setSlug(''); setNotes('');
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to create');
+    } finally { setSaving(false); }
+  };
+
+  const remove = async (link) => {
+    try {
+      await axios.delete(`${API}/admin/future-skills/source-links/${link.id}`, { headers: getAuthHeaders() });
+      toast.success('Source link deleted');
+      setConfirmDelete(null);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    }
+  };
+
+  const copy = (url) => {
+    navigator.clipboard?.writeText(url).then(() => toast.success('Link copied to clipboard'));
+  };
+
+  return (
+    <div className="space-y-5" data-testid="sources-panel">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="text-sm text-slate-600 max-w-2xl">
+            Create shareable landing-page URLs like <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">/future-skills/s/instagram-reels</code>.
+            Every lead, free trial and paying customer that comes through a link is auto-tagged with the source name — so you always know what channel drove the conversion.
+          </div>
+        </div>
+        <button onClick={() => setShowAdd(true)}
+          className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+          data-testid="add-source-btn">
+          <Plus className="w-3.5 h-3.5" /> New Source Link
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        {loading && links.length === 0 ? (
+          <div className="p-12 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading…</div>
+        ) : links.length === 0 ? (
+          <div className="p-12 text-center text-slate-400" data-testid="sources-empty">
+            No source links yet. Create your first one to start tracking channels.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Source</Th>
+                  <Th>Link</Th>
+                  <Th className="text-center">Views</Th>
+                  <Th className="text-center">Leads</Th>
+                  <Th className="text-center">Trials</Th>
+                  <Th className="text-center">Conversions</Th>
+                  <Th className="text-center">Lost</Th>
+                  <Th className="text-right">Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {links.map(l => {
+                  const url = `${origin}/future-skills/s/${l.slug}`;
+                  const m = l.metrics || {};
+                  return (
+                    <tr key={l.id} className="border-t border-slate-100 hover:bg-blue-50/40" data-testid={`source-row-${l.slug}`}>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-[#0F1E33]">{l.name}</div>
+                        {l.notes && <div className="text-[11px] text-slate-500 mt-0.5">{l.notes}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-mono text-slate-700 break-all max-w-xs">/future-skills/s/{l.slug}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">created {fmtDate(l.created_at)}</div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-[#0F1E33]">{m.views || 0}</td>
+                      <td className="px-4 py-3 text-center font-bold text-[#1E3A5F]">{m.leads || 0}</td>
+                      <td className="px-4 py-3 text-center font-bold text-blue-700">{m.trials || 0}</td>
+                      <td className="px-4 py-3 text-center font-bold text-emerald-700">{m.converted || 0}</td>
+                      <td className="px-4 py-3 text-center font-bold text-rose-700">{m.lost || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button onClick={() => copy(url)}
+                            className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center gap-1"
+                            data-testid={`copy-source-${l.slug}`} title="Copy link">
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                          <a href={url} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold flex items-center gap-1"
+                            data-testid={`open-source-${l.slug}`} title="Open link">
+                            <Eye className="w-3 h-3" /> Open
+                          </a>
+                          <button onClick={() => setConfirmDelete(l)}
+                            className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold flex items-center gap-1"
+                            data-testid={`delete-source-${l.slug}`} title="Delete">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showAdd && (
+        <Modal title="New Source Link" onClose={() => setShowAdd(false)} testid="add-source-modal">
+          <FieldGroup>
+            <TextField label="Source name" value={name} onChange={setName} required
+              placeholder="e.g. Instagram Reels" colSpan={2} testid="source-name-input" />
+            <TextField label="Custom slug (optional)" value={slug} onChange={setSlug}
+              placeholder="auto-generated from name" colSpan={2} testid="source-slug-input" />
+          </FieldGroup>
+          {(slug || name) && (
+            <div className="mt-2 text-[11px] text-slate-500">
+              URL preview: <span className="font-mono text-slate-700">{origin}/future-skills/s/{(slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'src'}</span>
+            </div>
+          )}
+          <div className="mt-3">
+            <TextAreaField label="Notes (optional)" value={notes} onChange={setNotes} testid="source-notes-input" />
+          </div>
+          <button onClick={submit} disabled={saving}
+            className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
+            data-testid="submit-source-btn">
+            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Create Source Link</>}
+          </button>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal title="Delete source link?" onClose={() => setConfirmDelete(null)} testid="delete-source-modal">
+          <p className="text-sm text-slate-600">
+            Deleting <b>{confirmDelete.name}</b> will stop future tracking, but existing leads/trials
+            tagged with this source will keep the source name.
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <button onClick={() => setConfirmDelete(null)}
+              className="py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">
+              Cancel
+            </button>
+            <button onClick={() => remove(confirmDelete)}
+              className="py-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+              data-testid="confirm-delete-source-btn">
+              <Trash2 className="w-3.5 h-3.5" /> Delete
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // IMPORT CUSTOMERS MODAL

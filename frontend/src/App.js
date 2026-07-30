@@ -85,6 +85,7 @@ const FathersDayWorkshopLandingPage = lazy(() => import("./pages/FathersDayWorks
 const WorkshopSuccessPage = lazy(() => import("./pages/WorkshopSuccessPage"));
 const FutureSkillsBookingPage = lazy(() => import("./pages/FutureSkillsBookingPage"));
 const FutureSkillsSuccessPage = lazy(() => import("./pages/FutureSkillsSuccessPage"));
+const FutureSkillsSourceRedirect = lazy(() => import("./pages/FutureSkillsSourceRedirect"));
 
 // Social Media Internship Readiness Program
 const SocialMediaInternPage = lazy(() => import("./pages/SocialMediaInternPage"));
@@ -267,6 +268,7 @@ function App() {
               <Route path="/workshops/:slug/success" element={<WorkshopSuccessPage />} />
               <Route path="/future-skills/book" element={<FutureSkillsBookingPage />} />
               <Route path="/future-skills/success" element={<FutureSkillsSuccessPage />} />
+              <Route path="/future-skills/s/:slug" element={<FutureSkillsSourceRedirect />} />
 
               {/* Social Media Internship Readiness Program */}
               <Route path="/social-media-intern" element={<SocialMediaInternPage />} />
