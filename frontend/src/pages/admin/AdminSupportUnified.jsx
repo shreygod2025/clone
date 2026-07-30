@@ -966,16 +966,28 @@ const AdminSupportUnified = () => {
       const notif = res?.data?.notifications || {};
       const waOk = notif.whatsapp?.sent;
       const emOk = notif.email?.sent;
+      const waMsg = notif.whatsapp?.message || '';
+      const emMsg = notif.email?.message || '';
+      // "No phone number" / "not configured" style skips are NOT failures.
+      const skipWords = ['no phone', 'not configured', 'skipped', 'not set', 'missing'];
+      const waSkipped = !waOk && skipWords.some(w => waMsg.toLowerCase().includes(w));
+      const emSkipped = !emOk && skipWords.some(w => emMsg.toLowerCase().includes(w));
+
       if (!userId) {
         toast.success('Query unassigned');
       } else if (waOk && emOk) {
         toast.success('Query assigned · WhatsApp + Email sent');
-      } else if (waOk) {
-        toast.success(`Query assigned · WhatsApp sent (email skipped: ${notif.email?.message || 'unknown'})`);
-      } else if (emOk) {
-        toast.warning(`Query assigned · Email sent · WhatsApp FAILED: ${notif.whatsapp?.message || 'unknown'}`, { duration: 8000 });
+      } else if (waOk || emOk) {
+        // At least one notification went through. If the other was just
+        // skipped (no phone / no email), still treat it as a success.
+        const sentBits = [waOk && 'WhatsApp', emOk && 'Email'].filter(Boolean).join(' + ');
+        const otherIssue = !waOk && !waSkipped ? `WhatsApp issue: ${waMsg}`
+                        : !emOk && !emSkipped ? `Email issue: ${emMsg}` : '';
+        toast.success(`Query assigned · ${sentBits} sent${otherIssue ? ` · ${otherIssue}` : ''}`);
+      } else if (waSkipped && emSkipped) {
+        toast.success('Query assigned · No notification sent (no phone / email on file)');
       } else if (notif.whatsapp || notif.email) {
-        toast.warning(`Query assigned BUT both notifications failed — WA: ${notif.whatsapp?.message || '?'} · Email: ${notif.email?.message || '?'}`, { duration: 10000 });
+        toast.error(`Query assigned but both notifications failed — WA: ${waMsg || '?'} · Email: ${emMsg || '?'}`, { duration: 10000 });
       } else {
         toast.success('Query assigned');
       }

@@ -26,7 +26,13 @@ const ALL_SECTIONS = [
   { value: 'schools', label: 'School CRM', description: 'Manage school partnerships' },
   { value: 'future_skills', label: 'Future Skills CRM', description: 'Manage Future Skills leads, trials, customers and centres' },
   { value: 'orders', label: 'Orders', description: 'Manage school and student payments' },
+  { value: 'orders.school',          label: '↳ School Payments',                description: 'Only school payments tab', parent: 'orders' },
+  { value: 'orders.student',         label: '↳ Student Payments',               description: 'Only student payments tab', parent: 'orders' },
+  { value: 'orders.school_students', label: '↳ School Student Payments (Online)', description: 'Only school-student online payments tab', parent: 'orders' },
+  { value: 'orders.robotics_shop',   label: '↳ Robotics Shop Orders',           description: 'Only robotics shop orders tab', parent: 'orders' },
   { value: 'expenses', label: 'Expenses', description: 'Manage school expenses and cost tracking' },
+  { value: 'expenses.list', label: '↳ Expenses list only', description: 'Manage expense entries — hides P&L', parent: 'expenses' },
+  { value: 'expenses.pnl',  label: '↳ P&L only',          description: 'View Profit & Loss only', parent: 'expenses' },
   { value: 'educators', label: 'Educators', description: 'Manage educator applications and assignments' },
   { value: 'growth_partners', label: 'Growth Partners', description: 'Manage growth partner applications' },
   { value: 'team_applications', label: 'Team Applications', description: 'View and manage team applications' },
@@ -922,31 +928,35 @@ const AdminUsers = () => {
             <div>
               <label className="block text-sm font-medium mb-2">Sections & Permissions *</label>
               <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
-                {ALL_SECTIONS.map(section => (
-                  <div 
-                    key={section.value}
-                    onClick={() => toggleRolePermission(section.value)}
-                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
-                      roleForm.permissions.includes(section.value)
-                        ? 'bg-green-50 border border-green-200'
-                        : 'bg-white border border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded flex items-center justify-center ${
-                      roleForm.permissions.includes(section.value)
-                        ? 'bg-green-500 text-white'
-                        : 'bg-slate-200'
-                    }`}>
-                      {roleForm.permissions.includes(section.value) && (
-                        <CheckCircle className="w-4 h-4" />
-                      )}
+                {ALL_SECTIONS.map(section => {
+                  const isChecked = roleForm.permissions.includes(section.value);
+                  const parentChecked = section.parent && roleForm.permissions.includes(section.parent);
+                  const dimmed = parentChecked && !isChecked;
+                  return (
+                    <div
+                      key={section.value}
+                      onClick={() => { if (!parentChecked || isChecked) toggleRolePermission(section.value); }}
+                      className={`flex items-center gap-3 p-2 rounded-lg transition-all ${
+                        section.parent ? 'ml-6' : ''
+                      } ${dimmed ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${
+                        isChecked
+                          ? 'bg-green-50 border border-green-200'
+                          : 'bg-white border border-slate-200 hover:border-slate-300'
+                      }`}
+                      title={parentChecked && !isChecked ? `Already granted via "${section.parent}" (full access)` : ''}
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center ${
+                        isChecked ? 'bg-green-500 text-white' : 'bg-slate-200'
+                      }`}>
+                        {isChecked && <CheckCircle className="w-4 h-4" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-medium text-sm ${section.parent ? 'text-slate-700' : ''}`}>{section.label}</p>
+                        <p className="text-xs text-slate-500">{section.description}</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{section.label}</p>
-                      <p className="text-xs text-slate-500">{section.description}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="text-xs text-slate-500 mt-1">
                 Selected: {roleForm.permissions.length} / {ALL_SECTIONS.length}

@@ -66,9 +66,13 @@ const AdminLayout = ({ children, title }) => {
     // Dashboard is always visible
     if (item.permission === null) return true;
 
-    // Check if team member has permission
+    // Check if team member has permission (supports sub-permissions e.g.
+    // "orders.robotics_shop" implicitly grants access to the Orders parent
+    // tab so the user can navigate there).
     const userPermissions = user?.permissions || [];
-    return userPermissions.includes(item.permission);
+    if (userPermissions.includes(item.permission)) return true;
+    const subPrefix = `${item.permission}.`;
+    return userPermissions.some(p => p.startsWith(subPrefix));
   });
 
   const handleLogout = () => {

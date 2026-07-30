@@ -39,8 +39,15 @@ const proxyFileUrl = (url, filename = '') => {
 };
 
 const AdminExpenses = () => {
-  const { getAuthHeaders } = useAuth();
-  const [activeTab, setActiveTab] = useState('expenses'); // 'expenses' | 'pnl'
+  const { user, getAuthHeaders } = useAuth();
+  // Sub-tab permission gating
+  const perms = user?.permissions || [];
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const fullExpensesAccess = isAdmin || perms.includes('expenses');
+  const canSeeExpensesList = fullExpensesAccess || perms.includes('expenses.list');
+  const canSeePnl = fullExpensesAccess || perms.includes('expenses.pnl');
+  const defaultTab = canSeeExpensesList ? 'expenses' : (canSeePnl ? 'pnl' : 'expenses');
+  const [activeTab, setActiveTab] = useState(defaultTab); // 'expenses' | 'pnl'
   const [pnlData, setPnlData] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -454,20 +461,20 @@ const AdminExpenses = () => {
 
         {/* Tab Navigation */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-          <button
+          {canSeeExpensesList && <button
             onClick={() => setActiveTab('expenses')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'expenses' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             data-testid="tab-expenses"
           >
             <span className="flex items-center gap-2"><FileText className="w-4 h-4" />All Expenses</span>
-          </button>
-          <button
+          </button>}
+          {canSeePnl && <button
             onClick={() => setActiveTab('pnl')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             data-testid="tab-pnl"
           >
             <span className="flex items-center gap-2"><BarChart2 className="w-4 h-4" />School P&amp;L Sheet</span>
-          </button>
+          </button>}
         </div>
 
         {activeTab === 'pnl' ? (

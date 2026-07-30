@@ -169,8 +169,22 @@ const STATUS_COLORS = {
 };
 
 const AdminOrders = () => {
-  const { getAuthHeaders } = useAuth();
-  const [activeTab, setActiveTab] = useState('school');
+  const { user, getAuthHeaders } = useAuth();
+  // ── Sub-tab permission gating ──────────────────────────────────────
+  // Admin/super_admin OR anyone with the parent "orders" perm sees every tab.
+  // Otherwise only tabs whose sub-perm (orders.<tab>) is in the user's list.
+  const perms = user?.permissions || [];
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const fullOrdersAccess = isAdmin || perms.includes('orders');
+  const canSee = (subKey) => fullOrdersAccess || perms.includes(`orders.${subKey}`);
+  const tabAccess = {
+    school:           canSee('school'),
+    student:          canSee('student'),
+    'school-students': canSee('school_students'),
+    'robotics-shop':  canSee('robotics_shop'),
+  };
+  const firstAllowedTab = ['school', 'student', 'school-students', 'robotics-shop'].find(k => tabAccess[k]) || 'school';
+  const [activeTab, setActiveTab] = useState(firstAllowedTab);
   const [payments, setPayments] = useState([]);
   const [schoolStudentPayments, setSchoolStudentPayments] = useState([]);
   const [schoolStudentStats, setSchoolStudentStats] = useState({});
@@ -1040,7 +1054,7 @@ const AdminOrders = () => {
       <div className="space-y-6">
         {/* Tabs */}
         <div className="flex gap-2 border-b border-slate-200">
-          <button
+          {tabAccess.school && <button
             onClick={() => setActiveTab('school')}
             className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
               activeTab === 'school'
@@ -1051,8 +1065,8 @@ const AdminOrders = () => {
           >
             <Building2 className="w-4 h-4" />
             School Payments
-          </button>
-          <button
+          </button>}
+          {tabAccess.student && <button
             onClick={() => setActiveTab('student')}
             className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
               activeTab === 'student'
@@ -1063,8 +1077,8 @@ const AdminOrders = () => {
           >
             <GraduationCap className="w-4 h-4" />
             Student Payments
-          </button>
-          <button
+          </button>}
+          {tabAccess['school-students'] && <button
             onClick={() => setActiveTab('school-students')}
             className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
               activeTab === 'school-students'
@@ -1075,8 +1089,8 @@ const AdminOrders = () => {
           >
             <CreditCard className="w-4 h-4" />
             School Student Payments (Online)
-          </button>
-          <button
+          </button>}
+          {tabAccess['robotics-shop'] && <button
             onClick={() => setActiveTab('robotics-shop')}
             className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
               activeTab === 'robotics-shop'
@@ -1087,7 +1101,7 @@ const AdminOrders = () => {
           >
             <ShoppingBag className="w-4 h-4" />
             Robotics Shop Orders
-          </button>
+          </button>}
           <div className="ml-auto flex items-center pb-1">
             <Button
               variant="outline"
