@@ -2,6 +2,53 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-30 · pm2) — Reports Tab + Slim Trial Form + Customer Import 📊
+
+**Ask**: Add a Reports section (funnel + source breakdown + batch performance);
+strip Add-Free-Trial down to just phone/student/centre/batch; batches use
+age-group + course-level (drop "skill"); Add/Import Customer with centre +
+batch selectors and age dropdown instead of grade.
+
+**Backend** (`future_skills.py`):
+- New endpoint `GET /api/admin/future-skills/reports`:
+  * `funnel`: {leads, trials, customers} + `lead_to_trial_rate`,
+    `trial_to_customer_rate`, `lead_to_customer_rate`.
+  * `source_breakdown`: [{source, count}] aggregated across all leads.
+  * `batches`: per-batch report {active_count, trials_count,
+    leads_at_centre, capacity, fill_pct, days, time, age_group, level}.
+  * Fully scoped for `fs_center_owner` (only their centre's numbers).
+- Batch schema: added `age_group` (`3-7` | `8-11` | `12-16`) and `level`
+  (`beginner`|`intermediate`|`advanced`). Removed `skill` field.
+- `admin_create_trial` now accepts `batch_id` and stores `batch_label`.
+- `CustomerCreateAdmin` now accepts `batch_id` and `student_age`; when a
+  `batch_id` is provided we resolve the batch and stamp `batch_label` /
+  `center_id`.
+- New endpoint `POST /api/admin/future-skills/customers/import`:
+  * multipart form with `file`, `center_id` (required), optional `batch_id`,
+    and `plan` (defaults to monthly). All rows inherit the chosen centre +
+    batch. Dedups by phone within the centre. Sample columns:
+    `parent_phone*, parent_name, parent_email, student_name, age,
+    amount_paid, payment_date, renewal_date, notes`.
+
+**Frontend** (`AdminFutureSkills.jsx`):
+- **New "Reports" tab (default)** — Conversion Funnel card + Source-of-Leads
+  progress bars + Batch-performance table.
+- **Add Free Trial modal** — now only Parent Phone (required),
+  Student Name (optional), Centre, Batch (optional).
+- **Add Customer modal** — Age dropdown (age-group buckets) replaces Grade,
+  Centre + Batch selectors added; batch list filters to picked centre.
+- **Batch modal** — replaced "Skill" text field with Age Group + Course
+  Level dropdowns.
+- **Import Customers** — new modal on the Active Customers tab: Centre +
+  Batch + Plan selectors, sample-CSV download, .csv/.xlsx upload.
+- Age-group + level display in the Reports batch table rows.
+
+**Testing done**: `GET /reports` returns funnel + batch analytics; creating a
+batch with `age_group=8-11` and `level=beginner` succeeds; customer CSV
+import inserted 2, skipped 0.
+
+
+
 ### Latest Update (2026-07-30 · pm) — Reuse Settings Centres + Slim Success Page 🧹
 
 **Ask**: Add Future Skills to the admin sidebar, minimise the trial success

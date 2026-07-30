@@ -5,7 +5,7 @@ import {
   Bot, Search, RefreshCw, Loader2, X, Phone, Mail, GraduationCap,
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
-  Clock, Building2, Trash2, Pencil, Power,
+  Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -15,12 +15,27 @@ import { useAuth } from '../../context/AuthContext';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TABS = [
+  { key: 'reports',   label: 'Reports',          icon: BarChart3 },
   { key: 'leads',     label: 'Leads',            icon: Users },
   { key: 'trials',    label: 'Free Trials',      icon: Calendar },
   { key: 'customers', label: 'Active Customers', icon: Sparkles },
   { key: 'renewals',  label: 'Renewals',         icon: RotateCcw },
   { key: 'lost',      label: 'Lost',             icon: XCircle },
   { key: 'centers',   label: 'Centres & Batches', icon: MapPin },
+];
+
+const AGE_GROUP_OPTIONS = [
+  { value: '',      label: 'Any age' },
+  { value: '3-7',   label: '3 – 7 years' },
+  { value: '8-11',  label: '8 – 11 years' },
+  { value: '12-16', label: '12 – 16 years' },
+];
+
+const LEVEL_OPTIONS = [
+  { value: '',            label: 'Any level' },
+  { value: 'beginner',    label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced',    label: 'Advanced' },
 ];
 
 const LEAD_STATUSES = [
@@ -43,7 +58,7 @@ const fmtDateTime = (s) => { try { return s ? format(parseISO(s), 'MMM d · h:mm
 const AdminFutureSkills = () => {
   const { getAuthHeaders, user } = useAuth();
   const isCenterOwner = user?.role === 'fs_center_owner';
-  const [tab, setTab] = useState('leads');
+  const [tab, setTab] = useState('reports');
   const [renewalBucket, setRenewalBucket] = useState('all');
   const [rows, setRows] = useState([]);
   const [stats, setStats] = useState(null);
@@ -74,7 +89,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
-    if (tab === 'centers') { setRows([]); setStats(null); return; }
+    if (tab === 'centers' || tab === 'reports') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -223,8 +238,8 @@ const AdminFutureSkills = () => {
           })}
         </div>
 
-        {/* Toolbar (hidden for Centers tab which has its own UI) */}
-        {tab !== 'centers' && (
+        {/* Toolbar (hidden for Centres & Reports tabs) */}
+        {tab !== 'centers' && tab !== 'reports' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           {/* Left: primary actions per tab */}
           {tab === 'leads' && (
@@ -249,11 +264,18 @@ const AdminFutureSkills = () => {
             </button>
           )}
           {tab === 'customers' && (
-            <button onClick={() => setModal({ type: 'add-customer' })}
-              className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-              data-testid="add-customer-btn">
-              <Plus className="w-3.5 h-3.5" /> Add Customer
-            </button>
+            <>
+              <button onClick={() => setModal({ type: 'add-customer' })}
+                className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                data-testid="add-customer-btn">
+                <Plus className="w-3.5 h-3.5" /> Add Customer
+              </button>
+              <button onClick={() => setModal({ type: 'import-customers' })}
+                className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
+                data-testid="import-customers-btn">
+                <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+              </button>
+            </>
           )}
 
           {/* Renewal bucket switch */}
@@ -299,8 +321,8 @@ const AdminFutureSkills = () => {
         </div>
         )}
 
-        {/* Stats row (hidden for Centers tab) */}
-        {tab !== 'centers' && tabStats && (
+        {/* Stats row (hidden for Centres and Reports tabs) */}
+        {tab !== 'centers' && tab !== 'reports' && tabStats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <MiniStat label="Leads"     value={tabStats.leads     || 0} accent="#1E3A5F" icon={Users}    active={tab==='leads'} />
             <MiniStat label="Trials"    value={tabStats.trials    || 0} accent="#3B82F6" icon={Calendar} active={tab==='trials'} />
@@ -311,8 +333,10 @@ const AdminFutureSkills = () => {
           </div>
         )}
 
-        {/* Content: Centers manager OR standard table */}
-        {tab === 'centers' ? (
+        {/* Content: Reports OR Centers manager OR standard table */}
+        {tab === 'reports' ? (
+          <ReportsPanel getAuthHeaders={getAuthHeaders} />
+        ) : tab === 'centers' ? (
           <CentersManager getAuthHeaders={getAuthHeaders} />
         ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
@@ -346,6 +370,7 @@ const AdminFutureSkills = () => {
       {modal?.type === 'add-trial'    && <AddTrialModal   onClose={() => setModal(null)} onSaved={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'add-customer' && <AddCustomerModal onClose={() => setModal(null)} onSaved={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'import'       && <ImportModal     onClose={() => setModal(null)} onImport={handleImport} fileInputRef={fileInputRef} />}
+      {modal?.type === 'import-customers' && <ImportCustomersModal onClose={() => setModal(null)} onImported={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'renew'        && <RenewModal      customer={modal.customer} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'lost'         && <MarkLostModal   entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'convert-trial' && <ConvertTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
@@ -849,32 +874,58 @@ const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
 };
 
 const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
-  const [f, setF] = useState({ parent_name: '', parent_phone: '', parent_email: '', student_name: '', student_grade: '', preferred_center: '', preferred_skill: '', scheduled_at: '', notes: '' });
+  const [f, setF] = useState({ parent_phone: '', student_name: '', center_id: '', batch_id: '' });
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || []));
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatches(r.data?.batches || []));
+  }, [getAuthHeaders]);
+
+  const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
+
   const submit = async () => {
-    if (!f.parent_name || !f.parent_phone || !f.student_name) { toast.error('Parent name, phone and student name required'); return; }
+    if (!f.parent_phone) { toast.error('Parent phone required'); return; }
+    if (!f.center_id) { toast.error('Please pick a centre'); return; }
     setSaving(true);
     try {
-      await axios.post(`${API}/admin/future-skills/trials`, f, { headers: getAuthHeaders() });
+      const payload = {
+        parent_phone: f.parent_phone,
+        parent_name: '',
+        student_name: (f.student_name || '').trim() || 'Student',
+        center_id: f.center_id,
+        batch_id: f.batch_id || '',
+      };
+      await axios.post(`${API}/admin/future-skills/trials`, payload, { headers: getAuthHeaders() });
       toast.success('Trial booking added');
       onSaved(); onClose();
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed');
     } finally { setSaving(false); }
   };
+
   return (
     <Modal title="Add Free Trial" onClose={onClose} testid="add-trial-modal">
       <FieldGroup>
-        <TextField label="Student Name" value={f.student_name} onChange={v => setF({ ...f, student_name: v })} required testid="trial-student-input" />
-        <TextField label="Grade" value={f.student_grade} onChange={v => setF({ ...f, student_grade: v })} />
-        <TextField label="Parent Name" value={f.parent_name} onChange={v => setF({ ...f, parent_name: v })} required testid="trial-parent-input" />
-        <TextField label="Parent Phone" value={f.parent_phone} onChange={v => setF({ ...f, parent_phone: v })} required testid="trial-phone-input" />
-        <TextField label="Email" value={f.parent_email} onChange={v => setF({ ...f, parent_email: v })} colSpan={2} />
-        <TextField label="Preferred Skill" value={f.preferred_skill} onChange={v => setF({ ...f, preferred_skill: v })} placeholder="e.g. Robotics" />
-        <TextField label="Preferred Centre" value={f.preferred_center} onChange={v => setF({ ...f, preferred_center: v })} />
-        <TextField label="Scheduled At" value={f.scheduled_at} onChange={v => setF({ ...f, scheduled_at: v })} placeholder="e.g. 2026-03-01 10:00 AM" colSpan={2} />
+        <TextField label="Parent Phone" value={f.parent_phone} onChange={v => setF({ ...f, parent_phone: v })} required testid="trial-phone-input" colSpan={2} />
+        <TextField label="Student Name (optional)" value={f.student_name} onChange={v => setF({ ...f, student_name: v })} testid="trial-student-input" colSpan={2} />
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '' })}
+          options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="trial-center-select" colSpan={2} />
+        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v })}
+          options={[
+            { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
+            ...batchesForCenter.map(b => ({
+              value: b.id,
+              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+            })),
+          ]}
+          testid="trial-batch-select" colSpan={2} />
       </FieldGroup>
-      <div className="mt-3"><TextAreaField label="Notes" value={f.notes} onChange={v => setF({ ...f, notes: v })} /></div>
       <button onClick={submit} disabled={saving}
         className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-add-trial-btn">
@@ -886,8 +937,25 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
 
 const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
   const today = new Date().toISOString().slice(0, 10);
-  const [f, setF] = useState({ parent_name: '', parent_phone: '', parent_email: '', student_name: '', student_grade: '', plan: 'monthly', amount_paid: 2000, payment_date: today, renewal_date: '', preferred_center: '', notes: '' });
+  const [f, setF] = useState({
+    parent_name: '', parent_phone: '', parent_email: '',
+    student_name: '', student_age: '',
+    center_id: '', batch_id: '',
+    plan: 'monthly', amount_paid: 2000, payment_date: today, renewal_date: '',
+    notes: '',
+  });
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || []));
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatches(r.data?.batches || []));
+  }, [getAuthHeaders]);
+
+  const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
 
   const onPlanChange = (plan) => {
     const p = PLAN_OPTIONS.find(x => x.value === plan);
@@ -896,6 +964,7 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
 
   const submit = async () => {
     if (!f.parent_name || !f.parent_phone || !f.student_name) { toast.error('Parent name, phone and student name required'); return; }
+    if (!f.center_id) { toast.error('Please pick a centre'); return; }
     if (!(f.amount_paid > 0)) { toast.error('Enter amount paid'); return; }
     setSaving(true);
     try {
@@ -915,15 +984,28 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
     <Modal title="Add Customer" onClose={onClose} testid="add-customer-modal">
       <FieldGroup>
         <TextField label="Student Name" value={f.student_name} onChange={v => setF({ ...f, student_name: v })} required testid="cust-student-input" />
-        <TextField label="Grade" value={f.student_grade} onChange={v => setF({ ...f, student_grade: v })} />
+        <SelectField label="Age" value={f.student_age} onChange={v => setF({ ...f, student_age: v })}
+          options={AGE_GROUP_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })).concat([{ value: '', label: 'Age not set' }])}
+          testid="cust-age-select" />
         <TextField label="Parent Name" value={f.parent_name} onChange={v => setF({ ...f, parent_name: v })} required testid="cust-parent-input" />
         <TextField label="Parent Phone" value={f.parent_phone} onChange={v => setF({ ...f, parent_phone: v })} required testid="cust-phone-input" />
         <TextField label="Email" value={f.parent_email} onChange={v => setF({ ...f, parent_email: v })} colSpan={2} />
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '' })}
+          options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="cust-center-select" colSpan={2} />
+        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v })}
+          options={[
+            { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
+            ...batchesForCenter.map(b => ({
+              value: b.id,
+              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+            })),
+          ]}
+          testid="cust-batch-select" colSpan={2} />
         <SelectField label="Plan" value={f.plan} onChange={onPlanChange} options={PLAN_OPTIONS} testid="cust-plan-select" />
         <TextField label="Amount Paid (₹)" type="number" value={f.amount_paid} onChange={v => setF({ ...f, amount_paid: parseFloat(v) || 0 })} required testid="cust-amount-input" />
         <TextField label="Payment Date" type="date" value={f.payment_date} onChange={v => setF({ ...f, payment_date: v })} />
         <TextField label="Renewal Date (auto if empty)" type="date" value={f.renewal_date} onChange={v => setF({ ...f, renewal_date: v })} testid="cust-renewal-input" />
-        <TextField label="Preferred Centre" value={f.preferred_center} onChange={v => setF({ ...f, preferred_center: v })} colSpan={2} />
       </FieldGroup>
       <div className="mt-3"><TextAreaField label="Notes" value={f.notes} onChange={v => setF({ ...f, notes: v })} /></div>
       <button onClick={submit} disabled={saving}
@@ -1366,7 +1448,7 @@ const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) =>
   const editing = !!batch;
   const [f, setF] = useState(batch ? { ...batch } : {
     center_id: centers[0]?.id || '', name: '', days: [], start_time: '', end_time: '',
-    skill: '', capacity: 15, is_active: true,
+    age_group: '', level: '', capacity: 15, is_active: true,
   });
   const [saving, setSaving] = useState(false);
 
@@ -1382,10 +1464,13 @@ const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) =>
     if (!f.name?.trim()) { toast.error('Batch name required'); return; }
     setSaving(true);
     try {
+      const payload = { ...f };
+      // Backend doesn't have "skill" anymore
+      delete payload.skill;
       if (editing) {
-        await axios.patch(`${API}/admin/future-skills/batches/${batch.id}`, f, { headers: getAuthHeaders() });
+        await axios.patch(`${API}/admin/future-skills/batches/${batch.id}`, payload, { headers: getAuthHeaders() });
       } else {
-        await axios.post(`${API}/admin/future-skills/batches`, f, { headers: getAuthHeaders() });
+        await axios.post(`${API}/admin/future-skills/batches`, payload, { headers: getAuthHeaders() });
       }
       toast.success(editing ? 'Batch updated' : 'Batch added');
       onSaved(); onClose();
@@ -1400,7 +1485,10 @@ const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) =>
         <SelectField label="Centre" value={f.center_id || ''} onChange={v => setF({ ...f, center_id: v })}
           options={centers.map(c => ({ value: c.id, label: c.name }))} testid="batch-center-select" colSpan={2} />
         <TextField label="Batch Name" value={f.name || ''} onChange={v => setF({ ...f, name: v })} required placeholder="e.g. Weekend Morning" testid="batch-name-input" colSpan={2} />
-        <TextField label="Skill (optional)" value={f.skill || ''} onChange={v => setF({ ...f, skill: v })} placeholder="Robotics / Coding / AI" />
+        <SelectField label="Age Group" value={f.age_group || ''} onChange={v => setF({ ...f, age_group: v })}
+          options={AGE_GROUP_OPTIONS} testid="batch-age-select" />
+        <SelectField label="Course Level" value={f.level || ''} onChange={v => setF({ ...f, level: v })}
+          options={LEVEL_OPTIONS} testid="batch-level-select" />
         <TextField label="Capacity" type="number" value={f.capacity ?? 15} onChange={v => setF({ ...f, capacity: parseInt(v) || 0 })} testid="batch-capacity-input" />
         <TextField label="Start Time" type="time" value={f.start_time || ''} onChange={v => setF({ ...f, start_time: v })} testid="batch-start-input" />
         <TextField label="End Time" type="time" value={f.end_time || ''} onChange={v => setF({ ...f, end_time: v })} testid="batch-end-input" />
@@ -1427,6 +1515,244 @@ const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) =>
         className="mt-4 w-full py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-batch-btn">
         {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> {editing ? 'Update Batch' : 'Save Batch'}</>}
+      </button>
+    </Modal>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// REPORTS PANEL
+// ═══════════════════════════════════════════════════════════════════════
+const ReportsPanel = ({ getAuthHeaders }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get(`${API}/admin/future-skills/reports`, { headers: getAuthHeaders() });
+      setData(r.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to load reports');
+    } finally { setLoading(false); }
+  }, [getAuthHeaders]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading || !data) {
+    return <div className="p-12 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading reports…</div>;
+  }
+
+  const { funnel, source_breakdown = [], batches = [] } = data;
+  const totalLeadSource = source_breakdown.reduce((s, r) => s + r.count, 0) || 1;
+
+  return (
+    <div className="space-y-5" data-testid="reports-panel">
+      {/* Funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-3">Conversion Funnel</div>
+          <div className="grid grid-cols-3 gap-3">
+            <FunnelStep label="Leads" value={funnel.leads} accent="#1E3A5F" icon={Users} />
+            <FunnelStep label="Free Trials" value={funnel.trials} accent="#3B82F6" icon={Calendar} />
+            <FunnelStep label="Active Customers" value={funnel.customers} accent="#16A34A" icon={Sparkles} />
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+            <RateBadge label="Lead → Trial" pct={funnel.lead_to_trial_rate} />
+            <RateBadge label="Trial → Customer" pct={funnel.trial_to_customer_rate} />
+            <RateBadge label="Lead → Customer" pct={funnel.lead_to_customer_rate} />
+          </div>
+        </div>
+
+        {/* Source breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-1.5"><PieChart className="w-3.5 h-3.5" /> Source of Leads</div>
+          {source_breakdown.length === 0 ? (
+            <div className="py-10 text-center text-slate-400 text-sm">No lead sources logged yet.</div>
+          ) : (
+            <div className="space-y-2.5">
+              {source_breakdown.map(row => {
+                const pct = Math.round((row.count / totalLeadSource) * 100);
+                return (
+                  <div key={row.source} data-testid={`source-row-${row.source}`}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#0F1E33]">{row.source}</span>
+                      <span className="text-slate-500">{row.count} · {pct}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
+                      <div className="h-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F]" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Batches */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="font-black text-[#1E3A5F] flex items-center gap-2"><Target className="w-4 h-4" /> Batch performance</div>
+          <span className="text-xs text-slate-500">{batches.length} batches</span>
+        </div>
+        {batches.length === 0 ? (
+          <div className="p-10 text-center text-slate-400 text-sm">Add a batch under Centres & Batches to see numbers here.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Batch</Th>
+                  <Th>Centre</Th>
+                  <Th>Day · Time</Th>
+                  <Th>Active / Cap</Th>
+                  <Th>Free Trials</Th>
+                  <Th>Leads at centre</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map(b => (
+                  <tr key={b.id} className="border-t border-slate-100" data-testid={`batch-report-${b.id}`}>
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-[#0F1E33]">{b.name}</div>
+                      <div className="text-[11px] text-slate-500 flex gap-2 flex-wrap">
+                        {b.age_group && <span>Age {b.age_group}</span>}
+                        {b.level && <span className="capitalize">{b.level}</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-700">{b.center_name || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-slate-700">
+                      <div>{(b.days || []).join(' · ') || '—'}</div>
+                      <div className="text-[11px] text-slate-500">{b.start_time || '—'} – {b.end_time || '—'}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs font-bold text-[#0F1E33]">{b.active_count} / {b.capacity}</div>
+                      <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                        <div className={`h-full ${b.fill_pct >= 100 ? 'bg-rose-500' : b.fill_pct >= 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, b.fill_pct)}%` }} />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs font-bold text-blue-700">{b.trials_count}</td>
+                    <td className="px-4 py-3 text-xs text-slate-600">{b.leads_at_centre}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const FunnelStep = ({ icon: Icon, label, value, accent }) => (
+  <div className="rounded-xl border border-slate-100 p-3 text-center" style={{ background: `${accent}08` }}>
+    <div className="w-8 h-8 mx-auto rounded-lg flex items-center justify-center mb-1" style={{ background: `${accent}18`, color: accent }}>
+      <Icon className="w-4 h-4" />
+    </div>
+    <div className="text-2xl font-black text-[#0F1E33]">{value}</div>
+    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
+  </div>
+);
+
+const RateBadge = ({ label, pct }) => (
+  <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+    <div className="text-lg font-black text-[#0F1E33]">{pct}%</div>
+    <div className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
+  </div>
+);
+
+// ═══════════════════════════════════════════════════════════════════════
+// IMPORT CUSTOMERS MODAL
+// ═══════════════════════════════════════════════════════════════════════
+const ImportCustomersModal = ({ onClose, onImported, getAuthHeaders }) => {
+  const [centers, setCenters] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [f, setF] = useState({ center_id: '', batch_id: '', plan: 'monthly' });
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || []));
+    axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() })
+      .then(r => setBatches(r.data?.batches || []));
+  }, [getAuthHeaders]);
+
+  const batchesForCenter = f.center_id ? batches.filter(b => b.center_id === f.center_id) : [];
+
+  const downloadSample = () => {
+    const csv = 'parent_name,parent_phone,parent_email,student_name,age,amount_paid,payment_date,notes\nRahul Kapoor,9812345600,rahul@x.com,Aarav Kapoor,9,2000,2026-07-01,Interested in AI\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'future-skills-customers-sample.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const submit = async () => {
+    if (!f.center_id) { toast.error('Pick a centre'); return; }
+    if (!file) { toast.error('Choose a CSV or Excel file'); return; }
+    setBusy(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('center_id', f.center_id);
+    if (f.batch_id) fd.append('batch_id', f.batch_id);
+    fd.append('plan', f.plan);
+    try {
+      const r = await axios.post(`${API}/admin/future-skills/customers/import`, fd, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(`Imported ${r.data.inserted} customers, skipped ${r.data.skipped}`);
+      onImported();
+      onClose();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Import failed');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal title="Import Active Customers" onClose={onClose} testid="import-customers-modal">
+      <p className="text-sm text-slate-600 mb-4">Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong>. Every row will be added to the centre and batch chosen below. Duplicates (same phone in this centre) are skipped.</p>
+
+      <FieldGroup>
+        <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '' })}
+          options={[{ value: '', label: 'Select a centre…' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="import-cust-center-select" colSpan={2} />
+        <SelectField label="Batch (optional)" value={f.batch_id} onChange={v => setF({ ...f, batch_id: v })}
+          options={[
+            { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
+            ...batchesForCenter.map(b => ({
+              value: b.id,
+              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+            })),
+          ]}
+          testid="import-cust-batch-select" colSpan={2} />
+        <SelectField label="Plan" value={f.plan} onChange={v => setF({ ...f, plan: v })}
+          options={PLAN_OPTIONS} testid="import-cust-plan-select" colSpan={2} />
+      </FieldGroup>
+
+      <div className="bg-slate-50 rounded-lg p-3 my-4 text-xs text-slate-600">
+        <div className="font-bold mb-1">Supported columns:</div>
+        <div className="font-mono">parent_phone*, parent_name, parent_email, student_name, age, amount_paid, payment_date, renewal_date, notes</div>
+        <div className="mt-1 text-slate-500">* required · amount_paid defaults to plan price · dates auto-computed</div>
+      </div>
+
+      <button onClick={downloadSample}
+        className="mb-3 text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
+        data-testid="download-cust-sample-btn">
+        <Download className="w-3.5 h-3.5" /> Download sample CSV
+      </button>
+
+      <input type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        className="w-full text-sm border border-dashed border-slate-300 rounded-lg p-4 cursor-pointer hover:border-blue-400"
+        data-testid="import-cust-file-input" />
+
+      <button onClick={submit} disabled={busy || !f.center_id || !file}
+        className="mt-4 w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+        data-testid="submit-import-cust-btn">
+        {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Importing…</> : <><Upload className="w-4 h-4" /> Import Customers</>}
       </button>
     </Modal>
   );

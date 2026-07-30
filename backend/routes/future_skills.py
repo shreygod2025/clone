@@ -569,7 +569,7 @@ async def admin_update_sub(sub_id: str, data: SubscriptionUpdate, user: dict = D
 # ══════════════════════════════════════════════════════════════════════════
 # LEADS · MANUAL ADD · IMPORT · RENEWALS · LOST
 # ══════════════════════════════════════════════════════════════════════════
-from fastapi import UploadFile, File, Body
+from fastapi import UploadFile, File, Form, Body
 from io import BytesIO
 from datetime import timedelta
 
@@ -921,6 +921,7 @@ class TrialCreateAdmin(BaseModel):
     scheduled_at: Optional[str] = Field(default="", max_length=40)
     source_lead_id: Optional[str] = Field(default="", max_length=64)
     center_id: Optional[str] = Field(default="", max_length=64)
+    batch_id: Optional[str] = Field(default="", max_length=64)
 
 
 @router.post("/admin/future-skills/trials")
@@ -931,6 +932,16 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
     trial_ref = await _next_ref("FST")
     scope_cid = _fs_scope_center_id(user)
     center_id_final = scope_cid or (data.center_id or "")
+
+    # Resolve batch info if provided
+    batch_label = ""
+    if data.batch_id:
+        batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
+        if batch_doc:
+            days = ",".join(batch_doc.get("days", []) or [])
+            batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+            if not center_id_final and batch_doc.get("center_id"):
+                center_id_final = batch_doc["center_id"]
     doc = {
         "id": trial_id,
         "trial_ref": trial_ref,
@@ -942,6 +953,8 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
         "student_grade": (data.student_grade or "").strip(),
         "preferred_center": (data.preferred_center or "").strip(),
         "center_id": center_id_final,
+        "batch_id": data.batch_id or "",
+        "batch_label": batch_label,
         "preferred_skill": (data.preferred_skill or "").strip(),
         "notes": (data.notes or "").strip(),
         "scheduled_at": (data.scheduled_at or "").strip(),
@@ -1056,12 +1069,14 @@ class CustomerCreateAdmin(BaseModel):
     parent_email: Optional[str] = Field(default="", max_length=120)
     student_name: str = Field(..., min_length=1, max_length=120)
     student_grade: Optional[str] = Field(default="", max_length=20)
+    student_age: Optional[str] = Field(default="", max_length=20)
     plan: str = Field(..., pattern=r"^(monthly|half_yearly|yearly)$")
     amount_paid: float = Field(..., ge=0)
     payment_date: Optional[str] = None
     renewal_date: Optional[str] = None
     preferred_center: Optional[str] = Field(default="", max_length=80)
     center_id: Optional[str] = Field(default="", max_length=64)
+    batch_id: Optional[str] = Field(default="", max_length=64)
     notes: Optional[str] = Field(default="", max_length=1000)
     source_ref: Optional[str] = Field(default="", max_length=64)
 
@@ -1079,6 +1094,16 @@ async def admin_create_customer(data: CustomerCreateAdmin, user: dict = Depends(
     scope_cid = _fs_scope_center_id(user)
     center_id_final = scope_cid or (data.center_id or "")
 
+    # Resolve batch info if provided
+    batch_label = ""
+    if data.batch_id:
+        batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
+        if batch_doc:
+            days = ",".join(batch_doc.get("days", []) or [])
+            batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+            if not center_id_final and batch_doc.get("center_id"):
+                center_id_final = batch_doc["center_id"]
+
     sub_id = str(uuid.uuid4())
     sub_ref = await _next_ref("FSP")
     doc = {
@@ -1090,8 +1115,11 @@ async def admin_create_customer(data: CustomerCreateAdmin, user: dict = Depends(
         "parent_email": (data.parent_email or "").strip().lower() or f"{sub_id[:8]}@customer.oll.co",
         "student_name": data.student_name.strip(),
         "student_grade": (data.student_grade or "").strip(),
+        "student_age": (data.student_age or "").strip(),
         "preferred_center": (data.preferred_center or "").strip(),
         "center_id": center_id_final,
+        "batch_id": data.batch_id or "",
+        "batch_label": batch_label,
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "manual").strip(),
         "plan": data.plan,
@@ -1429,7 +1457,8 @@ class BatchCreate(BaseModel):
     days: list[str] = Field(default_factory=list)
     start_time: Optional[str] = Field(default="", max_length=8)
     end_time: Optional[str] = Field(default="", max_length=8)
-    skill: Optional[str] = Field(default="", max_length=80)
+    age_group: Optional[str] = Field(default="", pattern=r"^(3-7|8-11|12-16|)$")
+    level: Optional[str] = Field(default="", pattern=r"^(beginner|intermediate|advanced|)$")
     capacity: Optional[int] = Field(default=15, ge=1, le=200)
     is_active: Optional[bool] = True
 
@@ -1440,7 +1469,8 @@ class BatchUpdate(BaseModel):
     days: Optional[list[str]] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
-    skill: Optional[str] = None
+    age_group: Optional[str] = Field(default=None, pattern=r"^(3-7|8-11|12-16|)$")
+    level: Optional[str] = Field(default=None, pattern=r"^(beginner|intermediate|advanced|)$")
     capacity: Optional[int] = None
     is_active: Optional[bool] = None
 
@@ -1560,7 +1590,8 @@ async def admin_create_batch(data: BatchCreate, user: dict = Depends(get_current
         "days": [d.strip() for d in (data.days or []) if d and d.strip()],
         "start_time": (data.start_time or "").strip(),
         "end_time": (data.end_time or "").strip(),
-        "skill": (data.skill or "").strip(),
+        "age_group": (data.age_group or "").strip(),
+        "level": (data.level or "").strip(),
         "capacity": int(data.capacity or 15),
         "is_active": bool(data.is_active),
         "created_at": _now_iso(),
@@ -1617,4 +1648,250 @@ async def admin_delete_batch(bid: str, user: dict = Depends(get_current_user)):
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Batch not found")
     return {"deleted": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# CUSTOMER IMPORT (CSV / XLSX)
+# ══════════════════════════════════════════════════════════════════════════
+
+@router.post("/admin/future-skills/customers/import")
+async def admin_import_customers(
+    file: UploadFile = File(...),
+    center_id: str = Form(...),
+    batch_id: str = Form(""),
+    plan: str = Form("monthly"),
+    user: dict = Depends(get_current_user),
+):
+    """Bulk import active customers.
+
+    Every row inherits the centre + batch chosen in the popup.
+    File must include at least parent_phone; other columns are optional.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    if plan not in PLANS:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    plan_info = PLANS[plan]
+
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or center_id
+    if not effective_cid:
+        raise HTTPException(status_code=400, detail="Centre is required")
+
+    centre = await db.centers.find_one({"id": effective_cid}, {"_id": 0})
+    if not centre:
+        raise HTTPException(status_code=404, detail="Centre not found")
+
+    batch_label = ""
+    if batch_id:
+        batch = await db.future_skills_batches.find_one({"id": batch_id}, {"_id": 0})
+        if batch:
+            days = ",".join(batch.get("days", []) or [])
+            batch_label = f"{batch.get('name','Batch')} · {days} · {batch.get('start_time','')}-{batch.get('end_time','')}"
+
+    filename = (file.filename or "").lower()
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    try:
+        import pandas as pd
+        if filename.endswith(".csv") or "csv" in (file.content_type or ""):
+            df = pd.read_csv(BytesIO(content), dtype=str, keep_default_na=False)
+        elif filename.endswith((".xlsx", ".xls")) or "sheet" in (file.content_type or ""):
+            df = pd.read_excel(BytesIO(content), dtype=str, engine="openpyxl").fillna("")
+        else:
+            raise HTTPException(status_code=400, detail="Only .csv, .xlsx or .xls accepted")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse file: {e}")
+
+    df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+
+    alias_map = {
+        "parent_name": "parent_name", "name": "parent_name",
+        "parent_phone": "parent_phone", "phone": "parent_phone", "mobile": "parent_phone", "whatsapp": "parent_phone",
+        "parent_email": "parent_email", "email": "parent_email", "mail": "parent_email",
+        "student_name": "student_name", "child_name": "student_name", "kid_name": "student_name",
+        "student_age": "student_age", "age": "student_age",
+        "amount_paid": "amount_paid", "amount": "amount_paid", "paid": "amount_paid",
+        "payment_date": "payment_date", "paid_on": "payment_date",
+        "renewal_date": "renewal_date", "next_renewal": "renewal_date",
+        "notes": "notes", "remarks": "notes",
+    }
+
+    inserted = 0
+    skipped = 0
+    errors: list = []
+
+    for idx, row in df.iterrows():
+        try:
+            rec = {alias_map.get(c, c): str(row.get(c, "")).strip() for c in df.columns}
+            phone = _norm_phone(rec.get("parent_phone", ""))
+            if not phone:
+                skipped += 1
+                errors.append(f"Row {int(idx) + 2}: missing parent_phone")
+                continue
+
+            # Dedup by phone within this centre
+            existing = await db.future_skills_subscriptions.find_one(
+                {"parent_phone": phone, "center_id": effective_cid}, {"_id": 0, "id": 1}
+            )
+            if existing:
+                skipped += 1
+                continue
+
+            now = datetime.now(timezone.utc)
+            pay_dt = _parse_date(rec.get("payment_date")) or now
+            ren_dt = _parse_date(rec.get("renewal_date")) or _add_months(pay_dt, plan_info["months"])
+
+            try:
+                amount_paid = float(rec.get("amount_paid") or plan_info["price"])
+            except Exception:
+                amount_paid = plan_info["price"]
+
+            sub_id = str(uuid.uuid4())
+            sub_ref = await _next_ref("FSP")
+            doc = {
+                "id": sub_id,
+                "subscription_ref": sub_ref,
+                "program_key": PROGRAM_KEY,
+                "parent_name": rec.get("parent_name", "") or "",
+                "parent_phone": phone,
+                "parent_email": (rec.get("parent_email", "") or "").lower() or f"{sub_id[:8]}@customer.oll.co",
+                "student_name": rec.get("student_name", "") or "",
+                "student_age": rec.get("student_age", "") or "",
+                "student_grade": "",
+                "preferred_center": centre.get("name", ""),
+                "center_id": effective_cid,
+                "batch_id": batch_id or "",
+                "batch_label": batch_label,
+                "notes": rec.get("notes", "") or "",
+                "source_ref": "import",
+                "plan": plan,
+                "plan_label": plan_info["label"],
+                "billing_cycle": plan_info["billing_cycle"],
+                "amount": plan_info["price"],
+                "monthly_equivalent": plan_info["monthly_equivalent"],
+                "amount_paid": amount_paid,
+                "payment_date": _iso(pay_dt),
+                "renewal_date": _iso(ren_dt),
+                "kit_included": True,
+                "payment_status": "paid",
+                "crm_status": "active",
+                "paid_at": _iso(pay_dt),
+                "subscription_start": _iso(pay_dt),
+                "created_at": _now_iso(),
+                "updated_at": _now_iso(),
+                "created_by": user.get("email"),
+                "imported": True,
+                "manually_added": True,
+            }
+            await db.future_skills_subscriptions.insert_one(doc)
+            inserted += 1
+        except Exception as e:
+            skipped += 1
+            errors.append(f"Row {int(idx) + 2}: {e}")
+
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+        "errors": errors[:20],
+        "total_rows": int(len(df)),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# REPORTS
+# ══════════════════════════════════════════════════════════════════════════
+
+@router.get("/admin/future-skills/reports")
+async def admin_future_skills_reports(user: dict = Depends(get_current_user)):
+    """Roll-up analytics for the Future Skills program.
+
+    * Funnel counts (leads → trials → paying customers) and conversion rates
+    * Source breakdown for leads
+    * Per-batch capacity fill, active customers, trials booked, and leads
+      that share the same centre (leads aren't yet tagged to a batch)
+
+    Automatically scoped to the caller's centre for fs_center_owner users.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    scope_cid = _fs_scope_center_id(user)
+    scope_q: dict = {"center_id": scope_cid} if scope_cid else {}
+
+    # ── Funnel ────────────────────────────────────────────────────────
+    leads_total = await db.future_skills_leads.count_documents(scope_q)
+    leads_converted = await db.future_skills_leads.count_documents(
+        {**scope_q, "status": "converted"}
+    )
+    trials_total = await db.future_skills_trials.count_documents(scope_q)
+    customers_active = await db.future_skills_subscriptions.count_documents(
+        {**scope_q, "crm_status": "active"}
+    )
+
+    def pct(n: int, d: int) -> float:
+        return round((n / d) * 100, 1) if d > 0 else 0.0
+
+    funnel = {
+        "leads": leads_total,
+        "trials": trials_total,
+        "customers": customers_active,
+        "lead_to_trial_rate":     pct(leads_converted + trials_total, leads_total),
+        "trial_to_customer_rate": pct(customers_active, trials_total),
+        "lead_to_customer_rate":  pct(customers_active, leads_total),
+    }
+
+    # ── Source breakdown (for leads) ──────────────────────────────────
+    source_pipeline: list = [{"$match": scope_q}] if scope_q else []
+    source_pipeline += [
+        {"$group": {"_id": {"$ifNull": ["$source", ""]}, "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    src_rows = await db.future_skills_leads.aggregate(source_pipeline).to_list(None)
+    source_breakdown = [
+        {"source": (r["_id"] or "Unknown"), "count": r["count"]}
+        for r in src_rows
+    ]
+
+    # ── Per-batch report ──────────────────────────────────────────────
+    batch_q: dict = {}
+    if scope_cid:
+        batch_q["center_id"] = scope_cid
+    batches_cursor = db.future_skills_batches.find(batch_q, {"_id": 0}).sort(
+        [("center_name", 1), ("name", 1)]
+    )
+    batches: list = []
+    async for b in batches_cursor:
+        bid = b["id"]
+        cid = b.get("center_id", "")
+        trials_count = await db.future_skills_trials.count_documents({"batch_id": bid})
+        active_count = await db.future_skills_subscriptions.count_documents(
+            {"batch_id": bid, "crm_status": "active"}
+        )
+        # Leads at this centre (leads aren't tagged to individual batches)
+        leads_at_centre = await db.future_skills_leads.count_documents({"center_id": cid}) if cid else 0
+
+        capacity = int(b.get("capacity") or 15)
+        fill = active_count + trials_count
+        batches.append({
+            **b,
+            "student_count":  fill,
+            "active_count":   active_count,
+            "trials_count":   trials_count,
+            "leads_at_centre": leads_at_centre,
+            "capacity":       capacity,
+            "fill_pct":       round((fill / capacity) * 100, 1) if capacity else 0,
+        })
+
+    return {
+        "funnel": funnel,
+        "source_breakdown": source_breakdown,
+        "batches": batches,
+        "scope": {"center_id": scope_cid or None},
+    }
 
