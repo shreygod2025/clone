@@ -102,6 +102,10 @@ def _is_admin(user: dict) -> bool:
     email = (user or {}).get("email", "")
     if role in ("admin", "super_admin", "fs_center_owner"):
         return True
+    # Team members with the "future_skills" permission granted by their role
+    perms = (user or {}).get("permissions") or []
+    if "future_skills" in perms:
+        return True
     return email.endswith("@oll.co")
 
 
@@ -441,13 +445,18 @@ async def admin_list_trials(
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
     query: dict = {}
+    # Trials list only shows actually booked trials — leads that haven't been
+    # scheduled, lost trials, and converted trials live in their own tabs.
+    BOOKED_STATUSES = ["scheduled", "trial_scheduled", "rescheduled", "completed"]
     if status and status != "all":
         if status == "scheduled":
             query["crm_status"] = {"$in": ["scheduled", "trial_scheduled"]}
         elif status == "completed":
-            query["crm_status"] = {"$in": ["completed", "converted"]}
+            query["crm_status"] = "completed"
         else:
             query["crm_status"] = status
+    else:
+        query["crm_status"] = {"$in": BOOKED_STATUSES}
     if q:
         rx = {"$regex": re.escape(q), "$options": "i"}
         query["$or"] = [
@@ -461,10 +470,10 @@ async def admin_list_trials(
     cursor = db.future_skills_trials.find(query, {"_id": 0}).sort("created_at", -1).limit(500)
     rows = [r async for r in cursor]
     scope_q = {"center_id": scope_cid} if scope_cid else {}
-    total = await db.future_skills_trials.count_documents(scope_q)
+    total = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": BOOKED_STATUSES}})
     scheduled_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["scheduled", "trial_scheduled"]}})
     rescheduled_count = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "rescheduled"})
-    completed_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["completed", "converted"]}})
+    completed_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "completed"})
     followup_count    = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "followup"})
     return {
         "trials": rows,
@@ -890,7 +899,9 @@ async def admin_lead_followup(lead_id: str, data: FollowupBody, user: dict = Dep
 async def admin_trial_followup(trial_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    trial = await _record_followup(db.future_skills_trials, trial_id, data, user, status_field="crm_status")
+    # For trials we DO NOT auto-bump the crm_status — trials must stay in
+    # scheduled / rescheduled / completed. Followup history is still captured.
+    trial = await _record_followup(db.future_skills_trials, trial_id, data, user)
     return {"trial": trial}
 
 
@@ -991,7 +1002,7 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
         "source_ref": lead.get("source", ""),
         "scheduled_at": (data.scheduled_at or "").strip(),
         "trial_status": "scheduled" if data.scheduled_at else "requested",
-        "crm_status": "trial_scheduled" if data.scheduled_at else "trial_lead",
+        "crm_status": "scheduled" if data.scheduled_at else "trial_lead",
         "return_count": 1,
         "source_lead_id": lead_id,
         "created_at": _now_iso(),
@@ -1011,6 +1022,9 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
     )
     trial_doc.pop("_id", None)
     return {"trial": trial_doc}
+
+
+# ── LEAD IMPORT (CSV / XLSX) ──────────────────────────────────────────────
 @router.post("/admin/future-skills/leads/import")
 async def admin_import_leads(
     file: UploadFile = File(...),
@@ -1163,7 +1177,7 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
         "scheduled_at": (data.scheduled_at or "").strip(),
         "source_lead_id": (data.source_lead_id or "").strip(),
         "trial_status": "scheduled" if data.scheduled_at else "requested",
-        "crm_status": "trial_scheduled" if data.scheduled_at else "trial_lead",
+        "crm_status": "scheduled" if data.scheduled_at else "trial_lead",
         "return_count": 1,
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
@@ -1591,8 +1605,8 @@ async def admin_future_skills_stats(
     effective_cid = scope_cid or center_id
     scope_q = {"center_id": effective_cid} if effective_cid else {}
 
-    leads_active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$nin": ["lost", "converted"]}})
-    trials_active = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$nin": ["lost", "converted"]}})
+    leads_active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$in": ["new", "followup"]}})
+    trials_active = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["scheduled", "trial_scheduled", "rescheduled", "completed"]}})
     customers_active = await db.future_skills_subscriptions.count_documents({**scope_q, "crm_status": "active"})
 
     # Renewals — count computed

@@ -24,6 +24,7 @@ const ALL_SECTIONS = [
   { value: 'dashboard', label: 'Dashboard', description: 'View admin dashboard and analytics' },
   { value: 'students', label: 'Student CRM', description: 'Manage student inquiries and demos' },
   { value: 'schools', label: 'School CRM', description: 'Manage school partnerships' },
+  { value: 'future_skills', label: 'Future Skills CRM', description: 'Manage Future Skills leads, trials, customers and centres' },
   { value: 'orders', label: 'Orders', description: 'Manage school and student payments' },
   { value: 'expenses', label: 'Expenses', description: 'Manage school expenses and cost tracking' },
   { value: 'educators', label: 'Educators', description: 'Manage educator applications and assignments' },

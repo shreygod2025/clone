@@ -208,11 +208,10 @@ const AdminFutureSkills = () => {
         { value: 'followup', label: `Followup (${stats?.followup || 0})` },
       ]
     : tab === 'trials' ? [
-        { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0) + (stats?.followup || 0)})` },
+        { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0)})` },
         { value: 'scheduled',   label: `Scheduled (${stats?.scheduled || 0})` },
         { value: 'rescheduled', label: `Rescheduled (${stats?.rescheduled || 0})` },
         { value: 'completed',   label: `Completed (${stats?.completed || 0})` },
-        { value: 'followup',    label: `Followup (${stats?.followup || 0})` },
       ]
     : tab === 'lost' ? [
         { value: 'all', label: 'All types' },
@@ -365,18 +364,6 @@ const AdminFutureSkills = () => {
               data-testid="search-input" />
           </div>
         </div>
-        )}
-
-        {/* Stats row (hidden for Centres and Reports tabs) */}
-        {tab !== 'centers' && tab !== 'reports' && tabStats && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <MiniStat label="Leads"     value={tabStats.leads     || 0} accent="#1E3A5F" icon={Users}    active={tab==='leads'} />
-            <MiniStat label="Trials"    value={tabStats.trials    || 0} accent="#3B82F6" icon={Calendar} active={tab==='trials'} />
-            <MiniStat label="Customers" value={tabStats.customers || 0} accent="#16A34A" icon={Sparkles} active={tab==='customers'} />
-            <MiniStat label="Renewals"  value={tabStats.renewals  || 0} accent="#F59E0B" icon={RotateCcw} active={tab==='renewals'}
-              sub={`↑${tabStats.renewals_upcoming || 0}  ⚠${tabStats.renewals_overdue || 0}`} />
-            <MiniStat label="Lost"      value={tabStats.lost      || 0} accent="#DC2626" icon={XCircle}  active={tab==='lost'} />
-          </div>
         )}
 
         {/* Content: Reports OR Centers manager OR standard table */}
