@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import useSeo from '../hooks/useSeo';
 import axios from 'axios';
-import { CheckCircle2, Loader2, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, Calendar, Clock, AlertCircle, MapPin, ExternalLink } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -47,11 +47,14 @@ const FutureSkillsSuccessPage = () => {
     canonical: 'https://oll.co/future-skills',
   });
 
-  // ── Minimal trial success view: welcome + day + time only ────────────
+  // ── Minimal trial success view: welcome + day + time + centre ─────────
   if (isTrial) {
-    const days  = (params.get('days')  || '').split(',').filter(Boolean).join(' · ');
-    const start = params.get('start') || '';
-    const end   = params.get('end')   || '';
+    const days    = (params.get('days')  || '').split(',').filter(Boolean).join(' · ');
+    const start   = params.get('start')  || '';
+    const end     = params.get('end')    || '';
+    const centre  = params.get('centre') || '';
+    const address = params.get('address') || '';
+    const maps    = params.get('maps')    || '';
     const nextDate = nextDateForDays(days);
 
     return (
@@ -74,6 +77,31 @@ const FutureSkillsSuccessPage = () => {
                 {(start || end) && (
                   <InfoTile icon={Clock} label="Time" value={`${start || '—'}${end ? ` – ${end}` : ''}`} testid="success-time" />
                 )}
+              </div>
+            )}
+
+            {/* Centre + address + Google Maps link */}
+            {centre && (
+              <div className="mt-5 text-left rounded-2xl border border-blue-100 bg-blue-50/50 p-5" data-testid="success-centre">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] text-white flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Your centre</div>
+                    <div className="text-base font-black text-[#0F1E33] mt-0.5" data-testid="success-centre-name">{centre}</div>
+                    {address && (
+                      <div className="text-sm text-slate-600 mt-1 leading-snug" data-testid="success-centre-address">{address}</div>
+                    )}
+                    {maps && (
+                      <a href={maps} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-3 px-3 py-2 rounded-lg bg-white border border-blue-200 hover:border-[#1E3A5F] text-[#1E3A5F] text-xs font-bold transition-colors"
+                        data-testid="success-maps-link">
+                        <ExternalLink className="w-3.5 h-3.5" /> Open in Google Maps
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

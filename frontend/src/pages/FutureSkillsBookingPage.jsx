@@ -93,7 +93,10 @@ const FutureSkillsBookingPage = () => {
       });
       const trialRef = r.data?.trial_ref;
       toast.success("Trial booked — we'll WhatsApp you shortly!");
-      // Pass batch details forward so the success page can show day/time
+      // Pass batch details forward so the success page can show day/time + centre address
+      const centreAddress = selectedCenter?.address || '';
+      const mapsLink = selectedCenter?.google_maps_link
+        || (centreAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(centreAddress)}` : '');
       const successParams = new URLSearchParams({
         type: 'trial',
         ...(trialRef ? { ref: trialRef } : {}),
@@ -102,6 +105,8 @@ const FutureSkillsBookingPage = () => {
         ...(selectedBatch?.end_time ? { end: selectedBatch.end_time } : {}),
         ...(selectedBatch?.name ? { batch: selectedBatch.name } : {}),
         ...(selectedCenter?.name || selectedBatch?.center_name ? { centre: selectedCenter?.name || selectedBatch.center_name } : {}),
+        ...(centreAddress ? { address: centreAddress } : {}),
+        ...(mapsLink ? { maps: mapsLink } : {}),
       });
       navigate(`/future-skills/success?${successParams.toString()}`);
     } catch (e) {
