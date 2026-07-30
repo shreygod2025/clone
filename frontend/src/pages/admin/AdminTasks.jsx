@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import TaskCreateModal, { AttachmentsPanel } from '../../components/tasks/TaskCreateModal';
 import { useAuth } from '../../context/AuthContext';
+import { celebrateTaskComplete } from '../../lib/celebrate';
 import axios from 'axios';
 import { toast } from 'sonner';
 import {
@@ -64,7 +65,7 @@ const Avatar = ({ name, size = 'sm' }) => {
 };
 
 // ── Main page ────────────────────────────────────────────────────────────────
-const AdminTasks = () => {
+const AdminTasks = ({ embedded = false }) => {
   const { user, getAuthHeaders } = useAuth();
   const isAdmin = user?.role === 'admin';
   const currentUserId = user?.id;
@@ -184,9 +185,8 @@ const AdminTasks = () => {
     ? [{ v: 'team', l: 'All Team' }, { v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }]
     : [{ v: 'all', l: 'All Tasks' }, { v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }];
 
-  return (
-    <AdminLayout>
-      <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-5" data-testid="admin-tasks-page">
+  const body = (
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-5" data-testid="admin-tasks-page">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
@@ -359,8 +359,8 @@ const AdminTasks = () => {
           />
         )}
       </div>
-    </AdminLayout>
   );
+  return embedded ? body : <AdminLayout>{body}</AdminLayout>;
 };
 
 // ── Status filter chip ───────────────────────────────────────────────────────
@@ -490,12 +490,15 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
   const completeTask = async (e) => {
     e?.stopPropagation();
     try {
+      let didComplete = false;
       if (task.status === 'pending_approval' && (isApprover || isAdmin)) {
         await axios.post(`${API}/tasks/${task.id}/approve`, {}, { headers: getAuthHeaders() });
         toast.success('Approved & completed');
+        didComplete = true;
       } else if (isAssignee && isSelfAssigned) {
         await axios.patch(`${API}/tasks/${task.id}`, { status: 'completed' }, { headers: getAuthHeaders() });
         toast.success('Marked complete');
+        didComplete = true;
       } else if (isAssignee) {
         await axios.post(`${API}/tasks/${task.id}/submit`, {}, { headers: getAuthHeaders() });
         toast.success('Submitted for approval');
@@ -503,6 +506,7 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
         toast.error('Only the task owner can mark this complete');
         return;
       }
+      if (didComplete) celebrateTaskComplete(e);
       onStatus('__reload__');
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed');
@@ -994,9 +998,10 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
-  const approve = async () => {
+  const approve = async (e) => {
     try {
       await axios.post(`${API}/tasks/${task.id}/approve`, {}, { headers: getAuthHeaders() });
+      celebrateTaskComplete(e);
       toast.success('Approved & completed');
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); }
@@ -1018,9 +1023,10 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
                       && currentUserId === task.assigned_to
                       && task.assigned_to === task.assigned_by;
 
-  const markComplete = async () => {
+  const markComplete = async (e) => {
     try {
       await axios.patch(`${API}/tasks/${task.id}`, { status: 'completed' }, { headers: getAuthHeaders() });
+      celebrateTaskComplete(e);
       toast.success('Marked complete');
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); }

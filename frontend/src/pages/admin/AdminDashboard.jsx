@@ -24,10 +24,8 @@ const AdminLayout = ({ children, title }) => {
   // All navigation items with permission keys
   const allNavItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null },
-    { path: '/admin/tasks', icon: CheckSquare, label: 'Tasks', permission: null },
-    { path: '/admin/projects', icon: FolderKanban, label: 'Projects', permission: null },
+    { path: '/admin/my-space', icon: CheckSquare, label: 'My Space', permission: null },
     { path: '/admin/team', icon: Users, label: 'My Team', permission: null, requiresManager: true },
-    { path: '/admin/me/performance', icon: BarChart3, label: 'My Performance', permission: null },
     { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null },
     { path: '/admin/future-skills', icon: Sparkles, label: 'Future Skills', permission: 'future_skills' },
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
@@ -135,7 +133,7 @@ const AdminLayout = ({ children, title }) => {
               key={item.path}
               to={item.path}
               onClick={() => setSidebarOpen(false)}
-              className={`admin-nav-item ${location.pathname === item.path ? 'active' : ''}`}
+              className={`admin-nav-item ${(location.pathname === item.path || (item.path === '/admin/my-space' && ['/admin/tasks', '/admin/projects', '/admin/me/performance'].includes(location.pathname))) ? 'active' : ''}`}
               data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <item.icon className="w-5 h-5" />

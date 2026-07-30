@@ -21,7 +21,7 @@ const STATUS_META = {
 
 const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444', '#0EA5E9', '#6366F1'];
 
-const AdminProjects = () => {
+const AdminProjects = ({ embedded = false }) => {
   const { getAuthHeaders, user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -87,9 +87,8 @@ const AdminProjects = () => {
     }));
   };
 
-  return (
-    <AdminLayout>
-      <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="admin-projects-page">
+  const body = (
+    <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="admin-projects-page">
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Projects</h1>
@@ -244,8 +243,8 @@ const AdminProjects = () => {
           </div>
         )}
       </div>
-    </AdminLayout>
   );
+  return embedded ? body : <AdminLayout>{body}</AdminLayout>;
 };
 
 export default AdminProjects;

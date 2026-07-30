@@ -56,7 +56,7 @@ const CATEGORY_THEME = {
 };
 const themeFor = (cat) => CATEGORY_THEME[cat] || { color: '#64748b', badge: 'bg-slate-50 text-slate-700 border-slate-100' };
 
-const UserPerformance = ({ mode = 'admin' }) => {
+const UserPerformance = ({ mode = 'admin', embedded = false }) => {
   // mode = 'admin' (view any user by :id) OR 'me' (view self, no :id in URL)
   const { id: routeUserId } = useParams();
   const navigate = useNavigate();
@@ -123,8 +123,7 @@ const UserPerformance = ({ mode = 'admin' }) => {
   const years = [];
   for (let y = now.getFullYear(); y >= now.getFullYear() - 4; y--) years.push(y);
 
-  return (
-    <AdminLayout>
+  const body = (
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5" data-testid="user-performance-page">
         {!selfMode && (
           <button
@@ -287,8 +286,8 @@ const UserPerformance = ({ mode = 'admin' }) => {
         {/* Financial Growth (monthly salary + incentives) */}
         <FinancialGrowthSection userId={userId} selfMode={selfMode} />
       </div>
-    </AdminLayout>
   );
+  return embedded ? body : <AdminLayout>{body}</AdminLayout>;
 };
 
 // ── One KPI chart card ───────────────────────────────────────────────────────
