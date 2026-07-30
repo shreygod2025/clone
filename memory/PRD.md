@@ -2,6 +2,104 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-30 · iter111) — Centre Economics + Future Skills KPI Roles + Expenses Perf Fix 🎯
+
+**Ask** (3 P0 items from user):
+1. Fix the /admin/expenses page taking multi-second load time.
+2. Add a "Centre Economics" tab in Future Skills CRM to track Rent, Teacher
+   Cost, Capex, Marketing and Other per centre — auto-mirroring every entry
+   into the main `school_expenses` collection so P&L stays unified.
+3. Add 6 Future-Skills KPIs (Leads generated, Lead→Trial, Trial→Paid,
+   Revenue, AOV, Profit Margin) as sub-permissions under the Roles builder.
+
+**Root cause of the perf regression (backend `routes/expenses.py`)**:
+Legacy expense rows stored uploaded PDFs / photos as base64 `data:` URIs
+directly on the document (fields: `attachments`, `logistics_bill_url`,
+`delivery_proof_url`, `invoice_file_url`). A single expense could be
+3.7 MB. The GET /api/school-expenses list endpoint was shipping all of
+them over the wire (4.4 MB for 16 rows). The frontend already ignored
+anything that didn't start with `http`, so the payload was pure waste.
+
+**Fix**: In `get_all_school_expenses` after the mongo query, strip any
+`data:` URI values from those 4 fields before returning. Result: payload
+dropped **4.4 MB → 11.8 KB** (~375× smaller); response time **~1-3s → 161 ms**.
+
+**Backend** (`routes/future_skills.py`):
+- New collection marker: `program_key = "future_skills"` written onto rows
+  in `school_expenses` for anything created from the Centre Economics tab.
+- Category map (`FS_ECONOMICS_CATEGORIES`) — UI label → main-expenses
+  category so P&L rollups stay coherent:
+  * `rent` → `rent`
+  * `teacher_cost` → `teacher_cost`
+  * `capex` → `kit_cost`
+  * `marketing` → `marketing_cost`
+  * `other` → `other` (with optional free-text `other_label` overriding
+    display).
+- Endpoints (admin OR holder of `future_skills.economics` sub-permission;
+  fs_center_owner is auto-scoped to their centre):
+  * `POST /admin/future-skills/centre-economics`
+  * `GET  /admin/future-skills/centre-economics?center_id=&month=`
+    Returns entries + `summary` (revenue, cost, profit, margin_pct,
+    cost_by_category) + `per_centre` roll-up when no centre filter is set.
+  * `PATCH /admin/future-skills/centre-economics/{id}` (two-way sync)
+  * `DELETE /admin/future-skills/centre-economics/entry/{id}` — uses
+    a 3-segment path to sidestep the catch-all
+    `DELETE /admin/future-skills/{entity_type}/{entity_id}` route.
+  * `GET /admin/future-skills/centre-economics/categories`
+- `/admin/future-skills/reports` now returns `revenue.aov`,
+  `revenue.cost`, `revenue.profit`, `revenue.profit_margin_pct` so the
+  Reports panel can render the two new KPI cards.
+
+**Frontend**:
+- New `CentreEconomicsPanel` + `CentreEconomicsModal` in
+  `AdminFutureSkills.jsx`. New TAB entry with `IndianRupee` icon.
+- Adds a Centre filter, Month filter, "Add Expense" button, four summary
+  tiles (Revenue / Total Costs / Profit / Margin), Cost-by-category strip
+  (5 tiles with proportional bars), Per-centre P&L table (when "All Centres"
+  is selected), and an entry table with Edit / Delete row actions.
+- Modal enforces category selection, positive amount, and — for "Other" —
+  a free-text custom label. Includes a blue helper strip explaining that
+  the entry auto-mirrors into /admin/expenses.
+- Tab is hidden for users who lack `future_skills.economics` (admins,
+  super_admins and fs_center_owners always see it).
+
+**Frontend — Roles** (`AdminUsers.jsx`):
+- 7 new sub-permissions under Future Skills CRM in `ALL_SECTIONS`:
+  * `future_skills.economics` — Centre Economics tab access
+  * `future_skills.kpi.leads` — Leads generated card
+  * `future_skills.kpi.lead_to_trial` — Lead → Trial %
+  * `future_skills.kpi.trial_to_paid` — Trial → Paid %
+  * `future_skills.kpi.revenue` — Revenue card
+  * `future_skills.kpi.aov` — Avg Order Value card
+  * `future_skills.kpi.profit_margin` — Profit Margin card
+
+**Frontend — Reports gating** (`AdminFutureSkills.jsx :: ReportsPanel`):
+- ReportsPanel now accepts a `kpi` prop from the parent computed from
+  `user.role` + `user.permissions[]`. Admin / super_admin / fs_center_owner
+  see everything; team users only see KPIs their role explicitly grants.
+- KPI cards, funnel steps and conversion rate badges are per-KPI gated
+  with an em-dash placeholder shown when the user lacks the permission.
+- Two brand-new tiles rendered under the top summary strip:
+  Avg Order Value + Profit Margin (with green/red accent based on sign).
+
+**Testing**:
+- `POST` → `GET` → `PATCH` → `DELETE` round trip on centre-economics
+  verified via curl; the mirror row appears in `/api/school-expenses`
+  with `program_key=future_skills`.
+- UI smoke test: Centre Economics tab renders, adding a ₹15,000 rent
+  expense to Dahisar centre updates all summary tiles + the entry table
+  in one refresh.
+- `/api/school-expenses` list now 11.8 KB (was 4.4 MB) with p95 ~161 ms.
+
+**Files touched**:
+- `/app/backend/routes/expenses.py` — data-URI strip in list endpoint
+- `/app/backend/routes/future_skills.py` — centre-economics CRUD +
+  AOV/margin added to reports
+- `/app/frontend/src/pages/admin/AdminFutureSkills.jsx` —
+  CentreEconomicsPanel + Modal + kpi-gated ReportsPanel + new tab entry
+- `/app/frontend/src/pages/admin/AdminUsers.jsx` — 7 new sub-permissions
+
+
 ### Latest Update (2026-07-30 · iter110) — Leads/Trials Pipeline Focus + Reschedule + Centre columns 🎯
 
 **Ask**: Tighten the CRM pipelines: Leads tab should only show active (new/followup)

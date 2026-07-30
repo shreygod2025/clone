@@ -93,7 +93,32 @@ async def get_all_school_expenses(
         .skip(max(0, int(skip)))
         .limit(max(1, min(int(limit), 1000)))
     )
-    return await cursor.to_list(length=None)
+    docs = await cursor.to_list(length=None)
+
+    # PERF: legacy rows sometimes stored file uploads as base64 `data:` URIs
+    # directly on the document (some going into the MB range each). The
+    # frontend already ignores anything that doesn't start with `http`, but
+    # shipping those bytes over the wire was causing multi-megabyte payloads
+    # and multi-second list loads on /admin/expenses. Strip them here so the
+    # table endpoint stays lean; individual detail views can fetch the raw
+    # doc if we ever need it.
+    _URL_FIELDS = ("invoice_file_url", "logistics_bill_url", "delivery_proof_url")
+    for d in docs:
+        for f in _URL_FIELDS:
+            v = d.get(f)
+            if isinstance(v, str) and v.startswith("data:"):
+                d[f] = ""
+        atts = d.get("attachments")
+        if isinstance(atts, list) and atts:
+            d["attachments"] = [
+                a for a in atts
+                if not (
+                    isinstance(a, dict)
+                    and isinstance(a.get("url"), str)
+                    and a["url"].startswith("data:")
+                )
+            ]
+    return docs
 
 
 @router.get("/school-expenses/summary")

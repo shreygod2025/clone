@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 111 — Future Skills Centre Economics + Reports KPI extras + Expenses perf fix. Backend: 17/17 pytest cases passed (CRUD, mirror to school_expenses, category mapping rent/teacher_cost/capex/marketing/other → rent/teacher_cost/kit_cost/marketing_cost/other, PATCH reflects in mirror, DELETE removes from both listings, 3-segment delete path does NOT collide with catch-all, permission gating for future_skills.economics granular perm, denial for user with no perms, reports.revenue.aov/cost/profit/profit_margin_pct present). Frontend: /admin/future-skills → Centre Economics tab renders with Revenue/Cost/Profit/Margin summary + all 5 category tiles + empty state; Add Expense modal opens, POST returns 200 (mirrored) — modal centre pre-filled from top filter; category='other' surfaces the free-text label input; Reports tab shows AOV (₹14,500) + Profit Margin (100%) KPI cards below top summary; Add Role modal contains all 7 new FS sub-permissions (Centre Economics + 6 KPIs); /admin/expenses page loaded in 3.27s with 0 base64 image srcs leaking to DOM (payload dropped to 11.5 KB, 127 ms API). No regressions observed on other FS tabs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Add Expense modal (Centre Economics)",
+        "issue": "Entries created with an expense_date OUTSIDE the currently-selected month filter succeed on the server (POST 200 + mirrored) but silently disappear from the table because the panel immediately re-fetches with the current month filter (e.g., 2026-07). Users may think 'nothing happened'. Suggest: after a successful add, if the entry's expense_date month != current filter month, either (a) auto-set the filter to that month, or (b) surface a toast '\u2705 Added — switch to <month> to view it'.",
+        "affected_selectors": ["econ-modal-submit", "economics-month-filter"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter111_fs_centre_economics.py",
+    "/app/test_reports/pytest/iter111_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL UX: When Add Expense succeeds with a date not in the current month filter, auto-jump the filter to that month (or show a persistent toast with the month link) so users don't perceive the add as silently failing.",
+    "OPTIONAL UX: The month filter defaults to the current calendar month (server-side today = 2026-07). Consider defaulting to 'All Time' on first load of Centre Economics so admins see historical entries without needing to clear the filter."
+  ],
+  "critical_code_review_comments": [
+    "expenses.py get_all_school_expenses: data-URI stripping is correct and idempotent (creates indexes once). Perf improvement verified (11.5 KB / 127 ms for 16 rows).",
+    "future_skills.py centre-economics DELETE path deliberately uses `/entry/{id}` to avoid catch-all collision — verified in test_delete_endpoint_path_does_not_collide_with_catchall (returns 404 not 200-no-op).",
+    "PATCH mirror behaviour: since the FS entry IS the school_expenses row (single-doc model), any patch to amount/category/description automatically updates the mirror. Category mapping on PATCH is also re-applied. Well-designed — no dual-write drift possible.",
+    "Permission model is sensible: `future_skills.economics` grants only economics endpoints; broader FS admin endpoints still require `_is_admin` (super_admin, admin, fs_center_owner, or holder of the wider `future_skills` perm). Verified via a temp team_user in tests.",
+    "AdminFutureSkills.jsx CentreEconomicsPanel uses its own local centerId state (`useState('all')`) which does NOT sync with the parent panel's centerId. Not a bug (economics tab has its own filter UI) — flagging for awareness only."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter111_fs_centre_economics.py"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% of testable flows"},
+  "test_credentials": "admin@oll.co / OllistheBest@2026 (super_admin). Temp team users were created & deleted programmatically inside tests.",
+  "seed_data_creation": "All TEST_ prefixed centre-economics entries created during the tests were cleaned up (see test_zzz_cleanup + a post-run cleanup script that removed 2 leftover UI-created rows).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/test_iter111_fs_centre_economics.py covers full Centre Economics CRUD + mirror to school_expenses + permission gating + reports KPI extras. Reusable regression suite. Test picks the first available centre via /api/centers, and prefixes all created entries with 'TEST_iter111'. Uses /api/team-users to create/delete temp permission-gated users. All fixtures are session-scoped; class-scoped `temp_user` cleans itself up. If /admin/expenses grows huge again, tune the perf assertion at TestExpensesPerf (currently <500 KB / <5 s).",
+  "rca of the issue": "N/A — all three P0 features work as intended. Only a minor UX polish suggestion around month-filter interaction after Add Expense."
+}

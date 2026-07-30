@@ -23,6 +23,7 @@ const TABS = [
   { key: 'lost',         label: 'Lost',             icon: XCircle },
   { key: 'centers',      label: 'Centres & Batches', icon: MapPin },
   { key: 'sources',      label: 'Source Links',     icon: LinkIcon },
+  { key: 'economics',    label: 'Centre Economics', icon: IndianRupee },
   { key: 'reports',      label: 'Reports',          icon: BarChart3 },
 ];
 
@@ -134,7 +135,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
-    if (tab === 'centers' || tab === 'reports' || tab === 'sources') { setRows([]); setStats(null); return; }
+    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -223,6 +224,29 @@ const AdminFutureSkills = () => {
       ]
     : null;
 
+  const isAdminRole = user?.role === 'admin' || user?.role === 'super_admin';
+  const userPerms = user?.permissions || [];
+  // KPI-level gates for Reports tab (admin/owner sees everything;
+  // team-users see only KPIs their role explicitly grants).
+  const kpi = {
+    leads:         isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.leads'),
+    lead_to_trial: isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.lead_to_trial'),
+    trial_to_paid: isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.trial_to_paid'),
+    revenue:       isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.revenue'),
+    aov:           isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.aov'),
+    profit_margin: isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.profit_margin'),
+  };
+  // Centre Economics gate: admins, centre owners, or holders of the
+  // dedicated sub-permission.
+  const canSeeEconomics = isAdminRole || isCenterOwner || userPerms.includes('future_skills.economics');
+
+  // If the tab was auto-set to something the user can't see, bounce them home.
+  useEffect(() => {
+    if (tab === 'economics' && !canSeeEconomics) {
+      setTab('leads');
+    }
+  }, [tab, canSeeEconomics]);
+
   return (
     <AdminLayout title="Future Skills CRM">
       <div className="-mt-4 sm:-mt-5 p-3 sm:p-4 max-w-7xl mx-auto space-y-3" data-testid="admin-future-skills">
@@ -238,7 +262,11 @@ const AdminFutureSkills = () => {
         {/* Tabs + toolbar in a single row (space-tight) */}
         <div className="flex items-center gap-2 flex-wrap justify-between">
           <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 gap-1">
-            {TABS.filter(t => !(isCenterOwner && (t.key === 'centers' || t.key === 'sources'))).map(t => {
+            {TABS.filter(t => {
+              if (isCenterOwner && (t.key === 'centers' || t.key === 'sources')) return false;
+              if (t.key === 'economics' && !canSeeEconomics) return false;
+              return true;
+            }).map(t => {
               const badge =
                 t.key === 'leads'     ? tabStats?.leads
                 : t.key === 'trials'  ? tabStats?.trials
@@ -278,8 +306,8 @@ const AdminFutureSkills = () => {
           </div>
         </div>
 
-        {/* Toolbar (hidden for Centres / Reports / Sources tabs) */}
-        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && (
+        {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs) */}
+        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           {/* Left: primary actions per tab */}
           {tab === 'leads' && (
@@ -361,13 +389,15 @@ const AdminFutureSkills = () => {
         </div>
         )}
 
-        {/* Content: Reports OR Centers manager OR Sources OR standard table */}
+        {/* Content: Reports OR Centers manager OR Sources OR Economics OR standard table */}
         {tab === 'reports' ? (
-          <ReportsPanel getAuthHeaders={getAuthHeaders} />
+          <ReportsPanel getAuthHeaders={getAuthHeaders} kpi={kpi} />
         ) : tab === 'centers' ? (
           <CentersManager getAuthHeaders={getAuthHeaders} />
         ) : tab === 'sources' ? (
           <SourceLinksPanel getAuthHeaders={getAuthHeaders} />
+        ) : tab === 'economics' ? (
+          <CentreEconomicsPanel getAuthHeaders={getAuthHeaders} />
         ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {loading && rows.length === 0 ? (
@@ -2094,7 +2124,7 @@ const BatchFormModal = ({ batch, centers, onClose, onSaved, getAuthHeaders }) =>
 // ═══════════════════════════════════════════════════════════════════════
 // REPORTS PANEL
 // ═══════════════════════════════════════════════════════════════════════
-const ReportsPanel = ({ getAuthHeaders }) => {
+const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
   const { user } = useAuth();
   const isCenterOwner = user?.role === 'fs_center_owner';
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -2169,10 +2199,25 @@ const ReportsPanel = ({ getAuthHeaders }) => {
 
       {/* Revenue cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <RevenueCard label="Revenue" value={fmtMoney(revenue.total)} accent="#16A34A" icon={IndianRupee} sub={`${revenue.students} paying student${revenue.students === 1 ? '' : 's'}`} testid="revenue-total" />
+        {kpi.revenue && <RevenueCard label="Revenue" value={fmtMoney(revenue.total)} accent="#16A34A" icon={IndianRupee} sub={`${revenue.students} paying student${revenue.students === 1 ? '' : 's'}`} testid="revenue-total" />}
         <RevenueCard label="Revenue / student" value={fmtMoney(revenue.per_student)} accent="#1E3A5F" icon={TrendingUp} testid="revenue-per-student" />
         <RevenueCard label="Active customers" value={funnel.customers} accent="#3B82F6" icon={Sparkles} testid="revenue-customers" />
       </div>
+
+      {/* KPI Row — AOV + Profit Margin (gated by role permissions) */}
+      {(kpi.aov || kpi.profit_margin) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="kpi-extras-row">
+          {kpi.aov && <RevenueCard label="Avg Order Value" value={fmtMoney(revenue.aov || 0)} accent="#8B5CF6" icon={IndianRupee} sub="Revenue ÷ paying customers" testid="kpi-aov" />}
+          {kpi.profit_margin && <RevenueCard
+            label="Profit Margin"
+            value={`${revenue.profit_margin_pct ?? 0}%`}
+            accent={(revenue.profit_margin_pct ?? 0) >= 0 ? '#16A34A' : '#D63031'}
+            icon={TrendingUp}
+            sub={`Revenue − Centre Costs = ${fmtMoney(revenue.profit || 0)}`}
+            testid="kpi-profit-margin"
+          />}
+        </div>
+      )}
 
       {/* Plan breakdown */}
       <div className="bg-white rounded-2xl border border-slate-100 p-5">
@@ -2201,14 +2246,22 @@ const ReportsPanel = ({ getAuthHeaders }) => {
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-3">Conversion Funnel</div>
           <div className="grid grid-cols-3 gap-3">
-            <FunnelStep label="Leads" value={funnel.leads} accent="#1E3A5F" icon={Users} />
+            {kpi.leads
+              ? <FunnelStep label="Leads" value={funnel.leads} accent="#1E3A5F" icon={Users} />
+              : <FunnelStep label="Leads" value="—" accent="#94A3B8" icon={Users} />}
             <FunnelStep label="Free Trials" value={funnel.trials} accent="#3B82F6" icon={Calendar} />
             <FunnelStep label="Active Customers" value={funnel.customers} accent="#16A34A" icon={Sparkles} />
           </div>
           <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-            <RateBadge label="Lead → Trial" pct={funnel.lead_to_trial_rate} />
-            <RateBadge label="Trial → Customer" pct={funnel.trial_to_customer_rate} />
-            <RateBadge label="Lead → Customer" pct={funnel.lead_to_customer_rate} />
+            {kpi.lead_to_trial
+              ? <RateBadge label="Lead → Trial" pct={funnel.lead_to_trial_rate} />
+              : <div className="rounded-lg bg-slate-50 border border-slate-100 p-2"><div className="text-lg font-black text-slate-300">—</div><div className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Lead → Trial</div></div>}
+            {kpi.trial_to_paid
+              ? <RateBadge label="Trial → Customer" pct={funnel.trial_to_customer_rate} />
+              : <div className="rounded-lg bg-slate-50 border border-slate-100 p-2"><div className="text-lg font-black text-slate-300">—</div><div className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Trial → Customer</div></div>}
+            {(kpi.leads && kpi.trial_to_paid)
+              ? <RateBadge label="Lead → Customer" pct={funnel.lead_to_customer_rate} />
+              : <div className="rounded-lg bg-slate-50 border border-slate-100 p-2"><div className="text-lg font-black text-slate-300">—</div><div className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Lead → Customer</div></div>}
           </div>
         </div>
 
@@ -2322,6 +2375,405 @@ const RateBadge = ({ label, pct }) => (
     <div className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
   </div>
 );
+
+// ═══════════════════════════════════════════════════════════════════════
+// CENTRE ECONOMICS PANEL — track direct costs per centre; auto-mirrors
+// every entry into main /admin/expenses via program_key=future_skills.
+// ═══════════════════════════════════════════════════════════════════════
+const CATEGORY_META = [
+  { key: 'rent',         label: 'Rent',         color: '#1E3A5F' },
+  { key: 'teacher_cost', label: 'Teacher Cost', color: '#3B82F6' },
+  { key: 'capex',        label: 'Capex',        color: '#8B5CF6' },
+  { key: 'marketing',    label: 'Marketing',    color: '#D63031' },
+  { key: 'other',        label: 'Other',        color: '#64748B' },
+];
+
+const EconField = ({ label, children }) => (
+  <div>
+    <Label>{label}</Label>
+    {children}
+  </div>
+);
+
+const CentreEconomicsPanel = ({ getAuthHeaders }) => {
+  const { user } = useAuth();
+  const isCenterOwner = user?.role === 'fs_center_owner';
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [centerId, setCenterId] = useState('all');
+  const [month, setMonth] = useState(currentMonth);
+  const [centers, setCenters] = useState([]);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState(null); // { type: 'add' | 'edit', entry?: ... }
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  useEffect(() => {
+    if (isCenterOwner) return;
+    axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() })
+      .then(r => setCenters(r.data?.centers || [])).catch(() => {});
+  }, [isCenterOwner, getAuthHeaders]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (centerId && centerId !== 'all') params.set('center_id', centerId);
+      if (month) params.set('month', month);
+      const r = await axios.get(`${API}/admin/future-skills/centre-economics?${params}`, { headers: getAuthHeaders() });
+      setData(r.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to load economics');
+    } finally { setLoading(false); }
+  }, [getAuthHeaders, centerId, month]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async (entryId) => {
+    try {
+      await axios.delete(`${API}/admin/future-skills/centre-economics/entry/${entryId}`, { headers: getAuthHeaders() });
+      toast.success('Entry deleted');
+      setConfirmDelete(null);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Delete failed');
+    }
+  };
+
+  if (loading && !data) {
+    return <div className="p-12 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading centre economics…</div>;
+  }
+  if (!data) return null;
+
+  const { entries = [], summary = {}, per_centre = [] } = data;
+  const costByCat = summary.cost_by_category || {};
+  const showPerCentre = !isCenterOwner && (centerId === 'all') && per_centre.length > 0;
+
+  return (
+    <div className="space-y-5" data-testid="centre-economics-panel">
+      {/* Filters + Add */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
+        {!isCenterOwner && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Centre</span>
+            <select value={centerId} onChange={e => setCenterId(e.target.value)}
+              className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="economics-center-filter">
+              <option value="all">All Centres</option>
+              {centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Month</span>
+          <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+            className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            data-testid="economics-month-filter" />
+          <button onClick={() => setMonth('')}
+            className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+            data-testid="economics-month-clear">
+            All Time
+          </button>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setModal({ type: 'add' })}
+            disabled={centerId === 'all' && !isCenterOwner}
+            title={centerId === 'all' && !isCenterOwner ? 'Pick a centre first' : ''}
+            className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            data-testid="add-economics-btn">
+            <Plus className="w-3.5 h-3.5" /> Add Expense
+          </button>
+        </div>
+      </div>
+
+      {/* Summary cards: Revenue · Cost · Profit · Margin */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <RevenueCard label="Revenue" value={fmtMoney(summary.revenue || 0)} accent="#16A34A" icon={IndianRupee} sub={`${summary.paying_customers || 0} paying`} testid="econ-revenue" />
+        <RevenueCard label="Total Costs" value={fmtMoney(summary.cost || 0)} accent="#D63031" icon={TrendingUp} testid="econ-cost" />
+        <RevenueCard label="Profit"
+          value={fmtMoney(summary.profit || 0)}
+          accent={(summary.profit || 0) >= 0 ? '#16A34A' : '#D63031'}
+          icon={IndianRupee} testid="econ-profit" />
+        <RevenueCard label="Margin"
+          value={`${summary.margin_pct ?? 0}%`}
+          accent={(summary.margin_pct ?? 0) >= 0 ? '#16A34A' : '#D63031'}
+          icon={TrendingUp} testid="econ-margin" />
+      </div>
+
+      {/* Cost by category */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-1.5">
+          <PieChart className="w-3.5 h-3.5" /> Cost by category
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {CATEGORY_META.map(cat => {
+            const c = costByCat[cat.key] || { label: cat.label, amount: 0 };
+            const pct = summary.cost > 0 ? Math.round((c.amount / summary.cost) * 100) : 0;
+            return (
+              <div key={cat.key} className="rounded-xl border border-slate-100 p-3" data-testid={`econ-cat-${cat.key}`}>
+                <div className="text-xs font-black text-[#0F1E33]">{cat.label}</div>
+                <div className="text-xl font-black text-[#0F1E33] mt-1">{fmtMoney(c.amount)}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">{pct}%</div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                  <div className="h-full" style={{ width: `${pct}%`, background: cat.color }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Per-centre roll-up */}
+      {showPerCentre && (
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 font-black text-[#1E3A5F] flex items-center gap-2">
+            <Target className="w-4 h-4" /> Per-centre P&L
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Centre</Th>
+                  <Th className="text-right">Revenue</Th>
+                  <Th className="text-right">Cost</Th>
+                  <Th className="text-right">Profit</Th>
+                  <Th className="text-right">Margin</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {per_centre.map(r => (
+                  <tr key={r.center_id} className="border-t border-slate-100" data-testid={`econ-centre-row-${r.center_id}`}>
+                    <td className="px-4 py-3 font-bold text-[#0F1E33]">{r.center_name}</td>
+                    <td className="px-4 py-3 text-right">{fmtMoney(r.revenue)}</td>
+                    <td className="px-4 py-3 text-right">{fmtMoney(r.cost)}</td>
+                    <td className={`px-4 py-3 text-right font-bold ${r.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{fmtMoney(r.profit)}</td>
+                    <td className={`px-4 py-3 text-right font-bold ${r.margin >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{r.margin}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Entries table */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="font-black text-[#1E3A5F] flex items-center gap-2">
+            <FileText className="w-4 h-4" /> Expense entries
+          </div>
+          <span className="text-xs text-slate-500">{entries.length} entries</span>
+        </div>
+        {entries.length === 0 ? (
+          <div className="p-10 text-center text-slate-400 text-sm" data-testid="econ-empty">
+            No centre expenses yet. Click &quot;Add Expense&quot; to log Rent, Teacher Cost, Capex, Marketing or Other.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Date</Th>
+                  <Th>Centre</Th>
+                  <Th>Category</Th>
+                  <Th>Description / Vendor</Th>
+                  <Th className="text-right">Amount</Th>
+                  <Th className="text-right">Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map(e => {
+                  const meta = CATEGORY_META.find(c => c.key === e.fs_category) || CATEGORY_META[4];
+                  return (
+                    <tr key={e.id} className="border-t border-slate-100" data-testid={`econ-row-${e.id}`}>
+                      <td className="px-4 py-3 text-xs text-slate-700">{fmtDate(e.expense_date)}</td>
+                      <td className="px-4 py-3 text-xs font-bold text-[#0F1E33]">{e.fs_center_name || '—'}</td>
+                      <td className="px-4 py-3 text-xs">
+                        <span className="inline-block px-2 py-1 rounded-md font-bold text-white" style={{ background: meta.color }}>
+                          {e.fs_category_label || meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-700">
+                        <div>{e.description || <span className="text-slate-400">—</span>}</div>
+                        {e.vendor_name && <div className="text-[11px] text-slate-500">{e.vendor_name}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-[#0F1E33]">{fmtMoney(e.amount)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <button onClick={() => setModal({ type: 'edit', entry: e })}
+                          className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-[#1E3A5F]"
+                          data-testid={`econ-edit-${e.id}`}
+                          title="Edit">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setConfirmDelete(e)}
+                          className="p-1.5 rounded hover:bg-rose-50 text-slate-500 hover:text-rose-600"
+                          data-testid={`econ-delete-${e.id}`}
+                          title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Add / Edit modal */}
+      {modal && (
+        <CentreEconomicsModal
+          type={modal.type}
+          entry={modal.entry}
+          centers={isCenterOwner ? [] : centers}
+          defaultCenterId={isCenterOwner ? '' : (centerId !== 'all' ? centerId : '')}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); load(); }}
+          getAuthHeaders={getAuthHeaders}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {confirmDelete && (
+        <Modal title="Delete entry?" onClose={() => setConfirmDelete(null)}>
+          <div className="text-sm text-slate-600 mb-4">
+            This will remove {fmtMoney(confirmDelete.amount)} · {confirmDelete.fs_category_label} from Centre Economics
+            <b> and</b> the main Expenses ledger. Continue?
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setConfirmDelete(null)} className="text-xs px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700">
+              Cancel
+            </button>
+            <button onClick={() => handleDelete(confirmDelete.id)} className="text-xs px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold" data-testid="econ-confirm-delete">
+              Delete
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+const CentreEconomicsModal = ({ type, entry, centers, defaultCenterId, onClose, onSaved, getAuthHeaders }) => {
+  const isEdit = type === 'edit';
+  const [form, setForm] = useState({
+    center_id:   entry?.fs_center_id  || defaultCenterId || '',
+    category:    entry?.fs_category   || 'rent',
+    amount:      entry?.amount ? String(entry.amount) : '',
+    expense_date: entry?.expense_date || new Date().toISOString().slice(0, 10),
+    description: entry?.description || '',
+    vendor_name: entry?.vendor_name || '',
+    other_label: (entry?.fs_category === 'other' ? entry?.fs_category_label : '') || '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!isEdit && !form.center_id) { toast.error('Pick a centre'); return; }
+    if (!form.amount || Number(form.amount) <= 0) { toast.error('Enter an amount'); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        category: form.category,
+        amount: Number(form.amount),
+        expense_date: form.expense_date,
+        description: form.description,
+        vendor_name: form.vendor_name,
+        other_label: form.other_label,
+      };
+      if (!isEdit) payload.center_id = form.center_id;
+      if (isEdit) {
+        await axios.patch(`${API}/admin/future-skills/centre-economics/${entry.id}`, payload, { headers: getAuthHeaders() });
+        toast.success('Entry updated');
+      } else {
+        await axios.post(`${API}/admin/future-skills/centre-economics`, payload, { headers: getAuthHeaders() });
+        toast.success('Entry added & mirrored to main Expenses');
+      }
+      onSaved();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Save failed');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={isEdit ? 'Edit Centre Expense' : 'Add Centre Expense'} onClose={onClose} testid="economics-modal">
+      <div className="space-y-3">
+        {!isEdit && (
+          <EconField label="Centre *">
+            <select value={form.center_id} onChange={e => setForm({ ...form, center_id: e.target.value })}
+              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              disabled={!!defaultCenterId && centers.length === 0}
+              data-testid="econ-modal-center">
+              <option value="">Select centre…</option>
+              {centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </EconField>
+        )}
+        <EconField label="Category *">
+          <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            data-testid="econ-modal-category">
+            {CATEGORY_META.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+        </EconField>
+        {form.category === 'other' && (
+          <EconField label="Custom label (Other)">
+            <input type="text" value={form.other_label}
+              onChange={e => setForm({ ...form, other_label: e.target.value })}
+              placeholder="e.g. Snacks, Signage, Utilities…"
+              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="econ-modal-other-label" />
+          </EconField>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <EconField label="Amount (₹) *">
+            <input type="number" min="0" step="1" value={form.amount}
+              onChange={e => setForm({ ...form, amount: e.target.value })}
+              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="econ-modal-amount" />
+          </EconField>
+          <EconField label="Date">
+            <input type="date" value={form.expense_date}
+              onChange={e => setForm({ ...form, expense_date: e.target.value })}
+              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="econ-modal-date" />
+          </EconField>
+        </div>
+        <EconField label="Description">
+          <textarea rows={2} value={form.description}
+            onChange={e => setForm({ ...form, description: e.target.value })}
+            placeholder="Optional notes…"
+            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            data-testid="econ-modal-description" />
+        </EconField>
+        <EconField label="Vendor">
+          <input type="text" value={form.vendor_name}
+            onChange={e => setForm({ ...form, vendor_name: e.target.value })}
+            placeholder="Landlord, tutor, agency…"
+            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            data-testid="econ-modal-vendor" />
+        </EconField>
+        <div className="text-[11px] text-slate-500 flex items-start gap-1.5 bg-blue-50 border border-blue-100 rounded-lg p-2">
+          <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-blue-500" />
+          <span>This entry will also appear in <b>Admin → Expenses</b> under the linked category so P&amp;L rollups stay unified.</span>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="text-xs px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700" data-testid="econ-modal-cancel">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={saving}
+            className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5 disabled:opacity-50"
+            data-testid="econ-modal-submit">
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {isEdit ? 'Save changes' : 'Add expense'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // SOURCE LINKS PANEL — trackable landing-page links with per-source metrics

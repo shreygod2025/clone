@@ -2330,6 +2330,25 @@ async def admin_future_skills_reports(
     ]
     revenue_per_student = round(total_revenue / revenue_students, 2) if revenue_students else 0.0
 
+    # ── AOV (avg order value) + Profit Margin ─────────────────────────
+    # AOV = total revenue / number of paying orders (each subscription row
+    # in the period counts as one order).
+    aov = round(total_revenue / revenue_students, 2) if revenue_students else 0.0
+
+    # Profit margin uses Future-Skills costs mirrored in `school_expenses`
+    # (see /centre-economics endpoints below). Filtered by centre + month
+    # to stay consistent with the funnel above.
+    cost_q: dict = {"program_key": PROGRAM_KEY}
+    if effective_cid:
+        cost_q["fs_center_id"] = effective_cid
+    if month:
+        cost_q["expense_date"] = {"$regex": f"^{month}"}
+    total_fs_cost = 0.0
+    async for c in db.school_expenses.find(cost_q, {"_id": 0, "amount": 1}):
+        total_fs_cost += float(c.get("amount") or 0)
+    fs_profit = total_revenue - total_fs_cost
+    profit_margin_pct = round((fs_profit / total_revenue) * 100, 1) if total_revenue > 0 else 0.0
+
     # ── Per-batch report ──────────────────────────────────────────────
     batch_q: dict = {}
     if effective_cid:
@@ -2368,6 +2387,10 @@ async def admin_future_skills_reports(
             "students": revenue_students,
             "per_student": revenue_per_student,
             "by_plan": plan_breakdown,
+            "aov": aov,
+            "cost": round(total_fs_cost, 2),
+            "profit": round(fs_profit, 2),
+            "profit_margin_pct": profit_margin_pct,
         },
         "filters": {
             "center_id": effective_cid,
@@ -2376,3 +2399,330 @@ async def admin_future_skills_reports(
         "scope": {"center_id": scope_cid or None},
     }
 
+
+# ══════════════════════════════════════════════════════════════════════════
+# CENTRE ECONOMICS
+# Track direct costs (Rent, Teacher Cost, Capex, Marketing, Other) per
+# centre while mirroring every entry into the main `school_expenses`
+# collection so central accounting stays unified.
+# ══════════════════════════════════════════════════════════════════════════
+
+# UI label → main-expenses category id. Kept in sync with EXPENSE_CATEGORIES
+# defined in routes/expenses.py so P&L rollups stay coherent.
+FS_ECONOMICS_CATEGORIES = {
+    "rent":         {"label": "Rent",         "expense_category": "rent"},
+    "teacher_cost": {"label": "Teacher Cost", "expense_category": "teacher_cost"},
+    "capex":        {"label": "Capex",        "expense_category": "kit_cost"},
+    "marketing":    {"label": "Marketing",    "expense_category": "marketing_cost"},
+    "other":        {"label": "Other",        "expense_category": "other"},
+}
+
+
+class CentreEconomicsBody(BaseModel):
+    center_id: str = Field(..., min_length=1, max_length=64)
+    category: str = Field(..., min_length=1, max_length=32)  # rent|teacher_cost|capex|marketing|other
+    amount: float = Field(..., ge=0)
+    expense_date: Optional[str] = Field(default="", max_length=20)  # YYYY-MM-DD
+    description: Optional[str] = Field(default="", max_length=500)
+    vendor_name: Optional[str] = Field(default="", max_length=120)
+    other_label: Optional[str] = Field(default="", max_length=80)  # only for category=other
+
+
+class CentreEconomicsUpdate(BaseModel):
+    category: Optional[str] = Field(default=None, max_length=32)
+    amount: Optional[float] = Field(default=None, ge=0)
+    expense_date: Optional[str] = Field(default=None, max_length=20)
+    description: Optional[str] = Field(default=None, max_length=500)
+    vendor_name: Optional[str] = Field(default=None, max_length=120)
+    other_label: Optional[str] = Field(default=None, max_length=80)
+
+
+def _fs_econ_check_permission(user: dict) -> None:
+    """Guard for /admin/future-skills/centre-economics — allowed for
+    admins/super_admins, centre owners (auto-scoped), or team users
+    holding the `future_skills.economics` sub-permission.
+    """
+    if _is_admin(user):
+        return
+    perms = user.get("permissions") or []
+    if "future_skills.economics" in perms:
+        return
+    raise HTTPException(status_code=403, detail="Not allowed")
+
+
+@router.post("/admin/future-skills/centre-economics")
+async def admin_centre_economics_create(
+    body: CentreEconomicsBody, user: dict = Depends(get_current_user)
+):
+    """Create a centre-economics entry AND mirror it as a row in the main
+    `school_expenses` collection so /admin/expenses & P&L see it.
+    """
+    _fs_econ_check_permission(user)
+
+    cat_key = (body.category or "").strip().lower()
+    if cat_key not in FS_ECONOMICS_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Invalid category")
+
+    # Scope check: centre owners can only write to their own centre
+    scope_cid = _fs_scope_center_id(user)
+    if scope_cid and scope_cid != body.center_id:
+        raise HTTPException(status_code=403, detail="Cannot log economics for another centre")
+
+    centre = await db.centers.find_one({"id": body.center_id}, {"_id": 0, "name": 1})
+    if not centre:
+        raise HTTPException(status_code=404, detail="Centre not found")
+
+    cat_info = FS_ECONOMICS_CATEGORIES[cat_key]
+    now = _now_iso()
+    exp_id = str(uuid.uuid4())
+    exp_date = (body.expense_date or "").strip() or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    fs_label = body.other_label.strip() if cat_key == "other" and body.other_label else cat_info["label"]
+
+    expense_doc = {
+        "id": exp_id,
+        # Central accounting fields — main /admin/expenses reads these.
+        "school_id": "",
+        "school_name": centre.get("name", "Centre"),
+        "project_id": "",
+        "project_name": "",
+        "category": cat_info["expense_category"],
+        "category_name": cat_info["label"],
+        "amount": float(body.amount or 0),
+        "description": (body.description or "").strip(),
+        "expense_date": exp_date,
+        "invoice_number": "",
+        "vendor_name": (body.vendor_name or "").strip(),
+        "payment_status": "paid",
+        "payment_mode": "",
+        "notes": "",
+        "attachments": [],
+        "invoice_file_url": "",
+        # Future-Skills specific markers so we can round-trip edits and show
+        # the row in the Centre Economics tab.
+        "program_key": PROGRAM_KEY,
+        "fs_center_id": body.center_id,
+        "fs_center_name": centre.get("name", ""),
+        "fs_category": cat_key,
+        "fs_category_label": fs_label,
+        "created_by": user.get("email"),
+        "created_by_name": user.get("name"),
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.school_expenses.insert_one(expense_doc)
+    expense_doc.pop("_id", None)
+    return {"message": "Centre economics entry created", "entry": expense_doc}
+
+
+@router.get("/admin/future-skills/centre-economics")
+async def admin_centre_economics_list(
+    center_id: Optional[str] = Query(None),
+    month: Optional[str] = Query(None),  # YYYY-MM (optional)
+    user: dict = Depends(get_current_user),
+):
+    """List centre-economics entries (from `school_expenses` where
+    program_key=future_skills) and roll up per-centre revenue + costs +
+    profit so the UI can render the Economics tab in one round trip.
+    """
+    _fs_econ_check_permission(user)
+
+    scope_cid = _fs_scope_center_id(user)
+    effective_cid = scope_cid or (center_id if center_id and center_id != "all" else None)
+
+    q: dict = {"program_key": PROGRAM_KEY}
+    if effective_cid:
+        q["fs_center_id"] = effective_cid
+
+    # Optional month filter (YYYY-MM prefix match on expense_date string)
+    if month and re.match(r"^\d{4}-\d{2}$", month):
+        q["expense_date"] = {"$regex": f"^{month}"}
+
+    cursor = db.school_expenses.find(q, {"_id": 0}).sort("expense_date", -1).limit(2000)
+    entries = await cursor.to_list(length=None)
+
+    # ── Aggregate cost totals by category ────────────────────────────
+    cost_totals = {k: 0.0 for k in FS_ECONOMICS_CATEGORIES.keys()}
+    total_cost = 0.0
+    for e in entries:
+        cat = (e.get("fs_category") or "").lower()
+        amt = float(e.get("amount") or 0)
+        if cat in cost_totals:
+            cost_totals[cat] += amt
+        total_cost += amt
+
+    # ── Revenue lookup (from paid subs, respecting scope + month) ────
+    rev_q: dict = {"amount_paid": {"$gt": 0}}
+    if effective_cid:
+        rev_q["center_id"] = effective_cid
+    if month and re.match(r"^\d{4}-\d{2}$", month):
+        try:
+            m_start = datetime.strptime(month + "-01", "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            m_end = m_start.replace(year=m_start.year + 1, month=1) if m_start.month == 12 else m_start.replace(month=m_start.month + 1)
+            rev_q["payment_date"] = {"$gte": _iso(m_start), "$lt": _iso(m_end)}
+        except Exception:
+            pass
+
+    revenue = 0.0
+    paying_customers = 0
+    async for r in db.future_skills_subscriptions.find(
+        rev_q, {"_id": 0, "amount_paid": 1, "amount": 1}
+    ):
+        revenue += float(r.get("amount_paid") or r.get("amount") or 0)
+        paying_customers += 1
+
+    profit = revenue - total_cost
+    margin = round((profit / revenue) * 100, 1) if revenue > 0 else 0.0
+
+    # ── Per-centre roll-up (only when centre filter is not set) ──────
+    per_centre: list = []
+    if not effective_cid:
+        cost_by_centre: dict = {}
+        for e in entries:
+            cid = e.get("fs_center_id") or ""
+            if not cid:
+                continue
+            slot = cost_by_centre.setdefault(cid, {
+                "center_id": cid,
+                "center_name": e.get("fs_center_name") or e.get("school_name") or "Centre",
+                "cost": 0.0,
+                "revenue": 0.0,
+            })
+            slot["cost"] += float(e.get("amount") or 0)
+
+        # Revenue per centre
+        rev_group: list = [
+            {"$match": {"amount_paid": {"$gt": 0}}},
+        ]
+        if "payment_date" in rev_q:
+            rev_group[0]["$match"]["payment_date"] = rev_q["payment_date"]
+        rev_group += [
+            {"$group": {"_id": "$center_id", "revenue": {"$sum": "$amount_paid"}}},
+        ]
+        async for r in db.future_skills_subscriptions.aggregate(rev_group):
+            cid = r.get("_id") or ""
+            if not cid:
+                continue
+            slot = cost_by_centre.setdefault(cid, {
+                "center_id": cid,
+                "center_name": "Centre",
+                "cost": 0.0,
+                "revenue": 0.0,
+            })
+            slot["revenue"] = float(r.get("revenue") or 0)
+
+        # Fill in centre names for revenue-only entries
+        missing_ids = [k for k, v in cost_by_centre.items() if v["center_name"] == "Centre"]
+        if missing_ids:
+            async for c in db.centers.find({"id": {"$in": missing_ids}}, {"_id": 0, "id": 1, "name": 1}):
+                cost_by_centre[c["id"]]["center_name"] = c.get("name") or "Centre"
+
+        for v in cost_by_centre.values():
+            v["profit"] = round(v["revenue"] - v["cost"], 2)
+            v["margin"] = round((v["profit"] / v["revenue"]) * 100, 1) if v["revenue"] > 0 else 0.0
+            v["cost"] = round(v["cost"], 2)
+            v["revenue"] = round(v["revenue"], 2)
+        per_centre = sorted(cost_by_centre.values(), key=lambda x: -x["revenue"])
+
+    return {
+        "entries": entries,
+        "summary": {
+            "revenue": round(revenue, 2),
+            "cost": round(total_cost, 2),
+            "profit": round(profit, 2),
+            "margin_pct": margin,
+            "paying_customers": paying_customers,
+            "cost_by_category": {
+                k: {"label": v["label"], "amount": round(cost_totals[k], 2)}
+                for k, v in FS_ECONOMICS_CATEGORIES.items()
+            },
+        },
+        "per_centre": per_centre,
+        "filters": {
+            "center_id": effective_cid,
+            "month": month if q.get("expense_date") else None,
+        },
+        "scope": {"center_id": scope_cid or None},
+    }
+
+
+@router.patch("/admin/future-skills/centre-economics/{entry_id}")
+async def admin_centre_economics_update(
+    entry_id: str, body: CentreEconomicsUpdate, user: dict = Depends(get_current_user)
+):
+    _fs_econ_check_permission(user)
+
+    existing = await db.school_expenses.find_one(
+        {"id": entry_id, "program_key": PROGRAM_KEY}, {"_id": 0}
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    scope_cid = _fs_scope_center_id(user)
+    if scope_cid and existing.get("fs_center_id") != scope_cid:
+        raise HTTPException(status_code=403, detail="Cannot edit another centre's entry")
+
+    update: dict = {"updated_at": _now_iso()}
+
+    if body.category is not None:
+        cat_key = body.category.strip().lower()
+        if cat_key not in FS_ECONOMICS_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Invalid category")
+        info = FS_ECONOMICS_CATEGORIES[cat_key]
+        update["fs_category"] = cat_key
+        update["fs_category_label"] = info["label"]
+        update["category"] = info["expense_category"]
+        update["category_name"] = info["label"]
+
+    if body.amount is not None:
+        update["amount"] = float(body.amount)
+    if body.expense_date is not None:
+        update["expense_date"] = body.expense_date.strip()
+    if body.description is not None:
+        update["description"] = body.description.strip()
+    if body.vendor_name is not None:
+        update["vendor_name"] = body.vendor_name.strip()
+    if body.other_label is not None:
+        # Update the free-text label; if category is now 'other' use it, else
+        # keep it stored but display uses the standard label.
+        active_cat = update.get("fs_category") or existing.get("fs_category")
+        if active_cat == "other" and body.other_label.strip():
+            update["fs_category_label"] = body.other_label.strip()
+
+    await db.school_expenses.update_one({"id": entry_id}, {"$set": update})
+    return {"message": "Entry updated"}
+
+
+# NOTE: uses a 3-segment path (`.../entry/{entry_id}`) to avoid clashing
+# with the catch-all `DELETE /admin/future-skills/{entity_type}/{entity_id}`
+# registered earlier in this file for leads / trials / customers.
+@router.delete("/admin/future-skills/centre-economics/entry/{entry_id}")
+async def admin_centre_economics_delete(
+    entry_id: str, user: dict = Depends(get_current_user)
+):
+    _fs_econ_check_permission(user)
+
+    existing = await db.school_expenses.find_one(
+        {"id": entry_id, "program_key": PROGRAM_KEY}, {"_id": 0, "fs_center_id": 1}
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    scope_cid = _fs_scope_center_id(user)
+    if scope_cid and existing.get("fs_center_id") != scope_cid:
+        raise HTTPException(status_code=403, detail="Cannot delete another centre's entry")
+
+    await db.school_expenses.delete_one({"id": entry_id, "program_key": PROGRAM_KEY})
+    return {"message": "Entry deleted"}
+
+
+@router.get("/admin/future-skills/centre-economics/categories")
+async def admin_centre_economics_categories(user: dict = Depends(get_current_user)):
+    _fs_econ_check_permission(user)
+    return {
+        "categories": [
+            {"key": k, "label": v["label"], "expense_category": v["expense_category"]}
+            for k, v in FS_ECONOMICS_CATEGORIES.items()
+        ]
+    }
