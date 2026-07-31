@@ -1987,6 +1987,17 @@ For educators (user_type="educator") that supply an `email`, the backend now att
 2. **Mobile CRM KPI Cards**: Changed from 3-column grid to horizontal scroll — numbers and labels no longer truncate. Action buttons in separate row.
 3. **Dashboard Center Normalization**: Added `_normalize_center_display()` to map historical center_label variants to canonical names. Now shows 6 clean centers instead of 15+ duplicates.
 
+### 2026-07-31 — Lead Import: Override Defaults + Multi-Sheet + Age Column
+**Bugs Fixed / Features:**
+1. **Fix: admin-picked defaults now OVERRIDE CSV values** (previously they only filled blanks).
+   - Root cause: the user's `age_group` column in Excel contained *dates* (e.g. `2026-03-07`) which were non-empty strings, so the CSV value beat the admin's dropdown choice of "8-11". Verified end-to-end with the user's actual `b2c.xlsx` — all 60 leads now correctly get `age_group='8-11'`, `center='Dahisar'`, `source='Instagram'` from admin dropdowns.
+   - `age_group` is additionally validated against `{4-7, 8-11, 12-14, 15-17, 18+}` — junk values in the CSV (dates, floats) are ignored.
+2. **Feature: multi-sheet Excel import in one go.**
+   - Backend `admin_import_leads` now uses `pd.read_excel(..., sheet_name=None)` and concatenates every non-empty sheet, tagging each row with `_source_sheet`. Verified with a 2-sheet test file (InstagramCampaign 2 rows + FacebookCampaign 3 rows → 5 imported).
+   - Import modal copy updated: "Excel files with multiple sheets will import all sheets in one go."
+3. **Feature: Age column in the leads table.**
+   - Added dedicated **Age** column (between Phone and Source) rendered as a violet pill (`{r.age_group}`), or `—` if empty. Each cell has `data-testid="row-age-<lead_ref>"` for testability.
+
 ### 2026-07-31 — Bulk Select & Delete for Future Skills Leads
 **Feature Added:**
 - **Backend**: New `POST /api/admin/future-skills/leads/bulk-delete` (admin-only) accepts `{ids: [str]}` and returns `{deleted, requested}`. Uses `delete_many` in a single Mongo op.

@@ -622,7 +622,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               aria-label="Select all leads"
             />
           </th>
-          <Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th>
+          <Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Age</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th>
         </tr>
       </thead>
       <tbody>
@@ -644,6 +644,13 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
             <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.phone}</div>
               {r.child_age && <div className="text-[11px] text-slate-500 mt-0.5">Age {r.child_age}</div>}
+            </td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)} data-testid={`row-age-${r.lead_ref}`}>
+              {r.age_group ? (
+                <span className="inline-block text-[11px] font-bold px-2 py-1 rounded-full bg-violet-100 text-violet-800">
+                  {r.age_group}
+                </span>
+              ) : <span className="text-slate-400 text-xs">—</span>}
             </td>
             <td className="px-4 py-3 text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</td>
             <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
@@ -1517,7 +1524,7 @@ const ImportModal = ({ onClose, onImport, fileInputRef, centers = [], sources = 
   return (
     <Modal title="Import Leads (CSV / Excel)" onClose={onClose} testid="import-modal">
       <p className="text-sm text-slate-600 mb-3">
-        Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file. Duplicates (by phone) are skipped.
+        Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file. Excel files with multiple sheets will import all sheets in one go. Duplicates (by phone) are skipped.
       </p>
 
       {/* ── Bulk defaults: map centre / age / source for ALL rows that don't
@@ -1583,7 +1590,7 @@ const ImportModal = ({ onClose, onImport, fileInputRef, centers = [], sources = 
         </div>
 
         <div className="text-[11px] text-slate-500">
-          Rule: if a row already has a value, the file wins; otherwise these defaults are applied.
+          Rule: any default you pick above <strong>overrides</strong> whatever is in the file. Leave a field blank to keep the file&apos;s value.
         </div>
       </div>
 

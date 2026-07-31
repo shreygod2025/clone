@@ -1535,7 +1535,21 @@ async def admin_import_leads(
         if filename.endswith(".csv") or "csv" in (file.content_type or ""):
             df = pd.read_csv(BytesIO(content), dtype=str, keep_default_na=False)
         elif filename.endswith((".xlsx", ".xls")) or "sheet" in (file.content_type or ""):
-            df = pd.read_excel(BytesIO(content), dtype=str, engine="openpyxl").fillna("")
+            # Multi-sheet support: read *every* sheet and concatenate, so
+            # admins can import an Excel file with multiple tabs in one go.
+            all_sheets = pd.read_excel(
+                BytesIO(content), dtype=str, engine="openpyxl", sheet_name=None,
+            )
+            frames = []
+            for sheet_name, sdf in (all_sheets or {}).items():
+                if sdf is None or sdf.empty:
+                    continue
+                sdf = sdf.fillna("")
+                sdf["_source_sheet"] = sheet_name
+                frames.append(sdf)
+            if not frames:
+                raise HTTPException(status_code=400, detail="No data found in any sheet")
+            df = pd.concat(frames, ignore_index=True, sort=False)
         else:
             raise HTTPException(status_code=400, detail="Only .csv, .xlsx or .xls accepted")
     except HTTPException:
@@ -1583,6 +1597,25 @@ async def admin_import_leads(
 
     fallback_source = default_source or "import"
 
+    # Known/valid age-group tokens. Anything outside this set in a CSV row
+    # (dates, floats, blanks) is treated as invalid so the admin-picked
+    # default in the import modal is used instead.
+    VALID_AGE_GROUPS = {"4-7", "8-11", "12-14", "15-17", "18+"}
+
+    def _pick(admin_default: str, row_value: str, allow_all: bool = True, valid: set = None):
+        """Admin-picked defaults ALWAYS win when set — that matches the mental
+        model of "I selected this from the dropdown, please use it". If admin
+        left it blank, use the CSV row value (optionally filtered to a valid set).
+        """
+        if admin_default:
+            return admin_default
+        v = (row_value or "").strip()
+        if not v:
+            return ""
+        if valid is not None and v not in valid:
+            return ""
+        return v if allow_all else ""
+
     for idx, row in df.iterrows():
         try:
             record = {alias_map.get(c, c): str(row.get(c, "")).strip() for c in df.columns}
@@ -1602,12 +1635,14 @@ async def admin_import_leads(
             lead_id = str(uuid.uuid4())
             lead_ref = await _next_ref("FSL")
 
-            # Optional centre lookup (case-insensitive by name) — CSV value
-            # wins; if empty or unknown, fall back to the admin-picked default.
-            centre_from_csv = (record.get("center_name") or "").strip().lower()
-            centre_hit = centre_lookup.get(centre_from_csv) if centre_from_csv else None
-            resolved_center_id   = (centre_hit or {}).get("id", "")   or default_center_id
-            resolved_center_name = (centre_hit or {}).get("name", "") or record.get("center_name", "") or default_center_name
+            # Centre: admin default wins; otherwise resolve CSV centre by name.
+            if default_center_id:
+                resolved_center_id, resolved_center_name = default_center_id, default_center_name
+            else:
+                centre_from_csv = (record.get("center_name") or "").strip().lower()
+                centre_hit = centre_lookup.get(centre_from_csv) if centre_from_csv else None
+                resolved_center_id   = (centre_hit or {}).get("id", "")
+                resolved_center_name = (centre_hit or {}).get("name", "") or record.get("center_name", "")
 
             doc = {
                 "id": lead_id,
@@ -1616,9 +1651,9 @@ async def admin_import_leads(
                 "name": name,
                 "phone": phone,
                 "email": record.get("email", "").lower(),
-                "source":    record.get("source", "")    or fallback_source,
+                "source":    _pick(default_source, record.get("source", "")) or fallback_source,
                 "city": record.get("city", ""),
-                "age_group": record.get("age_group", "") or default_age_group,
+                "age_group": _pick(default_age_group, record.get("age_group", ""), valid=VALID_AGE_GROUPS),
                 "center_id":   resolved_center_id,
                 "center_name": resolved_center_name,
                 "notes": record.get("notes", ""),
