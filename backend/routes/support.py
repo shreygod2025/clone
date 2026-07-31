@@ -396,7 +396,63 @@ async def _resolve_assignee(user_id: str):
         assignee = await db.center_users.find_one({"id": user_id}, {"_id": 0})
     if not assignee:
         assignee = await db.admins.find_one({"id": user_id}, {"_id": 0})
+    # Future-Skills centre owners live in a separate collection — their
+    # `id` is the centre's id and login credentials sit on the same doc.
+    if not assignee:
+        fs = await db.future_skills_centers.find_one({"id": user_id}, {"_id": 0})
+        if fs:
+            assignee = {
+                "id":    fs.get("id"),
+                "name":  fs.get("owner_name") or fs.get("name") or "Centre Owner",
+                "email": fs.get("owner_email") or "",
+                "phone": fs.get("owner_phone") or fs.get("phone") or "",
+                "role":  "fs_center_owner",
+                "center_id":   fs.get("id"),
+                "center_name": fs.get("name"),
+                "is_active":   fs.get("is_active", True),
+            }
     return assignee
+
+
+@router.get("/support/assignees")
+async def get_support_assignees(user: dict = Depends(get_current_user)):
+    """Unified assignee list for the Support module: team users + admins +
+    Future-Skills centre owners. Used by the assignee dropdown so a
+    support query can be routed to a centre-owner login directly.
+    """
+    out: list[dict] = []
+    async for t in db.team_users.find({}, {"_id": 0, "password_hash": 0}):
+        if not t.get("is_active", True):
+            continue
+        out.append({
+            "id":    t.get("id"),
+            "name":  t.get("name") or t.get("username") or t.get("email") or "Team Member",
+            "email": t.get("email"),
+            "phone": t.get("phone"),
+            "role":  t.get("role") or "team_member",
+            "type":  "team_user",
+            "center_id":   t.get("center_id"),
+            "center_name": t.get("center_name"),
+        })
+    async for fs in db.future_skills_centers.find(
+        {"owner_email": {"$exists": True, "$ne": ""}},
+        {"_id": 0, "id": 1, "name": 1, "owner_name": 1, "owner_email": 1, "owner_phone": 1, "is_active": 1},
+    ):
+        if not fs.get("is_active", True):
+            continue
+        if not fs.get("owner_email"):
+            continue
+        out.append({
+            "id":    fs.get("id"),
+            "name":  fs.get("owner_name") or fs.get("name") or "Centre Owner",
+            "email": fs.get("owner_email"),
+            "phone": fs.get("owner_phone", ""),
+            "role":  "fs_center_owner",
+            "type":  "fs_center",
+            "center_id":   fs.get("id"),
+            "center_name": fs.get("name"),
+        })
+    return out
 
 
 async def send_assignment_notifications(query: dict, assignee: dict, assignee_name: str, query_id: str, deadline):

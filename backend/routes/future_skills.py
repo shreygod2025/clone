@@ -565,6 +565,8 @@ class TrialUpdate(BaseModel):
     notes: Optional[str] = None
     assigned_center: Optional[str] = None
     scheduled_at: Optional[str] = None
+    center_id: Optional[str] = None
+    batch_id: Optional[str] = None
 
 
 @router.patch("/admin/future-skills/trials/{trial_id}")
@@ -574,6 +576,16 @@ async def admin_update_trial(trial_id: str, data: TrialUpdate, user: dict = Depe
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update")
+    # Enrich centre / batch name so the row display doesn't have to look them up
+    if "center_id" in update and update["center_id"]:
+        c = await db.centers.find_one({"id": update["center_id"]}, {"_id": 0, "name": 1, "location": 1})
+        if c:
+            update["center_name"] = c.get("name", "")
+            update["preferred_center"] = c.get("name", "")
+    if "batch_id" in update and update["batch_id"]:
+        b = await db.future_skills_batches.find_one({"id": update["batch_id"]}, {"_id": 0, "name": 1})
+        if b:
+            update["batch_name"] = b.get("name", "")
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
     res = await db.future_skills_trials.update_one({"id": trial_id}, {"$set": update})
     if res.matched_count == 0:
@@ -595,6 +607,8 @@ class SubscriptionUpdate(BaseModel):
     parent_email: Optional[str] = None
     student_name: Optional[str] = None
     student_grade: Optional[str] = None
+    center_id: Optional[str] = None
+    batch_id: Optional[str] = None
 
 
 @router.patch("/admin/future-skills/subscriptions/{sub_id}")
@@ -612,6 +626,16 @@ async def admin_update_sub(sub_id: str, data: SubscriptionUpdate, user: dict = D
         update["plan_label"] = plan_info["label"]
         update["billing_cycle"] = plan_info["billing_cycle"]
         update["monthly_equivalent"] = plan_info["monthly_equivalent"]
+    # Enrich centre / batch names for the row display
+    if "center_id" in update and update["center_id"]:
+        c = await db.centers.find_one({"id": update["center_id"]}, {"_id": 0, "name": 1})
+        if c:
+            update["center_name"] = c.get("name", "")
+            update["preferred_center"] = c.get("name", "")
+    if "batch_id" in update and update["batch_id"]:
+        b = await db.future_skills_batches.find_one({"id": update["batch_id"]}, {"_id": 0, "name": 1})
+        if b:
+            update["batch_name"] = b.get("name", "")
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
     res = await db.future_skills_subscriptions.update_one({"id": sub_id}, {"$set": update})
     if res.matched_count == 0:
@@ -2274,7 +2298,13 @@ async def admin_future_skills_reports(
     leads_converted = await db.future_skills_leads.count_documents(
         {**lead_q, "status": "converted"}
     )
-    trials_total = await db.future_skills_trials.count_documents(trial_q)
+    # ONLY count booked-status trials so this matches the Free Trials tab
+    # (a doc with status="requested" is a landing-page inquiry, not a booking;
+    # "converted" and "lost" are surfaced under Customers / Lost respectively).
+    BOOKED_TRIAL_STATUSES = ["scheduled", "trial_scheduled", "rescheduled", "completed"]
+    trials_total = await db.future_skills_trials.count_documents(
+        {**trial_q, "crm_status": {"$in": BOOKED_TRIAL_STATUSES}}
+    )
     customers_active = await db.future_skills_subscriptions.count_documents(active_sub_q)
 
     def pct(n: int, d: int) -> float:

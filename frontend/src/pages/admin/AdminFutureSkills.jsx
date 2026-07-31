@@ -6,7 +6,7 @@ import {
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
   Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
-  Link2 as LinkIcon, Copy, Eye, FileText,
+  Link2 as LinkIcon, Copy, Eye, FileText, HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -16,15 +16,16 @@ import { useAuth } from '../../context/AuthContext';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TABS = [
-  { key: 'leads',        label: 'Leads',            icon: Users },
-  { key: 'trials',       label: 'Free Trials',      icon: Calendar },
-  { key: 'customers',    label: 'Active Customers', icon: Sparkles },
-  { key: 'renewals',     label: 'Renewals',         icon: RotateCcw },
-  { key: 'lost',         label: 'Lost',             icon: XCircle },
-  { key: 'centers',      label: 'Centres & Batches', icon: MapPin },
-  { key: 'sources',      label: 'Source Links',     icon: LinkIcon },
-  { key: 'economics',    label: 'Centre Economics', icon: IndianRupee },
-  { key: 'reports',      label: 'Reports',          icon: BarChart3 },
+  { key: 'leads',           label: 'Leads',            icon: Users },
+  { key: 'trials',          label: 'Free Trials',      icon: Calendar },
+  { key: 'customers',       label: 'Active Customers', icon: Sparkles },
+  { key: 'renewals',        label: 'Renewals',         icon: RotateCcw },
+  { key: 'lost',            label: 'Lost',             icon: XCircle },
+  { key: 'centers',         label: 'Centres & Batches', icon: MapPin },
+  { key: 'sources',         label: 'Source Links',     icon: LinkIcon },
+  { key: 'economics',       label: 'Centre Economics', icon: IndianRupee },
+  { key: 'support-queries', label: 'Support Queries',  icon: HelpCircle },
+  { key: 'reports',         label: 'Reports',          icon: BarChart3 },
 ];
 
 const AGE_GROUP_OPTIONS = [
@@ -135,7 +136,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
-    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics') { setRows([]); setStats(null); return; }
+    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics' || tab === 'support-queries') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -239,6 +240,26 @@ const AdminFutureSkills = () => {
   // Centre Economics gate: admins, centre owners, or holders of the
   // dedicated sub-permission.
   const canSeeEconomics = isAdminRole || isCenterOwner || userPerms.includes('future_skills.economics');
+  // Support Queries tab is aimed at centre owners so they can see help
+  // tickets routed to them; admins also get it for oversight.
+  const canSeeSupportQueries = isAdminRole || isCenterOwner;
+  const [supportQueryCount, setSupportQueryCount] = useState(0);
+
+  // Poll the "assigned to me" count for the badge (only if the tab is visible)
+  useEffect(() => {
+    if (!canSeeSupportQueries) return;
+    const fetchCount = () => {
+      axios.get(`${API}/support/queries?my_tickets=true`, { headers: getAuthHeaders() })
+        .then(r => {
+          const open = (r.data || []).filter(q => (q.status || '').toLowerCase() !== 'closed').length;
+          setSupportQueryCount(open);
+        })
+        .catch(() => {});
+    };
+    fetchCount();
+    const t = setInterval(fetchCount, 60000);
+    return () => clearInterval(t);
+  }, [canSeeSupportQueries, getAuthHeaders]);
 
   // If the tab was auto-set to something the user can't see, bounce them home.
   useEffect(() => {
@@ -259,12 +280,13 @@ const AdminFutureSkills = () => {
           </div>
         )}
 
-        {/* Tabs + toolbar in a single row (space-tight) */}
-        <div className="flex items-center gap-2 flex-wrap justify-between">
-          <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 gap-1">
+        {/* Tabs (horizontally scrollable on mobile so they never wrap) */}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-slate-100 rounded-xl p-1 gap-1 overflow-x-auto no-scrollbar flex-1 min-w-0">
             {TABS.filter(t => {
               if (isCenterOwner && (t.key === 'centers' || t.key === 'sources')) return false;
               if (t.key === 'economics' && !canSeeEconomics) return false;
+              if (t.key === 'support-queries' && !canSeeSupportQueries) return false;
               return true;
             }).map(t => {
               const badge =
@@ -273,11 +295,12 @@ const AdminFutureSkills = () => {
                 : t.key === 'customers' ? tabStats?.customers
                 : t.key === 'renewals' ? tabStats?.renewals
                 : t.key === 'lost'    ? tabStats?.lost
+                : t.key === 'support-queries' ? supportQueryCount
                 : 0;
               return (
                 <button key={t.key}
                   onClick={() => { setTab(t.key); setStatusFilter('all'); setSelected(null); }}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                     tab === t.key ? 'bg-white text-[#0F1E33] shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
                   data-testid={`tab-${t.key}`}>
@@ -291,23 +314,10 @@ const AdminFutureSkills = () => {
               );
             })}
           </div>
-
-          <div className="flex items-center gap-2">
-            <a href="/future-skills" target="_blank" rel="noopener noreferrer"
-              className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
-              data-testid="open-landing-btn">
-              <ExternalLink className="w-3.5 h-3.5" /> Open Landing
-            </a>
-            <button onClick={refreshAll} disabled={loading}
-              className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5 disabled:opacity-50"
-              data-testid="refresh-btn">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
-          </div>
         </div>
 
-        {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs) */}
-        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
+        {/* Toolbar (hidden for Centres / Reports / Sources / Economics / Support Queries tabs) */}
+        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && tab !== 'support-queries' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           {/* Left: primary actions per tab */}
           {tab === 'leads' && (
@@ -398,6 +408,8 @@ const AdminFutureSkills = () => {
           <SourceLinksPanel getAuthHeaders={getAuthHeaders} />
         ) : tab === 'economics' ? (
           <CentreEconomicsPanel getAuthHeaders={getAuthHeaders} />
+        ) : tab === 'support-queries' ? (
+          <SupportQueriesPanel getAuthHeaders={getAuthHeaders} onCountChange={setSupportQueryCount} />
         ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {loading && rows.length === 0 ? (
@@ -436,7 +448,12 @@ const AdminFutureSkills = () => {
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
               }} />}
-              {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} />}
+              {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+                if (action === 'renew')      setModal({ type: 'renew', customer: r });
+                if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
+                if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
+                if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
+              }} />}
               {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'renew')      setModal({ type: 'renew', customer: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'customer' });
@@ -471,6 +488,8 @@ const AdminFutureSkills = () => {
         <DetailDrawer
           tab={tab}
           entity={selected}
+          centers={centersForFilter}
+          batches={batchesForFilter}
           onClose={() => setSelected(null)}
           onAction={(action, extra) => {
             if (action === 'convert-lead')     handleConvertLeadToTrial(selected);
@@ -705,35 +724,62 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
   );
 };
 
-const CustomersTable = ({ rows, onOpen, centers = [], batches = [] }) => {
+const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   return (
     <table className="w-full text-sm">
       <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Amount Paid</Th><Th>Renewal Date</Th><Th className="text-right">Since</Th></tr>
+        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Amount Paid</Th><Th>Renewal Date</Th><Th>Actions</Th></tr>
       </thead>
       <tbody>
         {rows.map(r => (
-          <tr key={r.id} onClick={() => onOpen(r)}
-            className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
+          <tr key={r.id} className="border-t border-slate-100 hover:bg-blue-50/40"
             data-testid={`row-${r.subscription_ref}`}>
-            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.subscription_ref}</td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
               <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
             </td>
-            <td className="px-4 py-3 text-xs">
+            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
               <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33] text-xs">{r.plan_label}</div>
               <div className="text-[11px] text-slate-500">{fmtMoney(r.amount)}</div>
             </td>
-            <td className="px-4 py-3 font-bold text-emerald-700">{fmtMoney(r.amount_paid || r.amount)}</td>
-            <td className="px-4 py-3 text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</td>
-            <td className="px-4 py-3 text-right text-xs text-slate-500">{fmtDate(r.subscription_start || r.created_at)}</td>
+            <td className="px-4 py-3 font-bold text-emerald-700 cursor-pointer" onClick={() => onOpen(r)}>{fmtMoney(r.amount_paid || r.amount)}</td>
+            <td className="px-4 py-3 text-xs font-semibold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{fmtDate(r.renewal_date)}</td>
+            <td className="px-4 py-3">
+              <div className="flex flex-wrap gap-1">
+                <button onClick={(e) => { e.stopPropagation(); onAction && onAction('renew', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  data-testid={`row-customer-renew-${r.subscription_ref}`} title="Renew">
+                  <RotateCcw className="w-3 h-3" /> Renew
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction && onAction('notes', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  data-testid={`row-customer-notes-${r.subscription_ref}`} title="Notes">
+                  <FileText className="w-3 h-3" /> Notes
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  data-testid={`row-customer-edit-${r.subscription_ref}`} title="Edit">
+                  <Pencil className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction && onAction('mark-lost', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  data-testid={`row-customer-mark-lost-${r.subscription_ref}`} title="Mark Lost">
+                  <XCircle className="w-3 h-3" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction && onAction('delete', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  data-testid={`row-customer-delete-${r.subscription_ref}`} title="Delete">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            </td>
           </tr>
         ))}
       </tbody>
@@ -840,7 +886,7 @@ const LostTable = ({ rows, onOpen }) => (
 );
 
 // ── Detail Drawer ─────────────────────────────────────────────────────
-const DetailDrawer = ({ tab, entity, onClose, onAction, onSaved, getAuthHeaders }) => {
+const DetailDrawer = ({ tab, entity, centers = [], batches = [], onClose, onAction, onSaved, getAuthHeaders }) => {
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState({});
 
@@ -848,11 +894,29 @@ const DetailDrawer = ({ tab, entity, onClose, onAction, onSaved, getAuthHeaders 
     if (tab === 'leads') {
       setEdit({ name: entity.name, phone: entity.phone, email: entity.email, source: entity.source, city: entity.city, status: entity.status, notes: entity.notes });
     } else if (tab === 'trials') {
-      setEdit({ crm_status: entity.crm_status, notes: entity.notes, assigned_center: entity.assigned_center || entity.preferred_center });
-    } else if (tab === 'customers') {
-      setEdit({ notes: entity.notes, amount_paid: entity.amount_paid, renewal_date: (entity.renewal_date || '').slice(0, 10), plan: entity.plan });
+      setEdit({
+        crm_status: entity.crm_status,
+        notes: entity.notes,
+        assigned_center: entity.assigned_center || entity.preferred_center,
+        center_id: entity.center_id || '',
+        batch_id:  entity.batch_id  || '',
+      });
+    } else if (tab === 'customers' || tab === 'renewals') {
+      setEdit({
+        notes: entity.notes,
+        amount_paid: entity.amount_paid,
+        renewal_date: (entity.renewal_date || '').slice(0, 10),
+        plan: entity.plan,
+        center_id: entity.center_id || '',
+        batch_id:  entity.batch_id  || '',
+      });
     }
   }, [entity, tab]);
+
+  // Batches filtered by the currently selected centre (in the modal)
+  const availableBatches = (edit.center_id
+    ? batches.filter(b => b.center_id === edit.center_id)
+    : batches);
 
   const save = async () => {
     setSaving(true);
@@ -944,7 +1008,16 @@ const DetailDrawer = ({ tab, entity, onClose, onAction, onSaved, getAuthHeaders 
                   {value:'trial_scheduled',label:'Scheduled'},{value:'trial_attended',label:'Attended'},
                   {value:'converted',label:'Converted'},
                 ]} />
-              <TextField label="Assigned Centre" value={edit.assigned_center || ''} onChange={v => setEdit({ ...edit, assigned_center: v })} />
+              <SelectField label="Centre"
+                value={edit.center_id || ''}
+                onChange={v => setEdit({ ...edit, center_id: v, batch_id: '' })}
+                options={[{ value: '', label: '— Not assigned —' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+                testid="edit-trial-center" />
+              <SelectField label="Batch"
+                value={edit.batch_id || ''}
+                onChange={v => setEdit({ ...edit, batch_id: v })}
+                options={[{ value: '', label: '— Not assigned —' }, ...availableBatches.map(b => ({ value: b.id, label: `${b.name}${b.days && b.days.length ? ' · ' + b.days.join('/') : ''}` }))]}
+                testid="edit-trial-batch" />
               <TextAreaField label="Notes" value={edit.notes || ''} onChange={v => setEdit({ ...edit, notes: v })} />
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <button onClick={() => onAction('convert-trial')}
@@ -976,6 +1049,16 @@ const DetailDrawer = ({ tab, entity, onClose, onAction, onSaved, getAuthHeaders 
                 <Detail label="Amount paid" value={fmtMoney(entity.amount_paid || entity.amount)} />
               </div>
               <SelectField label="Plan" value={edit.plan || entity.plan || 'monthly'} onChange={v => setEdit({ ...edit, plan: v })} options={PLAN_OPTIONS} />
+              <SelectField label="Centre"
+                value={edit.center_id || ''}
+                onChange={v => setEdit({ ...edit, center_id: v, batch_id: '' })}
+                options={[{ value: '', label: '— Not assigned —' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+                testid="edit-customer-center" />
+              <SelectField label="Batch"
+                value={edit.batch_id || ''}
+                onChange={v => setEdit({ ...edit, batch_id: v })}
+                options={[{ value: '', label: '— Not assigned —' }, ...availableBatches.map(b => ({ value: b.id, label: `${b.name}${b.days && b.days.length ? ' · ' + b.days.join('/') : ''}` }))]}
+                testid="edit-customer-batch" />
               <TextField label="Amount Paid (₹)" type="number" value={edit.amount_paid ?? ''} onChange={v => setEdit({ ...edit, amount_paid: parseFloat(v) || 0 })} testid="edit-amount-paid" />
               <TextField label="Renewal Date" type="date" value={edit.renewal_date || ''} onChange={v => setEdit({ ...edit, renewal_date: v })} testid="edit-renewal-date" />
               <TextAreaField label="Notes" value={edit.notes || ''} onChange={v => setEdit({ ...edit, notes: v })} />
@@ -2476,9 +2559,7 @@ const CentreEconomicsPanel = ({ getAuthHeaders }) => {
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setModal({ type: 'add' })}
-            disabled={centerId === 'all' && !isCenterOwner}
-            title={centerId === 'all' && !isCenterOwner ? 'Pick a centre first' : ''}
-            className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
             data-testid="add-economics-btn">
             <Plus className="w-3.5 h-3.5" /> Add Expense
           </button>
@@ -3071,5 +3152,152 @@ const ImportCustomersModal = ({ onClose, onImported, getAuthHeaders }) => {
     </Modal>
   );
 };
+
+// ═══════════════════════════════════════════════════════════════════════
+// SUPPORT QUERIES PANEL — surfaces /api/support tickets routed to the
+// current user. For fs_center_owner logins these are queries an admin has
+// assigned to their centre via /api/support/queries/{id}/assign.
+// ═══════════════════════════════════════════════════════════════════════
+const SupportQueriesPanel = ({ getAuthHeaders, onCountChange }) => {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('open');
+  const [selected, setSelected] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get(`${API}/support/queries?my_tickets=true`, { headers: getAuthHeaders() });
+      setRows(r.data || []);
+      const open = (r.data || []).filter(q => (q.status || '').toLowerCase() !== 'closed').length;
+      onCountChange && onCountChange(open);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to load queries');
+    } finally { setLoading(false); }
+  }, [getAuthHeaders, onCountChange]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter(q => {
+    const s = (q.status || '').toLowerCase();
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'open') return s !== 'closed';
+    return s === statusFilter;
+  });
+
+  const updateStatus = async (id, status) => {
+    try {
+      await axios.patch(`${API}/support/queries/${id}`, { status }, { headers: getAuthHeaders() });
+      toast.success(`Marked ${status}`);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Update failed');
+    }
+  };
+
+  if (loading && rows.length === 0) {
+    return <div className="p-12 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading queries…</div>;
+  }
+
+  return (
+    <div className="space-y-4" data-testid="support-queries-panel">
+      <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Filter</span>
+        {['open', 'in_progress', 'closed', 'all'].map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`text-xs px-3 py-1.5 rounded-lg font-bold ${statusFilter === s ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+            data-testid={`support-status-${s}`}>
+            {s === 'in_progress' ? 'In Progress' : s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+          </button>
+        ))}
+        <div className="ml-auto text-xs text-slate-500">{filtered.length} of {rows.length} queries</div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400" data-testid="support-empty">
+          <HelpCircle className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+          <div className="font-bold text-sm">No queries routed to you yet</div>
+          <div className="text-xs mt-1">Support tickets assigned to your login will show up here.</div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Ticket</Th>
+                  <Th>Type · Detail</Th>
+                  <Th>From</Th>
+                  <Th>Status</Th>
+                  <Th>Deadline</Th>
+                  <Th className="text-right">Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(q => (
+                  <tr key={q.id} className="border-t border-slate-100 hover:bg-blue-50/40" data-testid={`support-row-${q.ticket_number || q.id}`}>
+                    <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => setSelected(q)}>#{q.ticket_number || q.id.slice(0, 8)}</td>
+                    <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(q)}>
+                      <div className="font-bold text-[#0F1E33] text-xs">{q.query_type || q.type || 'Support Request'}</div>
+                      <div className="text-[11px] text-slate-500 line-clamp-2 max-w-md">{q.message || q.query || q.query_details || '—'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <div className="font-semibold text-slate-700">{q.name || q.created_by_name || '—'}</div>
+                      <div className="text-[11px] text-slate-500">{q.phone || q.email || ''}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
+                        (q.status || '').toLowerCase() === 'closed'      ? 'bg-slate-100 text-slate-600' :
+                        (q.status || '').toLowerCase() === 'in_progress' ? 'bg-amber-100 text-amber-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>{(q.status || 'open').toUpperCase()}</span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-700">{q.deadline ? fmtDateTime(q.deadline) : '—'}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {(q.status || '').toLowerCase() !== 'in_progress' && (q.status || '').toLowerCase() !== 'closed' && (
+                        <button onClick={() => updateStatus(q.id, 'in_progress')}
+                          className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold mr-1"
+                          data-testid={`support-take-${q.id}`}>Take</button>
+                      )}
+                      {(q.status || '').toLowerCase() !== 'closed' && (
+                        <button onClick={() => updateStatus(q.id, 'closed')}
+                          className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold"
+                          data-testid={`support-close-${q.id}`}>Close</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {selected && (
+        <Modal title={`Ticket #${selected.ticket_number || selected.id.slice(0, 8)}`} onClose={() => setSelected(null)} testid="support-detail-modal">
+          <div className="space-y-3 text-sm">
+            <Detail label="Type" value={selected.query_type || selected.type || 'Support Request'} />
+            <div>
+              <Label>Message</Label>
+              <div className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
+                {selected.message || selected.query || selected.query_details || '—'}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Detail label="From"     value={selected.name || selected.created_by_name || '—'} />
+              <Detail label="Phone"    value={selected.phone || '—'} />
+              <Detail label="Email"    value={selected.email || '—'} />
+              <Detail label="Status"   value={(selected.status || 'open').toUpperCase()} />
+              <Detail label="Priority" value={(selected.priority || '—').toUpperCase()} />
+              <Detail label="Deadline" value={selected.deadline ? fmtDateTime(selected.deadline) : '—'} />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+
 
 export default AdminFutureSkills;

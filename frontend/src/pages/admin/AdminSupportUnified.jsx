@@ -470,12 +470,29 @@ const AdminSupportUnified = () => {
 
   const fetchTeamUsers = async () => {
     try {
-      const response = await axios.get(`${API}/team-users`, {
+      // Use the unified /support/assignees endpoint so Future-Skills centre
+      // owners (stored in a different collection from team_users) also
+      // appear in the assignee dropdown.
+      const response = await axios.get(`${API}/support/assignees`, {
         headers: getAuthHeaders()
       });
-      setTeamUsers(response.data || []);
+      const users = (response.data || []).map(u => ({
+        ...u,
+        // AdminSupportUnified renders `is_active` — assignees endpoint only
+        // returns active records so hard-code true here for compatibility.
+        is_active: true,
+      }));
+      setTeamUsers(users);
     } catch (error) {
-      console.error('Failed to fetch team users:', error);
+      console.error('Failed to fetch assignees:', error);
+      // Fall back to the legacy team-users endpoint so the module still
+      // functions if /support/assignees is unreachable for any reason.
+      try {
+        const fallback = await axios.get(`${API}/team-users`, { headers: getAuthHeaders() });
+        setTeamUsers(fallback.data || []);
+      } catch (fallbackErr) {
+        console.error('Assignee fallback failed:', fallbackErr);
+      }
     }
   };
 

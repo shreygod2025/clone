@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 112 — Verified 6 Future-Skills CRM fixes end-to-end. Backend: 7/7 pytest passed (reports.funnel.trials=4 matches booked trials tab count=4; PATCH /trials/{id} & /subscriptions/{id} accept center_id+batch_id and enrich center_name/batch_name; /api/support/assignees returns unified list containing 1 fs_center + team_users; /support/queries?my_tickets=true returns 200; centre-economics list still works; reports.revenue.aov & profit_margin_pct still present). Frontend: /admin/future-skills tabs container is .no-scrollbar with overflow-x:auto, scrollWidth=1371 > clientWidth=334 on 390px viewport, flex-wrap:nowrap (mobile horizontal scroll ✓). Open Landing + Refresh buttons removed (both counts=0). Support Queries tab present (data-testid=tab-support-queries), shows 29 tickets with Take/Close row actions + Open/In Progress/Closed/All filter chips. Centre Economics tab: Add Expense NOT disabled with 'All Centres' filter. CustomersTable: 10 rows × 5 row-action buttons each (row-customer-renew/notes/edit/mark-lost/delete). Edit drawer opens with Centre + Batch dropdowns populated (5 centres including 'Dahisar', batch defaults to '— Not assigned —' since these centres have no batches seeded). Trials edit drawer: Centre + Batch dropdowns also present, centre pre-populates from existing preferred_center. Free Trials tab shows 4 booked rows — matches reports.funnel.trials=4.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Detail drawer — Centre & Batch on Customer/Trial edit",
+        "issues": [
+          "Batch dropdown only shows '— Not assigned —' for the seeded centres in this environment because no batches are configured for them. Not a code bug — flagging so main agent knows the dropdown-filter-by-centre wiring cannot be visually verified without seeding at least one batch."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter112_fs_fixes.py",
+    "/app/test_reports/pytest/iter112_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "support.py: _resolve_assignee and /support/assignees query db.future_skills_centers (only 1 doc), while the rest of the FS admin module (future_skills.py) uses db.centers (8 docs, all with owner_email). Result: the assignee dropdown surfaces only 1 FS centre owner instead of all 8. Recommend switching /support/assignees + _resolve_assignee to read from db.centers (same collection as /api/admin/future-skills/centers) so ALL centre-owner logins can receive tickets. Right now the OLL centre owner (shreshth@oll.co per problem statement) will NOT appear in the dropdown unless that centre lives in future_skills_centers. Verified with mongo: centers=8 vs future_skills_centers=1.",
+    "AdminFutureSkills.jsx CustomersTable Edit/Delete/Mark-Lost buttons are icon-only (Pencil / Trash2 / XCircle). Renew and Notes are icon+text. Minor visual inconsistency — consider matching all 5 to icon+label for accessibility & test-selector robustness.",
+    "reports.funnel.trials filter now matches Free Trials tab — clean fix. BOOKED_TRIAL_STATUSES constant is well-named."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter112_fs_fixes.py"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% of testable flows"},
+  "test_credentials": "admin@oll.co / OllistheBest@2026 (super_admin). Centre-owner login for shreshth@oll.co not attempted (password unknown); admin flow fully covers 6c.",
+  "seed_data_creation": "None. Existing TEST_iter109 fixtures were used for PATCH verification (writes are idempotent — same centre re-applied).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression suite: /app/backend/tests/test_iter112_fs_fixes.py covers reports.funnel.trials booked-status filter, PATCH trials/subscriptions with center_id+batch_id enrichment, /support/assignees unified endpoint, /support/queries?my_tickets, centre-economics list + reports.revenue KPI extras. Uses admin login. NOTE the collection mismatch: /support/assignees reads db.future_skills_centers but the FS admin app reads db.centers — only 1 FS centre owner surfaces in the assignee dropdown vs 8 in the Centres tab. If main agent unifies these, update test to assert count>=2 fs_center rows.",
+  "rca of the issue": "Collection mismatch in support.py: `db.future_skills_centers` (1 doc) vs `db.centers` (8 docs). The Future-Skills CRM UI populates the Centres tab from db.centers via /api/admin/future-skills/centers, so admins expect ALL 8 centre-owner emails in the Support assignee dropdown. Recommend main agent point support.py's _resolve_assignee + /support/assignees FS branch at db.centers (same field names: id/name/owner_name/owner_email/owner_phone/is_active) to bring parity."
+}

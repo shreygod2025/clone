@@ -305,3 +305,13 @@
   border-top-color: inherit;
   border-bottom-color: inherit;
 }
+
+/* Hide scrollbars on horizontally-scrolling nav bars (Future Skills tabs
+   scroll horizontally on mobile so they never wrap). */
+.no-scrollbar {
+  scrollbar-width: none;         /* Firefox */
+  -ms-overflow-style: none;      /* IE / Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;                 /* Chrome / Safari */
+}
