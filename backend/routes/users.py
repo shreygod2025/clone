@@ -164,12 +164,19 @@ async def login_admin(data: AdminLogin):
             #   else stored role or team_member
             stored_role = team_user.get("role") or "team_member"
             effective_role = stored_role
+            merged_perms = list(team_user.get("permissions") or [])
             if stored_role in ("admin", "super_admin"):
                 effective_role = "admin"
             elif team_user.get("role_id"):
                 role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0})
-                if role_doc and role_doc.get("grants_full_access") and role_doc.get("is_active", True):
-                    effective_role = "admin"
+                if role_doc and role_doc.get("is_active", True):
+                    if role_doc.get("grants_full_access"):
+                        effective_role = "admin"
+                    # Merge role-level permissions so the sidebar reflects
+                    # the assigned role immediately on login.
+                    for p in (role_doc.get("permissions") or []):
+                        if p not in merged_perms:
+                            merged_perms.append(p)
             token = create_access_token({"sub": data.email, "role": effective_role, "user_id": team_user["id"]})
             user = AdminUser(
                 id=team_user["id"],
@@ -177,7 +184,7 @@ async def login_admin(data: AdminLogin):
                 name=team_user["name"],
                 role=effective_role,
                 username=team_user.get("username", ""),
-                permissions=team_user.get("permissions", [])
+                permissions=merged_perms,
             )
             return TokenResponse(access_token=token, user=user)
     
@@ -328,9 +335,21 @@ async def team_user_login(data: AdminLogin):
     
     if not team_user.get("is_active", True):
         raise HTTPException(status_code=401, detail="User account is disabled")
-    
-    # Create JWT token
-    access_token = create_access_token(data={"sub": team_user["email"], "role": "team_member", "user_id": team_user["id"]})
+
+    # Merge permissions from the linked role_id so the frontend sees the
+    # effective set immediately on login (mirrors /auth/login above).
+    effective_role = "team_member"
+    merged_perms = list(team_user.get("permissions") or [])
+    if team_user.get("role_id"):
+        role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0})
+        if role_doc and role_doc.get("is_active", True):
+            if role_doc.get("grants_full_access"):
+                effective_role = "admin"
+            for p in (role_doc.get("permissions") or []):
+                if p not in merged_perms:
+                    merged_perms.append(p)
+
+    access_token = create_access_token(data={"sub": team_user["email"], "role": effective_role, "user_id": team_user["id"]})
     
     return {
         "access_token": access_token,
@@ -340,8 +359,8 @@ async def team_user_login(data: AdminLogin):
             "email": team_user["email"],
             "name": team_user["name"],
             "username": team_user["username"],
-            "role": "team_member",
-            "permissions": team_user.get("permissions", [])
+            "role": effective_role,
+            "permissions": merged_perms,
         }
     }
 

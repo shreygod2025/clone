@@ -111,6 +111,22 @@ async def login_admin(data: AdminLogin):
         if bcrypt.checkpw(data.password.encode('utf-8'), team_user.get("password_hash", "").encode('utf-8')):
             # Preserve actual role (super_admin / admin / team_member / manager …)
             actual_role = team_user.get("role") or "team_member"
+            # Merge permissions from the linked role_id so that permissions
+            # assigned via the "Assign Role" dropdown reflect in the sidebar
+            # immediately on login (not only after the next /auth/me refresh).
+            merged_perms = list(team_user.get("permissions") or [])
+            role_id = team_user.get("role_id")
+            if role_id:
+                role_doc = await db.roles.find_one(
+                    {"id": role_id, "is_active": True},
+                    {"_id": 0, "permissions": 1, "grants_full_access": 1},
+                )
+                if role_doc:
+                    if role_doc.get("grants_full_access"):
+                        actual_role = "admin"
+                    for p in (role_doc.get("permissions") or []):
+                        if p not in merged_perms:
+                            merged_perms.append(p)
             token = create_access_token({"sub": data.email, "role": actual_role, "user_id": team_user["id"]})
             user = AdminUser(
                 id=team_user["id"],
@@ -118,7 +134,7 @@ async def login_admin(data: AdminLogin):
                 name=team_user["name"],
                 role=actual_role,
                 username=team_user.get("username", ""),
-                permissions=team_user.get("permissions", []),
+                permissions=merged_perms,
             )
             return TokenResponse(access_token=token, user=user)
 
