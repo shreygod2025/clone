@@ -109,6 +109,7 @@ const AdminFutureSkills = () => {
   const [batchesForFilter, setBatchesForFilter] = useState([]);  // for centre/batch column rendering
   const [leadSources, setLeadSources] = useState([]);            // managed sources from server
   const [selected, setSelected] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());   // bulk selection (leads tab)
   const [modal, setModal] = useState(null); // 'add-lead' | 'add-trial' | 'add-customer' | 'import' | 'renew' | 'lost' | 'convert-trial' | 'reschedule' | 'book-trial' | 'followup'
   const fileInputRef = useRef(null);
 
@@ -181,7 +182,37 @@ const AdminFutureSkills = () => {
 
   useEffect(() => { fetchData(); fetchTabStats(); }, [fetchData, fetchTabStats]);
 
-  const refreshAll = () => { fetchData(); fetchTabStats(); };
+  // Clear bulk-selection whenever the underlying tab or filters change.
+  useEffect(() => { setSelectedIds(new Set()); }, [tab, statusFilter, search, centerFilter, renewalBucket]);
+
+  const refreshAll = () => { fetchData(); fetchTabStats(); setSelectedIds(new Set()); };
+
+  const toggleLeadSelection = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAllLeads = (allIds) => {
+    setSelectedIds(prev => {
+      // If every row is already selected, clear; otherwise select all.
+      const allSelected = allIds.length > 0 && allIds.every(id => prev.has(id));
+      return allSelected ? new Set() : new Set(allIds);
+    });
+  };
+  const bulkDeleteLeads = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (!window.confirm(`Delete ${ids.length} lead${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    try {
+      const r = await axios.post(`${API}/admin/future-skills/leads/bulk-delete`, { ids }, { headers: getAuthHeaders() });
+      toast.success(`Deleted ${r.data?.deleted ?? ids.length} lead${(r.data?.deleted ?? ids.length) === 1 ? '' : 's'}`);
+      refreshAll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Bulk delete failed');
+    }
+  };
 
   // ── Actions ──────────────────────────────────────────────────────────
   const handleImport = async (file, defaults = {}) => {
@@ -414,7 +445,28 @@ const AdminFutureSkills = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'leads' && selectedIds.size > 0 && (
+                <div className="mb-2 flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100" data-testid="leads-bulk-bar">
+                  <div className="text-xs font-bold text-[#1E3A5F]" data-testid="leads-bulk-count">
+                    {selectedIds.size} selected
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setSelectedIds(new Set())}
+                      className="text-xs px-3 py-1.5 rounded-md bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700"
+                      data-testid="leads-bulk-clear">
+                      Clear
+                    </button>
+                    <button onClick={bulkDeleteLeads}
+                      className="text-xs px-3 py-1.5 rounded-md bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5"
+                      data-testid="leads-bulk-delete">
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+                selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
+                onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
                 if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'lead' });
@@ -547,22 +599,46 @@ const Th = ({ children, className = '' }) => (
 );
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
     return b ? `${b.name}` : '';
   };
+  const allIds = rows.map(r => r.id);
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
+  const someSelected = allIds.some(id => selectedIds.has(id));
   return (
     <table className="w-full text-sm">
       <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-        <tr><Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th></tr>
+        <tr>
+          <th className="px-3 py-2 w-8">
+            <input type="checkbox"
+              checked={allSelected}
+              ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
+              onChange={() => onToggleSelectAll && onToggleSelectAll(allIds)}
+              className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+              data-testid="leads-select-all"
+              aria-label="Select all leads"
+            />
+          </th>
+          <Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th>
+        </tr>
       </thead>
       <tbody>
         {rows.map(r => (
           <tr key={r.id}
-            className="border-t border-slate-100 hover:bg-blue-50/40"
+            className={`border-t border-slate-100 hover:bg-blue-50/40 ${selectedIds.has(r.id) ? 'bg-blue-50/60' : ''}`}
             data-testid={`row-${r.lead_ref}`}>
+            <td className="px-3 py-3 w-8" onClick={(e) => e.stopPropagation()}>
+              <input type="checkbox"
+                checked={selectedIds.has(r.id)}
+                onChange={() => onToggleSelect && onToggleSelect(r.id)}
+                className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                data-testid={`row-select-${r.lead_ref}`}
+                aria-label={`Select ${r.name || r.lead_ref}`}
+              />
+            </td>
             <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.lead_ref}</td>
             <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</td>
             <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>

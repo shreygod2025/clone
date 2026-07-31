@@ -1987,6 +1987,16 @@ For educators (user_type="educator") that supply an `email`, the backend now att
 2. **Mobile CRM KPI Cards**: Changed from 3-column grid to horizontal scroll — numbers and labels no longer truncate. Action buttons in separate row.
 3. **Dashboard Center Normalization**: Added `_normalize_center_display()` to map historical center_label variants to canonical names. Now shows 6 clean centers instead of 15+ duplicates.
 
+### 2026-07-31 — Bulk Select & Delete for Future Skills Leads
+**Feature Added:**
+- **Backend**: New `POST /api/admin/future-skills/leads/bulk-delete` (admin-only) accepts `{ids: [str]}` and returns `{deleted, requested}`. Uses `delete_many` in a single Mongo op.
+- **Frontend** (`LeadsTable` in `AdminFutureSkills.jsx`):
+  - Added checkbox column: header with select-all (with indeterminate state when partial) + per-row checkbox
+  - Selected rows tinted blue for visual feedback
+  - Floating action bar above the table appears when any row is selected — shows count, "Clear" and "Delete" buttons with `window.confirm` guard
+  - Selection auto-resets on tab/filter change or reload
+- **Verified end-to-end** via curl (bulk-delete 2 leads → deleted:2) + UI screenshot (select-all + 2 selected + Delete button).
+
 ### 2026-07-31 — Payment Page Polish + Lead Import Mapping
 **Features Added:**
 1. **Payment page polish** (`PaymentRedirect.jsx`):

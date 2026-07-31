@@ -1163,6 +1163,19 @@ async def admin_delete_lead(lead_id: str, user: dict = Depends(get_current_user)
     return {"deleted": True}
 
 
+class BulkDeleteLeads(BaseModel):
+    ids: list[str] = Field(..., min_length=1, max_length=1000)
+
+
+@router.post("/admin/future-skills/leads/bulk-delete")
+async def admin_bulk_delete_leads(body: BulkDeleteLeads, user: dict = Depends(get_current_user)):
+    """Bulk-delete leads by id list (admin-only). Returns the deleted count."""
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_leads.delete_many({"id": {"$in": body.ids}})
+    return {"deleted": res.deleted_count, "requested": len(body.ids)}
+
+
 class MarkLostBody(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)
     reason_category: Optional[str] = Field(default="", max_length=120)
