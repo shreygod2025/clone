@@ -2,6 +2,54 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-31 · iter114) — Route-level Permission Enforcement 🔒
+
+**Bug reported**: A team user without `orders` permission (sidebar
+correctly hid the link) could still open `/admin/orders` by pasting the
+URL. Same pattern for every other sensitive admin route.
+
+**Root cause**: `ProtectedRoute` in `/app/frontend/src/App.js` only
+verified `isAuthenticated`. Permission checks lived exclusively in the
+sidebar filter (AdminDashboard.jsx), so URL typing bypassed them.
+
+**Fix**:
+- `ProtectedRoute` now accepts an optional `permission="…"` prop.
+- Rules mirror the sidebar filter so behaviour is consistent:
+  * `admin` / `super_admin` → bypass all gates
+  * `fs_center_owner` → locked to `/admin/future-skills` (redirect
+    elsewhere to that page)
+  * Any user holding the literal permission OR any sub-permission with
+    the same prefix (e.g. `expenses.list` grants `expenses`) is allowed
+  * Otherwise redirect to `/admin` (Dashboard is always visible)
+- Applied `permission="…"` to every sensitive admin route:
+  students, schools (+ reports/LMS-report/onboarding-tracker),
+  orders (+ school-payments), expenses, educators, growth_partners
+  (+ gp-onboarding), team_applications (+ team-onboarding), users
+  (+ /users/:id/performance), support, requirements, reports,
+  data_center (+ /admin/data-export), blogs, settings (+ link-preview-tester
+  + ai-foundations + broadcasts), future_skills, shop.
+
+**Deliberately un-gated** (always visible to authenticated users so basic
+utilities stay available): `/admin`, `/admin/me/performance`,
+`/admin/team`, `/admin/tasks`, `/admin/projects`, `/admin/projects/:id`,
+`/admin/my-space`, `/admin/ai-chat`, `/admin/success-stories`.
+
+**Testing**:
+- Admin can still access `/admin/orders` (verified via Playwright).
+- Fake team-user localStorage seed doesn't allow bypass — invalid token
+  triggers the auth guard, then permission gate would fire post-login.
+
+**Known follow-up (P1 backlog)**: The backend endpoints (`/api/orders/*`,
+`/api/school-expenses`, etc.) currently only require `get_current_user`
+— any authenticated user can hit them directly with curl. A defence-
+in-depth pass adding an `Depends(require_permission("orders"))` guard
+across sensitive routers should follow.
+
+**Files touched**:
+- `/app/frontend/src/App.js` — ProtectedRoute now takes `permission`,
+  applied to 30+ routes.
+
+
 ### Latest Update (2026-07-31 · iter113) — Tasks Perf + Sidebar Sub-Perms 🚀
 
 **Bug 1 · Tasks page slow to load (P0)**

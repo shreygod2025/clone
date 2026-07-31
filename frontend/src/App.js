@@ -146,17 +146,43 @@ const ShopCheckoutPage = lazy(() => import("./pages/ShopCheckoutPage"));
 const ShopSuccessPage = lazy(() => import("./pages/ShopSuccessPage"));
 const AdminShopPanel = lazy(() => import("./pages/admin/AdminShopPanel"));
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  
+const ProtectedRoute = ({ children, permission = null }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+
   if (loading) {
     return <PageLoader />;
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
-  
+
+  // Permission gate: mirrors the sidebar filter in AdminDashboard.jsx so a
+  // team-user can't bypass hidden nav items by pasting the URL directly.
+  //   • admin / super_admin bypass everything
+  //   • fs_center_owner is scoped to the Future Skills CRM only
+  //   • any user having the exact permission (or any sub-permission with
+  //     the same prefix, e.g. `expenses.list` grants `expenses`) is allowed
+  if (permission) {
+    const role = user?.role;
+    if (role === 'admin' || role === 'super_admin') {
+      return children;
+    }
+    if (role === 'fs_center_owner') {
+      // Centre owners are locked to Future Skills CRM (matches sidebar)
+      return permission === 'future_skills'
+        ? children
+        : <Navigate to="/admin/future-skills" replace />;
+    }
+    const perms = user?.permissions || [];
+    const allowed =
+      perms.includes(permission) ||
+      perms.some(p => p.startsWith(`${permission}.`));
+    if (!allowed) {
+      return <Navigate to="/admin" replace />;
+    }
+  }
+
   return children;
 };
 
@@ -284,47 +310,47 @@ function App() {
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
-              <Route path="/admin/link-preview-tester" element={<ProtectedRoute><AdminLinkPreviewTester /></ProtectedRoute>} />
-              <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
+              <Route path="/admin/students" element={<ProtectedRoute permission="students"><AdminStudentCRM /></ProtectedRoute>} />
+              <Route path="/admin/link-preview-tester" element={<ProtectedRoute permission="settings"><AdminLinkPreviewTester /></ProtectedRoute>} />
+              <Route path="/admin/schools" element={<ProtectedRoute permission="schools"><AdminSchoolCRM /></ProtectedRoute>} />
               <Route path="/admin/success-stories" element={<ProtectedRoute><AdminSuccessStories /></ProtectedRoute>} />
-              <Route path="/admin/schools/:schoolId/reports" element={<ProtectedRoute><SchoolReports /></ProtectedRoute>} />
-              <Route path="/admin/schools/:schoolId/lms-report" element={<ProtectedRoute><LMSSchoolReport /></ProtectedRoute>} />
+              <Route path="/admin/schools/:schoolId/reports" element={<ProtectedRoute permission="schools"><SchoolReports /></ProtectedRoute>} />
+              <Route path="/admin/schools/:schoolId/lms-report" element={<ProtectedRoute permission="schools"><LMSSchoolReport /></ProtectedRoute>} />
               <Route path="/public/lms-report/:token" element={<PublicLMSReport />} />
               <Route path="/discover" element={<DiscoverPayment />} />
               <Route path="/discover/success" element={<DiscoverSuccess />} />
               <Route path="/friendship-day" element={<FriendshipDayLanding />} />
               <Route path="/friendship-day/success" element={<FriendshipDaySuccess />} />
-              <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute><AdminOnboardingTracker /></ProtectedRoute>} />
+              <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute permission="schools"><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
-              <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute><SchoolPaymentTracker /></ProtectedRoute>} />
-              <Route path="/admin/orders" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
-              <Route path="/admin/expenses" element={<ProtectedRoute><AdminExpenses /></ProtectedRoute>} />
-              <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
-              <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
-              <Route path="/admin/gp-onboarding" element={<ProtectedRoute><AdminGPOnboarding /></ProtectedRoute>} />
-              <Route path="/admin/team-applications" element={<ProtectedRoute><AdminTeamApplications /></ProtectedRoute>} />
-              <Route path="/admin/team-onboarding" element={<ProtectedRoute><AdminTeamOnboarding /></ProtectedRoute>} />
-              <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-              <Route path="/admin/users/:id/performance" element={<ProtectedRoute><UserPerformance /></ProtectedRoute>} />
+              <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute permission="orders"><SchoolPaymentTracker /></ProtectedRoute>} />
+              <Route path="/admin/orders" element={<ProtectedRoute permission="orders"><AdminOrders /></ProtectedRoute>} />
+              <Route path="/admin/expenses" element={<ProtectedRoute permission="expenses"><AdminExpenses /></ProtectedRoute>} />
+              <Route path="/admin/educators" element={<ProtectedRoute permission="educators"><AdminEducators /></ProtectedRoute>} />
+              <Route path="/admin/growth-partners" element={<ProtectedRoute permission="growth_partners"><AdminGrowthPartners /></ProtectedRoute>} />
+              <Route path="/admin/gp-onboarding" element={<ProtectedRoute permission="growth_partners"><AdminGPOnboarding /></ProtectedRoute>} />
+              <Route path="/admin/team-applications" element={<ProtectedRoute permission="team_applications"><AdminTeamApplications /></ProtectedRoute>} />
+              <Route path="/admin/team-onboarding" element={<ProtectedRoute permission="team_applications"><AdminTeamOnboarding /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute permission="users"><AdminUsers /></ProtectedRoute>} />
+              <Route path="/admin/users/:id/performance" element={<ProtectedRoute permission="users"><UserPerformance /></ProtectedRoute>} />
               <Route path="/admin/me/performance" element={<ProtectedRoute><UserPerformance mode="me" /></ProtectedRoute>} />
               <Route path="/admin/team" element={<ProtectedRoute><AdminMyTeam /></ProtectedRoute>} />
               <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasks /></ProtectedRoute>} />
               <Route path="/admin/projects" element={<ProtectedRoute><AdminProjects /></ProtectedRoute>} />
               <Route path="/admin/my-space" element={<ProtectedRoute><AdminMySpace /></ProtectedRoute>} />
               <Route path="/admin/projects/:id" element={<ProtectedRoute><AdminProjectDetail /></ProtectedRoute>} />
-              <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
-              <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
-              <Route path="/admin/reports" element={<ProtectedRoute><AdminReports /></ProtectedRoute>} />
-              <Route path="/admin/data-center" element={<ProtectedRoute><AdminDataCenter /></ProtectedRoute>} />
-              <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
-              <Route path="/admin/data-export" element={<ProtectedRoute><AdminDataExport /></ProtectedRoute>} />
+              <Route path="/admin/support" element={<ProtectedRoute permission="support"><AdminSupportUnified /></ProtectedRoute>} />
+              <Route path="/admin/requirements" element={<ProtectedRoute permission="requirements"><AdminRequirements /></ProtectedRoute>} />
+              <Route path="/admin/reports" element={<ProtectedRoute permission="reports"><AdminReports /></ProtectedRoute>} />
+              <Route path="/admin/data-center" element={<ProtectedRoute permission="data_center"><AdminDataCenter /></ProtectedRoute>} />
+              <Route path="/admin/blogs" element={<ProtectedRoute permission="blogs"><AdminBlogs /></ProtectedRoute>} />
+              <Route path="/admin/settings" element={<ProtectedRoute permission="settings"><AdminSettings /></ProtectedRoute>} />
+              <Route path="/admin/data-export" element={<ProtectedRoute permission="data_center"><AdminDataExport /></ProtectedRoute>} />
               <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
-              <Route path="/admin/ai-foundations" element={<ProtectedRoute><AdminAiFoundations /></ProtectedRoute>} />
-              <Route path="/admin/future-skills" element={<ProtectedRoute><AdminFutureSkills /></ProtectedRoute>} />
-              <Route path="/admin/broadcasts" element={<ProtectedRoute><AdminBroadcasts /></ProtectedRoute>} />
-              <Route path="/admin/shop" element={<ProtectedRoute><AdminShopPanel /></ProtectedRoute>} />
+              <Route path="/admin/ai-foundations" element={<ProtectedRoute permission="settings"><AdminAiFoundations /></ProtectedRoute>} />
+              <Route path="/admin/future-skills" element={<ProtectedRoute permission="future_skills"><AdminFutureSkills /></ProtectedRoute>} />
+              <Route path="/admin/broadcasts" element={<ProtectedRoute permission="settings"><AdminBroadcasts /></ProtectedRoute>} />
+              <Route path="/admin/shop" element={<ProtectedRoute permission="orders"><AdminShopPanel /></ProtectedRoute>} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
