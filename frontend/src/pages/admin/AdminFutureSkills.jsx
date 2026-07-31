@@ -107,6 +107,7 @@ const AdminFutureSkills = () => {
   const [centerFilter, setCenterFilter] = useState('all');   // centre filter (admin only)
   const [centersForFilter, setCentersForFilter] = useState([]);  // for filter dropdown
   const [batchesForFilter, setBatchesForFilter] = useState([]);  // for centre/batch column rendering
+  const [leadSources, setLeadSources] = useState([]);            // managed sources from server
   const [selected, setSelected] = useState(null);
   const [modal, setModal] = useState(null); // 'add-lead' | 'add-trial' | 'add-customer' | 'import' | 'renew' | 'lost' | 'convert-trial' | 'reschedule' | 'book-trial' | 'followup'
   const fileInputRef = useRef(null);
@@ -125,6 +126,15 @@ const AdminFutureSkills = () => {
       .then(r => setBatchesForFilter(r.data?.batches || []))
       .catch(() => setBatchesForFilter([]));
   }, [getAuthHeaders]);
+
+  // Load managed lead sources so admins can add new ones directly.
+  const reloadSources = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/admin/future-skills/lead-sources`, { headers: getAuthHeaders() });
+      setLeadSources(r.data?.sources || []);
+    } catch { setLeadSources([]); }
+  }, [getAuthHeaders]);
+  useEffect(() => { reloadSources(); }, [reloadSources]);
 
   // ── Fetchers ─────────────────────────────────────────────────────────
   const fetchTabStats = useCallback(async () => {
@@ -174,10 +184,13 @@ const AdminFutureSkills = () => {
   const refreshAll = () => { fetchData(); fetchTabStats(); };
 
   // ── Actions ──────────────────────────────────────────────────────────
-  const handleImport = async (file) => {
+  const handleImport = async (file, defaults = {}) => {
     if (!file) return;
     const fd = new FormData();
     fd.append('file', file);
+    if (defaults.default_center_id) fd.append('default_center_id', defaults.default_center_id);
+    if (defaults.default_age_group) fd.append('default_age_group', defaults.default_age_group);
+    if (defaults.default_source)    fd.append('default_source',    defaults.default_source);
     const promise = axios.post(`${API}/admin/future-skills/leads/import`, fd, {
       headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
     });
@@ -449,7 +462,7 @@ const AdminFutureSkills = () => {
       {modal?.type === 'add-lead'     && <AddLeadModal    onClose={() => setModal(null)} onSaved={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'add-trial'    && <AddTrialModal   onClose={() => setModal(null)} onSaved={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'add-customer' && <AddCustomerModal onClose={() => setModal(null)} onSaved={refreshAll} getAuthHeaders={getAuthHeaders} />}
-      {modal?.type === 'import'       && <ImportModal     onClose={() => setModal(null)} onImport={handleImport} fileInputRef={fileInputRef} />}
+      {modal?.type === 'import'       && <ImportModal     onClose={() => setModal(null)} onImport={handleImport} fileInputRef={fileInputRef} centers={centersForFilter} sources={leadSources} onSourceAdded={reloadSources} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'import-customers' && <ImportCustomersModal onClose={() => setModal(null)} onImported={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'renew'        && <RenewModal      customer={modal.customer} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'lost'         && <MarkLostModal   entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
@@ -1387,7 +1400,13 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
   );
 };
 
-const ImportModal = ({ onClose, onImport, fileInputRef }) => {
+const ImportModal = ({ onClose, onImport, fileInputRef, centers = [], sources = [], onSourceAdded, getAuthHeaders }) => {
+  const [defaultCenterId, setDefaultCenterId] = useState('');
+  const [defaultAgeGroup, setDefaultAgeGroup] = useState('');
+  const [defaultSource,   setDefaultSource]   = useState('');
+  const [addingSource,    setAddingSource]    = useState(false);
+  const [newSourceName,   setNewSourceName]   = useState('');
+
   const downloadSample = () => {
     const csv = 'name,phone,source,city,center,age_group\nRahul Sharma,9812345678,Instagram,Mumbai,Dahisar,8-11\n';
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -1396,13 +1415,106 @@ const ImportModal = ({ onClose, onImport, fileInputRef }) => {
     a.href = url; a.download = 'future-skills-leads-sample.csv'; a.click();
     URL.revokeObjectURL(url);
   };
+
+  const submitNewSource = async () => {
+    const name = newSourceName.trim();
+    if (!name) return;
+    try {
+      const r = await axios.post(`${API}/admin/future-skills/lead-sources`, { name }, { headers: getAuthHeaders() });
+      const saved = r.data?.name || name;
+      setDefaultSource(saved);
+      setNewSourceName('');
+      setAddingSource(false);
+      onSourceAdded && onSourceAdded();
+      toast.success(r.data?.existed ? 'Source already exists — selected' : 'Source added');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not add source');
+    }
+  };
+
+  // Sources list = server-managed union of defaults + admin-added
+  const sourceOptions = [
+    { value: '', label: '— No default (use CSV value) —' },
+    ...sources.map(s => ({ value: s, label: s })),
+  ];
+
   return (
     <Modal title="Import Leads (CSV / Excel)" onClose={onClose} testid="import-modal">
-      <p className="text-sm text-slate-600 mb-3">Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file with lead data. Duplicates (by phone) will be skipped.</p>
+      <p className="text-sm text-slate-600 mb-3">
+        Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file. Duplicates (by phone) are skipped.
+      </p>
+
+      {/* ── Bulk defaults: map centre / age / source for ALL rows that don't
+          already have those values in the file. ─────────────────────── */}
+      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-4 space-y-3">
+        <div className="text-[10px] uppercase tracking-widest text-blue-800 font-bold">
+          Map these to every imported lead
+        </div>
+
+        <SelectField
+          label="Default centre"
+          value={defaultCenterId}
+          onChange={setDefaultCenterId}
+          options={[{ value: '', label: '— No default (use CSV value) —' }, ...centers.map(c => ({ value: c.id, label: c.name }))]}
+          testid="import-default-center"
+        />
+
+        <SelectField
+          label="Default age group"
+          value={defaultAgeGroup}
+          onChange={setDefaultAgeGroup}
+          options={[{ value: '', label: '— No default (use CSV value) —' }, ...AGE_GROUP_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label }))]}
+          testid="import-default-age"
+        />
+
+        <div>
+          <SelectField
+            label="Default source"
+            value={defaultSource}
+            onChange={setDefaultSource}
+            options={sourceOptions}
+            testid="import-default-source"
+          />
+          {!addingSource ? (
+            <button type="button" onClick={() => setAddingSource(true)}
+              className="mt-1.5 text-[11px] text-[#1E3A5F] hover:text-[#D63031] font-bold flex items-center gap-1"
+              data-testid="import-add-source-btn">
+              <Plus className="w-3 h-3" /> Add new source
+            </button>
+          ) : (
+            <div className="mt-2 flex gap-2" data-testid="import-add-source-row">
+              <input
+                autoFocus
+                value={newSourceName}
+                onChange={e => setNewSourceName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitNewSource(); }}
+                placeholder="e.g. Radio Ad, Society Flyer…"
+                className="flex-1 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                data-testid="import-new-source-input"
+              />
+              <button type="button" onClick={submitNewSource}
+                className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold"
+                data-testid="import-new-source-save">
+                Add
+              </button>
+              <button type="button" onClick={() => { setAddingSource(false); setNewSourceName(''); }}
+                className="text-xs px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                data-testid="import-new-source-cancel">
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="text-[11px] text-slate-500">
+          Rule: if a row already has a value, the file wins; otherwise these defaults are applied.
+        </div>
+      </div>
+
       <div className="bg-slate-50 rounded-lg p-3 mb-4 text-xs text-slate-600">
         <div className="font-bold mb-1">Supported columns:</div>
         <div className="font-mono">name*, phone*, source, city, center, age_group</div>
-        <div className="mt-1 text-slate-500">* required · <span className="font-mono">center</span> is matched by name to your Centres & Batches list.</div>
+        <div className="mt-1 text-slate-500">* required · <span className="font-mono">center</span> is matched by name to your Centres list.</div>
       </div>
       <button onClick={downloadSample}
         className="mb-3 text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"
@@ -1410,7 +1522,17 @@ const ImportModal = ({ onClose, onImport, fileInputRef }) => {
         <Download className="w-3.5 h-3.5" /> Download sample CSV
       </button>
       <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) { onImport(f); onClose(); } }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) {
+            onImport(f, {
+              default_center_id: defaultCenterId,
+              default_age_group: defaultAgeGroup,
+              default_source:    defaultSource,
+            });
+            onClose();
+          }
+        }}
         className="w-full text-sm border border-dashed border-slate-300 rounded-lg p-6 cursor-pointer hover:border-blue-400"
         data-testid="import-file-input" />
     </Modal>

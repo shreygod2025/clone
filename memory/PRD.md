@@ -1987,6 +1987,23 @@ For educators (user_type="educator") that supply an `email`, the backend now att
 2. **Mobile CRM KPI Cards**: Changed from 3-column grid to horizontal scroll — numbers and labels no longer truncate. Action buttons in separate row.
 3. **Dashboard Center Normalization**: Added `_normalize_center_display()` to map historical center_label variants to canonical names. Now shows 6 clean centers instead of 15+ duplicates.
 
+### 2026-07-31 — Payment Page Polish + Lead Import Mapping
+**Features Added:**
+1. **Payment page polish** (`PaymentRedirect.jsx`):
+   - Added OLL horizontal logo strip
+   - Added live 24-hour "Expires in HHh MMm SSs" countdown pill (turns amber under 3h, red when expired; CTA disables on expiry)
+   - Batch row now always visible in the enrolment summary (shows `—` when empty)
+   - Backend `GET /api/future-skills/pay/{token}` now returns `expires_at` (created_at + 24h)
+2. **Lead import mapping** (`ImportModal` + backend `/admin/future-skills/leads/import`):
+   - Import modal now has 3 admin-picked dropdowns: **Default Centre**, **Default Age Group**, **Default Source**
+   - Rule: if the CSV row has a value, the file wins; otherwise the default is applied — guaranteeing every imported lead is properly mapped to a real centre
+   - Backend accepts `default_center_id`, `default_age_group`, `default_source` as multipart form fields
+3. **Managed lead sources** (admin-editable list):
+   - New collection `future_skills_lead_sources` (case-insensitive dedup via `name_lc`)
+   - `GET /api/admin/future-skills/lead-sources` merges 10 built-in sources with admin-added ones
+   - `POST /api/admin/future-skills/lead-sources` (admin-only) adds a new source
+   - Import modal has a **"+ Add new source"** inline row — admins can add sources like "Radio Ad", "Society Flyer" on the fly and they immediately appear in the dropdown
+
 ### 2026-07-31 — White-Labeled Custom Payment Links (Future Skills)
 **Bug Fixed / Feature:**
 - Admin-generated custom payment links no longer expose the raw Cashfree URL. Instead they now generate an OLL-branded website URL like `https://<domain>/pay/<token>` that resolves to a branded payment page.

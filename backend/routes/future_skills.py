@@ -14,7 +14,7 @@ import re
 import secrets
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -612,13 +612,24 @@ async def get_custom_payment_link(token: str):
         raise HTTPException(status_code=404, detail="Payment link not found or expired")
     sub = await db.future_skills_subscriptions.find_one(
         {"id": doc["subscription_id"]},
-        {"_id": 0, "payment_session_id": 1, "crm_status": 1, "payment_status": 1, "id": 1},
+        {"_id": 0, "payment_session_id": 1, "crm_status": 1, "payment_status": 1, "id": 1, "batch_name": 1},
     ) or {}
+
+    # Compute a 24-hour expiry countdown for the branded /pay page.
+    created_at = doc.get("created_at")
+    expires_at = None
+    if created_at:
+        try:
+            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            expires_at = (dt + timedelta(hours=24)).isoformat()
+        except Exception:
+            expires_at = None
+
     return {
         "token": token,
         "student_name": doc.get("student_name", ""),
         "center_name": doc.get("center_name", ""),
-        "batch_name": doc.get("batch_name", ""),
+        "batch_name": doc.get("batch_name", "") or sub.get("batch_name", ""),
         "plan": doc.get("plan"),
         "plan_label": doc.get("plan_label"),
         "amount": doc.get("amount"),
@@ -627,6 +638,8 @@ async def get_custom_payment_link(token: str):
         "payment_session_id": sub.get("payment_session_id") or doc.get("payment_session_id"),
         "subscription_id": doc.get("subscription_id"),
         "already_paid": (sub.get("crm_status") == "active") or (sub.get("payment_status") == "paid"),
+        "created_at": created_at,
+        "expires_at": expires_at,
     }
 
 
@@ -895,7 +908,6 @@ async def admin_update_sub(sub_id: str, data: SubscriptionUpdate, user: dict = D
 # ══════════════════════════════════════════════════════════════════════════
 from fastapi import UploadFile, File, Form, Body
 from io import BytesIO
-from datetime import timedelta
 
 
 def _iso(dt: datetime) -> str:
@@ -1492,6 +1504,9 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
 @router.post("/admin/future-skills/leads/import")
 async def admin_import_leads(
     file: UploadFile = File(...),
+    default_center_id: str = Form(default=""),
+    default_age_group: str = Form(default=""),
+    default_source:    str = Form(default=""),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1545,7 +1560,15 @@ async def admin_import_leads(
     skipped = 0
     errors: list = []
     imported_leads: list = []
-    default_source = "import"
+
+    # Resolve default centre once — the admin selected this from a dropdown
+    # in the import modal, so it's guaranteed to be a valid centre id.
+    default_center_name = ""
+    if default_center_id:
+        c = await db.centers.find_one({"id": default_center_id}, {"_id": 0, "name": 1})
+        default_center_name = (c or {}).get("name", "")
+
+    fallback_source = default_source or "import"
 
     for idx, row in df.iterrows():
         try:
@@ -1566,9 +1589,12 @@ async def admin_import_leads(
             lead_id = str(uuid.uuid4())
             lead_ref = await _next_ref("FSL")
 
-            # Optional centre lookup (case-insensitive by name)
+            # Optional centre lookup (case-insensitive by name) — CSV value
+            # wins; if empty or unknown, fall back to the admin-picked default.
             centre_from_csv = (record.get("center_name") or "").strip().lower()
             centre_hit = centre_lookup.get(centre_from_csv) if centre_from_csv else None
+            resolved_center_id   = (centre_hit or {}).get("id", "")   or default_center_id
+            resolved_center_name = (centre_hit or {}).get("name", "") or record.get("center_name", "") or default_center_name
 
             doc = {
                 "id": lead_id,
@@ -1577,11 +1603,11 @@ async def admin_import_leads(
                 "name": name,
                 "phone": phone,
                 "email": record.get("email", "").lower(),
-                "source": record.get("source", "") or default_source,
+                "source":    record.get("source", "")    or fallback_source,
                 "city": record.get("city", ""),
-                "age_group": record.get("age_group", ""),
-                "center_id":   (centre_hit or {}).get("id", ""),
-                "center_name": (centre_hit or {}).get("name", "") or record.get("center_name", ""),
+                "age_group": record.get("age_group", "") or default_age_group,
+                "center_id":   resolved_center_id,
+                "center_name": resolved_center_name,
                 "notes": record.get("notes", ""),
                 "child_age": record.get("child_age", ""),
                 "child_grade": record.get("child_grade", ""),
@@ -1605,6 +1631,57 @@ async def admin_import_leads(
         "errors": errors[:20],
         "total_rows": int(len(df)),
     }
+
+
+# ── LEAD SOURCES (managed list, admin-editable) ───────────────────────────
+# Baseline sources every workspace gets. Admin-added sources are stored in
+# the `future_skills_lead_sources` collection and merged with these on GET.
+DEFAULT_LEAD_SOURCES = [
+    "Instagram", "Facebook", "Website", "Referral", "Walk-in",
+    "Whatsapp", "Google", "Cold Call", "Event", "Other",
+]
+
+
+class LeadSourceCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=60)
+
+
+@router.get("/admin/future-skills/lead-sources")
+async def list_lead_sources(user: dict = Depends(get_current_user)):
+    """Return the merged list of built-in + admin-added lead sources."""
+    if not (_is_admin(user) or user.get("role") == "fs_center_owner"):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    seen = {s.lower(): s for s in DEFAULT_LEAD_SOURCES}
+    async for doc in db.future_skills_lead_sources.find({}, {"_id": 0, "name": 1}):
+        n = (doc.get("name") or "").strip()
+        if n and n.lower() not in seen:
+            seen[n.lower()] = n
+    return {"sources": sorted(seen.values(), key=lambda s: s.lower())}
+
+
+@router.post("/admin/future-skills/lead-sources")
+async def add_lead_source(body: LeadSourceCreate, user: dict = Depends(get_current_user)):
+    """Add a new lead source so it becomes selectable in dropdowns."""
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name required")
+    # Case-insensitive dedup against defaults + existing
+    if name.lower() in {s.lower() for s in DEFAULT_LEAD_SOURCES}:
+        return {"name": name, "existed": True}
+    existing = await db.future_skills_lead_sources.find_one(
+        {"name_lc": name.lower()}, {"_id": 0, "name": 1}
+    )
+    if existing:
+        return {"name": existing["name"], "existed": True}
+    await db.future_skills_lead_sources.insert_one({
+        "name": name,
+        "name_lc": name.lower(),
+        "created_at": _now_iso(),
+        "created_by": user.get("email"),
+    })
+    return {"name": name, "existed": False}
 
 
 # ── TRIALS (manual admin add + convert + lost) ────────────────────────────
