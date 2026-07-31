@@ -79,6 +79,9 @@ const AiFoundationsLandingPage = lazy(() => import("./pages/AiFoundationsLanding
 const AiFoundationsBookingPage = lazy(() => import("./pages/AiFoundationsBookingPage"));
 const AiFoundationsSuccessPage = lazy(() => import("./pages/AiFoundationsSuccessPage"));
 
+// White-labeled custom payment link (admin-generated → shared with parents)
+const PaymentRedirect = lazy(() => import("./pages/PaymentRedirect"));
+
 // Future Skills Continuous Learning Program
 const FutureSkillsLandingPage = lazy(() => import("./pages/FutureSkillsLandingPage"));
 const FathersDayWorkshopLandingPage = lazy(() => import("./pages/FathersDayWorkshopLandingPage"));
@@ -314,6 +317,9 @@ function App() {
               <Route path="/future-skills/book" element={<FutureSkillsBookingPage />} />
               <Route path="/future-skills/success" element={<FutureSkillsSuccessPage />} />
               <Route path="/future-skills/s/:slug" element={<FutureSkillsSourceRedirect />} />
+
+              {/* Public white-labeled payment link (admin-generated for parents) */}
+              <Route path="/pay/:token" element={<PaymentRedirect />} />
 
               {/* Social Media Internship Readiness Program */}
               <Route path="/social-media-intern" element={<SocialMediaInternPage />} />

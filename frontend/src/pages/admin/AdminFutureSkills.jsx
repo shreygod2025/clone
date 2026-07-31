@@ -3321,6 +3321,12 @@ const PaymentLinkModal = ({ trial, customer, onClose, getAuthHeaders }) => {
   const grossAmount = PLAN_PRICES[plan] || 0;
   const netAmount = Math.round(grossAmount * (1 - (discount || 0) / 100));
 
+  // White-labeled shareable URL built from the token returned by the backend.
+  // Falls back to the raw Cashfree link if a legacy response (no token) comes back.
+  const shareableLink = result?.token
+    ? `${window.location.origin}/pay/${result.token}`
+    : (result?.payment_link || '');
+
   const generate = async () => {
     setGenerating(true);
     setResult(null);
@@ -3339,9 +3345,9 @@ const PaymentLinkModal = ({ trial, customer, onClose, getAuthHeaders }) => {
   };
 
   const copyLink = async () => {
-    if (!result?.payment_link) return;
+    if (!shareableLink) return;
     try {
-      await navigator.clipboard.writeText(result.payment_link);
+      await navigator.clipboard.writeText(shareableLink);
       setCopied(true);
       toast.success('Payment link copied');
       setTimeout(() => setCopied(false), 2500);
@@ -3351,10 +3357,10 @@ const PaymentLinkModal = ({ trial, customer, onClose, getAuthHeaders }) => {
   };
 
   const shareOnWhatsApp = () => {
-    if (!result?.payment_link) return;
+    if (!shareableLink) return;
     const student = entity?.student_name || 'your child';
     const msg = encodeURIComponent(
-      `Hi! Here's the payment link for ${student}'s Future Skills enrolment (${result.plan_label} · ₹${result.amount}):\n\n${result.payment_link}\n\n— Team OLL`
+      `Hi! Here's the payment link for ${student}'s Future Skills enrolment (${result.plan_label} · ₹${result.amount}):\n\n${shareableLink}\n\n— Team OLL`
     );
     const phone = (entity?.parent_phone || '').replace(/\D/g, '').slice(-10);
     const url = phone ? `https://wa.me/91${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
@@ -3432,9 +3438,9 @@ const PaymentLinkModal = ({ trial, customer, onClose, getAuthHeaders }) => {
 
       {result && (
         <div className="mt-4 p-3 border-2 border-emerald-200 bg-emerald-50/60 rounded-xl" data-testid="paylink-result">
-          <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-bold mb-1">Payment link</div>
-          <div className="text-xs font-mono break-all text-slate-700 bg-white rounded-lg p-2 border border-emerald-100">
-            {result.payment_link}
+          <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-bold mb-1">Payment link (OLL-branded)</div>
+          <div className="text-xs font-mono break-all text-slate-700 bg-white rounded-lg p-2 border border-emerald-100" data-testid="paylink-url">
+            {shareableLink}
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
             <button onClick={copyLink}

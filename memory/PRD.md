@@ -1987,6 +1987,16 @@ For educators (user_type="educator") that supply an `email`, the backend now att
 2. **Mobile CRM KPI Cards**: Changed from 3-column grid to horizontal scroll — numbers and labels no longer truncate. Action buttons in separate row.
 3. **Dashboard Center Normalization**: Added `_normalize_center_display()` to map historical center_label variants to canonical names. Now shows 6 clean centers instead of 15+ duplicates.
 
+### 2026-07-31 — White-Labeled Custom Payment Links (Future Skills)
+**Bug Fixed / Feature:**
+- Admin-generated custom payment links no longer expose the raw Cashfree URL. Instead they now generate an OLL-branded website URL like `https://<domain>/pay/<token>` that resolves to a branded payment page.
+- **Backend**: `POST /api/admin/future-skills/payment-link` now stores a random URL-safe token in a new `custom_payment_links` collection (mapping token → subscription_id + `payment_session_id` + student/plan/amount metadata) and returns the token to the client.
+- **Backend**: New public `GET /api/future-skills/pay/{token}` returns the metadata + Cashfree `payment_session_id` needed by the frontend redirect page. Handles already-paid links (short-circuits with a "payment received" state).
+- **Frontend**: New public route `/pay/:token` (no auth) → `PaymentRedirect.jsx` shows a branded card with student name, centre, plan, amount (with discount visible), plus a "Pay securely" button that launches Cashfree v3 hosted checkout via the existing `openCashfreeCheckout` helper.
+- **Admin UI**: `PaymentLinkModal` inside `AdminFutureSkills.jsx` now displays/copies/whatsapp-shares the OLL frontend URL (`${window.location.origin}/pay/<token>`) rather than the raw Cashfree link. Legacy `payment_link` field kept as fallback.
+- **Verified end-to-end** via curl → real token generated → GET pay-lookup returns full metadata → screenshot of `/pay/<token>` confirmed the branded page renders correctly with the "Pay securely" CTA.
+
+
 ### 2026-04-17 — Multi-Feature Update
 **Features Added / Bugs Fixed:**
 1. **Role Dropdowns**: Added "Primary Coordinator" and "Secondary Coordinator" to all 5 contact role selects in AdminSchoolCRM.jsx (edit modal, renewal modal, new lead, conversion, onboarding)

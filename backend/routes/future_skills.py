@@ -11,6 +11,7 @@ import asyncio
 import logging
 import os
 import re
+import secrets
 import time
 import uuid
 from datetime import datetime, timezone
@@ -561,6 +562,28 @@ async def admin_custom_payment_link(body: CustomPaymentLinkBody, user: dict = De
         logging.error(f"[future-skills] admin custom link failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
+    # Create a short white-labeled token → hides the raw Cashfree URL so
+    # parents receive an OLL-branded website link (e.g. https://oll.co/pay/<token>)
+    # instead of `payments.cashfree.com/forms/...`.
+    token = secrets.token_urlsafe(8)  # ~11 chars, URL-safe
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.custom_payment_links.insert_one({
+        "token": token,
+        "subscription_id": sub["id"],
+        "payment_session_id": result["payment_session_id"],
+        "order_id": result["order_id"],
+        "student_name": sub.get("student_name", ""),
+        "center_name": sub.get("center_name") or sub.get("preferred_center", ""),
+        "batch_name": sub.get("batch_name", ""),
+        "plan": body.plan,
+        "plan_label": plan_info["label"],
+        "amount": net_amount,
+        "amount_before_discount": plan_info["price"],
+        "discount_pct": discount,
+        "created_at": now_iso,
+        "created_by": user.get("email"),
+    })
+
     return {
         "subscription_id": sub["id"],
         "subscription_ref": sub.get("subscription_ref"),
@@ -570,7 +593,40 @@ async def admin_custom_payment_link(body: CustomPaymentLinkBody, user: dict = De
         "discount_pct": discount,
         "plan": body.plan,
         "plan_label": plan_info["label"],
+        "token": token,
+        # NOTE: `payment_link` is kept for backwards-compat but callers should
+        # prefer building the frontend URL from `token` on the client side.
         "payment_link": result["payment_link"],
+    }
+
+
+@router.get("/future-skills/pay/{token}")
+async def get_custom_payment_link(token: str):
+    """Public lookup for a white-labeled payment link. Returns the payment
+    session id + minimal metadata the frontend redirect page needs to open
+    the Cashfree checkout, plus a paid-status flag so already-paid links
+    can be short-circuited to the success page.
+    """
+    doc = await db.custom_payment_links.find_one({"token": token}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Payment link not found or expired")
+    sub = await db.future_skills_subscriptions.find_one(
+        {"id": doc["subscription_id"]},
+        {"_id": 0, "payment_session_id": 1, "crm_status": 1, "payment_status": 1, "id": 1},
+    ) or {}
+    return {
+        "token": token,
+        "student_name": doc.get("student_name", ""),
+        "center_name": doc.get("center_name", ""),
+        "batch_name": doc.get("batch_name", ""),
+        "plan": doc.get("plan"),
+        "plan_label": doc.get("plan_label"),
+        "amount": doc.get("amount"),
+        "amount_before_discount": doc.get("amount_before_discount"),
+        "discount_pct": doc.get("discount_pct", 0),
+        "payment_session_id": sub.get("payment_session_id") or doc.get("payment_session_id"),
+        "subscription_id": doc.get("subscription_id"),
+        "already_paid": (sub.get("crm_status") == "active") or (sub.get("payment_status") == "paid"),
     }
 
 
