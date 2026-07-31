@@ -71,6 +71,27 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         {"_id": 0, "password_hash": 0}
     )
     if team_user:
+        # Merge permissions from the linked role (if any) into the user
+        # dict. Without this, granting a permission via the "Assign Role"
+        # dropdown in Users & Roles wouldn't show up in the sidebar filter
+        # or the ProtectedRoute gates until we manually copied the role's
+        # permissions onto the team-user doc. Doing the merge here means
+        # the same user always sees the effective set on every request.
+        role_perms: list = []
+        role_id = team_user.get("role_id")
+        if role_id:
+            role_doc = await db.roles.find_one(
+                {"id": role_id, "is_active": True},
+                {"_id": 0, "permissions": 1, "grants_full_access": 1},
+            )
+            if role_doc:
+                # A "grants full access" role is treated as admin.
+                if role_doc.get("grants_full_access"):
+                    team_user["role"] = "admin"
+                role_perms = list(role_doc.get("permissions") or [])
+        # Preserve any ad-hoc permissions saved directly on the user.
+        merged = list(dict.fromkeys((team_user.get("permissions") or []) + role_perms))
+        team_user["permissions"] = merged
         return team_user
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")

@@ -1313,7 +1313,9 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
   };
 
   const submit = async () => {
-    if (!f.parent_name || !f.parent_phone || !f.student_name) { toast.error('Parent name, phone and student name required'); return; }
+    // Parent name is optional (some walk-ins are logged with just phone).
+    // Phone and student name remain required so we can identify the record.
+    if (!f.parent_phone || !f.student_name) { toast.error('Student name and phone are required'); return; }
     if (!f.center_id) { toast.error('Please pick a centre'); return; }
     if (!(f.amount_paid > 0)) { toast.error('Enter amount paid'); return; }
     setSaving(true);
@@ -1337,7 +1339,7 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
         <SelectField label="Age" value={f.student_age} onChange={v => setF({ ...f, student_age: v })}
           options={AGE_GROUP_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })).concat([{ value: '', label: 'Age not set' }])}
           testid="cust-age-select" />
-        <TextField label="Parent Name" value={f.parent_name} onChange={v => setF({ ...f, parent_name: v })} required testid="cust-parent-input" />
+        <TextField label="Parent Name" value={f.parent_name} onChange={v => setF({ ...f, parent_name: v })} testid="cust-parent-input" />
         <TextField label="Parent Phone" value={f.parent_phone} onChange={v => setF({ ...f, parent_phone: v })} required testid="cust-phone-input" />
         <TextField label="Email" value={f.parent_email} onChange={v => setF({ ...f, parent_email: v })} colSpan={2} />
         <SelectField label="Centre" value={f.center_id} onChange={v => setF({ ...f, center_id: v, batch_id: '' })}
@@ -1369,7 +1371,7 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
 
 const ImportModal = ({ onClose, onImport, fileInputRef }) => {
   const downloadSample = () => {
-    const csv = 'name,phone,email,source,city,child_age,child_grade,notes\nRahul Sharma,9812345678,rahul@x.com,Instagram,Mumbai,10,5,Interested in AI\n';
+    const csv = 'name,phone,source,city,center,age_group\nRahul Sharma,9812345678,Instagram,Mumbai,Dahisar,8-11\n';
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1381,8 +1383,8 @@ const ImportModal = ({ onClose, onImport, fileInputRef }) => {
       <p className="text-sm text-slate-600 mb-3">Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file with lead data. Duplicates (by phone) will be skipped.</p>
       <div className="bg-slate-50 rounded-lg p-3 mb-4 text-xs text-slate-600">
         <div className="font-bold mb-1">Supported columns:</div>
-        <div className="font-mono">name*, phone*, email, source, city, child_age, child_grade, notes</div>
-        <div className="mt-1 text-slate-500">* required</div>
+        <div className="font-mono">name*, phone*, source, city, center, age_group</div>
+        <div className="mt-1 text-slate-500">* required · <span className="font-mono">center</span> is matched by name to your Centres & Batches list.</div>
       </div>
       <button onClick={downloadSample}
         className="mb-3 text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 flex items-center gap-1.5"

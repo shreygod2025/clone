@@ -25,8 +25,11 @@ const FutureSkillsBookingPage = () => {
   const mode = params.get('mode') === 'subscribe' ? 'subscribe' : 'trial';
 
   // ── Trial wizard state ────────────────────────────────────────────────
-  const [step, setStep] = useState(1);            // 1 = phone, 2 = center, 3 = batch
+  // Flow: phone → age group → city → centre → batch (auto-advance)
+  const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
+  const [ageGroup, setAgeGroup] = useState('');
+  const [city, setCity] = useState('');
   const [centerId, setCenterId] = useState('');
   const [batchId, setBatchId] = useState('');
   const [centers, setCenters] = useState([]);
@@ -37,10 +40,11 @@ const FutureSkillsBookingPage = () => {
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
-  // Fetch centers when moving from Step 1 → Step 2
+  // Fetch centres once we reach the "select city" step (step 3+) so we can
+  // both populate the city list and later filter centres by (city + age).
   useEffect(() => {
     if (mode !== 'trial') return;
-    if (step >= 2 && centers.length === 0 && !loadingCenters) {
+    if (step >= 3 && centers.length === 0 && !loadingCenters) {
       setLoadingCenters(true);
       axios.get(`${API}/future-skills/centers`)
         .then(r => setCenters(r.data?.centers || []))
@@ -49,10 +53,12 @@ const FutureSkillsBookingPage = () => {
     }
   }, [step, centers.length, loadingCenters, mode]);
 
-  // Fetch all batches when reaching Step 3 (so we can also show batches in other centers)
+  // Fetch batches when reaching the batch-picker step so we can filter by
+  // (age group + centre). We intentionally do NOT show batches at "other"
+  // centres — customers picked their city + centre already.
   useEffect(() => {
     if (mode !== 'trial') return;
-    if (step === 3 && allBatches.length === 0 && !loadingBatches) {
+    if (step === 5 && allBatches.length === 0 && !loadingBatches) {
       setLoadingBatches(true);
       axios.get(`${API}/future-skills/batches`)
         .then(r => setAllBatches(r.data?.batches || []))
@@ -61,10 +67,52 @@ const FutureSkillsBookingPage = () => {
     }
   }, [step, allBatches.length, loadingBatches, mode]);
 
+  // Age groups shown as chips — matches AGE_GROUP_OPTIONS on the admin side.
+  const AGE_GROUPS = [
+    { value: '3-7',   label: '3 – 7 yrs',   emoji: '🎨' },
+    { value: '8-11',  label: '8 – 11 yrs',  emoji: '🤖' },
+    { value: '12-16', label: '12 – 16 yrs', emoji: '🚀' },
+  ];
+
+  // Cities are inferred from the centres list so users only see cities where
+  // we actually operate.
+  const availableCities = useMemo(() => {
+    const set = new Set(
+      centers
+        .map(c => (c.city || '').trim())
+        .filter(Boolean)
+    );
+    return Array.from(set).sort();
+  }, [centers]);
+
+  // Centres filtered by chosen city + age (age match uses batch.age_group
+  // matching at least one batch attached to the centre).
+  const centersForCity = useMemo(() => {
+    if (!city) return [];
+    const inCity = centers.filter(c => (c.city || '').toLowerCase() === city.toLowerCase());
+    if (!ageGroup) return inCity;
+    // Filter to centres that have at least one batch matching the age group.
+    // If batches haven't loaded yet (we lazy-load on step 5), return the
+    // city-scoped list; we'll re-filter once batches arrive.
+    if (allBatches.length === 0) return inCity;
+    const centresWithMatchingBatch = new Set(
+      allBatches
+        .filter(b => !b.age_group || b.age_group === ageGroup)
+        .map(b => b.center_id)
+    );
+    return inCity.filter(c => centresWithMatchingBatch.has(c.id));
+  }, [centers, city, ageGroup, allBatches]);
+
   const selectedCenter = useMemo(() => centers.find(c => c.id === centerId), [centers, centerId]);
   const selectedBatch  = useMemo(() => allBatches.find(b => b.id === batchId), [allBatches, batchId]);
-  const batchesForCenter = useMemo(() => allBatches.filter(b => b.center_id === centerId), [allBatches, centerId]);
-  const otherBatches = useMemo(() => allBatches.filter(b => b.center_id !== centerId), [allBatches, centerId]);
+  // Only batches at the chosen centre AND matching the age group — never
+  // "other centres" (user asked to hide those).
+  const batchesForCenter = useMemo(
+    () => allBatches
+      .filter(b => b.center_id === centerId)
+      .filter(b => !ageGroup || !b.age_group || b.age_group === ageGroup),
+    [allBatches, centerId, ageGroup],
+  );
 
   const goPrev = () => { setStep(s => Math.max(1, s - 1)); };
   const goNext = () => {
@@ -73,8 +121,16 @@ const FutureSkillsBookingPage = () => {
       setStep(2); return;
     }
     if (step === 2) {
-      if (!centerId) { toast.error('Please select a centre'); return; }
+      if (!ageGroup) { toast.error("Pick your child's age group"); return; }
       setStep(3); return;
+    }
+    if (step === 3) {
+      if (!city) { toast.error('Pick your city'); return; }
+      setStep(4); return;
+    }
+    if (step === 4) {
+      if (!centerId) { toast.error('Please select a centre'); return; }
+      setStep(5); return;
     }
   };
 
@@ -89,6 +145,8 @@ const FutureSkillsBookingPage = () => {
         parent_phone: cleanPhone,
         center_id: effectiveCenterId,
         batch_id: batchId,
+        age_group: ageGroup,
+        city,
         source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
       });
       const trialRef = r.data?.trial_ref;
@@ -183,9 +241,11 @@ const FutureSkillsBookingPage = () => {
             <div className="flex items-center gap-2 mb-6" data-testid="trial-stepper">
               {[
                 { n: 1, label: 'Phone',  icon: Phone },
-                { n: 2, label: 'Centre', icon: MapPin },
-                { n: 3, label: 'Batch',  icon: Calendar },
-              ].map((s, i) => (
+                { n: 2, label: 'Age',    icon: Users },
+                { n: 3, label: 'City',   icon: MapPin },
+                { n: 4, label: 'Centre', icon: MapPin },
+                { n: 5, label: 'Batch',  icon: Calendar },
+              ].map((s, i, arr) => (
                 <div key={s.n} className="flex items-center flex-1 last:flex-none">
                   <div className={`flex items-center gap-2 ${step === s.n ? 'text-[#D63031]' : step > s.n ? 'text-emerald-600' : 'text-slate-400'}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm border-2 ${
@@ -197,7 +257,7 @@ const FutureSkillsBookingPage = () => {
                     </div>
                     <span className={`hidden sm:inline text-xs font-bold uppercase tracking-wider ${step === s.n ? 'text-[#D63031]' : ''}`}>{s.label}</span>
                   </div>
-                  {i < 2 && <div className={`flex-1 h-0.5 mx-2 ${step > s.n ? 'bg-emerald-500' : 'bg-slate-200'}`} />}
+                  {i < arr.length - 1 && <div className={`flex-1 h-0.5 mx-2 ${step > s.n ? 'bg-emerald-500' : 'bg-slate-200'}`} />}
                 </div>
               ))}
             </div>
@@ -208,13 +268,17 @@ const FutureSkillsBookingPage = () => {
               </span>
               <h1 className="text-2xl lg:text-3xl font-black text-[#0F1E33] mt-1">
                 {step === 1 && "What's your phone number?"}
-                {step === 2 && 'Which centre works best for you?'}
-                {step === 3 && 'Pick a batch that fits your schedule'}
+                {step === 2 && "What's your child's age?"}
+                {step === 3 && 'Which city are you in?'}
+                {step === 4 && 'Pick your closest centre'}
+                {step === 5 && 'Pick a batch that fits your schedule'}
               </h1>
               <p className="text-sm text-slate-500 mt-1">
                 {step === 1 && "We'll send your trial details on WhatsApp."}
-                {step === 2 && "Choose the centre closest to you — we'll show you all live batches."}
-                {step === 3 && "You can see other centres' batches too if the timings suit you better."}
+                {step === 2 && "We'll match you to the right level."}
+                {step === 3 && "We'll only show cities where we run classes."}
+                {step === 4 && "Only centres in your city that host the age group."}
+                {step === 5 && "All live batches at your centre for this age group."}
               </p>
             </div>
 
@@ -244,14 +308,42 @@ const FutureSkillsBookingPage = () => {
               </div>
             )}
 
-            {/* ── Step 2: Center ───────────────────────────────────────── */}
+            {/* ── Step 2: Age Group (auto-advance on tap) ─────────────── */}
             {step === 2 && (
               <div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5" data-testid="age-group-list">
+                  {AGE_GROUPS.map(a => (
+                    <button key={a.value}
+                      onClick={() => { setAgeGroup(a.value); setStep(3); }}
+                      className={`p-5 rounded-2xl border-2 transition-all flex flex-col items-center gap-1 ${
+                        ageGroup === a.value
+                          ? 'border-[#D63031] bg-red-50/40 shadow-md'
+                          : 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
+                      }`}
+                      data-testid={`age-option-${a.value}`}>
+                      <div className="text-3xl">{a.emoji}</div>
+                      <div className="font-black text-[#0F1E33] mt-1">{a.label}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button onClick={goPrev}
+                    className="px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm flex items-center gap-1.5"
+                    data-testid="step2-back-btn">
+                    <ArrowLeft className="w-4 h-4" /> Back
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 3: City (auto-advance on tap) ──────────────────── */}
+            {step === 3 && (
+              <div>
                 {loadingCenters ? (
-                  <div className="py-16 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading centres…</div>
-                ) : centers.length === 0 ? (
+                  <div className="py-16 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading cities…</div>
+                ) : availableCities.length === 0 ? (
                   <div className="p-8 text-center bg-amber-50 border-2 border-amber-200 rounded-xl">
-                    <div className="font-bold text-amber-800 mb-1">No centres available yet</div>
+                    <div className="font-bold text-amber-800 mb-1">No cities available yet</div>
                     <p className="text-sm text-amber-700">Please leave your number — our team will call you back within 24 hours.</p>
                     <button onClick={handleSubmitTrial} disabled={submitting}
                       className="mt-4 px-5 py-2.5 rounded-lg bg-amber-800 text-white font-bold text-sm hover:bg-amber-900 disabled:opacity-60"
@@ -260,10 +352,57 @@ const FutureSkillsBookingPage = () => {
                     </button>
                   </div>
                 ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" data-testid="city-list">
+                    {availableCities.map(c => (
+                      <button key={c}
+                        onClick={() => { setCity(c); setCenterId(''); setStep(4); }}
+                        className={`p-4 rounded-2xl border-2 transition-all flex items-center gap-3 group ${
+                          city === c
+                            ? 'border-[#D63031] bg-red-50/40 shadow-md'
+                            : 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
+                        }`}
+                        data-testid={`city-option-${c.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          city === c ? 'bg-[#D63031] text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-[#1E3A5F] group-hover:text-white'
+                        }`}>
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <div className="font-bold text-[#0F1E33]">{c}</div>
+                        {city === c && <Check className="w-5 h-5 text-[#D63031] ml-auto flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-3 mt-6">
+                  <button onClick={goPrev}
+                    className="px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm flex items-center gap-1.5"
+                    data-testid="step3-back-btn">
+                    <ArrowLeft className="w-4 h-4" /> Back
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 4: Centre (auto-advance on tap; filtered by city + age) ── */}
+            {step === 4 && (
+              <div>
+                {loadingCenters ? (
+                  <div className="py-16 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading centres…</div>
+                ) : centersForCity.length === 0 ? (
+                  <div className="p-8 text-center bg-amber-50 border-2 border-amber-200 rounded-xl">
+                    <div className="font-bold text-amber-800 mb-1">No centres for this age group in {city} yet</div>
+                    <p className="text-sm text-amber-700">Leave your number — we&apos;ll call you when a batch opens near you.</p>
+                    <button onClick={handleSubmitTrial} disabled={submitting}
+                      className="mt-4 px-5 py-2.5 rounded-lg bg-amber-800 text-white font-bold text-sm hover:bg-amber-900 disabled:opacity-60"
+                      data-testid="request-callback-btn">
+                      {submitting ? 'Submitting…' : 'Request Callback'}
+                    </button>
+                  </div>
+                ) : (
                   <div className="space-y-2.5" data-testid="centers-list">
-                    {centers.map(c => (
+                    {centersForCity.map(c => (
                       <button key={c.id}
-                        onClick={() => { setCenterId(c.id); }}
+                        onClick={() => { setCenterId(c.id); setBatchId(''); setStep(5); }}
                         className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 group ${
                           centerId === c.id
                             ? 'border-[#D63031] bg-red-50/40 shadow-md'
@@ -290,26 +429,22 @@ const FutureSkillsBookingPage = () => {
                 <div className="flex gap-3 mt-6">
                   <button onClick={goPrev}
                     className="px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm flex items-center gap-1.5"
-                    data-testid="step2-back-btn">
+                    data-testid="step4-back-btn">
                     <ArrowLeft className="w-4 h-4" /> Back
-                  </button>
-                  <button onClick={goNext} disabled={!centerId || loadingCenters}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#D63031] to-[#1E3A5F] hover:from-[#B52828] hover:to-[#0F1E33] text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-900/20"
-                    data-testid="step2-next-btn">
-                    See Available Batches <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* ── Step 3: Batch ────────────────────────────────────────── */}
-            {step === 3 && (
+            {/* ── Step 5: Batch (only batches at this centre for this age) ── */}
+            {step === 5 && (
               <div>
                 {selectedCenter && (
                   <div className="bg-blue-50/60 border-2 border-blue-100 rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2 text-sm">
                     <MapPin className="w-4 h-4 text-[#1E3A5F]" />
                     <span className="font-bold text-[#0F1E33]">{selectedCenter.name}</span>
-                    <button onClick={() => setStep(2)} className="ml-auto text-xs font-bold text-[#D63031] hover:underline" data-testid="change-center-btn">
+                    <span className="text-slate-500">· {ageGroup} yrs</span>
+                    <button onClick={() => setStep(4)} className="ml-auto text-xs font-bold text-[#D63031] hover:underline" data-testid="change-center-btn">
                       Change centre
                     </button>
                   </div>
@@ -317,49 +452,42 @@ const FutureSkillsBookingPage = () => {
 
                 {loadingBatches ? (
                   <div className="py-16 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading batches…</div>
+                ) : batchesForCenter.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-200 text-sm text-amber-800 mb-4" data-testid="no-batches-msg">
+                    No live batches for this age group at {selectedCenter?.name} yet. Tap <b>Request Callback</b> below and we&apos;ll open a batch for you.
+                  </div>
                 ) : (
-                  <>
-                    {/* Batches at selected center */}
-                    <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-2">
-                      At this centre {batchesForCenter.length > 0 && `· ${batchesForCenter.length}`}
-                    </div>
-                    {batchesForCenter.length === 0 ? (
-                      <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-200 text-sm text-amber-800 mb-4" data-testid="no-batches-msg">
-                        No live batches at this centre yet. Browse batches at other centres below, or pick this centre and we&apos;ll open a batch for you.
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5 mb-6" data-testid="batches-list">
-                        {batchesForCenter.map(b => <BatchCard key={b.id} batch={b} selected={batchId === b.id} onSelect={() => setBatchId(b.id)} showCenter={false} />)}
-                      </div>
-                    )}
-
-                    {/* Batches at other centers */}
-                    {otherBatches.length > 0 && (
-                      <>
-                        <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-2 mt-4">
-                          Other centres · {otherBatches.length}
-                        </div>
-                        <div className="space-y-2.5" data-testid="other-batches-list">
-                          {otherBatches.map(b => <BatchCard key={b.id} batch={b} selected={batchId === b.id} onSelect={() => setBatchId(b.id)} showCenter />)}
-                        </div>
-                      </>
-                    )}
-                  </>
+                  <div className="space-y-2.5" data-testid="batches-list">
+                    {batchesForCenter.map(b => (
+                      <BatchCard
+                        key={b.id}
+                        batch={b}
+                        selected={batchId === b.id}
+                        onSelect={() => { setBatchId(b.id); handleSubmitTrial(); }}
+                        showCenter={false}
+                      />
+                    ))}
+                  </div>
                 )}
 
                 <div className="flex gap-3 mt-6">
                   <button onClick={goPrev}
                     className="px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm flex items-center gap-1.5"
-                    data-testid="step3-back-btn">
+                    data-testid="step5-back-btn">
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
-                  <button onClick={handleSubmitTrial} disabled={!batchId || submitting}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#D63031] to-[#1E3A5F] hover:from-[#B52828] hover:to-[#0F1E33] text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-900/25"
-                    data-testid="submit-trial-btn">
-                    {submitting
-                      ? <><Loader2 className="w-5 h-5 animate-spin" /> Booking…</>
-                      : <>Confirm Free Trial <ArrowRight className="w-5 h-5" /></>}
-                  </button>
+                  {batchesForCenter.length === 0 && (
+                    <button onClick={handleSubmitTrial} disabled={submitting}
+                      className="flex-1 py-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                      data-testid="request-callback-btn">
+                      {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Submitting…</> : 'Request Callback'}
+                    </button>
+                  )}
+                  {submitting && batchesForCenter.length > 0 && (
+                    <div className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#D63031] to-[#1E3A5F] text-white font-bold flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" /> Booking…
+                    </div>
+                  )}
                 </div>
               </div>
             )}

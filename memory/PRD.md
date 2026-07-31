@@ -2,6 +2,54 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-31 · iter116) — Role Permissions Fix + Import Fields + Trial Booking Wizard 🔧
+
+**Bug · Assigned role permissions didn't reflect in sidebar** —
+`get_current_user` in `auth_utils.py` returned the raw `team_user` doc,
+but permissions were often stored on the linked `role_id` doc (via the
+"Assign Role" dropdown). Fix: merge `role.permissions` into the returned
+user on every request. Also: `grants_full_access` role → treated as admin.
+
+**Import Leads — new field set** —
+`admin_import_leads` now accepts: `name*, phone*, source, city, center,
+age_group` (matching what admins actually track). The `center` column is
+matched case-insensitively against the centres list and stored as both
+`center_id` and `center_name` on the lead. ImportModal in the UI + the
+sample CSV have been updated to match.
+
+**Add Customer — parent name is optional** —
+`CustomerCreateAdmin.parent_name` relaxed to `Optional[str]`; frontend
+validation no longer blocks on missing parent name. Only student name +
+phone stay required.
+
+**Public Free Trial booking wizard — 5-step flow with auto-advance** —
+Old: Phone → Centre → Batch (Confirm click needed at each step).
+New:  Phone → Age Group → City → Centre → Batch (each selection
+auto-advances). Steppers, headings, and helper copy all rewritten.
+- Age chips: 3-7 / 8-11 / 12-16 → sets `age_group`.
+- City chips: derived from centres (only cities we actually operate in).
+- Centre list: filtered to `centres in this city AND hosting a batch for
+  this age group`.
+- Batch list: only batches at that centre matching the age group. The
+  "Other centres" section is removed entirely.
+- Selecting a batch immediately fires `handleSubmitTrial()` — no Confirm
+  click. Loading state renders in the same slot.
+Backend `TrialBooking` gained `age_group` + `city` fields, persisted on
+the trial doc so filters + reports can slice by them later.
+
+**Files touched**:
+- `/app/backend/auth_utils.py` — role-permissions merge in
+  `get_current_user`.
+- `/app/backend/routes/future_skills.py` — Import alias_map extended,
+  centre lookup added; `TrialBooking` + register_trial persist age_group
+  & city; `CustomerCreateAdmin.parent_name` now optional.
+- `/app/frontend/src/pages/FutureSkillsBookingPage.jsx` — 5-step wizard
+  with auto-advance; age & city filtering; no "other centres" section.
+- `/app/frontend/src/pages/admin/AdminFutureSkills.jsx` — ImportModal
+  sample CSV + supported columns updated; AddCustomerModal validation
+  drops parent_name requirement.
+
+
 ### Latest Update (2026-07-31 · iter115) — Access Denied + Reports Enrichments + Lost Reason Chips 📊
 
 **Bug 1 · Silent redirect → real "Access Denied" page** —

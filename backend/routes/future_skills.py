@@ -132,6 +132,8 @@ class TrialBooking(BaseModel):
     preferred_skill: Optional[str] = Field(default="", max_length=80)
     notes: Optional[str] = Field(default="", max_length=500)
     source_ref: Optional[str] = Field(default="", max_length=64)
+    age_group: Optional[str] = Field(default="", max_length=16)
+    city: Optional[str] = Field(default="", max_length=80)
 
 
 class SubscriptionCreate(BaseModel):
@@ -239,6 +241,8 @@ async def register_trial(data: TrialBooking):
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "").strip(),
         "source": source_display,
+        "age_group": (data.age_group or "").strip(),
+        "city": (data.city or "").strip(),
         "trial_status": "scheduled" if data.batch_id else "requested",
         "crm_status": "scheduled" if data.batch_id else "trial_lead",
         "return_count": 1,
@@ -1279,11 +1283,21 @@ async def admin_import_leads(
         "email": "email", "email_id": "email", "mail": "email",
         "source": "source", "lead_source": "source",
         "city": "city", "location": "city",
+        "center": "center_name", "centre": "center_name", "center_name": "center_name", "centre_name": "center_name",
+        "age_group": "age_group", "age-group": "age_group", "agegroup": "age_group",
         "notes": "notes", "note": "notes", "remark": "notes", "remarks": "notes",
         "child_age": "child_age", "age": "child_age", "student_age": "child_age",
         "child_grade": "child_grade", "grade": "child_grade", "class": "child_grade", "student_grade": "child_grade",
     }
     cols = {c: alias_map.get(c, c) for c in df.columns}
+
+    # Pre-load centres so we can map "center_name" from the CSV → center_id.
+    # Case-insensitive match against `name`.
+    centre_lookup: dict = {}
+    async for c in db.centers.find({}, {"_id": 0, "id": 1, "name": 1}):
+        cname = (c.get("name") or "").strip().lower()
+        if cname:
+            centre_lookup[cname] = {"id": c["id"], "name": c.get("name", "")}
 
     inserted = 0
     skipped = 0
@@ -1309,6 +1323,11 @@ async def admin_import_leads(
 
             lead_id = str(uuid.uuid4())
             lead_ref = await _next_ref("FSL")
+
+            # Optional centre lookup (case-insensitive by name)
+            centre_from_csv = (record.get("center_name") or "").strip().lower()
+            centre_hit = centre_lookup.get(centre_from_csv) if centre_from_csv else None
+
             doc = {
                 "id": lead_id,
                 "lead_ref": lead_ref,
@@ -1318,6 +1337,9 @@ async def admin_import_leads(
                 "email": record.get("email", "").lower(),
                 "source": record.get("source", "") or default_source,
                 "city": record.get("city", ""),
+                "age_group": record.get("age_group", ""),
+                "center_id":   (centre_hit or {}).get("id", ""),
+                "center_name": (centre_hit or {}).get("name", "") or record.get("center_name", ""),
                 "notes": record.get("notes", ""),
                 "child_age": record.get("child_age", ""),
                 "child_grade": record.get("child_grade", ""),
@@ -1503,7 +1525,7 @@ async def admin_trial_convert(trial_id: str, data: TrialConvertBody, user: dict 
 
 # ── CUSTOMERS (Active Subscriptions) ──────────────────────────────────────
 class CustomerCreateAdmin(BaseModel):
-    parent_name: str = Field(..., min_length=1, max_length=120)
+    parent_name: Optional[str] = Field(default="", max_length=120)
     parent_phone: str = Field(..., min_length=6, max_length=20)
     parent_email: Optional[str] = Field(default="", max_length=120)
     student_name: str = Field(..., min_length=1, max_length=120)
