@@ -2591,11 +2591,13 @@ const RateBadge = ({ label, pct }) => (
 // every entry into main /admin/expenses via program_key=future_skills.
 // ═══════════════════════════════════════════════════════════════════════
 const CATEGORY_META = [
-  { key: 'rent',         label: 'Rent',         color: '#1E3A5F' },
-  { key: 'teacher_cost', label: 'Teacher Cost', color: '#3B82F6' },
-  { key: 'capex',        label: 'Capex',        color: '#8B5CF6' },
-  { key: 'marketing',    label: 'Marketing',    color: '#D63031' },
-  { key: 'other',        label: 'Other',        color: '#64748B' },
+  { key: 'rent',           label: 'Rent',             color: '#1E3A5F' },
+  { key: 'teacher_cost',   label: 'Teacher Cost',     color: '#3B82F6' },
+  { key: 'capex',          label: 'Capex',            color: '#8B5CF6' },
+  { key: 'marketing',      label: 'Marketing',        color: '#D63031' },
+  { key: 'printing_gifts', label: 'Printing & Gifts', color: '#F59E0B' },
+  { key: 'logistics',      label: 'Logistics Cost',   color: '#10B981' },
+  { key: 'other',          label: 'Other',            color: '#64748B' },
 ];
 
 const EconField = ({ label, children }) => (

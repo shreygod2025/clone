@@ -2515,11 +2515,13 @@ async def admin_future_skills_reports(
 # UI label → main-expenses category id. Kept in sync with EXPENSE_CATEGORIES
 # defined in routes/expenses.py so P&L rollups stay coherent.
 FS_ECONOMICS_CATEGORIES = {
-    "rent":         {"label": "Rent",         "expense_category": "rent"},
-    "teacher_cost": {"label": "Teacher Cost", "expense_category": "teacher_cost"},
-    "capex":        {"label": "Capex",        "expense_category": "kit_cost"},
-    "marketing":    {"label": "Marketing",    "expense_category": "marketing_cost"},
-    "other":        {"label": "Other",        "expense_category": "other"},
+    "rent":              {"label": "Rent",              "expense_category": "rent"},
+    "teacher_cost":      {"label": "Teacher Cost",      "expense_category": "teacher_cost"},
+    "capex":             {"label": "Capex",             "expense_category": "kit_cost"},
+    "marketing":         {"label": "Marketing",         "expense_category": "marketing_cost"},
+    "printing_gifts":    {"label": "Printing & Gifts",  "expense_category": "printing_certification"},
+    "logistics":         {"label": "Logistics Cost",    "expense_category": "logistics_cost"},
+    "other":             {"label": "Other",             "expense_category": "other"},
 }
 
 
