@@ -2,6 +2,47 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-31 · iter113) — Tasks Perf + Sidebar Sub-Perms 🚀
+
+**Bug 1 · Tasks page slow to load (P0)**
+Root cause: `/api/tasks` was calling `_enrich_task` for every row, which
+fired 5-7 sequential DB round-trips per task (assignee lookup, assigner
+lookup, subtask total, subtask done, comment count, project name). For a
+1000-task list that's ~6000 sequential queries → multi-second load.
+
+Fix: New `_batch_enrich_tasks(tasks)` in `/app/backend/routes/tasks.py`
+does the whole batch in **≤5 total DB queries**:
+- `team_users.find({"id": {"$in": user_ids}})`
+- `admins.find({"id": {"$in": missing}})` (fallback for any un-mapped ids)
+- `projects.find({"id": {"$in": project_ids}})`
+- one `tasks.aggregate` with `$group` on `parent_task_id` returning
+  `{total, done}` per parent — replaces `count_documents` × 2N
+- one `task_comments.aggregate` with `$group` on `task_id`
+
+`list_tasks` and `list_todays_tasks` both switched to the batch variant.
+`GET /api/tasks?filter=all` now returns in ~105 ms (3 runs consistent).
+
+**Bug 2 · Sub-permissions not showing in sidebar (P0)**
+File: `/app/frontend/src/pages/admin/AdminDashboard.jsx`
+- Line 34 had `permission: 'orders'` typo on the Expenses nav item. A
+  user granted `expenses.list` looked for `expenses.` prefix, which never
+  matched `orders.` — so Expenses stayed hidden. Fixed to `'expenses'`.
+- Also broadened the "everything visible" bypass so `super_admin` users
+  see all nav items too (was checking only `'admin'`).
+
+**Testing**:
+- Backend: `time curl /api/tasks?filter=all` → 3 consecutive runs at
+  ~105 ms with correct enrichment fields (`assigned_to_name`,
+  `subtask_total`, `comment_count`, `project_name`).
+- No frontend regression — same response shape as before.
+
+**Files touched**:
+- `/app/backend/routes/tasks.py` — new `_batch_enrich_tasks`; call sites
+  updated in `list_tasks` + `list_todays_tasks`
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` — Expenses
+  permission fix + super_admin bypass
+
+
 ### Latest Update (2026-07-30 · iter111) — Centre Economics + Future Skills KPI Roles + Expenses Perf Fix 🎯
 
 **Ask** (3 P0 items from user):

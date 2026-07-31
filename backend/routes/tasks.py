@@ -234,6 +234,114 @@ async def _enrich_task(t: dict) -> dict:
     return t
 
 
+async def _batch_enrich_tasks(tasks: List[dict]) -> List[dict]:
+    """Enrich many tasks in ~7 total DB queries instead of ~6-per-task.
+
+    The old per-task `_enrich_task` fires 5-7 round-trips (assignee lookup,
+    assigner lookup, subtask totals, comment count, project name). For a
+    1000-task list that meant ~6000 sequential queries and multi-second
+    /api/tasks load times. This variant batches every lookup:
+      - one query on team_users for all user ids
+      - one query on admins for the leftover ids
+      - one aggregate on tasks for parent → {total, done} sub-task counts
+      - one aggregate on task_comments for parent → count
+      - one query on projects
+    """
+    if not tasks:
+        return []
+    for t in tasks:
+        t.pop("_id", None)
+
+    # ── Collect ids to look up ──
+    user_ids: set = set()
+    project_ids: set = set()
+    parent_ids: set = set()          # top-level tasks that need subtask counts
+    top_level_task_ids: set = set()  # for comment counts (bottom-level too, actually)
+    for t in tasks:
+        for k in ("assigned_to", "assigned_by"):
+            v = t.get(k)
+            if v:
+                user_ids.add(v)
+        pid = t.get("project_id")
+        if pid:
+            project_ids.add(pid)
+        tid = t.get("id")
+        if tid:
+            if not t.get("parent_task_id"):
+                parent_ids.add(tid)
+            top_level_task_ids.add(tid)
+
+    # ── User names in two queries (team_users + admins fallback) ──
+    user_map: dict = {}
+    if user_ids:
+        async for u in db.team_users.find(
+            {"id": {"$in": list(user_ids)}}, {"_id": 0, "id": 1, "name": 1}
+        ):
+            user_map[u["id"]] = u.get("name", "")
+        missing = [uid for uid in user_ids if uid not in user_map]
+        if missing:
+            async for a in db.admins.find(
+                {"id": {"$in": missing}}, {"_id": 0, "id": 1, "name": 1}
+            ):
+                user_map[a["id"]] = a.get("name", "")
+
+    # ── Project names in one query ──
+    project_map: dict = {}
+    if project_ids:
+        async for p in db.projects.find(
+            {"id": {"$in": list(project_ids)}},
+            {"_id": 0, "id": 1, "name": 1, "color": 1},
+        ):
+            project_map[p["id"]] = {"name": p.get("name"), "color": p.get("color")}
+
+    # ── Sub-task totals per parent (one aggregate) ──
+    subtask_totals: dict = {}
+    subtask_done:   dict = {}
+    if parent_ids:
+        pipeline = [
+            {"$match": {"parent_task_id": {"$in": list(parent_ids)}}},
+            {"$group": {
+                "_id": "$parent_task_id",
+                "total": {"$sum": 1},
+                "done":  {"$sum": {"$cond": [{"$eq": ["$status", "completed"]}, 1, 0]}},
+            }},
+        ]
+        async for row in db.tasks.aggregate(pipeline):
+            subtask_totals[row["_id"]] = row.get("total", 0)
+            subtask_done[row["_id"]]   = row.get("done", 0)
+
+    # ── Comment counts per task (one aggregate) ──
+    comment_map: dict = {}
+    if top_level_task_ids:
+        pipeline = [
+            {"$match": {"task_id": {"$in": list(top_level_task_ids)}}},
+            {"$group": {"_id": "$task_id", "count": {"$sum": 1}}},
+        ]
+        async for row in db.task_comments.aggregate(pipeline):
+            comment_map[row["_id"]] = row.get("count", 0)
+
+    # ── Stitch everything back onto the task documents ──
+    for t in tasks:
+        t["assigned_to_name"] = user_map.get(t.get("assigned_to") or "", "")
+        t["assigned_by_name"] = user_map.get(t.get("assigned_by") or "", "")
+        tid = t.get("id")
+        if tid and not t.get("parent_task_id"):
+            t["subtask_total"] = subtask_totals.get(tid, 0)
+            t["subtask_done"]  = subtask_done.get(tid, 0)
+        else:
+            t["subtask_total"] = 0
+            t["subtask_done"]  = 0
+        t["comment_count"] = comment_map.get(tid, 0) if tid else 0
+        pid = t.get("project_id")
+        if pid and pid in project_map:
+            t["project_name"]  = project_map[pid]["name"]
+            t["project_color"] = project_map[pid]["color"]
+        else:
+            t["project_name"]  = None
+            t["project_color"] = None
+    return tasks
+
+
 async def _list_reports_of(manager_id: str) -> List[str]:
     """Return ids of team_users whose reports_to == manager_id (direct reports only for now)."""
     docs = await db.team_users.find({"reports_to": manager_id}, {"_id": 0, "id": 1}).to_list(2000)
@@ -369,7 +477,7 @@ async def list_tasks(
         query["$and"] = query.get("$and", []) + [{"$or": [{"parent_task_id": None}, {"parent_task_id": {"$exists": False}}]}]
 
     docs = await db.tasks.find(query).sort("created_at", -1).to_list(1000)
-    return [await _enrich_task(t) for t in docs]
+    return await _batch_enrich_tasks(docs)
 
 
 @router.get("/today")
@@ -414,9 +522,9 @@ async def list_todays_tasks(user: dict = Depends(get_current_user)):
     }).sort("due_date", 1).to_list(500)
 
     return {
-        "today":     [await _enrich_task(t) for t in due_today],
-        "this_week": [await _enrich_task(t) for t in this_week],
-        "overdue":   [await _enrich_task(t) for t in overdue],
+        "today":     await _batch_enrich_tasks(due_today),
+        "this_week": await _batch_enrich_tasks(this_week),
+        "overdue":   await _batch_enrich_tasks(overdue),
     }
 
 

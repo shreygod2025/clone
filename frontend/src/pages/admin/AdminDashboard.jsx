@@ -31,7 +31,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
-    { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'orders' },
+    { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'expenses' },
     { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
@@ -58,8 +58,8 @@ const AdminLayout = ({ children, title }) => {
     // Manager-only items — hidden from non-managers regardless of role
     if (item.requiresManager && !user?.is_manager) return false;
 
-    // Admin sees everything (except manager-only above)
-    if (user?.role === 'admin') return true;
+    // Admin / super_admin sees everything (except manager-only above)
+    if (user?.role === 'admin' || user?.role === 'super_admin') return true;
 
     // Dashboard is always visible
     if (item.permission === null) return true;
