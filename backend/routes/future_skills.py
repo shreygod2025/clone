@@ -45,24 +45,24 @@ PROGRAM_NAME = "Future Skills Continuous Learning Program"
 PLANS = {
     "monthly": {
         "label": "Monthly",
-        "price": 2000.0,
+        "price": 2500.0,
         "billing_cycle": "monthly",
         "months": 1,
-        "monthly_equivalent": 2000.0,
+        "monthly_equivalent": 2500.0,
     },
     "half_yearly": {
         "label": "Half Yearly",
-        "price": 11000.0,
+        "price": 13500.0,
         "billing_cycle": "half_yearly",
         "months": 6,
-        "monthly_equivalent": 1834.0,
+        "monthly_equivalent": 2250.0,
     },
     "yearly": {
         "label": "Yearly",
-        "price": 21000.0,
+        "price": 24000.0,
         "billing_cycle": "yearly",
         "months": 12,
-        "monthly_equivalent": 1750.0,
+        "monthly_equivalent": 2000.0,
     },
 }
 
@@ -137,12 +137,19 @@ class TrialBooking(BaseModel):
 
 
 class SubscriptionCreate(BaseModel):
-    parent_name: str = Field(..., min_length=2, max_length=120)
+    # Public /subscribe form has been slimmed down to the minimum needed
+    # to route the enrolment: phone + student name + age group + centre +
+    # batch. Parent name / email / grade are collected during post-payment
+    # onboarding and stay optional here.
+    parent_name: Optional[str] = Field(default="", max_length=120)
     parent_phone: str = Field(..., min_length=10, max_length=15)
-    parent_email: EmailStr
+    parent_email: Optional[str] = Field(default="", max_length=120)
     student_name: str = Field(..., min_length=2, max_length=120)
-    student_grade: str = Field(..., min_length=1, max_length=8)
+    student_grade: Optional[str] = Field(default="", max_length=8)
     preferred_center: Optional[str] = Field(default="", max_length=80)
+    age_group: Optional[str] = Field(default="", max_length=16)
+    center_id: Optional[str] = Field(default="", max_length=64)
+    batch_id:  Optional[str] = Field(default="", max_length=64)
     plan: str = Field(..., pattern=r"^(monthly|yearly)$")
     notes: Optional[str] = Field(default="", max_length=500)
     source_ref: Optional[str] = Field(default="", max_length=64)
@@ -283,16 +290,32 @@ async def create_subscription(data: SubscriptionCreate):
     sub_id = str(uuid.uuid4())
     sub_ref = await _next_ref("FSP")
 
+    # Resolve centre + batch names so the CRM row displays cleanly without
+    # extra lookups. Empty strings if not provided.
+    centre_name = ""
+    batch_name  = ""
+    if data.center_id:
+        c = await db.centers.find_one({"id": data.center_id}, {"_id": 0, "name": 1})
+        if c: centre_name = c.get("name", "")
+    if data.batch_id:
+        b = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0, "name": 1})
+        if b: batch_name = b.get("name", "")
+
     doc = {
         "id": sub_id,
         "subscription_ref": sub_ref,
         "program_key": PROGRAM_KEY,
-        "parent_name": data.parent_name.strip(),
+        "parent_name": (data.parent_name or "").strip(),
         "parent_phone": data.parent_phone.strip(),
-        "parent_email": data.parent_email.lower(),
+        "parent_email": (data.parent_email or "").lower(),
         "student_name": data.student_name.strip(),
-        "student_grade": data.student_grade.strip(),
-        "preferred_center": (data.preferred_center or "").strip(),
+        "student_grade": (data.student_grade or "").strip(),
+        "age_group": (data.age_group or "").strip(),
+        "center_id": (data.center_id or "").strip(),
+        "center_name": centre_name,
+        "batch_id":  (data.batch_id  or "").strip(),
+        "batch_name": batch_name,
+        "preferred_center": (data.preferred_center or "").strip() or centre_name,
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "").strip(),
         "plan": data.plan,
@@ -387,6 +410,169 @@ async def initiate_payment(data: PaymentInit):
     except Exception as e:
         logging.error(f"[future-skills] payment init failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Payment initiation failed: {e}")
+
+
+# ── Custom payment links (admin) ─────────────────────────────────────────
+class CustomPaymentLinkBody(BaseModel):
+    trial_id:        Optional[str] = Field(default=None, max_length=64)
+    subscription_id: Optional[str] = Field(default=None, max_length=64)
+    plan:            str           = Field(..., pattern=r"^(monthly|half_yearly|yearly)$")
+    discount_pct:    float         = Field(default=0, ge=0, le=90)
+
+
+async def _create_cashfree_link(sub: dict, frontend_url: str) -> dict:
+    """Shared Cashfree order-creation logic used by /initiate-payment and the
+    admin custom-payment-link endpoint. Persists the resulting session id +
+    order id back on the subscription so verify + webhook still work.
+    """
+    order_id = f"FSP-{sub['id'][:8]}-{int(time.time())}"
+    cf_name = (sub.get("parent_name") or sub.get("student_name") or "").strip() or "OLL Parent"
+    if len(cf_name.replace(" ", "")) < 3:
+        cf_name = "OLL Parent"
+    raw_phone = sub.get("parent_phone") or "9999999999"
+    cf_phone = re.sub(r"\D", "", raw_phone)
+    if len(cf_phone) > 10:
+        cf_phone = cf_phone[-10:]
+    if len(cf_phone) < 10:
+        cf_phone = "9999999999"
+
+    customer = CashfreeCustomerDetails(
+        customer_id=sub["id"][:50],
+        customer_name=cf_name,
+        customer_email=sub.get("parent_email") or f"{sub['id'][:8]}@oll.co",
+        customer_phone=cf_phone,
+    )
+    order_meta = OrderMeta(
+        return_url=f"{frontend_url}/future-skills/success?order_id={order_id}&subscription_id={sub['id']}",
+        notify_url=f"{frontend_url}/api/future-skills/webhook",
+    )
+    req = CreateOrderRequest(
+        order_id=order_id,
+        order_amount=sub["amount"],
+        order_currency="INR",
+        customer_details=customer,
+        order_meta=order_meta,
+        order_note=f"{PROGRAM_NAME} — {sub.get('plan_label','')} — {sub.get('student_name','')}",
+    )
+    api_response = await asyncio.to_thread(
+        _cf_client().PGCreateOrder, CASHFREE_API_VERSION, req, None, None
+    )
+    if not api_response.data:
+        raise HTTPException(status_code=500, detail="Payment gateway error")
+
+    payment_session_id = api_response.data.payment_session_id
+    payment_link = f"https://payments.cashfree.com/forms/{payment_session_id}"
+    await db.future_skills_subscriptions.update_one(
+        {"id": sub["id"]},
+        {"$set": {
+            "order_id": order_id,
+            "cf_order_id": str(api_response.data.cf_order_id),
+            "payment_session_id": payment_session_id,
+            "payment_link": payment_link,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    return {"order_id": order_id, "payment_session_id": payment_session_id, "payment_link": payment_link}
+
+
+@router.post("/admin/future-skills/payment-link")
+async def admin_custom_payment_link(body: CustomPaymentLinkBody, user: dict = Depends(get_current_user)):
+    """Generate a Cashfree payment link for a specific child (via a Free
+    Trial doc OR an existing Renewal subscription). Applies an optional
+    discount % to the plan amount. Response contains a shareable
+    `payment_link` the admin can copy and send to the parent.
+    """
+    if not (_is_admin(user) or user.get("role") == "fs_center_owner"):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    if not (body.trial_id or body.subscription_id):
+        raise HTTPException(status_code=400, detail="Provide trial_id or subscription_id")
+
+    plan_info = PLANS[body.plan]
+    discount = float(body.discount_pct or 0)
+    net_amount = round(plan_info["price"] * (1 - discount / 100), 2)
+
+    if body.trial_id:
+        trial = await db.future_skills_trials.find_one({"id": body.trial_id}, {"_id": 0})
+        if not trial:
+            raise HTTPException(status_code=404, detail="Trial not found")
+        sub_id = str(uuid.uuid4())
+        sub_ref = await _next_ref("FSP")
+        now_iso = datetime.now(timezone.utc).isoformat()
+        sub = {
+            "id": sub_id,
+            "subscription_ref": sub_ref,
+            "program_key": PROGRAM_KEY,
+            "parent_name":  trial.get("parent_name", ""),
+            "parent_phone": trial.get("parent_phone", ""),
+            "parent_email": trial.get("parent_email", ""),
+            "student_name": trial.get("student_name", ""),
+            "student_grade": trial.get("student_grade", ""),
+            "age_group":   trial.get("age_group", ""),
+            "center_id":   trial.get("center_id", ""),
+            "center_name": trial.get("center_name", "") or trial.get("preferred_center", ""),
+            "batch_id":    trial.get("batch_id", ""),
+            "batch_name":  trial.get("batch_name", ""),
+            "preferred_center": trial.get("preferred_center", ""),
+            "source_ref": trial.get("source_ref", ""),
+            "plan": body.plan,
+            "plan_label": plan_info["label"],
+            "billing_cycle": plan_info["billing_cycle"],
+            "amount": net_amount,
+            "amount_before_discount": plan_info["price"],
+            "discount_pct": discount,
+            "monthly_equivalent": plan_info["monthly_equivalent"],
+            "kit_included": True,
+            "payment_status": "pending",
+            "crm_status": "subscription_lead",
+            "trial_id": trial["id"],
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "created_by_link": user.get("email"),
+        }
+        await db.future_skills_subscriptions.insert_one(sub)
+    else:
+        existing = await db.future_skills_subscriptions.find_one({"id": body.subscription_id}, {"_id": 0})
+        if not existing:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        # For an existing (renewal) subscription, mutate amount + plan then
+        # regenerate the Cashfree order so the copied link matches.
+        await db.future_skills_subscriptions.update_one(
+            {"id": body.subscription_id},
+            {"$set": {
+                "plan": body.plan,
+                "plan_label": plan_info["label"],
+                "billing_cycle": plan_info["billing_cycle"],
+                "amount": net_amount,
+                "amount_before_discount": plan_info["price"],
+                "discount_pct": discount,
+                "monthly_equivalent": plan_info["monthly_equivalent"],
+                "payment_status": "pending",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        sub = await db.future_skills_subscriptions.find_one({"id": body.subscription_id}, {"_id": 0})
+
+    frontend_url = os.getenv("FRONTEND_URL", "https://oll.co")
+    try:
+        result = await _create_cashfree_link(sub, frontend_url)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"[future-skills] admin custom link failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed: {e}")
+
+    return {
+        "subscription_id": sub["id"],
+        "subscription_ref": sub.get("subscription_ref"),
+        "student_name": sub.get("student_name"),
+        "amount": net_amount,
+        "amount_before_discount": plan_info["price"],
+        "discount_pct": discount,
+        "plan": body.plan,
+        "plan_label": plan_info["label"],
+        "payment_link": result["payment_link"],
+    }
+
 
 
 @router.get("/future-skills/verify/{subscription_id}")

@@ -2,6 +2,55 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-31 · iter118) — Subscribe Form Slimmed + Pricing Bump + Custom Payment Links 💳
+
+**Public Subscribe form rebuilt** —
+Removed Parent Name, Email and Grade fields. Added:
+- Age Group chip picker (3–7 / 8–11 / 12–16)
+- Centre dropdown (filtered by age group — a centre only shows if it has a
+  batch matching the age)
+- Batch dropdown (filtered by centre + age group)
+Only required fields left: Phone, Student Name, Age Group, Centre, Batch.
+Parent Name / Email / Grade become optional in the `SubscriptionCreate`
+Pydantic model — they get captured post-payment during onboarding.
+
+**Pricing updated** —
+- Monthly: **₹2,500/mo** (was ₹2,000)
+- Yearly: **₹24,000/yr** = **₹2,000/mo** equivalent (was ₹21,000)
+- Half-yearly rebalanced to ₹13,500 (₹2,250/mo) for consistency.
+UI toggles + PRICE / PRICE_DISPLAY constants + Order Summary all
+reflect the new numbers.
+
+**Custom Payment Links (Free Trial + Renewals)** —
+- New backend endpoint `POST /api/admin/future-skills/payment-link` accepts
+  `{trial_id or subscription_id, plan, discount_pct}`. From a trial it
+  spawns a fresh subscription with the trial's child/centre/batch info
+  and the discounted amount. From an existing renewal subscription, it
+  mutates the plan + amount on the same doc. In both cases it fires the
+  Cashfree order flow via the shared `_create_cashfree_link` helper and
+  returns a shareable `payment_link`.
+- New `PaymentLinkModal` in the Future Skills CRM: opens from **Pay Link**
+  buttons on Free Trials & Renewals rows. Shows the child's name, age,
+  centre & batch inline (no re-selection needed), plan picker, discount
+  chips (0/5/10/15/20/25 + custom %), live "You'll charge" preview, and
+  Generate → Copy → Share on WhatsApp actions with a pre-filled message.
+- Verified end-to-end via curl (subscribe payload with only phone +
+  student_name + age_group + plan succeeds, returns ₹2,500 for monthly).
+
+**Files touched**:
+- `/app/backend/routes/future_skills.py` — PLANS pricing bumped;
+  `SubscriptionCreate` relaxed (parent/email/grade optional, added
+  age_group/center_id/batch_id); subscribe handler enriches centre/batch
+  names; new `CustomPaymentLinkBody` + `_create_cashfree_link` helper +
+  `POST /admin/future-skills/payment-link` endpoint.
+- `/app/frontend/src/pages/FutureSkillsBookingPage.jsx` — Subscribe form
+  rebuilt with the 5-field flow + age chips + centre/batch dropdowns; new
+  prices in PRICE constant + toggle labels.
+- `/app/frontend/src/pages/admin/AdminFutureSkills.jsx` — new
+  `PaymentLinkModal`; `payment-link` action wired to Trials + Renewals
+  tables (row buttons + modal switch).
+
+
 ### Latest Update (2026-07-31 · iter116) — Role Permissions Fix + Import Fields + Trial Booking Wizard 🔧
 
 **Bug · Assigned role permissions didn't reflect in sidebar** —

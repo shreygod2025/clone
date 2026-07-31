@@ -6,7 +6,7 @@ import {
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
   Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
-  Link2 as LinkIcon, Copy, Eye, FileText, UserX,
+  Link2 as LinkIcon, Copy, Eye, FileText, UserX, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -409,12 +409,13 @@ const AdminFutureSkills = () => {
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
               {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
-                if (action === 'convert')    setModal({ type: 'convert-trial', trial: r });
-                if (action === 'reschedule') setModal({ type: 'reschedule', trial: r });
-                if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'trial' });
-                if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'trial' });
-                if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'trial' });
-                if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'trial' });
+                if (action === 'convert')      setModal({ type: 'convert-trial', trial: r });
+                if (action === 'reschedule')   setModal({ type: 'reschedule', trial: r });
+                if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'trial' });
+                if (action === 'notes')        setModal({ type: 'notes', entity: r, entityType: 'trial' });
+                if (action === 'mark-lost')    setModal({ type: 'lost', entity: r, entityType: 'trial' });
+                if (action === 'delete')       setModal({ type: 'delete', entity: r, entityType: 'trial' });
+                if (action === 'payment-link') setModal({ type: 'payment-link', trial: r });
                 if (action === 'attended') {
                   try {
                     await axios.post(`${API}/admin/future-skills/trials/${r.id}/attend`, {}, { headers: getAuthHeaders() });
@@ -430,11 +431,12 @@ const AdminFutureSkills = () => {
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
               }} />}
               {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
-                if (action === 'renew')      setModal({ type: 'renew', customer: r });
-                if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'customer' });
-                if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
-                if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
-                if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
+                if (action === 'renew')        setModal({ type: 'renew', customer: r });
+                if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'customer' });
+                if (action === 'notes')        setModal({ type: 'notes', entity: r, entityType: 'customer' });
+                if (action === 'mark-lost')    setModal({ type: 'lost', entity: r, entityType: 'customer' });
+                if (action === 'delete')       setModal({ type: 'delete', entity: r, entityType: 'customer' });
+                if (action === 'payment-link') setModal({ type: 'payment-link', customer: r });
               }} />}
               {tab === 'lost'      && <LostTable rows={rows} onOpen={setSelected} />}
             </div>
@@ -454,6 +456,12 @@ const AdminFutureSkills = () => {
       {modal?.type === 'convert-trial' && <ConvertTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'reschedule'   && <RescheduleTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'book-trial'   && <BookTrialModal   lead={modal.lead} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'payment-link' && <PaymentLinkModal
+        trial={modal.trial}
+        customer={modal.customer}
+        onClose={() => setModal(null)}
+        getAuthHeaders={getAuthHeaders}
+      />}
       {modal?.type === 'followup'     && <FollowupModal    entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'notes'        && <NotesModal       entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'delete'       && <DeleteConfirmModal entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
@@ -660,6 +668,11 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
                   data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
                   <Sparkles className="w-3 h-3" /> Convert
                 </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('payment-link', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  data-testid={`row-trial-paylink-${r.trial_ref}`} title="Copy Payment Link">
+                  <LinkIcon className="w-3 h-3" /> Pay Link
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('reschedule', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center gap-1"
                   data-testid={`row-reschedule-${r.trial_ref}`} title="Reschedule">
@@ -800,6 +813,11 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) =
                   className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-renew-${r.subscription_ref}`} title="Renew">
                   <RotateCcw className="w-3 h-3" /> Renewed
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onAction('payment-link', r); }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  data-testid={`row-renewal-paylink-${r.subscription_ref}`} title="Copy Payment Link">
+                  <LinkIcon className="w-3 h-3" /> Pay Link
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
@@ -3282,6 +3300,159 @@ const ImportCustomersModal = ({ onClose, onImported, getAuthHeaders }) => {
   );
 };
 
+
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAYMENT LINK MODAL — generates a Cashfree checkout link for a specific
+// child (from a trial or an existing renewal subscription) with an
+// optional discount %. The link is shareable via WhatsApp so parents can
+// pay from their own device without re-entering child / age / batch info.
+// ═══════════════════════════════════════════════════════════════════════
+const PaymentLinkModal = ({ trial, customer, onClose, getAuthHeaders }) => {
+  const entity = trial || customer;
+  const [plan, setPlan] = useState('monthly');
+  const [discount, setDiscount] = useState(0);
+  const [generating, setGenerating] = useState(false);
+  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const PLAN_PRICES = { monthly: 2500, half_yearly: 13500, yearly: 24000 };
+  const grossAmount = PLAN_PRICES[plan] || 0;
+  const netAmount = Math.round(grossAmount * (1 - (discount || 0) / 100));
+
+  const generate = async () => {
+    setGenerating(true);
+    setResult(null);
+    try {
+      const body = {
+        plan,
+        discount_pct: Number(discount) || 0,
+      };
+      if (trial)    body.trial_id        = trial.id;
+      if (customer) body.subscription_id = customer.id;
+      const r = await axios.post(`${API}/admin/future-skills/payment-link`, body, { headers: getAuthHeaders() });
+      setResult(r.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to generate link');
+    } finally { setGenerating(false); }
+  };
+
+  const copyLink = async () => {
+    if (!result?.payment_link) return;
+    try {
+      await navigator.clipboard.writeText(result.payment_link);
+      setCopied(true);
+      toast.success('Payment link copied');
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.error('Copy failed — long-press the link to copy manually');
+    }
+  };
+
+  const shareOnWhatsApp = () => {
+    if (!result?.payment_link) return;
+    const student = entity?.student_name || 'your child';
+    const msg = encodeURIComponent(
+      `Hi! Here's the payment link for ${student}'s Future Skills enrolment (${result.plan_label} · ₹${result.amount}):\n\n${result.payment_link}\n\n— Team OLL`
+    );
+    const phone = (entity?.parent_phone || '').replace(/\D/g, '').slice(-10);
+    const url = phone ? `https://wa.me/91${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+    window.open(url, '_blank', 'noopener');
+  };
+
+  return (
+    <Modal title="Custom Payment Link" onClose={onClose} testid="payment-link-modal">
+      {/* Child summary — batch/centre already known, no picker needed */}
+      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 mb-4">
+        <div className="text-[10px] uppercase tracking-widest text-blue-700 font-bold">For</div>
+        <div className="font-black text-[#0F1E33]">{entity?.student_name || '—'}</div>
+        <div className="text-xs text-slate-600 mt-0.5">
+          {entity?.age_group ? `${entity.age_group} yrs · ` : ''}
+          {entity?.center_name || entity?.preferred_center || '—'}
+          {entity?.batch_name ? ` · ${entity.batch_name}` : ''}
+        </div>
+        {entity?.parent_phone && (
+          <div className="text-[11px] text-slate-500 mt-0.5">Parent: {entity.parent_phone}</div>
+        )}
+      </div>
+
+      <Label>Plan *</Label>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {[
+          { key: 'monthly',     label: 'Monthly',     sub: '₹2,500/mo' },
+          { key: 'half_yearly', label: 'Half Yearly', sub: '₹13,500' },
+          { key: 'yearly',      label: 'Yearly',      sub: '₹24,000' },
+        ].map(p => (
+          <button key={p.key} type="button" onClick={() => setPlan(p.key)}
+            className={`p-2.5 rounded-xl border-2 text-left transition-all ${
+              plan === p.key ? 'border-[#1E3A5F] bg-blue-50/40 shadow-sm' : 'border-slate-200 hover:border-slate-300'
+            }`}
+            data-testid={`paylink-plan-${p.key}`}>
+            <div className="text-xs font-black text-[#0F1E33]">{p.label}</div>
+            <div className="text-[11px] text-slate-500">{p.sub}</div>
+          </button>
+        ))}
+      </div>
+
+      <Label>Discount %</Label>
+      <div className="grid grid-cols-6 gap-1.5 mb-2">
+        {[0, 5, 10, 15, 20, 25].map(pct => (
+          <button key={pct} type="button" onClick={() => setDiscount(pct)}
+            className={`text-xs py-2 rounded-lg font-bold ${
+              Number(discount) === pct ? 'bg-[#D63031] text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            }`}
+            data-testid={`paylink-discount-${pct}`}>
+            {pct}%
+          </button>
+        ))}
+      </div>
+      <input type="number" min="0" max="90" value={discount}
+        onChange={e => setDiscount(Math.max(0, Math.min(90, Number(e.target.value) || 0)))}
+        placeholder="Custom % (0-90)"
+        className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+        data-testid="paylink-discount-input" />
+
+      <div className="mt-4 p-3 bg-slate-50 rounded-xl flex items-center justify-between" data-testid="paylink-amount-preview">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">You&apos;ll charge</div>
+          <div className="text-2xl font-black text-[#0F1E33]">
+            ₹{netAmount.toLocaleString()}
+            {Number(discount) > 0 && (
+              <span className="text-sm text-slate-400 font-semibold ml-2 line-through">₹{grossAmount.toLocaleString()}</span>
+            )}
+          </div>
+        </div>
+        <button onClick={generate} disabled={generating}
+          className="text-xs px-4 py-2.5 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5 disabled:opacity-60"
+          data-testid="paylink-generate-btn">
+          {generating ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating…</> : <><LinkIcon className="w-3.5 h-3.5" /> Generate link</>}
+        </button>
+      </div>
+
+      {result && (
+        <div className="mt-4 p-3 border-2 border-emerald-200 bg-emerald-50/60 rounded-xl" data-testid="paylink-result">
+          <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-bold mb-1">Payment link</div>
+          <div className="text-xs font-mono break-all text-slate-700 bg-white rounded-lg p-2 border border-emerald-100">
+            {result.payment_link}
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button onClick={copyLink}
+              className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+              data-testid="paylink-copy-btn">
+              {copied ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy Link</>}
+            </button>
+            <button onClick={shareOnWhatsApp}
+              className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
+              data-testid="paylink-whatsapp-btn">
+              Share on WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
 
 
 

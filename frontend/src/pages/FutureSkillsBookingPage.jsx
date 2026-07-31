@@ -174,20 +174,57 @@ const FutureSkillsBookingPage = () => {
     }
   };
 
-  // ── Subscribe mode (legacy full form — untouched below) ───────────────
+  // ── Subscribe mode ────────────────────────────────────────────────────
+  // Fields kept minimal by design: phone identifies the parent, student
+  // name + age group + centre + batch are enough for the CRM to route the
+  // enrolment. Full profile (parent name, email, grade) is captured during
+  // onboarding after payment.
   const [plan, setPlan] = useState(params.get('plan') === 'monthly' ? 'monthly' : 'yearly');
   const [subForm, setSubForm] = useState({
-    parent_name: '', parent_phone: '', parent_email: '',
-    student_name: '', student_grade: '',
-    preferred_center: '', notes: '',
+    parent_phone: '',
+    student_name: '',
+    age_group: '',
+    center_id: '',
+    batch_id: '',
+    notes: '',
   });
   const upd = (k, v) => setSubForm(prev => ({ ...prev, [k]: v }));
+
+  // Reuse the centres/batches state from the trial wizard — same public
+  // endpoints, just fetch on mount when we render the subscribe form.
+  useEffect(() => {
+    if (mode !== 'subscribe') return;
+    if (centers.length === 0 && !loadingCenters) {
+      setLoadingCenters(true);
+      axios.get(`${API}/future-skills/centers`).then(r => setCenters(r.data?.centers || [])).catch(() => {}).finally(() => setLoadingCenters(false));
+    }
+    if (allBatches.length === 0 && !loadingBatches) {
+      setLoadingBatches(true);
+      axios.get(`${API}/future-skills/batches`).then(r => setAllBatches(r.data?.batches || [])).catch(() => {}).finally(() => setLoadingBatches(false));
+    }
+  }, [mode, centers.length, allBatches.length, loadingCenters, loadingBatches]);
+
+  const subCentres = useMemo(() => {
+    if (!subForm.age_group) return centers;
+    if (allBatches.length === 0) return centers;
+    const centreIds = new Set(
+      allBatches.filter(b => !b.age_group || b.age_group === subForm.age_group).map(b => b.center_id)
+    );
+    return centers.filter(c => centreIds.has(c.id));
+  }, [centers, allBatches, subForm.age_group]);
+  const subBatches = useMemo(() => {
+    if (!subForm.center_id) return [];
+    return allBatches
+      .filter(b => b.center_id === subForm.center_id)
+      .filter(b => !subForm.age_group || !b.age_group || b.age_group === subForm.age_group);
+  }, [allBatches, subForm.center_id, subForm.age_group]);
+
   const validSub = () => {
-    if (!subForm.parent_name.trim()) return 'Parent name is required';
     if (!isValidPhone(subForm.parent_phone)) return 'Enter a valid 10-digit phone';
-    if (!/^\S+@\S+\.\S+$/.test(subForm.parent_email)) return 'Enter a valid email';
     if (!subForm.student_name.trim()) return 'Student name is required';
-    if (!subForm.student_grade) return 'Select student grade';
+    if (!subForm.age_group) return "Pick your child's age group";
+    if (!subForm.center_id) return 'Please pick a centre';
+    if (!subForm.batch_id) return 'Please pick a batch';
     return null;
   };
   const handleSubscribe = async () => {
@@ -216,8 +253,8 @@ const FutureSkillsBookingPage = () => {
       setSubmitting(false);
     }
   };
-  const PRICE = { monthly: 2000, yearly: 21000 };
-  const PRICE_DISPLAY = { monthly: '₹2,000/mo', yearly: '₹1,750/mo · ₹21,000/yr' };
+  const PRICE = { monthly: 2500, yearly: 24000 };
+  const PRICE_DISPLAY = { monthly: '₹2,500/mo', yearly: '₹2,000/mo · ₹24,000/yr' };
 
   useSeo({
     title: `${mode === 'trial' ? 'Book Free Trial' : 'Subscribe'} · Future Skills | OLL`,
@@ -507,21 +544,46 @@ const FutureSkillsBookingPage = () => {
                 <p className="text-sm text-slate-500 mt-1">Cancel anytime. Robotic kit free with yearly.</p>
               </div>
               <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-xl">
-                {[{ key: 'monthly', label: 'Monthly · ₹2,000/mo' }, { key: 'yearly', label: 'Yearly · Save ₹3,000 + Free Kit' }].map(p => (
+                {[{ key: 'monthly', label: 'Monthly · ₹2,500/mo' }, { key: 'yearly', label: 'Yearly · ₹2,000/mo + Free Kit' }].map(p => (
                   <button type="button" key={p.key} onClick={() => setPlan(p.key)}
                     className={`text-xs px-3 py-2.5 rounded-lg font-bold ${plan === p.key ? 'bg-white text-[#0F1E33] shadow' : 'text-slate-500 hover:text-slate-700'}`}
                     data-testid={`plan-toggle-${p.key}`}>{p.label}</button>
                 ))}
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Parent Name *"><input value={subForm.parent_name} onChange={e => upd('parent_name', e.target.value)} className="fs-input" required data-testid="parent-name-input" /></Field>
                 <Field label="Phone *"><input type="tel" value={subForm.parent_phone} onChange={e => upd('parent_phone', e.target.value)} className="fs-input" required data-testid="parent-phone-input" /></Field>
-                <Field label="Email *" className="sm:col-span-2"><input type="email" value={subForm.parent_email} onChange={e => upd('parent_email', e.target.value)} className="fs-input" required data-testid="parent-email-input" /></Field>
                 <Field label="Student Name *"><input value={subForm.student_name} onChange={e => upd('student_name', e.target.value)} className="fs-input" required data-testid="student-name-input" /></Field>
-                <Field label="Grade *">
-                  <select value={subForm.student_grade} onChange={e => upd('student_grade', e.target.value)} className="fs-input" required data-testid="student-grade-input">
-                    <option value="">Select grade…</option>
-                    {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                <Field label="Age Group *" className="sm:col-span-2">
+                  <div className="grid grid-cols-3 gap-2" data-testid="sub-age-list">
+                    {[
+                      { value: '3-7',   label: '3 – 7 yrs',   emoji: '🎨' },
+                      { value: '8-11',  label: '8 – 11 yrs',  emoji: '🤖' },
+                      { value: '12-16', label: '12 – 16 yrs', emoji: '🚀' },
+                    ].map(a => (
+                      <button key={a.value} type="button"
+                        onClick={() => { upd('age_group', a.value); upd('center_id', ''); upd('batch_id', ''); }}
+                        className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-0.5 ${
+                          subForm.age_group === a.value
+                            ? 'border-[#D63031] bg-red-50/40 shadow-sm'
+                            : 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
+                        }`}
+                        data-testid={`sub-age-${a.value}`}>
+                        <div className="text-xl">{a.emoji}</div>
+                        <div className="font-bold text-xs text-[#0F1E33]">{a.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Centre *">
+                  <select value={subForm.center_id} onChange={e => { upd('center_id', e.target.value); upd('batch_id', ''); }} className="fs-input" required data-testid="sub-center-input">
+                    <option value="">{loadingCenters ? 'Loading centres…' : 'Select centre…'}</option>
+                    {subCentres.map(c => <option key={c.id} value={c.id}>{c.name}{c.city ? ` · ${c.city}` : ''}</option>)}
+                  </select>
+                </Field>
+                <Field label="Batch *">
+                  <select value={subForm.batch_id} onChange={e => upd('batch_id', e.target.value)} className="fs-input" required disabled={!subForm.center_id} data-testid="sub-batch-input">
+                    <option value="">{!subForm.center_id ? 'Pick a centre first' : loadingBatches ? 'Loading batches…' : subBatches.length === 0 ? 'No batches for this age group' : 'Select batch…'}</option>
+                    {subBatches.map(b => <option key={b.id} value={b.id}>{b.name}{b.days?.length ? ' · ' + b.days.join('/') : ''}{b.time ? ' · ' + b.time : ''}</option>)}
                   </select>
                 </Field>
               </div>
