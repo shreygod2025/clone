@@ -6,7 +6,7 @@ import {
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
   Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
   Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
-  Link2 as LinkIcon, Copy, Eye, FileText, HelpCircle,
+  Link2 as LinkIcon, Copy, Eye, FileText, UserX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -24,7 +24,6 @@ const TABS = [
   { key: 'centers',         label: 'Centres & Batches', icon: MapPin },
   { key: 'sources',         label: 'Source Links',     icon: LinkIcon },
   { key: 'economics',       label: 'Centre Economics', icon: IndianRupee },
-  { key: 'support-queries', label: 'Support Queries',  icon: HelpCircle },
   { key: 'reports',         label: 'Reports',          icon: BarChart3 },
 ];
 
@@ -136,7 +135,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
-    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics' || tab === 'support-queries') { setRows([]); setStats(null); return; }
+    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -240,26 +239,6 @@ const AdminFutureSkills = () => {
   // Centre Economics gate: admins, centre owners, or holders of the
   // dedicated sub-permission.
   const canSeeEconomics = isAdminRole || isCenterOwner || userPerms.includes('future_skills.economics');
-  // Support Queries tab is aimed at centre owners so they can see help
-  // tickets routed to them; admins also get it for oversight.
-  const canSeeSupportQueries = isAdminRole || isCenterOwner;
-  const [supportQueryCount, setSupportQueryCount] = useState(0);
-
-  // Poll the "assigned to me" count for the badge (only if the tab is visible)
-  useEffect(() => {
-    if (!canSeeSupportQueries) return;
-    const fetchCount = () => {
-      axios.get(`${API}/support/queries?my_tickets=true`, { headers: getAuthHeaders() })
-        .then(r => {
-          const open = (r.data || []).filter(q => (q.status || '').toLowerCase() !== 'closed').length;
-          setSupportQueryCount(open);
-        })
-        .catch(() => {});
-    };
-    fetchCount();
-    const t = setInterval(fetchCount, 60000);
-    return () => clearInterval(t);
-  }, [canSeeSupportQueries, getAuthHeaders]);
 
   // If the tab was auto-set to something the user can't see, bounce them home.
   useEffect(() => {
@@ -286,7 +265,6 @@ const AdminFutureSkills = () => {
             {TABS.filter(t => {
               if (isCenterOwner && (t.key === 'centers' || t.key === 'sources')) return false;
               if (t.key === 'economics' && !canSeeEconomics) return false;
-              if (t.key === 'support-queries' && !canSeeSupportQueries) return false;
               return true;
             }).map(t => {
               const badge =
@@ -295,7 +273,6 @@ const AdminFutureSkills = () => {
                 : t.key === 'customers' ? tabStats?.customers
                 : t.key === 'renewals' ? tabStats?.renewals
                 : t.key === 'lost'    ? tabStats?.lost
-                : t.key === 'support-queries' ? supportQueryCount
                 : 0;
               return (
                 <button key={t.key}
@@ -316,8 +293,8 @@ const AdminFutureSkills = () => {
           </div>
         </div>
 
-        {/* Toolbar (hidden for Centres / Reports / Sources / Economics / Support Queries tabs) */}
-        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && tab !== 'support-queries' && (
+        {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs) */}
+        {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           {/* Left: primary actions per tab */}
           {tab === 'leads' && (
@@ -408,8 +385,6 @@ const AdminFutureSkills = () => {
           <SourceLinksPanel getAuthHeaders={getAuthHeaders} />
         ) : tab === 'economics' ? (
           <CentreEconomicsPanel getAuthHeaders={getAuthHeaders} />
-        ) : tab === 'support-queries' ? (
-          <SupportQueriesPanel getAuthHeaders={getAuthHeaders} onCountChange={setSupportQueryCount} />
         ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {loading && rows.length === 0 ? (
@@ -1473,19 +1448,75 @@ const RenewModal = ({ customer, onClose, onSaved, getAuthHeaders }) => {
   );
 };
 
+// Common reasons users pick when marking a lead / trial / customer as
+// lost. Kept as separate lists per entity type so the dropdown always
+// shows the most relevant options first. Adding "Other" reveals a free-
+// text input so the reason field never traps a user with no fit.
+const LOST_REASON_OPTIONS = {
+  lead: [
+    'Not interested',
+    'Wrong contact / spam',
+    'Duplicate lead',
+    'Budget concerns',
+    'Age not fit',
+    'Wants offline only',
+    'Wrong location',
+    'Went with a competitor',
+    'No response after multiple follow-ups',
+    'Timing not right',
+    'Other',
+  ],
+  trial: [
+    'No-show at trial',
+    'Attended but not interested',
+    'Child not engaged',
+    'Parent not convinced',
+    'Budget concerns',
+    'Timing / schedule conflict',
+    'Prefers a different subject',
+    'Went with a competitor',
+    'No response after multiple follow-ups',
+    'Other',
+  ],
+  customer: [
+    'Course completed, not renewing',
+    'Budget / financial reason',
+    'Child lost interest',
+    'Schedule / timing conflict',
+    'Moved location',
+    'Not satisfied with progress',
+    'Not satisfied with teacher',
+    'Switched to a competitor',
+    'Health / personal reason',
+    'Other',
+  ],
+};
+
 const MarkLostModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders }) => {
-  const [reason, setReason] = useState('');
+  const options = LOST_REASON_OPTIONS[entityType] || LOST_REASON_OPTIONS.lead;
+  const [selectedReason, setSelectedReason] = useState('');
+  const [otherReason, setOtherReason] = useState('');
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!reason.trim()) { toast.error('Please provide a reason'); return; }
+    // "Other" reveals free-text; every other option is used verbatim.
+    const finalReason = selectedReason === 'Other'
+      ? otherReason.trim()
+      : selectedReason;
+    if (!finalReason) {
+      toast.error(selectedReason ? 'Please add a note for "Other"' : 'Please pick a reason');
+      return;
+    }
     setSaving(true);
     try {
       let path = '';
       if (entityType === 'lead')     path = `leads/${entity.id}/mark-lost`;
       if (entityType === 'trial')    path = `trials/${entity.id}/mark-lost`;
       if (entityType === 'customer') path = `customers/${entity.id}/mark-lost`;
-      await axios.post(`${API}/admin/future-skills/${path}`, { reason: reason.trim() }, { headers: getAuthHeaders() });
+      await axios.post(`${API}/admin/future-skills/${path}`, {
+        reason:          finalReason,
+        reason_category: selectedReason,   // preserve the picked category
+      }, { headers: getAuthHeaders() });
       toast.success('Marked as lost');
       onSaved();
     } catch (e) {
@@ -1501,7 +1532,33 @@ const MarkLostModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders })
         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
         <div>This entry will move to the Lost tab. You can still see it and its history there.</div>
       </div>
-      <TextAreaField label="Reason for loss (required)" value={reason} onChange={setReason} testid="lost-reason-input" />
+      <div>
+        <Label>Reason for loss *</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" data-testid="lost-reason-options">
+          {options.map(opt => (
+            <button key={opt} type="button"
+              onClick={() => setSelectedReason(opt)}
+              className={`text-xs px-3 py-2 rounded-lg border font-semibold text-left transition-all ${
+                selectedReason === opt
+                  ? 'bg-rose-50 border-rose-300 text-rose-700 ring-2 ring-rose-200'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+              data-testid={`lost-reason-${opt.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+      {selectedReason === 'Other' && (
+        <div className="mt-3">
+          <TextAreaField
+            label="Tell us more (required for Other)"
+            value={otherReason}
+            onChange={setOtherReason}
+            testid="lost-reason-other-input"
+          />
+        </div>
+      )}
       <button onClick={submit} disabled={saving}
         className="mt-4 w-full py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-lost-btn">
@@ -2243,7 +2300,7 @@ const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
   }
   if (!data) return null;
 
-  const { funnel, source_breakdown = [], batches = [], revenue = { total: 0, students: 0, per_student: 0, by_plan: [] } } = data;
+  const { funnel, source_breakdown = [], batches = [], revenue = { total: 0, students: 0, per_student: 0, by_plan: [] }, lost = { leads: { total: 0, by_reason: [] }, customers: { total: 0, by_reason: [] }, trials: { total: 0, by_reason: [] } } } = data;
   const totalLeadSource = source_breakdown.reduce((s, r) => s + r.count, 0) || 1;
   const revenueByPlan = revenue.by_plan || [];
   const totalPlanCount = revenueByPlan.reduce((s, p) => s + (p.count || 0), 0) || 1;
@@ -2328,14 +2385,15 @@ const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold mb-3">Conversion Funnel</div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {kpi.leads
               ? <FunnelStep label="Leads" value={funnel.leads} accent="#1E3A5F" icon={Users} />
               : <FunnelStep label="Leads" value="—" accent="#94A3B8" icon={Users} />}
             <FunnelStep label="Free Trials" value={funnel.trials} accent="#3B82F6" icon={Calendar} />
             <FunnelStep label="Active Customers" value={funnel.customers} accent="#16A34A" icon={Sparkles} />
+            <FunnelStep label="Renewals" value={funnel.renewals ?? 0} accent="#8B5CF6" icon={RotateCcw} />
           </div>
-          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             {kpi.lead_to_trial
               ? <RateBadge label="Lead → Trial" pct={funnel.lead_to_trial_rate} />
               : <div className="rounded-lg bg-slate-50 border border-slate-100 p-2"><div className="text-lg font-black text-slate-300">—</div><div className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Lead → Trial</div></div>}
@@ -2345,6 +2403,7 @@ const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
             {(kpi.leads && kpi.trial_to_paid)
               ? <RateBadge label="Lead → Customer" pct={funnel.lead_to_customer_rate} />
               : <div className="rounded-lg bg-slate-50 border border-slate-100 p-2"><div className="text-lg font-black text-slate-300">—</div><div className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Lead → Customer</div></div>}
+            <RateBadge label="Customer → Renewed" pct={funnel.customer_to_renewed_rate ?? 0} />
           </div>
         </div>
 
@@ -2425,6 +2484,72 @@ const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
           </div>
         )}
       </div>
+
+      {/* Lost breakdowns — leads & customers with reason charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <LostReasonPanel
+          title="Lost Leads"
+          subtitle="Why leads didn't convert"
+          data={lost.leads || { total: 0, by_reason: [] }}
+          accent="#D63031"
+          icon={UserX}
+          testid="lost-leads-panel"
+        />
+        <LostReasonPanel
+          title="Lost Customers"
+          subtitle="Why customers left"
+          data={lost.customers || { total: 0, by_reason: [] }}
+          accent="#8B5CF6"
+          icon={XCircle}
+          testid="lost-customers-panel"
+        />
+      </div>
+    </div>
+  );
+};
+
+// Reusable panel that renders a "Lost X" tile with total + horizontal bar
+// chart for the top reasons. Empty-state is a friendly single line so the
+// section never looks broken when the collection has zero lost rows.
+const LostReasonPanel = ({ title, subtitle, data, accent, icon: Icon, testid }) => {
+  const rows = (data?.by_reason || []).slice(0, 8);
+  const total = data?.total || 0;
+  const max   = rows.reduce((m, r) => Math.max(m, r.count || 0), 0) || 1;
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid={testid}>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-1.5">
+            <Icon className="w-3.5 h-3.5" /> {title}
+          </div>
+          <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-black" style={{ color: accent }}>{total}</div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">total lost</div>
+        </div>
+      </div>
+      {rows.length === 0 ? (
+        <div className="py-10 text-center text-slate-400 text-sm">No losses logged in this period.</div>
+      ) : (
+        <div className="space-y-2.5">
+          {rows.map(row => {
+            const pct = Math.round((row.count / total) * 100);
+            const bar = Math.round((row.count / max) * 100);
+            return (
+              <div key={row.reason} data-testid={`${testid}-row-${row.reason.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#0F1E33] truncate max-w-[70%]" title={row.reason}>{row.reason}</span>
+                  <span className="text-slate-500 font-semibold whitespace-nowrap">{row.count} · {pct}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${bar}%`, background: accent }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -3153,150 +3278,6 @@ const ImportCustomersModal = ({ onClose, onImported, getAuthHeaders }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════
-// SUPPORT QUERIES PANEL — surfaces /api/support tickets routed to the
-// current user. For fs_center_owner logins these are queries an admin has
-// assigned to their centre via /api/support/queries/{id}/assign.
-// ═══════════════════════════════════════════════════════════════════════
-const SupportQueriesPanel = ({ getAuthHeaders, onCountChange }) => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('open');
-  const [selected, setSelected] = useState(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await axios.get(`${API}/support/queries?my_tickets=true`, { headers: getAuthHeaders() });
-      setRows(r.data || []);
-      const open = (r.data || []).filter(q => (q.status || '').toLowerCase() !== 'closed').length;
-      onCountChange && onCountChange(open);
-    } catch (e) {
-      toast.error(e.response?.data?.detail || 'Failed to load queries');
-    } finally { setLoading(false); }
-  }, [getAuthHeaders, onCountChange]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = rows.filter(q => {
-    const s = (q.status || '').toLowerCase();
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'open') return s !== 'closed';
-    return s === statusFilter;
-  });
-
-  const updateStatus = async (id, status) => {
-    try {
-      await axios.patch(`${API}/support/queries/${id}`, { status }, { headers: getAuthHeaders() });
-      toast.success(`Marked ${status}`);
-      load();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || 'Update failed');
-    }
-  };
-
-  if (loading && rows.length === 0) {
-    return <div className="p-12 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading queries…</div>;
-  }
-
-  return (
-    <div className="space-y-4" data-testid="support-queries-panel">
-      <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
-        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Filter</span>
-        {['open', 'in_progress', 'closed', 'all'].map(s => (
-          <button key={s} onClick={() => setStatusFilter(s)}
-            className={`text-xs px-3 py-1.5 rounded-lg font-bold ${statusFilter === s ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-            data-testid={`support-status-${s}`}>
-            {s === 'in_progress' ? 'In Progress' : s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-        <div className="ml-auto text-xs text-slate-500">{filtered.length} of {rows.length} queries</div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400" data-testid="support-empty">
-          <HelpCircle className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-          <div className="font-bold text-sm">No queries routed to you yet</div>
-          <div className="text-xs mt-1">Support tickets assigned to your login will show up here.</div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-                <tr>
-                  <Th>Ticket</Th>
-                  <Th>Type · Detail</Th>
-                  <Th>From</Th>
-                  <Th>Status</Th>
-                  <Th>Deadline</Th>
-                  <Th className="text-right">Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(q => (
-                  <tr key={q.id} className="border-t border-slate-100 hover:bg-blue-50/40" data-testid={`support-row-${q.ticket_number || q.id}`}>
-                    <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => setSelected(q)}>#{q.ticket_number || q.id.slice(0, 8)}</td>
-                    <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(q)}>
-                      <div className="font-bold text-[#0F1E33] text-xs">{q.query_type || q.type || 'Support Request'}</div>
-                      <div className="text-[11px] text-slate-500 line-clamp-2 max-w-md">{q.message || q.query || q.query_details || '—'}</div>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <div className="font-semibold text-slate-700">{q.name || q.created_by_name || '—'}</div>
-                      <div className="text-[11px] text-slate-500">{q.phone || q.email || ''}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
-                        (q.status || '').toLowerCase() === 'closed'      ? 'bg-slate-100 text-slate-600' :
-                        (q.status || '').toLowerCase() === 'in_progress' ? 'bg-amber-100 text-amber-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>{(q.status || 'open').toUpperCase()}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-700">{q.deadline ? fmtDateTime(q.deadline) : '—'}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {(q.status || '').toLowerCase() !== 'in_progress' && (q.status || '').toLowerCase() !== 'closed' && (
-                        <button onClick={() => updateStatus(q.id, 'in_progress')}
-                          className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold mr-1"
-                          data-testid={`support-take-${q.id}`}>Take</button>
-                      )}
-                      {(q.status || '').toLowerCase() !== 'closed' && (
-                        <button onClick={() => updateStatus(q.id, 'closed')}
-                          className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold"
-                          data-testid={`support-close-${q.id}`}>Close</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {selected && (
-        <Modal title={`Ticket #${selected.ticket_number || selected.id.slice(0, 8)}`} onClose={() => setSelected(null)} testid="support-detail-modal">
-          <div className="space-y-3 text-sm">
-            <Detail label="Type" value={selected.query_type || selected.type || 'Support Request'} />
-            <div>
-              <Label>Message</Label>
-              <div className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
-                {selected.message || selected.query || selected.query_details || '—'}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Detail label="From"     value={selected.name || selected.created_by_name || '—'} />
-              <Detail label="Phone"    value={selected.phone || '—'} />
-              <Detail label="Email"    value={selected.email || '—'} />
-              <Detail label="Status"   value={(selected.status || 'open').toUpperCase()} />
-              <Detail label="Priority" value={(selected.priority || '—').toUpperCase()} />
-              <Detail label="Deadline" value={selected.deadline ? fmtDateTime(selected.deadline) : '—'} />
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-};
 
 
 

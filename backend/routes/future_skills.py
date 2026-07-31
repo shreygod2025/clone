@@ -907,6 +907,7 @@ async def admin_delete_lead(lead_id: str, user: dict = Depends(get_current_user)
 
 class MarkLostBody(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)
+    reason_category: Optional[str] = Field(default="", max_length=120)
 
 
 @router.post("/admin/future-skills/leads/{lead_id}/mark-lost")
@@ -918,6 +919,7 @@ async def admin_lead_mark_lost(lead_id: str, data: MarkLostBody, user: dict = De
         {"$set": {
             "status": "lost",
             "lost_reason": data.reason.strip(),
+            "lost_reason_category": (data.reason_category or "").strip(),
             "lost_at": _now_iso(),
             "lost_by": user.get("email"),
             "updated_at": _now_iso(),
@@ -1414,6 +1416,7 @@ async def admin_trial_mark_lost(trial_id: str, data: MarkLostBody, user: dict = 
             "crm_status": "lost",
             "trial_status": "lost",
             "lost_reason": data.reason.strip(),
+            "lost_reason_category": (data.reason_category or "").strip(),
             "lost_at": _now_iso(),
             "lost_by": user.get("email"),
             "updated_at": _now_iso(),
@@ -1655,6 +1658,7 @@ async def admin_customer_mark_lost(sub_id: str, data: MarkLostBody, user: dict =
         {"$set": {
             "crm_status": "lost",
             "lost_reason": data.reason.strip(),
+            "lost_reason_category": (data.reason_category or "").strip(),
             "lost_at": _now_iso(),
             "lost_by": user.get("email"),
             "updated_at": _now_iso(),
@@ -2307,6 +2311,48 @@ async def admin_future_skills_reports(
     )
     customers_active = await db.future_skills_subscriptions.count_documents(active_sub_q)
 
+    # ── Renewals (active subs that renewed within the period) ────────
+    # A renewal is any subscription whose `renewed_at` timestamp falls
+    # inside the current period. Same doc can appear multiple times over
+    # its lifetime (via `renewal_history[]`) but for the funnel we count
+    # the latest renewal only — matching the Renewals tab.
+    renewal_q: dict = {}
+    if effective_cid:
+        renewal_q["center_id"] = effective_cid
+    if month_start:
+        renewal_q["renewed_at"] = {"$gte": _iso(month_start), "$lt": _iso(month_end)}
+    else:
+        renewal_q["renewed_at"] = {"$exists": True, "$ne": None}
+    renewals_count = await db.future_skills_subscriptions.count_documents(renewal_q)
+
+    # ── Lost breakdowns (leads + trials + customers) ─────────────────
+    async def _lost_breakdown(collection, status_field: str, extra_q: dict) -> dict:
+        base = {**extra_q, status_field: "lost"}
+        if month_start:
+            base["lost_at"] = {"$gte": _iso(month_start), "$lt": _iso(month_end)}
+        total = await collection.count_documents(base)
+        pipeline = [
+            {"$match": base},
+            {"$group": {
+                "_id": {
+                    "$ifNull": [
+                        "$lost_reason_category",
+                        {"$ifNull": ["$lost_reason", "Unspecified"]},
+                    ]
+                },
+                "count": {"$sum": 1},
+            }},
+            {"$sort": {"count": -1}},
+        ]
+        rows = []
+        async for r in collection.aggregate(pipeline):
+            rows.append({"reason": (r["_id"] or "Unspecified"), "count": r.get("count", 0)})
+        return {"total": total, "by_reason": rows}
+
+    lost_leads     = await _lost_breakdown(db.future_skills_leads,         "status",     lead_q  if lead_q  else {})
+    lost_trials    = await _lost_breakdown(db.future_skills_trials,        "crm_status", trial_q if trial_q else {})
+    lost_customers = await _lost_breakdown(db.future_skills_subscriptions, "crm_status", {"center_id": effective_cid} if effective_cid else {})
+
     def pct(n: int, d: int) -> float:
         return round((n / d) * 100, 1) if d > 0 else 0.0
 
@@ -2314,9 +2360,11 @@ async def admin_future_skills_reports(
         "leads": leads_total,
         "trials": trials_total,
         "customers": customers_active,
-        "lead_to_trial_rate":     pct(leads_converted + trials_total, leads_total),
-        "trial_to_customer_rate": pct(customers_active, trials_total),
-        "lead_to_customer_rate":  pct(customers_active, leads_total),
+        "renewals": renewals_count,
+        "lead_to_trial_rate":       pct(leads_converted + trials_total, leads_total),
+        "trial_to_customer_rate":   pct(customers_active, trials_total),
+        "lead_to_customer_rate":    pct(customers_active, leads_total),
+        "customer_to_renewed_rate": pct(renewals_count, customers_active),
     }
 
     # ── Source breakdown (for leads in period) ────────────────────────
@@ -2421,6 +2469,11 @@ async def admin_future_skills_reports(
             "cost": round(total_fs_cost, 2),
             "profit": round(fs_profit, 2),
             "profit_margin_pct": profit_margin_pct,
+        },
+        "lost": {
+            "leads":     lost_leads,
+            "trials":    lost_trials,
+            "customers": lost_customers,
         },
         "filters": {
             "center_id": effective_cid,

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 
 // Dynamic redirect: /course/:slug → /courses/:slug (fixes indexed GSC URLs)
 const CourseRedirect = () => {
@@ -145,9 +145,11 @@ const ShopPage = lazy(() => import("./pages/ShopPage"));
 const ShopCheckoutPage = lazy(() => import("./pages/ShopCheckoutPage"));
 const ShopSuccessPage = lazy(() => import("./pages/ShopSuccessPage"));
 const AdminShopPanel = lazy(() => import("./pages/admin/AdminShopPanel"));
+const AccessDenied = lazy(() => import("./pages/admin/AccessDenied"));
 
 const ProtectedRoute = ({ children, permission = null }) => {
   const { isAuthenticated, loading, user } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <PageLoader />;
@@ -169,8 +171,15 @@ const ProtectedRoute = ({ children, permission = null }) => {
       return children;
     }
     if (role === 'fs_center_owner') {
-      // Centre owners are locked to Future Skills CRM (matches sidebar)
-      return permission === 'future_skills'
+      // Centre owners have full access only to Future Skills CRM.
+      // BUT they should also be able to use shared admin utilities like
+      // Support Center, My Space, AI Chat & My Team. Anything else routes
+      // back to their Future Skills home.
+      const allowedForOwner = new Set([
+        'future_skills',
+        'support',   // Support Center — user asked centre owners see this too
+      ]);
+      return allowedForOwner.has(permission)
         ? children
         : <Navigate to="/admin/future-skills" replace />;
     }
@@ -179,7 +188,16 @@ const ProtectedRoute = ({ children, permission = null }) => {
       perms.includes(permission) ||
       perms.some(p => p.startsWith(`${permission}.`));
     if (!allowed) {
-      return <Navigate to="/admin" replace />;
+      // Show a real "Access Denied" page instead of a silent redirect —
+      // pass the attempted path & required permission via router state so
+      // the page can tell the user what's missing.
+      return (
+        <Navigate
+          to="/admin/access-denied"
+          state={{ attemptedPath: location.pathname, permission }}
+          replace
+        />
+      );
     }
   }
 
@@ -351,6 +369,7 @@ function App() {
               <Route path="/admin/future-skills" element={<ProtectedRoute permission="future_skills"><AdminFutureSkills /></ProtectedRoute>} />
               <Route path="/admin/broadcasts" element={<ProtectedRoute permission="settings"><AdminBroadcasts /></ProtectedRoute>} />
               <Route path="/admin/shop" element={<ProtectedRoute permission="orders"><AdminShopPanel /></ProtectedRoute>} />
+              <Route path="/admin/access-denied" element={<ProtectedRoute><AccessDenied /></ProtectedRoute>} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               

@@ -2,6 +2,74 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-07-31 · iter115) — Access Denied + Reports Enrichments + Lost Reason Chips 📊
+
+**Bug 1 · Silent redirect → real "Access Denied" page** —
+`ProtectedRoute` used to bounce unauthorised users to `/admin` with no
+explanation. Now it navigates to `/admin/access-denied` with router state
+(`attemptedPath` + required `permission`) so the page can render a
+friendly explanation and a "Go to Dashboard" / "Go back" pair of CTAs.
+New component: `/app/frontend/src/pages/admin/AccessDenied.jsx`.
+
+**Change 2 · Reports funnel now includes Renewals** —
+Backend `/api/admin/future-skills/reports` extended:
+- `funnel.renewals` = count of subscriptions whose `renewed_at` falls in
+  the selected period (or lifetime if no month filter).
+- `funnel.customer_to_renewed_rate` = renewals ÷ active-customers × 100.
+Frontend `ReportsPanel` shows a 4-tile funnel now (Leads / Trials /
+Customers / Renewals) with a matching 4-badge rate row.
+
+**Change 3 · Lost Leads & Lost Customers reason charts** —
+Backend response gains a top-level `lost` block:
+```json
+{ "lost": {
+    "leads":     { "total": N, "by_reason": [{ "reason":"…", "count":N }] },
+    "trials":    { … },
+    "customers": { … }
+} }
+```
+Each block is grouped in a single Mongo aggregate using
+`$ifNull` to fall back through `lost_reason_category` → `lost_reason` →
+`Unspecified`. Frontend renders two `LostReasonPanel` cards (leads +
+customers) with total count + top-8 horizontal bars.
+
+**Change 4 · Predefined dropdown when marking lost** —
+`MarkLostModal` no longer requires free typing. A per-entity list
+(`LOST_REASON_OPTIONS[lead|trial|customer]`) shows clickable chips; the
+"Other" chip reveals the existing textarea. The picked category is sent
+as `reason_category` in the POST body so the reports aggregate stays
+consistent even when users add ad-hoc notes.
+Backend `MarkLostBody` gained `reason_category: Optional[str]`, and all
+three mark-lost handlers now persist `lost_reason_category` alongside
+`lost_reason`.
+
+**Change 5 · Support Queries no longer lives in the Future Skills CRM** —
+Removed the `support-queries` tab, its badge polling, and the
+`SupportQueriesPanel` component (~150 lines) from `AdminFutureSkills.jsx`.
+Centre owners now see **Support Center** in their sidebar (updated
+`AdminDashboard.jsx` role filter to allow `future_skills` + `support` +
+any always-visible utility for `fs_center_owner`). `ProtectedRoute` also
+grants centre owners access to `/admin/support`.
+
+**Testing**:
+- Backend curl confirms: `funnel.renewals=4`, `customer_to_renewed_rate=40%`,
+  `lost.customers.by_reason=[{Cancelled:3}]`, `lost.trials.by_reason=[{Could not schedule:3}]`.
+- Playwright confirms Support Queries tab is absent and both
+  `lost-leads-panel` / `lost-customers-panel` render on Reports.
+
+**Files touched**:
+- `/app/frontend/src/App.js` — Access Denied route + redirect via
+  router state, plus centre-owner support-center allow.
+- `/app/frontend/src/pages/admin/AccessDenied.jsx` — new page.
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` — centre-owner
+  sidebar filter widened.
+- `/app/frontend/src/pages/admin/AdminFutureSkills.jsx` —
+  Renewals funnel step + rate badge, `LostReasonPanel`, `MarkLostModal`
+  rewritten with reason chips, Support Queries tab removed.
+- `/app/backend/routes/future_skills.py` — reports funnel + lost blocks;
+  `MarkLostBody.reason_category`; three mark-lost handlers persist it.
+
+
 ### Latest Update (2026-07-31 · iter114) — Route-level Permission Enforcement 🔒
 
 **Bug reported**: A team user without `orders` permission (sidebar

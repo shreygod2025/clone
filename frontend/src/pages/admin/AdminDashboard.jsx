@@ -52,8 +52,14 @@ const AdminLayout = ({ children, title }) => {
 
   // Filter nav items based on user role and permissions
   const navItems = user?.role === 'fs_center_owner'
-    // Future Skills centre-owner: locked to Future Skills CRM only
-    ? [{ path: '/admin/future-skills', icon: Sparkles, label: 'Future Skills CRM', permission: null }]
+    // Future Skills centre-owner: Future Skills CRM as their home + Support
+    // Center so they can see queries admins route to them, plus the always-
+    // visible utilities (My Space / AI Chat / Success Stories) that carry
+    // permission: null anyway.
+    ? allNavItems.filter(item => {
+        if (item.permission === null) return true;
+        return item.permission === 'future_skills' || item.permission === 'support';
+      })
     : allNavItems.filter(item => {
     // Manager-only items — hidden from non-managers regardless of role
     if (item.requiresManager && !user?.is_manager) return false;
