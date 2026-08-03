@@ -457,6 +457,17 @@ const FutureSkillsBookingPage = () => {
                     ))}
                   </div>
                 )}
+                {/* Escape hatch: parent doesn't see their city — capture as
+                    a batch-request with the typed city so ops can follow up. */}
+                {availableCities.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBatchReq(true)}
+                    className="w-full mt-3 p-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#1E3A5F] text-slate-600 hover:text-[#1E3A5F] text-sm font-bold flex items-center justify-center gap-1.5"
+                    data-testid="city-not-listed-btn">
+                    <MapPin className="w-4 h-4" /> Can&apos;t find your city? Add your city
+                  </button>
+                )}
                 <div className="flex gap-3 mt-6">
                   <button onClick={goPrev}
                     className="px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm flex items-center gap-1.5"
@@ -529,6 +540,17 @@ const FutureSkillsBookingPage = () => {
                       </button>
                     ))}
                   </div>
+                )}
+                {/* Escape hatch on centre step — parent can add their own
+                    area if the centres shown aren't near where they live. */}
+                {centersForCity.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBatchReq(true)}
+                    className="w-full mt-3 p-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#1E3A5F] text-slate-600 hover:text-[#1E3A5F] text-sm font-bold flex items-center justify-center gap-1.5"
+                    data-testid="area-not-listed-btn">
+                    <MapPin className="w-4 h-4" /> No centre in your area? Add your area
+                  </button>
                 )}
 
                 <div className="flex gap-3 mt-6">
@@ -648,13 +670,18 @@ const FutureSkillsBookingPage = () => {
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Preferred time</div>
-                  <div className="grid grid-cols-2 gap-2" data-testid="req-time-slots">
-                    {['Weekday morning', 'Weekday evening', 'Weekend morning', 'Weekend evening'].map(t => (
-                      <button type="button" key={t}
-                        onClick={() => setReqForm(f => ({ ...f, preferred_time: t }))}
-                        className={`text-xs px-3 py-2 rounded-lg font-bold border-2 ${reqForm.preferred_time === t ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400'}`}
-                        data-testid={`req-time-${t.toLowerCase().replace(/\s+/g, '-')}`}>
-                        {t}
+                  <div className="grid grid-cols-3 gap-2" data-testid="req-time-slots">
+                    {[
+                      { key: 'Morning',   sub: '8 AM – 12 PM' },
+                      { key: 'Afternoon', sub: '12 PM – 4 PM' },
+                      { key: 'Evening',   sub: '4 PM – 8 PM' },
+                    ].map(t => (
+                      <button type="button" key={t.key}
+                        onClick={() => setReqForm(f => ({ ...f, preferred_time: t.key }))}
+                        className={`text-xs px-2 py-2 rounded-lg font-bold border-2 flex flex-col items-center leading-tight ${reqForm.preferred_time === t.key ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400'}`}
+                        data-testid={`req-time-${t.key.toLowerCase()}`}>
+                        <span>{t.key}</span>
+                        <span className={`text-[10px] font-semibold mt-0.5 ${reqForm.preferred_time === t.key ? 'text-blue-100' : 'text-slate-400'}`}>{t.sub}</span>
                       </button>
                     ))}
                   </div>
@@ -804,9 +831,13 @@ const BatchCard = ({ batch, selected, onSelect, showCenter }) => {
               {timeText}
             </span>
           </div>
-          {/* Smaller secondary line — batch name/level + pills */}
+          {/* Smaller secondary line — batch difficulty (level) + pills */}
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            {batch.name && <span className="text-xs font-semibold text-slate-500">{batch.name}</span>}
+            {batch.level && (
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1E3A5F]" data-testid={`batch-level-${batch.id}`}>
+                {batch.level}
+              </span>
+            )}
             {batch.skill && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold uppercase tracking-wider">{batch.skill}</span>}
             {isFull && <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold uppercase tracking-wider">Full</span>}
           </div>
