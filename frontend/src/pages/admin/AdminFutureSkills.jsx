@@ -744,9 +744,9 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
               {r.next_followup_date && (
                 <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
-              {r.last_note && (
-                <div className="text-[11px] text-slate-600 mt-1 line-clamp-2 max-w-[220px]" title={r.last_note}>
-                  <span className="font-bold">📝 </span>{r.last_note}
+              {(r.last_note || r.notes) && (
+                <div className="text-[11px] text-slate-600 mt-1 line-clamp-2 max-w-[220px]" title={r.last_note || r.notes} data-testid={`row-trial-note-${r.trial_ref}`}>
+                  <span className="font-bold">📝 </span>{r.last_note || r.notes}
                 </div>
               )}
             </td>
@@ -2155,18 +2155,21 @@ const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const CentersManager = ({ getAuthHeaders }) => {
   const [centers, setCenters] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [batchReqs, setBatchReqs] = useState({ items: [], suggestions: [] });
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null); // {type:'batch'|'login', center?, batch?}
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [cRes, bRes] = await Promise.all([
+      const [cRes, bRes, rRes] = await Promise.all([
         axios.get(`${API}/admin/future-skills/centers`, { headers: getAuthHeaders() }),
         axios.get(`${API}/admin/future-skills/batches`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/admin/future-skills/batch-requests?status=open`, { headers: getAuthHeaders() }).catch(() => ({ data: { items: [], suggestions: [] } })),
       ]);
       setCenters(cRes.data?.centers || []);
       setBatches(bRes.data?.batches || []);
+      setBatchReqs({ items: rRes.data?.items || [], suggestions: rRes.data?.suggestions || [] });
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed to load');
     } finally { setLoading(false); }
@@ -2210,6 +2213,74 @@ const CentersManager = ({ getAuthHeaders }) => {
         <MiniStat icon={Users}     label="Students" value={totalStudents}   accent="#16A34A" active />
         <MiniStat icon={Power}     label="Active batches" value={batches.filter(b => b.is_active).length} accent="#F59E0B" active />
       </div>
+
+      {/* Parent batch-request suggestions (open demand) */}
+      {(batchReqs.suggestions?.length > 0 || batchReqs.items?.length > 0) && (
+        <div className="bg-amber-50/60 border-2 border-amber-100 rounded-2xl p-4" data-testid="batch-requests-panel">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center flex-shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-black text-amber-900">Batch requests from parents</div>
+              <div className="text-[11px] text-amber-800/80">Parents who asked for a different day, time or centre — open one of these batches to convert them.</div>
+            </div>
+            <span className="ml-auto text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-full bg-amber-500 text-white" data-testid="batch-requests-count">
+              {batchReqs.items?.length || 0} open
+            </span>
+          </div>
+
+          {/* Grouped suggestions (centre + age) */}
+          {batchReqs.suggestions?.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-3" data-testid="batch-req-suggestions">
+              {batchReqs.suggestions.slice(0, 6).map((s, i) => (
+                <div key={i} className="bg-white border border-amber-200 rounded-xl p-3 text-xs">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="font-black text-[#0F1E33] truncate">{s.center_name || 'Unknown centre'}</div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">{s.count} parent{s.count === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">Age {s.age_group || '—'}{s.sample_days?.length ? ` · Days: ${s.sample_days.join(', ')}` : ''}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Latest raw requests */}
+          {batchReqs.items?.length > 0 && (
+            <div className="bg-white rounded-xl border border-amber-100 overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-amber-50 text-amber-800">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-bold">Parent</th>
+                    <th className="text-left px-3 py-2 font-bold">Centre</th>
+                    <th className="text-left px-3 py-2 font-bold">Age</th>
+                    <th className="text-left px-3 py-2 font-bold">Wants</th>
+                    <th className="text-right px-3 py-2 font-bold">When</th>
+                  </tr>
+                </thead>
+                <tbody data-testid="batch-req-list">
+                  {batchReqs.items.slice(0, 6).map(r => (
+                    <tr key={r.id} className="border-t border-amber-50" data-testid={`batch-req-${r.id}`}>
+                      <td className="px-3 py-2 font-semibold text-slate-800">
+                        <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
+                        {r.parent_name && <div className="text-[10px] text-slate-500">{r.parent_name}</div>}
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">{r.center_name || '—'}</td>
+                      <td className="px-3 py-2 text-slate-700">{r.age_group || '—'}</td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {r.preferred_days?.length ? r.preferred_days.join(', ') : '—'}
+                        {r.preferred_time ? ` · ${r.preferred_time}` : ''}
+                        {r.notes ? <div className="text-[10px] text-slate-500 truncate max-w-[180px]" title={r.notes}>“{r.notes}”</div> : null}
+                      </td>
+                      <td className="px-3 py-2 text-right text-[10px] text-slate-500">{fmtDate(r.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 items-center">

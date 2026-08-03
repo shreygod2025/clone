@@ -37,6 +37,31 @@ const FutureSkillsBookingPage = () => {
   const [loadingCenters, setLoadingCenters] = useState(false);
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showBatchReq, setShowBatchReq] = useState(false);            // modal toggle
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+  const [reqForm, setReqForm] = useState({ preferred_days: [], preferred_time: '', notes: '' });
+
+  const submitBatchRequest = async () => {
+    if (!isValidPhone(phone)) { toast.error('Please enter a valid phone first (step 1)'); return; }
+    setReqSubmitting(true);
+    try {
+      await axios.post(`${API}/future-skills/batch-request`, {
+        parent_phone: phone.replace(/\D/g, '').slice(-10),
+        city, age_group: ageGroup,
+        center_id: centerId,
+        center_name: (centers.find(c => c.id === centerId)?.name) || '',
+        preferred_days: reqForm.preferred_days,
+        preferred_time: reqForm.preferred_time,
+        notes: reqForm.notes,
+        source_ref: params.get('ref') || '',
+      });
+      toast.success("Thanks! We'll WhatsApp you as soon as a batch matching your preference opens.");
+      setShowBatchReq(false);
+      setReqForm({ preferred_days: [], preferred_time: '', notes: '' });
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not submit request');
+    } finally { setReqSubmitting(false); }
+  };
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -53,12 +78,12 @@ const FutureSkillsBookingPage = () => {
     }
   }, [step, centers.length, loadingCenters, mode]);
 
-  // Fetch batches when reaching the batch-picker step so we can filter by
-  // (age group + centre). We intentionally do NOT show batches at "other"
-  // centres — customers picked their city + centre already.
+  // Fetch batches as soon as the user picks the city — we need them to
+  // filter centres in step 4 (hide centres that have no batches for the
+  // chosen age group). Guarded so we only fetch once.
   useEffect(() => {
     if (mode !== 'trial') return;
-    if (step === 5 && allBatches.length === 0 && !loadingBatches) {
+    if (step >= 3 && allBatches.length === 0 && !loadingBatches) {
       setLoadingBatches(true);
       axios.get(`${API}/future-skills/batches`)
         .then(r => setAllBatches(r.data?.batches || []))
@@ -134,35 +159,38 @@ const FutureSkillsBookingPage = () => {
     }
   };
 
-  const handleSubmitTrial = async () => {
-    if (!batchId) { toast.error('Please pick a batch to continue'); return; }
+  const handleSubmitTrial = async (overrideBatchId) => {
+    // Accept an explicit batchId so callers can pass the tapped batch without
+    // waiting for the async React state update (fixes the "please pick a
+    // batch" toast that appeared on the first tap of a card).
+    const effectiveBatchId = overrideBatchId || batchId;
+    if (!effectiveBatchId) { toast.error('Please pick a batch to continue'); return; }
     setSubmitting(true);
     try {
       const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-      // If the user selected a batch in a different center, use that batch's center
-      const effectiveCenterId = selectedBatch?.center_id || centerId;
+      const effectiveBatch = allBatches.find(b => b.id === effectiveBatchId) || selectedBatch;
+      const effectiveCenterId = effectiveBatch?.center_id || centerId;
       const r = await axios.post(`${API}/future-skills/register-trial`, {
         parent_phone: cleanPhone,
         center_id: effectiveCenterId,
-        batch_id: batchId,
+        batch_id: effectiveBatchId,
         age_group: ageGroup,
         city,
         source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
       });
       const trialRef = r.data?.trial_ref;
       toast.success("Trial booked — we'll WhatsApp you shortly!");
-      // Pass batch details forward so the success page can show day/time + centre address
       const centreAddress = selectedCenter?.address || '';
       const mapsLink = selectedCenter?.google_maps_link
         || (centreAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(centreAddress)}` : '');
       const successParams = new URLSearchParams({
         type: 'trial',
         ...(trialRef ? { ref: trialRef } : {}),
-        ...(selectedBatch?.days?.length ? { days: selectedBatch.days.join(',') } : {}),
-        ...(selectedBatch?.start_time ? { start: selectedBatch.start_time } : {}),
-        ...(selectedBatch?.end_time ? { end: selectedBatch.end_time } : {}),
-        ...(selectedBatch?.name ? { batch: selectedBatch.name } : {}),
-        ...(selectedCenter?.name || selectedBatch?.center_name ? { centre: selectedCenter?.name || selectedBatch.center_name } : {}),
+        ...(effectiveBatch?.days?.length ? { days: effectiveBatch.days.join(',') } : {}),
+        ...(effectiveBatch?.start_time ? { start: effectiveBatch.start_time } : {}),
+        ...(effectiveBatch?.end_time ? { end: effectiveBatch.end_time } : {}),
+        ...(effectiveBatch?.name ? { batch: effectiveBatch.name } : {}),
+        ...(selectedCenter?.name || effectiveBatch?.center_name ? { centre: selectedCenter?.name || effectiveBatch.center_name } : {}),
         ...(centreAddress ? { address: centreAddress } : {}),
         ...(mapsLink ? { maps: mapsLink } : {}),
       });
@@ -491,7 +519,7 @@ const FutureSkillsBookingPage = () => {
                   <div className="py-16 text-center text-slate-500"><Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Loading batches…</div>
                 ) : batchesForCenter.length === 0 ? (
                   <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-200 text-sm text-amber-800 mb-4" data-testid="no-batches-msg">
-                    No live batches for this age group at {selectedCenter?.name} yet. Tap <b>Request Callback</b> below and we&apos;ll open a batch for you.
+                    No live batches for this age group at {selectedCenter?.name} yet. Tap <b>Request different time / centre</b> below and we&apos;ll open a batch for you.
                   </div>
                 ) : (
                   <div className="space-y-2.5" data-testid="batches-list">
@@ -500,10 +528,18 @@ const FutureSkillsBookingPage = () => {
                         key={b.id}
                         batch={b}
                         selected={batchId === b.id}
-                        onSelect={() => { setBatchId(b.id); handleSubmitTrial(); }}
+                        onSelect={() => { setBatchId(b.id); handleSubmitTrial(b.id); }}
                         showCenter={false}
                       />
                     ))}
+                    {/* Always allow parents to ask for a different day / time */}
+                    <button
+                      type="button"
+                      onClick={() => setShowBatchReq(true)}
+                      className="w-full mt-2 p-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-[#1E3A5F] text-slate-600 hover:text-[#1E3A5F] text-sm font-bold flex items-center justify-center gap-1.5"
+                      data-testid="request-diff-timing-btn">
+                      <Clock className="w-4 h-4" /> Request a different day, time or centre
+                    </button>
                   </div>
                 )}
 
@@ -514,10 +550,10 @@ const FutureSkillsBookingPage = () => {
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
                   {batchesForCenter.length === 0 && (
-                    <button onClick={handleSubmitTrial} disabled={submitting}
+                    <button onClick={() => setShowBatchReq(true)} disabled={submitting}
                       className="flex-1 py-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-60"
                       data-testid="request-callback-btn">
-                      {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Submitting…</> : 'Request Callback'}
+                      Request different time / centre <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
                   {submitting && batchesForCenter.length > 0 && (
@@ -530,6 +566,75 @@ const FutureSkillsBookingPage = () => {
             )}
           </div>
         )}
+
+        {/* ── Batch Request modal (different day/time/centre) ── */}
+        {showBatchReq && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3" onClick={() => setShowBatchReq(false)} data-testid="batch-req-modal">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-gradient-to-br from-[#1E3A5F] to-[#0F1E33] text-white px-5 py-4">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-blue-200">
+                  <Sparkles className="w-3.5 h-3.5" /> Batch Preference
+                </div>
+                <h3 className="mt-1 text-lg font-black">Tell us what works for you</h3>
+                <p className="text-xs text-blue-100/90 mt-0.5">We&apos;ll open a batch matching your day / time when there&apos;s enough demand.</p>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Preferred days</div>
+                  <div className="flex flex-wrap gap-2" data-testid="req-days">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => {
+                      const on = reqForm.preferred_days.includes(d);
+                      return (
+                        <button type="button" key={d}
+                          onClick={() => setReqForm(f => ({
+                            ...f, preferred_days: on ? f.preferred_days.filter(x => x !== d) : [...f.preferred_days, d],
+                          }))}
+                          className={`text-xs px-3 py-1.5 rounded-full font-bold border-2 ${on ? 'bg-[#D63031] border-[#D63031] text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'}`}
+                          data-testid={`req-day-${d.toLowerCase()}`}>
+                          {d}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Preferred time</div>
+                  <div className="grid grid-cols-2 gap-2" data-testid="req-time-slots">
+                    {['Weekday morning', 'Weekday evening', 'Weekend morning', 'Weekend evening'].map(t => (
+                      <button type="button" key={t}
+                        onClick={() => setReqForm(f => ({ ...f, preferred_time: t }))}
+                        className={`text-xs px-3 py-2 rounded-lg font-bold border-2 ${reqForm.preferred_time === t ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400'}`}
+                        data-testid={`req-time-${t.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Anything else? (optional)</div>
+                  <textarea
+                    value={reqForm.notes}
+                    onChange={e => setReqForm(f => ({ ...f, notes: e.target.value }))}
+                    rows={2}
+                    placeholder="Any other centre you'd prefer, or specific time slot…"
+                    className="w-full text-sm px-3 py-2 rounded-lg border-2 border-slate-200 focus:outline-none focus:border-[#1E3A5F]"
+                    data-testid="req-notes" />
+                </div>
+              </div>
+              <div className="px-5 pb-5 flex gap-2">
+                <button type="button" onClick={() => setShowBatchReq(false)}
+                  className="flex-1 py-2.5 rounded-lg border-2 border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm"
+                  data-testid="req-cancel">Cancel</button>
+                <button type="button" onClick={submitBatchRequest} disabled={reqSubmitting}
+                  className="flex-[2] py-2.5 rounded-lg bg-[#D63031] hover:bg-[#B02324] text-white font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  data-testid="req-submit">
+                  {reqSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <>Send request <ArrowRight className="w-4 h-4" /></>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* ═══════════════════════════ SUBSCRIBE MODE (legacy) ═══════════════════════════ */}
         {mode === 'subscribe' && (
@@ -622,33 +727,41 @@ const BatchCard = ({ batch, selected, onSelect, showCenter }) => {
   const filled = batch.student_count || 0;
   const seatsLeft = Math.max(0, capacity - filled);
   const isFull = seatsLeft === 0;
+  const dayText = daysLabel(batch.days) || 'Schedule';
+  const timeText = timeLabel(batch.start_time, batch.end_time) || '—';
   return (
     <button
       onClick={onSelect}
       disabled={isFull}
-      className={`w-full text-left p-4 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`w-full text-left p-4 rounded-2xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
         selected ? 'border-[#D63031] bg-red-50/40 shadow-md'
         : isFull ? 'border-slate-200 bg-slate-50'
         : 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
       }`}
       data-testid={`batch-option-${batch.id}`}>
       <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
           selected ? 'bg-[#D63031] text-white' : 'bg-slate-100 text-slate-500'
         }`}>
           <Calendar className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-[#0F1E33]">{batch.name}</span>
+          {/* Big headline = Day + Timing (what parents actually care about) */}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-lg sm:text-xl font-black text-[#0F1E33] tracking-tight" data-testid={`batch-day-${batch.id}`}>
+              {dayText}
+            </span>
+            <span className="text-base sm:text-lg font-bold text-[#D63031]" data-testid={`batch-time-${batch.id}`}>
+              {timeText}
+            </span>
+          </div>
+          {/* Smaller secondary line — batch name/level + pills */}
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            {batch.name && <span className="text-xs font-semibold text-slate-500">{batch.name}</span>}
             {batch.skill && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold uppercase tracking-wider">{batch.skill}</span>}
             {isFull && <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold uppercase tracking-wider">Full</span>}
           </div>
-          <div className="text-xs text-slate-600 mt-1 flex flex-wrap gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" /> {daysLabel(batch.days)}</span>
-            <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {timeLabel(batch.start_time, batch.end_time)}</span>
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-x-3 gap-y-1">
+          <div className="text-[11px] text-slate-500 mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
             {showCenter && batch.center_name && (
               <span className="inline-flex items-center gap-1 font-semibold text-[#1E3A5F]"><MapPin className="w-3 h-3" /> {batch.center_name}</span>
             )}

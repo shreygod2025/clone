@@ -1732,6 +1732,118 @@ async def add_lead_source(body: LeadSourceCreate, user: dict = Depends(get_curre
     return {"name": name, "existed": False}
 
 
+# ── BATCH REQUESTS (parents asking for a different time / centre) ─────────
+class BatchRequestBody(BaseModel):
+    parent_phone: str = Field(..., min_length=8, max_length=20)
+    parent_name:  str = Field(default="", max_length=120)
+    city:         str = Field(default="", max_length=80)
+    age_group:    str = Field(default="", max_length=20)
+    center_id:    str = Field(default="", max_length=80)
+    center_name:  str = Field(default="", max_length=200)
+    preferred_days: list[str] = Field(default_factory=list, max_length=7)
+    preferred_time: str = Field(default="", max_length=40)  # e.g. "Weekday evening"
+    notes:        str = Field(default="", max_length=500)
+    source_ref:   str = Field(default="", max_length=80)
+
+
+@router.post("/future-skills/batch-request")
+async def public_create_batch_request(body: BatchRequestBody):
+    """Public: parent asks for a different time or centre. Stored for admin
+    review; also shows up as a soft "suggestion" for that centre so the ops
+    team knows demand exists.
+    """
+    phone = _norm_phone(body.parent_phone)
+    if not phone or len(phone) < 10:
+        raise HTTPException(status_code=400, detail="Enter a valid phone number")
+    now = _now_iso()
+    # Resolve centre name if id is provided but name is missing
+    center_name = body.center_name
+    if body.center_id and not center_name:
+        c = await db.centers.find_one({"id": body.center_id}, {"_id": 0, "name": 1})
+        center_name = (c or {}).get("name", "")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "program_key": PROGRAM_KEY,
+        "parent_phone": phone,
+        "parent_name": body.parent_name.strip(),
+        "city": body.city.strip(),
+        "age_group": body.age_group.strip(),
+        "center_id": body.center_id.strip(),
+        "center_name": center_name,
+        "preferred_days": [d for d in body.preferred_days if d],
+        "preferred_time": body.preferred_time.strip(),
+        "notes": body.notes.strip(),
+        "source_ref": body.source_ref.strip(),
+        "status": "open",   # open | contacted | resolved | dropped
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.future_skills_batch_requests.insert_one(doc)
+    return {"ok": True, "id": doc["id"]}
+
+
+@router.get("/admin/future-skills/batch-requests")
+async def admin_list_batch_requests(
+    status: str = Query(default="", description="open|contacted|resolved|dropped or blank for all"),
+    limit: int = Query(default=200, ge=1, le=1000),
+    user: dict = Depends(get_current_user),
+):
+    if not (_is_admin(user) or user.get("role") == "fs_center_owner"):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    q: dict = {"program_key": PROGRAM_KEY}
+    if status:
+        q["status"] = status
+    # Fs centre owners see only their centre's requests
+    if user.get("role") == "fs_center_owner":
+        cid = user.get("center_id")
+        if cid:
+            q["center_id"] = cid
+    items: list = []
+    async for d in db.future_skills_batch_requests.find(q, {"_id": 0}).sort("created_at", -1).limit(limit):
+        items.append(d)
+    # Aggregate suggestion counts per centre for the "trending demand" hint
+    agg_pipeline: list = [
+        {"$match": {"program_key": PROGRAM_KEY, "status": "open", "center_id": {"$ne": ""}}},
+        {"$group": {
+            "_id": {"center_id": "$center_id", "age_group": "$age_group"},
+            "count": {"$sum": 1},
+            "center_name": {"$last": "$center_name"},
+            "sample_days": {"$last": "$preferred_days"},
+        }},
+        {"$project": {
+            "_id": 0,
+            "center_id": "$_id.center_id",
+            "age_group": "$_id.age_group",
+            "center_name": 1,
+            "count": 1,
+            "sample_days": 1,
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 20},
+    ]
+    suggestions: list = []
+    async for r in db.future_skills_batch_requests.aggregate(agg_pipeline):
+        suggestions.append(r)
+    return {"items": items, "suggestions": suggestions, "total": len(items)}
+
+
+class BatchRequestUpdate(BaseModel):
+    status: str = Field(..., pattern="^(open|contacted|resolved|dropped)$")
+
+
+@router.patch("/admin/future-skills/batch-requests/{req_id}")
+async def admin_update_batch_request(req_id: str, body: BatchRequestUpdate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_batch_requests.update_one(
+        {"id": req_id},
+        {"$set": {"status": body.status, "updated_at": _now_iso()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"ok": True}
+
+
 # ── TRIALS (manual admin add + convert + lost) ────────────────────────────
 class TrialCreateAdmin(BaseModel):
     parent_name: str = Field(..., min_length=1, max_length=120)

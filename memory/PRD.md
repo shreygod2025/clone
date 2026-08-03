@@ -1987,6 +1987,17 @@ For educators (user_type="educator") that supply an `email`, the backend now att
 2. **Mobile CRM KPI Cards**: Changed from 3-column grid to horizontal scroll — numbers and labels no longer truncate. Action buttons in separate row.
 3. **Dashboard Center Normalization**: Added `_normalize_center_display()` to map historical center_label variants to canonical names. Now shows 6 clean centers instead of 15+ duplicates.
 
+### 2026-08-03 — Booking Flow Overhaul + Batch Requests + Notes + Live RBAC
+**Bugs Fixed / Features:**
+1. **RBAC live-refresh** — When admin assigns a role to an existing user, the sidebar item now appears **without requiring logout**. Added a `focus` + `visibilitychange` listener in `AuthContext.jsx` that re-fetches `/auth/me` (which already merges role permissions) whenever the tab regains focus.
+2. **Batch selection bug** ("Please pick a batch" on first click) — Root cause: `setBatchId(...)` is async so `handleSubmitTrial()` fired with the stale empty `batchId`. Fix: `handleSubmitTrial(overrideBatchId)` accepts the batch id directly, so the first tap now books immediately.
+3. **Batch card redesign** — Day + Timing are now the BIG headline (`Sat` in black + `10:00 – 12:00` in red), with the batch name/level demoted to a small subline. Matches how parents actually scan the list.
+4. **Centre picker filter** — Batches are now pre-fetched at step 3 (city step) instead of step 5, so step 4 correctly hides centres with no matching batches for the selected age group. Verified — Mumbai + age 8-11 with no batches shows "No centres for this age group in Mumbai yet".
+5. **Request different day / time / centre flow** — New public endpoint `POST /api/future-skills/batch-request` stores parent preference (phone, city, age, centre, preferred_days[], preferred_time slot, notes). New admin endpoints `GET /api/admin/future-skills/batch-requests` (with `suggestions` aggregation) and `PATCH .../batch-requests/{id}`.
+6. **Suggestions panel** — Centres & Batches tab now shows an amber "Batch requests from parents" panel with grouped suggestions (centre + age + parent count) plus a raw list of the latest requests — helps ops know where to open the next batch.
+7. **Booking-page UX** — Added inline "Request a different day, time or centre" dashed button (always visible when batches exist) plus a full-screen modal with day-picker (Mon–Sun) + time-slot chips (Weekday morning / Weekend evening etc) + notes. Empty-state at step 5 now opens the modal instead of the previous no-op callback.
+8. **Notes visibility in Free Trials** — Notes column now also falls back to the trial's `notes` field if the newer `last_note` is empty, so notes added via the edit form (which stores to `notes`) show up inline in the table alongside the ones added via the dedicated "Add note" modal.
+
 ### 2026-07-31 — Lead Import: Override Defaults + Multi-Sheet + Age Column
 **Bugs Fixed / Features:**
 1. **Fix: admin-picked defaults now OVERRIDE CSV values** (previously they only filled blanks).

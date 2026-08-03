@@ -62,6 +62,34 @@ export const AuthProvider = ({ children }) => {
     }
   }, [verifyToken]);
 
+  // Re-fetch permissions when the tab regains focus so a role assignment
+  // (or permission change) made by an admin becomes visible to the user
+  // without them having to log out and back in. Cheap: a single /auth/me
+  // call debounced by the browser's visibility change event.
+  useEffect(() => {
+    const onFocus = async () => {
+      const token = localStorage.getItem('oll_token');
+      if (!token) return;
+      try {
+        const r = await axios.get(`${API}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000,
+        });
+        setUser(r.data);
+        localStorage.setItem('oll_user', JSON.stringify(r.data));
+        setIsAuthenticated(true);
+      } catch { /* keep old session on transient errors */ }
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') onFocus();
+    });
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      // (visibilitychange listener persists but is idempotent)
+    };
+  }, []);
+
   const login = async (email, password) => {
     const response = await axios.post(`${API}/auth/login`, { email, password });
     const { access_token, user: userData } = response.data;
