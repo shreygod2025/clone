@@ -162,6 +162,13 @@ const FutureSkillsBookingPage = () => {
   const goNext = () => {
     if (step === 1) {
       if (!isValidPhone(phone)) { toast.error('Enter a valid 10-digit phone number'); return; }
+      // Fire-and-forget booking-intent so the scheduler can nudge the parent
+      // via WhatsApp if they don't complete the trial in the next 30 minutes.
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+      axios.post(`${API}/future-skills/booking-intent`, {
+        parent_phone: cleanPhone,
+        source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
+      }).catch(() => { /* best-effort — never block the funnel */ });
       setStep(2); return;
     }
     if (step === 2) {

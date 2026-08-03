@@ -4423,6 +4423,29 @@ async def startup_db_client():
     )
     print("[STARTUP] Scheduled broadcasts processor — runs every 1 minute")
 
+    # Future Skills — WhatsApp funnel follow-ups
+    from routes.future_skills import (
+        check_fs_booking_tried_followups,
+        check_fs_trial_24h_reminders,
+    )
+    scheduler.add_job(
+        check_fs_booking_tried_followups,
+        trigger=IntervalTrigger(minutes=5),
+        id="fs_booking_tried_followup_job",
+        name="Future Skills — Booking Tried Follow-Up",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+    scheduler.add_job(
+        check_fs_trial_24h_reminders,
+        trigger=IntervalTrigger(minutes=30),
+        id="fs_trial_24h_reminder_job",
+        name="Future Skills — 24-Hour Trial Reminder",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2),
+    )
+    print("[STARTUP] Future Skills WhatsApp follow-ups scheduled (booking-tried @ 5min · 24h reminder @ 30min)")
+
     # Gmail Bot — pull unread mail from every connected Gmail account, classify
     # via AI, and create support tickets for genuine customer queries.
     # Fires every 60 minutes; defer first run by 3 min so the app is warm.

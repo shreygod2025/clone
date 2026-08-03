@@ -260,14 +260,22 @@ async def register_trial(data: TrialBooking):
     await db.future_skills_trials.insert_one(doc)
     logging.info(f"[future-skills] trial booked {trial_ref} - {norm_phone} @ {center_name or 'unassigned'}")
 
-    # Best-effort WhatsApp confirmation (skips if template misconfigured)
+    # Mark any pending booking-intent as completed so the scheduler doesn't
+    # follow up with a "still trying?" nudge to a parent who just booked.
+    await db.future_skills_booking_intents.update_one(
+        {"phone": norm_phone, "sent": {"$ne": True}},
+        {"$set": {"has_trial": True, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    # WhatsApp confirmation via AiSensy — 5-param template all resolving to
+    # the child/parent first name. Fire-and-forget: never block booking on WA.
     try:
         from .notifications import send_whatsapp_notification
-        first_name = ((data.student_name or data.parent_name) or "there").split()[0] or "there"
+        first_name = ((data.student_name or data.parent_name) or "").split()[0] or "there"
         await send_whatsapp_notification(
             phone=norm_phone,
-            template_key="future_skills_trial_booked",
-            params=[first_name, trial_ref],
+            template_key="fs_trial_booked_confirmation",
+            params=[first_name, first_name, first_name, first_name, first_name],
             user_name=first_name,
         )
     except Exception as e:
@@ -278,6 +286,143 @@ async def register_trial(data: TrialBooking):
         "trial_ref": trial_ref,
         "is_existing": False,
     }
+
+
+# ── Booking Intent (fired at step 1 of the trial funnel) ──────────────────
+class BookingIntent(BaseModel):
+    parent_phone: str = Field(..., min_length=8, max_length=20)
+    parent_name:  str = Field(default="", max_length=120)
+    source_ref:   str = Field(default="", max_length=80)
+
+
+@router.post("/future-skills/booking-intent")
+async def public_booking_intent(body: BookingIntent):
+    """Log the parent's phone at step 1 of the trial funnel so the scheduler
+    can WhatsApp them a nudge if they never complete the booking.
+    """
+    phone = re.sub(r"\D", "", body.parent_phone or "")
+    if len(phone) < 10:
+        raise HTTPException(status_code=400, detail="Enter a valid phone number")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    # Upsert so multiple attempts by the same parent don't blow up the collection.
+    await db.future_skills_booking_intents.update_one(
+        {"phone": phone},
+        {
+            "$set": {
+                "phone": phone,
+                "parent_name": (body.parent_name or "").strip(),
+                "source_ref": (body.source_ref or "").strip(),
+                "updated_at": now_iso,
+            },
+            "$setOnInsert": {
+                "created_at": now_iso,
+                "sent": False,
+                "has_trial": False,
+            },
+        },
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+# ── Scheduler: WhatsApp follow-ups for the trial funnel ───────────────────
+async def check_fs_booking_tried_followups() -> None:
+    """Send the "booking tried" WhatsApp nudge to parents who captured their
+    phone in the trial funnel but never completed the booking. Runs every
+    5 minutes; only picks intents older than 30 min without a matching trial.
+    """
+    from .notifications import send_whatsapp_notification
+    now_ts = datetime.now(timezone.utc).timestamp()
+    thirty_min_ago = now_ts - 30 * 60
+    max_age = now_ts - 30 * 24 * 60 * 60  # cap at 30 days
+
+    try:
+        cursor = db.future_skills_booking_intents.find(
+            {"sent": {"$ne": True}, "has_trial": {"$ne": True}},
+            {"_id": 0, "phone": 1, "parent_name": 1, "created_at": 1},
+        ).limit(200)
+        candidates = await cursor.to_list(length=200)
+    except Exception as e:
+        print(f"[FS Followup] Query failed: {e}")
+        return
+
+    for it in candidates:
+        try:
+            created_dt = datetime.fromisoformat(str(it.get("created_at", "")).replace("Z", "+00:00"))
+        except Exception:
+            continue
+        if not (max_age < created_dt.timestamp() < thirty_min_ago):
+            continue
+
+        # Re-check for a trial in case one was booked between the query and now.
+        phone = it["phone"]
+        existing_trial = await db.future_skills_trials.find_one({"parent_phone": phone}, {"_id": 0, "id": 1})
+        if existing_trial:
+            await db.future_skills_booking_intents.update_one(
+                {"phone": phone}, {"$set": {"has_trial": True}}
+            )
+            continue
+
+        first_name = (it.get("parent_name") or "").split()[0] or "there"
+        try:
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="fs_booking_tried",
+                params=[first_name],
+                user_name=first_name,
+            )
+            await db.future_skills_booking_intents.update_one(
+                {"phone": phone},
+                {"$set": {"sent": True, "sent_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            print(f"[FS Followup] booking-tried sent to {phone}")
+        except Exception as e:
+            print(f"[FS Followup] send failed for {phone}: {e}")
+
+
+async def check_fs_trial_24h_reminders() -> None:
+    """Send the 24-hour reminder for scheduled trials. Runs every 30 minutes;
+    picks trials whose `scheduled_at` is between 23–25 hours away and marks
+    them `reminder_24h_sent=True` to prevent duplicates.
+    """
+    from .notifications import send_whatsapp_notification
+    now = datetime.now(timezone.utc)
+    lower = (now + timedelta(hours=23)).isoformat()
+    upper = (now + timedelta(hours=25)).isoformat()
+
+    try:
+        cursor = db.future_skills_trials.find(
+            {
+                "scheduled_at": {"$gte": lower, "$lte": upper},
+                "reminder_24h_sent": {"$ne": True},
+                "crm_status": {"$nin": ["cancelled", "attended", "lost"]},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "parent_name": 1, "student_name": 1, "scheduled_at": 1},
+        ).limit(200)
+        candidates = await cursor.to_list(length=200)
+    except Exception as e:
+        print(f"[FS 24h] Query failed: {e}")
+        return
+
+    for t in candidates:
+        phone = t.get("parent_phone", "")
+        if not phone:
+            continue
+        first_name = ((t.get("student_name") or t.get("parent_name")) or "").split()[0] or "there"
+        try:
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="fs_trial_24h_reminder",
+                params=[first_name, first_name, first_name, first_name, first_name],
+                user_name=first_name,
+            )
+            await db.future_skills_trials.update_one(
+                {"id": t["id"]},
+                {"$set": {"reminder_24h_sent": True, "reminder_24h_sent_at": now.isoformat()}},
+            )
+            print(f"[FS 24h] reminder sent to {phone} for trial {t['id']}")
+        except Exception as e:
+            print(f"[FS 24h] send failed for {phone}: {e}")
 
 
 # ── Endpoints — Subscription ───────────────────────────────────────────────

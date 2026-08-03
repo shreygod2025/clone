@@ -66,6 +66,13 @@ WHATSAPP_TEMPLATES = {
     "task_assigned": "New Task",
     "task_reassigned": "support_ticket_added",
     "task_due_date_updated": "support_ticket_added",
+
+    # Future Skills — parent-facing trial funnel campaigns
+    "fs_trial_booked_confirmation": "free trial booking confirmation",
+    "fs_booking_tried":             "booking tried",
+    "fs_trial_24h_reminder":        "24 hour reminder before trial",
+    # Legacy key kept for backwards compat with the existing register-trial call
+    "future_skills_trial_booked":   "free trial booking confirmation",
 }
 
 async def send_whatsapp_notification(
