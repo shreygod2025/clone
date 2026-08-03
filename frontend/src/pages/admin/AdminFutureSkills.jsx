@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -22,6 +22,7 @@ const TABS = [
   { key: 'renewals',        label: 'Renewals',         icon: RotateCcw },
   { key: 'lost',            label: 'Lost',             icon: XCircle },
   { key: 'centers',         label: 'Centres & Batches', icon: MapPin },
+  { key: 'batch_requests',  label: 'Batch Requests',   icon: Clock },
   { key: 'sources',         label: 'Source Links',     icon: LinkIcon },
   { key: 'economics',       label: 'Centre Economics', icon: IndianRupee },
   { key: 'reports',         label: 'Reports',          icon: BarChart3 },
@@ -157,7 +158,7 @@ const AdminFutureSkills = () => {
   }, [getAuthHeaders]);
 
   const fetchData = useCallback(async () => {
-    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics') { setRows([]); setStats(null); return; }
+    if (tab === 'centers' || tab === 'reports' || tab === 'sources' || tab === 'economics' || tab === 'batch_requests') { setRows([]); setStats(null); return; }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -440,6 +441,8 @@ const AdminFutureSkills = () => {
           <SourceLinksPanel getAuthHeaders={getAuthHeaders} />
         ) : tab === 'economics' ? (
           <CentreEconomicsPanel getAuthHeaders={getAuthHeaders} />
+        ) : tab === 'batch_requests' ? (
+          <BatchRequestsPanel getAuthHeaders={getAuthHeaders} />
         ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {loading && rows.length === 0 ? (
@@ -3300,6 +3303,270 @@ const CentreEconomicsModal = ({ type, entry, centers, defaultCenterId, onClose, 
   );
 };
 
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// BATCH REQUESTS PANEL — parent requests for a different day/time/centre
+// ═══════════════════════════════════════════════════════════════════════
+const BATCH_REQ_STATUSES = [
+  { key: '',          label: 'All',        accent: 'slate' },
+  { key: 'open',      label: 'Open',       accent: 'amber' },
+  { key: 'contacted', label: 'Contacted',  accent: 'blue' },
+  { key: 'resolved',  label: 'Resolved',   accent: 'emerald' },
+  { key: 'dropped',   label: 'Dropped',    accent: 'rose' },
+];
+
+const BATCH_REQ_STATUS_STYLES = {
+  open:      { bg: 'bg-amber-100',   text: 'text-amber-800',   border: 'border-amber-200' },
+  contacted: { bg: 'bg-blue-100',    text: 'text-blue-800',    border: 'border-blue-200' },
+  resolved:  { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200' },
+  dropped:   { bg: 'bg-rose-100',    text: 'text-rose-800',    border: 'border-rose-200' },
+};
+
+const BatchRequestsPanel = ({ getAuthHeaders }) => {
+  const [status, setStatus] = useState('open');
+  const [q, setQ] = useState('');
+  const [items, setItems] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [updatingId, setUpdatingId] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      params.set('limit', '500');
+      const r = await axios.get(`${API}/admin/future-skills/batch-requests?${params}`, { headers: getAuthHeaders() });
+      setItems(r.data?.items || []);
+      setSuggestions(r.data?.suggestions || []);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not load requests');
+    } finally { setLoading(false); }
+  }, [status, getAuthHeaders]);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter(r => (
+      (r.parent_phone || '').toLowerCase().includes(term) ||
+      (r.parent_name  || '').toLowerCase().includes(term) ||
+      (r.center_name  || '').toLowerCase().includes(term) ||
+      (r.city         || '').toLowerCase().includes(term) ||
+      (r.notes        || '').toLowerCase().includes(term)
+    ));
+  }, [items, q]);
+
+  const setStatusFor = async (id, newStatus) => {
+    setUpdatingId(id);
+    try {
+      await axios.patch(`${API}/admin/future-skills/batch-requests/${id}`, { status: newStatus }, { headers: getAuthHeaders() });
+      toast.success(`Marked ${newStatus}`);
+      // Optimistic update; then reload for aggregate counts
+      setItems(prev => prev.map(x => x.id === id ? { ...x, status: newStatus } : x));
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Update failed');
+    } finally { setUpdatingId(''); }
+  };
+
+  const statusCounts = useMemo(() => {
+    const c = { open: 0, contacted: 0, resolved: 0, dropped: 0 };
+    for (const it of items) if (c[it.status] !== undefined) c[it.status] += 1;
+    return c;
+  }, [items]);
+
+  return (
+    <div className="space-y-5" data-testid="batch-requests-panel-tab">
+      {/* Header */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-amber-700 font-black">Parent Preferences</div>
+            <h2 className="text-lg font-black text-[#0F1E33] mt-1">Batch Requests</h2>
+            <p className="text-xs text-slate-500 max-w-xl mt-0.5">
+              Parents who tapped &ldquo;Request a different day, time or centre&rdquo; from the booking flow.
+              Contact them, open the matching batch, and mark resolved so demand doesn&apos;t pile up.
+            </p>
+          </div>
+          <button onClick={load}
+            className="text-xs px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center gap-1.5"
+            data-testid="batch-req-refresh">
+            <RotateCcw className="w-3.5 h-3.5" /> Refresh
+          </button>
+        </div>
+
+        {/* Status filter pills */}
+        <div className="mt-4 flex flex-wrap gap-2" data-testid="batch-req-status-tabs">
+          {BATCH_REQ_STATUSES.map(s => {
+            const active = status === s.key;
+            const count = s.key ? statusCounts[s.key] : items.length;
+            return (
+              <button key={s.key || 'all'} onClick={() => setStatus(s.key)}
+                className={`text-xs px-3 py-1.5 rounded-full font-bold border-2 flex items-center gap-1.5 ${
+                  active ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white'
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400'
+                }`}
+                data-testid={`batch-req-tab-${s.key || 'all'}`}>
+                {s.label}
+                {status === '' || s.key === '' ? null : null}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20' : 'bg-slate-100 text-slate-600'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Search phone, centre, city…"
+                className="text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 w-56"
+                data-testid="batch-req-search" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Aggregated demand suggestions */}
+      {suggestions.length > 0 && (
+        <div className="bg-amber-50/60 border-2 border-amber-100 rounded-2xl p-4" data-testid="batch-req-suggestions-strip">
+          <div className="text-[10px] uppercase tracking-widest text-amber-800 font-black mb-2">
+            Hot demand — open a batch here
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {suggestions.slice(0, 6).map((s, i) => (
+              <div key={i} className="bg-white border border-amber-200 rounded-xl p-3 text-xs">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="font-black text-[#0F1E33] truncate">{s.center_name || 'Unknown centre'}</div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
+                    {s.count} parent{s.count === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Age {s.age_group || '—'}{s.sample_days?.length ? ` · ${s.sample_days.join(', ')}` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* List */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        {loading && items.length === 0 ? (
+          <div className="p-12 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> Loading requests…</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 text-sm" data-testid="batch-req-empty">
+            No {status ? `${status} ` : ''}requests yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <Th>Parent</Th>
+                  <Th>Age</Th>
+                  <Th>Centre / City</Th>
+                  <Th>Wants</Th>
+                  <Th>Status</Th>
+                  <Th>When</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </thead>
+              <tbody data-testid="batch-req-list">
+                {filtered.map(r => {
+                  const stStyle = BATCH_REQ_STATUS_STYLES[r.status] || BATCH_REQ_STATUS_STYLES.open;
+                  return (
+                    <tr key={r.id} className="border-t border-slate-100 hover:bg-blue-50/30" data-testid={`batch-req-row-${r.id}`}>
+                      <td className="px-4 py-3 align-top">
+                        <div className="font-bold text-[#0F1E33] flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-slate-400" /> {r.parent_phone}
+                        </div>
+                        {r.parent_name && <div className="text-[11px] text-slate-500 mt-0.5">{r.parent_name}</div>}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {r.age_group ? (
+                          <span className="inline-block text-[11px] font-bold px-2 py-1 rounded-full bg-violet-100 text-violet-800">
+                            {r.age_group}
+                          </span>
+                        ) : <span className="text-slate-400 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3 align-top text-xs text-slate-700">
+                        <div className="font-semibold text-[#1E3A5F]">{r.center_name || '—'}</div>
+                        {r.city && <div className="text-[11px] text-slate-500">{r.city}</div>}
+                      </td>
+                      <td className="px-4 py-3 align-top text-xs text-slate-700 max-w-[280px]">
+                        <div className="font-semibold">
+                          {r.preferred_days?.length ? r.preferred_days.join(', ') : '—'}
+                          {r.preferred_time ? ` · ${r.preferred_time}` : ''}
+                        </div>
+                        {r.notes && (
+                          <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2" title={r.notes}>
+                            &ldquo;{r.notes}&rdquo;
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <span className={`inline-block text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-full border ${stStyle.bg} ${stStyle.text} ${stStyle.border}`}
+                          data-testid={`batch-req-status-${r.id}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-top text-[11px] text-slate-500 whitespace-nowrap">
+                        {fmtDate(r.created_at)}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-wrap gap-1.5" data-testid={`batch-req-actions-${r.id}`}>
+                          <a href={`https://wa.me/91${r.parent_phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`Hi ${r.parent_name || 'there'}, this is OLL Future Skills — you asked for a batch preference. When's a good time to chat?`)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                            data-testid={`batch-req-wa-${r.id}`}>
+                            <Phone className="w-3 h-3" /> WhatsApp
+                          </a>
+                          {r.status !== 'contacted' && r.status !== 'resolved' && r.status !== 'dropped' && (
+                            <button onClick={() => setStatusFor(r.id, 'contacted')} disabled={updatingId === r.id}
+                              className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold disabled:opacity-60"
+                              data-testid={`batch-req-contacted-${r.id}`}>
+                              Mark contacted
+                            </button>
+                          )}
+                          {r.status !== 'resolved' && (
+                            <button onClick={() => setStatusFor(r.id, 'resolved')} disabled={updatingId === r.id}
+                              className="text-[10px] px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-60"
+                              data-testid={`batch-req-resolved-${r.id}`}>
+                              Resolved
+                            </button>
+                          )}
+                          {r.status !== 'dropped' && r.status !== 'resolved' && (
+                            <button onClick={() => setStatusFor(r.id, 'dropped')} disabled={updatingId === r.id}
+                              className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold disabled:opacity-60"
+                              data-testid={`batch-req-dropped-${r.id}`}>
+                              Drop
+                            </button>
+                          )}
+                          {(r.status === 'resolved' || r.status === 'dropped') && (
+                            <button onClick={() => setStatusFor(r.id, 'open')} disabled={updatingId === r.id}
+                              className="text-[10px] px-2 py-1 rounded-md bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold disabled:opacity-60"
+                              data-testid={`batch-req-reopen-${r.id}`}>
+                              Reopen
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 
 // ═══════════════════════════════════════════════════════════════════════
