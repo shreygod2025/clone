@@ -39,12 +39,16 @@ const FutureSkillsBookingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showBatchReq, setShowBatchReq] = useState(false);            // modal toggle
   const [reqSubmitting, setReqSubmitting] = useState(false);
-  const [reqForm, setReqForm] = useState({ preferred_days: [], preferred_time: '', notes: '' });
+  const [reqForm, setReqForm] = useState({ preferred_area: '', preferred_days: [], preferred_time: '', notes: '' });
 
   const submitBatchRequest = async () => {
     if (!isValidPhone(phone)) { toast.error('Please enter a valid phone first (step 1)'); return; }
     setReqSubmitting(true);
     try {
+      const composedNotes = [
+        reqForm.preferred_area ? `Preferred area/centre: ${reqForm.preferred_area}` : '',
+        reqForm.notes || '',
+      ].filter(Boolean).join(' — ');
       await axios.post(`${API}/future-skills/batch-request`, {
         parent_phone: phone.replace(/\D/g, '').slice(-10),
         city, age_group: ageGroup,
@@ -52,12 +56,12 @@ const FutureSkillsBookingPage = () => {
         center_name: (centers.find(c => c.id === centerId)?.name) || '',
         preferred_days: reqForm.preferred_days,
         preferred_time: reqForm.preferred_time,
-        notes: reqForm.notes,
+        notes: composedNotes,
         source_ref: params.get('ref') || '',
       });
       toast.success("Thanks! We'll WhatsApp you as soon as a batch matching your preference opens.");
       setShowBatchReq(false);
-      setReqForm({ preferred_days: [], preferred_time: '', notes: '' });
+      setReqForm({ preferred_area: '', preferred_days: [], preferred_time: '', notes: '' });
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Could not submit request');
     } finally { setReqSubmitting(false); }
@@ -456,11 +460,11 @@ const FutureSkillsBookingPage = () => {
                 ) : centersForCity.length === 0 ? (
                   <div className="p-8 text-center bg-amber-50 border-2 border-amber-200 rounded-xl">
                     <div className="font-bold text-amber-800 mb-1">No centres for this age group in {city} yet</div>
-                    <p className="text-sm text-amber-700">Leave your number — we&apos;ll call you when a batch opens near you.</p>
-                    <button onClick={handleSubmitTrial} disabled={submitting}
+                    <p className="text-sm text-amber-700">Tell us the day/time that works — we&apos;ll open a batch near you.</p>
+                    <button onClick={() => setShowBatchReq(true)} disabled={submitting}
                       className="mt-4 px-5 py-2.5 rounded-lg bg-amber-800 text-white font-bold text-sm hover:bg-amber-900 disabled:opacity-60"
                       data-testid="request-callback-btn">
-                      {submitting ? 'Submitting…' : 'Request Callback'}
+                      Request a batch near me
                     </button>
                   </div>
                 ) : (
@@ -579,6 +583,15 @@ const FutureSkillsBookingPage = () => {
                 <p className="text-xs text-blue-100/90 mt-0.5">We&apos;ll open a batch matching your day / time when there&apos;s enough demand.</p>
               </div>
               <div className="p-5 space-y-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Preferred area or centre</div>
+                  <input
+                    value={reqForm.preferred_area}
+                    onChange={e => setReqForm(f => ({ ...f, preferred_area: e.target.value }))}
+                    placeholder="e.g. Kandivali, Andheri West, Whitefield…"
+                    className="w-full text-sm px-3 py-2 rounded-lg border-2 border-slate-200 focus:outline-none focus:border-[#1E3A5F]"
+                    data-testid="req-area" />
+                </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Preferred days</div>
                   <div className="flex flex-wrap gap-2" data-testid="req-days">
