@@ -3513,6 +3513,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         team_user = await db.team_users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
         if team_user:
             team_user["role"] = "team_member"
+            # Merge role-level permissions (same logic as routes/shared.py) so
+            # role-based UI + route gates work consistently regardless of which
+            # dependency an endpoint happens to resolve.
+            role_perms: list = []
+            if team_user.get("role_id"):
+                role_doc = await db.roles.find_one(
+                    {"id": team_user["role_id"]},
+                    {"_id": 0, "grants_full_access": 1, "is_active": 1, "permissions": 1},
+                )
+                if role_doc and role_doc.get("is_active", True):
+                    if role_doc.get("grants_full_access"):
+                        team_user["role"] = "admin"
+                    role_perms = list(role_doc.get("permissions") or [])
+            team_user["permissions"] = list(dict.fromkeys((team_user.get("permissions") or []) + role_perms))
             return team_user
         
         # Check center_users collection

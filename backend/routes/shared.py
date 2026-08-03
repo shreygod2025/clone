@@ -88,13 +88,25 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             # 3. Fallback to the stored role or "team_member".
             stored_role = team_user.get("role") or "team_member"
             effective_role = stored_role
+            role_perms: list = []
             if stored_role in ("admin", "super_admin"):
                 effective_role = "admin"
             elif team_user.get("role_id"):
-                role_doc = await db.roles.find_one({"id": team_user["role_id"]}, {"_id": 0, "grants_full_access": 1, "is_active": 1})
-                if role_doc and role_doc.get("grants_full_access") and role_doc.get("is_active", True):
-                    effective_role = "admin"
+                role_doc = await db.roles.find_one(
+                    {"id": team_user["role_id"]},
+                    {"_id": 0, "grants_full_access": 1, "is_active": 1, "permissions": 1},
+                )
+                if role_doc and role_doc.get("is_active", True):
+                    if role_doc.get("grants_full_access"):
+                        effective_role = "admin"
+                    role_perms = list(role_doc.get("permissions") or [])
             team_user["role"] = effective_role
+            # Merge role-level permissions onto the user so every route +
+            # /auth/me sees the effective permission set on each request.
+            # Without this the sidebar and ProtectedRoute both fail to reflect
+            # role assignments made after the user first logged in.
+            merged_perms = list(dict.fromkeys((team_user.get("permissions") or []) + role_perms))
+            team_user["permissions"] = merged_perms
             return team_user
         
         # Check center_users collection
