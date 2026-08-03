@@ -92,6 +92,17 @@ const PLAN_OPTIONS = [
 const fmtMoney = (v) => `₹${(v || 0).toLocaleString('en-IN')}`;
 const fmtDate  = (s) => { try { return s ? format(parseISO(s), 'MMM d, yyyy') : '—'; } catch { return '—'; } };
 const fmtDateTime = (s) => { try { return s ? format(parseISO(s), 'MMM d · h:mm a') : '—'; } catch { return '—'; } };
+// Convert "HH:MM" 24h → "h:MM AM/PM" 12h for batch time display.
+const to12h = (t) => {
+  if (!t) return '';
+  const [hStr, mStr = '00'] = String(t).split(':');
+  const h = parseInt(hStr, 10);
+  if (Number.isNaN(h)) return t;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${mStr.padStart(2, '0')} ${period}`;
+};
+const timeRange = (s, e) => `${to12h(s) || '—'} – ${to12h(e) || '—'}`;
 
 const AdminFutureSkills = () => {
   const { getAuthHeaders, user } = useAuth();
@@ -1303,7 +1314,7 @@ const AddLeadModal = ({ onClose, onSaved, getAuthHeaders }) => {
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
               value: b.id,
-              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+              label: `${b.name} · ${(b.days || []).join('/')} ${timeRange(b.start_time, b.end_time)}`,
             })),
           ]}
           testid="lead-batch-select" colSpan={2} />
@@ -1371,7 +1382,7 @@ const AddTrialModal = ({ onClose, onSaved, getAuthHeaders }) => {
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
               value: b.id,
-              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+              label: `${b.name} · ${(b.days || []).join('/')} ${timeRange(b.start_time, b.end_time)}`,
             })),
           ]}
           testid="trial-batch-select" colSpan={2} />
@@ -1464,7 +1475,7 @@ const AddCustomerModal = ({ onClose, onSaved, getAuthHeaders }) => {
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
               value: b.id,
-              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+              label: `${b.name} · ${(b.days || []).join('/')} ${timeRange(b.start_time, b.end_time)}`,
             })),
           ]}
           testid="cust-batch-select" colSpan={2} />
@@ -1887,7 +1898,7 @@ const BookTrialModal = ({ lead, onClose, onSaved, getAuthHeaders }) => {
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
               value: b.id,
-              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+              label: `${b.name} · ${(b.days || []).join('/')} ${timeRange(b.start_time, b.end_time)}`,
             })),
           ]}
           testid="book-batch-select" colSpan={2} />
@@ -1967,7 +1978,7 @@ const RescheduleTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
               value: b.id,
-              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+              label: `${b.name} · ${(b.days || []).join('/')} ${timeRange(b.start_time, b.end_time)}`,
             })),
           ]}
           testid="reschedule-batch-select" colSpan={2} />
@@ -2385,7 +2396,7 @@ const CentersManager = ({ getAuthHeaders }) => {
                       <td className="px-4 py-3 text-xs text-slate-700">{b.center_name || '—'}</td>
                       <td className="px-4 py-3">
                         <div className="text-xs text-slate-700 flex items-center gap-1"><Calendar className="w-3 h-3" /> {(b.days || []).join(' · ') || '—'}</div>
-                        <div className="text-[11px] text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {b.start_time || '—'} – {b.end_time || '—'}</div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {timeRange(b.start_time, b.end_time)}</div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-xs font-bold text-[#0F1E33]">{filled} / {cap}</div>
@@ -2763,7 +2774,7 @@ const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
                     <td className="px-4 py-3 text-xs text-slate-700">{b.center_name || '—'}</td>
                     <td className="px-4 py-3 text-xs text-slate-700">
                       <div>{(b.days || []).join(' · ') || '—'}</div>
-                      <div className="text-[11px] text-slate-500">{b.start_time || '—'} – {b.end_time || '—'}</div>
+                      <div className="text-[11px] text-slate-500">{timeRange(b.start_time, b.end_time)}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-xs font-bold text-[#0F1E33]">{b.active_count} / {b.capacity}</div>
@@ -3542,7 +3553,7 @@ const ImportCustomersModal = ({ onClose, onImported, getAuthHeaders }) => {
             { value: '', label: f.center_id ? (batchesForCenter.length ? 'Select a batch…' : 'No batches at this centre') : 'Pick a centre first' },
             ...batchesForCenter.map(b => ({
               value: b.id,
-              label: `${b.name} · ${(b.days || []).join('/')} ${b.start_time || ''}-${b.end_time || ''}`,
+              label: `${b.name} · ${(b.days || []).join('/')} ${timeRange(b.start_time, b.end_time)}`,
             })),
           ]}
           testid="import-cust-batch-select" colSpan={2} />

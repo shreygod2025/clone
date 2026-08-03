@@ -49,9 +49,18 @@ const FutureSkillsSuccessPage = () => {
 
   // ── Minimal trial success view: welcome + day + time + centre ─────────
   if (isTrial) {
+    const to12h = (t) => {
+      if (!t) return '';
+      const [hStr, mStr = '00'] = String(t).split(':');
+      const h = parseInt(hStr, 10);
+      if (Number.isNaN(h)) return t;
+      const period = h >= 12 ? 'PM' : 'AM';
+      const h12 = ((h + 11) % 12) + 1;
+      return `${h12}:${mStr.padStart(2, '0')} ${period}`;
+    };
     const days    = (params.get('days')  || '').split(',').filter(Boolean).join(' · ');
-    const start   = params.get('start')  || '';
-    const end     = params.get('end')    || '';
+    const start   = to12h(params.get('start')  || '');
+    const end     = to12h(params.get('end')    || '');
     const centre  = params.get('centre') || '';
     const address = params.get('address') || '';
     const maps    = params.get('maps')    || '';

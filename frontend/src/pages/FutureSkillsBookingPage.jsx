@@ -17,7 +17,21 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const isValidPhone = (raw) => /^[6-9]\d{9}$/.test((raw || '').replace(/\D/g, '').slice(-10));
 
 const daysLabel = (arr = []) => arr.join(' · ') || 'Days TBA';
-const timeLabel = (start, end) => (start || end) ? `${start || '—'} – ${end || '—'}` : 'Timings TBA';
+// Convert "HH:MM" 24h → "h:MM AM/PM" 12h. Tolerant of nulls/empty strings.
+const to12h = (t) => {
+  if (!t) return '';
+  const [hStr, mStr = '00'] = String(t).split(':');
+  const h = parseInt(hStr, 10);
+  if (Number.isNaN(h)) return t;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${mStr.padStart(2, '0')} ${period}`;
+};
+const timeLabel = (start, end) => {
+  const s = to12h(start), e = to12h(end);
+  if (!s && !e) return 'Timings TBA';
+  return `${s || '—'} – ${e || '—'}`;
+};
 
 const FutureSkillsBookingPage = () => {
   const navigate = useNavigate();
