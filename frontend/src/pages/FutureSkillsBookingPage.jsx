@@ -114,22 +114,23 @@ const FutureSkillsBookingPage = () => {
     return Array.from(set).sort();
   }, [centers]);
 
-  // Centres filtered by chosen city + age (age match uses batch.age_group
-  // matching at least one batch attached to the centre).
+  // Centres in the picked city — we now show ALL city centres, but each
+  // centre gets a `has_matching_batch` flag so the card can visually mark
+  // centres that don't yet have a batch for the chosen age. This is more
+  // helpful than silently hiding them: users who see their local centre
+  // can tap it and immediately request a batch for their age.
   const centersForCity = useMemo(() => {
     if (!city) return [];
     const inCity = centers.filter(c => (c.city || '').toLowerCase() === city.toLowerCase());
-    if (!ageGroup) return inCity;
-    // Filter to centres that have at least one batch matching the age group.
-    // If batches haven't loaded yet (we lazy-load on step 5), return the
-    // city-scoped list; we'll re-filter once batches arrive.
-    if (allBatches.length === 0) return inCity;
-    const centresWithMatchingBatch = new Set(
+    if (!ageGroup || allBatches.length === 0) {
+      return inCity.map(c => ({ ...c, has_matching_batch: true }));
+    }
+    const matchIds = new Set(
       allBatches
         .filter(b => !b.age_group || b.age_group === ageGroup)
         .map(b => b.center_id)
     );
-    return inCity.filter(c => centresWithMatchingBatch.has(c.id));
+    return inCity.map(c => ({ ...c, has_matching_batch: matchIds.has(c.id) }));
   }, [centers, city, ageGroup, allBatches]);
 
   const selectedCenter = useMemo(() => centers.find(c => c.id === centerId), [centers, centerId]);
@@ -471,15 +472,31 @@ const FutureSkillsBookingPage = () => {
                   <div className="space-y-2.5" data-testid="centers-list">
                     {centersForCity.map(c => (
                       <button key={c.id}
-                        onClick={() => { setCenterId(c.id); setBatchId(''); setStep(5); }}
+                        onClick={() => {
+                          setCenterId(c.id);
+                          setBatchId('');
+                          if (c.has_matching_batch) {
+                            setStep(5);
+                          } else {
+                            // Prefill the request modal with this centre so
+                            // the user can ask for their preferred day/time
+                            // at this specific location.
+                            setReqForm(f => ({ ...f, preferred_area: c.name }));
+                            setShowBatchReq(true);
+                          }
+                        }}
                         className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 group ${
                           centerId === c.id
                             ? 'border-[#D63031] bg-red-50/40 shadow-md'
-                            : 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
+                            : c.has_matching_batch
+                              ? 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
+                              : 'border-slate-200 bg-slate-50/40 hover:border-amber-400 hover:bg-amber-50/40'
                         }`}
                         data-testid={`center-option-${c.id}`}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          centerId === c.id ? 'bg-[#D63031] text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-[#1E3A5F] group-hover:text-white'
+                          centerId === c.id ? 'bg-[#D63031] text-white'
+                            : c.has_matching_batch ? 'bg-slate-100 text-slate-500 group-hover:bg-[#1E3A5F] group-hover:text-white'
+                            : 'bg-amber-100 text-amber-700'
                         }`}>
                           <MapPin className="w-5 h-5" />
                         </div>
@@ -487,6 +504,11 @@ const FutureSkillsBookingPage = () => {
                           <div className="font-bold text-[#0F1E33]">{c.name}</div>
                           {(c.address || c.city) && (
                             <div className="text-xs text-slate-500 truncate">{[c.address, c.city].filter(Boolean).join(' · ')}</div>
+                          )}
+                          {!c.has_matching_batch && (
+                            <div className="mt-1 text-[11px] font-bold text-amber-700 flex items-center gap-1" data-testid={`center-nobatch-${c.id}`}>
+                              <Clock className="w-3 h-3" /> No batches for {ageGroup} yrs yet — tap to request
+                            </div>
                           )}
                         </div>
                         {centerId === c.id && <Check className="w-5 h-5 text-[#D63031] flex-shrink-0" />}
