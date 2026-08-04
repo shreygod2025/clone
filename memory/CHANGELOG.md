@@ -1,5 +1,23 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 3) — Future Skills trial WhatsApp gaps fixed 💬
+**Status: COMPLETE — verified end-to-end (4 endpoints + 24h reminder cron)**
+
+### Root cause
+The public `POST /future-skills/register-trial` was the ONLY endpoint firing the `fs_trial_booked_confirmation` WhatsApp. Every admin-side trial-creation path (`admin_create_trial`, `admin_lead_to_trial`, `admin_lead_book_trial`) silently skipped the WhatsApp, so parents booked from the CRM never got a confirmation. Separately the 24h-reminder cron built its query with `datetime.isoformat()` (produces `+00:00`) but many `scheduled_at` values in DB end with `Z` or have no offset at all — Mongo's lexicographic string comparison silently misses those rows.
+
+### What changed (`/app/backend/routes/future_skills.py`)
+- Extracted `_send_trial_booking_confirmation(trial)` helper (5-param AiSensy template, fire-and-forget). Called from all 4 trial-creation endpoints so parents get the WhatsApp whether booking is done from the public form or the admin CRM.
+- Rewrote `check_fs_trial_24h_reminders()` to fetch every scheduled trial and compute the delta in Python (`datetime.fromisoformat` + `Z→+00:00` normalisation). Now robust to mixed formats: `2026-08-05T10:00:00Z`, `2026-08-05T10:00:00+00:00`, and naive strings. Also excludes `converted` trials.
+- On reschedule (`admin_trial_reschedule`), reset `reminder_24h_sent=False` and unset `reminder_24h_sent_at` so the new trial time gets its own reminder.
+
+### Verification (curl + manual cron run)
+- Admin trial creation (`POST /admin/future-skills/trials`) → AiSensy queued `fs_trial_booked_confirmation` ✅
+- Lead → convert-to-trial → AiSensy queued ✅
+- Lead → book-trial with center + scheduled_at → AiSensy queued ✅
+- 24h reminder cron correctly picks trials with `Z`-suffix AND `+00:00` suffix formats and queues `fs_trial_24h_reminder` via AiSensy ✅
+
+
 ## 2026-08-04 (round 2) — Social Media KPIs in Roles + Daily Report 📣
 **Status: COMPLETE — verified via API + UI + email HTML build**
 

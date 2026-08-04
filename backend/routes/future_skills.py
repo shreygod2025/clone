@@ -267,25 +267,36 @@ async def register_trial(data: TrialBooking):
         {"$set": {"has_trial": True, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
 
-    # WhatsApp confirmation via AiSensy — 5-param template all resolving to
-    # the child/parent first name. Fire-and-forget: never block booking on WA.
-    try:
-        from .notifications import send_whatsapp_notification
-        first_name = ((data.student_name or data.parent_name) or "").split()[0] or "there"
-        await send_whatsapp_notification(
-            phone=norm_phone,
-            template_key="fs_trial_booked_confirmation",
-            params=[first_name, first_name, first_name, first_name, first_name],
-            user_name=first_name,
-        )
-    except Exception as e:
-        logging.info(f"[future-skills] WA trial confirmation skipped: {e}")
+    await _send_trial_booking_confirmation(doc)
 
     return {
         "trial_id": trial_id,
         "trial_ref": trial_ref,
         "is_existing": False,
     }
+
+
+async def _send_trial_booking_confirmation(trial: dict) -> None:
+    """Fire the AiSensy free-trial-booking WhatsApp for any newly-created trial,
+    regardless of which endpoint created it (public form or admin-side).
+
+    Fire-and-forget: never blocks booking on WhatsApp.
+    """
+    from .notifications import send_whatsapp_notification
+    phone = (trial or {}).get("parent_phone") or ""
+    if not phone:
+        return
+    first_name = ((trial.get("student_name") or trial.get("parent_name")) or "").split()
+    first_name = first_name[0] if first_name else "there"
+    try:
+        await send_whatsapp_notification(
+            phone=phone,
+            template_key="fs_trial_booked_confirmation",
+            params=[first_name, first_name, first_name, first_name, first_name],
+            user_name=first_name,
+        )
+    except Exception as e:
+        logging.info(f"[future-skills] WA trial confirmation skipped for {phone}: {e}")
 
 
 # ── Booking Intent (fired at step 1 of the trial funnel) ──────────────────
@@ -384,27 +395,49 @@ async def check_fs_trial_24h_reminders() -> None:
     """Send the 24-hour reminder for scheduled trials. Runs every 30 minutes;
     picks trials whose `scheduled_at` is between 23–25 hours away and marks
     them `reminder_24h_sent=True` to prevent duplicates.
+
+    NOTE: `scheduled_at` is stored inconsistently across code paths — sometimes
+    with a `Z` suffix, sometimes with `+00:00`, sometimes with no offset at
+    all (naive). Lexicographic Mongo comparison fails across those formats,
+    so we fetch every scheduled trial and compute the delta in Python.
     """
     from .notifications import send_whatsapp_notification
     now = datetime.now(timezone.utc)
-    lower = (now + timedelta(hours=23)).isoformat()
-    upper = (now + timedelta(hours=25)).isoformat()
+    lower_delta = timedelta(hours=23)
+    upper_delta = timedelta(hours=25)
 
     try:
         cursor = db.future_skills_trials.find(
             {
-                "scheduled_at": {"$gte": lower, "$lte": upper},
+                "scheduled_at": {"$exists": True, "$ne": ""},
                 "reminder_24h_sent": {"$ne": True},
-                "crm_status": {"$nin": ["cancelled", "attended", "lost"]},
+                "crm_status": {"$nin": ["cancelled", "attended", "lost", "converted"]},
             },
             {"_id": 0, "id": 1, "parent_phone": 1, "parent_name": 1, "student_name": 1, "scheduled_at": 1},
-        ).limit(200)
-        candidates = await cursor.to_list(length=200)
+        ).limit(500)
+        candidates = await cursor.to_list(length=500)
     except Exception as e:
         print(f"[FS 24h] Query failed: {e}")
         return
 
+    def _parse(s: str):
+        if not s:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            return None
+
     for t in candidates:
+        dt = _parse(t.get("scheduled_at", ""))
+        if not dt:
+            continue
+        delta = dt - now
+        if not (lower_delta <= delta <= upper_delta):
+            continue
         phone = t.get("parent_phone", "")
         if not phone:
             continue
@@ -420,7 +453,7 @@ async def check_fs_trial_24h_reminders() -> None:
                 {"id": t["id"]},
                 {"$set": {"reminder_24h_sent": True, "reminder_24h_sent_at": now.isoformat()}},
             )
-            print(f"[FS 24h] reminder sent to {phone} for trial {t['id']}")
+            print(f"[FS 24h] reminder sent to {phone} for trial {t['id']} (scheduled_at={t.get('scheduled_at')})")
         except Exception as e:
             print(f"[FS 24h] send failed for {phone}: {e}")
 
@@ -1390,6 +1423,7 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
             "updated_at": _now_iso(),
         }},
     )
+    await _send_trial_booking_confirmation(trial_doc)
     trial_doc.pop("_id", None)
     return {"trial": trial_doc}
 
@@ -1580,8 +1614,10 @@ async def admin_trial_reschedule(trial_id: str, data: TrialRescheduleBody, user:
                 "batch_label": batch_label,
                 "trial_status": "rescheduled",
                 "crm_status": "rescheduled",
+                "reminder_24h_sent": False,
                 "updated_at": _now_iso(),
             },
+            "$unset": {"reminder_24h_sent_at": ""},
             "$push": {"reschedules": history_entry},
         },
     )
@@ -1654,6 +1690,7 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
             "updated_at": _now_iso(),
         }},
     )
+    await _send_trial_booking_confirmation(trial_doc)
     trial_doc.pop("_id", None)
     return {"trial": trial_doc}
 
@@ -2048,6 +2085,7 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
         "created_by": user.get("email"),
     }
     await db.future_skills_trials.insert_one(doc)
+    await _send_trial_booking_confirmation(doc)
     doc.pop("_id", None)
     return {"trial": doc}
 
