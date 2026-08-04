@@ -636,7 +636,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               aria-label="Select all leads"
             />
           </th>
-          <Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Age</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th>
+          <Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th>
         </tr>
       </thead>
       <tbody>
@@ -654,17 +654,16 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               />
             </td>
             <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.lead_ref}</td>
-            <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33]">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
+              {(r.age_group || r.child_age) && (
+                <div className="text-[11px] text-slate-500 mt-0.5" data-testid={`row-age-${r.lead_ref}`}>
+                  {r.age_group ? `Age group ${r.age_group}` : `Age ${r.child_age}`}
+                </div>
+              )}
+            </td>
             <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.phone}</div>
-              {r.child_age && <div className="text-[11px] text-slate-500 mt-0.5">Age {r.child_age}</div>}
-            </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)} data-testid={`row-age-${r.lead_ref}`}>
-              {r.age_group ? (
-                <span className="inline-block text-[11px] font-bold px-2 py-1 rounded-full bg-violet-100 text-violet-800">
-                  {r.age_group}
-                </span>
-              ) : <span className="text-slate-400 text-xs">—</span>}
             </td>
             <td className="px-4 py-3 text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</td>
             <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
@@ -741,7 +740,14 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
             className="border-t border-slate-100 hover:bg-blue-50/40"
             data-testid={`row-${r.trial_ref}`}>
             <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</td>
-            <td className="px-4 py-3 font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.student_name}</td>
+            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33]">{r.student_name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
+              {(r.age_group || r.student_age) && (
+                <div className="text-[11px] text-slate-500 mt-0.5" data-testid={`row-trial-age-${r.trial_ref}`}>
+                  {r.age_group ? `Age group ${r.age_group}` : `Age ${r.student_age}`}
+                </div>
+              )}
+            </td>
             <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-semibold text-[#0F1E33] text-xs">{r.parent_name || '—'}</div>
               <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
@@ -998,6 +1004,9 @@ const DetailDrawer = ({ tab, entity, centers = [], batches = [], onClose, onActi
       setEdit({ name: entity.name, phone: entity.phone, email: entity.email, source: entity.source, city: entity.city, status: entity.status, notes: entity.notes });
     } else if (tab === 'trials') {
       setEdit({
+        student_name: entity.student_name || '',
+        age_group: entity.age_group || '',
+        source: entity.source || '',
         crm_status: entity.crm_status,
         notes: entity.notes,
         assigned_center: entity.assigned_center || entity.preferred_center,
@@ -1090,19 +1099,18 @@ const DetailDrawer = ({ tab, entity, centers = [], batches = [], onClose, onActi
           {/* TRIAL */}
           {tab === 'trials' && (
             <>
-              <div>
-                <Label>Student</Label>
-                <div className="text-lg font-black text-[#0F1E33]">{entity.student_name}</div>
-                <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                  <GraduationCap className="w-3.5 h-3.5" /> Grade {entity.student_grade || '—'}
-                </div>
-              </div>
+              <FieldGroup>
+                <TextField label="Student Name" value={edit.student_name || ''} onChange={v => setEdit({ ...edit, student_name: v })} testid="edit-trial-student-name" colSpan={2} />
+                <SelectField label="Age Group" value={edit.age_group || ''} onChange={v => setEdit({ ...edit, age_group: v })}
+                  options={[{ value: '', label: 'Select age group…' }, ...AGE_GROUP_OPTIONS.filter(o => o.value !== '')]}
+                  testid="edit-trial-age-group" />
+                <SelectField label="Source" value={edit.source || ''} onChange={v => setEdit({ ...edit, source: v })}
+                  options={LEAD_SOURCE_OPTIONS} testid="edit-trial-source" />
+              </FieldGroup>
               <div className="grid grid-cols-2 gap-3">
-                <Detail label="Parent" value={entity.parent_name} />
                 <Detail label="Phone" value={entity.parent_phone} />
-                <Detail label="Email" value={entity.parent_email} />
                 <Detail label="Preferred centre" value={entity.preferred_center || '—'} />
-                <Detail label="Scheduled" value={entity.scheduled_at || '—'} />
+                <Detail label="Scheduled" value={entity.scheduled_at ? fmtDateTime(entity.scheduled_at) : '—'} />
                 <Detail label="Created" value={fmtDateTime(entity.created_at)} />
               </div>
               <SelectField label="CRM Status" value={edit.crm_status || 'trial_lead'} onChange={v => setEdit({ ...edit, crm_status: v })}

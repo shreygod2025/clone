@@ -185,6 +185,78 @@ async def _resolve_source_name(source_ref: Optional[str]) -> str:
 
 
 # ── Endpoints — Trial Class ────────────────────────────────────────────────
+_DAYS_MAP = {
+    "mon": 0, "monday": 0,
+    "tue": 1, "tuesday": 1, "tues": 1,
+    "wed": 2, "wednesday": 2,
+    "thu": 3, "thursday": 3, "thur": 3, "thurs": 3,
+    "fri": 4, "friday": 4,
+    "sat": 5, "saturday": 5,
+    "sun": 6, "sunday": 6,
+}
+
+
+def _next_session_scheduled_at(batch: dict) -> str:
+    """Given a batch doc (with `days: ["Mon","Wed"]` + `start_time: "17:00"`),
+    return an ISO string in UTC for the NEXT upcoming session date at that
+    start time. If the batch has no days or no time, return "".
+
+    Interprets `start_time` as IST (Asia/Kolkata) since all OLL centres are India-based.
+    If today itself is a matching weekday and the start time is still in the future,
+    today is used; otherwise the next matching weekday is picked.
+    """
+    if not batch:
+        return ""
+    days_list = batch.get("days") or []
+    start_time = (batch.get("start_time") or "").strip()
+    if not days_list or not start_time or ":" not in start_time:
+        return ""
+    try:
+        hh, mm = [int(x) for x in start_time.split(":")[:2]]
+    except Exception:
+        return ""
+    target_dow = set()
+    for d in days_list:
+        idx = _DAYS_MAP.get((d or "").strip().lower())
+        if idx is not None:
+            target_dow.add(idx)
+    if not target_dow:
+        return ""
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(ist)
+    for offset in range(0, 8):
+        candidate = (now_ist + timedelta(days=offset)).replace(hour=hh, minute=mm, second=0, microsecond=0)
+        if candidate.weekday() not in target_dow:
+            continue
+        if candidate <= now_ist:
+            continue
+        return candidate.astimezone(timezone.utc).isoformat()
+    return ""
+
+
+def _fmt_time_12h(hhmm: str) -> str:
+    """`17:00` → `5pm`, `17:30` → `5:30pm`. Returns the original string on failure."""
+    if not hhmm or ":" not in hhmm:
+        return hhmm or ""
+    try:
+        hh, mm = [int(x) for x in hhmm.split(":")[:2]]
+    except Exception:
+        return hhmm
+    ampm = "pm" if hh >= 12 else "am"
+    hh12 = ((hh - 1) % 12) + 1
+    return f"{hh12}{('' if mm == 0 else ':' + str(mm).zfill(2))}{ampm}"
+
+
+def _build_batch_label(batch: dict) -> str:
+    """Human-readable batch label always in 12h: `Robotics · Mon,Wed · 5pm-6pm`."""
+    if not batch:
+        return ""
+    days = ",".join(batch.get("days", []) or [])
+    start = _fmt_time_12h(batch.get("start_time", ""))
+    end   = _fmt_time_12h(batch.get("end_time", ""))
+    return f"{batch.get('name','Batch')} · {days} · {start}-{end}"
+
+
 @router.post("/future-skills/register-trial")
 async def register_trial(data: TrialBooking):
     """Book a free trial class — minimal payload (phone + center + batch)."""
@@ -205,10 +277,8 @@ async def register_trial(data: TrialBooking):
             center_doc = await db.centers.find_one({"id": batch_doc.get("center_id")}, {"_id": 0})
 
     center_name = (center_doc or {}).get("name") or (data.preferred_center or "").strip()
-    batch_label = ""
-    if batch_doc:
-        days = ",".join(batch_doc.get("days", []) or [])
-        batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+    batch_label = _build_batch_label(batch_doc) if batch_doc else ""
+    scheduled_at = _next_session_scheduled_at(batch_doc) if batch_doc else ""
 
     # Dedup on phone → nudge return_count and refresh center/batch if newly chosen
     existing = await db.future_skills_trials.find_one({"parent_phone": norm_phone}, {"_id": 0})
@@ -222,6 +292,7 @@ async def register_trial(data: TrialBooking):
         if center_name:     update["preferred_center"] = center_name
         if data.batch_id:   update["batch_id"] = data.batch_id
         if batch_label:     update["batch_label"] = batch_label
+        if scheduled_at:    update["scheduled_at"] = scheduled_at
         await db.future_skills_trials.update_one({"id": existing["id"]}, {"$set": update})
         return {
             "trial_id": existing["id"],
@@ -245,6 +316,7 @@ async def register_trial(data: TrialBooking):
         "center_id": data.center_id or "",
         "batch_id": data.batch_id or "",
         "batch_label": batch_label,
+        "scheduled_at": scheduled_at,
         "preferred_skill": (data.preferred_skill or "").strip(),
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "").strip(),
@@ -368,19 +440,26 @@ class BookingIntent(BaseModel):
 async def public_booking_intent(body: BookingIntent):
     """Log the parent's phone at step 1 of the trial funnel so the scheduler
     can WhatsApp them a nudge if they never complete the booking.
+
+    Also creates a `future_skills_leads` row (once per phone) so that a parent
+    who fills the phone but abandons the flow is still visible in the admin
+    CRM as a fresh lead for manual follow-up.
     """
     phone = re.sub(r"\D", "", body.parent_phone or "")
     if len(phone) < 10:
         raise HTTPException(status_code=400, detail="Enter a valid phone number")
     now_iso = datetime.now(timezone.utc).isoformat()
-    # Upsert so multiple attempts by the same parent don't blow up the collection.
+    parent_name = (body.parent_name or "").strip()
+    source_ref = (body.source_ref or "").strip()
+
+    # Upsert intent so multiple attempts by the same parent don't blow up the collection.
     await db.future_skills_booking_intents.update_one(
         {"phone": phone},
         {
             "$set": {
                 "phone": phone,
-                "parent_name": (body.parent_name or "").strip(),
-                "source_ref": (body.source_ref or "").strip(),
+                "parent_name": parent_name,
+                "source_ref": source_ref,
                 "updated_at": now_iso,
             },
             "$setOnInsert": {
@@ -391,6 +470,38 @@ async def public_booking_intent(body: BookingIntent):
         },
         upsert=True,
     )
+
+    # Create a lead row once per phone so drop-offs appear in the CRM.
+    existing_lead = await db.future_skills_leads.find_one({"phone": phone}, {"_id": 0, "id": 1})
+    existing_trial = await db.future_skills_trials.find_one({"parent_phone": phone}, {"_id": 0, "id": 1})
+    if not existing_lead and not existing_trial:
+        source_display = await _resolve_source_name(source_ref) if source_ref else ""
+        lead_doc = {
+            "id": str(uuid.uuid4()),
+            "lead_ref": await _next_ref("FSL"),
+            "program_key": PROGRAM_KEY,
+            "name": parent_name,
+            "phone": phone,
+            "email": "",
+            "source": source_display or source_ref,
+            "source_ref": source_ref,
+            "city": "",
+            "notes": "Started trial booking on website but hasn't finished the funnel yet.",
+            "child_age": "",
+            "child_grade": "",
+            "status": "new",
+            "center_id": "",
+            "batch_id": "",
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "created_by": "website",
+        }
+        try:
+            await db.future_skills_leads.insert_one(lead_doc)
+            logging.info(f"[future-skills] lead created from booking-intent {lead_doc['lead_ref']} - {phone}")
+        except Exception as e:
+            logging.info(f"[future-skills] booking-intent lead insert skipped: {e}")
+
     return {"ok": True}
 
 
@@ -1063,6 +1174,9 @@ class TrialUpdate(BaseModel):
     scheduled_at: Optional[str] = None
     center_id: Optional[str] = None
     batch_id: Optional[str] = None
+    student_name: Optional[str] = None
+    age_group: Optional[str] = None
+    source: Optional[str] = None
 
 
 @router.patch("/admin/future-skills/trials/{trial_id}")
@@ -1652,8 +1766,7 @@ async def admin_trial_reschedule(trial_id: str, data: TrialRescheduleBody, user:
     if data.batch_id and data.batch_id != trial.get("batch_id"):
         b = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
         if b:
-            days = ",".join(b.get("days", []) or [])
-            batch_label = f"{b.get('name','Batch')} · {days} · {b.get('start_time','')}-{b.get('end_time','')}"
+            batch_label = _build_batch_label(b)
 
     history_entry = {
         "at": _now_iso(),
@@ -1704,11 +1817,14 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
         raise HTTPException(status_code=404, detail="Centre not found")
 
     batch_label = ""
+    scheduled_at = (data.scheduled_at or "").strip()
+    batch_doc = None
     if data.batch_id:
         batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
         if batch_doc:
-            days = ",".join(batch_doc.get("days", []) or [])
-            batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+            batch_label = _build_batch_label(batch_doc)
+            if not scheduled_at:
+                scheduled_at = _next_session_scheduled_at(batch_doc)
 
     trial_id = str(uuid.uuid4())
     trial_ref = await _next_ref("FST")
@@ -1729,9 +1845,9 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
         "preferred_skill": "",
         "notes": lead.get("notes", ""),
         "source_ref": lead.get("source", ""),
-        "scheduled_at": (data.scheduled_at or "").strip(),
-        "trial_status": "scheduled" if data.scheduled_at else "requested",
-        "crm_status": "scheduled" if data.scheduled_at else "trial_lead",
+        "scheduled_at": scheduled_at,
+        "trial_status": "scheduled" if scheduled_at else "requested",
+        "crm_status": "scheduled" if scheduled_at else "trial_lead",
         "return_count": 1,
         "source_lead_id": lead_id,
         "created_at": _now_iso(),
@@ -2112,11 +2228,13 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
 
     # Resolve batch info if provided
     batch_label = ""
+    scheduled_at = (data.scheduled_at or "").strip()
     if data.batch_id:
         batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
         if batch_doc:
-            days = ",".join(batch_doc.get("days", []) or [])
-            batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+            batch_label = _build_batch_label(batch_doc)
+            if not scheduled_at:
+                scheduled_at = _next_session_scheduled_at(batch_doc)
             if not center_id_final and batch_doc.get("center_id"):
                 center_id_final = batch_doc["center_id"]
     doc = {
@@ -2134,10 +2252,10 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
         "batch_label": batch_label,
         "preferred_skill": (data.preferred_skill or "").strip(),
         "notes": (data.notes or "").strip(),
-        "scheduled_at": (data.scheduled_at or "").strip(),
+        "scheduled_at": scheduled_at,
         "source_lead_id": (data.source_lead_id or "").strip(),
-        "trial_status": "scheduled" if data.scheduled_at else "requested",
-        "crm_status": "scheduled" if data.scheduled_at else "trial_lead",
+        "trial_status": "scheduled" if scheduled_at else "requested",
+        "crm_status": "scheduled" if scheduled_at else "trial_lead",
         "return_count": 1,
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
@@ -2281,8 +2399,7 @@ async def admin_create_customer(data: CustomerCreateAdmin, user: dict = Depends(
     if data.batch_id:
         batch_doc = await db.future_skills_batches.find_one({"id": data.batch_id}, {"_id": 0})
         if batch_doc:
-            days = ",".join(batch_doc.get("days", []) or [])
-            batch_label = f"{batch_doc.get('name','Batch')} · {days} · {batch_doc.get('start_time','')}-{batch_doc.get('end_time','')}"
+            batch_label = _build_batch_label(batch_doc)
             if not center_id_final and batch_doc.get("center_id"):
                 center_id_final = batch_doc["center_id"]
 
@@ -2870,8 +2987,7 @@ async def admin_import_customers(
     if batch_id:
         batch = await db.future_skills_batches.find_one({"id": batch_id}, {"_id": 0})
         if batch:
-            days = ",".join(batch.get("days", []) or [])
-            batch_label = f"{batch.get('name','Batch')} · {days} · {batch.get('start_time','')}-{batch.get('end_time','')}"
+            batch_label = _build_batch_label(batch)
 
     filename = (file.filename or "").lower()
     content = await file.read()

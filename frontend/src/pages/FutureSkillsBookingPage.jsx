@@ -42,7 +42,6 @@ const FutureSkillsBookingPage = () => {
   // Flow: phone → age group → city → centre → batch (auto-advance)
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
-  const [parentName, setParentName] = useState('');
   const [studentName, setStudentName] = useState('');
   const [ageGroup, setAgeGroup] = useState('');
   const [city, setCity] = useState('');
@@ -164,14 +163,13 @@ const FutureSkillsBookingPage = () => {
   const goNext = () => {
     if (step === 1) {
       if (!isValidPhone(phone)) { toast.error('Enter a valid 10-digit phone number'); return; }
-      if (!parentName.trim()) { toast.error("Please enter the parent's name"); return; }
       if (!studentName.trim()) { toast.error("Please enter the child's name"); return; }
       // Fire-and-forget booking-intent so the scheduler can nudge the parent
       // via WhatsApp if they don't complete the trial in the next 30 minutes.
       const cleanPhone = phone.replace(/\D/g, '').slice(-10);
       axios.post(`${API}/future-skills/booking-intent`, {
         parent_phone: cleanPhone,
-        parent_name: parentName.trim(),
+        parent_name: studentName.trim(),
         source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
       }).catch(() => { /* best-effort — never block the funnel */ });
       setStep(2); return;
@@ -203,7 +201,6 @@ const FutureSkillsBookingPage = () => {
       const effectiveCenterId = effectiveBatch?.center_id || centerId;
       const r = await axios.post(`${API}/future-skills/register-trial`, {
         parent_phone: cleanPhone,
-        parent_name: parentName.trim(),
         student_name: studentName.trim(),
         center_id: effectiveCenterId,
         batch_id: effectiveBatchId,
@@ -396,15 +393,6 @@ const FutureSkillsBookingPage = () => {
                       data-testid="phone-input" />
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1.5">10-digit Indian mobile · we&apos;ll send WhatsApp confirmation</p>
-                </label>
-                <label className="block mt-4">
-                  <span className="text-xs font-bold tracking-wider text-slate-600 uppercase mb-1.5 block">Parent&apos;s Name</span>
-                  <input type="text" maxLength={80}
-                    value={parentName}
-                    onChange={e => setParentName(e.target.value)}
-                    className="w-full px-3.5 py-3 border-2 border-slate-200 rounded-xl text-base focus:outline-none focus:border-[#1E3A5F] focus:ring-4 focus:ring-blue-100 transition-all"
-                    placeholder="Your full name"
-                    data-testid="parent-name-input" />
                 </label>
                 <label className="block mt-4">
                   <span className="text-xs font-bold tracking-wider text-slate-600 uppercase mb-1.5 block">Child&apos;s Name</span>

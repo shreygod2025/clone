@@ -1,5 +1,32 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 6) — Trial funnel polish: names, dates, 12h clock, lead-on-dropoff 🎯
+**Status: COMPLETE — verified end-to-end (helpers + UI + admin CRM)**
+
+### What changed
+
+**Public booking (`FutureSkillsBookingPage.jsx`)**
+- Removed the Parent's Name field entirely — step 1 is now Phone + Child's Name only.
+- Child's Name is still sent as `parent_name` (fallback) AND `student_name` so trials always land in CRM with a human-readable identifier.
+
+**Backend (`routes/future_skills.py`)**
+- New helpers: `_fmt_time_12h("17:00") → "5pm"`, `_build_batch_label(batch) → "Robotics · Mon,Wed · 5pm-6pm"`, `_next_session_scheduled_at(batch)` picks the next matching weekday in IST at the batch's start_time and returns UTC ISO.
+- `register_trial`, `admin_lead_book_trial`, `admin_create_trial`, `admin_trial_reschedule`, `admin_convert_to_customer`, and the leads-import all use the new 12h-formatted batch_label + auto-derived `scheduled_at`.
+- `booking-intent` now creates a `future_skills_leads` row (once per phone) so a parent who drops out mid-funnel still appears in the CRM as a fresh lead with source and phone.
+- `TrialUpdate` PATCH model now accepts `student_name`, `age_group`, `source` so those fields can be edited from the admin CRM.
+
+**Admin CRM (`AdminFutureSkills.jsx`)**
+- Leads table: removed the standalone Age column; age group / child age now shows below the name in the Name column.
+- Trials table: same treatment — age shows below student name.
+- Trial detail drawer: `student_name`, `age_group`, `source` are now editable dropdown/input fields at the top. Removed the read-only Email + Grade + Parent Name blocks (parent name intentionally not collected any more). Scheduled is displayed in a human-readable format (`fmtDateTime`).
+
+### Verification
+- Unit-tested `_fmt_time_12h` (`17:00→5pm`, `17:30→5:30pm`, `09:00→9am`, `12:00→12pm`) and `_next_session_scheduled_at` for a Fri-batch @ 17:00 → next Friday 5pm IST as UTC ISO ✅
+- End-to-end curl: booking-intent for `918111000222` → `future_skills_leads` row created as FSL-0219 named "Aditya Test" ✅
+- Book trial with a real batch → `batch_label="Friday Aftrtnoon · Fri · 5pm-6pm"`, `scheduled_at="2026-08-07T11:30:00+00:00"`, `student_name="Arjun"`, `source="instagram"`, `crm_status="scheduled"` ✅
+- Admin trials tab screenshot shows age-group below student name; blank-name rows now display italicised "no name" so they're easy to spot for backfill ✅
+
+
 ## 2026-08-04 (round 5) — Free-trial bookings now save parent/child name in CRM 📝
 **Status: COMPLETE — name fields added to step 1, WhatsApp fired for 9028666246**
 
