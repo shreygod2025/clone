@@ -1,5 +1,24 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 5) — Free-trial bookings now save parent/child name in CRM 📝
+**Status: COMPLETE — name fields added to step 1, WhatsApp fired for 9028666246**
+
+### Root cause of "bookings not showing in CRM"
+The public trial-booking wizard (`/future-skills/book`) only collected: phone, age group, city, centre, batch. It never asked for parent/student name, so `future_skills_trials` rows landed with `parent_name=""` and `student_name=""` — making the Trials tab a wall of anonymous phone numbers. On top of that, dedup logic in `register_trial` returned early for any existing phone (skipping WhatsApp) — which is why triggering a resend for `9028666246` initially came back as `is_existing:true` with no send.
+
+### What changed (`/app/frontend/src/pages/FutureSkillsBookingPage.jsx`)
+- Added `parentName` + `studentName` state, two new inputs on Step 1 (below the phone field) with kebab-cased `data-testid` (`parent-name-input`, `student-name-input`).
+- Step-1 validation blocks progression if either name is blank ("Please enter the parent's/child's name").
+- Both fields now flow into `POST /future-skills/booking-intent` (so mid-funnel drop-offs get a WhatsApp with the right first name) and `POST /future-skills/register-trial` (so the CRM row is properly identified from the first save).
+
+### Verification
+- Delete existing FST-0029 row → re-book 9028666246 with `parent_name="Shreyaan"` + `student_name="Shreyaan"` → AiSensy queued `fs_trial_booked_confirmation` (id `ac741aab-fbd1-4e7e-ae51-9e1a8ff34435`).
+- UI screenshot confirms the two new fields render on step 1 above the Continue button.
+
+### Known still-open
+User reported previous fs template deliveries still showing **Failed** on AiSensy despite Meta approval — awaiting the exact per-message error text from AiSensy dashboard to determine whether the header/button variables need adjustments beyond the 5 body params.
+
+
 ## 2026-08-04 (round 4) — Trial WhatsApp params fixed to match Meta template 💬
 **Status: COMPLETE — verified against real template body from AiSensy dashboard**
 
