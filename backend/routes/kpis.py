@@ -65,6 +65,15 @@ KPI_CATALOG = [
     {"id": "social_yt_subscriber_growth", "label": "YouTube subscriber growth",    "category": "Social Media", "unit": "count", "aggregation": "delta"},
     {"id": "social_yt_engagement_growth", "label": "YouTube engagement growth (%)",   "category": "Social Media", "unit": "%", "aggregation": "delta"},
 
+    # Future Skills — sourced from `future_skills_leads`, `future_skills_trials`, `future_skills_subscriptions`
+    # These are program-wide funnel metrics, shown org-wide for any user whose role owns Future Skills growth.
+    {"id": "fs_leads_generated",  "label": "FS leads generated",       "category": "Future Skills", "unit": "count"},
+    {"id": "fs_lead_to_trial",    "label": "FS lead → trial rate (%)", "category": "Future Skills", "unit": "%"},
+    {"id": "fs_trial_to_paid",    "label": "FS trial → paid rate (%)", "category": "Future Skills", "unit": "%"},
+    {"id": "fs_revenue",          "label": "FS revenue (₹)",           "category": "Future Skills", "unit": "₹"},
+    {"id": "fs_aov",              "label": "FS avg order value (₹)",   "category": "Future Skills", "unit": "₹"},
+    {"id": "fs_profit_margin",    "label": "FS profit margin (%)",     "category": "Future Skills", "unit": "%"},
+
     # Task & Project Delivery — sourced from `tasks` and `projects`
     {"id": "tasks_assigned", "label": "Tasks assigned", "category": "Tasks & Responsibilities", "unit": "count"},
     {"id": "tasks_completed", "label": "Tasks completed", "category": "Tasks & Responsibilities", "unit": "count"},
@@ -789,6 +798,45 @@ async def _compute_social_media_metrics(start_iso: str, end_iso: str) -> dict:
     }
 
 
+async def _compute_future_skills_metrics(start_iso: str, end_iso: str) -> dict:
+    """Program-wide Future Skills funnel metrics over [start, end]."""
+    q_leads   = {"created_at":     {"$gte": start_iso, "$lte": end_iso}}
+    q_trials  = {"created_at":     {"$gte": start_iso, "$lte": end_iso}}
+    q_subs    = {"subscribed_at":  {"$gte": start_iso, "$lte": end_iso}}
+
+    leads_total    = await db.future_skills_leads.count_documents(q_leads)
+    trials_total   = await db.future_skills_trials.count_documents(q_trials)
+    customers_paid = await db.future_skills_subscriptions.count_documents({**q_subs, "amount_paid": {"$gt": 0}})
+
+    rev_cursor = db.future_skills_subscriptions.find(
+        {**q_subs, "amount_paid": {"$gt": 0}}, {"_id": 0, "amount_paid": 1}
+    )
+    revenue = 0.0
+    paying_orders = 0
+    async for r in rev_cursor:
+        revenue += float(r.get("amount_paid") or 0)
+        paying_orders += 1
+
+    # Program-wide costs (from centre economics) for margin — same shape as the FS report.
+    cost_cursor = db.future_skills_expenses.find(
+        {"date": {"$gte": start_iso[:10], "$lte": end_iso[:10]}},
+        {"_id": 0, "amount": 1},
+    )
+    total_cost = 0.0
+    async for c in cost_cursor:
+        total_cost += float(c.get("amount") or 0)
+
+    def _pct(n, d): return round((n / d) * 100.0, 1) if d > 0 else 0.0
+    return {
+        "fs_leads_generated": leads_total,
+        "fs_lead_to_trial":   _pct(trials_total, leads_total),
+        "fs_trial_to_paid":   _pct(customers_paid, trials_total),
+        "fs_revenue":         int(round(revenue)),
+        "fs_aov":             int(round(revenue / paying_orders)) if paying_orders > 0 else 0,
+        "fs_profit_margin":   round((revenue - total_cost) / revenue * 100.0, 1) if revenue > 0 else 0.0,
+    }
+
+
 async def _compute_selected_metrics(
     user_id: str, role_kpi_ids: list, start_iso: str, end_iso: str
 ) -> dict:
@@ -801,6 +849,7 @@ async def _compute_selected_metrics(
     needs_edu = any(k.startswith("edu_") for k in role_kpi_ids)
     needs_gp = any(k.startswith("gp_") for k in role_kpi_ids)
     needs_social = any(k.startswith("social_") for k in role_kpi_ids)
+    needs_fs = any(k.startswith("fs_") for k in role_kpi_ids)
     if needs_support:
         metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
     if needs_b2b:
@@ -817,6 +866,8 @@ async def _compute_selected_metrics(
         metrics.update(await _compute_growth_partner_metrics(user_id, start_iso, end_iso))
     if needs_social:
         metrics.update(await _compute_social_media_metrics(start_iso, end_iso))
+    if needs_fs:
+        metrics.update(await _compute_future_skills_metrics(start_iso, end_iso))
     return metrics
 
 

@@ -282,15 +282,13 @@ const AdminFutureSkills = () => {
 
   const isAdminRole = user?.role === 'admin' || user?.role === 'super_admin';
   const userPerms = user?.permissions || [];
-  // KPI-level gates for Reports tab (admin/owner sees everything;
-  // team-users see only KPIs their role explicitly grants).
+  // KPI cards on the Reports tab used to be gated by granular future_skills.kpi.*
+  // permissions, but those have moved to the Performance KPIs section (assign a
+  // KPI to a role from Users & Roles instead). Anyone with future_skills access
+  // now sees all cards on the CRM Reports tab.
   const kpi = {
-    leads:         isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.leads'),
-    lead_to_trial: isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.lead_to_trial'),
-    trial_to_paid: isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.trial_to_paid'),
-    revenue:       isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.revenue'),
-    aov:           isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.aov'),
-    profit_margin: isAdminRole || isCenterOwner || userPerms.includes('future_skills.kpi.profit_margin'),
+    leads: true, lead_to_trial: true, trial_to_paid: true,
+    revenue: true, aov: true, profit_margin: true,
   };
   // Centre Economics gate: admins, centre owners, or holders of the
   // dedicated sub-permission.
@@ -658,7 +656,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               <div className="font-bold text-[#0F1E33]">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.child_age) && (
                 <div className="text-[11px] text-slate-500 mt-0.5" data-testid={`row-age-${r.lead_ref}`}>
-                  {r.age_group ? `Age group ${r.age_group}` : `Age ${r.child_age}`}
+                  {r.age_group || r.child_age}
                 </div>
               )}
             </td>
@@ -744,7 +742,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
               <div className="font-bold text-[#0F1E33]">{r.student_name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.student_age) && (
                 <div className="text-[11px] text-slate-500 mt-0.5" data-testid={`row-trial-age-${r.trial_ref}`}>
-                  {r.age_group ? `Age group ${r.age_group}` : `Age ${r.student_age}`}
+                  {r.age_group || r.student_age}
                 </div>
               )}
             </td>

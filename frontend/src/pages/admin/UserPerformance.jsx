@@ -29,6 +29,7 @@ const iconFor = (kpi) => {
   if (cat.includes('B2C')) return UsersIcon;
   if (cat.includes('Task')) return CheckCircle2;
   if (cat.includes('Social')) return TrendingUp;
+  if (cat.includes('Future Skills')) return TrendingUp;
   return TrendingUp;
 };
 
@@ -55,6 +56,7 @@ const CATEGORY_THEME = {
   'Educator HR':              { color: '#ec4899', badge: 'bg-pink-50 text-pink-700 border-pink-100' },        // pink
   'Growth Partners':          { color: '#f97316', badge: 'bg-orange-50 text-orange-700 border-orange-100' },   // orange
   'Social Media':             { color: '#db2777', badge: 'bg-pink-50 text-pink-700 border-pink-100' },        // pink
+  'Future Skills':            { color: '#0284c7', badge: 'bg-sky-50 text-sky-700 border-sky-100' },           // sky-blue
 };
 const themeFor = (cat) => CATEGORY_THEME[cat] || { color: '#64748b', badge: 'bg-slate-50 text-slate-700 border-slate-100' };
 

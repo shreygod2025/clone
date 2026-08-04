@@ -1,5 +1,27 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 7) — Age display cleanup + FS KPIs moved to Performance 🎯
+**Status: COMPLETE — 6 new KPIs assignable per role, gate removed from CRM**
+
+### What changed
+
+**Age display (`AdminFutureSkills.jsx`)**
+- Leads + Trials tables now show just the age/age-group number below the name (`3-7`, `8-11`, `12`) — no more `Age group ...` / `Age ...` prefix wording.
+
+**Roles refactor — FS KPIs out of "features", into "performance"**
+- Removed 6 `future_skills.kpi.*` permissions from `PERMISSIONS_CATALOG` in `AdminUsers.jsx` (they were sub-toggles under the Future Skills CRM feature).
+- Backend `KPI_CATALOG` (`routes/kpis.py`) now includes 6 new items under a **Future Skills** category: `fs_leads_generated`, `fs_lead_to_trial`, `fs_trial_to_paid`, `fs_revenue`, `fs_aov`, `fs_profit_margin`.
+- New `_compute_future_skills_metrics(start, end)` computes those from `future_skills_leads`, `future_skills_trials`, `future_skills_subscriptions`, `future_skills_expenses`. Wired into `_compute_selected_metrics` via `fs_` prefix.
+- `AdminFutureSkills.jsx` KPI card gates simplified — anyone with the `future_skills` feature sees all cards on the Reports tab. Granular visibility is now driven exclusively through the role's KPI assignment (Users & Roles → Manage KPIs).
+- `UserPerformance.jsx` gains a sky-blue Future Skills theme + matching icon.
+
+### Verification
+- `/api/kpis/catalog` returns the new `Future Skills` group with 6 items ✅
+- Assigned all 6 to a test role → `/api/users/{id}/performance` returns real values (62 leads · 33.9% Lead→Trial in DB-wide window) ✅
+- User Performance page renders all 6 cards in sky-blue category theme with sparklines ✅
+- Age columns removed from Leads + Trials tables; age shows as bare number below name ✅
+
+
 ## 2026-08-04 (round 6) — Trial funnel polish: names, dates, 12h clock, lead-on-dropoff 🎯
 **Status: COMPLETE — verified end-to-end (helpers + UI + admin CRM)**
 
