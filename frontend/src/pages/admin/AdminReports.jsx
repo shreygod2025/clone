@@ -7,7 +7,7 @@ import {
   UserCheck, Clock, MessageSquare, Target, BarChart3,
   Briefcase, Handshake, Wallet, Receipt, TrendingDown,
   FileText, Plus, Edit2, Trash2, X, ChevronDown, ChevronRight, Link, Copy, Eye, EyeOff, ExternalLink, Lock,
-  PieChart, AlertCircle, Send, MessageCircle, MapPin
+  PieChart, AlertCircle, Send, MessageCircle, MapPin, Instagram, Heart, MessageSquare as CommentIcon, Play, CheckCircle2, Loader2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -32,6 +32,7 @@ const REPORT_TABS = [
   { id: 'educator_hr', label: 'Educator HR', icon: GraduationCap },
   { id: 'growth_partners', label: 'Growth Partners', icon: Handshake },
   { id: 'support', label: 'Support', icon: MessageSquare },
+  { id: 'social', label: 'Social Media', icon: Instagram },
   { id: 'pnl', label: 'P&L Report', icon: Wallet },
 ];
 
@@ -301,6 +302,28 @@ const AdminReports = () => {
   const [subcategoryLoading, setSubcategoryLoading] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState({});
   const [supportTimeline, setSupportTimeline] = useState([]);
+
+  // Social Media (Instagram via Apify) state — lazy-loaded on tab open.
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialData,    setSocialData]    = useState(null);
+  const [socialError,   setSocialError]   = useState('');
+  const loadSocial = async (force = false) => {
+    setSocialLoading(true); setSocialError('');
+    try {
+      const r = await axios.get(
+        `${process.env.REACT_APP_BACKEND_URL}/api/admin/reports/social-media/instagram${force ? '?refresh=true' : ''}`,
+        { headers: getAuthHeaders() },
+      );
+      setSocialData(r.data);
+    } catch (e) {
+      setSocialError(e.response?.data?.detail || 'Failed to load Instagram stats');
+    } finally { setSocialLoading(false); }
+  };
+  // Auto-load when the Social Media tab is opened for the first time.
+  useEffect(() => {
+    if (activeTab === 'social' && !socialData && !socialLoading) loadSocial(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const getDateParams = () => {
     let params = {};
@@ -1679,6 +1702,135 @@ const AdminReports = () => {
     );
   };
 
+  const renderSocialTab = () => {
+    const fmtNum = (n) => (n === null || n === undefined) ? '—' : Number(n).toLocaleString('en-IN');
+    const fmtRel = (iso) => {
+      if (!iso) return '';
+      try {
+        const t = new Date(iso).getTime();
+        const secs = Math.max(1, Math.floor((Date.now() - t) / 1000));
+        if (secs < 60) return `${secs}s ago`;
+        const mins = Math.floor(secs / 60);
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        return `${days}d ago`;
+      } catch { return ''; }
+    };
+
+    return (
+      <div className="space-y-6" data-testid="social-tab">
+        <div className="flex justify-between items-start gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-[#1E3A5F] flex items-center gap-2">
+              <Instagram className="w-5 h-5 text-pink-500" /> Instagram — @{socialData?.username || 'oll.co_'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Live stats via Apify · cached 6h · {socialData?.fetched_at && `fetched ${fmtRel(socialData.fetched_at)}`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <a href={socialData?.profile_url || 'https://www.instagram.com/oll.co_/'} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold text-slate-700"
+              data-testid="social-open-profile">
+              <ExternalLink className="w-3.5 h-3.5" /> Open profile
+            </a>
+            <Button onClick={() => loadSocial(true)} disabled={socialLoading}
+              className="bg-[#D63031] hover:bg-[#b52828] text-white h-9"
+              data-testid="social-refresh">
+              {socialLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Refreshing…</> : <><RefreshCw className="w-4 h-4 mr-2" /> Refresh</>}
+            </Button>
+          </div>
+        </div>
+
+        {socialError && (
+          <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 text-sm text-rose-800" data-testid="social-error">
+            {socialError}
+          </div>
+        )}
+
+        {socialLoading && !socialData ? (
+          <div className="p-12 text-center text-slate-500 bg-white rounded-2xl border border-slate-100">
+            <Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> Scraping latest stats — may take up to a minute…
+          </div>
+        ) : socialData ? (
+          <>
+            {/* Profile summary card */}
+            <div className="bg-gradient-to-br from-pink-50 via-white to-purple-50 border border-pink-100 rounded-2xl p-5 flex items-center gap-4" data-testid="social-profile-card">
+              {socialData.profile_pic && (
+                <img src={socialData.profile_pic} alt={socialData.username} className="w-16 h-16 rounded-full object-cover ring-2 ring-white shadow" />
+              )}
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <div className="font-black text-lg text-[#0F1E33]">{socialData.full_name || `@${socialData.username}`}</div>
+                  {socialData.verified && <CheckCircle2 className="w-4 h-4 text-blue-500" />}
+                </div>
+                <div className="text-xs text-slate-500">@{socialData.username}</div>
+                {socialData.biography && <div className="text-xs text-slate-600 mt-1 line-clamp-2 max-w-2xl">{socialData.biography}</div>}
+              </div>
+            </div>
+
+            {/* KPI cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-testid="social-kpis">
+              {[
+                { label: 'Followers',   value: socialData.followers,  accent: 'text-pink-600',   testid: 'social-kpi-followers' },
+                { label: 'Following',   value: socialData.following,  accent: 'text-purple-600', testid: 'social-kpi-following' },
+                { label: 'Posts',       value: socialData.post_count, accent: 'text-[#1E3A5F]',  testid: 'social-kpi-posts' },
+              ].map(k => (
+                <div key={k.label} className="bg-white rounded-2xl border border-slate-100 p-5" data-testid={k.testid}>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{k.label}</div>
+                  <div className={`text-3xl font-black mt-1 ${k.accent}`}>{fmtNum(k.value)}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Latest posts */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="social-latest-posts">
+              <h3 className="text-sm font-black text-[#0F1E33] mb-3">Latest posts</h3>
+              {(socialData.latest_posts?.length || 0) === 0 ? (
+                <div className="text-sm text-slate-400 py-6 text-center">No recent posts available.</div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {socialData.latest_posts.map((p) => (
+                    <a key={p.id || p.shortcode || p.url} href={p.url || '#'} target="_blank" rel="noopener noreferrer"
+                      className="group block rounded-xl overflow-hidden border border-slate-100 hover:shadow-md transition-shadow"
+                      data-testid={`social-post-${p.id || p.shortcode}`}>
+                      <div className="aspect-square bg-slate-100 relative overflow-hidden">
+                        {p.thumbnail ? (
+                          <img src={p.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-300">
+                            <Instagram className="w-8 h-8" />
+                          </div>
+                        )}
+                        {(p.type === 'video' || p.type === 'Video' || p.video_view_count) && (
+                          <div className="absolute top-1.5 right-1.5 bg-black/60 rounded-full p-1">
+                            <Play className="w-3 h-3 text-white fill-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2 text-[11px] text-slate-600 flex items-center gap-3">
+                        <span className="inline-flex items-center gap-0.5"><Heart className="w-3 h-3" /> {fmtNum(p.like_count)}</span>
+                        <span className="inline-flex items-center gap-0.5"><CommentIcon className="w-3 h-3" /> {fmtNum(p.comment_count)}</span>
+                        {p.video_view_count ? <span className="inline-flex items-center gap-0.5"><Play className="w-3 h-3" /> {fmtNum(p.video_view_count)}</span> : null}
+                      </div>
+                      {p.caption && (
+                        <div className="px-2 pb-2 text-[11px] text-slate-500 line-clamp-2" title={p.caption}>{p.caption}</div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="p-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-100">No data yet — hit refresh.</div>
+        )}
+      </div>
+    );
+  };
+
   const renderPnLTab = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -1912,6 +2064,7 @@ const AdminReports = () => {
             {activeTab === 'educator_hr' && renderEducatorHRTab()}
             {activeTab === 'growth_partners' && renderGPTab()}
             {activeTab === 'support' && renderSupportTab()}
+            {activeTab === 'social' && renderSocialTab()}
             {activeTab === 'pnl' && renderPnLTab()}
           </>
         )}

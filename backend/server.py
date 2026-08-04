@@ -4054,6 +4054,7 @@ from routes.social_media_intern import router as social_media_intern_router
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
+from routes.social_media import router as social_media_router
 from routes.jobs import router as jobs_router, scheduled_educator_applicant_demo_reminders
 from routes.expenses import router as expenses_router, transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
 from routes.admin_keys import router as admin_keys_router
@@ -4096,6 +4097,7 @@ from routes.discover import router as discover_router
 from routes.friendship_day import router as friendship_day_router
 
 api_router.include_router(reports_router)
+api_router.include_router(social_media_router)
 api_router.include_router(jobs_router)
 api_router.include_router(expenses_router)
 api_router.include_router(admin_keys_router)
