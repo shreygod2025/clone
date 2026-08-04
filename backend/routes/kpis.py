@@ -58,6 +58,13 @@ KPI_CATALOG = [
     {"id": "b2c_conversion_rate", "label": "Conversion rate (%)", "category": "Sales — B2C", "unit": "%"},
     {"id": "b2c_revenue_generated", "label": "Revenue generated (₹)", "category": "Sales — B2C", "unit": "₹"},
 
+    # Social Media — sourced from `social_media_snapshots`
+    # These are channel-level metrics (shared org-wide) shown for any user whose role owns social media growth.
+    {"id": "social_ig_follower_growth",   "label": "Instagram follower growth",    "category": "Social Media", "unit": "count", "aggregation": "delta"},
+    {"id": "social_ig_engagement_growth", "label": "Instagram engagement growth (%)", "category": "Social Media", "unit": "%", "aggregation": "delta"},
+    {"id": "social_yt_subscriber_growth", "label": "YouTube subscriber growth",    "category": "Social Media", "unit": "count", "aggregation": "delta"},
+    {"id": "social_yt_engagement_growth", "label": "YouTube engagement growth (%)",   "category": "Social Media", "unit": "%", "aggregation": "delta"},
+
     # Task & Project Delivery — sourced from `tasks` and `projects`
     {"id": "tasks_assigned", "label": "Tasks assigned", "category": "Tasks & Responsibilities", "unit": "count"},
     {"id": "tasks_completed", "label": "Tasks completed", "category": "Tasks & Responsibilities", "unit": "count"},
@@ -727,6 +734,61 @@ async def get_user_performance_timeseries(
 
 
 # ── Shared metric routing ─────────────────────────────────────────────────────
+async def _compute_social_media_metrics(start_iso: str, end_iso: str) -> dict:
+    """Channel-level social media growth over [start, end].
+
+    Baseline = latest snapshot with date STRICTLY BEFORE start (falls back to
+               earliest snapshot in range if no prior snapshot exists).
+    Current  = latest snapshot with date <= end.
+    Follower/subscriber growth = current.followers - baseline.followers.
+    Engagement growth (%) = (current.engagement - baseline.engagement) / baseline.engagement * 100.
+                            Engagement = latest_total_likes + latest_total_comments (+ views for YT).
+    """
+    start_day = start_iso[:10]
+    end_day = end_iso[:10]
+
+    async def _delta_for(provider: str, engagement_keys: list) -> tuple:
+        # current: latest snapshot with date <= end_day
+        current = await db.social_media_snapshots.find_one(
+            {"provider": provider, "date": {"$lte": end_day}},
+            {"_id": 0}, sort=[("date", -1)],
+        )
+        if not current:
+            return 0, 0.0
+        # baseline: latest snapshot strictly before start_day; fallback → earliest in-range
+        baseline = await db.social_media_snapshots.find_one(
+            {"provider": provider, "date": {"$lt": start_day}},
+            {"_id": 0}, sort=[("date", -1)],
+        )
+        if not baseline:
+            baseline = await db.social_media_snapshots.find_one(
+                {"provider": provider, "date": {"$gte": start_day, "$lte": end_day}},
+                {"_id": 0}, sort=[("date", 1)],
+            )
+        if not baseline:
+            return 0, 0.0
+
+        followers_delta = int((current.get("followers") or 0) - (baseline.get("followers") or 0))
+
+        def _engagement(doc):
+            return sum(int(doc.get(k) or 0) for k in engagement_keys)
+        cur_eng = _engagement(current)
+        base_eng = _engagement(baseline)
+        eng_pct = 0.0
+        if base_eng > 0:
+            eng_pct = round((cur_eng - base_eng) / base_eng * 100.0, 2)
+        return followers_delta, eng_pct
+
+    ig_followers, ig_eng = await _delta_for("instagram", ["latest_total_likes", "latest_total_comments", "latest_total_views"])
+    yt_subs, yt_eng = await _delta_for("youtube",   ["latest_total_likes", "latest_total_comments", "latest_total_views"])
+    return {
+        "social_ig_follower_growth":   ig_followers,
+        "social_ig_engagement_growth": ig_eng,
+        "social_yt_subscriber_growth": yt_subs,
+        "social_yt_engagement_growth": yt_eng,
+    }
+
+
 async def _compute_selected_metrics(
     user_id: str, role_kpi_ids: list, start_iso: str, end_iso: str
 ) -> dict:
@@ -738,6 +800,7 @@ async def _compute_selected_metrics(
     needs_hr = any(k.startswith("hr_") for k in role_kpi_ids)
     needs_edu = any(k.startswith("edu_") for k in role_kpi_ids)
     needs_gp = any(k.startswith("gp_") for k in role_kpi_ids)
+    needs_social = any(k.startswith("social_") for k in role_kpi_ids)
     if needs_support:
         metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
     if needs_b2b:
@@ -752,6 +815,8 @@ async def _compute_selected_metrics(
         metrics.update(await _compute_educator_hr_metrics(user_id, start_iso, end_iso))
     if needs_gp:
         metrics.update(await _compute_growth_partner_metrics(user_id, start_iso, end_iso))
+    if needs_social:
+        metrics.update(await _compute_social_media_metrics(start_iso, end_iso))
     return metrics
 
 

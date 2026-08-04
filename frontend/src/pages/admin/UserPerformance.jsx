@@ -28,6 +28,7 @@ const iconFor = (kpi) => {
   if (cat.includes('B2B')) return IndianRupee;
   if (cat.includes('B2C')) return UsersIcon;
   if (cat.includes('Task')) return CheckCircle2;
+  if (cat.includes('Social')) return TrendingUp;
   return TrendingUp;
 };
 
@@ -53,6 +54,7 @@ const CATEGORY_THEME = {
   'HR':                       { color: '#a855f7', badge: 'bg-purple-50 text-purple-700 border-purple-100' },   // purple
   'Educator HR':              { color: '#ec4899', badge: 'bg-pink-50 text-pink-700 border-pink-100' },        // pink
   'Growth Partners':          { color: '#f97316', badge: 'bg-orange-50 text-orange-700 border-orange-100' },   // orange
+  'Social Media':             { color: '#db2777', badge: 'bg-pink-50 text-pink-700 border-pink-100' },        // pink
 };
 const themeFor = (cat) => CATEGORY_THEME[cat] || { color: '#64748b', badge: 'bg-slate-50 text-slate-700 border-slate-100' };
 

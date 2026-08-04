@@ -1,5 +1,21 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 2) — Social Media KPIs in Roles + Daily Report 📣
+**Status: COMPLETE — verified via API + UI + email HTML build**
+
+### What changed
+- `/app/backend/routes/kpis.py`: added 4 KPIs under a new **Social Media** category (`social_ig_follower_growth`, `social_ig_engagement_growth`, `social_yt_subscriber_growth`, `social_yt_engagement_growth`) + new compute helper `_compute_social_media_metrics(start, end)` that reads `social_media_snapshots` and returns baseline-vs-current deltas (falls back to earliest in-range snapshot when no prior baseline exists). Wired into `_compute_selected_metrics` via `social_` prefix.
+- `/app/backend/routes/daily_report.py`: new `fetch_social_media_data()` (7-day baseline vs today), `build_social_media_email()` with signed growth pills, and 8th section wired into `build_consolidated_email` + `send_daily_reports`.
+- `/app/frontend/src/pages/admin/UserPerformance.jsx`: added Social Media theme (`#db2777` pink) + icon mapping so the new KPI group renders with matching color.
+
+### Verification
+- KPI catalog exposes the 4 new items under **Social Media** category ✅
+- Role editor auto-shows the new group (frontend `AdminUsers.jsx` reads `/api/kpis/catalog`) ✅
+- Assigned to a test role → `/api/users/{id}/performance?month=8&year=2026` returns real deltas (IG +40, YT +20, engagement %s) ✅
+- User Performance UI renders all 4 sparkline cards in the pink Social Media section ✅
+- Daily report consolidated HTML contains "Social Media Report" section with @oll.co_ Instagram + OLL YouTube stats and 7-day growth pills ✅
+
+
 ## 2026-08-04 — YouTube Analytics fixed with API key auth ▶️
 **Status: COMPLETE — verified via API + UI**
 

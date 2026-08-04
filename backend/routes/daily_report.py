@@ -170,6 +170,7 @@ COLORS = {
     "educator": "#c27803",
     "accounts": "#0f766e",
     "b2b":      "#be185d",
+    "social":   "#db2777",
 }
 
 BASE_STYLE = """
@@ -635,6 +636,127 @@ def build_educator_email(d, date_str):
 
 
 # ─────────────────────────────────────────────
+# Social Media Data Fetcher + Email Builder
+# ─────────────────────────────────────────────
+
+async def fetch_social_media_data():
+    """Latest Instagram + YouTube stats and 7-day growth deltas from social_media_snapshots.
+
+    Baseline = latest snapshot >= 7 days ago (falls back to earliest available).
+    """
+    async def _stats(provider: str) -> dict:
+        current = await db.social_media_snapshots.find_one(
+            {"provider": provider}, {"_id": 0}, sort=[("date", -1)],
+        )
+        if not current:
+            return {"available": False}
+        seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+        baseline = await db.social_media_snapshots.find_one(
+            {"provider": provider, "date": {"$lte": seven_days_ago}},
+            {"_id": 0}, sort=[("date", -1)],
+        )
+        if not baseline:
+            baseline = await db.social_media_snapshots.find_one(
+                {"provider": provider}, {"_id": 0}, sort=[("date", 1)],
+            )
+        cur_followers = int(current.get("followers") or 0)
+        base_followers = int((baseline or {}).get("followers") or 0)
+        eng_keys = ["latest_total_likes", "latest_total_comments", "latest_total_views"]
+        cur_eng = sum(int(current.get(k) or 0) for k in eng_keys)
+        base_eng = sum(int((baseline or {}).get(k) or 0) for k in eng_keys)
+        eng_pct = 0.0
+        if base_eng > 0:
+            eng_pct = round((cur_eng - base_eng) / base_eng * 100.0, 2)
+        return {
+            "available": True,
+            "profile_key": current.get("profile_key"),
+            "followers": cur_followers,
+            "follower_growth_7d": cur_followers - base_followers,
+            "post_count": int(current.get("post_count") or 0),
+            "engagement_total": cur_eng,
+            "engagement_growth_pct_7d": eng_pct,
+            "views_total": int(current.get("views_total") or 0),   # YT only; 0 for IG
+            "baseline_date": (baseline or {}).get("date"),
+            "current_date": current.get("date"),
+        }
+
+    ig = await _stats("instagram")
+    yt = await _stats("youtube")
+    return {"instagram": ig, "youtube": yt}
+
+
+def _growth_pill(val, unit="count"):
+    """Return an HTML pill showing signed growth (green for +, red for -)."""
+    try:
+        v = float(val or 0)
+    except (TypeError, ValueError):
+        v = 0.0
+    if v > 0:
+        color, bg, sign = "#065f46", "#d1fae5", "+"
+    elif v < 0:
+        color, bg, sign = "#991b1b", "#fee2e2", ""
+    else:
+        color, bg, sign = "#475569", "#f1f5f9", ""
+    if unit == "%":
+        disp = f"{sign}{v}%"
+    else:
+        disp = f"{sign}{int(v):,}" if v == int(v) else f"{sign}{v:,}"
+    return f'<span class="pill" style="background:{bg};color:{color}">{disp}</span>'
+
+
+def build_social_media_email(d, date_str):
+    ig = d.get("instagram") or {}
+    yt = d.get("youtube") or {}
+
+    def _channel_block(icon, name, s, follower_label):
+        if not s.get("available"):
+            return f"""
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:10px">
+              <div style="font-weight:700;color:#1e293b;font-size:14px">{icon} {name}</div>
+              <div style="font-size:12px;color:#94a3b8;margin-top:4px">No snapshots captured yet — cron will populate this in the next 24h.</div>
+            </div>"""
+        views_line = ""
+        if s.get("views_total"):
+            views_line = f"<div style='font-size:12px;color:#475569;margin-top:4px'>Total views: <strong>{int(s['views_total']):,}</strong></div>"
+        return f"""
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid {COLORS['social']};border-radius:8px;padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+            <div style="font-weight:700;color:#1e293b;font-size:14px">{icon} {name} <span style="color:#94a3b8;font-weight:500;font-size:12px">· @{s.get('profile_key','—')}</span></div>
+          </div>
+          <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">{follower_label}</div>
+              <div style="font-size:20px;font-weight:700;color:#1e293b">{int(s['followers']):,}</div>
+              <div style="margin-top:2px">{_growth_pill(s['follower_growth_7d'])} <span style="font-size:11px;color:#94a3b8">7-day</span></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Engagement</div>
+              <div style="font-size:20px;font-weight:700;color:#1e293b">{int(s['engagement_total']):,}</div>
+              <div style="margin-top:2px">{_growth_pill(s['engagement_growth_pct_7d'], '%')} <span style="font-size:11px;color:#94a3b8">7-day</span></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Posts / Videos</div>
+              <div style="font-size:20px;font-weight:700;color:#1e293b">{int(s.get('post_count') or 0):,}</div>
+            </div>
+          </div>
+          {views_line}
+        </div>"""
+
+    body = (
+        _channel_block("📸", "Instagram", ig, "Followers") +
+        _channel_block("▶️", "YouTube",   yt, "Subscribers")
+    )
+    body = f"""
+    <div class="section-title">Live Channel Health</div>
+    {body}
+    <p style="margin-top:12px;color:#94a3b8;font-size:11px">
+      Growth compared to the latest snapshot 7 days ago (or the earliest snapshot on record if fewer than 7 days available). Trend charts live in Admin → Reports → Social Media.
+    </p>
+    """
+    return email_wrap(COLORS["social"], "📣", "Social Media Report", date_str, body)
+
+
+# ─────────────────────────────────────────────
 # Consolidated Email Builder — One email with all sections
 # ─────────────────────────────────────────────
 
@@ -651,8 +773,8 @@ def _section_header(color, icon, title):
     </div>"""
 
 
-def build_consolidated_email(support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, date_str):
-    """Single unified daily report email containing all 7 sections."""
+def build_consolidated_email(support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, social_d, date_str):
+    """Single unified daily report email containing all 8 sections."""
     sections = [
         (COLORS["b2c"],      "📈", "B2C Report",                build_b2c_email(b2c_d, date_str)),
         (COLORS["b2b"],      "🏫", "B2B CRM Report",            build_b2b_email(b2b_d, date_str)),
@@ -661,6 +783,7 @@ def build_consolidated_email(support_d, b2c_d, gp_d, team_d, educator_d, account
         (COLORS["educator"], "🎓", "Educators Report",          build_educator_email(educator_d, date_str)),
         (COLORS["team"],     "👥", "Team Members Report",       build_team_email(team_d, date_str)),
         (COLORS["gp"],       "🤝", "Growth Partners Report",    build_gp_email(gp_d, date_str)),
+        (COLORS["social"],   "📣", "Social Media Report",       build_social_media_email(social_d, date_str)),
     ]
 
     # Extract body of each section email (between <div class="body"> ... </div>)
@@ -784,7 +907,7 @@ async def send_daily_reports(force: bool = False, recipients=None):
     date_str = fmt_date()
 
     try:
-        (support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d) = await asyncio.gather(
+        (support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, social_d) = await asyncio.gather(
             fetch_support_data(start, end),
             fetch_b2c_data(start, end),
             fetch_gp_data(start, end),
@@ -792,6 +915,7 @@ async def send_daily_reports(force: bool = False, recipients=None):
             fetch_educator_data(start, end),
             fetch_accounts_data(),
             fetch_b2b_data(start, end),
+            fetch_social_media_data(),
         )
     except Exception as e:
         logger.error(f"[DailyReport] Data fetch error: {e}")
@@ -801,7 +925,7 @@ async def send_daily_reports(force: bool = False, recipients=None):
         return
 
     consolidated_html = build_consolidated_email(
-        support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, date_str
+        support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, social_d, date_str
     )
     subject = f"OLL daily briefing — {date_str}"
     await _send(subject, consolidated_html, api_key, recipients=recipients)
