@@ -1135,8 +1135,22 @@ async def get_school_payment_info(school_id: str):
     cached = get_cached(cache_key)
     if cached:
         return cached
-    
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+
+    # Look up the school by any of its possible id fields. Historically
+    # payment records were keyed on `school_id` while the source doc lives
+    # in `school_inquiries` with an `id` field — occasionally these drift
+    # (import scripts, manual DB edits), so try a small set of fallbacks
+    # instead of returning a hard 404 on the first miss.
+    school = None
+    or_clauses: list = [{"id": school_id}]
+    if len(school_id) == 24:  # potential ObjectId
+        try:
+            from bson import ObjectId
+            or_clauses.append({"_id": ObjectId(school_id)})
+        except Exception:
+            pass
+    or_clauses.append({"school_id": school_id})
+    school = await db.school_inquiries.find_one({"$or": or_clauses}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
     
