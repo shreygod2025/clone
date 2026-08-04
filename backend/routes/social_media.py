@@ -5,6 +5,7 @@ Social Media metrics — fetches Instagram profile stats via Apify's
 """
 import logging
 import os
+import re
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
@@ -277,3 +278,243 @@ async def trigger_instagram_snapshot(
     if not _is_admin_or_reports(user):
         raise HTTPException(status_code=403, detail="Not allowed")
     return await snapshot_instagram_profile(profile_url)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# YOUTUBE — reads via YouTube Data API v3 (public data) and YouTube
+# Analytics API v2 (private metrics; requires the service account to be
+# added as a manager on YouTube Studio → Settings → Permissions).
+# ══════════════════════════════════════════════════════════════════════════
+YT_SA_FILE      = os.environ.get("YOUTUBE_SERVICE_ACCOUNT_FILE", "").strip()
+YT_CHANNEL_ID   = os.environ.get("YOUTUBE_CHANNEL_ID", "").strip()
+YT_DATA_SCOPES  = ["https://www.googleapis.com/auth/youtube.readonly"]
+YT_ANALYTICS_SCOPES = ["https://www.googleapis.com/auth/yt-analytics.readonly"]
+
+
+def _build_yt_client(service: str, version: str, scopes: list):
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    if not YT_SA_FILE or not os.path.exists(YT_SA_FILE):
+        raise HTTPException(status_code=500, detail="YouTube service account not configured")
+    creds = service_account.Credentials.from_service_account_file(YT_SA_FILE, scopes=scopes)
+    return build(service, version, credentials=creds, cache_discovery=False)
+
+
+def _fmt_iso_duration(d: str) -> int:
+    """Parse ISO-8601 duration (PT1H2M3S) to seconds. Returns 0 on failure."""
+    if not d or not d.startswith("PT"):
+        return 0
+    m = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", d)
+    if not m:
+        return 0
+    h, mm, s = (int(g or 0) for g in m.groups())
+    return h * 3600 + mm * 60 + s
+
+
+@router.get("/admin/reports/social-media/youtube")
+async def get_youtube_stats(
+    channel_id: str = Query(default=""),
+    refresh: bool = Query(default=False),
+    user: dict = Depends(get_current_user),
+):
+    """Public channel stats + latest videos via YouTube Data API v3. Cached 6h."""
+    if not _is_admin_or_reports(user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    cid = (channel_id or YT_CHANNEL_ID or "").strip()
+    if not cid:
+        raise HTTPException(status_code=400, detail="channel_id not configured")
+
+    now = datetime.now(timezone.utc)
+    if not refresh:
+        cached = await db.social_media_cache.find_one(
+            {"provider": "youtube", "profile_key": cid, "expires_at": {"$gt": now}},
+            {"_id": 0},
+        )
+        if cached:
+            cached["cached"] = True
+            return cached
+
+    try:
+        yt = _build_yt_client("youtube", "v3", YT_DATA_SCOPES)
+        ch = yt.channels().list(part="snippet,statistics,brandingSettings", id=cid).execute()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.warning("[youtube] channels.list failed: %s", e)
+        msg = str(e)
+        # Surface the two most common setup errors clearly so the admin knows exactly what to fix.
+        if "accessNotConfigured" in msg or "has not been used in project" in msg:
+            raise HTTPException(
+                status_code=424,
+                detail="YouTube Data API v3 is disabled in the Google Cloud project. Enable it at console.developers.google.com and retry.",
+            )
+        if "403" in msg and ("forbidden" in msg.lower() or "permission" in msg.lower()):
+            raise HTTPException(
+                status_code=424,
+                detail="Service account lacks access to this channel. Add oll-admin-reports@optical-hexagon-381014.iam.gserviceaccount.com as a manager via YouTube Studio → Settings → Permissions.",
+            )
+        raise HTTPException(status_code=424, detail=f"YouTube API request failed: {msg[:200]}")
+
+    items = ch.get("items") or []
+    if not items:
+        raise HTTPException(status_code=404, detail="YouTube channel not found or not accessible")
+
+    ch_item = items[0]
+    snippet = ch_item.get("snippet") or {}
+    stats   = ch_item.get("statistics") or {}
+    thumbs  = snippet.get("thumbnails") or {}
+
+    # Latest 12 videos via search (order=date)
+    latest_videos: list = []
+    try:
+        search = yt.search().list(part="snippet", channelId=cid, maxResults=12, order="date", type="video").execute()
+        vids = [i["id"]["videoId"] for i in search.get("items", []) if i.get("id", {}).get("videoId")]
+        if vids:
+            vdet = yt.videos().list(part="snippet,statistics,contentDetails", id=",".join(vids)).execute()
+            for v in vdet.get("items", []):
+                vs, vst, vc = v.get("snippet", {}), v.get("statistics", {}), v.get("contentDetails", {})
+                latest_videos.append({
+                    "id": v["id"],
+                    "url": f"https://www.youtube.com/watch?v={v['id']}",
+                    "title": vs.get("title"),
+                    "published_at": vs.get("publishedAt"),
+                    "thumbnail": (vs.get("thumbnails") or {}).get("medium", {}).get("url"),
+                    "view_count":    int(vst.get("viewCount")    or 0),
+                    "like_count":    int(vst.get("likeCount")    or 0),
+                    "comment_count": int(vst.get("commentCount") or 0),
+                    "duration_seconds": _fmt_iso_duration(vc.get("duration", "")),
+                })
+    except Exception as e:
+        logging.info("[youtube] latest videos fetch failed: %s", e)
+
+    doc = {
+        "provider": "youtube",
+        "profile_key": cid,
+        "fetched_at": now,
+        "expires_at": now + timedelta(hours=CACHE_TTL_HOURS),
+        "channel_id":    cid,
+        "channel_title": snippet.get("title"),
+        "channel_url":   f"https://www.youtube.com/channel/{cid}",
+        "description":   snippet.get("description"),
+        "thumbnail":     (thumbs.get("high") or thumbs.get("medium") or thumbs.get("default") or {}).get("url"),
+        "subscribers":   int(stats.get("subscriberCount") or 0) if not stats.get("hiddenSubscriberCount") else None,
+        "hidden_subs":   bool(stats.get("hiddenSubscriberCount")),
+        "views_total":   int(stats.get("viewCount")   or 0),
+        "video_count":   int(stats.get("videoCount")  or 0),
+        "latest_videos": latest_videos,
+    }
+    await db.social_media_cache.replace_one(
+        {"provider": "youtube", "profile_key": cid},
+        doc,
+        upsert=True,
+    )
+    doc["cached"] = False
+    return doc
+
+
+async def snapshot_youtube_channel(channel_id: str = "") -> dict:
+    """Daily snapshot for the YouTube trend chart."""
+    cid = (channel_id or YT_CHANNEL_ID or "").strip()
+    if not cid:
+        return {"ok": False, "error": "channel not configured"}
+    try:
+        yt = _build_yt_client("youtube", "v3", YT_DATA_SCOPES)
+        ch = yt.channels().list(part="statistics", id=cid).execute()
+    except Exception as e:
+        logging.warning("[youtube] snapshot skipped: %s", e)
+        return {"ok": False, "error": str(e)}
+    items = ch.get("items") or []
+    if not items:
+        return {"ok": False, "error": "channel not found"}
+    stats = items[0].get("statistics") or {}
+
+    # Aggregate latest videos' likes/comments/views for the day snapshot.
+    latest_totals = {"likes": 0, "comments": 0, "views": 0, "count": 0}
+    try:
+        search = yt.search().list(part="snippet", channelId=cid, maxResults=12, order="date", type="video").execute()
+        vids = [i["id"]["videoId"] for i in search.get("items", []) if i.get("id", {}).get("videoId")]
+        if vids:
+            vdet = yt.videos().list(part="statistics", id=",".join(vids)).execute()
+            for v in vdet.get("items", []):
+                vst = v.get("statistics") or {}
+                latest_totals["likes"]    += int(vst.get("likeCount")    or 0)
+                latest_totals["comments"] += int(vst.get("commentCount") or 0)
+                latest_totals["views"]    += int(vst.get("viewCount")    or 0)
+                latest_totals["count"]    += 1
+    except Exception as e:
+        logging.info("[youtube] snapshot aggregation partial: %s", e)
+
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%Y-%m-%d")
+    snap = {
+        "provider": "youtube",
+        "profile_key": cid,
+        "date": date_str,
+        "captured_at": now,
+        "followers": int(stats.get("subscriberCount") or 0) if not stats.get("hiddenSubscriberCount") else None,
+        "following": None,
+        "post_count": int(stats.get("videoCount") or 0),
+        "sample_size": latest_totals["count"],
+        "latest_total_likes":    latest_totals["likes"],
+        "latest_total_comments": latest_totals["comments"],
+        "latest_total_views":    latest_totals["views"],
+        "views_total":           int(stats.get("viewCount") or 0),
+    }
+    await db.social_media_snapshots.replace_one(
+        {"provider": "youtube", "profile_key": cid, "date": date_str},
+        snap,
+        upsert=True,
+    )
+    logging.info("[youtube] snapshot saved for %s @ %s", cid, date_str)
+    return {"ok": True, "snapshot": snap}
+
+
+@router.get("/admin/reports/social-media/youtube/trend")
+async def get_youtube_trend(
+    granularity: str = Query(default="day", pattern="^(day|week|month|quarter|year)$"),
+    channel_id: str = Query(default=""),
+    user: dict = Depends(get_current_user),
+):
+    if not _is_admin_or_reports(user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    cid = (channel_id or YT_CHANNEL_ID or "").strip()
+    if not cid:
+        raise HTTPException(status_code=400, detail="channel_id not configured")
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=_RANGE_DAYS[granularity])).strftime("%Y-%m-%d")
+    rows = await db.social_media_snapshots.find(
+        {"provider": "youtube", "profile_key": cid, "date": {"$gte": cutoff}},
+        {"_id": 0},
+    ).sort("date", 1).to_list(length=5000)
+
+    buckets: dict = {}
+    for r in rows:
+        key = _bucket_key(r["date"], granularity)
+        b = buckets.setdefault(key, {
+            "bucket": key, "sample_days": 0,
+            "followers": None, "post_count": None, "views_total": None,
+            "likes": 0, "comments": 0, "views": 0,
+        })
+        b["sample_days"] += 1
+        for f in ("followers", "post_count", "views_total"):
+            if r.get(f) is not None:
+                b[f] = r[f]
+        b["likes"]    += r.get("latest_total_likes")    or 0
+        b["comments"] += r.get("latest_total_comments") or 0
+        b["views"]    += r.get("latest_total_views")    or 0
+    return {
+        "profile_key": cid,
+        "granularity": granularity,
+        "count": len(buckets),
+        "series": sorted(buckets.values(), key=lambda x: x["bucket"]),
+    }
+
+
+@router.post("/admin/reports/social-media/youtube/snapshot")
+async def trigger_youtube_snapshot(
+    channel_id: str = Query(default=""),
+    user: dict = Depends(get_current_user),
+):
+    if not _is_admin_or_reports(user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    return await snapshot_youtube_channel(channel_id)
