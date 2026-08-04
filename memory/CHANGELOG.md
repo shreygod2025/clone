@@ -1,5 +1,28 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 8) — Reports revamp: consolidated B2C + Centres/Batches + Expenses fixed 📊
+**Status: COMPLETE — 4 new endpoints, B2C tab redesigned, P&L expenses render**
+
+### New backend endpoints (`routes/reports.py`)
+- `GET /api/admin/reports/b2c-consolidated` — union of Student CRM, Future Skills and Summer Camp funnels: `totals.leads / demos / customers / revenue` + a `breakdown` per source. Verified: 241 leads · 98 demos · 24 customers · ₹1,45,691 revenue over full DB window.
+- `GET /api/admin/reports/centers-batches` — Future Skills centres + batches + per-batch fill percentage. Sorted least-filled first so ops sees which batches need marketing push.
+- `GET /api/admin/reports/revenue-split` — 3-way split: **Summer Camp** (SC paid bookings) · **Home Classes** (Student CRM converted + student orders) · **Center Classes** (FS paid subscriptions), with percent share.
+- `GET /api/admin/reports/expenses-summary` — union of `expenses` ledger + Future Skills centre economics rows; returns `total`, per-category breakdown with percent, month-over-month trend, and last 100 rows.
+
+### Frontend (`AdminReports.jsx`)
+- Rewrote the entire **B2C tab**: header cards read from the consolidated endpoint (Total Leads / Demos / Customers / Revenue). Added a source-breakdown table (Student CRM · Future Skills · Summer Camp), a Revenue Split card (SC · Home · Center Classes) and a Centres/Batches/Filling table with color-coded fill bars.
+- **P&L tab** now reads `expensesSummary` — total expense card, per-category breakdown card with % of total, and a bar-chart month-over-month trend row. Fixes "Expenses not visible" by falling back to `expensesSummary.total` when the local date-scoped ledger comes back empty.
+- Dead-code `__UNUSED_RENDER_B2C_LEGACY` block trimmed from the file.
+
+### Backend KPI fix (`routes/kpis.py`)
+- `_compute_future_skills_metrics` was reading `amount_paid` and `subscribed_at` which don't exist on subscription docs. Now uses `amount` + `created_at` + `payment_status="paid"` — brings the FS KPIs (fs_revenue / fs_aov / fs_profit_margin) back to real values.
+
+### Verification
+- All 4 new endpoints tested via curl — return real data ✅
+- B2C tab screenshot: Total Leads/Demos/Customers/Revenue + breakdown table + revenue split cards + centres/batches table + fill bars ✅
+- P&L tab screenshot: Total Expenses ₹8,500 · Marketing ₹5,000 (58.8%) + Operations ₹3,500 (41.2%) + month-over-month bar chart ✅
+
+
 ## 2026-08-04 (round 7) — Age display cleanup + FS KPIs moved to Performance 🎯
 **Status: COMPLETE — 6 new KPIs assignable per role, gate removed from CRM**
 

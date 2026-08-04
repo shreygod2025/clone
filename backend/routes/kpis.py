@@ -802,19 +802,16 @@ async def _compute_future_skills_metrics(start_iso: str, end_iso: str) -> dict:
     """Program-wide Future Skills funnel metrics over [start, end]."""
     q_leads   = {"created_at":     {"$gte": start_iso, "$lte": end_iso}}
     q_trials  = {"created_at":     {"$gte": start_iso, "$lte": end_iso}}
-    q_subs    = {"subscribed_at":  {"$gte": start_iso, "$lte": end_iso}}
+    q_paid    = {"created_at":     {"$gte": start_iso, "$lte": end_iso}, "payment_status": "paid"}
 
     leads_total    = await db.future_skills_leads.count_documents(q_leads)
     trials_total   = await db.future_skills_trials.count_documents(q_trials)
-    customers_paid = await db.future_skills_subscriptions.count_documents({**q_subs, "amount_paid": {"$gt": 0}})
+    customers_paid = await db.future_skills_subscriptions.count_documents(q_paid)
 
-    rev_cursor = db.future_skills_subscriptions.find(
-        {**q_subs, "amount_paid": {"$gt": 0}}, {"_id": 0, "amount_paid": 1}
-    )
     revenue = 0.0
     paying_orders = 0
-    async for r in rev_cursor:
-        revenue += float(r.get("amount_paid") or 0)
+    async for r in db.future_skills_subscriptions.find(q_paid, {"_id": 0, "amount": 1}):
+        revenue += float(r.get("amount") or 0)
         paying_orders += 1
 
     # Program-wide costs (from centre economics) for margin — same shape as the FS report.

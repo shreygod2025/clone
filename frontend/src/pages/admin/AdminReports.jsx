@@ -474,7 +474,8 @@ const AdminReports = () => {
     const headers = getAuthHeaders();
     
     try {
-      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes, supportTimelineRes, cashflowRes] = await Promise.all([
+      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes, supportTimelineRes, cashflowRes,
+        b2cConsolidatedRes, centersBatchesRes, revenueSplitRes, expensesSummaryRes] = await Promise.all([
         axios.get(`${API}/admin/reports/overview`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'students' }, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'schools' }, headers }).catch(() => ({ data: null })),
@@ -488,6 +489,10 @@ const AdminReports = () => {
         axios.get(`${API}/admin/reports/support-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/support-timeline`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/cashflow`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/b2c-consolidated`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/centers-batches`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/revenue-split`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/expenses-summary`, { params, headers }).catch(() => ({ data: null })),
       ]);
       
       setReportData({
@@ -501,6 +506,10 @@ const AdminReports = () => {
         b2bInsights: b2bInsightsRes.data,
         supportInsights: supportInsightsRes.data,
         cashflow: cashflowRes.data,
+        b2cConsolidated: b2cConsolidatedRes.data,
+        centersBatches: centersBatchesRes.data,
+        revenueSplit: revenueSplitRes.data,
+        expensesSummary: expensesSummaryRes.data,
       });
       setSupportTimeline(supportTimelineRes.data?.timeline || []);
       setExpenses(expensesRes.data?.expenses || []);
@@ -834,21 +843,134 @@ const AdminReports = () => {
 
   const renderB2CTab = () => {
     const b2cInsights = reportData.b2cInsights;
+    const consol = reportData.b2cConsolidated;
+    const centersBatches = reportData.centersBatches;
+    const revenueSplit = reportData.revenueSplit;
+    const bd = consol?.breakdown || {};
+    const totals = consol?.totals || {};
     return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-[#1E3A5F]">B2C - Student Sales & Marketing</h2>
-      
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard title="Total Leads" value={studentFunnel?.total_leads || 0} icon={Users} color="blue" />
-        <StatCard title="Demos Scheduled" value={overview?.students?.demo_scheduled || 0} icon={Calendar} color="purple" />
-        <StatCard title="Demos Completed" value={overview?.students?.demo_completed || 0} icon={UserCheck} color="orange" />
-        <StatCard title="Conversions" value={overview?.students?.converted || 0} icon={Target} color="green" />
-        <StatCard title="Revenue" value={`₹${(b2cInsights?.revenue || studentRevenue).toLocaleString()}`} icon={DollarSign} color="green" />
+      <h2 className="text-lg font-semibold text-[#1E3A5F]">B2C — Student Sales & Marketing</h2>
+      <p className="text-xs text-slate-500 -mt-4">Includes Student CRM, Future Skills and Summer Camp funnels combined.</p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard title="Total Leads" value={(totals.leads ?? studentFunnel?.total_leads ?? 0).toLocaleString()} icon={Users} color="blue" data-testid="b2c-total-leads" />
+        <StatCard title="Total Demos / Trials" value={(totals.demos ?? 0).toLocaleString()} icon={Calendar} color="purple" data-testid="b2c-total-demos" />
+        <StatCard title="Total Customers" value={(totals.customers ?? 0).toLocaleString()} icon={UserCheck} color="orange" data-testid="b2c-total-customers" />
+        <StatCard title="Total Revenue" value={`₹${(totals.revenue ?? 0).toLocaleString()}`} icon={DollarSign} color="green" data-testid="b2c-total-revenue" />
       </div>
-      
+
+      {/* Breakdown by source */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="b2c-breakdown">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">Breakdown by Funnel Source</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-slate-500">
+                <th className="pb-2 font-medium">Source</th>
+                <th className="pb-2 font-medium">Leads</th>
+                <th className="pb-2 font-medium">Demos</th>
+                <th className="pb-2 font-medium">Customers</th>
+                <th className="pb-2 font-medium">Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { key: 'student_crm', label: 'Student CRM',    stats: bd.student_crm },
+                { key: 'future_skills', label: 'Future Skills', stats: bd.future_skills },
+                { key: 'summer_camp',   label: 'Summer Camp',   stats: bd.summer_camp },
+              ].map(row => (
+                <tr key={row.key} className="border-b border-slate-50" data-testid={`b2c-row-${row.key}`}>
+                  <td className="py-3 font-medium text-[#0F1E33]">{row.label}</td>
+                  <td className="py-3">{(row.stats?.leads ?? 0).toLocaleString()}</td>
+                  <td className="py-3">{(row.stats?.demos ?? 0).toLocaleString()}</td>
+                  <td className="py-3">{(row.stats?.customers ?? 0).toLocaleString()}</td>
+                  <td className="py-3 font-semibold text-emerald-700">₹{(row.stats?.revenue ?? 0).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Revenue split: SC · Home · Center */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="revenue-split">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">Revenue Split — Where Money Comes From</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(revenueSplit?.buckets || []).map(b => (
+            <div key={b.key} className="rounded-xl p-4 border border-slate-100 bg-gradient-to-br from-slate-50 to-white"
+                 data-testid={`revenue-bucket-${b.key}`}>
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{b.label}</div>
+              <div className="text-2xl font-black text-[#0F1E33] mt-1">₹{Number(b.revenue || 0).toLocaleString()}</div>
+              <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full bg-[#1E3A5F]" style={{ width: `${b.percent}%` }} />
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">{b.percent}% of total</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-xs text-slate-500">Total: <strong className="text-emerald-700">₹{Number(revenueSplit?.total || 0).toLocaleString()}</strong> across all three channels.</div>
+      </div>
+
+      {/* Centres · Batches · Batch filling */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="centers-batches">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold text-[#1E3A5F]">Centres, Batches & Filling</h3>
+          <div className="text-xs text-slate-500">
+            {centersBatches?.centers?.total || 0} centres · {centersBatches?.batches?.total || 0} batches ·{' '}
+            <strong>{centersBatches?.batches?.overall_fill_percent || 0}%</strong> filled overall
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <StatCard title="Total Centres"      value={centersBatches?.centers?.total || 0}  icon={Users}  color="blue"   small />
+          <StatCard title="Active Centres"     value={centersBatches?.centers?.active || 0} icon={UserCheck} color="green"  small />
+          <StatCard title="Total Batches"      value={centersBatches?.batches?.total || 0}  icon={Calendar} color="purple" small />
+          <StatCard title="Seats Filled"       value={`${centersBatches?.batches?.total_enrolled || 0} / ${centersBatches?.batches?.total_capacity || 0}`} icon={Target} color="orange" small />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-slate-500">
+                <th className="pb-2 font-medium">Batch</th>
+                <th className="pb-2 font-medium">Centre</th>
+                <th className="pb-2 font-medium">Days · Time</th>
+                <th className="pb-2 font-medium">Capacity</th>
+                <th className="pb-2 font-medium">Enrolled</th>
+                <th className="pb-2 font-medium">Fill</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(centersBatches?.batches?.rows || []).map(row => (
+                <tr key={row.id} className="border-b border-slate-50" data-testid={`batch-row-${row.id}`}>
+                  <td className="py-2 font-medium text-[#0F1E33]">{row.name}</td>
+                  <td className="py-2 text-slate-600">{row.center_name || '—'}</td>
+                  <td className="py-2 text-slate-500 text-xs">
+                    {(row.days || []).join(',')} · {row.start_time}-{row.end_time}
+                  </td>
+                  <td className="py-2">{row.capacity}</td>
+                  <td className="py-2">{row.enrolled}</td>
+                  <td className="py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-20 rounded-full bg-slate-100 overflow-hidden">
+                        <div className={`h-full ${row.fill_percent >= 80 ? 'bg-emerald-500' : row.fill_percent >= 40 ? 'bg-amber-500' : 'bg-rose-400'}`}
+                             style={{ width: `${Math.min(100, row.fill_percent)}%` }} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-600">{row.fill_percent}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(!centersBatches?.batches?.rows?.length) && (
+                <tr><td colSpan={6} className="py-4 text-center text-slate-400 text-sm">No batches yet. Create batches under Future Skills → Centres.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ConversionCard
-          title="Student Conversion Rates"
+          title="Student CRM Conversion Rates"
           icon={Users}
           color="#3b82f6"
           totalLeads={studentFunnel?.total_leads || 0}
@@ -858,136 +980,24 @@ const AdminReports = () => {
             { label: 'Overall', value: studentFunnel?.conversion_rates?.overall_conversion || 0, color: '#22c55e' },
           ]}
         />
-        
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-[#1E3A5F] mb-4">Revenue Breakdown</h3>
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Revenue vs Customers</h3>
           <div className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-              <span className="text-slate-600">Student Revenue</span>
-              <span className="text-xl font-bold text-blue-600">₹{studentRevenue.toLocaleString()}</span>
+            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+              <span className="text-slate-600">Total Revenue</span>
+              <span className="text-xl font-bold text-emerald-700">₹{Number(totals.revenue || 0).toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
               <span className="text-slate-600">Avg. Ticket Size</span>
-              <span className="text-xl font-bold text-green-600">
-                ₹{(overview?.students?.converted || 0) > 0 ? Math.round(studentRevenue / overview.students.converted).toLocaleString() : 0}
+              <span className="text-xl font-bold text-blue-600">
+                ₹{(totals.customers || 0) > 0 ? Math.round((totals.revenue || 0) / totals.customers).toLocaleString() : 0}
               </span>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* B2C Insights Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6">
-        <h3 className="font-semibold text-[#1E3A5F] mb-4">📊 Student Insights</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Course/Skill Breakdown */}
-          <div className="bg-white rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-3">Courses/Skills</h4>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {b2cInsights?.courses?.slice(0, 5).map((c, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-slate-600 truncate">{c.name}</span>
-                  <span className="font-medium text-blue-600">{c.count}</span>
-                </div>
-              ))}
-              {(!b2cInsights?.courses?.length) && <p className="text-sm text-slate-400">No data</p>}
-            </div>
-          </div>
-          
-          {/* Age Group */}
-          <div className="bg-white rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-3">Age Groups</h4>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {b2cInsights?.age_groups?.map((a, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-slate-600">{a.name}</span>
-                  <span className="font-medium text-purple-600">{a.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Learning Goals */}
-          <div className="bg-white rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-3">Learning Goals</h4>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {b2cInsights?.learning_goals?.slice(0, 5).map((g, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-slate-600 truncate">{g.name}</span>
-                  <span className="font-medium text-green-600">{g.count}</span>
-                </div>
-              ))}
-              {(!b2cInsights?.learning_goals?.length) && <p className="text-sm text-slate-400">No data</p>}
-            </div>
-          </div>
-          
-          {/* City Breakdown */}
-          <div className="bg-white rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-3">Top Cities</h4>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {b2cInsights?.cities?.slice(0, 5).map((c, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-slate-600 truncate">{c.name}</span>
-                  <span className="font-medium text-orange-600">{c.count}</span>
-                </div>
-              ))}
-              {(!b2cInsights?.cities?.length) && <p className="text-sm text-slate-400">No data</p>}
-            </div>
-          </div>
-          
-          {/* Mode Preference */}
-          <div className="bg-white rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-3">Preferred Mode</h4>
-            <div className="space-y-2">
-              {b2cInsights?.modes?.map((m, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-slate-600 capitalize">{m.name}</span>
-                  <span className="font-medium text-cyan-600">{m.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Preferred Days & Times */}
-          <div className="bg-white rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-700 mb-3">Demo Timing</h4>
-            <div className="mb-3">
-              <p className="text-xs text-slate-500 mb-1">Popular Days</p>
-              <div className="flex flex-wrap gap-1">
-                {b2cInsights?.preferred_days?.slice(0, 3).map((d, i) => (
-                  <span key={i} className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">{d.name}: {d.count}</span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Popular Times</p>
-              <div className="flex flex-wrap gap-1">
-                {b2cInsights?.demo_times?.filter(t => t.count > 0).slice(0, 2).map((t, i) => (
-                  <span key={i} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded">{t.name}: {t.count}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
-      
-      {/* Stage Distribution */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h3 className="font-semibold text-[#1E3A5F] mb-4">Lead Stage Distribution</h3>
-        <div className="space-y-3">
-          {stages?.students?.stages?.map((stage, idx) => (
-            <ProgressBar
-              key={idx}
-              label={stage.name?.replace(/_/g, ' ')}
-              value={stage.count}
-              total={stages?.students?.total || 1}
-              color={['#3b82f6', '#9333ea', '#f97316', '#22c55e', '#64748b'][idx % 5]}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-    );
+      );
   };
 
   const renderB2BTab = () => {
@@ -2177,12 +2187,29 @@ const AdminReports = () => {
         </Button>
       </div>
       
-      {/* Summary Cards */}
+      {/* Summary Cards — expenses come from the dedicated /expenses-summary endpoint
+           so they respect the date filter and include both the main ledger + FS centre economics. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard title="Total Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon={TrendingUp} color="green" />
-        <StatCard title="Total Expenses" value={`₹${totalExpenses.toLocaleString()}`} icon={TrendingDown} color="red" />
-        <StatCard title="Net Profit" value={`₹${netProfit.toLocaleString()}`} icon={Wallet} color={netProfit >= 0 ? 'green' : 'red'} />
-        <StatCard title="Profit Margin" value={`${totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0}%`} icon={Target} color={netProfit >= 0 ? 'green' : 'red'} />
+        <StatCard
+          title="Total Expenses"
+          value={`₹${(reportData.expensesSummary?.total ?? totalExpenses).toLocaleString()}`}
+          icon={TrendingDown}
+          color="red"
+          data-testid="pnl-total-expenses"
+        />
+        <StatCard
+          title="Net Profit"
+          value={`₹${(totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)).toLocaleString()}`}
+          icon={Wallet}
+          color={(totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)) >= 0 ? 'green' : 'red'}
+        />
+        <StatCard
+          title="Profit Margin"
+          value={`${totalRevenue > 0 ? Math.round(((totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)) / totalRevenue) * 100) : 0}%`}
+          icon={Target}
+          color={(totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)) >= 0 ? 'green' : 'red'}
+        />
       </div>
       
       {/* Revenue Breakdown */}
@@ -2207,27 +2234,47 @@ const AdminReports = () => {
           </div>
         </div>
         
-        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="expense-breakdown-card">
           <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
             <TrendingDown className="w-5 h-5 text-red-500" /> Expense Breakdown
           </h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]).map(([category, amount]) => (
-              <div key={category} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                <span className="text-slate-600 capitalize">{String(category || '').replace(/_/g, ' ')}</span>
-                <span className="font-medium text-slate-800">₹{amount.toLocaleString()}</span>
+            {(reportData.expensesSummary?.by_category || []).map((c) => (
+              <div key={c.name} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                <span className="text-slate-600 capitalize">{c.name}</span>
+                <span className="font-medium text-slate-800">₹{Number(c.amount || 0).toLocaleString()} <span className="text-[10px] text-slate-400 ml-1">{c.percent}%</span></span>
               </div>
             ))}
-            {Object.keys(expensesByCategory).length === 0 && (
-              <p className="text-slate-500 text-center py-4">No expenses recorded</p>
+            {(!reportData.expensesSummary?.by_category?.length) && (
+              <p className="text-slate-500 text-center py-4">No expenses recorded for this period</p>
             )}
             <div className="flex justify-between items-center p-4 bg-red-100 rounded-lg border border-red-200 mt-2">
               <span className="font-medium text-red-800">Total Expenses</span>
-              <span className="text-xl font-bold text-red-700">₹{totalExpenses.toLocaleString()}</span>
+              <span className="text-xl font-bold text-red-700">₹{Number(reportData.expensesSummary?.total || totalExpenses).toLocaleString()}</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Monthly trend of expenses */}
+      {(reportData.expensesSummary?.trend?.length || 0) > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="expense-trend-card">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Month-over-Month Expenses</h3>
+          <div className="flex items-end gap-2 h-40">
+            {reportData.expensesSummary.trend.map((t) => {
+              const max = Math.max(...reportData.expensesSummary.trend.map(x => x.amount || 0));
+              const h = max > 0 ? Math.round(((t.amount || 0) / max) * 100) : 0;
+              return (
+                <div key={t.month} className="flex-1 flex flex-col items-center justify-end" title={`${t.month}: ₹${Number(t.amount||0).toLocaleString()}`}>
+                  <div className="w-full bg-[#D63031] rounded-t-md" style={{ height: `${h}%` }} />
+                  <div className="text-[10px] text-slate-500 mt-1">{t.month}</div>
+                  <div className="text-[10px] font-semibold text-slate-700">₹{Number(t.amount||0).toLocaleString()}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       
       {/* Expense List */}
       <div className="bg-white rounded-2xl border border-slate-100 p-5">

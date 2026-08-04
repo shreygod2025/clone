@@ -5,6 +5,7 @@ Endpoints: /admin/reports/*
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from datetime import datetime, timezone, timedelta
+import asyncio
 
 from .shared import db, get_current_user
 
@@ -1770,3 +1771,333 @@ async def get_public_report_data(
             "end": end.isoformat(),
         }
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CONSOLIDATED B2C REPORTS — pulls from Student CRM + Future Skills + Summer Camp
+# ─────────────────────────────────────────────────────────────────────────
+
+def _dt_between(doc_field, start, end) -> bool:
+    d = parse_date_field(doc_field)
+    return bool(d and start <= d <= end)
+
+
+async def _b2c_summer_camp_stats(start, end) -> dict:
+    """Summer camp: bookings=leads, paid bookings=customers, sum(amount) where paid=revenue."""
+    total_leads = 0
+    total_bookings = 0
+    paying = 0
+    revenue = 0.0
+    async for s in db.summer_camp_bookings.find({}, {"_id": 0}):
+        if not _dt_between(s.get("created_at"), start, end):
+            continue
+        total_leads += 1
+        # Anyone who made it past the phone-capture step is a "demo" / booking attempt
+        if s.get("crm_status") not in ("lead", "phone_captured"):
+            total_bookings += 1
+        if s.get("payment_status") == "paid":
+            paying += 1
+            revenue += float(s.get("amount") or 0)
+    return {"leads": total_leads, "demos": total_bookings, "customers": paying, "revenue": revenue}
+
+
+async def _b2c_future_skills_stats(start, end) -> dict:
+    """Future Skills: leads + trials + paid subs."""
+    leads = 0
+    async for l in db.future_skills_leads.find({}, {"_id": 0}):
+        if _dt_between(l.get("created_at"), start, end):
+            leads += 1
+    trials = 0
+    async for t in db.future_skills_trials.find({}, {"_id": 0}):
+        if _dt_between(t.get("created_at"), start, end):
+            trials += 1
+    paying = 0
+    revenue = 0.0
+    async for s in db.future_skills_subscriptions.find({}, {"_id": 0}):
+        if not _dt_between(s.get("created_at"), start, end):
+            continue
+        if s.get("payment_status") == "paid":
+            paying += 1
+            revenue += float(s.get("amount") or 0)
+    return {"leads": leads, "demos": trials, "customers": paying, "revenue": revenue}
+
+
+async def _b2c_student_crm_stats(start, end) -> dict:
+    """Student CRM: inquiries=leads, demos=demos, converted=customers.
+    Revenue attempts payment_amount and pending_payment fields (best-effort)."""
+    leads = 0
+    demos = 0
+    customers = 0
+    revenue = 0.0
+    async for s in db.student_inquiries.find({}, {"_id": 0}):
+        if not _dt_between(s.get("created_at"), start, end):
+            continue
+        leads += 1
+        if s.get("demo_date") or (s.get("status") or "").startswith("demo"):
+            demos += 1
+        if s.get("status") == "converted":
+            customers += 1
+            for k in ("payment_amount", "pending_payment", "amount_paid", "amount"):
+                v = s.get(k)
+                if v:
+                    try:
+                        revenue += float(v)
+                        break
+                    except (TypeError, ValueError):
+                        pass
+    # Additional revenue from the orders collection (if used for student payments)
+    async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0}):
+        if not _dt_between(o.get("created_at"), start, end):
+            continue
+        for k in ("amount", "final_amount", "total"):
+            v = o.get(k)
+            if v:
+                try:
+                    revenue += float(v)
+                    break
+                except (TypeError, ValueError):
+                    pass
+    # Demo bookings collection is also part of Student CRM
+    async for d in db.demo_bookings.find({}, {"_id": 0}):
+        if _dt_between(d.get("created_at"), start, end):
+            demos += 1
+    return {"leads": leads, "demos": demos, "customers": customers, "revenue": revenue}
+
+
+@router.get("/admin/reports/b2c-consolidated")
+async def b2c_consolidated_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Unified B2C metric across Student CRM, Future Skills and Summer Camp."""
+    start, end = get_date_range(start_date, end_date, period)
+    sc, fs, cr = await asyncio.gather(
+        _b2c_summer_camp_stats(start, end),
+        _b2c_future_skills_stats(start, end),
+        _b2c_student_crm_stats(start, end),
+    )
+    total_leads     = sc["leads"] + fs["leads"] + cr["leads"]
+    total_demos     = sc["demos"] + fs["demos"] + cr["demos"]
+    total_customers = sc["customers"] + fs["customers"] + cr["customers"]
+    total_revenue   = sc["revenue"] + fs["revenue"] + cr["revenue"]
+    return {
+        "totals": {
+            "leads": total_leads,
+            "demos": total_demos,
+            "customers": total_customers,
+            "revenue": round(total_revenue, 2),
+        },
+        "breakdown": {
+            "summer_camp":   sc,
+            "future_skills": fs,
+            "student_crm":   cr,
+        },
+        "period": {"start": start.isoformat(), "end": end.isoformat()},
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CENTERS · BATCHES · BATCH FILLING
+# ─────────────────────────────────────────────────────────────────────────
+
+@router.get("/admin/reports/centers-batches")
+async def centers_batches_report(user: dict = Depends(get_current_user)):
+    """Snapshot of Future Skills centres + batches + how full each batch is."""
+    centers = await db.centers.find({}, {"_id": 0}).to_list(1000)
+    batches = await db.future_skills_batches.find({}, {"_id": 0}).to_list(2000)
+
+    active_centers = [c for c in centers if c.get("is_active", True)]
+    active_batches = [b for b in batches if b.get("is_active", True)]
+
+    # Precompute enrolled counts per batch — every future_skills_subscription
+    # with a batch_id (paid or not) reserves a seat.
+    enrolled_by_batch: dict = {}
+    async for s in db.future_skills_subscriptions.find(
+        {"batch_id": {"$exists": True, "$ne": ""}}, {"_id": 0, "batch_id": 1},
+    ):
+        bid = s.get("batch_id")
+        if bid:
+            enrolled_by_batch[bid] = enrolled_by_batch.get(bid, 0) + 1
+
+    batch_rows = []
+    for b in batches:
+        cap = int(b.get("capacity") or 0)
+        enrolled = enrolled_by_batch.get(b.get("id"), 0)
+        pct = round((enrolled / cap) * 100.0, 1) if cap > 0 else 0.0
+        batch_rows.append({
+            "id": b.get("id"),
+            "name": b.get("name"),
+            "center_name": b.get("center_name"),
+            "days": b.get("days", []),
+            "start_time": b.get("start_time"),
+            "end_time": b.get("end_time"),
+            "capacity": cap,
+            "enrolled": enrolled,
+            "fill_percent": pct,
+            "is_active": bool(b.get("is_active", True)),
+        })
+    # Sort most-empty to most-full so ops sees the ones needing marketing push first
+    batch_rows.sort(key=lambda r: r["fill_percent"])
+
+    total_capacity = sum(r["capacity"] for r in batch_rows)
+    total_enrolled = sum(r["enrolled"] for r in batch_rows)
+    overall_fill = round((total_enrolled / total_capacity) * 100.0, 1) if total_capacity > 0 else 0.0
+
+    return {
+        "centers": {
+            "total": len(centers),
+            "active": len(active_centers),
+            "list": [{"id": c.get("id"), "name": c.get("name"), "city": c.get("city"),
+                      "area": c.get("area"), "is_active": bool(c.get("is_active", True))} for c in centers],
+        },
+        "batches": {
+            "total": len(batches),
+            "active": len(active_batches),
+            "total_capacity": total_capacity,
+            "total_enrolled": total_enrolled,
+            "overall_fill_percent": overall_fill,
+            "rows": batch_rows,
+        },
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# REVENUE SPLIT — Summer Camp · Home Classes · Center Classes
+# ─────────────────────────────────────────────────────────────────────────
+
+@router.get("/admin/reports/revenue-split")
+async def revenue_split_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Split revenue three ways: Summer Camp · Home Classes (Student CRM, online mode)
+    · Center Classes (Future Skills subscriptions). Cash figures only — sums where
+    payment_status == 'paid'."""
+    start, end = get_date_range(start_date, end_date, period)
+
+    sc_rev = 0.0
+    async for s in db.summer_camp_bookings.find({"payment_status": "paid"}, {"_id": 0}):
+        if _dt_between(s.get("created_at"), start, end):
+            sc_rev += float(s.get("amount") or 0)
+
+    cc_rev = 0.0  # Center Classes = FS subscriptions
+    async for s in db.future_skills_subscriptions.find({"payment_status": "paid"}, {"_id": 0}):
+        if _dt_between(s.get("created_at"), start, end):
+            cc_rev += float(s.get("amount") or 0)
+
+    hc_rev = 0.0  # Home Classes = paid student inquiries (online mode) + student orders
+    async for s in db.student_inquiries.find({"status": "converted"}, {"_id": 0}):
+        if not _dt_between(s.get("created_at"), start, end):
+            continue
+        for k in ("payment_amount", "pending_payment", "amount_paid", "amount"):
+            v = s.get(k)
+            if v:
+                try:
+                    hc_rev += float(v)
+                    break
+                except (TypeError, ValueError):
+                    pass
+    async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0}):
+        if not _dt_between(o.get("created_at"), start, end):
+            continue
+        for k in ("amount", "final_amount", "total"):
+            v = o.get(k)
+            if v:
+                try:
+                    hc_rev += float(v)
+                    break
+                except (TypeError, ValueError):
+                    pass
+
+    total = sc_rev + hc_rev + cc_rev
+    def _pct(x):
+        return round((x / total) * 100.0, 1) if total > 0 else 0.0
+    return {
+        "total": round(total, 2),
+        "buckets": [
+            {"key": "summer_camp",    "label": "Summer Camp",    "revenue": round(sc_rev, 2), "percent": _pct(sc_rev)},
+            {"key": "home_classes",   "label": "Home Classes",   "revenue": round(hc_rev, 2), "percent": _pct(hc_rev)},
+            {"key": "center_classes", "label": "Center Classes", "revenue": round(cc_rev, 2), "percent": _pct(cc_rev)},
+        ],
+        "period": {"start": start.isoformat(), "end": end.isoformat()},
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# EXPENSES SUMMARY — pull from /expenses ledger + FS centre economics
+# ─────────────────────────────────────────────────────────────────────────
+
+@router.get("/admin/reports/expenses-summary")
+async def expenses_summary_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Combined expense summary — main expenses ledger + Future Skills centre
+    economics rows (Rent, Teacher salary, Capex, Marketing). Returns total,
+    breakdown by category, and month-over-month trend."""
+    start, end = get_date_range(start_date, end_date, period)
+    start_day = start.strftime("%Y-%m-%d")
+    end_day   = end.strftime("%Y-%m-%d")
+
+    rows: list = []
+
+    # Main expenses collection
+    async for e in db.expenses.find({}, {"_id": 0}):
+        d = parse_date_field(e.get("date") or e.get("created_at"))
+        if not d or not (start <= d <= end):
+            continue
+        rows.append({
+            "date": e.get("date") or d.strftime("%Y-%m-%d"),
+            "title": e.get("title") or "",
+            "amount": float(e.get("amount") or 0),
+            "category": (e.get("category") or "uncategorized").lower(),
+            "subcategory": e.get("subcategory") or "",
+            "source": "expenses",
+        })
+
+    # Future Skills centre economics (dates are stored as 'YYYY-MM-DD' strings)
+    async for e in db.future_skills_expenses.find({"date": {"$gte": start_day, "$lte": end_day}}, {"_id": 0}):
+        rows.append({
+            "date": e.get("date"),
+            "title": e.get("note") or e.get("category") or "FS centre expense",
+            "amount": float(e.get("amount") or 0),
+            "category": (e.get("category") or "fs_centre").lower(),
+            "subcategory": e.get("subcategory") or "",
+            "source": "future_skills",
+        })
+
+    total = sum(r["amount"] for r in rows)
+    by_category: dict = {}
+    for r in rows:
+        by_category[r["category"]] = by_category.get(r["category"], 0.0) + r["amount"]
+    breakdown = [
+        {"name": k.replace("_", " ").title(), "amount": round(v, 2),
+         "percent": round((v / total) * 100.0, 1) if total > 0 else 0.0}
+        for k, v in sorted(by_category.items(), key=lambda x: -x[1])
+    ]
+
+    # Month-over-month trend inside the window
+    trend_map: dict = {}
+    for r in rows:
+        d = parse_date_field(r.get("date"))
+        if not d:
+            continue
+        key = d.strftime("%Y-%m")
+        trend_map[key] = trend_map.get(key, 0.0) + r["amount"]
+    trend = [{"month": k, "amount": round(v, 2)} for k, v in sorted(trend_map.items())]
+
+    return {
+        "total": round(total, 2),
+        "count": len(rows),
+        "by_category": breakdown,
+        "trend": trend,
+        "rows": sorted(rows, key=lambda r: r["date"], reverse=True)[:100],
+        "period": {"start": start.isoformat(), "end": end.isoformat()},
+    }
+
