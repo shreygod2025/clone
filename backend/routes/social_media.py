@@ -281,23 +281,17 @@ async def trigger_instagram_snapshot(
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# YOUTUBE — reads via YouTube Data API v3 (public data) and YouTube
-# Analytics API v2 (private metrics; requires the service account to be
-# added as a manager on YouTube Studio → Settings → Permissions).
+# YOUTUBE — reads via YouTube Data API v3 (public data) using an API key.
 # ══════════════════════════════════════════════════════════════════════════
-YT_SA_FILE      = os.environ.get("YOUTUBE_SERVICE_ACCOUNT_FILE", "").strip()
+YT_API_KEY      = os.environ.get("YOUTUBE_API_KEY", "").strip()
 YT_CHANNEL_ID   = os.environ.get("YOUTUBE_CHANNEL_ID", "").strip()
-YT_DATA_SCOPES  = ["https://www.googleapis.com/auth/youtube.readonly"]
-YT_ANALYTICS_SCOPES = ["https://www.googleapis.com/auth/yt-analytics.readonly"]
 
 
-def _build_yt_client(service: str, version: str, scopes: list):
-    from google.oauth2 import service_account
+def _build_yt_client(service: str, version: str, scopes: list = None):
     from googleapiclient.discovery import build
-    if not YT_SA_FILE or not os.path.exists(YT_SA_FILE):
-        raise HTTPException(status_code=500, detail="YouTube service account not configured")
-    creds = service_account.Credentials.from_service_account_file(YT_SA_FILE, scopes=scopes)
-    return build(service, version, credentials=creds, cache_discovery=False)
+    if not YT_API_KEY:
+        raise HTTPException(status_code=500, detail="YOUTUBE_API_KEY not configured")
+    return build(service, version, developerKey=YT_API_KEY, cache_discovery=False)
 
 
 def _fmt_iso_duration(d: str) -> int:
@@ -335,7 +329,7 @@ async def get_youtube_stats(
             return cached
 
     try:
-        yt = _build_yt_client("youtube", "v3", YT_DATA_SCOPES)
+        yt = _build_yt_client("youtube", "v3")
         ch = yt.channels().list(part="snippet,statistics,brandingSettings", id=cid).execute()
     except HTTPException:
         raise
@@ -348,10 +342,10 @@ async def get_youtube_stats(
                 status_code=424,
                 detail="YouTube Data API v3 is disabled in the Google Cloud project. Enable it at console.developers.google.com and retry.",
             )
-        if "403" in msg and ("forbidden" in msg.lower() or "permission" in msg.lower()):
+        if "keyInvalid" in msg or "API key not valid" in msg:
             raise HTTPException(
                 status_code=424,
-                detail="Service account lacks access to this channel. Add oll-admin-reports@optical-hexagon-381014.iam.gserviceaccount.com as a manager via YouTube Studio → Settings → Permissions.",
+                detail="YOUTUBE_API_KEY is invalid. Check the key in backend/.env.",
             )
         raise HTTPException(status_code=424, detail=f"YouTube API request failed: {msg[:200]}")
 
@@ -418,7 +412,7 @@ async def snapshot_youtube_channel(channel_id: str = "") -> dict:
     if not cid:
         return {"ok": False, "error": "channel not configured"}
     try:
-        yt = _build_yt_client("youtube", "v3", YT_DATA_SCOPES)
+        yt = _build_yt_client("youtube", "v3")
         ch = yt.channels().list(part="statistics", id=cid).execute()
     except Exception as e:
         logging.warning("[youtube] snapshot skipped: %s", e)

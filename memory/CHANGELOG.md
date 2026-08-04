@@ -1,5 +1,19 @@
 # OLL Backend Changelog
 
+## 2026-08-04 — YouTube Analytics fixed with API key auth ▶️
+**Status: COMPLETE — verified via API + UI**
+
+### What changed
+- `/app/backend/routes/social_media.py`: swapped Service Account credentials → `developerKey` (API key) in `_build_yt_client`; removed all Service-Account-specific scopes/paths and its error-branch about YouTube Studio permissions.
+- `/app/backend/.env`: replaced `YOUTUBE_SERVICE_ACCOUNT_FILE` with `YOUTUBE_API_KEY=AIzaSyDeGsrFiqoSZhn4lr-3YCgmMA6MPlxXyh0`; `YOUTUBE_CHANNEL_ID=UCwQyfX_lsVCLBUV5Or-rZ8g` retained.
+- Backend restarted, snapshot job triggered → seeded 1 trend data point.
+
+### Verification
+- `GET /api/admin/reports/social-media/youtube` → 200 with OLL channel: 2,270 subscribers · 165,942 views · 319 videos · latest 12 videos.
+- `POST /api/admin/reports/social-media/youtube/snapshot` → `{ok: true}`, trend endpoint returns 1 bucket.
+- Admin Reports → Social Media tab now renders the YouTube section end-to-end.
+
+
 
 ## 2026-02-23 (round 2) — Tasks module WhatsApp notifications 🔔
 **Status: COMPLETE — full E2E verified (all 3 flows call AiSensy with correct payloads)**
