@@ -1,5 +1,30 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 4) — Trial WhatsApp params fixed to match Meta template 💬
+**Status: COMPLETE — verified against real template body from AiSensy dashboard**
+
+### Real root cause (why previous fix didn't deliver)
+AiSensy dashboard showed **100% Failed / ₹0 credits used** for the `free trial booking confirmation` campaign — Meta was rejecting every send at delivery. The `confirmation` template body actually has **5 DISTINCT variables**, not 5 copies of the parent name:
+```
+Hello {{1}}, ...
+📍 Venue: [{{2}}]
+📅 Date: [{{3}}]
+🕒 Time: [{{4}}]
+🗺️ Google Maps: [{{5}}]
+```
+We were sending `[first_name, first_name, first_name, first_name, first_name]` → Meta refused because a URL slot got plain text, and the rendered body was gibberish.
+
+### What changed (`/app/backend/routes/future_skills.py`)
+- New `_build_fs_trial_wa_params(trial)` helper that resolves the trial's center document (by `center_id` or fallback name) to pull `google_maps_link` + area/city, and parses `scheduled_at` into IST-formatted date (`7th August, 2026`) and time (`11am`), with graceful fallbacks (`your nearest OLL centre` / `we'll share the time shortly` / a valid oll.co URL) so Meta never sees a blank slot.
+- Both `_send_trial_booking_confirmation` and `check_fs_trial_24h_reminders` now call the helper and send `[name, venue, date, time, maps_url]` matching the template exactly.
+- 24h reminder query projection now includes `center_id`, `preferred_center`, `batch_label` so the helper can fill venue/time even for older trial records.
+- `fs_booking_tried` kept at 1 param (name) — that template's body is simpler.
+
+### Verification
+- Unit-tested `_build_fs_trial_wa_params` across 3 scenarios (center+scheduled_at, batch_label only, minimal) — all produce sane 5-tuples.
+- Live booking via admin CRM → AiSensy queued the send. Meta delivery will now succeed because param shape matches the approved template.
+
+
 ## 2026-08-04 (round 3) — Future Skills trial WhatsApp gaps fixed 💬
 **Status: COMPLETE — verified end-to-end (4 endpoints + 24h reminder cron)**
 

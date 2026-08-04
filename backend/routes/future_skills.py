@@ -276,6 +276,65 @@ async def register_trial(data: TrialBooking):
     }
 
 
+async def _build_fs_trial_wa_params(trial: dict) -> tuple:
+    """Build the 5 WhatsApp params that the `confirmation` and `24 hour reminder`
+    AiSensy templates expect: [name, venue, date, time, google_maps_url].
+
+    Looks up the center + batch documents to fill venue name and maps link.
+    Falls back to sensible defaults so Meta never rejects for a blank slot.
+    """
+    first_names = ((trial.get("student_name") or trial.get("parent_name")) or "").split()
+    first_name = first_names[0] if first_names else "there"
+
+    # Venue name — prefer joined center + area for a human-readable line
+    center_id = trial.get("center_id") or ""
+    center_doc = None
+    if center_id:
+        center_doc = await db.centers.find_one({"id": center_id}, {"_id": 0})
+    if not center_doc and trial.get("preferred_center"):
+        center_doc = await db.centers.find_one(
+            {"name": trial["preferred_center"]}, {"_id": 0}
+        )
+    if center_doc:
+        area = (center_doc.get("area") or center_doc.get("city") or "").strip()
+        venue = f"{center_doc.get('name','OLL Centre')}{(' in ' + area) if area else ''}"
+        maps_url = (center_doc.get("google_maps_link") or "").strip()
+    else:
+        venue = (trial.get("preferred_center") or "your nearest OLL centre").strip() or "your nearest OLL centre"
+        maps_url = ""
+    if not maps_url:
+        maps_url = "https://oll.co/future-skills"
+
+    # Date / time — parse scheduled_at → "7th August, 2026" and "11am"
+    scheduled_at = (trial.get("scheduled_at") or "").strip()
+    dt = None
+    if scheduled_at:
+        try:
+            dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            dt = None
+
+    date_str = "we'll share the date shortly"
+    time_str = "we'll share the time shortly"
+    if dt:
+        # Show in IST because the parent flow is India-only
+        ist = dt.astimezone(timezone(timedelta(hours=5, minutes=30)))
+        day = ist.day
+        suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+        date_str = f"{day}{suffix} {ist.strftime('%B, %Y')}"
+        hour_12 = ist.strftime("%I").lstrip("0") or "12"
+        minute = ist.minute
+        ampm = ist.strftime("%p").lower()  # am / pm
+        time_str = f"{hour_12}{('' if minute == 0 else ':' + str(minute).zfill(2))}{ampm}"
+    elif trial.get("batch_label"):
+        # Batch label already contains a friendly slot, so use that as the time
+        time_str = str(trial["batch_label"])[:100]
+
+    return (first_name, venue, date_str, time_str, maps_url)
+
+
 async def _send_trial_booking_confirmation(trial: dict) -> None:
     """Fire the AiSensy free-trial-booking WhatsApp for any newly-created trial,
     regardless of which endpoint created it (public form or admin-side).
@@ -286,13 +345,12 @@ async def _send_trial_booking_confirmation(trial: dict) -> None:
     phone = (trial or {}).get("parent_phone") or ""
     if not phone:
         return
-    first_name = ((trial.get("student_name") or trial.get("parent_name")) or "").split()
-    first_name = first_name[0] if first_name else "there"
+    first_name, venue, date_str, time_str, maps_url = await _build_fs_trial_wa_params(trial)
     try:
         await send_whatsapp_notification(
             phone=phone,
             template_key="fs_trial_booked_confirmation",
-            params=[first_name, first_name, first_name, first_name, first_name],
+            params=[first_name, venue, date_str, time_str, maps_url],
             user_name=first_name,
         )
     except Exception as e:
@@ -413,7 +471,8 @@ async def check_fs_trial_24h_reminders() -> None:
                 "reminder_24h_sent": {"$ne": True},
                 "crm_status": {"$nin": ["cancelled", "attended", "lost", "converted"]},
             },
-            {"_id": 0, "id": 1, "parent_phone": 1, "parent_name": 1, "student_name": 1, "scheduled_at": 1},
+            {"_id": 0, "id": 1, "parent_phone": 1, "parent_name": 1, "student_name": 1,
+             "scheduled_at": 1, "center_id": 1, "preferred_center": 1, "batch_label": 1},
         ).limit(500)
         candidates = await cursor.to_list(length=500)
     except Exception as e:
@@ -441,12 +500,12 @@ async def check_fs_trial_24h_reminders() -> None:
         phone = t.get("parent_phone", "")
         if not phone:
             continue
-        first_name = ((t.get("student_name") or t.get("parent_name")) or "").split()[0] or "there"
+        first_name, venue, date_str, time_str, maps_url = await _build_fs_trial_wa_params(t)
         try:
             await send_whatsapp_notification(
                 phone=phone,
                 template_key="fs_trial_24h_reminder",
-                params=[first_name, first_name, first_name, first_name, first_name],
+                params=[first_name, venue, date_str, time_str, maps_url],
                 user_name=first_name,
             )
             await db.future_skills_trials.update_one(
