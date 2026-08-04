@@ -4448,6 +4448,18 @@ async def startup_db_client():
     )
     print("[STARTUP] Future Skills WhatsApp follow-ups scheduled (booking-tried @ 5min · 24h reminder @ 30min)")
 
+    # Social Media — daily Instagram snapshot for trend charts
+    from routes.social_media import snapshot_instagram_profile
+    scheduler.add_job(
+        snapshot_instagram_profile,
+        trigger=IntervalTrigger(hours=24),
+        id="instagram_daily_snapshot_job",
+        name="Instagram — Daily Snapshot",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3),
+    )
+    print("[STARTUP] Instagram daily snapshot scheduled (every 24h)")
+
     # Gmail Bot — pull unread mail from every connected Gmail account, classify
     # via AI, and create support tickets for genuine customer queries.
     # Fires every 60 minutes; defer first run by 3 min so the app is warm.

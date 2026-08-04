@@ -156,3 +156,124 @@ async def get_instagram_stats(
     )
     doc["cached"] = False
     return doc
+
+
+# ── DAILY SNAPSHOTS + TREND ENDPOINT ─────────────────────────────────────
+async def snapshot_instagram_profile(profile_url: str = DEFAULT_PROFILE_URL) -> dict:
+    """Scrape the profile once and persist a dated snapshot row so the trend
+    endpoint can chart followers / engagement over time. Idempotent — runs
+    for the same day just overwrite the day's row.
+    """
+    username, canonical_url = _normalise(profile_url)
+    try:
+        raw = await _run_apify(canonical_url)
+    except HTTPException as e:
+        logging.warning("[social_media] snapshot skipped for %s: %s", username, e.detail)
+        return {"ok": False, "error": e.detail}
+
+    projected = _project(raw, canonical_url, username)
+    posts = projected.get("latest_posts") or []
+    total_likes    = sum((p.get("like_count") or 0)       for p in posts)
+    total_comments = sum((p.get("comment_count") or 0)    for p in posts)
+    total_views    = sum((p.get("video_view_count") or 0) for p in posts)
+
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%Y-%m-%d")
+    snap = {
+        "provider": "instagram",
+        "profile_key": username,
+        "date": date_str,
+        "captured_at": now,
+        "followers":  projected.get("followers"),
+        "following":  projected.get("following"),
+        "post_count": projected.get("post_count"),
+        "sample_size": len(posts),
+        "latest_total_likes":    total_likes,
+        "latest_total_comments": total_comments,
+        "latest_total_views":    total_views,
+    }
+    await db.social_media_snapshots.replace_one(
+        {"provider": "instagram", "profile_key": username, "date": date_str},
+        snap,
+        upsert=True,
+    )
+    logging.info("[social_media] snapshot saved for %s @ %s", username, date_str)
+    return {"ok": True, "snapshot": snap}
+
+
+def _bucket_key(date_str: str, granularity: str) -> str:
+    """Group a YYYY-MM-DD into a bucket label for the requested granularity."""
+    d = datetime.strptime(date_str, "%Y-%m-%d")
+    if granularity == "day":
+        return date_str
+    if granularity == "week":
+        iso = d.isocalendar()
+        return f"{iso.year}-W{iso.week:02d}"
+    if granularity == "month":
+        return d.strftime("%Y-%m")
+    if granularity == "quarter":
+        return f"{d.year}-Q{(d.month - 1) // 3 + 1}"
+    if granularity == "year":
+        return str(d.year)
+    return date_str
+
+
+_RANGE_DAYS = {"day": 90, "week": 365, "month": 730, "quarter": 1460, "year": 3650}
+
+
+@router.get("/admin/reports/social-media/instagram/trend")
+async def get_instagram_trend(
+    granularity: str = Query(default="day", pattern="^(day|week|month|quarter|year)$"),
+    profile_url: str = Query(default=DEFAULT_PROFILE_URL),
+    user: dict = Depends(get_current_user),
+):
+    """Return time-bucketed follower + engagement metrics for charting."""
+    if not _is_admin_or_reports(user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    username, _ = _normalise(profile_url)
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=_RANGE_DAYS[granularity])).strftime("%Y-%m-%d")
+    cursor = db.social_media_snapshots.find(
+        {"provider": "instagram", "profile_key": username, "date": {"$gte": cutoff}},
+        {"_id": 0},
+    ).sort("date", 1)
+    rows = await cursor.to_list(length=5000)
+
+    # Bucket: for followers/following/posts we take the LAST value in the bucket
+    # (end-of-period), for engagement we sum across days.
+    buckets: dict = {}
+    for r in rows:
+        key = _bucket_key(r["date"], granularity)
+        b = buckets.setdefault(key, {
+            "bucket": key, "sample_days": 0,
+            "followers": None, "following": None, "post_count": None,
+            "likes": 0, "comments": 0, "views": 0,
+        })
+        b["sample_days"] += 1
+        # last-value-wins for the running totals
+        for f in ("followers", "following", "post_count"):
+            if r.get(f) is not None:
+                b[f] = r[f]
+        b["likes"]    += r.get("latest_total_likes")    or 0
+        b["comments"] += r.get("latest_total_comments") or 0
+        b["views"]    += r.get("latest_total_views")    or 0
+
+    series = sorted(buckets.values(), key=lambda x: x["bucket"])
+    return {
+        "profile_key": username,
+        "granularity": granularity,
+        "count": len(series),
+        "series": series,
+    }
+
+
+@router.post("/admin/reports/social-media/instagram/snapshot")
+async def trigger_instagram_snapshot(
+    profile_url: str = Query(default=DEFAULT_PROFILE_URL),
+    user: dict = Depends(get_current_user),
+):
+    """Admin can force a snapshot right now (useful when a new profile is
+    added and no history exists yet)."""
+    if not _is_admin_or_reports(user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    return await snapshot_instagram_profile(profile_url)

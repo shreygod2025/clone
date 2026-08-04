@@ -307,6 +307,9 @@ const AdminReports = () => {
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialData,    setSocialData]    = useState(null);
   const [socialError,   setSocialError]   = useState('');
+  const [socialGranularity, setSocialGranularity] = useState('day');
+  const [socialTrend, setSocialTrend]     = useState([]);
+  const [socialTrendLoading, setSocialTrendLoading] = useState(false);
   const loadSocial = async (force = false) => {
     setSocialLoading(true); setSocialError('');
     try {
@@ -319,11 +322,35 @@ const AdminReports = () => {
       setSocialError(e.response?.data?.detail || 'Failed to load Instagram stats');
     } finally { setSocialLoading(false); }
   };
+  const loadSocialTrend = async (granularity) => {
+    setSocialTrendLoading(true);
+    try {
+      const r = await axios.get(
+        `${process.env.REACT_APP_BACKEND_URL}/api/admin/reports/social-media/instagram/trend?granularity=${granularity}`,
+        { headers: getAuthHeaders() },
+      );
+      setSocialTrend(r.data?.series || []);
+    } catch { setSocialTrend([]); }
+    finally { setSocialTrendLoading(false); }
+  };
+  const captureSocialSnapshot = async () => {
+    try {
+      await axios.post(
+        `${process.env.REACT_APP_BACKEND_URL}/api/admin/reports/social-media/instagram/snapshot`,
+        {}, { headers: getAuthHeaders() },
+      );
+      // refresh both the live card and the chart
+      await Promise.all([loadSocial(false), loadSocialTrend(socialGranularity)]);
+    } catch (e) {
+      setSocialError(e.response?.data?.detail || 'Snapshot failed');
+    }
+  };
   // Auto-load when the Social Media tab is opened for the first time.
   useEffect(() => {
     if (activeTab === 'social' && !socialData && !socialLoading) loadSocial(false);
+    if (activeTab === 'social') loadSocialTrend(socialGranularity);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, socialGranularity]);
 
   const getDateParams = () => {
     let params = {};
@@ -1783,6 +1810,84 @@ const AdminReports = () => {
                   <div className={`text-3xl font-black mt-1 ${k.accent}`}>{fmtNum(k.value)}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Trend charts */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="social-trend">
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <h3 className="text-sm font-black text-[#0F1E33]">Growth &amp; engagement over time</h3>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1 bg-slate-100 rounded-lg p-1" data-testid="social-granularity">
+                    {['day', 'week', 'month', 'quarter', 'year'].map(g => (
+                      <button key={g} onClick={() => setSocialGranularity(g)}
+                        className={`text-[11px] px-2.5 py-1 rounded-md font-bold capitalize ${
+                          socialGranularity === g ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                        data-testid={`social-gran-${g}`}>
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={captureSocialSnapshot}
+                    className="text-[11px] px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                    title="Capture a snapshot now (bypasses the 24h scheduler)"
+                    data-testid="social-snapshot-now">
+                    Snapshot now
+                  </button>
+                </div>
+              </div>
+
+              {socialTrendLoading ? (
+                <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading trend…
+                </div>
+              ) : socialTrend.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-center text-slate-400 text-sm p-6">
+                  <div>
+                    <div>No snapshots yet — data collects daily.</div>
+                    <div className="text-[11px] mt-1">Hit &ldquo;Snapshot now&rdquo; to capture today&apos;s baseline.</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-6">
+                  {/* Follower count */}
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Follower count</div>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <AreaChart data={socialTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="socialFollowersFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%"   stopColor="#EC4899" stopOpacity={0.35} />
+                            <stop offset="100%" stopColor="#EC4899" stopOpacity={0}    />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                        <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
+                        <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
+                        <Area type="monotone" dataKey="followers" stroke="#EC4899" strokeWidth={2} fill="url(#socialFollowersFill)" name="Followers" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Engagement */}
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Engagement across latest posts</div>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <LineChart data={socialTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                        <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
+                        <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Line type="monotone" dataKey="likes"    stroke="#D63031" strokeWidth={2} dot={false} name="Likes" />
+                        <Line type="monotone" dataKey="comments" stroke="#1E3A5F" strokeWidth={2} dot={false} name="Comments" />
+                        <Line type="monotone" dataKey="views"    stroke="#8B5CF6" strokeWidth={2} dot={false} name="Views" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Latest posts */}
