@@ -83,6 +83,14 @@ class StudentInquiryUpdate(BaseModel):
     assigned_educator_id: Optional[str] = None
     assigned_educator_name: Optional[str] = None
     pending_payment: Optional[dict] = None
+    # Direct payment fields (used when admin marks an inquiry as converted from the CRM)
+    payment_amount: Optional[float] = None
+    payment_receipt_url: Optional[str] = None
+    skill: Optional[str] = None
+    age_group: Optional[str] = None
+    learning_mode: Optional[str] = None
+    learning_goal: Optional[str] = None
+    city: Optional[str] = None
 
 # Comment Model (shared across CRMs)
 class Comment(BaseModel):
@@ -332,11 +340,83 @@ async def update_student_inquiry(
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     await db.student_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
     inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+
+    # ── Mirror converted inquiries into `orders` so B2C revenue reflects consistently
+    # in the Orders page + Reports.  We create one order per inquiry (idempotent via
+    # `inquiry_id` link) and update the amount if the admin later edits it.
+    if inquiry.get("status") == "converted":
+        await _mirror_inquiry_to_order(inquiry)
+
     if isinstance(inquiry.get('created_at'), str):
         inquiry['created_at'] = datetime.fromisoformat(inquiry['created_at'])
     if isinstance(inquiry.get('updated_at'), str):
         inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
     return inquiry
+
+
+async def _mirror_inquiry_to_order(inquiry: dict) -> None:
+    """Create or update an `orders` row for a converted student inquiry so all
+    B2C revenue funnels through the Orders page. Idempotent: keyed on inquiry_id.
+    """
+    amount = 0.0
+    for k in ("payment_amount", "pending_payment", "amount_paid", "amount"):
+        v = inquiry.get(k)
+        if v:
+            try:
+                amount = float(v)
+                break
+            except (TypeError, ValueError):
+                pass
+    now_iso = datetime.now(timezone.utc).isoformat()
+    order_doc = {
+        "inquiry_id": inquiry["id"],
+        "user_type": "student",
+        "customer_name": inquiry.get("name", ""),
+        "customer_phone": inquiry.get("phone", ""),
+        "customer_email": inquiry.get("email", ""),
+        "product": inquiry.get("skill") or inquiry.get("course") or "Student Class",
+        "amount": amount,
+        "payment_status": "paid" if amount > 0 else "pending",
+        "created_at": inquiry.get("converted_at") or inquiry.get("updated_at") or now_iso,
+        "updated_at": now_iso,
+        "source": "student_crm",
+    }
+    existing = await db.orders.find_one({"inquiry_id": inquiry["id"]}, {"_id": 0, "id": 1})
+    if existing:
+        await db.orders.update_one({"inquiry_id": inquiry["id"]}, {"$set": order_doc})
+    else:
+        import uuid as _uuid
+        order_doc["id"] = str(_uuid.uuid4())
+        order_doc["order_ref"] = f"STU-{order_doc['id'][:8].upper()}"
+        await db.orders.insert_one(order_doc)
+
+
+@router.delete("/students/inquiry/{inquiry_id}")
+async def delete_student_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
+    """Hard-delete a student inquiry + its mirrored order (if any)."""
+    result = await db.student_inquiries.delete_one({"id": inquiry_id})
+    await db.orders.delete_many({"inquiry_id": inquiry_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    return {"ok": True, "deleted": inquiry_id}
+
+
+@router.post("/admin/students/backfill-orders")
+async def backfill_orders_from_converted_inquiries(user: dict = Depends(get_current_user)):
+    """One-shot: create missing `orders` rows for every already-converted student
+    inquiry so historical revenue rolls up correctly in Reports and Orders."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    created = 0
+    updated = 0
+    async for i in db.student_inquiries.find({"status": "converted"}, {"_id": 0}):
+        before = await db.orders.find_one({"inquiry_id": i["id"]}, {"_id": 0, "id": 1})
+        await _mirror_inquiry_to_order(i)
+        if before:
+            updated += 1
+        else:
+            created += 1
+    return {"ok": True, "created": created, "updated": updated}
 
 # ========================
 # NOTE: payments routes moved to routes/payments.py

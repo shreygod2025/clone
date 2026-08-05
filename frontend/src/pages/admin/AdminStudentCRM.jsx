@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check, Download, RefreshCw } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Edit2, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check, Download, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { Input } from '../../components/ui/input';
@@ -192,8 +192,12 @@ const AdminStudentCRM = () => {
     demo_time: '',
     address: '',
     source: 'manual',
-    notes: ''
+    notes: '',
+    status: 'new',           // new | demo_completed | converted
+    payment_amount: '',      // used when status = converted
   });
+  // Delete confirmation for student inquiries
+  const [deleteInquiryTarget, setDeleteInquiryTarget] = useState(null);
 
   useEffect(() => {
     fetchInquiries();
@@ -919,22 +923,33 @@ const AdminStudentCRM = () => {
       toast.error('Name and phone are required');
       return;
     }
+    if (newLead.status === 'converted' && (!newLead.payment_amount || Number(newLead.payment_amount) <= 0)) {
+      toast.error('Enter a payment amount to add a converted customer');
+      return;
+    }
     const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
     
     // Use otherSkill if skill is "other"
     const finalSkill = newLead.skill === 'other' && newLead.otherSkill ? newLead.otherSkill : newLead.skill;
     
     try {
-      await axios.post(`${API}/students/inquiry`, {
+      // Step 1: create the base inquiry
+      const created = await axios.post(`${API}/students/inquiry`, {
         ...newLead,
         skill: finalSkill,
         phone: fullPhone,
         email: newLead.email || `${newLead.phone}@manual.oll`,
         learner_type: 'self',
         demo_date: newLead.demo_date ? format(newLead.demo_date, 'yyyy-MM-dd') : null,
-      }, {
-        headers: getAuthHeaders()
-      });
+      }, { headers: getAuthHeaders() });
+      // Step 2: if admin picked a non-new starting status, patch it right away
+      if (newLead.status && newLead.status !== 'new') {
+        const patch = { status: newLead.status };
+        if (newLead.status === 'converted') {
+          patch.payment_amount = Number(newLead.payment_amount);
+        }
+        await axios.patch(`${API}/students/inquiry/${created.data.id}`, patch, { headers: getAuthHeaders() });
+      }
       toast.success('Lead added successfully');
       setShowAddForm(false);
       setNewLead({
@@ -952,11 +967,25 @@ const AdminStudentCRM = () => {
         demo_time: '',
         address: '',
         source: 'manual',
-        notes: ''
+        notes: '',
+        status: 'new',
+        payment_amount: '',
       });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add lead');
+    }
+  };
+
+  const handleDeleteInquiry = async () => {
+    if (!deleteInquiryTarget) return;
+    try {
+      await axios.delete(`${API}/students/inquiry/${deleteInquiryTarget.id}`, { headers: getAuthHeaders() });
+      toast.success('Lead deleted');
+      setDeleteInquiryTarget(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to delete lead');
     }
   };
 
@@ -1272,6 +1301,26 @@ const AdminStudentCRM = () => {
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
+    const editDeleteButtons = (
+      <>
+        <button
+          onClick={() => { setViewInquiry(inquiry); setEditMode(true); }}
+          className="text-xs px-3 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center gap-1 font-medium"
+          data-testid={`edit-inquiry-${inquiry.id}`}
+        >
+          <Edit2 className="w-3 h-3" />
+          Edit
+        </button>
+        <button
+          onClick={() => setDeleteInquiryTarget(inquiry)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex items-center gap-1 font-medium"
+          data-testid={`delete-inquiry-${inquiry.id}`}
+        >
+          <Trash2 className="w-3 h-3" />
+          Delete
+        </button>
+      </>
+    );
     const baseButtons = (
       <>
         <button
@@ -1290,6 +1339,7 @@ const AdminStudentCRM = () => {
           <MessageSquare className="w-3 h-3" />
           Add Note
         </button>
+        {editDeleteButtons}
         {/* Not Joined notification buttons */}
         {inquiry.demo_date && inquiry.status === 'new' && (
           <>
@@ -3845,7 +3895,38 @@ const AdminStudentCRM = () => {
             <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">
               💡 Type at least 3 characters in Name, Phone, or Email to auto-fill from existing records
             </div>
-            
+
+            {/* Status selector — lets admin add a lead as an already-Converted customer or Demo Completed */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Starting Status</label>
+                <select
+                  value={newLead.status}
+                  onChange={(e) => setNewLead({ ...newLead, status: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                  data-testid="add-lead-status-select"
+                >
+                  <option value="new">Lead (default)</option>
+                  <option value="demo_completed">Demo Completed</option>
+                  <option value="converted">Converted Customer</option>
+                </select>
+              </div>
+              {newLead.status === 'converted' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Payment Amount (₹) *</label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="e.g. 9900"
+                    value={newLead.payment_amount}
+                    onChange={(e) => setNewLead({ ...newLead, payment_amount: e.target.value })}
+                    data-testid="add-lead-payment-amount"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Reflects in Orders + Revenue reports.</p>
+                </div>
+              )}
+            </div>
+
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
@@ -4694,6 +4775,31 @@ const AdminStudentCRM = () => {
                   Onboard Student
                 </Button>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete inquiry confirmation */}
+      <Dialog open={!!deleteInquiryTarget} onOpenChange={(open) => !open && setDeleteInquiryTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Lead?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              Permanently delete <strong>{deleteInquiryTarget?.name || 'this lead'}</strong>? Any linked
+              order record from the Orders page will also be removed. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setDeleteInquiryTarget(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleDeleteInquiry}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                data-testid="confirm-delete-inquiry">
+                <Trash2 className="w-4 h-4 mr-1" /> Yes, Delete
+              </Button>
             </div>
           </div>
         </DialogContent>

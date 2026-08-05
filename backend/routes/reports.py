@@ -1824,11 +1824,11 @@ async def _b2c_future_skills_stats(start, end) -> dict:
 
 async def _b2c_student_crm_stats(start, end) -> dict:
     """Student CRM: inquiries=leads, demos=demos, converted=customers.
-    Revenue attempts payment_amount and pending_payment fields (best-effort)."""
+    Revenue is sourced from `orders` (single source of truth — every converted
+    inquiry mirrors an order row via `_mirror_inquiry_to_order`)."""
     leads = 0
     demos = 0
     customers = 0
-    revenue = 0.0
     async for s in db.student_inquiries.find({}, {"_id": 0}):
         if not _dt_between(s.get("created_at"), start, end):
             continue
@@ -1837,15 +1837,12 @@ async def _b2c_student_crm_stats(start, end) -> dict:
             demos += 1
         if s.get("status") == "converted":
             customers += 1
-            for k in ("payment_amount", "pending_payment", "amount_paid", "amount"):
-                v = s.get(k)
-                if v:
-                    try:
-                        revenue += float(v)
-                        break
-                    except (TypeError, ValueError):
-                        pass
-    # Additional revenue from the orders collection (if used for student payments)
+    # Demo bookings collection is also part of Student CRM funnel
+    async for d in db.demo_bookings.find({}, {"_id": 0}):
+        if _dt_between(d.get("created_at"), start, end):
+            demos += 1
+    # Revenue solely from Orders (student_crm source)
+    revenue = 0.0
     async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0}):
         if not _dt_between(o.get("created_at"), start, end):
             continue
@@ -1857,10 +1854,6 @@ async def _b2c_student_crm_stats(start, end) -> dict:
                     break
                 except (TypeError, ValueError):
                     pass
-    # Demo bookings collection is also part of Student CRM
-    async for d in db.demo_bookings.find({}, {"_id": 0}):
-        if _dt_between(d.get("created_at"), start, end):
-            demos += 1
     return {"leads": leads, "demos": demos, "customers": customers, "revenue": revenue}
 
 
@@ -1989,18 +1982,7 @@ async def revenue_split_report(
         if _dt_between(s.get("created_at"), start, end):
             cc_rev += float(s.get("amount") or 0)
 
-    hc_rev = 0.0  # Home Classes = paid student inquiries (online mode) + student orders
-    async for s in db.student_inquiries.find({"status": "converted"}, {"_id": 0}):
-        if not _dt_between(s.get("created_at"), start, end):
-            continue
-        for k in ("payment_amount", "pending_payment", "amount_paid", "amount"):
-            v = s.get(k)
-            if v:
-                try:
-                    hc_rev += float(v)
-                    break
-                except (TypeError, ValueError):
-                    pass
+    hc_rev = 0.0  # Home Classes = student orders (Student CRM converted)
     async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0}):
         if not _dt_between(o.get("created_at"), start, end):
             continue

@@ -1,5 +1,32 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 9) — Student CRM edit/delete + Orders mirror + revenue dedup 🛒
+**Status: COMPLETE — verified backend + frontend end-to-end**
+
+### Backend (`routes/students.py`)
+- New `_mirror_inquiry_to_order(inquiry)` helper: any inquiry with `status=converted` writes/updates a row in the `orders` collection (idempotent, keyed by `inquiry_id`). `product` inferred from skill; `payment_status` = `paid` when amount > 0.
+- `PATCH /students/inquiry/{id}` now auto-mirrors to `orders` when status flips to converted.
+- New `DELETE /students/inquiry/{id}` — hard-deletes inquiry + cascades removal of the mirrored order.
+- New `POST /admin/students/backfill-orders` (admin only) — one-shot backfill for historical converted inquiries. Ran once → created 9 orders totalling ₹4,693 from existing DB.
+- Extended `StudentInquiryUpdate` model to accept `payment_amount`, `skill`, `age_group`, `learning_mode`, `learning_goal`, `city`, `payment_receipt_url` so all fields are editable from the CRM.
+
+### Revenue de-duplication (`routes/reports.py`)
+- `_b2c_student_crm_stats` and revenue-split's Home Classes bucket now source revenue **exclusively** from `orders` (single source of truth). Previously they summed both `student_inquiries.payment_amount` AND `orders.amount`, double-counting.
+- Verified: after backfill, `/b2c-consolidated` shows Student CRM revenue = ₹4,693 (no longer ₹9,386), and total revenue = ₹1,45,691 across all funnels.
+
+### Frontend (`AdminStudentCRM.jsx`)
+- **Add-Lead modal**: new "Starting Status" selector at top (Lead default / Demo Completed / Converted Customer). Selecting Converted reveals a required Payment Amount ₹ field. On submit, creates the inquiry, then PATCHes it to the chosen status — order is auto-mirrored.
+- **Row actions**: `Edit` (opens view-modal in edit-mode) + `Delete` (opens confirm dialog) buttons added to `baseButtons` so they show up on **Lead**, **Demo Completed**, **Converted**, and **Archived** rows. Data-testids: `edit-inquiry-{id}` / `delete-inquiry-{id}` / `confirm-delete-inquiry`.
+- New delete-confirmation dialog wired to `handleDeleteInquiry` — calls the new DELETE endpoint, refreshes list, cascade-removes the linked order.
+- Imported `Edit2` icon.
+
+### Verification
+- Backfill created 9 orders → Home Classes revenue correctly ₹4,693 ✅
+- Convert-with-amount flow: PATCH stores `payment_amount:9900` → mirrored order (`STU-DFDC334A · amount:9900 · status:paid`) ✅
+- Delete cascade: DELETE inquiry removes both `student_inquiries` row and its linked `orders` row ✅
+- UI screenshot shows Starting Status selector + Edit / Delete buttons on every inquiry row ✅
+
+
 ## 2026-08-04 (round 8) — Reports revamp: consolidated B2C + Centres/Batches + Expenses fixed 📊
 **Status: COMPLETE — 4 new endpoints, B2C tab redesigned, P&L expenses render**
 
