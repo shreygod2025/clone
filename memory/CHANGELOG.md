@@ -1,5 +1,30 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 10) — Add-Lead Batch Type + Orders sub-tabs 👥
+**Status: COMPLETE — verified backend + frontend**
+
+### Student CRM Add-Lead modal (`AdminStudentCRM.jsx`)
+- **Demo Scheduling section is now hidden** when Starting Status ≠ Lead (was showing even for Converted / Demo Completed which was noisy).
+- **Batch Type toggle** (Group Batch / 1-on-1 Batch) appears above the name block **only** when Starting Status = Converted.
+- **Group Batch flow**: shows `No. of students` input + N rows of `{name, phone, email}` inputs (min 2, max 30). Auto-resizes the array when the count changes.
+- On save, patches the inquiry with `batch_type`, `group_size`, `group_students`. Blank student rows are filtered out before sending.
+
+### Backend (`routes/students.py`, `routes/orders.py`)
+- `StudentInquiryUpdate` model extended with `batch_type`, `group_size`, `group_students`.
+- `_mirror_inquiry_to_order` now labels the mirrored order product as `<Skill> · Group Batch (N students)` or `<Skill> · 1-on-1`, and copies the `group_students` array onto the order document.
+- New `GET /api/orders/summer-camp-payments` — returns 73 rows from `summer_camp_bookings` shaped like the existing student-payments API.
+- New `GET /api/orders/future-skills-payments` — returns 22 rows from `future_skills_subscriptions`.
+
+### Orders page (`AdminOrders.jsx`)
+- **New sub-tabs under Student Payments**: Home Classes · Summer Camp · Future Skills. Data source of the table auto-routes via a `rawPayments` React.useMemo hook that swaps between the three arrays based on `studentSubTab`. Stats cards + search + status filter all continue to work.
+- Data-testids: `student-sub-tab-home`, `student-sub-tab-summer_camp`, `student-sub-tab-future_skills`.
+
+### Verification
+- Group Batch save → inquiry has `batch_type=group`, `group_size=3`, 3 group_students; mirrored order product = "Robotics · Group Batch (3 students)", ₹18,000, status paid ✅
+- Orders → Student Payments → Summer Camp screenshot shows 31 orders / 7 pending / ₹55,013 receivables with OLL NSCI South Mumbai (₹8,500) and other Mira Road / Bulk Parent rows ✅
+- Future Skills sub-tab returns 22 subscriptions with ₹1,37,000 total paid ✅
+
+
 ## 2026-08-04 (round 9) — Student CRM edit/delete + Orders mirror + revenue dedup 🛒
 **Status: COMPLETE — verified backend + frontend end-to-end**
 

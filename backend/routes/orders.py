@@ -831,3 +831,56 @@ async def delete_school_payment(
 # ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
+
+
+# ── Summer Camp + Future Skills payment sub-tabs ─────────────────────────────
+@router.get("/orders/summer-camp-payments")
+async def get_summer_camp_payments(user: dict = Depends(get_current_user)):
+    """Payment rows for the Orders → Student Payments → Summer Camp sub-tab."""
+    payments = []
+    async for b in db.summer_camp_bookings.find({}).sort("created_at", -1):
+        payments.append({
+            "id": b.get("id", str(b.get("_id"))),
+            "student_id": b.get("id"),
+            "student_name": b.get("student_name") or b.get("parent_name") or "",
+            "parent_name": b.get("parent_name", ""),
+            "phone": b.get("phone", ""),
+            "email": b.get("email", ""),
+            "description": f"{b.get('program','Summer Camp')} · {b.get('batch_week','')} · {b.get('mode','')}".strip(' ·'),
+            "batch_name": b.get("center_label") or b.get("batch_week", ""),
+            "amount": float(b.get("amount") or 0),
+            "paid_amount": float(b.get("amount") or 0) if b.get("payment_status") == "paid" else 0,
+            "status": b.get("payment_status") or "pending",
+            "payment_status": b.get("payment_status") or "pending",
+            "payment_date": b.get("paid_at") or b.get("updated_at"),
+            "created_at": b.get("created_at"),
+            "source": "summer_camp",
+        })
+    total = sum(p["paid_amount"] for p in payments)
+    return {"payments": payments, "total_paid": total, "count": len(payments)}
+
+
+@router.get("/orders/future-skills-payments")
+async def get_future_skills_payments(user: dict = Depends(get_current_user)):
+    """Payment rows for the Orders → Student Payments → Future Skills sub-tab."""
+    payments = []
+    async for s in db.future_skills_subscriptions.find({}).sort("created_at", -1):
+        payments.append({
+            "id": s.get("id", str(s.get("_id"))),
+            "student_id": s.get("id"),
+            "student_name": s.get("student_name") or s.get("parent_name") or "",
+            "parent_name": s.get("parent_name", ""),
+            "phone": s.get("parent_phone") or s.get("phone", ""),
+            "email": s.get("parent_email") or s.get("email", ""),
+            "description": f"{s.get('program_key','future_skills')} · {s.get('batch_label','')} · {s.get('preferred_center','')}".strip(' ·'),
+            "batch_name": s.get("batch_label") or "",
+            "amount": float(s.get("amount") or 0),
+            "paid_amount": float(s.get("amount") or 0) if s.get("payment_status") == "paid" else 0,
+            "status": s.get("payment_status") or "pending",
+            "payment_status": s.get("payment_status") or "pending",
+            "payment_date": s.get("paid_at") or s.get("updated_at"),
+            "created_at": s.get("created_at"),
+            "source": "future_skills",
+        })
+    total = sum(p["paid_amount"] for p in payments)
+    return {"payments": payments, "total_paid": total, "count": len(payments)}

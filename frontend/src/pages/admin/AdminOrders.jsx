@@ -188,6 +188,10 @@ const AdminOrders = () => {
   const [payments, setPayments] = useState([]);
   const [schoolStudentPayments, setSchoolStudentPayments] = useState([]);
   const [schoolStudentStats, setSchoolStudentStats] = useState({});
+  // Student Payments sub-tabs (Home Classes · Summer Camp · Future Skills)
+  const [studentSubTab, setStudentSubTab] = useState('home');
+  const [summerCampPayments, setSummerCampPayments] = useState([]);
+  const [futureSkillsPayments, setFutureSkillsPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -233,11 +237,39 @@ const AdminOrders = () => {
   useEffect(() => {
     if (activeTab === 'school-students') {
       fetchSchoolStudentPayments();
+    } else if (activeTab === 'student' && studentSubTab === 'summer_camp') {
+      fetchSummerCampPayments();
+    } else if (activeTab === 'student' && studentSubTab === 'future_skills') {
+      fetchFutureSkillsPayments();
     } else {
       fetchPayments();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, studentSubTab]);
+
+  const fetchSummerCampPayments = async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get(`${API}/orders/summer-camp-payments`, { headers: getAuthHeaders() });
+      setSummerCampPayments(r.data?.payments || []);
+    } catch (e) {
+      setSummerCampPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFutureSkillsPayments = async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get(`${API}/orders/future-skills-payments`, { headers: getAuthHeaders() });
+      setFutureSkillsPayments(r.data?.payments || []);
+    } catch (e) {
+      setFutureSkillsPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -567,8 +599,27 @@ const AdminOrders = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Route Student Payments table to the correct source based on the active sub-tab.
+  const rawPayments = React.useMemo(() => {
+    if (activeTab === 'student' && studentSubTab === 'summer_camp')   return summerCampPayments;
+    if (activeTab === 'student' && studentSubTab === 'future_skills') return futureSkillsPayments;
+    return payments;
+  }, [activeTab, studentSubTab, payments, summerCampPayments, futureSkillsPayments]);
+
+  const _filteredPayments = React.useMemo(() => {
+    const src = rawPayments || [];
+    return src.filter(p => {
+      const searchLower = (searchQuery || '').toLowerCase();
+      const matchesSearch = !searchLower || [p.student_name, p.parent_name, p.email, p.phone, p.description]
+        .filter(Boolean).some(x => String(x).toLowerCase().includes(searchLower));
+      const status = p.status || 'pending';
+      const matchesStatus = statusFilter === 'all' || status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rawPayments, searchQuery, statusFilter]);
+
   // Sort by due date (most recent first), then by status (overdue > pending > paid)
-  const sortedPayments = [...filteredPayments].sort((a, b) => {
+  const sortedPayments = [..._filteredPayments].sort((a, b) => {
     const statusOrder = { overdue: 0, pending: 1, partial: 2, paid: 3, cancelled: 4 };
     
     let statusA = a.status || 'pending';
@@ -1189,6 +1240,24 @@ const AdminOrders = () => {
             </div>
           </div>
         </div>
+
+        {/* Student Payments sub-tabs — Home Classes · Summer Camp · Future Skills */}
+        {activeTab === 'student' && (
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-2" data-testid="student-payment-subtabs">
+            {[
+              { key: 'home',          label: 'Home Classes',   color: 'text-blue-600 border-blue-500 bg-blue-50/60' },
+              { key: 'summer_camp',   label: 'Summer Camp',    color: 'text-amber-700 border-amber-500 bg-amber-50/60' },
+              { key: 'future_skills', label: 'Future Skills',  color: 'text-indigo-700 border-indigo-500 bg-indigo-50/60' },
+            ].map(st => (
+              <button key={st.key}
+                onClick={() => setStudentSubTab(st.key)}
+                className={`px-4 py-2 text-xs font-semibold border-b-2 transition ${studentSubTab === st.key ? st.color : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                data-testid={`student-sub-tab-${st.key}`}>
+                {st.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Stats Cards - Show different stats based on active tab */}
         {activeTab !== 'school-students' ? (

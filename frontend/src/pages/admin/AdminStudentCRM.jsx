@@ -195,6 +195,9 @@ const AdminStudentCRM = () => {
     notes: '',
     status: 'new',           // new | demo_completed | converted
     payment_amount: '',      // used when status = converted
+    batch_type: 'group',     // group | 1on1 — used when status = converted
+    group_size: 1,           // number of students in a group batch
+    group_students: [],      // [{name, phone, email}, ...] — used when batch_type = group
   });
   // Delete confirmation for student inquiries
   const [deleteInquiryTarget, setDeleteInquiryTarget] = useState(null);
@@ -947,6 +950,11 @@ const AdminStudentCRM = () => {
         const patch = { status: newLead.status };
         if (newLead.status === 'converted') {
           patch.payment_amount = Number(newLead.payment_amount);
+          patch.batch_type = newLead.batch_type || '1on1';
+          if (newLead.batch_type === 'group') {
+            patch.group_students = (newLead.group_students || []).filter(s => (s.name || '').trim());
+            patch.group_size = patch.group_students.length;
+          }
         }
         await axios.patch(`${API}/students/inquiry/${created.data.id}`, patch, { headers: getAuthHeaders() });
       }
@@ -970,6 +978,9 @@ const AdminStudentCRM = () => {
         notes: '',
         status: 'new',
         payment_amount: '',
+        batch_type: 'group',
+        group_size: 1,
+        group_students: [],
       });
       fetchInquiries();
     } catch (error) {
@@ -3927,6 +3938,63 @@ const AdminStudentCRM = () => {
               )}
             </div>
 
+            {/* Batch Type toggle — shown only for direct converted customer entry */}
+            {newLead.status === 'converted' && (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Batch Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button"
+                    className={`px-3 py-2 rounded-lg font-semibold text-sm border-2 transition ${newLead.batch_type === 'group' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}`}
+                    onClick={() => setNewLead({ ...newLead, batch_type: 'group', group_size: Math.max(2, newLead.group_size || 2), group_students: newLead.group_students.length ? newLead.group_students : [{name:'',phone:'',email:''},{name:'',phone:'',email:''}] })}
+                    data-testid="batch-type-group">
+                    Group Batch
+                  </button>
+                  <button type="button"
+                    className={`px-3 py-2 rounded-lg font-semibold text-sm border-2 transition ${newLead.batch_type === '1on1' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}`}
+                    onClick={() => setNewLead({ ...newLead, batch_type: '1on1', group_size: 1, group_students: [] })}
+                    data-testid="batch-type-1on1">
+                    1-on-1 Batch
+                  </button>
+                </div>
+                {newLead.batch_type === 'group' && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-slate-600">No. of students</label>
+                      <input type="number" min={2} max={30}
+                        value={newLead.group_size}
+                        onChange={(e) => {
+                          const n = Math.max(2, Math.min(30, Number(e.target.value) || 2));
+                          const arr = [...(newLead.group_students || [])];
+                          while (arr.length < n) arr.push({ name: '', phone: '', email: '' });
+                          arr.length = n;
+                          setNewLead({ ...newLead, group_size: n, group_students: arr });
+                        }}
+                        className="w-20 h-8 px-2 border border-slate-200 rounded-md text-sm"
+                        data-testid="group-size-input" />
+                    </div>
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
+                      {(newLead.group_students || []).map((st, idx) => (
+                        <div key={idx} className="grid grid-cols-3 gap-1.5" data-testid={`group-student-row-${idx}`}>
+                          <Input placeholder={`Student ${idx+1} name`}
+                            value={st.name}
+                            onChange={(e) => { const arr = [...newLead.group_students]; arr[idx] = { ...arr[idx], name: e.target.value }; setNewLead({ ...newLead, group_students: arr }); }}
+                            className="h-8 text-xs" data-testid={`group-student-name-${idx}`} />
+                          <Input placeholder="Phone"
+                            value={st.phone}
+                            onChange={(e) => { const arr = [...newLead.group_students]; arr[idx] = { ...arr[idx], phone: e.target.value }; setNewLead({ ...newLead, group_students: arr }); }}
+                            className="h-8 text-xs" data-testid={`group-student-phone-${idx}`} />
+                          <Input placeholder="Email (optional)"
+                            value={st.email}
+                            onChange={(e) => { const arr = [...newLead.group_students]; arr[idx] = { ...arr[idx], email: e.target.value }; setNewLead({ ...newLead, group_students: arr }); }}
+                            className="h-8 text-xs" data-testid={`group-student-email-${idx}`} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
@@ -4131,7 +4199,8 @@ const AdminStudentCRM = () => {
               </div>
             )}
 
-            {/* Demo Date & Time */}
+            {/* Demo Date & Time — only for new leads */}
+            {newLead.status === 'new' && (
             <div className="border-t pt-4 mt-4">
               <h4 className="font-medium text-slate-900 mb-3">Demo Scheduling</h4>
               <div className="grid grid-cols-2 gap-4">
@@ -4168,6 +4237,7 @@ const AdminStudentCRM = () => {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Notes */}
             <div>

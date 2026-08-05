@@ -91,6 +91,10 @@ class StudentInquiryUpdate(BaseModel):
     learning_mode: Optional[str] = None
     learning_goal: Optional[str] = None
     city: Optional[str] = None
+    # Group batch fields (used when admin adds a direct converted Group Batch customer)
+    batch_type: Optional[str] = None          # "group" | "1on1"
+    group_size: Optional[int] = None
+    group_students: Optional[list] = None     # [{name, phone, email}]
 
 # Comment Model (shared across CRMs)
 class Comment(BaseModel):
@@ -368,14 +372,24 @@ async def _mirror_inquiry_to_order(inquiry: dict) -> None:
             except (TypeError, ValueError):
                 pass
     now_iso = datetime.now(timezone.utc).isoformat()
+    # Product label reflects batch type & size so Orders page can show a helpful summary
+    product = inquiry.get("skill") or inquiry.get("course") or "Student Class"
+    batch_type = (inquiry.get("batch_type") or "").lower()
+    group_students = inquiry.get("group_students") or []
+    if batch_type == "group" and group_students:
+        product = f"{product} · Group Batch ({len(group_students)} students)"
+    elif batch_type == "1on1":
+        product = f"{product} · 1-on-1"
     order_doc = {
         "inquiry_id": inquiry["id"],
         "user_type": "student",
         "customer_name": inquiry.get("name", ""),
         "customer_phone": inquiry.get("phone", ""),
         "customer_email": inquiry.get("email", ""),
-        "product": inquiry.get("skill") or inquiry.get("course") or "Student Class",
+        "product": product,
         "amount": amount,
+        "batch_type": batch_type or "",
+        "group_students": group_students,
         "payment_status": "paid" if amount > 0 else "pending",
         "created_at": inquiry.get("converted_at") or inquiry.get("updated_at") or now_iso,
         "updated_at": now_iso,
