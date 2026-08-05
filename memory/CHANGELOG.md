@@ -1,5 +1,38 @@
 # OLL Backend Changelog
 
+## 2026-08-04 (round 11) — P&L expense fix + allocation + Software Subscription 💰
+**Status: COMPLETE — P&L now shows the real all-time expense total**
+
+### Root cause
+`/admin/reports/expenses-summary` was reading only `expenses` + `future_skills_expenses` collections (2 rows / ₹8,500). The /expenses page's actual data lives in `school_expenses` (16 rows / ₹4,02,195). Plus the date filter was hiding older rows on the P&L card even when set to Year.
+
+### What changed
+
+**Backend (`routes/reports.py`)**
+- `_expenses_summary` now includes `school_expenses` too — merges rows from all three collections.
+- Adds `all_time_total`, `all_time_count`, `all_time_by_category` in the response so the P&L card always shows the grand total that matches the /expenses page regardless of the top-level date filter.
+
+**Backend (`routes/expenses.py` + `routes/team.py`)**
+- Added `Software Subscription` category (`software_subscription`) with sub-categories: SaaS, Productivity, AI/LLM, Analytics, Communication, Storage. Now available in both `/school-expenses/categories` and `/expenses/categories`.
+- `school_expenses` POST now accepts + stores allocation fields (`allocation_type`, `allocation_ref_id`, `allocation_ref_label`, `allocation_program`).
+- `ExpenseCreate` / `ExpenseUpdate` / `Expense` models in team.py updated with the same fields.
+
+**Frontend (`AdminReports.jsx`)**
+- P&L Total Expenses / Net Profit / Profit Margin cards now use `all_time_total` (fallback → `total` → local totalExpenses).
+- **Expense Breakdown card** renamed to "**Expense Breakdown (All-Time)**" and lists every category with amount + percent.
+- When the selected-period total differs from all-time, a small "In selected period" line appears at the bottom for context.
+
+**Frontend (`AdminExpenses.jsx`)**
+- New **"Spent Against"** allocation section at the top of the Add/Edit Expense modal — 4 buttons: **B2B (School) · B2C (Batches) · Project · Office**.
+- Picking **B2C** reveals a Program dropdown (Future Skills / Student CRM / Summer Camp). For Future Skills a batch dropdown auto-loads from `/future-skills/batches`; for the other two a free-text cohort/batch name input.
+- Data-testids for QA: `expense-allocation`, `expense-alloc-b2b/b2c/project/office`, `expense-alloc-program`, `expense-alloc-fs-batch`, `expense-alloc-cohort-name`.
+
+### Verification
+- `/admin/reports/expenses-summary` returns `all_time_total: 4,10,695` across 18 rows with proper breakdown ✅
+- P&L screenshot shows Total Expenses ₹4,10,695.4 · Salary 55.3% · Kit Cost 27.2% · Printing 12.2% · etc ✅
+- `Software Subscription` visible in `/school-expenses/categories` response ✅
+
+
 ## 2026-08-04 (round 10) — Add-Lead Batch Type + Orders sub-tabs 👥
 **Status: COMPLETE — verified backend + frontend**
 

@@ -2054,6 +2054,20 @@ async def expenses_summary_report(
             "source": "future_skills",
         })
 
+    # School B2B expenses (dates stored as `expense_date` string)
+    async for e in db.school_expenses.find({}, {"_id": 0}):
+        d = parse_date_field(e.get("expense_date") or e.get("created_at"))
+        if not d or not (start <= d <= end):
+            continue
+        rows.append({
+            "date": e.get("expense_date") or (d.strftime("%Y-%m-%d") if d else ""),
+            "title": e.get("description") or e.get("category_name") or "School expense",
+            "amount": float(e.get("amount") or 0),
+            "category": (e.get("category") or "school").lower(),
+            "subcategory": e.get("category_name") or "",
+            "source": "school_expenses",
+        })
+
     total = sum(r["amount"] for r in rows)
     by_category: dict = {}
     for r in rows:
@@ -2074,6 +2088,26 @@ async def expenses_summary_report(
         trend_map[key] = trend_map.get(key, 0.0) + r["amount"]
     trend = [{"month": k, "amount": round(v, 2)} for k, v in sorted(trend_map.items())]
 
+    # All-time total (ignores the date filter) — used by the P&L card so admins
+    # see the same grand total that the /expenses page shows regardless of filter.
+    all_time_rows: list = []
+    async for e in db.expenses.find({}, {"_id": 0, "amount": 1, "category": 1}):
+        all_time_rows.append(e)
+    async for e in db.future_skills_expenses.find({}, {"_id": 0, "amount": 1, "category": 1}):
+        all_time_rows.append(e)
+    async for e in db.school_expenses.find({}, {"_id": 0, "amount": 1, "category": 1}):
+        all_time_rows.append(e)
+    all_time_total = round(sum(float(r.get("amount") or 0) for r in all_time_rows), 2)
+    all_time_by_category: dict = {}
+    for r in all_time_rows:
+        c = (r.get("category") or "uncategorized").lower()
+        all_time_by_category[c] = all_time_by_category.get(c, 0.0) + float(r.get("amount") or 0)
+    all_time_breakdown = [
+        {"name": k.replace("_", " ").title(), "amount": round(v, 2),
+         "percent": round((v / all_time_total) * 100.0, 1) if all_time_total > 0 else 0.0}
+        for k, v in sorted(all_time_by_category.items(), key=lambda x: -x[1])
+    ]
+
     return {
         "total": round(total, 2),
         "count": len(rows),
@@ -2081,5 +2115,8 @@ async def expenses_summary_report(
         "trend": trend,
         "rows": sorted(rows, key=lambda r: r["date"], reverse=True)[:100],
         "period": {"start": start.isoformat(), "end": end.isoformat()},
+        "all_time_total": all_time_total,
+        "all_time_count": len(all_time_rows),
+        "all_time_by_category": all_time_breakdown,
     }
 

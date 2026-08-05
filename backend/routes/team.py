@@ -237,7 +237,7 @@ class Expense(BaseModel):
     title: str
     description: str = ""
     amount: float
-    category: str  # salary, marketing, operations, technology, office, travel, other
+    category: str  # salary, marketing, operations, technology, software_subscription, office, travel, other
     subcategory: str = ""
     date: str  # YYYY-MM-DD
     payment_method: str = ""  # cash, bank_transfer, card, upi
@@ -250,6 +250,11 @@ class Expense(BaseModel):
     is_recurring: bool = False
     recurring_frequency: str = ""  # monthly, quarterly, yearly
     status: str = "approved"  # pending, approved, rejected
+    # Allocation — what the expense is spent against.
+    allocation_type: str = ""       # "b2b" | "b2c" | "project" | "office"
+    allocation_ref_id: str = ""     # school_id | batch_id | project_id
+    allocation_ref_label: str = ""  # human-readable name captured at time of entry
+    allocation_program: str = ""    # for b2c: "future_skills" | "student_crm" | "summer_camp"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -267,6 +272,11 @@ class ExpenseCreate(BaseModel):
     notes: str = ""
     is_recurring: bool = False
     recurring_frequency: str = ""
+    # Allocation — what the expense is spent against.
+    allocation_type: str = ""     # "b2b" | "b2c" | "project" | "office"
+    allocation_ref_id: str = ""   # school_id | batch_id | project_id
+    allocation_ref_label: str = ""# human-readable name captured at time of entry
+    allocation_program: str = ""  # for b2c: "future_skills" | "student_crm" | "summer_camp"
 
 class ExpenseUpdate(BaseModel):
     title: Optional[str] = None
@@ -283,6 +293,10 @@ class ExpenseUpdate(BaseModel):
     is_recurring: Optional[bool] = None
     recurring_frequency: Optional[str] = None
     status: Optional[str] = None
+    allocation_type: Optional[str] = None
+    allocation_ref_id: Optional[str] = None
+    allocation_ref_label: Optional[str] = None
+    allocation_program: Optional[str] = None
 
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
@@ -997,6 +1011,7 @@ EXPENSE_CATEGORIES = [
     "marketing",
     "operations",
     "technology",
+    "software_subscription",
     "office",
     "travel",
     "commission",
@@ -1015,6 +1030,7 @@ async def get_expense_categories(user: dict = Depends(get_current_user)):
             "marketing": ["digital_ads", "print", "events", "content", "influencer"],
             "operations": ["supplies", "equipment", "maintenance", "logistics"],
             "technology": ["software", "hardware", "hosting", "subscriptions"],
+            "software_subscription": ["saas", "productivity", "ai_llm", "analytics", "communication", "storage"],
             "office": ["rent", "furniture", "supplies", "maintenance"],
             "travel": ["transport", "accommodation", "meals", "conference"],
             "commission": ["student_referral", "school_referral", "educator_referral"],

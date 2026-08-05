@@ -2187,28 +2187,29 @@ const AdminReports = () => {
         </Button>
       </div>
       
-      {/* Summary Cards — expenses come from the dedicated /expenses-summary endpoint
-           so they respect the date filter and include both the main ledger + FS centre economics. */}
+      {/* Summary Cards — expenses use `all_time_total` so the P&L headline
+           matches the /expenses page (a period filter here was silently
+           excluding older expenses and showed ₹8.5k instead of the real total). */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard title="Total Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon={TrendingUp} color="green" />
         <StatCard
           title="Total Expenses"
-          value={`₹${(reportData.expensesSummary?.total ?? totalExpenses).toLocaleString()}`}
+          value={`₹${(reportData.expensesSummary?.all_time_total ?? reportData.expensesSummary?.total ?? totalExpenses).toLocaleString()}`}
           icon={TrendingDown}
           color="red"
           data-testid="pnl-total-expenses"
         />
         <StatCard
           title="Net Profit"
-          value={`₹${(totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)).toLocaleString()}`}
+          value={`₹${(totalRevenue - (reportData.expensesSummary?.all_time_total ?? reportData.expensesSummary?.total ?? totalExpenses)).toLocaleString()}`}
           icon={Wallet}
-          color={(totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)) >= 0 ? 'green' : 'red'}
+          color={(totalRevenue - (reportData.expensesSummary?.all_time_total ?? reportData.expensesSummary?.total ?? totalExpenses)) >= 0 ? 'green' : 'red'}
         />
         <StatCard
           title="Profit Margin"
-          value={`${totalRevenue > 0 ? Math.round(((totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)) / totalRevenue) * 100) : 0}%`}
+          value={`${totalRevenue > 0 ? Math.round(((totalRevenue - (reportData.expensesSummary?.all_time_total ?? reportData.expensesSummary?.total ?? totalExpenses)) / totalRevenue) * 100) : 0}%`}
           icon={Target}
-          color={(totalRevenue - (reportData.expensesSummary?.total ?? totalExpenses)) >= 0 ? 'green' : 'red'}
+          color={(totalRevenue - (reportData.expensesSummary?.all_time_total ?? reportData.expensesSummary?.total ?? totalExpenses)) >= 0 ? 'green' : 'red'}
         />
       </div>
       
@@ -2236,22 +2237,28 @@ const AdminReports = () => {
         
         <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="expense-breakdown-card">
           <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-red-500" /> Expense Breakdown
+            <TrendingDown className="w-5 h-5 text-red-500" /> Expense Breakdown (All-Time)
           </h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {(reportData.expensesSummary?.by_category || []).map((c) => (
+            {(reportData.expensesSummary?.all_time_by_category || reportData.expensesSummary?.by_category || []).map((c) => (
               <div key={c.name} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                 <span className="text-slate-600 capitalize">{c.name}</span>
                 <span className="font-medium text-slate-800">₹{Number(c.amount || 0).toLocaleString()} <span className="text-[10px] text-slate-400 ml-1">{c.percent}%</span></span>
               </div>
             ))}
-            {(!reportData.expensesSummary?.by_category?.length) && (
-              <p className="text-slate-500 text-center py-4">No expenses recorded for this period</p>
+            {(!reportData.expensesSummary?.all_time_by_category?.length && !reportData.expensesSummary?.by_category?.length) && (
+              <p className="text-slate-500 text-center py-4">No expenses recorded yet</p>
             )}
             <div className="flex justify-between items-center p-4 bg-red-100 rounded-lg border border-red-200 mt-2">
-              <span className="font-medium text-red-800">Total Expenses</span>
-              <span className="text-xl font-bold text-red-700">₹{Number(reportData.expensesSummary?.total || totalExpenses).toLocaleString()}</span>
+              <span className="font-medium text-red-800">Total Expenses (All-Time)</span>
+              <span className="text-xl font-bold text-red-700">₹{Number(reportData.expensesSummary?.all_time_total || reportData.expensesSummary?.total || totalExpenses).toLocaleString()}</span>
             </div>
+            {reportData.expensesSummary?.total !== undefined && reportData.expensesSummary.total !== reportData.expensesSummary.all_time_total && (
+              <div className="flex justify-between items-center text-xs px-3 pt-1 text-slate-500">
+                <span>In selected period</span>
+                <span>₹{Number(reportData.expensesSummary?.total || 0).toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

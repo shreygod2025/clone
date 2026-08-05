@@ -88,8 +88,24 @@ const AdminExpenses = () => {
     expected_payment_date: '',
     partial_amount_paid: '',
     partial_payment_date: '',
-    invoice_file_url: ''
+    invoice_file_url: '',
+    // Allocation (2026-08-04): B2B (school) · B2C (program + batch) · Project · Office
+    allocation_type: '',
+    allocation_ref_id: '',
+    allocation_ref_label: '',
+    allocation_program: '',
   });
+
+  // Cache batch/center lookups for the B2C allocation flow (Future Skills batches)
+  const [fsBatchesForAlloc, setFsBatchesForAlloc] = useState([]);
+  useEffect(() => {
+    if (expenseForm.allocation_type === 'b2c' && expenseForm.allocation_program === 'future_skills' && fsBatchesForAlloc.length === 0) {
+      axios.get(`${API}/future-skills/batches`)
+        .then(r => setFsBatchesForAlloc(r.data?.batches || []))
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expenseForm.allocation_type, expenseForm.allocation_program]);
 
   // Project mapping (2026-07-22): active projects fed into the form dropdown
   // and used to render the linked-project chip on each expense row.
@@ -844,6 +860,60 @@ const AdminExpenses = () => {
           </DialogHeader>
           
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+            {/* Allocation Type — spent against: B2B, B2C, Project or Office */}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3" data-testid="expense-allocation">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Spent Against</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { key: 'b2b',     label: 'B2B (School)' },
+                  { key: 'b2c',     label: 'B2C (Batches)' },
+                  { key: 'project', label: 'Project' },
+                  { key: 'office',  label: 'Office' },
+                ].map(a => (
+                  <button key={a.key} type="button"
+                    onClick={() => setExpenseForm({ ...expenseForm, allocation_type: a.key, allocation_ref_id: '', allocation_ref_label: '', allocation_program: '' })}
+                    className={`px-2 py-2 rounded-lg text-xs font-semibold border-2 transition ${expenseForm.allocation_type === a.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}`}
+                    data-testid={`expense-alloc-${a.key}`}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+              {expenseForm.allocation_type === 'b2c' && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <select value={expenseForm.allocation_program}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, allocation_program: e.target.value, allocation_ref_id: '', allocation_ref_label: '' })}
+                    className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm bg-white"
+                    data-testid="expense-alloc-program">
+                    <option value="">Select program…</option>
+                    <option value="future_skills">Future Skills</option>
+                    <option value="student_crm">Student CRM</option>
+                    <option value="summer_camp">Summer Camp</option>
+                  </select>
+                  {expenseForm.allocation_program === 'future_skills' && (
+                    <select value={expenseForm.allocation_ref_id}
+                      onChange={(e) => {
+                        const b = fsBatchesForAlloc.find(x => x.id === e.target.value);
+                        setExpenseForm({ ...expenseForm, allocation_ref_id: e.target.value, allocation_ref_label: b ? `${b.name} · ${b.center_name || ''}` : '' });
+                      }}
+                      className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm bg-white"
+                      data-testid="expense-alloc-fs-batch">
+                      <option value="">Select FS batch…</option>
+                      {fsBatchesForAlloc.map(b => (
+                        <option key={b.id} value={b.id}>{b.name} · {b.center_name || 'no centre'}</option>
+                      ))}
+                    </select>
+                  )}
+                  {(expenseForm.allocation_program === 'student_crm' || expenseForm.allocation_program === 'summer_camp') && (
+                    <input type="text" placeholder={expenseForm.allocation_program === 'student_crm' ? 'Cohort / skill batch name' : 'Camp week / cohort name'}
+                      value={expenseForm.allocation_ref_label}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, allocation_ref_label: e.target.value })}
+                      className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm"
+                      data-testid="expense-alloc-cohort-name" />
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* School Selection - Searchable */}
             <div ref={schoolDropdownRef} className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">School <span className="text-slate-400 font-normal">(optional)</span></label>
