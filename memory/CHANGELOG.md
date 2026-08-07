@@ -1,5 +1,43 @@
 # OLL Backend Changelog
 
+## 2026-02-07 (part 3) — Excel-style redesign of Future Skills CRM 📗
+
+**Zero functional changes** — pure UI overhaul that keeps every existing action, modal, PATCH endpoint and data-testid.
+
+### New shared UI kit — `/app/frontend/src/components/admin/ExcelSheet.jsx`
+- `<SheetTabs />` — Excel workbook-tab strip (active tab lifted on white with green underline, inactive tabs sit lower on gray).
+- `<SheetTable />` + `<SheetTh />` + `<SheetTd />` — grid look with thin `border-slate-200` cell borders, tight padding, `text-[12px]` font.
+- `<RowColorPicker />` + `ROW_COLORS` + `rowTintClass()` — 7-color palette (`yellow · green · red · blue · purple · pink · gray` + `None`). Small dot at the far-right of every row opens a popover; picking a color tints the row bg (`bg-*-50`) and persists to the doc's `row_color` field.
+
+### Backend additions (all optional Field)
+- `LeadUpdate`, `TrialUpdate`, `SubscriptionUpdate` now accept `row_color: Optional[str]`. Same PATCH endpoints (`/admin/future-skills/leads/{id}`, `/trials/{id}`, `/subscriptions/{id}`) — no new routes.
+
+### Applied to (all rewritten as `SheetTable`)
+- `LeadsTable` — `#` (row number) · Added · Name · Phone · Source · Centre/Batch · Status · Notes · Actions · 🎨
+- `TrialsTable` — `#` · Ref · Student · Parent · Centre/Batch · Scheduled · Status · Actions · 🎨
+- `CustomersTable` — `#` · Ref · Student · Centre/Batch · Plan · Paid · Renewal · Actions · 🎨
+- `RenewalsTable` — `#` · Ref · Student · Centre/Batch · Plan · Renewal · Status · Actions · 🎨
+- `LostTable` — `#` · Ref · Name · Type · Reason · Lost At
+
+### Kept intentionally untouched
+- Every existing modal (Followup, MarkLost, BookTrial, Convert, Reschedule, etc.).
+- Status chip filter row on Leads tab.
+- SortFilterBar (introduced earlier in this session).
+- Inline notes textarea per row.
+- Reports metric cards.
+- KPI dashboards on Centres/Economics/Reports sub-sheets.
+
+### Verified (Playwright screenshots)
+- Sheet tabs render with lifted active tab and counts (Leads 64, Trials 11, Customers 10, Renewals 7, Lost 6).
+- 66 row-color pickers on the Leads sheet. Palette popover opens on click. Picking yellow on row 1 → row tinted yellow → survives page reload.
+- Every previously-shown tab now renders through `<SheetTable />` with row numbers + grid borders.
+
+Files touched:
+- `frontend/src/components/admin/ExcelSheet.jsx` (new)
+- `frontend/src/pages/admin/AdminFutureSkills.jsx` (5 tables + sheet tabs + row-color save handler)
+- `backend/routes/future_skills.py` (`row_color` on 3 update models)
+
+
 ## 2026-02-07 (part 2) — Followup modal polish 🎯
 
 - **"Called" → "Call Back"** in the outcome dropdown.

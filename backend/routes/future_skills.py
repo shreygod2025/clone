@@ -1177,6 +1177,8 @@ class TrialUpdate(BaseModel):
     student_name: Optional[str] = None
     age_group: Optional[str] = None
     source: Optional[str] = None
+    # Excel-style row highlight ("", yellow, green, red, blue, purple, pink, gray)
+    row_color: Optional[str] = None
 
 
 @router.patch("/admin/future-skills/trials/{trial_id}")
@@ -1219,6 +1221,7 @@ class SubscriptionUpdate(BaseModel):
     student_grade: Optional[str] = None
     center_id: Optional[str] = None
     batch_id: Optional[str] = None
+    row_color: Optional[str] = None
 
 
 @router.patch("/admin/future-skills/subscriptions/{sub_id}")
@@ -1398,6 +1401,7 @@ class LeadUpdate(BaseModel):
     status: Optional[str] = None
     center_id: Optional[str] = None
     batch_id: Optional[str] = None
+    row_color: Optional[str] = None
 
 
 @router.post("/admin/future-skills/leads")

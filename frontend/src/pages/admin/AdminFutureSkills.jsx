@@ -13,6 +13,14 @@ import { format, parseISO } from 'date-fns';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
+import {
+  rowTintClass,
+  RowColorPicker,
+  SheetTabs,
+  SheetTable,
+  SheetTh,
+  SheetTd,
+} from '../../components/admin/ExcelSheet';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -297,6 +305,31 @@ const AdminFutureSkills = () => {
     }
   }, [getAuthHeaders, refreshAll]);
 
+  /**
+   * Row color save — writes the `row_color` field to the correct collection
+   * based on the current tab. Same PATCH endpoints already used for notes /
+   * status edits, so no new backend surface.
+   */
+  const handleSaveRowColor = useCallback(async (row, color) => {
+    let path = null;
+    if (tab === 'leads') path = `leads/${row.id}`;
+    else if (tab === 'trials') path = `trials/${row.id}`;
+    else if (tab === 'customers' || tab === 'renewals') path = `subscriptions/${row.id}`;
+    if (!path) return;
+    // Optimistic UI: patch local rows first so the tint appears instantly
+    setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, row_color: color } : r)));
+    try {
+      await axios.patch(
+        `${API}/admin/future-skills/${path}`,
+        { row_color: color },
+        { headers: getAuthHeaders() },
+      );
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not save color');
+      refreshAll(); // roll back to server truth
+    }
+  }, [tab, getAuthHeaders, refreshAll]);
+
   // ── Rendering per tab ────────────────────────────────────────────────
   const STATUS_FILTER_OPTIONS =
     tab === 'leads'   ? [
@@ -353,39 +386,26 @@ const AdminFutureSkills = () => {
           </div>
         )}
 
-        {/* Tabs (horizontally scrollable on mobile so they never wrap) */}
-        <div className="flex items-center gap-2">
-          <div className="flex bg-slate-100 rounded-xl p-1 gap-1 overflow-x-auto no-scrollbar flex-1 min-w-0">
-            {TABS.filter(t => {
-              if (isCenterOwner && (t.key === 'centers' || t.key === 'sources')) return false;
-              if (t.key === 'economics' && !canSeeEconomics) return false;
-              return true;
-            }).map(t => {
-              const badge =
-                t.key === 'leads'     ? tabStats?.leads
-                : t.key === 'trials'  ? tabStats?.trials
-                : t.key === 'customers' ? tabStats?.customers
-                : t.key === 'renewals' ? tabStats?.renewals
-                : t.key === 'lost'    ? tabStats?.lost
-                : 0;
-              return (
-                <button key={t.key}
-                  onClick={() => { setTab(t.key); setStatusFilter('all'); setSelected(null); }}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
-                    tab === t.key ? 'bg-white text-[#0F1E33] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                  data-testid={`tab-${t.key}`}>
-                  <t.icon className="w-3.5 h-3.5" /> {t.label}
-                  {typeof badge === 'number' && badge > 0 && (
-                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
-                      tab === t.key ? 'bg-[#D63031] text-white' : 'bg-slate-200 text-slate-600'
-                    }`}>{badge}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Excel-style workbook tab strip — sub-sheet tabs at the top of the sheet. */}
+        <SheetTabs
+          tabs={TABS.filter(t => {
+            if (isCenterOwner && (t.key === 'centers' || t.key === 'sources')) return false;
+            if (t.key === 'economics' && !canSeeEconomics) return false;
+            return true;
+          }).map(t => {
+            const badge =
+              t.key === 'leads'     ? tabStats?.leads
+              : t.key === 'trials'  ? tabStats?.trials
+              : t.key === 'customers' ? tabStats?.customers
+              : t.key === 'renewals' ? tabStats?.renewals
+              : t.key === 'lost'    ? tabStats?.lost
+              : undefined;
+            return { key: t.key, label: t.label, count: typeof badge === 'number' ? badge : undefined };
+          })}
+          active={tab}
+          onChange={(key) => { setTab(key); setStatusFilter('all'); setSelected(null); }}
+          testIdPrefix="tab"
+        />
 
         {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs) */}
         {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
@@ -567,6 +587,7 @@ const AdminFutureSkills = () => {
               {tab === 'leads'     && <LeadsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
                 onSaveNotes={handleInlineNotesSave}
+                onSaveRowColor={handleSaveRowColor}
                 onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
@@ -574,7 +595,7 @@ const AdminFutureSkills = () => {
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
+              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onSaveRowColor={handleSaveRowColor} onAction={async (action, r) => {
                 if (action === 'convert')      setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule')   setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'trial' });
@@ -590,13 +611,13 @@ const AdminFutureSkills = () => {
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
               }} />}
-              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onSaveRowColor={handleSaveRowColor} onAction={(action, r) => {
                 if (action === 'renew')      setModal({ type: 'renew', customer: r });
                 if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
               }} />}
-              {tab === 'renewals'  && <RenewalsTable  rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'renewals'  && <RenewalsTable  rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onSaveRowColor={handleSaveRowColor} onAction={(action, r) => {
                 if (action === 'renew')        setModal({ type: 'renew', customer: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'customer' });
                 if (action === 'notes')        setModal({ type: 'notes', entity: r, entityType: 'customer' });
@@ -746,7 +767,7 @@ const InlineNotesField = ({ lead, onSave }) => {
 };
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes }) => {
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, onSaveRowColor }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
@@ -756,106 +777,121 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
   const someSelected = allIds.some(id => selectedIds.has(id));
   return (
-    <table className="w-full text-sm">
-      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+    <SheetTable testId="leads-sheet">
+      <thead>
         <tr>
-          <th className="px-3 py-2 w-8">
+          <SheetTh width={32}>
             <input type="checkbox"
               checked={allSelected}
               ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
               onChange={() => onToggleSelectAll && onToggleSelectAll(allIds)}
-              className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+              className="w-3.5 h-3.5 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
               data-testid="leads-select-all"
               aria-label="Select all leads"
             />
-          </th>
-          <Th>Added</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Notes</Th><Th>Actions</Th>
+          </SheetTh>
+          <SheetTh width={40} className="text-center">#</SheetTh>
+          <SheetTh>Added</SheetTh>
+          <SheetTh>Name</SheetTh>
+          <SheetTh>Phone</SheetTh>
+          <SheetTh>Source</SheetTh>
+          <SheetTh>Centre · Batch</SheetTh>
+          <SheetTh>Status</SheetTh>
+          <SheetTh width={220}>Notes</SheetTh>
+          <SheetTh>Actions</SheetTh>
+          <SheetTh width={28} className="text-center">🎨</SheetTh>
         </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
+        {rows.map((r, idx) => (
           <tr key={r.id}
-            className={`border-t border-slate-100 hover:bg-blue-50/40 ${selectedIds.has(r.id) ? 'bg-blue-50/60' : ''}`}
+            className={`${rowTintClass(r.row_color)} ${!r.row_color && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50 ${selectedIds.has(r.id) ? 'ring-1 ring-inset ring-blue-300' : ''}`}
             data-testid={`row-${r.lead_ref}`}>
-            <td className="px-3 py-3 w-8" onClick={(e) => e.stopPropagation()}>
+            <SheetTd onClick={(e) => e.stopPropagation()}>
               <input type="checkbox"
                 checked={selectedIds.has(r.id)}
                 onChange={() => onToggleSelect && onToggleSelect(r.id)}
-                className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                className="w-3.5 h-3.5 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
                 data-testid={`row-select-${r.lead_ref}`}
                 aria-label={`Select ${r.name || r.lead_ref}`}
               />
-            </td>
-            {/* ADDED — replaces the old REF column so admins see when the lead entered the CRM at a glance. */}
-            <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}
-                data-testid={`row-added-${r.lead_ref}`}>
-              <div className="font-bold text-[#0F1E33]">{fmtDateTime(r.created_at)}</div>
-              <div className="text-[10px] text-slate-400 font-mono">{r.lead_ref}</div>
-            </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33]">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
+            </SheetTd>
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)} testId={`row-added-${r.lead_ref}`}>
+              <div className="font-bold text-[#0F1E33] leading-tight">{fmtDateTime(r.created_at)}</div>
+              <div className="text-[9px] text-slate-400 font-mono">{r.lead_ref}</div>
+            </SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33] leading-tight">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.child_age) && (
-                <div className="text-[11px] text-slate-500 mt-0.5" data-testid={`row-age-${r.lead_ref}`}>
+                <div className="text-[10px] text-slate-500" data-testid={`row-age-${r.lead_ref}`}>
                   {r.age_group || r.child_age}
                 </div>
               )}
-            </td>
-            <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.phone}</div>
-            </td>
-            <td className="px-4 py-3 text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</td>
-            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || '—'}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
-            </td>
-            <td className="px-4 py-3 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
+            </SheetTd>
+            <SheetTd className="text-[11px] text-slate-700 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
+              <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3" /> {r.phone}</span>
+            </SheetTd>
+            <SheetTd className="text-[11px] font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</SheetTd>
+            <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || '—'}</div>
+              <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
+            </SheetTd>
+            <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
               <StatusBadge status={r.status} />
               {r.next_followup_date && (
-                <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
+                <div className="text-[10px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
-            </td>
+            </SheetTd>
             {/* Inline notes — save on blur or Cmd/Ctrl+Enter. Uncontrolled input
                 so the row doesn't re-render every keystroke. */}
-            <td className="px-3 py-3 w-[220px]" onClick={(e) => e.stopPropagation()}>
+            <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
               <InlineNotesField lead={r} onSave={onSaveNotes} />
-            </td>
-            <td className="px-4 py-3">
+            </SheetTd>
+            <SheetTd>
               <div className="flex flex-wrap gap-1 items-center">
                 <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
                   <Calendar className="w-3 h-3" /> Trial
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" /> Followup
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
                   data-testid={`row-edit-${r.lead_ref}`} title="Edit">
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[11px] px-3 py-1.5 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
-                  <XCircle className="w-3.5 h-3.5" /> Mark Lost
+                  <XCircle className="w-3 h-3" /> Mark Lost
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-delete-${r.lead_ref}`} title="Delete">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-            </td>
+            </SheetTd>
+            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
+              <RowColorPicker
+                current={r.row_color}
+                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
+                testId={`row-color-${r.lead_ref}`}
+              />
+            </SheetTd>
           </tr>
         ))}
       </tbody>
-    </table>
+    </SheetTable>
   );
 };
 
-const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveRowColor }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchInfo = (bid, fallback) => {
     const b = batches.find(x => x.id === bid);
@@ -863,268 +899,331 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
     return fallback || '';
   };
   return (
-    <table className="w-full text-sm">
-      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-        <tr><Th>Ref</Th><Th>Student</Th><Th>Parent Contact</Th><Th>Centre · Batch</Th><Th>Scheduled</Th><Th>Status</Th><Th>Actions</Th></tr>
+    <SheetTable testId="trials-sheet">
+      <thead>
+        <tr>
+          <SheetTh width={40} className="text-center">#</SheetTh>
+          <SheetTh>Ref</SheetTh>
+          <SheetTh>Student</SheetTh>
+          <SheetTh>Parent Contact</SheetTh>
+          <SheetTh>Centre · Batch</SheetTh>
+          <SheetTh>Scheduled</SheetTh>
+          <SheetTh>Status</SheetTh>
+          <SheetTh>Actions</SheetTh>
+          <SheetTh width={28} className="text-center">🎨</SheetTh>
+        </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
+        {rows.map((r, idx) => (
           <tr key={r.id}
-            className="border-t border-slate-100 hover:bg-blue-50/40"
+            className={`${rowTintClass(r.row_color)} ${!r.row_color && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.trial_ref}`}>
-            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33]">{r.student_name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.student_age) && (
-                <div className="text-[11px] text-slate-500 mt-0.5" data-testid={`row-trial-age-${r.trial_ref}`}>
+                <div className="text-[10px] text-slate-500" data-testid={`row-trial-age-${r.trial_ref}`}>
                   {r.age_group || r.student_age}
                 </div>
               )}
-            </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-[#0F1E33] text-xs">{r.parent_name || '—'}</div>
-              <div className="text-xs text-slate-700 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
-            </td>
-            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[220px]">{batchInfo(r.batch_id, r.batch_label) || '—'}</div>
-            </td>
-            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
+            </SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-[#0F1E33] text-[11px] leading-tight">{r.parent_name || '—'}</div>
+              <div className="text-[11px] text-slate-700 flex items-center gap-1"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
+            </SheetTd>
+            <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="text-[10px] text-slate-500 truncate max-w-[220px]">{batchInfo(r.batch_id, r.batch_label) || '—'}</div>
+            </SheetTd>
+            <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
               {r.scheduled_at ? <span className="font-semibold text-slate-700">{fmtDate(r.scheduled_at)}</span> : <span className="text-slate-400">—</span>}
-            </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+            </SheetTd>
+            <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
               <StatusBadge status={r.crm_status} />
               {r.next_followup_date && (
-                <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
+                <div className="text-[10px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
               {(r.last_note || r.notes) && (
-                <div className="text-[11px] text-slate-600 mt-1 line-clamp-2 max-w-[220px]" title={r.last_note || r.notes} data-testid={`row-trial-note-${r.trial_ref}`}>
+                <div className="text-[10px] text-slate-600 mt-0.5 line-clamp-2 max-w-[220px]" title={r.last_note || r.notes} data-testid={`row-trial-note-${r.trial_ref}`}>
                   <span className="font-bold">📝 </span>{r.last_note || r.notes}
                 </div>
               )}
-            </td>
-            <td className="px-4 py-3">
+            </SheetTd>
+            <SheetTd>
               <div className="flex flex-wrap gap-1">
                 {(r.crm_status === 'scheduled' || r.crm_status === 'trial_scheduled' || r.crm_status === 'rescheduled') && (
                   <button onClick={(e) => { e.stopPropagation(); onAction('attended', r); }}
-                    className="text-[10px] px-2 py-1 rounded-md bg-teal-100 hover:bg-teal-200 text-teal-800 font-bold flex items-center gap-1"
+                    className="text-[10px] px-2 py-0.5 rounded-sm bg-teal-100 hover:bg-teal-200 text-teal-800 font-bold flex items-center gap-1"
                     data-testid={`row-attended-${r.trial_ref}`} title="Mark Attended → Completed">
                     ✓ Attended
                   </button>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); onAction('convert', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
                   <Sparkles className="w-3 h-3" /> Convert
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('payment-link', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-paylink-${r.trial_ref}`} title="Copy Payment Link">
                   <LinkIcon className="w-3 h-3" /> Pay Link
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('reschedule', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center gap-1"
                   data-testid={`row-reschedule-${r.trial_ref}`} title="Reschedule">
                   <RotateCcw className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-notes-${r.trial_ref}`} title="Notes">
                   <FileText className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
                   data-testid={`row-trial-edit-${r.trial_ref}`} title="Edit">
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
                   <XCircle className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-trial-delete-${r.trial_ref}`} title="Delete">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-            </td>
+            </SheetTd>
+            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
+              <RowColorPicker
+                current={r.row_color}
+                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
+                testId={`row-color-${r.trial_ref}`}
+              />
+            </SheetTd>
           </tr>
         ))}
       </tbody>
-    </table>
+    </SheetTable>
   );
 };
 
-const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveRowColor }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   return (
-    <table className="w-full text-sm">
-      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Amount Paid</Th><Th>Renewal Date</Th><Th>Actions</Th></tr>
+    <SheetTable testId="customers-sheet">
+      <thead>
+        <tr>
+          <SheetTh width={40} className="text-center">#</SheetTh>
+          <SheetTh>Ref</SheetTh>
+          <SheetTh>Student · Parent</SheetTh>
+          <SheetTh>Centre · Batch</SheetTh>
+          <SheetTh>Plan</SheetTh>
+          <SheetTh>Amount Paid</SheetTh>
+          <SheetTh>Renewal Date</SheetTh>
+          <SheetTh>Actions</SheetTh>
+          <SheetTh width={28} className="text-center">🎨</SheetTh>
+        </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
-          <tr key={r.id} className="border-t border-slate-100 hover:bg-blue-50/40"
+        {rows.map((r, idx) => (
+          <tr key={r.id}
+            className={`${rowTintClass(r.row_color)} ${!r.row_color && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
-            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
-              <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
-            </td>
-            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
-            </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33] text-xs">{r.plan_label}</div>
-              <div className="text-[11px] text-slate-500">{fmtMoney(r.amount)}</div>
-            </td>
-            <td className="px-4 py-3 font-bold text-emerald-700 cursor-pointer" onClick={() => onOpen(r)}>{fmtMoney(r.amount_paid || r.amount)}</td>
-            <td className="px-4 py-3 text-xs font-semibold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{fmtDate(r.renewal_date)}</td>
-            <td className="px-4 py-3">
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name}</div>
+              <div className="text-[10px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
+            </SheetTd>
+            <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
+            </SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33] text-[11px] leading-tight">{r.plan_label}</div>
+              <div className="text-[10px] text-slate-500">{fmtMoney(r.amount)}</div>
+            </SheetTd>
+            <SheetTd className="font-bold text-emerald-700 cursor-pointer" onClick={() => onOpen(r)}>{fmtMoney(r.amount_paid || r.amount)}</SheetTd>
+            <SheetTd className="text-[11px] font-semibold text-[#0F1E33] cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>{fmtDate(r.renewal_date)}</SheetTd>
+            <SheetTd>
               <div className="flex flex-wrap gap-1">
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('renew', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-customer-renew-${r.subscription_ref}`} title="Renew">
                   <RotateCcw className="w-3 h-3" /> Renew
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('notes', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
                   data-testid={`row-customer-notes-${r.subscription_ref}`} title="Notes">
                   <FileText className="w-3 h-3" /> Notes
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
                   data-testid={`row-customer-edit-${r.subscription_ref}`} title="Edit">
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-customer-mark-lost-${r.subscription_ref}`} title="Mark Lost">
                   <XCircle className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('delete', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-customer-delete-${r.subscription_ref}`} title="Delete">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-            </td>
+            </SheetTd>
+            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
+              <RowColorPicker
+                current={r.row_color}
+                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
+                testId={`row-color-${r.subscription_ref}`}
+              />
+            </SheetTd>
           </tr>
         ))}
       </tbody>
-    </table>
+    </SheetTable>
   );
 };
 
-const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveRowColor }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   return (
-    <table className="w-full text-sm">
-      <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-        <tr><Th>Ref</Th><Th>Student · Parent</Th><Th>Centre · Batch</Th><Th>Plan</Th><Th>Renewal</Th><Th>Status</Th><Th>Actions</Th></tr>
+    <SheetTable testId="renewals-sheet">
+      <thead>
+        <tr>
+          <SheetTh width={40} className="text-center">#</SheetTh>
+          <SheetTh>Ref</SheetTh>
+          <SheetTh>Student · Parent</SheetTh>
+          <SheetTh>Centre · Batch</SheetTh>
+          <SheetTh>Plan</SheetTh>
+          <SheetTh>Renewal</SheetTh>
+          <SheetTh>Status</SheetTh>
+          <SheetTh>Actions</SheetTh>
+          <SheetTh width={28} className="text-center">🎨</SheetTh>
+        </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
+        {rows.map((r, idx) => (
           <tr key={r.id}
-            className={`border-t border-slate-100 hover:bg-blue-50/40 ${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : ''}`}
+            className={`${rowTintClass(r.row_color)} ${!r.row_color && (r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : (idx % 2 === 1 ? 'bg-slate-50/40' : ''))} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
-            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33]">{r.student_name}</div>
-              <div className="text-[11px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
-            </td>
-            <td className="px-4 py-3 text-xs cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
-            </td>
-            <td className="px-4 py-3 text-xs font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.plan_label}</td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="text-xs font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</div>
-              <div className="text-[11px] text-slate-500">
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name}</div>
+              <div className="text-[10px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
+            </SheetTd>
+            <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
+              <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
+            </SheetTd>
+            <SheetTd className="text-[11px] font-bold text-[#0F1E33] cursor-pointer" onClick={() => onOpen(r)}>{r.plan_label}</SheetTd>
+            <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
+              <div className="text-[11px] font-semibold text-[#0F1E33]">{fmtDate(r.renewal_date)}</div>
+              <div className="text-[10px] text-slate-500">
                 {r.renewal_bucket === 'overdue'
                   ? `⚠ ${r.days_overdue}d overdue`
                   : `in ${r.days_to_renewal ?? 0}d`}
               </div>
-            </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}><StatusBadge status={r.renewal_bucket} /></td>
-            <td className="px-4 py-3">
+            </SheetTd>
+            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}><StatusBadge status={r.renewal_bucket} /></SheetTd>
+            <SheetTd>
               <div className="flex flex-wrap gap-1">
                 <button onClick={(e) => { e.stopPropagation(); onAction('renew', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-renew-${r.subscription_ref}`} title="Renew">
                   <RotateCcw className="w-3 h-3" /> Renewed
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('payment-link', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-renewal-paylink-${r.subscription_ref}`} title="Copy Payment Link">
                   <LinkIcon className="w-3 h-3" /> Pay Link
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-renewal-followup-${r.subscription_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" /> Followup
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
                   data-testid={`row-renewal-notes-${r.subscription_ref}`} title="Notes">
                   <FileText className="w-3 h-3" /> Notes
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-renewal-lost-${r.subscription_ref}`} title="Mark Lost">
                   <XCircle className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-renewal-delete-${r.subscription_ref}`} title="Delete">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-            </td>
+            </SheetTd>
+            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
+              <RowColorPicker
+                current={r.row_color}
+                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
+                testId={`row-color-renewal-${r.subscription_ref}`}
+              />
+            </SheetTd>
           </tr>
         ))}
       </tbody>
-    </table>
+    </SheetTable>
   );
 };
 
 const LostTable = ({ rows, onOpen }) => (
-  <table className="w-full text-sm">
-    <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-      <tr><Th>Ref</Th><Th>Name · Contact</Th><Th>Type</Th><Th>Reason</Th><Th className="text-right">Lost At</Th></tr>
+  <SheetTable testId="lost-sheet">
+    <thead>
+      <tr>
+        <SheetTh width={40} className="text-center">#</SheetTh>
+        <SheetTh>Ref</SheetTh>
+        <SheetTh>Name · Contact</SheetTh>
+        <SheetTh>Type</SheetTh>
+        <SheetTh>Reason</SheetTh>
+        <SheetTh className="text-right">Lost At</SheetTh>
+      </tr>
     </thead>
     <tbody>
-      {rows.map(r => (
+      {rows.map((r, idx) => (
         <tr key={`${r.entity_type}-${r.id}`} onClick={() => onOpen({ ...r, __lost_row: true })}
-          className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer"
+          className={`${idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50 cursor-pointer`}
           data-testid={`row-lost-${r.entity_ref}`}>
-          <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.entity_ref}</td>
-          <td className="px-4 py-3">
-            <div className="font-bold text-[#0F1E33]">{r.display_name || '—'}</div>
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5"><Phone className="w-3 h-3" /> {r.display_phone || '—'}</div>
-          </td>
-          <td className="px-4 py-3">
-            <span className={`text-[10px] px-2 py-1 rounded-full font-bold border ${
+          <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+          <SheetTd className="font-mono font-bold text-[#1E3A5F]">{r.entity_ref}</SheetTd>
+          <SheetTd>
+            <div className="font-bold text-[#0F1E33] leading-tight">{r.display_name || '—'}</div>
+            <div className="text-[10px] text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" /> {r.display_phone || '—'}</div>
+          </SheetTd>
+          <SheetTd>
+            <span className={`inline-block whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-bold border ${
               r.entity_type === 'lead' ? 'bg-slate-50 text-slate-700 border-slate-200'
               : r.entity_type === 'trial' ? 'bg-blue-50 text-blue-700 border-blue-200'
               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>{(r.entity_type || '').toUpperCase()}</span>
-          </td>
-          <td className="px-4 py-3 text-xs text-slate-700 max-w-md truncate">{r.lost_reason || '—'}</td>
-          <td className="px-4 py-3 text-right text-xs text-slate-500">{fmtDateTime(r.lost_at)}</td>
+          </SheetTd>
+          <SheetTd className="text-[11px] text-slate-700 max-w-md truncate">{r.lost_reason || '—'}</SheetTd>
+          <SheetTd className="text-right text-[11px] text-slate-500 whitespace-nowrap">{fmtDateTime(r.lost_at)}</SheetTd>
         </tr>
       ))}
     </tbody>
-  </table>
+  </SheetTable>
 );
 
 // ── Detail Drawer ─────────────────────────────────────────────────────
