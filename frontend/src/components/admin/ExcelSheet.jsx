@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
 /**
  * Shared Excel-style building blocks for the Future Skills CRM.
@@ -147,11 +148,11 @@ export const SheetFilterTh = ({ label, options = [], selected = '', onChange, cl
         <button
           type="button"
           onClick={() => setOpen(v => !v)}
-          className={`ml-auto text-[10px] px-1 py-0.5 rounded ${active ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200'}`}
+          className={`ml-auto text-[10px] px-1 py-0.5 rounded flex items-center ${active ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200'}`}
           title={active ? `Filtered: ${selected}` : 'Filter'}
           data-testid={testId ? `${testId}-btn` : undefined}
         >
-          ⛭
+          <ChevronDown className="w-3 h-3" strokeWidth={3} />
         </button>
         {open && (
           <div className="absolute right-0 top-6 z-30 bg-white border border-slate-300 rounded-md shadow-lg p-1 min-w-[160px] max-h-[300px] overflow-y-auto normal-case tracking-normal"

@@ -323,6 +323,43 @@ const AdminFutureSkills = () => {
     }
   }, [getAuthHeaders, refreshAll]);
 
+  // Sync Payments — recheck Cashfree for every pending subscription and
+  // promote paid ones to Active Customers. Fixes the "customer paid but not
+  // showing" bug when the webhook can't reach us / customer closed the tab.
+  const [syncingPayments, setSyncingPayments] = useState(false);
+  const syncPendingPayments = useCallback(async () => {
+    setSyncingPayments(true);
+    try {
+      const r = await axios.post(
+        `${API}/admin/future-skills/reconcile-payments`,
+        {},
+        { headers: getAuthHeaders() },
+      );
+      const { updated, checked } = r.data || {};
+      if (updated > 0) toast.success(`Moved ${updated} paid customer${updated === 1 ? '' : 's'} to Active`);
+      else toast(`Checked ${checked} pending payments — none newly paid`);
+      refreshAll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Sync failed');
+    } finally {
+      setSyncingPayments(false);
+    }
+  }, [getAuthHeaders, refreshAll]);
+
+  // Update lead status directly (from the row's Status dropdown).
+  const handleUpdateLeadStatus = useCallback(async (lead, nextStatus) => {
+    try {
+      await axios.patch(
+        `${API}/admin/future-skills/leads/${lead.id}`,
+        { status: nextStatus },
+        { headers: getAuthHeaders() },
+      );
+      refreshAll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not update status');
+    }
+  }, [getAuthHeaders, refreshAll]);
+
   // ── Rendering per tab ────────────────────────────────────────────────
   const STATUS_FILTER_OPTIONS =
     tab === 'leads'   ? [
@@ -400,117 +437,130 @@ const AdminFutureSkills = () => {
           testIdPrefix="tab"
         />
 
-        {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs) */}
+        {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs).
+            Single unified panel — search on left, sort/date + month + status
+            chips inline, primary Add/Import buttons pushed to the right. */}
         {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
-          {/* Search — always leftmost */}
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Search name / phone…"
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
-              data-testid="search-input" />
-          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-col gap-2">
+            {/* ROW 1 — Search + Add/Import (right) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input type="text" placeholder="Search name / phone…"
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  data-testid="search-input" />
+              </div>
 
-          {/* Renewal bucket switch (kept inline for the Renewals sheet) */}
-          {tab === 'renewals' && (
-            <div className="flex bg-slate-100 rounded-lg p-1">
-              {[{k:'all',l:'All'},{k:'upcoming',l:'Upcoming (7d)'},{k:'overdue',l:'Overdue'}].map(b => (
-                <button key={b.k} onClick={() => setRenewalBucket(b.k)}
-                  className={`text-xs px-3 py-1.5 rounded font-bold ${
-                    renewalBucket === b.k ? 'bg-white text-[#0F1E33] shadow-sm' : 'text-slate-500'
-                  }`}
-                  data-testid={`renewal-bucket-${b.k}`}>{b.l}</button>
-              ))}
+              {tab === 'renewals' && (
+                <div className="flex bg-slate-100 rounded-lg p-1">
+                  {[{k:'all',l:'All'},{k:'upcoming',l:'Upcoming (7d)'},{k:'overdue',l:'Overdue'}].map(b => (
+                    <button key={b.k} onClick={() => setRenewalBucket(b.k)}
+                      className={`text-xs px-3 py-1.5 rounded font-bold ${
+                        renewalBucket === b.k ? 'bg-white text-[#0F1E33] shadow-sm' : 'text-slate-500'
+                      }`}
+                      data-testid={`renewal-bucket-${b.k}`}>{b.l}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Sync Payments — reconciles any pending Cashfree orders and
+                  promotes paid ones to Active Customers. Fixes the recurring
+                  "customer paid but not showing" issue. */}
+              {(tab === 'customers' || tab === 'trials' || tab === 'renewals') && (
+                <button onClick={syncPendingPayments}
+                  disabled={syncingPayments}
+                  className="text-xs px-3 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold flex items-center gap-1.5 disabled:opacity-60"
+                  data-testid="sync-payments-btn"
+                  title="Recheck Cashfree for any paid but unmarked payments">
+                  {syncingPayments ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Syncing…</> : <><RotateCcw className="w-3.5 h-3.5" /> Sync Payments</>}
+                </button>
+              )}
+
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                {tab === 'leads' && (
+                  <>
+                    <button onClick={() => setModal({ type: 'import' })}
+                      className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+                      data-testid="import-leads-btn">
+                      <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+                    </button>
+                    <button onClick={() => setModal({ type: 'add-lead' })}
+                      className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                      data-testid="add-lead-btn">
+                      <Plus className="w-3.5 h-3.5" /> Add Lead
+                    </button>
+                  </>
+                )}
+                {tab === 'trials' && (
+                  <button onClick={() => setModal({ type: 'add-trial' })}
+                    className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                    data-testid="add-trial-btn">
+                    <Plus className="w-3.5 h-3.5" /> Add Free Trial
+                  </button>
+                )}
+                {tab === 'customers' && (
+                  <>
+                    <button onClick={() => setModal({ type: 'import-customers' })}
+                      className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+                      data-testid="import-customers-btn">
+                      <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+                    </button>
+                    <button onClick={() => setModal({ type: 'add-customer' })}
+                      className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                      data-testid="add-customer-btn">
+                      <Plus className="w-3.5 h-3.5" /> Add Customer
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Primary actions — always right-aligned via ml-auto */}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {tab === 'leads' && (
-              <>
-                <button onClick={() => setModal({ type: 'import' })}
-                  className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
-                  data-testid="import-leads-btn">
-                  <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
-                </button>
-                <button onClick={() => setModal({ type: 'add-lead' })}
-                  className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-                  data-testid="add-lead-btn">
-                  <Plus className="w-3.5 h-3.5" /> Add Lead
-                </button>
-              </>
+            {/* ROW 2 — Sort / Month / Date + count (only on list tabs) */}
+            {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100" data-testid="fs-sort-filter">
+                <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
+                <SortFilterBar
+                  sort={sortKey}
+                  onSortChange={setSortKey}
+                  dateFrom={dateFrom}
+                  onDateFromChange={setDateFrom}
+                  dateTo={dateTo}
+                  onDateToChange={setDateTo}
+                  testIdPrefix="fs"
+                  compact
+                />
+                <span className="ml-auto text-xs text-slate-400">{filteredRows.length} of {rows.length} shown</span>
+              </div>
             )}
-            {tab === 'trials' && (
-              <button onClick={() => setModal({ type: 'add-trial' })}
-                className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-                data-testid="add-trial-btn">
-                <Plus className="w-3.5 h-3.5" /> Add Free Trial
-              </button>
-            )}
-            {tab === 'customers' && (
-              <>
-                <button onClick={() => setModal({ type: 'import-customers' })}
-                  className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
-                  data-testid="import-customers-btn">
-                  <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
-                </button>
-                <button onClick={() => setModal({ type: 'add-customer' })}
-                  className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-                  data-testid="add-customer-btn">
-                  <Plus className="w-3.5 h-3.5" /> Add Customer
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        )}
 
-        {/* Sort + date-range filter — placed FIRST so the sequence reads:
-            Sort/Date → Status → Data. Also holds the shown-count. */}
-        {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
-          <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="fs-sort-filter">
-            <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
-            <SortFilterBar
-              sort={sortKey}
-              onSortChange={setSortKey}
-              dateFrom={dateFrom}
-              onDateFromChange={setDateFrom}
-              dateTo={dateTo}
-              onDateToChange={setDateTo}
-              testIdPrefix="fs"
-              compact
-            />
-            <span className="ml-auto text-xs text-slate-400">{filteredRows.length} of {rows.length} shown</span>
-          </div>
-        )}
-
-        {/* Sub-status chip filter — Leads tab only. Rendered BELOW the
-            sort/date bar so the workflow reads: Sort/Date → Status → data. */}
-        {tab === 'leads' && STATUS_FILTER_OPTIONS && (
-          <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="lead-status-chips">
-            <span className="text-xs text-slate-500 font-semibold mr-1">Status:</span>
-            {STATUS_FILTER_OPTIONS.map(opt => {
-              const active = statusFilter === opt.value;
-              const chipColor = {
-                'all':          active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
-                'new':          active ? 'bg-sky-500 text-white border-sky-500'       : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
-                'followup':     active ? 'bg-amber-500 text-white border-amber-500'   : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
-                'no_answer':    active ? 'bg-rose-500 text-white border-rose-500'     : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
-                'interested':   active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
-              }[opt.value] || 'bg-white text-slate-700 border-slate-200';
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setStatusFilter(opt.value)}
-                  className={`text-xs px-3 py-1.5 rounded-full font-bold border transition-colors ${chipColor}`}
-                  data-testid={`lead-status-chip-${opt.value}`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
+            {/* ROW 3 — Status chips (Leads only) */}
+            {tab === 'leads' && STATUS_FILTER_OPTIONS && (
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100" data-testid="lead-status-chips">
+                <span className="text-xs text-slate-500 font-semibold mr-1">Status:</span>
+                {STATUS_FILTER_OPTIONS.map(opt => {
+                  const active = statusFilter === opt.value;
+                  const chipColor = {
+                    'all':        active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
+                    'new':        active ? 'bg-sky-500 text-white border-sky-500'       : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
+                    'followup':   active ? 'bg-amber-500 text-white border-amber-500'   : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
+                    'no_answer':  active ? 'bg-rose-500 text-white border-rose-500'     : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
+                    'interested': active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
+                  }[opt.value] || 'bg-white text-slate-700 border-slate-200';
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setStatusFilter(opt.value)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-bold border transition-colors ${chipColor}`}
+                      data-testid={`lead-status-chip-${opt.value}`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -544,9 +594,14 @@ const AdminFutureSkills = () => {
               {tab === 'leads' && selectedIds.size > 0 && (
                 <div className="mb-2 flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100" data-testid="leads-bulk-bar">
                   <div className="text-xs font-bold text-[#1E3A5F]" data-testid="leads-bulk-count">
-                    {selectedIds.size} selected
+                    {selectedIds.size} of {filteredRows.length} selected
                   </div>
                   <div className="flex gap-2">
+                    <button onClick={() => toggleSelectAllLeads(filteredRows.map(r => r.id))}
+                      className="text-xs px-3 py-1.5 rounded-md bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700"
+                      data-testid="leads-bulk-select-all">
+                      {selectedIds.size === filteredRows.length ? 'Deselect All' : 'Select All'}
+                    </button>
                     <button onClick={() => setSelectedIds(new Set())}
                       className="text-xs px-3 py-1.5 rounded-md bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700"
                       data-testid="leads-bulk-clear">
@@ -563,6 +618,7 @@ const AdminFutureSkills = () => {
               {tab === 'leads'     && <LeadsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
                 onSaveNotes={handleInlineNotesSave}
+                onUpdateStatus={handleUpdateLeadStatus}
                 sortKey={sortKey} onSortChange={setSortKey}
                 sourceFilter={sourceFilter} onSourceFilterChange={setSourceFilter}
                 centerFilter={centerNameFilter} onCenterFilterChange={setCenterNameFilter}
@@ -746,8 +802,93 @@ const InlineNotesField = ({ lead, onSave }) => {
   );
 };
 
+// ── Phone popover cell — click phone to reveal Copy + WhatsApp actions ──
+const PhoneCell = ({ phone, name, refId }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', off);
+    return () => document.removeEventListener('mousedown', off);
+  }, []);
+  if (!phone) return <span className="text-slate-400">—</span>;
+  // Normalise to +country digits for WhatsApp
+  const waPhone = phone.replace(/\D/g, '');
+  const waUrl = `https://wa.me/${waPhone}`;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(phone); toast.success('Phone copied'); }
+    catch (_) { toast.error('Copy failed'); }
+    setOpen(false);
+  };
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        className="text-xs font-mono text-slate-700 hover:text-blue-700 hover:underline"
+        data-testid={`phone-btn-${refId || phone}`}
+      >
+        {phone}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-6 z-20 bg-white border border-slate-200 rounded-md shadow-lg p-1 min-w-[160px]"
+          data-testid={`phone-menu-${refId || phone}`}
+          onClick={(e) => e.stopPropagation()}>
+          <button onClick={copy}
+            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center gap-2"
+            data-testid={`phone-copy-${refId || phone}`}>
+            📋 Copy number
+          </button>
+          <a href={waUrl} target="_blank" rel="noopener noreferrer"
+            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-emerald-50 text-emerald-700 font-bold flex items-center gap-2"
+            data-testid={`phone-wa-${refId || phone}`}
+            onClick={() => setOpen(false)}>
+            💬 WhatsApp {name ? `${name.split(' ')[0]}` : ''}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Status dropdown cell — click status pill to change status inline ─────
+const StatusCell = ({ status, onChange, refId }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', off);
+    return () => document.removeEventListener('mousedown', off);
+  }, []);
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        data-testid={`status-btn-${refId}`}
+        className="cursor-pointer"
+      >
+        <StatusBadge status={status} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-6 z-20 bg-white border border-slate-200 rounded-md shadow-lg p-1 min-w-[140px]"
+          data-testid={`status-menu-${refId}`}
+          onClick={(e) => e.stopPropagation()}>
+          {LEAD_STATUSES.map(s => (
+            <button key={s.value}
+              onClick={() => { onChange(s.value); setOpen(false); }}
+              className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-slate-100 flex items-center justify-between ${status === s.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'}`}
+              data-testid={`status-opt-${refId}-${s.value}`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange }) => {
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange, onUpdateStatus }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
@@ -800,28 +941,28 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               {rowSelected ? '✓' : idx + 1}
             </SheetTd>
             <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)} testId={`row-added-${r.lead_ref}`}>
-              <div className="font-bold text-[#0F1E33] leading-tight">{fmtDateTime(r.created_at)}</div>
+              <div className="font-bold text-[#0F1E33] leading-tight text-xs">{fmtDateTime(r.created_at)}</div>
             </SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33] leading-tight">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
+              <div className="font-bold text-[#0F1E33] leading-tight text-xs">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.child_age) && (
-                <div className="text-[10px] text-slate-500" data-testid={`row-age-${r.lead_ref}`}>
+                <div className="text-xs text-slate-500" data-testid={`row-age-${r.lead_ref}`}>
                   {r.age_group || r.child_age}
                 </div>
               )}
             </SheetTd>
-            <SheetTd className="text-[11px] text-slate-700 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
-              {r.phone}
+            <SheetTd className="text-xs text-slate-700 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+              <PhoneCell phone={r.phone} name={r.name} refId={r.lead_ref} />
             </SheetTd>
-            <SheetTd className="text-[11px] font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</SheetTd>
-            <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
+            <SheetTd className="text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</SheetTd>
+            <SheetTd className="text-xs cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-semibold text-slate-700 leading-tight">{centerName(r.center_id) || '—'}</div>
-              <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
+              <div className="text-xs text-slate-500">{batchName(r.batch_id) || '—'}</div>
             </SheetTd>
-            <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
-              <StatusBadge status={r.status} />
+            <SheetTd className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+              <StatusCell status={r.status} refId={r.lead_ref} onChange={(s) => onUpdateStatus && onUpdateStatus(r, s)} />
               {r.next_followup_date && (
-                <div className="text-[10px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
+                <div className="text-xs text-amber-700 font-semibold mt-0.5">🕐 {fmtDate(r.next_followup_date)}</div>
               )}
             </SheetTd>
             {/* Inline notes — save on blur or Cmd/Ctrl+Enter. */}
@@ -829,31 +970,31 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               <InlineNotesField lead={r} onSave={onSaveNotes} />
             </SheetTd>
             <SheetTd>
-              <div className="flex flex-wrap gap-1 items-center">
+              <div className="flex flex-nowrap gap-1 items-center">
                 <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
-                  className="text-[11px] px-3 py-1.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
                   <Calendar className="w-3.5 h-3.5" /> Trial
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-[11px] px-3 py-1.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
                   <Clock className="w-3.5 h-3.5" /> Followup
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
                   data-testid={`row-edit-${r.lead_ref}`} title="Edit">
-                  <Pencil className="w-3 h-3" />
+                  <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[11px] px-3 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
-                  data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
-                  <XCircle className="w-3.5 h-3.5" /> Mark Lost
+                  className="text-xs px-3 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  data-testid={`row-mark-lost-${r.lead_ref}`} title="Lost">
+                  <XCircle className="w-3.5 h-3.5" /> Lost
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-delete-${r.lead_ref}`} title="Delete">
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </SheetTd>

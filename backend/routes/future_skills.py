@@ -1039,6 +1039,56 @@ async def verify_payment(subscription_id: str):
     return {"status": sub.get("payment_status", "pending"), "subscription": sub}
 
 
+@router.post("/admin/future-skills/reconcile-payments")
+async def admin_reconcile_payments(user: dict = Depends(get_current_user)):
+    """Rescue endpoint — walks every subscription that is NOT yet `active` but has
+    an `order_id`, asks Cashfree for the latest order status, and promotes any
+    order that shows PAID up to `crm_status='active'`.
+
+    Fixes the recurring "customer paid but not showing under Active Customers"
+    problem when the Cashfree webhook can't reach us (network / DNS) OR the
+    customer closes the tab before the success page fires the verify poll.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    query = {
+        "crm_status": {"$ne": "active"},
+        "order_id": {"$exists": True, "$nin": [None, ""]},
+    }
+    updated = 0
+    checked = 0
+    errors: list = []
+    async for sub in db.future_skills_subscriptions.find(query, {"_id": 0}):
+        checked += 1
+        order_id = sub.get("order_id")
+        try:
+            resp = await asyncio.to_thread(
+                _cf_client().PGFetchOrder, CASHFREE_API_VERSION, order_id, None
+            )
+            if not resp.data:
+                continue
+            if resp.data.order_status == "PAID":
+                now = datetime.now(timezone.utc).isoformat()
+                await db.future_skills_subscriptions.update_one(
+                    {"id": sub["id"]},
+                    {"$set": {
+                        "payment_status": "paid",
+                        "crm_status": "active",
+                        "amount_paid": sub.get("amount"),
+                        "paid_at": now,
+                        "subscription_start": sub.get("subscription_start") or now,
+                        "updated_at": now,
+                        "reconciled_at": now,
+                        "reconciled_by": user.get("email"),
+                    }},
+                )
+                updated += 1
+        except Exception as e:
+            errors.append({"order_id": order_id, "error": str(e)[:120]})
+    return {"checked": checked, "updated": updated, "errors": errors}
+
+
 @router.post("/future-skills/webhook")
 async def cashfree_webhook(request: Request):
     try:

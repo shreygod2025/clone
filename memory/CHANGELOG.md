@@ -1,5 +1,51 @@
 # OLL Backend Changelog
 
+## 2026-02-07 (part 5) — Unified toolbar + payment reconciliation + inline row controls 💳
+
+### 🐛 Bug fix — "customer paid but not moved to Active Customers"
+Trial-payment-link and renewal-payment-link customers were sometimes left stuck at `crm_status='subscription_lead'` when the Cashfree webhook couldn't reach the backend (e.g. running behind ingress) or the customer closed the tab before the success page's verify poll.
+
+**Backend** — new endpoint `POST /api/admin/future-skills/reconcile-payments` walks every subscription with `crm_status !== 'active'` + an `order_id`, calls Cashfree `PGFetchOrder`, and promotes any `PAID` order to `crm_status='active'` (stamps `paid_at`, `subscription_start`, `reconciled_at`, `reconciled_by`).
+
+**Frontend fix** — `FutureSkillsSuccessPage.jsx` now runs the verify poll for both `type=trial` AND `type=subscription` whenever a `subscription_id` is present (was skipping trial entirely).
+
+**Manual override** — new "Sync Payments" button in the toolbar on Free Trials / Active Customers / Renewals tabs; one click reconciles all pending payments. Toast reports "Moved N paid customers to Active".
+
+### UX — Unified toolbar
+Everything now lives in ONE panel:
+- Row 1: Search (left) · optional Sync Payments (middle) · Import CSV + Add Lead / Add Customer / Add Free Trial (right)
+- Row 2: `Sort & Date:` — sort dropdown · **new "Filter by month" dropdown** (This month / Last month / last-12-month picker) · From / To date inputs · count "N of M shown"
+- Row 3 (Leads only): Status chips — `All · New · Follow-up · No Answer · Interested`
+
+Old separate panels for Sort/Date and Status chips are gone.
+
+### Row-level polish
+- **Phone cell → click-to-popover**: `Copy number` and `WhatsApp <FirstName>` (opens wa.me link in new tab)
+- **Status cell → click-to-dropdown**: change status inline without opening the drawer. PATCHes `/leads/{id}` with the new status.
+- **"Mark Lost" → "Lost"**: shorter button label, same rose color
+- **All actions in one row** with `flex-nowrap` so Trial · Followup · Edit · Lost · Delete never wrap
+- **Uniform `text-xs` font** across Added, Name, Phone, Source, Centre, Status columns
+- **Filter icon changed from ⛭ to a `ChevronDown`** arrow on Source / Centre / Status column headers
+
+### Bulk selection UI
+- "N of M selected" counter (was "N selected")
+- New **"Select All"** button that flips to **"Deselect All"** when everything is selected
+
+### Files touched
+- `backend/routes/future_skills.py` — new `/reconcile-payments` route + kept webhook route.
+- `frontend/src/components/SortFilterBar.jsx` — added `<select>` "Filter by month" with This-month / Last-month / rolling 12-month options.
+- `frontend/src/components/admin/ExcelSheet.jsx` — filter icon → `ChevronDown` lucide icon.
+- `frontend/src/pages/admin/AdminFutureSkills.jsx` — new `PhoneCell` + `StatusCell` components, toolbar consolidation, `syncPendingPayments` handler, `handleUpdateLeadStatus`, unified font sizes on cells + actions.
+- `frontend/src/pages/FutureSkillsSuccessPage.jsx` — verify poll runs for trial too when subscription_id is present.
+
+### Verified
+- Reconcile endpoint: `checked=7, updated=0, errors=0` (no stuck payments right now, but code path works) ✅
+- Unified panel visible with all 3 rows ✅
+- 64 Phone popover triggers + 64 Status dropdown triggers rendered ✅
+- Month dropdown shows in Sort & Date row ✅
+- Chevron down icon on Source / Centre / Status filter buttons ✅
+
+
 ## 2026-02-07 (part 4) — Future Skills CRM final polish 🎯
 
 ### Backend

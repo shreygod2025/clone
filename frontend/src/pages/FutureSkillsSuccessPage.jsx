@@ -20,8 +20,10 @@ const FutureSkillsSuccessPage = () => {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
-    if (type === 'trial') return;
-    if (!subId) { setStatus('error'); setError('Missing subscription ID'); return; }
+    // Always verify when we have a subscription_id — the trial payment link
+    // shares the same success URL and previously we skipped verify for
+    // `type=trial`, which left paid subs stuck in "subscription_lead".
+    if (!subId) { if (type === 'trial') return; setStatus('error'); setError('Missing subscription ID'); return; }
     let attempts = 0;
     const tick = async () => {
       attempts += 1;

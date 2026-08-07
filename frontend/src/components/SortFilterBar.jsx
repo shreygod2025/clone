@@ -47,6 +47,58 @@ const SortFilterBar = ({
         ))}
       </select>
 
+      {/* Month quick-picker — one click sets from/to to the 1st→last of a
+          specific month. Handy for month-end reports. */}
+      <select
+        value=""
+        onChange={(e) => {
+          const val = e.target.value;
+          if (!val) return;
+          if (val === 'this-month') {
+            const now = new Date();
+            const first = new Date(now.getFullYear(), now.getMonth(), 1);
+            const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            onDateFromChange(first.toISOString().slice(0, 10));
+            onDateToChange(last.toISOString().slice(0, 10));
+            return;
+          }
+          if (val === 'last-month') {
+            const now = new Date();
+            const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const last  = new Date(now.getFullYear(), now.getMonth(), 0);
+            onDateFromChange(first.toISOString().slice(0, 10));
+            onDateToChange(last.toISOString().slice(0, 10));
+            return;
+          }
+          // Format YYYY-MM → first / last day of that month
+          const [y, m] = val.split('-').map(Number);
+          const first = new Date(y, m - 1, 1);
+          const last  = new Date(y, m, 0);
+          onDateFromChange(first.toISOString().slice(0, 10));
+          onDateToChange(last.toISOString().slice(0, 10));
+        }}
+        className={`${size} px-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-200`}
+        data-testid={`${testIdPrefix}-month`}
+        title="Filter by month"
+      >
+        <option value="">Filter by month…</option>
+        <option value="this-month">This month</option>
+        <option value="last-month">Last month</option>
+        <optgroup label="Choose month">
+          {(() => {
+            const now = new Date();
+            const options = [];
+            for (let i = 0; i < 12; i++) {
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+              options.push(<option key={key} value={key}>{label}</option>);
+            }
+            return options;
+          })()}
+        </optgroup>
+      </select>
+
       <div className="flex items-center gap-1">
         <label className="text-xs text-slate-500 whitespace-nowrap">From</label>
         <input
