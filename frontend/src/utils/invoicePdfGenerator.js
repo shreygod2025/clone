@@ -5,8 +5,8 @@ import 'jspdf-autotable';
 // OLL Company Details (Seller)
 // ──────────────────────────────────────────────
 const COMPANY = {
-  name: 'Clone Futura Live Solutions Pvt Ltd',
-  address: '103 SBI Employees, Neelkamal CHS, CTS-640A, Veera Desai Road',
+  name: 'Clonefutura Live Solutions Pvt Ltd.',
+  address: '103 1st floor - Kshitij building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053',
   phone: '9323835523',
   email: 'accounts@clonefutura.com',
   gstin: '27AAKCC1113B1ZC',
@@ -217,9 +217,13 @@ export async function generateInvoicePDF(payment, schoolData, {
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(COMPANY.address, companyX, y + 14);
-  doc.text(`Phone: ${COMPANY.phone}  |  Email: ${COMPANY.email}`, companyX, y + 19);
-  doc.text(`GSTIN: ${COMPANY.gstin}  |  ${COMPANY.website}`, companyX, y + 24);
+  // Wrap the long address across up to 2 lines so it never overflows the page width.
+  const addrMaxW = innerRight - companyX - 55; // leave room for the invoice title on the right
+  const addrLines = doc.splitTextToSize(COMPANY.address, addrMaxW).slice(0, 2);
+  doc.text(addrLines, companyX, y + 14);
+  const addrBottomY = y + 14 + (addrLines.length - 1) * 3.2;
+  doc.text(`Phone: ${COMPANY.phone}  |  Email: ${COMPANY.email}`, companyX, addrBottomY + 5);
+  doc.text(`GSTIN: ${COMPANY.gstin}  |  ${COMPANY.website}`, companyX, addrBottomY + 10);
 
   // TAX INVOICE title (no "TAX" prefix for book_gst)
   const headerGstType = schoolData?.onboarding_data?.gst_type || payment.gst_type || 'exclusive_18';

@@ -19,6 +19,7 @@ import FutureSkillsCRMTab from './FutureSkillsCRMTab';
 import AiFoundationsCRMTab from './AiFoundationsCRMTab';
 import FathersDayWorkshopCRMTab from './FathersDayWorkshopCRMTab';
 import FriendshipDayCRMTab from './FriendshipDayCRMTab';
+import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -92,6 +93,9 @@ const AdminStudentCRM = () => {
   const [importResult, setImportResult] = useState(null);
   // Add Individual Lead modal
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+  // When true, the current "Add Lead" modal was opened via the Converted tab shortcut —
+  // after the base lead is created we auto-flip it to `converted` so it appears under Converted.
+  const [addLeadAsCustomer, setAddLeadAsCustomer] = useState(false);
   const [addLeadSubmitting, setAddLeadSubmitting] = useState(false);
   const [addLeadForm, setAddLeadForm] = useState({
     child_name: '', parent_name: '', parent_phone: '', parent_email: '',
@@ -135,6 +139,10 @@ const AdminStudentCRM = () => {
   const [broadcastResult, setBroadcastResult] = useState(null);
   const [campFilters, setCampFilters] = useState({ status: '', batch: '', center: '', source: '' });
   const [campSearch, setCampSearch] = useState('');
+  // Sort + date-range filter — applies across every stat/status tab of the Summer Camp bookings view.
+  const [campSort, setCampSort] = useState('');
+  const [campDateFrom, setCampDateFrom] = useState('');
+  const [campDateTo, setCampDateTo] = useState('');
   const [campDashboard, setCampDashboard] = useState(null);
   const [campDashboardLoading, setCampDashboardLoading] = useState(false);
   const [campSaving, setCampSaving] = useState(false);
@@ -1277,8 +1285,22 @@ const AdminStudentCRM = () => {
       const res = await axios.post(`${API}/summer-camp/add-lead`, addLeadForm, {
         headers: getAuthHeaders(),
       });
-      toast.success(res.data.message || 'Lead added successfully!');
+      // If this was launched from the Converted tab, immediately flip the new booking's
+      // crm_status to `converted` so it shows up under the Converted view.
+      if (addLeadAsCustomer && res.data?.booking_id) {
+        try {
+          await axios.patch(
+            `${API}/summer-camp/bookings/${res.data.booking_id}`,
+            { crm_status: 'converted' },
+            { headers: getAuthHeaders() },
+          );
+        } catch (patchErr) {
+          console.warn('[add-customer] status patch failed:', patchErr?.response?.data || patchErr);
+        }
+      }
+      toast.success(addLeadAsCustomer ? 'Customer added successfully!' : (res.data.message || 'Lead added successfully!'));
       setShowAddLeadModal(false);
+      setAddLeadAsCustomer(false);
       setAddLeadForm({
         child_name: '', parent_name: '', parent_phone: '', parent_email: '',
         age_group: 'creators', batch_week: 'week1', mode: 'offline',
@@ -1633,6 +1655,11 @@ const AdminStudentCRM = () => {
                     }
                     return true;
                   });
+                  // Apply user-controlled sort A→Z / date range on top of the existing filters.
+                  const filteredSortedCampBookings = applySortFilter(
+                    filteredCampBookings, campSort, campDateFrom, campDateTo,
+                    { nameFields: ['child_name', 'parent_name'], dateFields: ['created_at', 'booked_at'] },
+                  );
                   const setFilter = (key, val) => setCampFilters(prev => ({ ...prev, [key]: val }));
 
                   return (
@@ -1662,13 +1689,13 @@ const AdminStudentCRM = () => {
                         {/* Action buttons row */}
                         <div className="flex items-center gap-2">
                           <Button
-                            onClick={() => exportSummerCampToExcel(filteredCampBookings)}
+                            onClick={() => exportSummerCampToExcel(filteredSortedCampBookings)}
                             variant="outline"
                             className="flex items-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 shrink-0"
                             data-testid="export-summer-camp-btn"
                           >
                             <Download className="w-4 h-4" />
-                            <span className="hidden sm:inline">Export</span> ({filteredCampBookings.length})
+                            <span className="hidden sm:inline">Export</span> ({filteredSortedCampBookings.length})
                           </Button>
                           <Button
                             onClick={() => { setShowImportModal(true); setImportFile(null); setImportPreview([]); setImportResult(null); }}
@@ -1680,7 +1707,7 @@ const AdminStudentCRM = () => {
                             <span className="hidden sm:inline">Import</span>
                           </Button>
                           <Button
-                            onClick={() => setShowAddLeadModal(true)}
+                            onClick={() => { setAddLeadAsCustomer(false); setShowAddLeadModal(true); }}
                             className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white shrink-0"
                             data-testid="add-individual-lead-btn"
                           >
@@ -1688,7 +1715,7 @@ const AdminStudentCRM = () => {
                             <span className="hidden sm:inline">Add Lead</span>
                           </Button>
                           <Button
-                            onClick={() => { setShowBroadcastModal(true); fetchBroadcastTemplates(); setBroadcastTarget('filtered'); setBroadcastTemplateKey(''); setBroadcastPreviewCount(filteredCampBookings.length); setBroadcastResult(null); }}
+                            onClick={() => { setShowBroadcastModal(true); fetchBroadcastTemplates(); setBroadcastTarget('filtered'); setBroadcastTemplateKey(''); setBroadcastPreviewCount(filteredSortedCampBookings.length); setBroadcastResult(null); }}
                             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white shrink-0"
                             data-testid="broadcast-whatsapp-btn"
                           >
@@ -1814,11 +1841,41 @@ const AdminStudentCRM = () => {
                         )}
 
                         <span className="ml-auto text-xs text-slate-400 self-center">
-                          {filteredCampBookings.length} of {summerCampBookings.length} shown
+                          {filteredSortedCampBookings.length} of {summerCampBookings.length} shown
                         </span>
                       </div>
 
-                      {filteredCampBookings.length === 0 ? (
+                      {/* Sort + date-range filter (applies to every KPI status tab) */}
+                      <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="camp-sort-filter">
+                        <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
+                        <SortFilterBar
+                          sort={campSort}
+                          onSortChange={setCampSort}
+                          dateFrom={campDateFrom}
+                          onDateFromChange={setCampDateFrom}
+                          dateTo={campDateTo}
+                          onDateToChange={setCampDateTo}
+                          testIdPrefix="camp"
+                          compact
+                        />
+                        {/* Direct "+ Add Customer" shortcut when viewing the Converted tab */}
+                        {campFilters.status === 'converted_all' && (
+                          <Button
+                            onClick={() => {
+                              setAddLeadForm(f => ({ ...f, payment_mode: 'cash' }));
+                              setAddLeadAsCustomer(true);
+                              setShowAddLeadModal(true);
+                            }}
+                            className="text-xs h-8 px-3 bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                            data-testid="add-customer-converted-btn"
+                            title="Add a paying customer directly (skips the lead stage)"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add Customer
+                          </Button>
+                        )}
+                      </div>
+
+                      {filteredSortedCampBookings.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
                           <p className="text-slate-500">No bookings match the selected filters</p>
                         </div>
@@ -1826,7 +1883,7 @@ const AdminStudentCRM = () => {
                         <>
                           {/* ── Mobile card view (< md) ── */}
                           <div className="flex flex-col gap-3 md:hidden">
-                            {filteredCampBookings.map(booking => (
+                            {filteredSortedCampBookings.map(booking => (
                               <div key={booking.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm" data-testid={`camp-booking-${booking.id}`}>
                                 {/* Header row */}
                                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -1997,7 +2054,7 @@ const AdminStudentCRM = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {filteredCampBookings.map(booking => (
+                              {filteredSortedCampBookings.map(booking => (
                                 <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
                                   <td className="px-4 py-3 font-mono text-xs text-slate-600 font-bold">{booking.booking_ref}</td>
                                   <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
@@ -3168,8 +3225,8 @@ const AdminStudentCRM = () => {
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white rounded-t-2xl">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">Add Individual Lead</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Manually add a summer camp lead. WhatsApp & email will be sent.</p>
+                    <h3 className="text-lg font-bold text-slate-900">{addLeadAsCustomer ? 'Add Customer' : 'Add Individual Lead'}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{addLeadAsCustomer ? 'Directly add a paying customer — this booking will be marked as Converted.' : 'Manually add a summer camp lead. WhatsApp & email will be sent.'}</p>
                   </div>
                   <button onClick={() => setShowAddLeadModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
                 </div>
@@ -3317,7 +3374,7 @@ const AdminStudentCRM = () => {
                     className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                     data-testid="confirm-add-lead-btn"
                   >
-                    {addLeadSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Adding...</> : 'Add Lead'}
+                    {addLeadSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Adding...</> : (addLeadAsCustomer ? 'Add Customer' : 'Add Lead')}
                   </Button>
                 </div>
               </div>

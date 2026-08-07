@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import axios from 'axios';
 import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
+import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -195,6 +196,10 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  // Sort + date-range filter (Student Payments sub-tabs). Applied on top of search/status.
+  const [studentSort, setStudentSort] = useState('');
+  const [studentDateFrom, setStudentDateFrom] = useState('');
+  const [studentDateTo, setStudentDateTo] = useState('');
   const [expandedSchools, setExpandedSchools] = useState({}); // Track expanded schools
   
   // Modal states
@@ -619,7 +624,7 @@ const AdminOrders = () => {
   }, [rawPayments, searchQuery, statusFilter]);
 
   // Sort by due date (most recent first), then by status (overdue > pending > paid)
-  const sortedPayments = [..._filteredPayments].sort((a, b) => {
+  const _sortedPayments = [..._filteredPayments].sort((a, b) => {
     const statusOrder = { overdue: 0, pending: 1, partial: 2, paid: 3, cancelled: 4 };
     
     let statusA = a.status || 'pending';
@@ -638,6 +643,16 @@ const AdminOrders = () => {
     }
     return 0;
   });
+
+  // Apply user-controlled sort A→Z / date range on the Student Payments tab.
+  // If no explicit sort is chosen, keep the status-priority order above.
+  const sortedPayments = React.useMemo(() => {
+    if (activeTab !== 'student') return _sortedPayments;
+    return applySortFilter(_sortedPayments, studentSort, studentDateFrom, studentDateTo, {
+      nameFields: ['student_name', 'parent_name', 'name', 'contact_name'],
+      dateFields: ['created_at', 'paid_at', 'due_date', 'date'],
+    });
+  }, [_sortedPayments, activeTab, studentSort, studentDateFrom, studentDateTo]);
 
   // Group school payments by school_id for sub-row display
   const groupedSchoolPayments = useMemo(() => {
@@ -1427,6 +1442,22 @@ const AdminOrders = () => {
             <span className="hidden sm:inline">Custom Invoice</span>
           </button>
         </div>
+
+        {/* Sort + date-range filter — Student Payments only (works across all sub-tabs) */}
+        {activeTab === 'student' && (
+          <div className="flex flex-wrap items-center gap-2 -mt-1" data-testid="student-payments-sort-filter">
+            <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
+            <SortFilterBar
+              sort={studentSort}
+              onSortChange={setStudentSort}
+              dateFrom={studentDateFrom}
+              onDateFromChange={setStudentDateFrom}
+              dateTo={studentDateTo}
+              onDateToChange={setStudentDateTo}
+              testIdPrefix="student-payments"
+            />
+          </div>
+        )}
 
         {/* Payments Table - Only for school and student tabs */}
         {(activeTab === 'school' || activeTab === 'student') && (

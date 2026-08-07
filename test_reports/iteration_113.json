@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only regression for the new SortFilterBar (sort A-Z/Z-A/Latest/Oldest + From/To date range) rolled out across (a) Summer Camp CRM Bookings sub-tab, (b) Future Skills CRM list tabs, and (c) Orders → Student Payments; plus the new green '+ Add Customer' converted flow in Summer Camp and the updated invoice PDF company header. All four review items behave as specified.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_flows": [
+    "Admin login (admin@oll.co / GodisGreat@2026) via /admin/login works.",
+    "Summer Camp CRM → Bookings sub-tab: data-testid='camp-sort-filter' present. Sort 'Name (A → Z)' via data-testid='camp-sort' correctly re-orders CHILD column (['Aarav Sharma','Adwitaa','Another Kid','Aryan Sharma','Aryan Sharmas' ...] matches sorted order). 'Latest → Oldest' shows dates 3/6/2026,1/5/2026,1/5/2026,24/4/2026,24/4/2026; 'Oldest → Latest' flips to 29/3/2026 x5 (earliest). data-testid='camp-date-from'=2026-04-24 and camp-date-to=2026-05-01 narrowed counter to '13 of 73 shown'. data-testid='camp-clear' resets sort & both dates.",
+    "Summer Camp → click 'Converted' KPI card (8) — green 'Add Customer' button data-testid='add-customer-converted-btn' becomes visible. Click opens modal titled 'Add Customer' with subtitle 'Directly add a paying customer — this booking will be marked as Converted.' Filled Child Name='QA Test Customer', Parent Phone='9998887777' (placeholder '+91 98765 43210'), kept defaults (Creators 9-12/Week 1/Offline/Mira Road/Cash). data-testid='confirm-add-lead-btn' labelled 'Add Customer'; on submit the total booking count went from 73→74 and Converted KPI went 8→9 (proves PATCH crm_status='converted' worked because default is 'lead').",
+    "Cleanup: QA Test Customer row deleted via row trash icon + 'Yes, Delete' confirm modal; count returned to 73 / Converted 8. No residual test data.",
+    "Future Skills (/admin/future-skills) Leads tab shows data-testid='fs-sort-filter'; 'Name (A → Z)' via data-testid='fs-sort' reorders NAME column (['Aahaan Khan','Alpika Jain','AM. NIKHIL','Amisha Solanki','Anish','Anjali Rohra','Ashita Kothari','Asma Shaikh'] — matches sorted). Date range 2020-01-01→2030-12-31 keeps 60 rows; narrowing to 2100-01-01→2100-12-31 drops to 0.",
+    "Free Trials / Active Customers / Renewals / Lost tabs each show fs-sort-filter and default (empty) sort on tab change (independent state — good).",
+    "Non-list tabs Centres, Batch Requests, Centre Economics, (etc.) do NOT show fs-sort-filter (verified).",
+    "Orders → Student Payments (data-testid='student-payments-tab'): data-testid='student-payments-sort-filter' present with sub-testids. STUDENT column re-ordered A-Z (matches sorted). Latest → Oldest sets top row correctly. Wide date range shows 31 rows; range 1990-1991 shows 0. Sub-tabs student-sub-tab-home / summer_camp / future_skills all continue to show the sort/date bar. School Payments tab correctly HIDES the bar (count=0).",
+    "invoicePdfGenerator.js: COMPANY.name='Clonefutura Live Solutions Pvt Ltd.' and COMPANY.address='103 1st floor - Kshitij building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053' — confirmed via grep. splitTextToSize wraps to 2 lines on header (line 222)."
+  ],
+  "critical_code_review_comments": [
+    "SortFilterBar.applySortFilter: date filter uses `if (!t) return false;` — rows without any of the candidate date fields (created_at/createdAt/booked_at/date) will be filtered OUT whenever ANY From/To value is set. Currently harmless because every booking/lead has created_at, but if a legacy row is missing the field it will silently disappear. Consider treating missing dates as 'include when any filter set' or make the behaviour explicit in the util's JSDoc.",
+    "The Summer Camp KPI card is a plain <button>/<div> without a data-testid; only the KPI-summary '+ Add Customer' button has one. Consider adding data-testid='camp-kpi-converted' on the Converted KPI card itself for more deterministic Playwright selectors."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only)", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / GodisGreat@2026 — WORKING (matches /app/memory/test_credentials.md).",
+  "seed_data_creation": "Created one Summer Camp booking 'QA Test Customer' via Add Customer flow (booking #0074) and DELETED it via the row-level Yes,Delete modal — DB state restored to 73 bookings / 8 Converted.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature works end-to-end. Common gotchas for re-testing: (1) admin login is at /admin/login (email+password); the /login route is a phone-OTP flow. (2) The Summer Camp 'Converted' KPI (count 8) is a different element from the top-level Student CRM 'Converted' tab (count 9) — locate by Summer Camp scope. (3) FS admin tab names are 'Centres & Batches', 'Batch Requests', 'Source Links', 'Centre Economics' (no 'Reports' tab). (4) applySortFilter drops rows that don't have any of the candidate date fields whenever From or To is set — see code-review note."
+}

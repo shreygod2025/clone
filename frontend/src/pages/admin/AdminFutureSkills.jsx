@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -123,6 +124,10 @@ const AdminFutureSkills = () => {
   const [selected, setSelected] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());   // bulk selection (leads tab)
   const [modal, setModal] = useState(null); // 'add-lead' | 'add-trial' | 'add-customer' | 'import' | 'renew' | 'lost' | 'convert-trial' | 'reschedule' | 'book-trial' | 'followup'
+  // Sort + date-range filter — applied client-side across every tab that shows a list.
+  const [sortKey, setSortKey] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const fileInputRef = useRef(null);
 
   // Load centres list once for the filter dropdown (admin only — owner is auto-scoped)
@@ -193,6 +198,18 @@ const AdminFutureSkills = () => {
   }, [tab, statusFilter, search, renewalBucket, centerFilter, getAuthHeaders]);
 
   useEffect(() => { fetchData(); fetchTabStats(); }, [fetchData, fetchTabStats]);
+
+  // Client-side sort A→Z / date range applied on top of the fetched rows.
+  // Different tabs use different name fields, so we cover all common ones.
+  const filteredRows = useMemo(() => {
+    return applySortFilter(rows, sortKey, dateFrom, dateTo, {
+      nameFields: ['child_name', 'student_name', 'name', 'parent_name'],
+      dateFields: ['created_at', 'trial_date', 'renewal_date', 'due_date'],
+    });
+  }, [rows, sortKey, dateFrom, dateTo]);
+
+  // Reset sort/date filter whenever the tab or status changes so users start clean.
+  useEffect(() => { setSortKey(''); setDateFrom(''); setDateTo(''); }, [tab, statusFilter]);
 
   // Clear bulk-selection whenever the underlying tab or filters change.
   useEffect(() => { setSelectedIds(new Set()); }, [tab, statusFilter, search, centerFilter, renewalBucket]);
@@ -430,6 +447,24 @@ const AdminFutureSkills = () => {
         </div>
         )}
 
+        {/* Sort + date-range filter — visible on every list tab (Leads · Trials · Customers · Renewals · Lost) */}
+        {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
+          <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="fs-sort-filter">
+            <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
+            <SortFilterBar
+              sort={sortKey}
+              onSortChange={setSortKey}
+              dateFrom={dateFrom}
+              onDateFromChange={setDateFrom}
+              dateTo={dateTo}
+              onDateToChange={setDateTo}
+              testIdPrefix="fs"
+              compact
+            />
+            <span className="ml-auto text-xs text-slate-400">{filteredRows.length} of {rows.length} shown</span>
+          </div>
+        )}
+
         {/* Content: Reports OR Centers manager OR Sources OR Economics OR standard table */}
         {tab === 'reports' ? (
           <ReportsPanel getAuthHeaders={getAuthHeaders} kpi={kpi} />
@@ -476,7 +511,7 @@ const AdminFutureSkills = () => {
                   </div>
                 </div>
               )}
-              {tab === 'leads'     && <LeadsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+              {tab === 'leads'     && <LeadsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
                 onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
@@ -485,7 +520,7 @@ const AdminFutureSkills = () => {
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
+              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
                 if (action === 'convert')      setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule')   setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'trial' });
@@ -501,13 +536,13 @@ const AdminFutureSkills = () => {
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
               }} />}
-              {tab === 'customers' && <CustomersTable rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'renew')      setModal({ type: 'renew', customer: r });
                 if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
               }} />}
-              {tab === 'renewals'  && <RenewalsTable  rows={rows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'renewals'  && <RenewalsTable  rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'renew')        setModal({ type: 'renew', customer: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'customer' });
                 if (action === 'notes')        setModal({ type: 'notes', entity: r, entityType: 'customer' });
@@ -515,7 +550,7 @@ const AdminFutureSkills = () => {
                 if (action === 'delete')       setModal({ type: 'delete', entity: r, entityType: 'customer' });
                 if (action === 'payment-link') setModal({ type: 'payment-link', customer: r });
               }} />}
-              {tab === 'lost'      && <LostTable rows={rows} onOpen={setSelected} />}
+              {tab === 'lost'      && <LostTable rows={filteredRows} onOpen={setSelected} />}
             </div>
           )}
         </div>
