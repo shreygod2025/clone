@@ -1,5 +1,18 @@
 # OLL Backend Changelog
 
+## 2026-02-07 (part 2) — Followup modal polish 🎯
+
+- **"Called" → "Call Back"** in the outcome dropdown.
+- **Not Interested** now opens the existing Mark-Lost modal so the admin can pick a real reason (was silently flipping status to `lost` before). Any note typed in the followup is carried forward into the Lost modal's "Other" field so nothing is lost.
+- **Quick-date presets**: `Today Evening · Tomorrow · Day After · Weekend · Next Week` chips above the Note field. **Tomorrow is auto-selected** on open.
+- **Followup note mirror**: after saving a followup, the modal also `PATCH`es the top-level `notes` field on the lead (timestamped) so it appears in the inline Notes textarea on the row. Previously the note only lived in the followup history array.
+- **Row actions cleanup**: the redundant `Notes` action button was removed (inline textarea replaces it). **Mark Lost** button now has full text (`XCircle + "Mark Lost"`) and larger padding — matches the visual weight of Trial / Followup buttons.
+- **Status column single-line**: `whitespace-nowrap` added to the `StatusBadge` so "WRONG NUMBER" and "NO ANSWER" don't wrap.
+
+Files touched:
+- `frontend/src/pages/admin/AdminFutureSkills.jsx` (FollowupModal, MarkLostModal, LeadsTable actions, StatusBadge)
+
+
 ## 2026-02-07 — Sort A→Z / date-range filter across CRMs + Add Customer + Invoice address 🔤📅
 
 **Status: COMPLETE — verified by testing agent (100% frontend flows)**

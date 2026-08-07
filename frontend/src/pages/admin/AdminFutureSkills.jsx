@@ -67,7 +67,7 @@ const PAYMENT_STATUSES = [
 
 const FOLLOWUP_OUTCOMES = [
   { value: '',                  label: 'Select outcome…' },
-  { value: 'called',            label: 'Called' },
+  { value: 'called',            label: 'Call Back' },
   { value: 'no_answer',         label: 'No Answer' },
   { value: 'incorrect_number',  label: 'Incorrect Number' },
   { value: 'interested',        label: 'Interested' },
@@ -618,7 +618,7 @@ const AdminFutureSkills = () => {
       {modal?.type === 'import'       && <ImportModal     onClose={() => setModal(null)} onImport={handleImport} fileInputRef={fileInputRef} centers={centersForFilter} sources={leadSources} onSourceAdded={reloadSources} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'import-customers' && <ImportCustomersModal onClose={() => setModal(null)} onImported={refreshAll} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'renew'        && <RenewModal      customer={modal.customer} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
-      {modal?.type === 'lost'         && <MarkLostModal   entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'lost'         && <MarkLostModal   entity={modal.entity} entityType={modal.entityType} prefillNote={modal.prefillNote} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'convert-trial' && <ConvertTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'reschedule'   && <RescheduleTrialModal trial={modal.trial} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'book-trial'   && <BookTrialModal   lead={modal.lead} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); setSelected(null); }} getAuthHeaders={getAuthHeaders} />}
@@ -628,7 +628,8 @@ const AdminFutureSkills = () => {
         onClose={() => setModal(null)}
         getAuthHeaders={getAuthHeaders}
       />}
-      {modal?.type === 'followup'     && <FollowupModal    entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
+      {modal?.type === 'followup'     && <FollowupModal    entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }}
+        onRequestLost={(ent, entType, prefillNote) => setModal({ type: 'lost', entity: ent, entityType: entType, prefillNote })} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'notes'        && <NotesModal       entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
       {modal?.type === 'delete'       && <DeleteConfirmModal entity={modal.entity} entityType={modal.entityType} onClose={() => setModal(null)} onSaved={() => { setModal(null); refreshAll(); }} getAuthHeaders={getAuthHeaders} />}
 
@@ -694,7 +695,7 @@ const StatusBadge = ({ status }) => {
     overdue:            { c: 'bg-rose-50 text-rose-700 border-rose-200',          label: 'OVERDUE' },
   };
   const cfg = map[status] || { c: 'bg-slate-50 text-slate-700 border-slate-200', label: (status || '').toUpperCase() || 'LEAD' };
-  return <span className={`text-[10px] px-2 py-1 rounded-full font-bold border ${cfg.c}`}>{cfg.label}</span>;
+  return <span className={`inline-block whitespace-nowrap text-[10px] px-2 py-1 rounded-full font-bold border ${cfg.c}`}>{cfg.label}</span>;
 };
 
 const Th = ({ children, className = '' }) => (
@@ -807,7 +808,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               <div className="font-semibold text-slate-700 flex items-center gap-1"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || '—'}</div>
               <div className="text-[11px] text-slate-500 mt-0.5">{batchName(r.batch_id) || '—'}</div>
             </td>
-            <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
+            <td className="px-4 py-3 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
               <StatusBadge status={r.status} />
               {r.next_followup_date && (
                 <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
@@ -819,7 +820,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               <InlineNotesField lead={r} onSave={onSaveNotes} />
             </td>
             <td className="px-4 py-3">
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 items-center">
                 <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
@@ -830,20 +831,15 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
                   data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" /> Followup
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
-                  data-testid={`row-notes-${r.lead_ref}`} title="Notes">
-                  <FileText className="w-3 h-3" /> Notes
-                </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
                   data-testid={`row-edit-${r.lead_ref}`} title="Edit">
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-[11px] px-3 py-1.5 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" />
+                  <XCircle className="w-3.5 h-3.5" /> Mark Lost
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
                   className="text-[10px] px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
@@ -1876,10 +1872,10 @@ const LOST_REASON_OPTIONS = {
   ],
 };
 
-const MarkLostModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders }) => {
+const MarkLostModal = ({ entity, entityType, prefillNote, onClose, onSaved, getAuthHeaders }) => {
   const options = LOST_REASON_OPTIONS[entityType] || LOST_REASON_OPTIONS.lead;
   const [selectedReason, setSelectedReason] = useState('');
-  const [otherReason, setOtherReason] = useState('');
+  const [otherReason, setOtherReason] = useState(prefillNote || '');
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -2168,18 +2164,50 @@ const RescheduleTrialModal = ({ trial, onClose, onSaved, getAuthHeaders }) => {
 };
 
 // ── FOLLOWUP modal (Lead or Trial) ─────────────────────────────────────
-const FollowupModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders }) => {
-  const [f, setF] = useState({
-    next_date: entity?.next_followup_date ? String(entity.next_followup_date).slice(0, 10) : '',
-    note: '',
-    outcome: '',
-  });
+const FollowupModal = ({ entity, entityType, onClose, onSaved, onRequestLost, getAuthHeaders }) => {
+  // Compute quick-date presets. Uses local timezone so "tomorrow" means the
+  // user's tomorrow, not UTC.
+  const _iso = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const _presets = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);       tomorrow.setDate(today.getDate() + 1);
+    const dayAfter = new Date(today);       dayAfter.setDate(today.getDate() + 2);
+    // "Weekend" = the next upcoming Saturday (if today already Sat/Sun, jump to next Sat).
+    const dow = today.getDay(); // 0=Sun 6=Sat
+    const daysToSat = dow === 6 ? 7 : (6 - dow);
+    const weekend = new Date(today); weekend.setDate(today.getDate() + daysToSat);
+    // "Next Week" = same weekday next week.
+    const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
+    return [
+      { key: 'today',     label: 'Today Evening', date: _iso(today) },
+      { key: 'tomorrow',  label: 'Tomorrow',      date: _iso(tomorrow) },
+      { key: 'dayafter',  label: 'Day After',     date: _iso(dayAfter) },
+      { key: 'weekend',   label: 'Weekend',       date: _iso(weekend) },
+      { key: 'nextweek',  label: 'Next Week',     date: _iso(nextWeek) },
+    ];
+  }, []);
+  const _defaultDate = entity?.next_followup_date
+    ? String(entity.next_followup_date).slice(0, 10)
+    : _presets[1].date; // auto-select TOMORROW as requested
+  const [f, setF] = useState({ next_date: _defaultDate, note: '', outcome: '' });
   const [saving, setSaving] = useState(false);
 
   const history = Array.isArray(entity?.followups) ? [...entity.followups].reverse() : [];
 
   const submit = async () => {
     if (!f.next_date && !f.note && !f.outcome) { toast.error('Enter a date, note or outcome'); return; }
+    // "Not Interested" is a hard exit — open the MarkLost modal so admin can
+    // pick a reason (drop-off / cost / other) instead of silently marking lost.
+    if (f.outcome === 'not_interested') {
+      onRequestLost?.(entity, entityType, f.note);
+      return;
+    }
     setSaving(true);
     try {
       const path = entityType === 'lead' ? `leads/${entity.id}/followup`
@@ -2188,6 +2216,22 @@ const FollowupModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders })
       const payload = { ...f };
       if (payload.next_date) payload.next_date = new Date(payload.next_date).toISOString();
       await axios.post(`${API}/admin/future-skills/${path}`, payload, { headers: getAuthHeaders() });
+      // Also mirror the note onto the top-level `notes` field so it shows up
+      // in the row's inline Notes textarea. (Followup history keeps timestamped
+      // entries; the top-level `notes` field is the "current snapshot" for
+      // quick scanning.)
+      if (f.note.trim() && entityType === 'lead') {
+        try {
+          const existing = (entity.notes || '').trim();
+          const stamped = `${new Date().toLocaleDateString()} — ${f.note.trim()}`;
+          const merged = existing ? `${existing}\n${stamped}` : stamped;
+          await axios.patch(
+            `${API}/admin/future-skills/leads/${entity.id}`,
+            { notes: merged },
+            { headers: getAuthHeaders() },
+          );
+        } catch (_) { /* non-fatal: followup already saved */ }
+      }
       toast.success('Followup saved');
       onSaved();
     } catch (e) {
@@ -2202,11 +2246,30 @@ const FollowupModal = ({ entity, entityType, onClose, onSaved, getAuthHeaders })
         <TextField label="Next Followup Date" type="date" value={f.next_date} onChange={v => setF({ ...f, next_date: v })} testid="followup-date-input" />
         <SelectField label="Outcome" value={f.outcome} onChange={v => setF({ ...f, outcome: v })} options={FOLLOWUP_OUTCOMES} testid="followup-outcome-select" />
       </FieldGroup>
+      {/* Quick-date chips — one tap sets the Next Followup Date without opening
+          the OS date picker. Highlights the currently-matching preset. */}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {_presets.map(p => (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => setF(cur => ({ ...cur, next_date: p.date }))}
+            className={`text-[11px] px-2.5 py-1 rounded-full font-bold border transition-colors ${
+              f.next_date === p.date
+                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+            }`}
+            data-testid={`followup-preset-${p.key}`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
       <div className="mt-3"><TextAreaField label="Note" value={f.note} onChange={v => setF({ ...f, note: v })} testid="followup-note-input" /></div>
       <button onClick={submit} disabled={saving}
         className="mt-4 w-full py-3 rounded-xl bg-[#1E3A5F] text-white font-bold hover:bg-[#0F1E33] disabled:opacity-60 flex items-center justify-center gap-2"
         data-testid="submit-followup-btn">
-        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Followup</>}
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> {f.outcome === 'not_interested' ? 'Mark as Lost →' : 'Save Followup'}</>}
       </button>
 
       {history.length > 0 && (
