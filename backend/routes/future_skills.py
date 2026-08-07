@@ -1445,14 +1445,18 @@ async def admin_list_leads(
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
     query: dict = {}
+    # Active sub-statuses that count as "still in play" for the Leads tab.
+    # `no_answer` and `incorrect_number` were added so admins can flag leads
+    # they couldn't reach, without losing them into the Lost bucket.
+    ACTIVE_STATUSES = ["new", "followup", "no_answer", "incorrect_number"]
     if status and status != "all":
         if status == "active":
-            query["status"] = {"$in": ["new", "followup"]}
+            query["status"] = {"$in": ACTIVE_STATUSES}
         else:
             query["status"] = status
     else:
         # Default: only show leads that are still in play (exclude converted / lost)
-        query["status"] = {"$in": ["new", "followup"]}
+        query["status"] = {"$in": ACTIVE_STATUSES}
     if q:
         rx = {"$regex": re.escape(q), "$options": "i"}
         query["$or"] = [
@@ -1468,9 +1472,11 @@ async def admin_list_leads(
     rows = [r async for r in cursor]
     scope_q = {"center_id": scope_cid} if scope_cid else {}
     total = await db.future_skills_leads.count_documents(scope_q)
-    active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$in": ["new", "followup"]}})
+    active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$in": ACTIVE_STATUSES}})
     new_count = await db.future_skills_leads.count_documents({**scope_q, "status": "new"})
     followup_count = await db.future_skills_leads.count_documents({**scope_q, "status": "followup"})
+    no_answer_count = await db.future_skills_leads.count_documents({**scope_q, "status": "no_answer"})
+    incorrect_number_count = await db.future_skills_leads.count_documents({**scope_q, "status": "incorrect_number"})
     lost = await db.future_skills_leads.count_documents({**scope_q, "status": "lost"})
     return {
         "leads": rows,
@@ -1479,6 +1485,8 @@ async def admin_list_leads(
             "active": active,
             "new": new_count,
             "followup": followup_count,
+            "no_answer": no_answer_count,
+            "incorrect_number": incorrect_number_count,
             "lost": lost,
             "showing": len(rows),
         },
@@ -1563,6 +1571,7 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
 
     trial_id = str(uuid.uuid4())
     trial_ref = await _next_ref("FST")
+    now = _now_iso()
     trial_doc = {
         "id": trial_id,
         "trial_ref": trial_ref,
@@ -1578,11 +1587,15 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
         "notes": lead.get("notes", ""),
         "source_ref": lead.get("source", ""),
         "trial_status": "requested",
-        "crm_status": "trial_lead",
+        # Mark as "scheduled" so the trial IS visible in the Free Trials tab
+        # immediately after Move-to-Trial. Admin can then set the real date /
+        # batch via the Trials tab. Previously this was `trial_lead` which was
+        # filtered OUT of the default view → the lead appeared to vanish.
+        "crm_status": "scheduled",
         "return_count": 1,
         "source_lead_id": lead_id,
-        "created_at": _now_iso(),
-        "updated_at": _now_iso(),
+        "created_at": now,
+        "updated_at": now,
         "created_by": user.get("email"),
     }
     await db.future_skills_trials.insert_one(trial_doc)
@@ -1592,8 +1605,11 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
         {"$set": {
             "status": "converted",
             "converted_trial_id": trial_id,
-            "converted_at": _now_iso(),
-            "updated_at": _now_iso(),
+            "converted_at": now,
+            # Track first-contact if not already set (used for the
+            # avg-time-to-first-contact report metric).
+            **({"first_contact_at": now} if not lead.get("first_contact_at") else {}),
+            "updated_at": now,
         }},
     )
     await _send_trial_booking_confirmation(trial_doc)
@@ -1605,7 +1621,9 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
 class FollowupBody(BaseModel):
     next_date: Optional[str] = Field(default="", max_length=40)  # ISO date/datetime
     note: Optional[str] = Field(default="", max_length=1000)
-    outcome: Optional[str] = Field(default="", max_length=32)  # called|no_answer|interested|not_interested
+    # Extended outcome vocabulary (drives auto status bump in _record_followup):
+    #   called | no_answer | incorrect_number | interested | not_interested
+    outcome: Optional[str] = Field(default="", max_length=32)
 
 
 async def _record_followup(collection, entity_id: str, data: "FollowupBody", user: dict, id_field: str = "id", status_field: Optional[str] = None):
@@ -1626,11 +1644,28 @@ async def _record_followup(collection, entity_id: str, data: "FollowupBody", use
         "next_followup_date": entry["next_date"],
         "updated_at": _now_iso(),
     }
-    # Auto-bump the entity's own status field to "followup" if it's still in a fresh
-    # pipeline stage (respect "converted" / "lost" / "active" — don't downgrade).
+    # Record the FIRST follow-up time — used by the FS Reports metric
+    # "avg time from lead added to first contact". Once set, never overwritten.
+    if not doc.get("first_contact_at"):
+        update_set["first_contact_at"] = entry["at"]
+    # Auto-bump the entity's own status field based on the outcome:
+    #   no_answer      → status='no_answer'  (keeps it in-play, visible to admins)
+    #   not_interested → status='lost'       (moves it to the Lost bucket)
+    # For any other outcome (called / interested / blank) we fall back to
+    # bumping fresh statuses to 'followup' as before.
     if status_field:
         current = (doc.get(status_field) or "").lower()
-        if current in ("", "new", "scheduled", "rescheduled", "trial_lead", "trial_scheduled"):
+        outcome = entry["outcome"].lower()
+        if outcome == "no_answer":
+            update_set[status_field] = "no_answer"
+        elif outcome == "incorrect_number":
+            update_set[status_field] = "incorrect_number"
+        elif outcome == "not_interested":
+            # Mark as lost — this is the CRM sink for "Not Interested".
+            update_set[status_field] = "lost"
+            update_set["lost_reason"] = "not_interested"
+            update_set["lost_at"] = entry["at"]
+        elif current in ("", "new", "scheduled", "rescheduled", "trial_lead", "trial_scheduled"):
             update_set[status_field] = "followup"
     await collection.update_one(
         {id_field: entity_id},
@@ -1856,13 +1891,24 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
     }
     await db.future_skills_trials.insert_one(trial_doc)
 
+    # If book-trial produced trial_lead (no date), also flip it to scheduled
+    # so it's visible in the Free Trials tab — same fix rationale as
+    # /convert-to-trial above.
+    if trial_doc.get("crm_status") == "trial_lead":
+        await db.future_skills_trials.update_one(
+            {"id": trial_id}, {"$set": {"crm_status": "scheduled"}},
+        )
+        trial_doc["crm_status"] = "scheduled"
+
+    now = _now_iso()
     await db.future_skills_leads.update_one(
         {"id": lead_id},
         {"$set": {
             "status": "converted",
             "converted_trial_id": trial_id,
-            "converted_at": _now_iso(),
-            "updated_at": _now_iso(),
+            "converted_at": now,
+            **({"first_contact_at": now} if not lead.get("first_contact_at") else {}),
+            "updated_at": now,
         }},
     )
     await _send_trial_booking_confirmation(trial_doc)
@@ -1954,10 +2000,37 @@ async def admin_import_leads(
 
     fallback_source = default_source or "import"
 
-    # Known/valid age-group tokens. Anything outside this set in a CSV row
-    # (dates, floats, blanks) is treated as invalid so the admin-picked
-    # default in the import modal is used instead.
-    VALID_AGE_GROUPS = {"4-7", "8-11", "12-14", "15-17", "18+"}
+    # Known/valid age-group tokens. Matches the frontend AGE_GROUP_OPTIONS
+    # (3-7, 8-11, 12-16). We ALSO try to auto-bucket a numeric child age
+    # (e.g. "9" → "8-11") so admin CSVs that only have raw ages still map.
+    VALID_AGE_GROUPS = {"3-7", "8-11", "12-16"}
+
+    def _bucket_age(raw: str) -> str:
+        """Return one of VALID_AGE_GROUPS from a raw string that may be a
+        numeric age ('9', '9 yrs', '9.0'), an already-bucketed value, or blank.
+        """
+        v = (raw or "").strip()
+        if not v:
+            return ""
+        # Already a valid bucket?
+        if v in VALID_AGE_GROUPS:
+            return v
+        # Normalise unicode dashes to plain hyphen so "3–7"/"3—7" also match.
+        norm = v.replace("–", "-").replace("—", "-").replace(" ", "")
+        if norm in VALID_AGE_GROUPS:
+            return norm
+        # Try to parse a number and map to a bucket.
+        try:
+            n = int(float(v.split()[0].split("-")[0]))
+        except Exception:
+            return ""
+        if 3 <= n <= 7:
+            return "3-7"
+        if 8 <= n <= 11:
+            return "8-11"
+        if 12 <= n <= 16:
+            return "12-16"
+        return ""
 
     def _pick(admin_default: str, row_value: str, allow_all: bool = True, valid: set = None):
         """Admin-picked defaults ALWAYS win when set — that matches the mental
@@ -2001,6 +2074,12 @@ async def admin_import_leads(
                 resolved_center_id   = (centre_hit or {}).get("id", "")
                 resolved_center_name = (centre_hit or {}).get("name", "") or record.get("center_name", "")
 
+            # age_group: admin dropdown wins, else bucket the CSV row's age_group
+            # or numeric child_age into one of 3-7 / 8-11 / 12-16.
+            raw_age_group = (record.get("age_group") or "").strip()
+            raw_child_age = (record.get("child_age") or "").strip()
+            resolved_age_group = default_age_group or _bucket_age(raw_age_group) or _bucket_age(raw_child_age)
+
             doc = {
                 "id": lead_id,
                 "lead_ref": lead_ref,
@@ -2010,11 +2089,11 @@ async def admin_import_leads(
                 "email": record.get("email", "").lower(),
                 "source":    _pick(default_source, record.get("source", "")) or fallback_source,
                 "city": record.get("city", ""),
-                "age_group": _pick(default_age_group, record.get("age_group", ""), valid=VALID_AGE_GROUPS),
+                "age_group": resolved_age_group,
                 "center_id":   resolved_center_id,
                 "center_name": resolved_center_name,
                 "notes": record.get("notes", ""),
-                "child_age": record.get("child_age", ""),
+                "child_age": raw_child_age,
                 "child_grade": record.get("child_grade", ""),
                 "status": "new",
                 "created_at": _now_iso(),
@@ -3315,6 +3394,68 @@ async def admin_future_skills_reports(
             "fill_pct":       round((fill / capacity) * 100, 1) if capacity else 0,
         })
 
+    # ── NEW METRICS (Aug 2026) ────────────────────────────────────────
+    # Cost per lead: marketing expenses in period ÷ new leads in period.
+    #   Marketing = school_expenses rows with fs_category='marketing' scoped
+    #   to program+centre+month (mirrors the Centre Economics tab).
+    marketing_cost_q: dict = {"program_key": PROGRAM_KEY, "fs_category": "marketing"}
+    if effective_cid:
+        marketing_cost_q["fs_center_id"] = effective_cid
+    if month:
+        marketing_cost_q["expense_date"] = {"$regex": f"^{month}"}
+    marketing_total = 0.0
+    async for c in db.school_expenses.find(marketing_cost_q, {"_id": 0, "amount": 1}):
+        marketing_total += float(c.get("amount") or 0)
+    cost_per_lead = round(marketing_total / leads_total, 2) if leads_total > 0 else 0.0
+
+    # Status-breakdown counts (No Answer / Incorrect Number) — same lead_q
+    # scope so admins can slice by month + centre.
+    no_answer_leads = await db.future_skills_leads.count_documents(
+        {**lead_q, "status": "no_answer"}
+    )
+    incorrect_number_leads = await db.future_skills_leads.count_documents(
+        {**lead_q, "status": "incorrect_number"}
+    )
+
+    # Avg time from lead added → first contact (first followup / trial
+    # conversion). Only counts leads that HAVE been contacted so blanks
+    # don't skew the average.
+    contact_pipeline: list = [
+        {"$match": {
+            **lead_q,
+            "first_contact_at": {"$exists": True, "$nin": [None, ""]},
+        }},
+        {"$project": {
+            "diff_ms": {
+                "$subtract": [
+                    {"$dateFromString": {"dateString": "$first_contact_at"}},
+                    {"$dateFromString": {"dateString": "$created_at"}},
+                ]
+            }
+        }},
+        {"$group": {"_id": None, "avg_ms": {"$avg": "$diff_ms"}, "n": {"$sum": 1}}},
+    ]
+    contact_agg = await db.future_skills_leads.aggregate(contact_pipeline).to_list(1)
+    if contact_agg and contact_agg[0].get("avg_ms"):
+        avg_ms = float(contact_agg[0]["avg_ms"])
+        avg_first_contact_hours = round(avg_ms / (1000.0 * 60 * 60), 2)
+        avg_first_contact_minutes = round(avg_ms / (1000.0 * 60), 1)
+        first_contact_sample = int(contact_agg[0].get("n") or 0)
+    else:
+        avg_first_contact_hours = 0.0
+        avg_first_contact_minutes = 0.0
+        first_contact_sample = 0
+
+    lead_metrics = {
+        "cost_per_lead": cost_per_lead,
+        "marketing_spend": round(marketing_total, 2),
+        "no_answer_count": no_answer_leads,
+        "incorrect_number_count": incorrect_number_leads,
+        "avg_first_contact_hours": avg_first_contact_hours,
+        "avg_first_contact_minutes": avg_first_contact_minutes,
+        "first_contact_sample": first_contact_sample,
+    }
+
     return {
         "funnel": funnel,
         "source_breakdown": source_breakdown,
@@ -3334,6 +3475,7 @@ async def admin_future_skills_reports(
             "trials":    lost_trials,
             "customers": lost_customers,
         },
+        "lead_metrics": lead_metrics,
         "filters": {
             "center_id": effective_cid,
             "month": month if month_start else None,

@@ -66,11 +66,12 @@ const PAYMENT_STATUSES = [
 ];
 
 const FOLLOWUP_OUTCOMES = [
-  { value: '',                label: 'Select outcome…' },
-  { value: 'called',          label: 'Called' },
-  { value: 'no_answer',       label: 'No Answer' },
-  { value: 'interested',      label: 'Interested' },
-  { value: 'not_interested',  label: 'Not Interested' },
+  { value: '',                  label: 'Select outcome…' },
+  { value: 'called',            label: 'Called' },
+  { value: 'no_answer',         label: 'No Answer' },
+  { value: 'incorrect_number',  label: 'Incorrect Number' },
+  { value: 'interested',        label: 'Interested' },
+  { value: 'not_interested',    label: 'Not Interested (mark Lost)' },
 ];
 
 const LEVEL_OPTIONS = [
@@ -81,8 +82,10 @@ const LEVEL_OPTIONS = [
 ];
 
 const LEAD_STATUSES = [
-  { value: 'new',      label: 'New' },
-  { value: 'followup', label: 'Followup' },
+  { value: 'new',              label: 'New' },
+  { value: 'followup',         label: 'Follow-up' },
+  { value: 'no_answer',        label: 'No Answer' },
+  { value: 'incorrect_number', label: 'Incorrect Number' },
 ];
 
 const PLAN_OPTIONS = [
@@ -276,12 +279,32 @@ const AdminFutureSkills = () => {
     }
   };
 
+  /**
+   * Inline notes save — called by <InlineNotesField /> when the user tabs
+   * away or hits Cmd/Ctrl+Enter. Uses the same PATCH endpoint that the
+   * side-drawer save uses.
+   */
+  const handleInlineNotesSave = useCallback(async (lead, nextNotes) => {
+    try {
+      await axios.patch(
+        `${API}/admin/future-skills/leads/${lead.id}`,
+        { notes: nextNotes },
+        { headers: getAuthHeaders() },
+      );
+      refreshAll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not save notes');
+    }
+  }, [getAuthHeaders, refreshAll]);
+
   // ── Rendering per tab ────────────────────────────────────────────────
   const STATUS_FILTER_OPTIONS =
     tab === 'leads'   ? [
-        { value: 'all',      label: `All (${(stats?.new || 0) + (stats?.followup || 0)})` },
-        { value: 'new',      label: `New (${stats?.new || 0})` },
-        { value: 'followup', label: `Followup (${stats?.followup || 0})` },
+        { value: 'all',              label: `All (${(stats?.new || 0) + (stats?.followup || 0) + (stats?.no_answer || 0) + (stats?.incorrect_number || 0)})` },
+        { value: 'new',              label: `New (${stats?.new || 0})` },
+        { value: 'followup',         label: `Follow-up (${stats?.followup || 0})` },
+        { value: 'no_answer',        label: `No Answer (${stats?.no_answer || 0})` },
+        { value: 'incorrect_number', label: `Wrong Number (${stats?.incorrect_number || 0})` },
       ]
     : tab === 'trials' ? [
         { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0)})` },
@@ -447,6 +470,36 @@ const AdminFutureSkills = () => {
         </div>
         )}
 
+        {/* Sub-status chip filter — Leads tab only. Same source as the dropdown
+            above but rendered as always-visible chips (with live counts) so
+            admins can slice the pipeline in one click. */}
+        {tab === 'leads' && STATUS_FILTER_OPTIONS && (
+          <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="lead-status-chips">
+            <span className="text-xs text-slate-500 font-semibold mr-1">Status:</span>
+            {STATUS_FILTER_OPTIONS.map(opt => {
+              const active = statusFilter === opt.value;
+              const chipColor = {
+                'all':              active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
+                'new':              active ? 'bg-slate-700 text-white border-slate-700'    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400',
+                'followup':         active ? 'bg-amber-500 text-white border-amber-500'    : 'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-400',
+                'no_answer':        active ? 'bg-orange-500 text-white border-orange-500'  : 'bg-orange-50 text-orange-700 border-orange-200 hover:border-orange-400',
+                'incorrect_number': active ? 'bg-purple-600 text-white border-purple-600'  : 'bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-400',
+              }[opt.value] || 'bg-white text-slate-700 border-slate-200';
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-bold border transition-colors ${chipColor}`}
+                  data-testid={`lead-status-chip-${opt.value}`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Sort + date-range filter — visible on every list tab (Leads · Trials · Customers · Renewals · Lost) */}
         {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
           <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="fs-sort-filter">
@@ -513,6 +566,7 @@ const AdminFutureSkills = () => {
               )}
               {tab === 'leads'     && <LeadsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
+                onSaveNotes={handleInlineNotesSave}
                 onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
@@ -622,7 +676,9 @@ const StatusBadge = ({ status }) => {
     active:             { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'ACTIVE' },
     converted:          { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'CONVERTED' },
     new:                { c: 'bg-slate-50 text-slate-700 border-slate-200',       label: 'NEW' },
-    followup:           { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'FOLLOWUP' },
+    followup:           { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'FOLLOW-UP' },
+    no_answer:          { c: 'bg-orange-50 text-orange-700 border-orange-200',    label: 'NO ANSWER' },
+    incorrect_number:   { c: 'bg-purple-50 text-purple-700 border-purple-200',    label: 'WRONG NUMBER' },
     scheduled:          { c: 'bg-violet-50 text-violet-700 border-violet-200',    label: 'SCHEDULED' },
     rescheduled:        { c: 'bg-indigo-50 text-indigo-700 border-indigo-200',    label: 'RESCHEDULED' },
     completed:          { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'COMPLETED' },
@@ -645,8 +701,51 @@ const Th = ({ children, className = '' }) => (
   <th className={`text-left px-4 py-3 font-bold ${className}`}>{children}</th>
 );
 
+/**
+ * Small uncontrolled textarea rendered inline in each Leads row.
+ * Saves on blur or Cmd/Ctrl+Enter — no modal, no clicks.
+ * Uses a `key` on the lead notes to reset local state when the lead reloads.
+ */
+const InlineNotesField = ({ lead, onSave }) => {
+  const [value, setValue] = useState(lead?.notes || '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { setValue(lead?.notes || ''); }, [lead?.id, lead?.notes]);
+
+  const flush = async () => {
+    const nextVal = (value || '').trim();
+    const prevVal = (lead?.notes || '').trim();
+    if (nextVal === prevVal) return;
+    setSaving(true);
+    try {
+      await onSave?.(lead, nextVal);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1200);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={flush}
+        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); flush(); } }}
+        placeholder="Add notes…"
+        rows={2}
+        className="w-full text-[11px] px-2 py-1.5 rounded-md border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200 resize-none"
+        data-testid={`row-inline-notes-${lead?.lead_ref}`}
+      />
+      {saving && <span className="absolute -bottom-3 right-1 text-[9px] text-slate-400">saving…</span>}
+      {saved && !saving && <span className="absolute -bottom-3 right-1 text-[9px] text-emerald-600 font-bold">saved ✓</span>}
+    </div>
+  );
+};
+
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll }) => {
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
@@ -669,7 +768,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               aria-label="Select all leads"
             />
           </th>
-          <Th>Ref</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Actions</Th>
+          <Th>Added</Th><Th>Name</Th><Th>Phone</Th><Th>Source</Th><Th>Centre · Batch</Th><Th>Status</Th><Th>Notes</Th><Th>Actions</Th>
         </tr>
       </thead>
       <tbody>
@@ -686,7 +785,12 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
                 aria-label={`Select ${r.name || r.lead_ref}`}
               />
             </td>
-            <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.lead_ref}</td>
+            {/* ADDED — replaces the old REF column so admins see when the lead entered the CRM at a glance. */}
+            <td className="px-4 py-3 text-xs text-slate-700 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}
+                data-testid={`row-added-${r.lead_ref}`}>
+              <div className="font-bold text-[#0F1E33]">{fmtDateTime(r.created_at)}</div>
+              <div className="text-[10px] text-slate-400 font-mono">{r.lead_ref}</div>
+            </td>
             <td className="px-4 py-3 cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33]">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.child_age) && (
@@ -708,11 +812,11 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               {r.next_followup_date && (
                 <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
-              {r.last_note && (
-                <div className="text-[11px] text-slate-600 mt-1 line-clamp-2 max-w-[220px]" title={r.last_note}>
-                  <span className="font-bold">📝 </span>{r.last_note}
-                </div>
-              )}
+            </td>
+            {/* Inline notes — save on blur or Cmd/Ctrl+Enter. Uncontrolled input
+                so the row doesn't re-render every keystroke. */}
+            <td className="px-3 py-3 w-[220px]" onClick={(e) => e.stopPropagation()}>
+              <InlineNotesField lead={r} onSave={onSaveNotes} />
             </td>
             <td className="px-4 py-3">
               <div className="flex flex-wrap gap-1">
@@ -2707,6 +2811,49 @@ const ReportsPanel = ({ getAuthHeaders, kpi = {} }) => {
             sub={`Revenue − Centre Costs = ${fmtMoney(revenue.profit || 0)}`}
             testid="kpi-profit-margin"
           />}
+        </div>
+      )}
+
+      {/* Lead Health Metrics — cost efficiency + team responsiveness. Driven
+          by the `lead_metrics` block added to /admin/future-skills/reports. */}
+      {data.lead_metrics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="lead-metrics-row">
+          <RevenueCard
+            label="Cost per Lead"
+            value={fmtMoney(data.lead_metrics.cost_per_lead || 0)}
+            accent="#F59E0B"
+            icon={IndianRupee}
+            sub={`${fmtMoney(data.lead_metrics.marketing_spend || 0)} spent ÷ ${funnel.leads || 0} leads`}
+            testid="metric-cost-per-lead"
+          />
+          <RevenueCard
+            label="Avg time to 1st contact"
+            value={
+              (data.lead_metrics.avg_first_contact_hours || 0) >= 1
+                ? `${data.lead_metrics.avg_first_contact_hours} h`
+                : `${data.lead_metrics.avg_first_contact_minutes || 0} min`
+            }
+            accent="#3B82F6"
+            icon={Clock}
+            sub={`Across ${data.lead_metrics.first_contact_sample || 0} contacted leads`}
+            testid="metric-time-to-first-contact"
+          />
+          <RevenueCard
+            label="No-answer leads"
+            value={data.lead_metrics.no_answer_count || 0}
+            accent="#F97316"
+            icon={XCircle}
+            sub="Marked 'No Answer' in the CRM"
+            testid="metric-no-answer"
+          />
+          <RevenueCard
+            label="Wrong numbers"
+            value={data.lead_metrics.incorrect_number_count || 0}
+            accent="#A855F7"
+            icon={XCircle}
+            sub="Marked 'Incorrect Number' in the CRM"
+            testid="metric-incorrect-number"
+          />
         </div>
       )}
 
