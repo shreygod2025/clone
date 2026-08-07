@@ -1450,9 +1450,12 @@ async def admin_list_leads(
         raise HTTPException(status_code=403, detail="Admin only")
     query: dict = {}
     # Active sub-statuses that count as "still in play" for the Leads tab.
-    # `no_answer` and `incorrect_number` were added so admins can flag leads
-    # they couldn't reach, without losing them into the Lost bucket.
-    ACTIVE_STATUSES = ["new", "followup", "no_answer", "incorrect_number"]
+    #   new         → freshly added
+    #   followup    → call-back scheduled
+    #   no_answer   → couldn't reach the parent yet
+    #   interested  → parent expressed interest (moves closer to Trial)
+    # (`incorrect_number` and `not_interested` now drop straight to Lost.)
+    ACTIVE_STATUSES = ["new", "followup", "no_answer", "interested"]
     if status and status != "all":
         if status == "active":
             query["status"] = {"$in": ACTIVE_STATUSES}
@@ -1480,7 +1483,7 @@ async def admin_list_leads(
     new_count = await db.future_skills_leads.count_documents({**scope_q, "status": "new"})
     followup_count = await db.future_skills_leads.count_documents({**scope_q, "status": "followup"})
     no_answer_count = await db.future_skills_leads.count_documents({**scope_q, "status": "no_answer"})
-    incorrect_number_count = await db.future_skills_leads.count_documents({**scope_q, "status": "incorrect_number"})
+    interested_count = await db.future_skills_leads.count_documents({**scope_q, "status": "interested"})
     lost = await db.future_skills_leads.count_documents({**scope_q, "status": "lost"})
     return {
         "leads": rows,
@@ -1490,7 +1493,7 @@ async def admin_list_leads(
             "new": new_count,
             "followup": followup_count,
             "no_answer": no_answer_count,
-            "incorrect_number": incorrect_number_count,
+            "interested": interested_count,
             "lost": lost,
             "showing": len(rows),
         },
@@ -1653,9 +1656,11 @@ async def _record_followup(collection, entity_id: str, data: "FollowupBody", use
     if not doc.get("first_contact_at"):
         update_set["first_contact_at"] = entry["at"]
     # Auto-bump the entity's own status field based on the outcome:
-    #   no_answer      → status='no_answer'  (keeps it in-play, visible to admins)
-    #   not_interested → status='lost'       (moves it to the Lost bucket)
-    # For any other outcome (called / interested / blank) we fall back to
+    #   no_answer         → status='no_answer'  (in-play)
+    #   incorrect_number  → status='lost' + lost_reason='incorrect_number' (drops out)
+    #   interested        → status='interested' (in-play, new bucket)
+    #   not_interested    → status='lost' + lost_reason='not_interested'   (drops out)
+    # For any other outcome (called / blank) we fall back to
     # bumping fresh statuses to 'followup' as before.
     if status_field:
         current = (doc.get(status_field) or "").lower()
@@ -1663,7 +1668,13 @@ async def _record_followup(collection, entity_id: str, data: "FollowupBody", use
         if outcome == "no_answer":
             update_set[status_field] = "no_answer"
         elif outcome == "incorrect_number":
-            update_set[status_field] = "incorrect_number"
+            # Drop out of the pipeline — same treatment as not_interested.
+            update_set[status_field] = "lost"
+            update_set["lost_reason"] = "incorrect_number"
+            update_set["lost_reason_category"] = "Incorrect Number"
+            update_set["lost_at"] = entry["at"]
+        elif outcome == "interested":
+            update_set[status_field] = "interested"
         elif outcome == "not_interested":
             # Mark as lost — this is the CRM sink for "Not Interested".
             update_set[status_field] = "lost"

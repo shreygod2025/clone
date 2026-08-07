@@ -15,11 +15,12 @@ import { useAuth } from '../../context/AuthContext';
 import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
 import {
   rowTintClass,
-  RowColorPicker,
   SheetTabs,
   SheetTable,
   SheetTh,
   SheetTd,
+  SheetSortTh,
+  SheetFilterTh,
 } from '../../components/admin/ExcelSheet';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -93,7 +94,7 @@ const LEAD_STATUSES = [
   { value: 'new',              label: 'New' },
   { value: 'followup',         label: 'Follow-up' },
   { value: 'no_answer',        label: 'No Answer' },
-  { value: 'incorrect_number', label: 'Incorrect Number' },
+  { value: 'interested',       label: 'Interested' },
 ];
 
 const PLAN_OPTIONS = [
@@ -139,6 +140,9 @@ const AdminFutureSkills = () => {
   const [sortKey, setSortKey] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // Client-side column filters (source/centre) — driven by SheetFilterTh headers.
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [centerNameFilter, setCenterNameFilter] = useState('');
   const fileInputRef = useRef(null);
 
   // Load centres list once for the filter dropdown (admin only — owner is auto-scoped)
@@ -213,14 +217,28 @@ const AdminFutureSkills = () => {
   // Client-side sort A→Z / date range applied on top of the fetched rows.
   // Different tabs use different name fields, so we cover all common ones.
   const filteredRows = useMemo(() => {
-    return applySortFilter(rows, sortKey, dateFrom, dateTo, {
+    let out = applySortFilter(rows, sortKey, dateFrom, dateTo, {
       nameFields: ['child_name', 'student_name', 'name', 'parent_name'],
       dateFields: ['created_at', 'trial_date', 'renewal_date', 'due_date'],
     });
-  }, [rows, sortKey, dateFrom, dateTo]);
+    if (sourceFilter) {
+      out = out.filter(r => (r.source || '') === sourceFilter);
+    }
+    if (centerNameFilter) {
+      const centerId = centersForFilter.find(c => c.name === centerNameFilter)?.id;
+      out = out.filter(r => (r.center_id || '') === centerId || centerNameFilter === (r.preferred_center || r.center_name || ''));
+    }
+    return out;
+  }, [rows, sortKey, dateFrom, dateTo, sourceFilter, centerNameFilter, centersForFilter]);
 
-  // Reset sort/date filter whenever the tab or status changes so users start clean.
-  useEffect(() => { setSortKey(''); setDateFrom(''); setDateTo(''); }, [tab, statusFilter]);
+  // Reset sort/date/column filters whenever the tab or status changes so users start clean.
+  useEffect(() => {
+    setSortKey('');
+    setDateFrom('');
+    setDateTo('');
+    setSourceFilter('');
+    setCenterNameFilter('');
+  }, [tab, statusFilter]);
 
   // Clear bulk-selection whenever the underlying tab or filters change.
   useEffect(() => { setSelectedIds(new Set()); }, [tab, statusFilter, search, centerFilter, renewalBucket]);
@@ -305,39 +323,14 @@ const AdminFutureSkills = () => {
     }
   }, [getAuthHeaders, refreshAll]);
 
-  /**
-   * Row color save — writes the `row_color` field to the correct collection
-   * based on the current tab. Same PATCH endpoints already used for notes /
-   * status edits, so no new backend surface.
-   */
-  const handleSaveRowColor = useCallback(async (row, color) => {
-    let path = null;
-    if (tab === 'leads') path = `leads/${row.id}`;
-    else if (tab === 'trials') path = `trials/${row.id}`;
-    else if (tab === 'customers' || tab === 'renewals') path = `subscriptions/${row.id}`;
-    if (!path) return;
-    // Optimistic UI: patch local rows first so the tint appears instantly
-    setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, row_color: color } : r)));
-    try {
-      await axios.patch(
-        `${API}/admin/future-skills/${path}`,
-        { row_color: color },
-        { headers: getAuthHeaders() },
-      );
-    } catch (e) {
-      toast.error(e.response?.data?.detail || 'Could not save color');
-      refreshAll(); // roll back to server truth
-    }
-  }, [tab, getAuthHeaders, refreshAll]);
-
   // ── Rendering per tab ────────────────────────────────────────────────
   const STATUS_FILTER_OPTIONS =
     tab === 'leads'   ? [
-        { value: 'all',              label: `All (${(stats?.new || 0) + (stats?.followup || 0) + (stats?.no_answer || 0) + (stats?.incorrect_number || 0)})` },
-        { value: 'new',              label: `New (${stats?.new || 0})` },
-        { value: 'followup',         label: `Follow-up (${stats?.followup || 0})` },
-        { value: 'no_answer',        label: `No Answer (${stats?.no_answer || 0})` },
-        { value: 'incorrect_number', label: `Wrong Number (${stats?.incorrect_number || 0})` },
+        { value: 'all',          label: `All (${(stats?.new || 0) + (stats?.followup || 0) + (stats?.no_answer || 0) + (stats?.interested || 0)})` },
+        { value: 'new',          label: `New (${stats?.new || 0})` },
+        { value: 'followup',     label: `Follow-up (${stats?.followup || 0})` },
+        { value: 'no_answer',    label: `No Answer (${stats?.no_answer || 0})` },
+        { value: 'interested',   label: `Interested (${stats?.interested || 0})` },
       ]
     : tab === 'trials' ? [
         { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0)})` },
@@ -410,44 +403,16 @@ const AdminFutureSkills = () => {
         {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs) */}
         {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
-          {/* Left: primary actions per tab */}
-          {tab === 'leads' && (
-            <>
-              <button onClick={() => setModal({ type: 'add-lead' })}
-                className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-                data-testid="add-lead-btn">
-                <Plus className="w-3.5 h-3.5" /> Add Lead
-              </button>
-              <button onClick={() => setModal({ type: 'import' })}
-                className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
-                data-testid="import-leads-btn">
-                <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
-              </button>
-            </>
-          )}
-          {tab === 'trials' && (
-            <button onClick={() => setModal({ type: 'add-trial' })}
-              className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-              data-testid="add-trial-btn">
-              <Plus className="w-3.5 h-3.5" /> Add Free Trial
-            </button>
-          )}
-          {tab === 'customers' && (
-            <>
-              <button onClick={() => setModal({ type: 'add-customer' })}
-                className="text-xs px-3 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
-                data-testid="add-customer-btn">
-                <Plus className="w-3.5 h-3.5" /> Add Customer
-              </button>
-              <button onClick={() => setModal({ type: 'import-customers' })}
-                className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
-                data-testid="import-customers-btn">
-                <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
-              </button>
-            </>
-          )}
+          {/* Search — always leftmost */}
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" placeholder="Search name / phone…"
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+              data-testid="search-input" />
+          </div>
 
-          {/* Renewal bucket switch */}
+          {/* Renewal bucket switch (kept inline for the Renewals sheet) */}
           {tab === 'renewals' && (
             <div className="flex bg-slate-100 rounded-lg p-1">
               {[{k:'all',l:'All'},{k:'upcoming',l:'Upcoming (7d)'},{k:'overdue',l:'Overdue'}].map(b => (
@@ -460,67 +425,49 @@ const AdminFutureSkills = () => {
             </div>
           )}
 
-          {/* Status filter */}
-          {STATUS_FILTER_OPTIONS && (
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              data-testid="filter-status">
-              {STATUS_FILTER_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          )}
-
-          {/* Centre filter — admin only (owners are auto-scoped) */}
-          {!isCenterOwner && (
-            <select value={centerFilter} onChange={e => setCenterFilter(e.target.value)}
-              className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              data-testid="filter-center">
-              <option value="all">All Centres</option>
-              {centersForFilter.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
-
-          {/* Search */}
-          <div className="ml-auto relative flex-1 min-w-[200px] max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Search ref / name / phone…"
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
-              data-testid="search-input" />
+          {/* Primary actions — always right-aligned via ml-auto */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {tab === 'leads' && (
+              <>
+                <button onClick={() => setModal({ type: 'import' })}
+                  className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+                  data-testid="import-leads-btn">
+                  <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+                </button>
+                <button onClick={() => setModal({ type: 'add-lead' })}
+                  className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                  data-testid="add-lead-btn">
+                  <Plus className="w-3.5 h-3.5" /> Add Lead
+                </button>
+              </>
+            )}
+            {tab === 'trials' && (
+              <button onClick={() => setModal({ type: 'add-trial' })}
+                className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                data-testid="add-trial-btn">
+                <Plus className="w-3.5 h-3.5" /> Add Free Trial
+              </button>
+            )}
+            {tab === 'customers' && (
+              <>
+                <button onClick={() => setModal({ type: 'import-customers' })}
+                  className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+                  data-testid="import-customers-btn">
+                  <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+                </button>
+                <button onClick={() => setModal({ type: 'add-customer' })}
+                  className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                  data-testid="add-customer-btn">
+                  <Plus className="w-3.5 h-3.5" /> Add Customer
+                </button>
+              </>
+            )}
           </div>
         </div>
         )}
 
-        {/* Sub-status chip filter — Leads tab only. Same source as the dropdown
-            above but rendered as always-visible chips (with live counts) so
-            admins can slice the pipeline in one click. */}
-        {tab === 'leads' && STATUS_FILTER_OPTIONS && (
-          <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="lead-status-chips">
-            <span className="text-xs text-slate-500 font-semibold mr-1">Status:</span>
-            {STATUS_FILTER_OPTIONS.map(opt => {
-              const active = statusFilter === opt.value;
-              const chipColor = {
-                'all':              active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
-                'new':              active ? 'bg-slate-700 text-white border-slate-700'    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400',
-                'followup':         active ? 'bg-amber-500 text-white border-amber-500'    : 'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-400',
-                'no_answer':        active ? 'bg-orange-500 text-white border-orange-500'  : 'bg-orange-50 text-orange-700 border-orange-200 hover:border-orange-400',
-                'incorrect_number': active ? 'bg-purple-600 text-white border-purple-600'  : 'bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-400',
-              }[opt.value] || 'bg-white text-slate-700 border-slate-200';
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setStatusFilter(opt.value)}
-                  className={`text-xs px-3 py-1.5 rounded-full font-bold border transition-colors ${chipColor}`}
-                  data-testid={`lead-status-chip-${opt.value}`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Sort + date-range filter — visible on every list tab (Leads · Trials · Customers · Renewals · Lost) */}
+        {/* Sort + date-range filter — placed FIRST so the sequence reads:
+            Sort/Date → Status → Data. Also holds the shown-count. */}
         {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
           <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="fs-sort-filter">
             <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
@@ -535,6 +482,35 @@ const AdminFutureSkills = () => {
               compact
             />
             <span className="ml-auto text-xs text-slate-400">{filteredRows.length} of {rows.length} shown</span>
+          </div>
+        )}
+
+        {/* Sub-status chip filter — Leads tab only. Rendered BELOW the
+            sort/date bar so the workflow reads: Sort/Date → Status → data. */}
+        {tab === 'leads' && STATUS_FILTER_OPTIONS && (
+          <div className="bg-white rounded-2xl border border-slate-100 px-3 py-2 flex flex-wrap items-center gap-2" data-testid="lead-status-chips">
+            <span className="text-xs text-slate-500 font-semibold mr-1">Status:</span>
+            {STATUS_FILTER_OPTIONS.map(opt => {
+              const active = statusFilter === opt.value;
+              const chipColor = {
+                'all':          active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
+                'new':          active ? 'bg-sky-500 text-white border-sky-500'       : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
+                'followup':     active ? 'bg-amber-500 text-white border-amber-500'   : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
+                'no_answer':    active ? 'bg-rose-500 text-white border-rose-500'     : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
+                'interested':   active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
+              }[opt.value] || 'bg-white text-slate-700 border-slate-200';
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-bold border transition-colors ${chipColor}`}
+                  data-testid={`lead-status-chip-${opt.value}`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -587,7 +563,10 @@ const AdminFutureSkills = () => {
               {tab === 'leads'     && <LeadsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
                 onSaveNotes={handleInlineNotesSave}
-                onSaveRowColor={handleSaveRowColor}
+                sortKey={sortKey} onSortChange={setSortKey}
+                sourceFilter={sourceFilter} onSourceFilterChange={setSourceFilter}
+                centerFilter={centerNameFilter} onCenterFilterChange={setCenterNameFilter}
+                statusFilter={statusFilter} onStatusFilterChange={setStatusFilter}
                 onAction={(action, r) => {
                 if (action === 'book-trial') setModal({ type: 'book-trial', lead: r });
                 if (action === 'followup')   setModal({ type: 'followup', entity: r, entityType: 'lead' });
@@ -595,7 +574,7 @@ const AdminFutureSkills = () => {
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onSaveRowColor={handleSaveRowColor} onAction={async (action, r) => {
+              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
                 if (action === 'convert')      setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule')   setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'trial' });
@@ -611,13 +590,13 @@ const AdminFutureSkills = () => {
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
               }} />}
-              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onSaveRowColor={handleSaveRowColor} onAction={(action, r) => {
+              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'renew')      setModal({ type: 'renew', customer: r });
                 if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
               }} />}
-              {tab === 'renewals'  && <RenewalsTable  rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onSaveRowColor={handleSaveRowColor} onAction={(action, r) => {
+              {tab === 'renewals'  && <RenewalsTable  rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
                 if (action === 'renew')        setModal({ type: 'renew', customer: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'customer' });
                 if (action === 'notes')        setModal({ type: 'notes', entity: r, entityType: 'customer' });
@@ -699,7 +678,8 @@ const StatusBadge = ({ status }) => {
     converted:          { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'CONVERTED' },
     new:                { c: 'bg-slate-50 text-slate-700 border-slate-200',       label: 'NEW' },
     followup:           { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'FOLLOW-UP' },
-    no_answer:          { c: 'bg-orange-50 text-orange-700 border-orange-200',    label: 'NO ANSWER' },
+    no_answer:          { c: 'bg-rose-50 text-rose-700 border-rose-200',          label: 'NO ANSWER' },
+    interested:         { c: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'INTERESTED' },
     incorrect_number:   { c: 'bg-purple-50 text-purple-700 border-purple-200',    label: 'WRONG NUMBER' },
     scheduled:          { c: 'bg-violet-50 text-violet-700 border-violet-200',    label: 'SCHEDULED' },
     rescheduled:        { c: 'bg-indigo-50 text-indigo-700 border-indigo-200',    label: 'RESCHEDULED' },
@@ -767,7 +747,7 @@ const InlineNotesField = ({ lead, onSave }) => {
 };
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, onSaveRowColor }) => {
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
@@ -775,51 +755,52 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
   };
   const allIds = rows.map(r => r.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
-  const someSelected = allIds.some(id => selectedIds.has(id));
+  // Compute unique filter options from the rows currently loaded.
+  const sourceOptions = useMemo(() => {
+    const seen = new Map();
+    rows.forEach(r => { const v = r.source || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
+  }, [rows]);
+  const centerOptions = useMemo(() => {
+    const seen = new Map();
+    rows.forEach(r => { const v = centerName(r.center_id) || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
+  }, [rows, centers]);
+  const statusOptions = LEAD_STATUSES.map(s => ({ value: s.value, label: s.label }));
+
   return (
     <SheetTable testId="leads-sheet">
       <thead>
         <tr>
-          <SheetTh width={32}>
-            <input type="checkbox"
-              checked={allSelected}
-              ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
-              onChange={() => onToggleSelectAll && onToggleSelectAll(allIds)}
-              className="w-3.5 h-3.5 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
-              data-testid="leads-select-all"
-              aria-label="Select all leads"
-            />
-          </SheetTh>
           <SheetTh width={40} className="text-center">#</SheetTh>
-          <SheetTh>Added</SheetTh>
-          <SheetTh>Name</SheetTh>
+          <SheetSortTh label="Added" sortKey="date" currentSort={sortKey} onSort={onSortChange} />
+          <SheetSortTh label="Name" sortKey="name" currentSort={sortKey} onSort={onSortChange} />
           <SheetTh>Phone</SheetTh>
-          <SheetTh>Source</SheetTh>
-          <SheetTh>Centre · Batch</SheetTh>
-          <SheetTh>Status</SheetTh>
+          <SheetFilterTh label="Source" options={sourceOptions} selected={sourceFilter} onChange={onSourceFilterChange} testId="filter-source" />
+          <SheetFilterTh label="Centre · Batch" options={centerOptions} selected={centerFilter} onChange={onCenterFilterChange} testId="filter-center" />
+          <SheetFilterTh label="Status" options={statusOptions} selected={statusFilter === 'all' ? '' : statusFilter} onChange={(v) => onStatusFilterChange(v || 'all')} testId="filter-status" />
           <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
-          <SheetTh width={28} className="text-center">🎨</SheetTh>
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, idx) => (
+        {rows.map((r, idx) => {
+          const rowSelected = selectedIds.has(r.id);
+          return (
           <tr key={r.id}
-            className={`${rowTintClass(r.row_color)} ${!r.row_color && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50 ${selectedIds.has(r.id) ? 'ring-1 ring-inset ring-blue-300' : ''}`}
+            className={`${rowTintClass(r.status)} ${!STATUS_TINT_KNOWN.includes(r.status) && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50 ${rowSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
             data-testid={`row-${r.lead_ref}`}>
-            <SheetTd onClick={(e) => e.stopPropagation()}>
-              <input type="checkbox"
-                checked={selectedIds.has(r.id)}
-                onChange={() => onToggleSelect && onToggleSelect(r.id)}
-                className="w-3.5 h-3.5 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
-                data-testid={`row-select-${r.lead_ref}`}
-                aria-label={`Select ${r.name || r.lead_ref}`}
-              />
+            {/* Row-number cell now doubles as the row selector — clicking # selects the row. */}
+            <SheetTd
+              className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60 cursor-pointer select-none hover:bg-blue-100"
+              onClick={(e) => { e.stopPropagation(); onToggleSelect && onToggleSelect(r.id); }}
+              testId={`row-select-${r.lead_ref}`}
+              title="Click to select this row"
+            >
+              {rowSelected ? '✓' : idx + 1}
             </SheetTd>
-            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
             <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)} testId={`row-added-${r.lead_ref}`}>
               <div className="font-bold text-[#0F1E33] leading-tight">{fmtDateTime(r.created_at)}</div>
-              <div className="text-[9px] text-slate-400 font-mono">{r.lead_ref}</div>
             </SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33] leading-tight">{r.name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
@@ -830,11 +811,11 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               )}
             </SheetTd>
             <SheetTd className="text-[11px] text-slate-700 cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
-              <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3" /> {r.phone}</span>
+              {r.phone}
             </SheetTd>
             <SheetTd className="text-[11px] font-semibold text-slate-700 cursor-pointer" onClick={() => onOpen(r)}>{r.source || '—'}</SheetTd>
             <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || '—'}</div>
+              <div className="font-semibold text-slate-700 leading-tight">{centerName(r.center_id) || '—'}</div>
               <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
             </SheetTd>
             <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>
@@ -843,22 +824,21 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
                 <div className="text-[10px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
             </SheetTd>
-            {/* Inline notes — save on blur or Cmd/Ctrl+Enter. Uncontrolled input
-                so the row doesn't re-render every keystroke. */}
+            {/* Inline notes — save on blur or Cmd/Ctrl+Enter. */}
             <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
               <InlineNotesField lead={r} onSave={onSaveNotes} />
             </SheetTd>
             <SheetTd>
               <div className="flex flex-wrap gap-1 items-center">
                 <button onClick={(e) => { e.stopPropagation(); onAction('book-trial', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  className="text-[11px] px-3 py-1.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-book-trial-${r.lead_ref}`} title="Book Trial">
-                  <Calendar className="w-3 h-3" /> Trial
+                  <Calendar className="w-3.5 h-3.5" /> Trial
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-[11px] px-3 py-1.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
-                  <Clock className="w-3 h-3" /> Followup
+                  <Clock className="w-3.5 h-3.5" /> Followup
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
                   className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
@@ -866,9 +846,9 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-[11px] px-3 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-mark-lost-${r.lead_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" /> Mark Lost
+                  <XCircle className="w-3.5 h-3.5" /> Mark Lost
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
                   className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
@@ -877,21 +857,31 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
                 </button>
               </div>
             </SheetTd>
-            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
-              <RowColorPicker
-                current={r.row_color}
-                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
-                testId={`row-color-${r.lead_ref}`}
-              />
+          </tr>
+          );
+        })}
+        {allIds.length > 0 && (
+          <tr className="bg-slate-100 border-t border-slate-300">
+            <SheetTd className="text-center cursor-pointer text-slate-600 font-bold text-[11px]"
+              onClick={() => onToggleSelectAll && onToggleSelectAll(allIds)}
+              testId="leads-select-all"
+              title="Select / deselect all">
+              {allSelected ? '☑' : '☐'}
+            </SheetTd>
+            <SheetTd colSpan={8} className="text-[11px] text-slate-500">
+              Click a row number to select · currently {selectedIds.size}/{allIds.length} selected
             </SheetTd>
           </tr>
-        ))}
+        )}
       </tbody>
     </SheetTable>
   );
 };
 
-const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveRowColor }) => {
+// Statuses that have an auto-tint in ExcelSheet (kept in sync with STATUS_TINT there).
+const STATUS_TINT_KNOWN = ['new', 'followup', 'no_answer', 'interested'];
+
+const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchInfo = (bid, fallback) => {
     const b = batches.find(x => x.id === bid);
@@ -910,13 +900,12 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
           <SheetTh>Scheduled</SheetTh>
           <SheetTh>Status</SheetTh>
           <SheetTh>Actions</SheetTh>
-          <SheetTh width={28} className="text-center">🎨</SheetTh>
         </tr>
       </thead>
       <tbody>
         {rows.map((r, idx) => (
           <tr key={r.id}
-            className={`${rowTintClass(r.row_color)} ${!r.row_color && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
+            className={`${rowTintClass(r.crm_status)} ${!STATUS_TINT_KNOWN.includes(r.crm_status) && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.trial_ref}`}>
             <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
             <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</SheetTd>
@@ -1001,13 +990,6 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
                 </button>
               </div>
             </SheetTd>
-            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
-              <RowColorPicker
-                current={r.row_color}
-                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
-                testId={`row-color-${r.trial_ref}`}
-              />
-            </SheetTd>
           </tr>
         ))}
       </tbody>
@@ -1015,7 +997,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
   );
 };
 
-const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveRowColor }) => {
+const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   return (
@@ -1030,13 +1012,12 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
           <SheetTh>Amount Paid</SheetTh>
           <SheetTh>Renewal Date</SheetTh>
           <SheetTh>Actions</SheetTh>
-          <SheetTh width={28} className="text-center">🎨</SheetTh>
         </tr>
       </thead>
       <tbody>
         {rows.map((r, idx) => (
           <tr key={r.id}
-            className={`${rowTintClass(r.row_color)} ${!r.row_color && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
+            className={`${idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
             <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
             <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</SheetTd>
@@ -1045,7 +1026,7 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
               <div className="text-[10px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
             </SheetTd>
             <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
+              <div className="font-semibold text-slate-700 leading-tight">{centerName(r.center_id) || r.preferred_center || '—'}</div>
               <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
             </SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
@@ -1083,13 +1064,6 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
                 </button>
               </div>
             </SheetTd>
-            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
-              <RowColorPicker
-                current={r.row_color}
-                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
-                testId={`row-color-${r.subscription_ref}`}
-              />
-            </SheetTd>
           </tr>
         ))}
       </tbody>
@@ -1097,7 +1071,7 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
   );
 };
 
-const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveRowColor }) => {
+const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   return (
@@ -1112,13 +1086,12 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onS
           <SheetTh>Renewal</SheetTh>
           <SheetTh>Status</SheetTh>
           <SheetTh>Actions</SheetTh>
-          <SheetTh width={28} className="text-center">🎨</SheetTh>
         </tr>
       </thead>
       <tbody>
         {rows.map((r, idx) => (
           <tr key={r.id}
-            className={`${rowTintClass(r.row_color)} ${!r.row_color && (r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : (idx % 2 === 1 ? 'bg-slate-50/40' : ''))} hover:bg-blue-50/50`}
+            className={`${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : (idx % 2 === 1 ? 'bg-slate-50/40' : '')} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
             <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
             <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</SheetTd>
@@ -1173,13 +1146,6 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onS
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-            </SheetTd>
-            <SheetTd className="text-center" onClick={(e) => e.stopPropagation()}>
-              <RowColorPicker
-                current={r.row_color}
-                onChange={(color) => onSaveRowColor && onSaveRowColor(r, color)}
-                testId={`row-color-renewal-${r.subscription_ref}`}
-              />
             </SheetTd>
           </tr>
         ))}

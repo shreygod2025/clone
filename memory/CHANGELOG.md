@@ -1,5 +1,41 @@
 # OLL Backend Changelog
 
+## 2026-02-07 (part 4) — Future Skills CRM final polish 🎯
+
+### Backend
+- **Incorrect Number outcome** now drops the lead straight to the Lost bucket (`status='lost'`, `lost_reason='incorrect_number'`, `lost_reason_category='Incorrect Number'`) instead of parking it in the pipeline. Verified: lead disappears from `/leads` list immediately.
+- **Interested outcome** now bumps status to `interested` (previously "interested" wasn't a real status). Included in `ACTIVE_STATUSES` and returned in `stats.interested`.
+- `stats.incorrect_number` removed (no longer a valid state).
+
+### Frontend
+- **Auto row colors driven by status** — no more manual color picker. `STATUS_TINT` map in `ExcelSheet.jsx`: `new → sky-50 (blue)`, `followup → yellow-50`, `no_answer → rose-50 (red)`, `interested → emerald-50 (green)`. Trials / customers use their `crm_status` / `renewal_bucket` for the same palette.
+- **`FSL-XXXX` reference numbers removed** from the Leads sheet (Added column now shows only the timestamp).
+- **Row number cell doubles as selector** — click `#` to select/deselect. Selected rows get a blue inset ring. Footer row shows `n/total selected` with a Select-All toggle. Old checkbox column is gone.
+- **Column-header sort + filter** (Excel style):
+  - `Added` and `Name` headers are clickable to cycle asc → desc → off (`SheetSortTh`).
+  - `Source`, `Centre · Batch`, `Status` headers have a funnel icon that opens a dropdown of unique values with counts (`SheetFilterTh`). Selecting one filters the sheet client-side.
+- **Icons removed** from Phone and Centre cells (per request — less clutter).
+- **Bigger Trial + Followup buttons** with icons + text (`text-[11px] px-3 py-1.5`) — visually match the Mark Lost button.
+- **Toolbar simplified** — search on the left, primary Add Lead / Add Customer / Add Trial buttons pushed to the right via `ml-auto`. The old `All (N)` status select and `All Centres` dropdown removed (their function moved to the column-header filters).
+- **Bar order flipped** — `Sort & Date` bar rendered FIRST, then `Status` chips below. New chip layout: `All · New · Follow-up · No Answer · Interested`. Wrong Number chip removed.
+- Removed `handleSaveRowColor` handler and `RowColorPicker` component; ExcelSheet.jsx no longer exports either.
+
+### Files touched
+- `backend/routes/future_skills.py` — `_record_followup` outcome map, `ACTIVE_STATUSES`, stats block.
+- `frontend/src/components/admin/ExcelSheet.jsx` — status-based `rowTintClass`, new `SheetSortTh` + `SheetFilterTh`, removed `RowColorPicker` + `ROW_COLORS`.
+- `frontend/src/pages/admin/AdminFutureSkills.jsx` — LEAD_STATUSES + STATUS_FILTER_OPTIONS, StatusBadge, LeadsTable (whole header + row selector + no FSL), TrialsTable/CustomersTable/RenewalsTable (color column removed), toolbar layout, `filteredRows` with source/centre column filters.
+
+### Verified via Playwright + backend curl
+- Incorrect Number outcome → `status=lost`, gone from leads list ✅
+- Interested outcome → `status=interested`, stats.interested increments ✅
+- Row 1 (NEW) tinted blue, row 2 (FOLLOW-UP) tinted yellow ✅
+- Add Lead moved to right, Search on left ✅
+- Source filter dropdown opens with counts (`Instagram ads (1) · Instagram (60)`) ✅
+- Name column click → alphabetical sort ✅
+- Row # click → row selected with blue ring, "1 selected" counter ✅
+- FSL text no longer visible on the page ✅
+
+
 ## 2026-02-07 (part 3) — Excel-style redesign of Future Skills CRM 📗
 
 **Zero functional changes** — pure UI overhaul that keeps every existing action, modal, PATCH endpoint and data-testid.

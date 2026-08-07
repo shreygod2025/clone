@@ -1,5 +1,4 @@
 import React from 'react';
-import { Check } from 'lucide-react';
 
 /**
  * Shared Excel-style building blocks for the Future Skills CRM.
@@ -9,72 +8,34 @@ import { Check } from 'lucide-react';
  * surface area is untouched.
  */
 
-// ── Row-color palette ────────────────────────────────────────────────
-// Kept intentionally narrow (7 highlights + None) so admins don't fatigue
-// over choice. Values are stored on the document as `row_color` and used
-// to compute both the tint (row background) and the dot indicator.
-export const ROW_COLORS = [
-  { key: '',       label: 'None',   dot: 'bg-white border-slate-300',      tint: '' },
-  { key: 'yellow', label: 'Yellow', dot: 'bg-yellow-300 border-yellow-400', tint: 'bg-yellow-50' },
-  { key: 'green',  label: 'Green',  dot: 'bg-emerald-400 border-emerald-500', tint: 'bg-emerald-50' },
-  { key: 'red',    label: 'Red',    dot: 'bg-rose-400 border-rose-500',       tint: 'bg-rose-50' },
-  { key: 'blue',   label: 'Blue',   dot: 'bg-sky-400 border-sky-500',         tint: 'bg-sky-50' },
-  { key: 'purple', label: 'Purple', dot: 'bg-violet-400 border-violet-500',   tint: 'bg-violet-50' },
-  { key: 'pink',   label: 'Pink',   dot: 'bg-pink-300 border-pink-400',       tint: 'bg-pink-50' },
-  { key: 'gray',   label: 'Gray',   dot: 'bg-slate-300 border-slate-400',     tint: 'bg-slate-100' },
-];
-
-export const rowTintClass = (color) =>
-  (ROW_COLORS.find((c) => c.key === color) || ROW_COLORS[0]).tint;
-
 /**
- * <RowColorPicker /> — small palette that hovers off the last column.
- * `current` is the current color key, `onChange(nextKey)` is called when
- * the user picks a new one. The dot itself opens the popover on click.
+ * Status → row tint mapping. Colors match the StatusBadge palette so
+ * admins get an instant visual signal of the pipeline stage without
+ * needing a manual color picker.
+ *   new         → blue
+ *   followup    → yellow (call back)
+ *   no_answer   → red
+ *   interested  → green
+ * Anything else falls through to the default (no tint).
  */
-export const RowColorPicker = ({ current, onChange, testId = 'row-color' }) => {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', off);
-    return () => document.removeEventListener('mousedown', off);
-  }, []);
-  const currentCfg = ROW_COLORS.find((c) => c.key === current) || ROW_COLORS[0];
-
-  return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className={`w-4 h-4 rounded-sm border-2 ${currentCfg.dot} hover:scale-110 transition-transform`}
-        data-testid={`${testId}-btn`}
-        title={`Row color: ${currentCfg.label}`}
-        aria-label="Change row color"
-      />
-      {open && (
-        <div
-          className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-1.5 flex gap-1"
-          data-testid={`${testId}-popover`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {ROW_COLORS.map((c) => (
-            <button
-              key={c.key || 'none'}
-              type="button"
-              onClick={() => { onChange(c.key); setOpen(false); }}
-              className={`w-5 h-5 rounded-sm border-2 ${c.dot} hover:scale-110 relative flex items-center justify-center`}
-              title={c.label}
-              data-testid={`${testId}-opt-${c.key || 'none'}`}
-            >
-              {current === c.key && <Check className="w-3 h-3 text-slate-800" strokeWidth={3} />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+const STATUS_TINT = {
+  new:        'bg-sky-50',
+  followup:   'bg-yellow-50',
+  no_answer:  'bg-rose-50',
+  interested: 'bg-emerald-50',
+  // Trials / customers pipeline statuses reuse the same palette conceptually
+  scheduled:      'bg-sky-50',
+  rescheduled:    'bg-yellow-50',
+  trial_scheduled:'bg-sky-50',
+  completed:      'bg-emerald-50',
+  contacted:      'bg-yellow-50',
+  qualified:      'bg-emerald-50',
+  active:         'bg-emerald-50',
+  overdue:        'bg-rose-50',
+  upcoming:       'bg-yellow-50',
 };
+
+export const rowTintClass = (status) => STATUS_TINT[status] || '';
 
 /**
  * <SheetTabs /> — bottom-of-Excel-workbook tab strip. Active tab appears
@@ -137,6 +98,88 @@ export const SheetTh = ({ children, className = '', width }) => (
     {children}
   </th>
 );
+
+/**
+ * Clickable column header. Click cycles: asc → desc → none.
+ * `currentSort` is one of e.g. 'name-asc' | 'name-desc' | ''.
+ */
+export const SheetSortTh = ({ label, sortKey, currentSort, onSort, className = '', width }) => {
+  const asc = `${sortKey}-asc`;
+  const desc = `${sortKey}-desc`;
+  const isAsc = currentSort === asc;
+  const isDesc = currentSort === desc;
+  const next = isAsc ? desc : (isDesc ? '' : asc);
+  return (
+    <SheetTh className={`cursor-pointer select-none hover:bg-slate-200 ${className}`} width={width}>
+      <button
+        type="button"
+        onClick={() => onSort(next)}
+        className="flex items-center gap-1 uppercase font-bold w-full text-left"
+        data-testid={`sort-${sortKey}`}
+      >
+        {label}
+        <span className="text-[9px] leading-none">
+          {isAsc ? '▲' : (isDesc ? '▼' : '▲▼')}
+        </span>
+      </button>
+    </SheetTh>
+  );
+};
+
+/**
+ * Excel-style filter drop-down on a column header. Shows a funnel icon;
+ * clicking opens a checklist of unique values from the column.
+ * `options` = [{ value, label, count? }], `selected` = string (single-value filter for now).
+ */
+export const SheetFilterTh = ({ label, options = [], selected = '', onChange, className = '', width, testId }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', off);
+    return () => document.removeEventListener('mousedown', off);
+  }, []);
+  const active = !!selected;
+  return (
+    <SheetTh className={className} width={width}>
+      <div className="flex items-center gap-1 relative" ref={ref}>
+        <span>{label}</span>
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className={`ml-auto text-[10px] px-1 py-0.5 rounded ${active ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200'}`}
+          title={active ? `Filtered: ${selected}` : 'Filter'}
+          data-testid={testId ? `${testId}-btn` : undefined}
+        >
+          ⛭
+        </button>
+        {open && (
+          <div className="absolute right-0 top-6 z-30 bg-white border border-slate-300 rounded-md shadow-lg p-1 min-w-[160px] max-h-[300px] overflow-y-auto normal-case tracking-normal"
+               data-testid={testId ? `${testId}-menu` : undefined}>
+            <button
+              type="button"
+              onClick={() => { onChange(''); setOpen(false); }}
+              className={`w-full text-left text-[11px] px-2 py-1 rounded hover:bg-slate-100 ${!selected ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'}`}
+            >
+              All {label.toLowerCase()}s
+            </button>
+            {options.map(o => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                className={`w-full text-left text-[11px] px-2 py-1 rounded hover:bg-slate-100 flex items-center justify-between ${selected === o.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'}`}
+              >
+                <span className="truncate">{o.label}</span>
+                {typeof o.count === 'number' && <span className="text-[10px] text-slate-400 ml-1">{o.count}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </SheetTh>
+  );
+};
 
 // Data cell — thin border, tight padding
 export const SheetTd = ({ children, className = '', onClick, title, testId, colSpan }) => (
