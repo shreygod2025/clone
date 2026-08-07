@@ -1,5 +1,46 @@
 # OLL Backend Changelog
 
+## 2026-02-07 — Sort A→Z / date-range filter across CRMs + Add Customer + Invoice address 🔤📅
+
+**Status: COMPLETE — verified by testing agent (100% frontend flows)**
+
+### What changed
+
+**New reusable component** — `/app/frontend/src/components/SortFilterBar.jsx`
+- Exports `<SortFilterBar />` (sort dropdown + From/To date pickers + Clear) and helper `applySortFilter(list, sort, dateFrom, dateTo, { nameFields, dateFields })`.
+- Sort options: Default order · Name (A→Z) · Name (Z→A) · Latest→Oldest · Oldest→Latest.
+
+**Summer Camp CRM** (`AdminStudentCRM.jsx`)
+- `filteredSortedCampBookings` = `applySortFilter(filteredCampBookings, campSort, campDateFrom, campDateTo)` — applies across every KPI/status tab (All · Form Filled · Leads · Hot Lead · Broadcast · ₹500 Reserved · Converted · Lost).
+- Sort & Date row (`data-testid="camp-sort-filter"`) added to the Bookings toolbar.
+- Converted view now has a green **"+ Add Customer"** shortcut (`data-testid="add-customer-converted-btn"`) that opens the Add Lead modal in "customer mode" — modal title becomes "Add Customer" and after the booking is created the front-end issues `PATCH /api/summer-camp/bookings/{id}` with `crm_status="converted"` so the new row lands directly in the Converted bucket.
+
+**Future Skills CRM** (`AdminFutureSkills.jsx`)
+- `filteredRows` (useMemo) applies sort + date-range on top of `rows`, passed to LeadsTable / TrialsTable / CustomersTable / RenewalsTable / LostTable.
+- Sort & Date row (`data-testid="fs-sort-filter"`) rendered only on list tabs (leads, trials, customers, renewals, lost).
+- Sort/date state resets on tab or status change.
+
+**Orders → Student Payments** (`AdminOrders.jsx`)
+- `sortedPayments` now runs `applySortFilter` when `activeTab === 'student'`.
+- Sort & Date row (`data-testid="student-payments-sort-filter"`) shown only inside the Student Payments tab; hidden on School Payments.
+- Works across Home Classes / Summer Camp / Future Skills sub-tabs.
+
+**Invoice PDF address** (`/app/frontend/src/utils/invoicePdfGenerator.js`)
+- `COMPANY.name` → `Clonefutura Live Solutions Pvt Ltd.`
+- `COMPANY.address` → `103 1st floor - Kshitij building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053`.
+- Header now uses `splitTextToSize` to wrap the long address across up to 2 lines so it never overflows.
+
+### Files touched
+- `frontend/src/components/SortFilterBar.jsx` (new)
+- `frontend/src/pages/admin/AdminStudentCRM.jsx`
+- `frontend/src/pages/admin/AdminFutureSkills.jsx`
+- `frontend/src/pages/admin/AdminOrders.jsx`
+- `frontend/src/utils/invoicePdfGenerator.js`
+
+### Known caveat (from testing agent code review)
+- `applySortFilter` drops rows that lack every candidate date field whenever From/To is set. Not an issue today (all our leads/bookings have `created_at`), but future collections should include the field or the util should treat missing dates as "include".
+
+
 ## 2026-08-04 (round 11) — P&L expense fix + allocation + Software Subscription 💰
 **Status: COMPLETE — P&L now shows the real all-time expense total**
 

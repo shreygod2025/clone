@@ -2,6 +2,23 @@
 ## Product Requirements Document
 
 
+### Latest Update (2026-02-07) — Sort/Filter across CRMs + Add Customer shortcut + Invoice address 🔤📅
+
+**Sort & Date Filter (all CRMs)** — reusable `<SortFilterBar />` (see `/app/frontend/src/components/SortFilterBar.jsx`) added to:
+- Summer Camp CRM bookings toolbar (works across every KPI/status tab)
+- Future Skills CRM (Leads · Trials · Customers · Renewals · Lost tabs only)
+- Orders → Student Payments (across Home / Summer Camp / Future Skills sub-tabs)
+
+Sort options: Default order · Name (A→Z) · Name (Z→A) · Latest→Oldest · Oldest→Latest. Date range = inclusive From/To.
+
+**Add Customer shortcut (Summer Camp Converted)** — green `+ Add Customer` button on the Converted KPI view opens the Add Lead modal in "customer mode" and auto-`PATCH`es the new booking to `crm_status='converted'` so it skips the lead stage. Modal title / submit label switch to "Add Customer".
+
+**Invoice PDF header** — company name updated to `Clonefutura Live Solutions Pvt Ltd.` and address updated to `103 1st floor - Kshitij building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053`. PDF uses `splitTextToSize` so the longer address never overflows.
+
+Testing: 100% frontend flows verified (testing agent iteration 113). Cleanup done — no stray test data.
+
+
+
 ### Latest Update (2026-07-31 · iter118) — Subscribe Form Slimmed + Pricing Bump + Custom Payment Links 💳
 
 **Public Subscribe form rebuilt** —
