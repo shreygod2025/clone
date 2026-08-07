@@ -182,6 +182,152 @@ export const SheetFilterTh = ({ label, options = [], selected = '', onChange, cl
   );
 };
 
+/**
+ * Combined sort + date filter column header. Click the label toggles the
+ * sort direction (like SheetSortTh); the chevron on the right opens a
+ * popover with quick presets (Today, This Week, This Month, Last 30 days)
+ * and a From → To range picker.
+ *
+ * Props:
+ *   label, sortKey, currentSort, onSort — same as SheetSortTh
+ *   dateFrom, dateTo, onDateFromChange, onDateToChange — controlled range
+ */
+export const SheetDateFilterTh = ({
+  label,
+  sortKey,
+  currentSort,
+  onSort,
+  dateFrom = '',
+  dateTo = '',
+  onDateFromChange,
+  onDateToChange,
+  className = '',
+  width,
+  testId = 'date-filter',
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', off);
+    return () => document.removeEventListener('mousedown', off);
+  }, []);
+
+  const asc = `${sortKey}-asc`;
+  const desc = `${sortKey}-desc`;
+  const isAsc = currentSort === asc;
+  const isDesc = currentSort === desc;
+  const nextSort = isAsc ? desc : (isDesc ? '' : asc);
+
+  const active = !!(dateFrom || dateTo);
+
+  const toISO = (d) => d.toISOString().slice(0, 10);
+  const applyPreset = (preset) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (preset === 'today') {
+      onDateFromChange && onDateFromChange(toISO(today));
+      onDateToChange && onDateToChange(toISO(today));
+    } else if (preset === 'week') {
+      const start = new Date(today);
+      const day = (start.getDay() + 6) % 7; // Monday-start
+      start.setDate(start.getDate() - day);
+      onDateFromChange && onDateFromChange(toISO(start));
+      onDateToChange && onDateToChange(toISO(today));
+    } else if (preset === 'month') {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      onDateFromChange && onDateFromChange(toISO(start));
+      onDateToChange && onDateToChange(toISO(today));
+    } else if (preset === 'last30') {
+      const start = new Date(today);
+      start.setDate(start.getDate() - 30);
+      onDateFromChange && onDateFromChange(toISO(start));
+      onDateToChange && onDateToChange(toISO(today));
+    } else if (preset === 'clear') {
+      onDateFromChange && onDateFromChange('');
+      onDateToChange && onDateToChange('');
+    }
+    setOpen(false);
+  };
+
+  return (
+    <SheetTh className={`cursor-pointer select-none hover:bg-slate-200 ${className}`} width={width}>
+      <div className="flex items-center gap-1 relative" ref={ref}>
+        <button
+          type="button"
+          onClick={() => onSort(nextSort)}
+          className="flex items-center gap-1 uppercase font-bold text-left"
+          data-testid={`sort-${sortKey}`}
+        >
+          {label}
+          <span className="text-[9px] leading-none">
+            {isAsc ? '▲' : (isDesc ? '▼' : '▲▼')}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+          className={`ml-auto text-[10px] px-1 py-0.5 rounded flex items-center ${active ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200'}`}
+          title={active ? `Filtered: ${dateFrom || '…'} → ${dateTo || '…'}` : 'Filter by date'}
+          data-testid={`${testId}-btn`}
+        >
+          <ChevronDown className="w-3 h-3" strokeWidth={3} />
+        </button>
+        {open && (
+          <div
+            className="absolute left-0 top-6 z-30 bg-white border border-slate-300 rounded-md shadow-lg p-2 min-w-[240px] normal-case tracking-normal"
+            data-testid={`${testId}-menu`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Quick presets</div>
+            <div className="grid grid-cols-2 gap-1 mb-2">
+              {[
+                { k: 'today', l: 'Today' },
+                { k: 'week', l: 'This Week' },
+                { k: 'month', l: 'This Month' },
+                { k: 'last30', l: 'Last 30 days' },
+              ].map(p => (
+                <button
+                  key={p.k}
+                  type="button"
+                  onClick={() => applyPreset(p.k)}
+                  className="text-[11px] px-2 py-1 rounded bg-slate-50 hover:bg-blue-100 text-slate-700 font-semibold border border-slate-200"
+                  data-testid={`${testId}-preset-${p.k}`}
+                >
+                  {p.l}
+                </button>
+              ))}
+            </div>
+            <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Custom range</div>
+            <div className="flex flex-col gap-1 mb-2">
+              <label className="text-[10px] text-slate-600">From
+                <input type="date" value={dateFrom}
+                  onChange={(e) => onDateFromChange && onDateFromChange(e.target.value)}
+                  className="mt-0.5 w-full text-[11px] px-1.5 py-1 border border-slate-200 rounded"
+                  data-testid={`${testId}-from`} />
+              </label>
+              <label className="text-[10px] text-slate-600">To
+                <input type="date" value={dateTo}
+                  onChange={(e) => onDateToChange && onDateToChange(e.target.value)}
+                  className="mt-0.5 w-full text-[11px] px-1.5 py-1 border border-slate-200 rounded"
+                  data-testid={`${testId}-to`} />
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={() => applyPreset('clear')}
+              className="w-full text-[11px] px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+              data-testid={`${testId}-clear`}
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
+      </div>
+    </SheetTh>
+  );
+};
+
 // Data cell — thin border, tight padding
 export const SheetTd = ({ children, className = '', onClick, title, testId, colSpan }) => (
   <td

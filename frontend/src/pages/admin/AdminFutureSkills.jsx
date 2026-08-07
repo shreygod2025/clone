@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
+import { applySortFilter } from '../../components/SortFilterBar';
 import {
   rowTintClass,
   SheetTabs,
@@ -21,6 +21,7 @@ import {
   SheetTd,
   SheetSortTh,
   SheetFilterTh,
+  SheetDateFilterTh,
 } from '../../components/admin/ExcelSheet';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -438,19 +439,47 @@ const AdminFutureSkills = () => {
         />
 
         {/* Toolbar (hidden for Centres / Reports / Sources / Economics tabs).
-            Single unified panel — search on left, sort/date + month + status
-            chips inline, primary Add/Import buttons pushed to the right. */}
+            One tight row on the Leads tab — search on left, status chips inline,
+            Add/Import pushed right. Date filtering lives on the Date column
+            header (Excel-style). Sort is triggered by clicking column headers. */}
         {tab !== 'centers' && tab !== 'reports' && tab !== 'sources' && tab !== 'economics' && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-col gap-2">
-            {/* ROW 1 — Search + Add/Import (right) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px] max-w-md">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="bg-white rounded-2xl border border-slate-100 p-3">
+            <div className="flex flex-wrap items-center gap-2" data-testid="fs-toolbar">
+              {/* Compact search */}
+              <div className="relative w-[220px]">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input type="text" placeholder="Search name / phone…"
                   value={search} onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
                   data-testid="search-input" />
               </div>
+
+              {/* Status chips (Leads only) — inline with search & action buttons */}
+              {tab === 'leads' && STATUS_FILTER_OPTIONS && (
+                <div className="flex flex-wrap items-center gap-1.5" data-testid="lead-status-chips">
+                  {STATUS_FILTER_OPTIONS.map(opt => {
+                    const active = statusFilter === opt.value;
+                    const chipColor = {
+                      'all':        active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
+                      'new':        active ? 'bg-sky-500 text-white border-sky-500'       : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
+                      'followup':   active ? 'bg-amber-500 text-white border-amber-500'   : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
+                      'no_answer':  active ? 'bg-rose-500 text-white border-rose-500'     : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
+                      'interested': active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
+                    }[opt.value] || 'bg-white text-slate-700 border-slate-200';
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setStatusFilter(opt.value)}
+                        className={`text-xs px-2.5 py-1 rounded-full font-bold border transition-colors ${chipColor}`}
+                        data-testid={`lead-status-chip-${opt.value}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {tab === 'renewals' && (
                 <div className="flex bg-slate-100 rounded-lg p-1">
@@ -470,7 +499,7 @@ const AdminFutureSkills = () => {
               {(tab === 'customers' || tab === 'trials' || tab === 'renewals') && (
                 <button onClick={syncPendingPayments}
                   disabled={syncingPayments}
-                  className="text-xs px-3 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold flex items-center gap-1.5 disabled:opacity-60"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold flex items-center gap-1.5 disabled:opacity-60"
                   data-testid="sync-payments-btn"
                   title="Recheck Cashfree for any paid but unmarked payments">
                   {syncingPayments ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Syncing…</> : <><RotateCcw className="w-3.5 h-3.5" /> Sync Payments</>}
@@ -478,15 +507,18 @@ const AdminFutureSkills = () => {
               )}
 
               <div className="ml-auto flex flex-wrap items-center gap-2">
+                {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
+                  <span className="text-[11px] text-slate-400" data-testid="fs-row-count">{filteredRows.length} of {rows.length}</span>
+                )}
                 {tab === 'leads' && (
                   <>
                     <button onClick={() => setModal({ type: 'import' })}
-                      className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
                       data-testid="import-leads-btn">
-                      <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+                      <Upload className="w-3.5 h-3.5" /> Import
                     </button>
                     <button onClick={() => setModal({ type: 'add-lead' })}
-                      className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                      className="text-xs px-3 py-1.5 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
                       data-testid="add-lead-btn">
                       <Plus className="w-3.5 h-3.5" /> Add Lead
                     </button>
@@ -494,7 +526,7 @@ const AdminFutureSkills = () => {
                 )}
                 {tab === 'trials' && (
                   <button onClick={() => setModal({ type: 'add-trial' })}
-                    className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
                     data-testid="add-trial-btn">
                     <Plus className="w-3.5 h-3.5" /> Add Free Trial
                   </button>
@@ -502,12 +534,12 @@ const AdminFutureSkills = () => {
                 {tab === 'customers' && (
                   <>
                     <button onClick={() => setModal({ type: 'import-customers' })}
-                      className="text-xs px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5"
                       data-testid="import-customers-btn">
-                      <Upload className="w-3.5 h-3.5" /> Import CSV / Excel
+                      <Upload className="w-3.5 h-3.5" /> Import
                     </button>
                     <button onClick={() => setModal({ type: 'add-customer' })}
-                      className="text-xs px-4 py-2 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
+                      className="text-xs px-3 py-1.5 rounded-lg bg-[#1E3A5F] hover:bg-[#0F1E33] text-white font-bold flex items-center gap-1.5"
                       data-testid="add-customer-btn">
                       <Plus className="w-3.5 h-3.5" /> Add Customer
                     </button>
@@ -515,52 +547,6 @@ const AdminFutureSkills = () => {
                 )}
               </div>
             </div>
-
-            {/* ROW 2 — Sort / Month / Date + count (only on list tabs) */}
-            {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100" data-testid="fs-sort-filter">
-                <span className="text-xs text-slate-500 font-semibold">Sort & Date:</span>
-                <SortFilterBar
-                  sort={sortKey}
-                  onSortChange={setSortKey}
-                  dateFrom={dateFrom}
-                  onDateFromChange={setDateFrom}
-                  dateTo={dateTo}
-                  onDateToChange={setDateTo}
-                  testIdPrefix="fs"
-                  compact
-                />
-                <span className="ml-auto text-xs text-slate-400">{filteredRows.length} of {rows.length} shown</span>
-              </div>
-            )}
-
-            {/* ROW 3 — Status chips (Leads only) */}
-            {tab === 'leads' && STATUS_FILTER_OPTIONS && (
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100" data-testid="lead-status-chips">
-                <span className="text-xs text-slate-500 font-semibold mr-1">Status:</span>
-                {STATUS_FILTER_OPTIONS.map(opt => {
-                  const active = statusFilter === opt.value;
-                  const chipColor = {
-                    'all':        active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
-                    'new':        active ? 'bg-sky-500 text-white border-sky-500'       : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
-                    'followup':   active ? 'bg-amber-500 text-white border-amber-500'   : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
-                    'no_answer':  active ? 'bg-rose-500 text-white border-rose-500'     : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
-                    'interested': active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
-                  }[opt.value] || 'bg-white text-slate-700 border-slate-200';
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setStatusFilter(opt.value)}
-                      className={`text-xs px-3 py-1.5 rounded-full font-bold border transition-colors ${chipColor}`}
-                      data-testid={`lead-status-chip-${opt.value}`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
 
@@ -620,6 +606,8 @@ const AdminFutureSkills = () => {
                 onSaveNotes={handleInlineNotesSave}
                 onUpdateStatus={handleUpdateLeadStatus}
                 sortKey={sortKey} onSortChange={setSortKey}
+                dateFrom={dateFrom} onDateFromChange={setDateFrom}
+                dateTo={dateTo} onDateToChange={setDateTo}
                 sourceFilter={sourceFilter} onSourceFilterChange={setSourceFilter}
                 centerFilter={centerNameFilter} onCenterFilterChange={setCenterNameFilter}
                 statusFilter={statusFilter} onStatusFilterChange={setStatusFilter}
@@ -888,7 +876,7 @@ const StatusCell = ({ status, onChange, refId }) => {
 };
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange, onUpdateStatus }) => {
+const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, dateFrom, onDateFromChange, dateTo, onDateToChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange, onUpdateStatus }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
@@ -914,7 +902,17 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
       <thead>
         <tr>
           <SheetTh width={40} className="text-center">#</SheetTh>
-          <SheetSortTh label="Added" sortKey="date" currentSort={sortKey} onSort={onSortChange} />
+          <SheetDateFilterTh
+            label="Added"
+            sortKey="date"
+            currentSort={sortKey}
+            onSort={onSortChange}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={onDateFromChange}
+            onDateToChange={onDateToChange}
+            testId="filter-added"
+          />
           <SheetSortTh label="Name" sortKey="name" currentSort={sortKey} onSort={onSortChange} />
           <SheetTh>Phone</SheetTh>
           <SheetFilterTh label="Source" options={sourceOptions} selected={sourceFilter} onChange={onSourceFilterChange} testId="filter-source" />
