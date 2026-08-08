@@ -312,6 +312,10 @@ const AdminReports = () => {
   // Derive chart granularity from the page-level date filter — Week/Custom → day,
   // Month → day, Year → month. Keeps the top filter as the single source of truth.
   const socialGranularity = ({ week: 'day', month: 'day', year: 'month', custom: 'day' }[dateFilterType]) || 'day';
+  // Follower chart display mode — 'total' shows the cumulative follower count,
+  // 'growth' shows the per-bucket delta (gains in green, losses in red) so
+  // admins can instantly see if they netted followers that day/week.
+  const [followerMode, setFollowerMode] = useState('total'); // 'total' | 'growth'
 
   const loadSocial = async (force = false) => {
     setSocialLoading(true); setSocialError('');
@@ -1902,53 +1906,91 @@ const AdminReports = () => {
                 </div>
               ) : (
                 <div className="grid gap-6">
-                  {/* Follower count */}
+                  {/* Follower count / Follower growth toggle */}
                   <div>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Follower count</div>
+                    <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                        {followerMode === 'total' ? 'Follower count' : `Follower growth (per ${socialGranularity})`}
+                      </div>
+                      <div className="inline-flex rounded-md border border-slate-200 overflow-hidden" data-testid="follower-mode-toggle">
+                        {[
+                          { k: 'total',  l: 'Total' },
+                          { k: 'growth', l: 'Growth' },
+                        ].map(o => (
+                          <button
+                            key={o.k}
+                            type="button"
+                            onClick={() => setFollowerMode(o.k)}
+                            className={`text-[10px] px-2.5 py-1 font-bold uppercase tracking-wider ${
+                              followerMode === o.k ? 'bg-[#1E3A5F] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                            }`}
+                            data-testid={`follower-mode-${o.k}`}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <ResponsiveContainer width="100%" height={240}>
-                      <AreaChart data={socialTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="socialFollowersFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor="#EC4899" stopOpacity={0.35} />
-                            <stop offset="100%" stopColor="#EC4899" stopOpacity={0}    />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
-                        <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
-                        <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
-                        <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
-                        <Area type="monotone" dataKey="followers" stroke="#EC4899" strokeWidth={2} fill="url(#socialFollowersFill)" name="Followers" />
-                      </AreaChart>
+                      {followerMode === 'total' ? (
+                        <AreaChart data={socialTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="socialFollowersFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%"   stopColor="#EC4899" stopOpacity={0.35} />
+                              <stop offset="100%" stopColor="#EC4899" stopOpacity={0}    />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                          <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
+                          <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
+                          <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
+                          <Area type="monotone" dataKey="followers" stroke="#EC4899" strokeWidth={2} fill="url(#socialFollowersFill)" name="Followers" />
+                        </AreaChart>
+                      ) : (
+                        <BarChart
+                          data={socialTrend.map((row, idx, arr) => {
+                            const prev = idx > 0 ? arr[idx - 1] : null;
+                            const change = prev ? (row.followers || 0) - (prev.followers || 0) : 0;
+                            return { ...row, follower_change: change };
+                          })}
+                          margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
+                        >
+                          <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                          <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
+                          <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
+                          <Tooltip formatter={(v) => `${v > 0 ? '+' : ''}${Number(v).toLocaleString('en-IN')}`} />
+                          <Bar dataKey="follower_change" name="Follower change" radius={[4, 4, 0, 0]}>
+                            {socialTrend.map((row, idx, arr) => {
+                              const prev = idx > 0 ? arr[idx - 1] : null;
+                              const change = prev ? (row.followers || 0) - (prev.followers || 0) : 0;
+                              return <Cell key={`fc-${idx}`} fill={change >= 0 ? '#10B981' : '#EF4444'} />;
+                            })}
+                          </Bar>
+                        </BarChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Engagement */}
+                  {/* Engagement — plotted as absolute totals on the profile's
+                      latest ~12 posts at the end of each bucket. Previously we
+                      showed a day-over-day delta clamped to zero, which broke
+                      the moment an old high-engagement post rolled out of the
+                      "latest posts" window and made everything read as 0. */}
                   <div>
                     <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2 flex items-center gap-2">
-                      Engagement (new per {socialGranularity})
-                      <span className="text-[9px] font-semibold text-slate-400 normal-case tracking-normal">day-over-day delta on latest posts</span>
+                      Engagement on latest posts
+                      <span className="text-[9px] font-semibold text-slate-400 normal-case tracking-normal">totals across the profile&apos;s most recent ~12 posts</span>
                     </div>
                     <ResponsiveContainer width="100%" height={240}>
-                      <LineChart
-                        data={socialTrend.map((row, idx, arr) => {
-                          const prev = idx > 0 ? arr[idx - 1] : null;
-                          const delta = (curr, key) => prev ? Math.max(0, (curr[key] || 0) - (prev[key] || 0)) : 0;
-                          return {
-                            ...row,
-                            likes_new:    delta(row, 'likes'),
-                            comments_new: delta(row, 'comments'),
-                            views_new:    delta(row, 'views'),
-                          };
-                        })}
-                        margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                      <LineChart data={socialTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
                         <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
                         <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
                         <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
-                        <Line type="monotone" dataKey="likes_new"    stroke="#D63031" strokeWidth={2} dot={false} name="Likes" />
-                        <Line type="monotone" dataKey="comments_new" stroke="#1E3A5F" strokeWidth={2} dot={false} name="Comments" />
-                        <Line type="monotone" dataKey="views_new"    stroke="#8B5CF6" strokeWidth={2} dot={false} name="Views" />
+                        <Line type="monotone" dataKey="likes"    stroke="#D63031" strokeWidth={2} dot={false} name="Likes" />
+                        <Line type="monotone" dataKey="comments" stroke="#1E3A5F" strokeWidth={2} dot={false} name="Comments" />
+                        <Line type="monotone" dataKey="views"    stroke="#8B5CF6" strokeWidth={2} dot={false} name="Views" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -2093,48 +2135,83 @@ const AdminReports = () => {
                 ) : (
                   <div className="grid gap-6">
                     <div>
-                      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Subscribers</div>
+                      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                        <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                          {followerMode === 'total' ? 'Subscribers' : `Subscriber growth (per ${socialGranularity})`}
+                        </div>
+                        <div className="inline-flex rounded-md border border-slate-200 overflow-hidden" data-testid="yt-follower-mode-toggle">
+                          {[
+                            { k: 'total',  l: 'Total' },
+                            { k: 'growth', l: 'Growth' },
+                          ].map(o => (
+                            <button
+                              key={o.k}
+                              type="button"
+                              onClick={() => setFollowerMode(o.k)}
+                              className={`text-[10px] px-2.5 py-1 font-bold uppercase tracking-wider ${
+                                followerMode === o.k ? 'bg-[#1E3A5F] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                              }`}
+                              data-testid={`yt-follower-mode-${o.k}`}
+                            >
+                              {o.l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={ytTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="ytSubsFill" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#DC2626" stopOpacity={0.35} />
-                              <stop offset="100%" stopColor="#DC2626" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
-                          <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
-                          <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
-                          <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
-                          <Area type="monotone" dataKey="followers" stroke="#DC2626" strokeWidth={2} fill="url(#ytSubsFill)" name="Subscribers" />
-                        </AreaChart>
+                        {followerMode === 'total' ? (
+                          <AreaChart data={ytTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="ytSubsFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#DC2626" stopOpacity={0.35} />
+                                <stop offset="100%" stopColor="#DC2626" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                            <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
+                            <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
+                            <Area type="monotone" dataKey="followers" stroke="#DC2626" strokeWidth={2} fill="url(#ytSubsFill)" name="Subscribers" />
+                          </AreaChart>
+                        ) : (
+                          <BarChart
+                            data={ytTrend.map((row, idx, arr) => {
+                              const prev = idx > 0 ? arr[idx - 1] : null;
+                              const change = prev ? (row.followers || 0) - (prev.followers || 0) : 0;
+                              return { ...row, follower_change: change };
+                            })}
+                            margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
+                          >
+                            <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                            <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
+                            <Tooltip formatter={(v) => `${v > 0 ? '+' : ''}${Number(v).toLocaleString('en-IN')}`} />
+                            <Bar dataKey="follower_change" name="Subscriber change" radius={[4, 4, 0, 0]}>
+                              {ytTrend.map((row, idx, arr) => {
+                                const prev = idx > 0 ? arr[idx - 1] : null;
+                                const change = prev ? (row.followers || 0) - (prev.followers || 0) : 0;
+                                return <Cell key={`ytfc-${idx}`} fill={change >= 0 ? '#10B981' : '#EF4444'} />;
+                              })}
+                            </Bar>
+                          </BarChart>
+                        )}
                       </ResponsiveContainer>
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2 flex items-center gap-2">
-                        Engagement (new per {socialGranularity})
-                        <span className="text-[9px] font-semibold text-slate-400 normal-case tracking-normal">day-over-day delta on latest videos</span>
+                        Engagement on latest videos
+                        <span className="text-[9px] font-semibold text-slate-400 normal-case tracking-normal">totals across the channel&apos;s most recent uploads</span>
                       </div>
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart
-                          data={ytTrend.map((row, idx, arr) => {
-                            const prev = idx > 0 ? arr[idx - 1] : null;
-                            const delta = (curr, key) => prev ? Math.max(0, (curr[key] || 0) - (prev[key] || 0)) : 0;
-                            return { ...row,
-                              likes_new:    delta(row, 'likes'),
-                              comments_new: delta(row, 'comments'),
-                              views_new:    delta(row, 'views'),
-                            };
-                          })}
-                          margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                        <LineChart data={ytTrend} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
                           <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
                           <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: '#64748B' }} />
                           <YAxis tick={{ fontSize: 11, fill: '#64748B' }} width={50} />
                           <Tooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
                           <Legend wrapperStyle={{ fontSize: '11px' }} />
-                          <Line type="monotone" dataKey="views_new"    stroke="#8B5CF6" strokeWidth={2} dot={false} name="Views" />
-                          <Line type="monotone" dataKey="likes_new"    stroke="#DC2626" strokeWidth={2} dot={false} name="Likes" />
-                          <Line type="monotone" dataKey="comments_new" stroke="#1E3A5F" strokeWidth={2} dot={false} name="Comments" />
+                          <Line type="monotone" dataKey="views"    stroke="#8B5CF6" strokeWidth={2} dot={false} name="Views" />
+                          <Line type="monotone" dataKey="likes"    stroke="#DC2626" strokeWidth={2} dot={false} name="Likes" />
+                          <Line type="monotone" dataKey="comments" stroke="#1E3A5F" strokeWidth={2} dot={false} name="Comments" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>

@@ -240,8 +240,13 @@ async def get_instagram_trend(
     ).sort("date", 1)
     rows = await cursor.to_list(length=5000)
 
-    # Bucket: for followers/following/posts we take the LAST value in the bucket
-    # (end-of-period), for engagement we sum across days.
+    # Bucket: last-value-wins for stock metrics (followers, following, posts,
+    # AND the cumulative engagement counters latest_total_*). Summing engagement
+    # across days is wrong because each daily snapshot already holds the
+    # cumulative likes/comments/views on the profile's latest ~12 posts —
+    # summing 7 daily snapshots inflates a weekly bucket by ~7x. Using the
+    # latest snapshot inside the bucket gives an accurate "as-of end-of-period"
+    # engagement figure that lines up with what the profile shows on IG/YT.
     buckets: dict = {}
     for r in rows:
         key = _bucket_key(r["date"], granularity)
@@ -251,13 +256,14 @@ async def get_instagram_trend(
             "likes": 0, "comments": 0, "views": 0,
         })
         b["sample_days"] += 1
-        # last-value-wins for the running totals
         for f in ("followers", "following", "post_count"):
             if r.get(f) is not None:
                 b[f] = r[f]
-        b["likes"]    += r.get("latest_total_likes")    or 0
-        b["comments"] += r.get("latest_total_comments") or 0
-        b["views"]    += r.get("latest_total_views")    or 0
+        # Snapshots are sorted ascending, so the last write in the loop is the
+        # newest inside this bucket — exactly what "last-value-wins" needs.
+        b["likes"]    = r.get("latest_total_likes")    or b["likes"]
+        b["comments"] = r.get("latest_total_comments") or b["comments"]
+        b["views"]    = r.get("latest_total_views")    or b["views"]
 
     series = sorted(buckets.values(), key=lambda x: x["bucket"])
     return {
@@ -493,9 +499,10 @@ async def get_youtube_trend(
         for f in ("followers", "post_count", "views_total"):
             if r.get(f) is not None:
                 b[f] = r[f]
-        b["likes"]    += r.get("latest_total_likes")    or 0
-        b["comments"] += r.get("latest_total_comments") or 0
-        b["views"]    += r.get("latest_total_views")    or 0
+        # Last-value-wins for cumulative engagement — see IG comment above.
+        b["likes"]    = r.get("latest_total_likes")    or b["likes"]
+        b["comments"] = r.get("latest_total_comments") or b["comments"]
+        b["views"]    = r.get("latest_total_views")    or b["views"]
     return {
         "profile_key": cid,
         "granularity": granularity,
