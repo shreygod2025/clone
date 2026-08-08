@@ -1013,11 +1013,6 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
                   data-testid={`row-followup-${r.lead_ref}`} title="Add Followup">
                   <Clock className="w-3.5 h-3.5" /> Followup
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-xs px-2 py-1.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
-                  data-testid={`row-edit-${r.lead_ref}`} title="Edit">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
                   className="text-xs px-3 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-mark-lost-${r.lead_ref}`} title="Lost">
@@ -1061,6 +1056,30 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
     if (b) return `${b.name} · ${(b.days || []).join('/')}`;
     return fallback || '';
   };
+  // Column-level filter (Centre + Batch). Applied client-side so the
+  // filter menu can be hosted directly on the header, Excel-style.
+  const [centerBatchFilter, setCenterBatchFilter] = useState('');
+  const centerBatchOptions = useMemo(() => {
+    const seen = new Map();
+    rows.forEach(r => {
+      const label = [
+        centerName(r.center_id) || r.preferred_center || '',
+        batchInfo(r.batch_id, r.batch_label) || '',
+      ].filter(Boolean).join(' · ');
+      if (label) seen.set(label, (seen.get(label) || 0) + 1);
+    });
+    return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
+  }, [rows, centers, batches]);
+  const visibleRows = useMemo(() => {
+    if (!centerBatchFilter) return rows;
+    return rows.filter(r => {
+      const label = [
+        centerName(r.center_id) || r.preferred_center || '',
+        batchInfo(r.batch_id, r.batch_label) || '',
+      ].filter(Boolean).join(' · ');
+      return label === centerBatchFilter;
+    });
+  }, [rows, centerBatchFilter, centers, batches]);
   return (
     <SheetTable testId="trials-sheet">
       <thead>
@@ -1069,7 +1088,13 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
           <SheetTh>Date Added</SheetTh>
           <SheetTh>Student</SheetTh>
           <SheetTh>Phone</SheetTh>
-          <SheetTh>Centre · Batch</SheetTh>
+          <SheetFilterTh
+            label="Centre · Batch"
+            options={centerBatchOptions}
+            selected={centerBatchFilter}
+            onChange={setCenterBatchFilter}
+            testId="filter-trial-center-batch"
+          />
           <SheetTh>Scheduled</SheetTh>
           <SheetTh>Status</SheetTh>
           <SheetTh width={220}>Notes</SheetTh>
@@ -1077,7 +1102,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, idx) => (
+        {visibleRows.map((r, idx) => (
           <tr key={r.id}
             className={`${rowTintClass(r.crm_status)} ${!STATUS_TINT_KNOWN.includes(r.crm_status) && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.trial_ref}`}>
@@ -1127,19 +1152,14 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
                   <LinkIcon className="w-3 h-3" /> Pay Link
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-xs px-2 py-1.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
-                  <Clock className="w-3 h-3" />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-xs px-2 py-1.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
-                  data-testid={`row-trial-edit-${r.trial_ref}`} title="Edit">
-                  <Pencil className="w-3 h-3" />
+                  <Clock className="w-3 h-3" /> Followup
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-xs px-2 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" />
+                  <XCircle className="w-3 h-3" /> Lost
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
                   className="text-xs px-2 py-1.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
