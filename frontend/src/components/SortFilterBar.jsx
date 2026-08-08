@@ -194,8 +194,26 @@ export const applySortFilter = (list, sort, dateFrom, dateTo, opts = {}) => {
           return getDate(b) - getDate(a);
         case 'date-asc':
           return getDate(a) - getDate(b);
-        default:
-          return 0;
+        default: {
+          // Support arbitrary field sorts like 'scheduled-asc', 'renewal-desc'.
+          // Consumers pass opts.sortFieldMap = { scheduled: 'scheduled_at' }.
+          const m = /^([^-]+)-(asc|desc)$/.exec(sort);
+          if (!m) return 0;
+          const [, key, dir] = m;
+          const field = opts.sortFieldMap?.[key] || key;
+          const av = a?.[field];
+          const bv = b?.[field];
+          // Treat missing values as "far future" for asc, "far past" for desc
+          // so blanks always sink to the bottom regardless of direction.
+          const at = av ? new Date(av).getTime() : NaN;
+          const bt = bv ? new Date(bv).getTime() : NaN;
+          const aMissing = Number.isNaN(at);
+          const bMissing = Number.isNaN(bt);
+          if (aMissing && bMissing) return 0;
+          if (aMissing) return 1;
+          if (bMissing) return -1;
+          return dir === 'asc' ? at - bt : bt - at;
+        }
       }
     });
   }

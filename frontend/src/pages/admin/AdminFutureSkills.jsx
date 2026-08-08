@@ -221,6 +221,7 @@ const AdminFutureSkills = () => {
     let out = applySortFilter(rows, sortKey, dateFrom, dateTo, {
       nameFields: ['child_name', 'student_name', 'name', 'parent_name'],
       dateFields: ['created_at', 'trial_date', 'renewal_date', 'due_date'],
+      sortFieldMap: { scheduled: 'scheduled_at', renewal: 'renewal_date' },
     });
     if (sourceFilter) {
       out = out.filter(r => (r.source || '') === sourceFilter);
@@ -332,6 +333,20 @@ const AdminFutureSkills = () => {
     try {
       await axios.patch(
         `${API}/admin/future-skills/trials/${trial.id}`,
+        { notes: nextNotes },
+        { headers: getAuthHeaders() },
+      );
+      refreshAll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not save notes');
+    }
+  }, [getAuthHeaders, refreshAll]);
+
+  /** Inline notes save for Active Customers (subscriptions). */
+  const handleInlineNotesSaveCustomer = useCallback(async (sub, nextNotes) => {
+    try {
+      await axios.patch(
+        `${API}/admin/future-skills/subscriptions/${sub.id}`,
         { notes: nextNotes },
         { headers: getAuthHeaders() },
       );
@@ -642,6 +657,7 @@ const AdminFutureSkills = () => {
               }} />}
               {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 onSaveNotes={handleInlineNotesSaveTrial}
+                sortKey={sortKey} onSortChange={setSortKey}
                 onAction={async (action, r) => {
                 if (action === 'convert')      setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule')   setModal({ type: 'reschedule', trial: r });
@@ -665,7 +681,10 @@ const AdminFutureSkills = () => {
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
               }} />}
-              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={(action, r) => {
+              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+                onSaveNotes={handleInlineNotesSaveCustomer}
+                sortKey={sortKey} onSortChange={setSortKey}
+                onAction={(action, r) => {
                 if (action === 'renew')      setModal({ type: 'renew', customer: r });
                 if (action === 'notes')      setModal({ type: 'notes', entity: r, entityType: 'customer' });
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
@@ -855,6 +874,12 @@ const PhoneCell = ({ phone, name, refId }) => {
         <div className="absolute left-0 top-6 z-20 bg-white border border-slate-200 rounded-md shadow-lg p-1 min-w-[160px]"
           data-testid={`phone-menu-${refId || phone}`}
           onClick={(e) => e.stopPropagation()}>
+          <a href={`tel:${waPhone}`}
+            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-blue-50 text-blue-700 font-bold flex items-center gap-2"
+            data-testid={`phone-call-${refId || phone}`}
+            onClick={() => setOpen(false)}>
+            📞 Call
+          </a>
           <button onClick={copy}
             className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-slate-100 text-slate-700 flex items-center gap-2"
             data-testid={`phone-copy-${refId || phone}`}>
@@ -1049,7 +1074,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
 // Statuses that have an auto-tint in ExcelSheet (kept in sync with STATUS_TINT there).
 const STATUS_TINT_KNOWN = ['new', 'followup', 'no_answer', 'interested'];
 
-const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes }) => {
+const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchInfo = (bid, fallback) => {
     const b = batches.find(x => x.id === bid);
@@ -1095,7 +1120,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
             onChange={setCenterBatchFilter}
             testId="filter-trial-center-batch"
           />
-          <SheetTh>Scheduled</SheetTh>
+          <SheetSortTh label="Scheduled" sortKey="scheduled" currentSort={sortKey} onSort={onSortChange} />
           <SheetTh>Status</SheetTh>
           <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
@@ -1236,68 +1261,100 @@ const AttendanceCell = ({ trial, onAction }) => {
   );
 };
 
-const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
+  // Column-level Centre filter — shows unique centre names from loaded rows.
+  const [centerFilter, setCenterFilter] = useState('');
+  const centerOptions = useMemo(() => {
+    const seen = new Map();
+    rows.forEach(r => {
+      const v = centerName(r.center_id) || r.preferred_center || '';
+      if (v) seen.set(v, (seen.get(v) || 0) + 1);
+    });
+    return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
+  }, [rows, centers]);
+  // Plan filter — Monthly / Half-yearly / Yearly (uses plan_label saved on the sub).
+  const [planFilter, setPlanFilter] = useState('');
+  const planOptions = useMemo(() => {
+    const seen = new Map();
+    rows.forEach(r => { const v = r.plan_label || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
+  }, [rows]);
+  const visibleRows = useMemo(() => {
+    return rows.filter(r => {
+      if (centerFilter && (centerName(r.center_id) || r.preferred_center || '') !== centerFilter) return false;
+      if (planFilter && (r.plan_label || '') !== planFilter) return false;
+      return true;
+    });
+  }, [rows, centerFilter, planFilter, centers]);
   return (
     <SheetTable testId="customers-sheet">
       <thead>
         <tr>
           <SheetTh width={40} className="text-center">#</SheetTh>
-          <SheetTh>Ref</SheetTh>
-          <SheetTh>Student · Parent</SheetTh>
-          <SheetTh>Centre · Batch</SheetTh>
-          <SheetTh>Plan</SheetTh>
+          <SheetTh>Student</SheetTh>
+          <SheetTh>Phone</SheetTh>
+          <SheetFilterTh
+            label="Centre · Batch"
+            options={centerOptions}
+            selected={centerFilter}
+            onChange={setCenterFilter}
+            testId="filter-customer-center"
+          />
+          <SheetFilterTh
+            label="Plan"
+            options={planOptions}
+            selected={planFilter}
+            onChange={setPlanFilter}
+            testId="filter-customer-plan"
+          />
           <SheetTh>Amount Paid</SheetTh>
-          <SheetTh>Renewal Date</SheetTh>
+          <SheetSortTh label="Renewal Date" sortKey="renewal" currentSort={sortKey} onSort={onSortChange} />
+          <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, idx) => (
+        {visibleRows.map((r, idx) => (
           <tr key={r.id}
             className={`${idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
             <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
-            <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.subscription_ref}</SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name}</div>
-              <div className="text-[10px] text-slate-500">{r.parent_name} · {r.parent_phone}</div>
+            </SheetTd>
+            <SheetTd className="text-xs text-slate-700 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+              <PhoneCell phone={r.parent_phone} name={r.student_name} refId={r.subscription_ref} />
             </SheetTd>
             <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-semibold text-slate-700 leading-tight">{centerName(r.center_id) || r.preferred_center || '—'}</div>
               <div className="text-[10px] text-slate-500">{batchName(r.batch_id) || '—'}</div>
             </SheetTd>
+            {/* Plan cell — label only, no inline amount (amount lives in
+                its own column so admins can eyeball totals easily). */}
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-bold text-[#0F1E33] text-[11px] leading-tight">{r.plan_label}</div>
-              <div className="text-[10px] text-slate-500">{fmtMoney(r.amount)}</div>
+              <div className="font-bold text-[#0F1E33] text-[11px] leading-tight">{r.plan_label || '—'}</div>
             </SheetTd>
             <SheetTd className="font-bold text-emerald-700 cursor-pointer" onClick={() => onOpen(r)}>{fmtMoney(r.amount_paid || r.amount)}</SheetTd>
             <SheetTd className="text-[11px] font-semibold text-[#0F1E33] cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>{fmtDate(r.renewal_date)}</SheetTd>
+            <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
+              <InlineNotesField lead={r} onSave={onSaveNotes} testIdPrefix="row-customer-inline-notes" refId={r.subscription_ref} />
+            </SheetTd>
             <SheetTd>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-nowrap gap-1 items-center">
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('renew', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-customer-renew-${r.subscription_ref}`} title="Renew">
                   <RotateCcw className="w-3 h-3" /> Renew
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onAction && onAction('notes', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
-                  data-testid={`row-customer-notes-${r.subscription_ref}`} title="Notes">
-                  <FileText className="w-3 h-3" /> Notes
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
-                  data-testid={`row-customer-edit-${r.subscription_ref}`} title="Edit">
-                  <Pencil className="w-3 h-3" />
-                </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-xs px-3 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-customer-mark-lost-${r.subscription_ref}`} title="Mark Lost">
-                  <XCircle className="w-3 h-3" />
+                  <XCircle className="w-3 h-3" /> Lost
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction && onAction('delete', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-customer-delete-${r.subscription_ref}`} title="Delete">
                   <Trash2 className="w-3 h-3" />
                 </button>
