@@ -476,6 +476,9 @@ async def public_booking_intent(body: BookingIntent):
     existing_trial = await db.future_skills_trials.find_one({"parent_phone": phone}, {"_id": 0, "id": 1})
     if not existing_lead and not existing_trial:
         source_display = await _resolve_source_name(source_ref) if source_ref else ""
+        # Booking-intent leads always originate from the website funnel — even
+        # when there's no UTM ref, tag them as "Website" so admins can filter
+        # + report on this bucket instead of seeing a blank source.
         lead_doc = {
             "id": str(uuid.uuid4()),
             "lead_ref": await _next_ref("FSL"),
@@ -483,8 +486,8 @@ async def public_booking_intent(body: BookingIntent):
             "name": parent_name,
             "phone": phone,
             "email": "",
-            "source": source_display or source_ref,
-            "source_ref": source_ref,
+            "source": source_display or source_ref or "Website",
+            "source_ref": source_ref or "website",
             "city": "",
             "notes": "Started trial booking on website but hasn't finished the funnel yet.",
             "child_age": "",
@@ -3323,7 +3326,26 @@ async def admin_future_skills_reports(
     # Revenue uses payment_date to catch when money came in
     rev_sub_q = {**scope_q, **month_range_q("payment_date")}
 
-    leads_total = await db.future_skills_leads.count_documents(lead_q)
+    leads_total_raw = await db.future_skills_leads.count_documents(lead_q)
+    # ── True lead count includes trials + subscriptions created directly
+    # (bypassing the lead-capture stage). Otherwise "FS Leads" reads far
+    # below the actual funnel intake for the period.
+    lead_phones: set = set()
+    async for l in db.future_skills_leads.find(lead_q, {"_id": 0, "phone": 1}):
+        p = (l.get("phone") or "").strip()
+        if p:
+            lead_phones.add(p)
+    async for t in db.future_skills_trials.find(trial_q, {"_id": 0, "parent_phone": 1}):
+        p = (t.get("parent_phone") or "").strip()
+        if p:
+            lead_phones.add(p)
+    # Subs created in period — use `created_at` range same as leads/trials.
+    sub_intake_q = {**scope_q, **month_range_q("created_at")}
+    async for s in db.future_skills_subscriptions.find(sub_intake_q, {"_id": 0, "parent_phone": 1}):
+        p = (s.get("parent_phone") or "").strip()
+        if p:
+            lead_phones.add(p)
+    leads_total = max(leads_total_raw, len(lead_phones))
     leads_converted = await db.future_skills_leads.count_documents(
         {**lead_q, "status": "converted"}
     )

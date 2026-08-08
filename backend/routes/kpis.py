@@ -804,9 +804,28 @@ async def _compute_future_skills_metrics(start_iso: str, end_iso: str) -> dict:
     q_trials  = {"created_at":     {"$gte": start_iso, "$lte": end_iso}}
     q_paid    = {"created_at":     {"$gte": start_iso, "$lte": end_iso}, "payment_status": "paid"}
 
-    leads_total    = await db.future_skills_leads.count_documents(q_leads)
-    trials_total   = await db.future_skills_trials.count_documents(q_trials)
-    customers_paid = await db.future_skills_subscriptions.count_documents(q_paid)
+    leads_total_raw = await db.future_skills_leads.count_documents(q_leads)
+    trials_total    = await db.future_skills_trials.count_documents(q_trials)
+    customers_paid  = await db.future_skills_subscriptions.count_documents(q_paid)
+
+    # True lead count = unique parent phones across leads + trials + subs
+    # created in this window (a trial/sub created directly is still funnel intake).
+    lead_phones: set = set()
+    async for l in db.future_skills_leads.find(q_leads, {"_id": 0, "phone": 1}):
+        p = (l.get("phone") or "").strip()
+        if p:
+            lead_phones.add(p)
+    async for t in db.future_skills_trials.find(q_trials, {"_id": 0, "parent_phone": 1}):
+        p = (t.get("parent_phone") or "").strip()
+        if p:
+            lead_phones.add(p)
+    async for s in db.future_skills_subscriptions.find(
+        {"created_at": {"$gte": start_iso, "$lte": end_iso}}, {"_id": 0, "parent_phone": 1},
+    ):
+        p = (s.get("parent_phone") or "").strip()
+        if p:
+            lead_phones.add(p)
+    leads_total = max(leads_total_raw, len(lead_phones))
 
     revenue = 0.0
     paying_orders = 0

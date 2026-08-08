@@ -1802,24 +1802,39 @@ async def _b2c_summer_camp_stats(start, end) -> dict:
 
 
 async def _b2c_future_skills_stats(start, end) -> dict:
-    """Future Skills: leads + trials + paid subs."""
-    leads = 0
-    async for l in db.future_skills_leads.find({}, {"_id": 0}):
+    """Future Skills: leads + trials + paid subs.
+
+    Lead-count reflects TOTAL funnel intake: every unique parent phone that
+    entered any of the three FS collections (leads, trials, subs) in the
+    window. This closes the gap where a trial or subscription created
+    directly by an admin (skipping the lead-capture stage) previously
+    wasn't counted as a lead — making the "FS Leads" metric read low.
+    """
+    lead_phones: set = set()
+    async for l in db.future_skills_leads.find({}, {"_id": 0, "phone": 1, "created_at": 1}):
         if _dt_between(l.get("created_at"), start, end):
-            leads += 1
+            p = (l.get("phone") or "").strip()
+            if p:
+                lead_phones.add(p)
     trials = 0
-    async for t in db.future_skills_trials.find({}, {"_id": 0}):
+    async for t in db.future_skills_trials.find({}, {"_id": 0, "parent_phone": 1, "created_at": 1}):
         if _dt_between(t.get("created_at"), start, end):
             trials += 1
+            p = (t.get("parent_phone") or "").strip()
+            if p:
+                lead_phones.add(p)
     paying = 0
     revenue = 0.0
     async for s in db.future_skills_subscriptions.find({}, {"_id": 0}):
         if not _dt_between(s.get("created_at"), start, end):
             continue
+        p = (s.get("parent_phone") or "").strip()
+        if p:
+            lead_phones.add(p)
         if s.get("payment_status") == "paid":
             paying += 1
             revenue += float(s.get("amount") or 0)
-    return {"leads": leads, "demos": trials, "customers": paying, "revenue": revenue}
+    return {"leads": len(lead_phones), "demos": trials, "customers": paying, "revenue": revenue}
 
 
 async def _b2c_student_crm_stats(start, end) -> dict:
