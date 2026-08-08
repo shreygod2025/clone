@@ -1131,7 +1131,7 @@ async def admin_list_trials(
     query: dict = {}
     # Trials list only shows actually booked trials — leads that haven't been
     # scheduled, lost trials, and converted trials live in their own tabs.
-    BOOKED_STATUSES = ["scheduled", "trial_scheduled", "rescheduled", "completed"]
+    BOOKED_STATUSES = ["scheduled", "trial_scheduled", "rescheduled", "completed", "absent"]
     if status and status != "all":
         if status == "scheduled":
             query["crm_status"] = {"$in": ["scheduled", "trial_scheduled"]}
@@ -1159,6 +1159,7 @@ async def admin_list_trials(
     rescheduled_count = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "rescheduled"})
     completed_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "completed"})
     followup_count    = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "followup"})
+    absent_count      = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "absent"})
     return {
         "trials": rows,
         "stats": {
@@ -1167,6 +1168,7 @@ async def admin_list_trials(
             "rescheduled": rescheduled_count,
             "completed": completed_count,
             "followup": followup_count,
+            "absent": absent_count,
         },
     }
 
@@ -1837,6 +1839,26 @@ async def admin_trial_attend(trial_id: str, user: dict = Depends(get_current_use
             "trial_status": "attended",
             "crm_status": "completed",
             "attended_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Trial not found")
+    trial = await db.future_skills_trials.find_one({"id": trial_id}, {"_id": 0})
+    return {"trial": trial}
+
+
+# ── MARK TRIAL ABSENT (student did not show up) ────────────────────────
+@router.post("/admin/future-skills/trials/{trial_id}/absent")
+async def admin_trial_absent(trial_id: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_trials.update_one(
+        {"id": trial_id},
+        {"$set": {
+            "trial_status": "absent",
+            "crm_status": "absent",
+            "absent_at": _now_iso(),
             "updated_at": _now_iso(),
         }},
     )

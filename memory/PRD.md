@@ -20,12 +20,19 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Cashfree payment auto-reconciliation via `/api/admin/future-skills/reconcile-payments`.
 - Cost/Lead + Avg Time to 1st Contact reports.
 - Workflow chaining: "Not Interested" → Mark Lost modal auto-open.
+- Free Trials tab parity with Leads (status chips, inline notes, date-added column,
+  attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
-- **07 Aug 2026** — Toolbar simplified: removed Sort & Date row (month + range),
-  reduced search width, moved search + status chips + Add + Import into a single row.
-  Added `SheetDateFilterTh` — Excel-style Date column header filter with quick presets
-  (Today / This Week / This Month / Last 30 days) and From→To range picker.
+- **08 Aug 2026** — Free Trials tab: added status chips (Scheduled / Rescheduled /
+  Attended / Absent), inline Notes column (saves on blur), replaced Ref with
+  "Date Added" column, removed Parent Name from phone cell, combined
+  Attended + Absent + Reschedule into one "Attendance" dropdown. Lead detail popup
+  now shows Lead-added and Trial-booked timestamps. New backend endpoint
+  `POST /admin/future-skills/trials/{id}/absent`.
+- **07 Aug 2026** — Toolbar simplified: removed Sort & Date row, reduced search width,
+  merged search + status chips + Add + Import into a single row. Added
+  `SheetDateFilterTh` — Excel-style Date column header filter with presets and range.
 - Cashfree reconcile-payments endpoint + Sync Payments button.
 - ExcelSheet.jsx wrappers (SheetTabs / SheetTable / SheetTh / SheetSortTh / SheetFilterTh).
 - Auto row tint by status (blue / yellow / green / red).
@@ -38,7 +45,7 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - **P1** WhatsApp AI Chat via AiSensy webhook.
 - **P2** Multiple chat sessions browser in AI Chat.
 - **P2** "Top-performing video/post this month" spotlight card.
-- **Tech-debt** Split monolithic `AdminFutureSkills.jsx` (4400+ lines) into
+- **Tech-debt** Split monolithic `AdminFutureSkills.jsx` (4500+ lines) into
   LeadsTable / TrialsTable / Toolbar sub-components; same for AdminReports / AdminOrders.
 - **Tech-debt** Add markdown rendering to AI responses.
 - **Tech-debt** Audit-log sensitive admin actions.

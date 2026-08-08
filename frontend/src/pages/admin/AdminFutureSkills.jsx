@@ -4,7 +4,7 @@ import axios from 'axios';
 import {
   Bot, Search, RefreshCw, Loader2, X, Phone, Mail, GraduationCap,
   TrendingUp, Users, IndianRupee, Calendar, MapPin, ExternalLink, Save, Sparkles,
-  Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight,
+  Plus, Upload, Download, AlertTriangle, XCircle, RotateCcw, ChevronRight, ChevronDown,
   Clock, Building2, Trash2, Pencil, Power, BarChart3, PieChart, Target,
   Link2 as LinkIcon, Copy, Eye, FileText, UserX, Check,
 } from 'lucide-react';
@@ -324,6 +324,23 @@ const AdminFutureSkills = () => {
     }
   }, [getAuthHeaders, refreshAll]);
 
+  /**
+   * Inline notes save for Free Trials — same UX as Leads but hits the
+   * trials PATCH endpoint.
+   */
+  const handleInlineNotesSaveTrial = useCallback(async (trial, nextNotes) => {
+    try {
+      await axios.patch(
+        `${API}/admin/future-skills/trials/${trial.id}`,
+        { notes: nextNotes },
+        { headers: getAuthHeaders() },
+      );
+      refreshAll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not save notes');
+    }
+  }, [getAuthHeaders, refreshAll]);
+
   // Sync Payments — recheck Cashfree for every pending subscription and
   // promote paid ones to Active Customers. Fixes the "customer paid but not
   // showing" bug when the webhook can't reach us / customer closed the tab.
@@ -371,10 +388,11 @@ const AdminFutureSkills = () => {
         { value: 'interested',   label: `Interested (${stats?.interested || 0})` },
       ]
     : tab === 'trials' ? [
-        { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0)})` },
+        { value: 'all',         label: `All (${(stats?.scheduled || 0) + (stats?.rescheduled || 0) + (stats?.completed || 0) + (stats?.absent || 0)})` },
         { value: 'scheduled',   label: `Scheduled (${stats?.scheduled || 0})` },
         { value: 'rescheduled', label: `Rescheduled (${stats?.rescheduled || 0})` },
-        { value: 'completed',   label: `Completed (${stats?.completed || 0})` },
+        { value: 'completed',   label: `Attended (${stats?.completed || 0})` },
+        { value: 'absent',      label: `Absent (${stats?.absent || 0})` },
       ]
     : tab === 'lost' ? [
         { value: 'all', label: 'All types' },
@@ -454,17 +472,21 @@ const AdminFutureSkills = () => {
                   data-testid="search-input" />
               </div>
 
-              {/* Status chips (Leads only) — inline with search & action buttons */}
-              {tab === 'leads' && STATUS_FILTER_OPTIONS && (
-                <div className="flex flex-wrap items-center gap-1.5" data-testid="lead-status-chips">
+              {/* Status chips (Leads + Free Trials) — inline with search & action buttons */}
+              {(tab === 'leads' || tab === 'trials') && STATUS_FILTER_OPTIONS && (
+                <div className="flex flex-wrap items-center gap-1.5" data-testid={`${tab}-status-chips`}>
                   {STATUS_FILTER_OPTIONS.map(opt => {
                     const active = statusFilter === opt.value;
                     const chipColor = {
-                      'all':        active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
-                      'new':        active ? 'bg-sky-500 text-white border-sky-500'       : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
-                      'followup':   active ? 'bg-amber-500 text-white border-amber-500'   : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
-                      'no_answer':  active ? 'bg-rose-500 text-white border-rose-500'     : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
-                      'interested': active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
+                      'all':          active ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
+                      'new':          active ? 'bg-sky-500 text-white border-sky-500'        : 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400',
+                      'followup':     active ? 'bg-amber-500 text-white border-amber-500'    : 'bg-yellow-50 text-amber-700 border-yellow-200 hover:border-yellow-400',
+                      'no_answer':    active ? 'bg-rose-500 text-white border-rose-500'      : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
+                      'interested':   active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
+                      'scheduled':    active ? 'bg-violet-500 text-white border-violet-500'  : 'bg-violet-50 text-violet-700 border-violet-200 hover:border-violet-400',
+                      'rescheduled':  active ? 'bg-indigo-500 text-white border-indigo-500'  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:border-indigo-400',
+                      'completed':    active ? 'bg-emerald-500 text-white border-emerald-500': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400',
+                      'absent':       active ? 'bg-rose-500 text-white border-rose-500'      : 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400',
                     }[opt.value] || 'bg-white text-slate-700 border-slate-200';
                     return (
                       <button
@@ -472,7 +494,7 @@ const AdminFutureSkills = () => {
                         type="button"
                         onClick={() => setStatusFilter(opt.value)}
                         className={`text-xs px-2.5 py-1 rounded-full font-bold border transition-colors ${chipColor}`}
-                        data-testid={`lead-status-chip-${opt.value}`}
+                        data-testid={`${tab}-status-chip-${opt.value}`}
                       >
                         {opt.label}
                       </button>
@@ -618,7 +640,9 @@ const AdminFutureSkills = () => {
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter} onAction={async (action, r) => {
+              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+                onSaveNotes={handleInlineNotesSaveTrial}
+                onAction={async (action, r) => {
                 if (action === 'convert')      setModal({ type: 'convert-trial', trial: r });
                 if (action === 'reschedule')   setModal({ type: 'reschedule', trial: r });
                 if (action === 'followup')     setModal({ type: 'followup', entity: r, entityType: 'trial' });
@@ -630,6 +654,13 @@ const AdminFutureSkills = () => {
                   try {
                     await axios.post(`${API}/admin/future-skills/trials/${r.id}/attend`, {}, { headers: getAuthHeaders() });
                     toast.success(`${r.student_name || r.trial_ref} marked attended`);
+                    refreshAll();
+                  } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
+                }
+                if (action === 'absent') {
+                  try {
+                    await axios.post(`${API}/admin/future-skills/trials/${r.id}/absent`, {}, { headers: getAuthHeaders() });
+                    toast.success(`${r.student_name || r.trial_ref} marked absent`);
                     refreshAll();
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
@@ -735,6 +766,7 @@ const StatusBadge = ({ status }) => {
     trial_contacted:    { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'CONTACTED' },
     trial_scheduled:    { c: 'bg-violet-50 text-violet-700 border-violet-200',    label: 'SCHEDULED' },
     trial_attended:     { c: 'bg-blue-50 text-blue-700 border-blue-200',          label: 'ATTENDED' },
+    absent:             { c: 'bg-rose-50 text-rose-700 border-rose-200',          label: 'ABSENT' },
     lost:               { c: 'bg-rose-50 text-rose-700 border-rose-200',          label: 'LOST' },
     upcoming:           { c: 'bg-amber-50 text-amber-700 border-amber-200',       label: 'UPCOMING' },
     overdue:            { c: 'bg-rose-50 text-rose-700 border-rose-200',          label: 'OVERDUE' },
@@ -752,7 +784,7 @@ const Th = ({ children, className = '' }) => (
  * Saves on blur or Cmd/Ctrl+Enter — no modal, no clicks.
  * Uses a `key` on the lead notes to reset local state when the lead reloads.
  */
-const InlineNotesField = ({ lead, onSave }) => {
+const InlineNotesField = ({ lead, onSave, testIdPrefix = 'row-inline-notes', refId }) => {
   const [value, setValue] = useState(lead?.notes || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -772,6 +804,8 @@ const InlineNotesField = ({ lead, onSave }) => {
     }
   };
 
+  const testId = `${testIdPrefix}-${refId || lead?.lead_ref || lead?.trial_ref || lead?.id}`;
+
   return (
     <div className="relative">
       <textarea
@@ -782,7 +816,7 @@ const InlineNotesField = ({ lead, onSave }) => {
         placeholder="Add notes…"
         rows={2}
         className="w-full text-[11px] px-2 py-1.5 rounded-md border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200 resize-none"
-        data-testid={`row-inline-notes-${lead?.lead_ref}`}
+        data-testid={testId}
       />
       {saving && <span className="absolute -bottom-3 right-1 text-[9px] text-slate-400">saving…</span>}
       {saved && !saving && <span className="absolute -bottom-3 right-1 text-[9px] text-emerald-600 font-bold">saved ✓</span>}
@@ -1020,7 +1054,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
 // Statuses that have an auto-tint in ExcelSheet (kept in sync with STATUS_TINT there).
 const STATUS_TINT_KNOWN = ['new', 'followup', 'no_answer', 'interested'];
 
-const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => {
+const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchInfo = (bid, fallback) => {
     const b = batches.find(x => x.id === bid);
@@ -1032,12 +1066,13 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
       <thead>
         <tr>
           <SheetTh width={40} className="text-center">#</SheetTh>
-          <SheetTh>Ref</SheetTh>
+          <SheetTh>Date Added</SheetTh>
           <SheetTh>Student</SheetTh>
-          <SheetTh>Parent Contact</SheetTh>
+          <SheetTh>Phone</SheetTh>
           <SheetTh>Centre · Batch</SheetTh>
           <SheetTh>Scheduled</SheetTh>
           <SheetTh>Status</SheetTh>
+          <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
         </tr>
       </thead>
@@ -1047,7 +1082,9 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
             className={`${rowTintClass(r.crm_status)} ${!STATUS_TINT_KNOWN.includes(r.crm_status) && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.trial_ref}`}>
             <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
-            <SheetTd className="font-mono font-bold text-[#1E3A5F] cursor-pointer" onClick={() => onOpen(r)}>{r.trial_ref}</SheetTd>
+            <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)} testId={`row-trial-added-${r.trial_ref}`}>
+              <div className="font-bold text-[#0F1E33] leading-tight text-xs">{fmtDateTime(r.created_at)}</div>
+            </SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name || <span className="text-slate-400 font-normal italic">no name</span>}</div>
               {(r.age_group || r.student_age) && (
@@ -1056,9 +1093,8 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
                 </div>
               )}
             </SheetTd>
-            <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
-              <div className="font-semibold text-[#0F1E33] text-[11px] leading-tight">{r.parent_name || '—'}</div>
-              <div className="text-[11px] text-slate-700 flex items-center gap-1"><Phone className="w-3 h-3" /> {r.parent_phone}</div>
+            <SheetTd className="text-xs text-slate-700 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+              <PhoneCell phone={r.parent_phone} name={r.student_name} refId={r.trial_ref} />
             </SheetTd>
             <SheetTd className="text-[11px] cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-semibold text-slate-700 flex items-center gap-1 leading-tight"><MapPin className="w-3 h-3" /> {centerName(r.center_id) || r.preferred_center || '—'}</div>
@@ -1072,58 +1108,41 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
               {r.next_followup_date && (
                 <div className="text-[10px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /> {fmtDate(r.next_followup_date)}</div>
               )}
-              {(r.last_note || r.notes) && (
-                <div className="text-[10px] text-slate-600 mt-0.5 line-clamp-2 max-w-[220px]" title={r.last_note || r.notes} data-testid={`row-trial-note-${r.trial_ref}`}>
-                  <span className="font-bold">📝 </span>{r.last_note || r.notes}
-                </div>
-              )}
+            </SheetTd>
+            {/* Inline notes — save on blur or Cmd/Ctrl+Enter. */}
+            <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
+              <InlineNotesField lead={r} onSave={onSaveNotes} testIdPrefix="row-trial-inline-notes" refId={r.trial_ref} />
             </SheetTd>
             <SheetTd>
-              <div className="flex flex-wrap gap-1">
-                {(r.crm_status === 'scheduled' || r.crm_status === 'trial_scheduled' || r.crm_status === 'rescheduled') && (
-                  <button onClick={(e) => { e.stopPropagation(); onAction('attended', r); }}
-                    className="text-[10px] px-2 py-0.5 rounded-sm bg-teal-100 hover:bg-teal-200 text-teal-800 font-bold flex items-center gap-1"
-                    data-testid={`row-attended-${r.trial_ref}`} title="Mark Attended → Completed">
-                    ✓ Attended
-                  </button>
-                )}
+              <div className="flex flex-nowrap gap-1 items-center">
+                <AttendanceCell trial={r} onAction={onAction} />
                 <button onClick={(e) => { e.stopPropagation(); onAction('convert', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center gap-1"
                   data-testid={`row-convert-${r.trial_ref}`} title="Convert to Customer">
                   <Sparkles className="w-3 h-3" /> Convert
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('payment-link', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-paylink-${r.trial_ref}`} title="Copy Payment Link">
                   <LinkIcon className="w-3 h-3" /> Pay Link
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onAction('reschedule', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center gap-1"
-                  data-testid={`row-reschedule-${r.trial_ref}`} title="Reschedule">
-                  <RotateCcw className="w-3 h-3" />
-                </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('followup', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-followup-${r.trial_ref}`} title="Add Followup">
                   <Clock className="w-3 h-3" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onAction('notes', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center gap-1"
-                  data-testid={`row-trial-notes-${r.trial_ref}`} title="Notes">
-                  <FileText className="w-3 h-3" />
-                </button>
                 <button onClick={(e) => { e.stopPropagation(); onOpen(r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold flex items-center gap-1"
                   data-testid={`row-trial-edit-${r.trial_ref}`} title="Edit">
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('mark-lost', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold flex items-center gap-1"
                   data-testid={`row-trial-lost-${r.trial_ref}`} title="Mark Lost">
                   <XCircle className="w-3 h-3" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); onAction('delete', r); }}
-                  className="text-[10px] px-2 py-0.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
+                  className="text-xs px-2 py-1.5 rounded-sm bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold flex items-center gap-1"
                   data-testid={`row-trial-delete-${r.trial_ref}`} title="Delete">
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -1133,6 +1152,67 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [] }) => 
         ))}
       </tbody>
     </SheetTable>
+  );
+};
+
+/**
+ * Attendance action for a trial row — collapses "Attended / Absent / Reschedule"
+ * into a single popover so the actions row stays compact. Opens on click,
+ * closes on outside click or after an action fires.
+ */
+const AttendanceCell = ({ trial, onAction }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', off);
+    return () => document.removeEventListener('mousedown', off);
+  }, []);
+  const fire = (action) => {
+    setOpen(false);
+    onAction(action, trial);
+  };
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        className="text-xs px-2.5 py-1.5 rounded-sm bg-teal-100 hover:bg-teal-200 text-teal-800 font-bold flex items-center gap-1"
+        data-testid={`row-attendance-${trial.trial_ref}`}
+        title="Attendance"
+      >
+        Attendance <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <div
+          className="absolute left-0 top-8 z-20 bg-white border border-slate-200 rounded-md shadow-lg p-1 min-w-[150px]"
+          data-testid={`row-attendance-menu-${trial.trial_ref}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => fire('attended')}
+            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-emerald-50 text-emerald-700 font-bold flex items-center gap-1.5"
+            data-testid={`row-attendance-attended-${trial.trial_ref}`}
+          >
+            ✓ Attended
+          </button>
+          <button
+            onClick={() => fire('absent')}
+            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-rose-50 text-rose-700 font-bold flex items-center gap-1.5"
+            data-testid={`row-attendance-absent-${trial.trial_ref}`}
+          >
+            ✗ Absent
+          </button>
+          <button
+            onClick={() => fire('reschedule')}
+            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-indigo-50 text-indigo-700 font-bold flex items-center gap-1.5"
+            data-testid={`row-attendance-reschedule-${trial.trial_ref}`}
+          >
+            <RotateCcw className="w-3 h-3" /> Reschedule
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -1417,6 +1497,12 @@ const DetailDrawer = ({ tab, entity, centers = [], batches = [], onClose, onActi
                   options={[{ value: '', label: 'Select age…' }, ...AGE_GROUP_OPTIONS.filter(o => o.value !== '')]} />
                 <SelectField label="Status" value={edit.status || 'new'} onChange={v => setEdit({ ...edit, status: v })} options={LEAD_STATUSES} colSpan={2} />
               </FieldGroup>
+              {/* Date history — helps admins see how long a lead has been in the pipeline
+                  and whether it already flowed into a booked trial. */}
+              <div className="grid grid-cols-2 gap-3" data-testid="lead-date-history">
+                <Detail label="Lead added" value={entity.created_at ? fmtDateTime(entity.created_at) : '—'} />
+                <Detail label="Trial booked" value={entity.converted_at ? fmtDateTime(entity.converted_at) : '—'} />
+              </div>
               <TextAreaField label="Notes" value={edit.notes || ''} onChange={v => setEdit({ ...edit, notes: v })} />
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <button onClick={() => onAction('convert-lead')}
