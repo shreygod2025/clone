@@ -3871,7 +3871,13 @@ const CentreEconomicsModal = ({ type, entry, centers, defaultCenterId, onClose, 
       } else {
         const r = await axios.post(`${API}/admin/future-skills/centre-economics`, payload, { headers: getAuthHeaders() });
         savedEntry = r.data?.entry || payload;
-        toast.success('Entry added & mirrored to main Expenses');
+        // For ALL — backend fans out one row per centre so the P&L rollup
+        // sees the full amount split evenly. Reflect that in the toast.
+        if (payload.center_id === '__ALL__' && r.data?.fanout_count) {
+          toast.success(`Expense split across ${r.data.fanout_count} centres`);
+        } else {
+          toast.success('Entry added & mirrored to main Expenses');
+        }
       }
       onSaved(savedEntry);
     } catch (e) {
@@ -3889,6 +3895,7 @@ const CentreEconomicsModal = ({ type, entry, centers, defaultCenterId, onClose, 
               disabled={!!defaultCenterId && centers.length === 0}
               data-testid="econ-modal-center">
               <option value="">Select centre…</option>
+              <option value="__ALL__">ALL — All centres (split equally)</option>
               {centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </EconField>

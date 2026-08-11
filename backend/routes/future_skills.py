@@ -3651,6 +3651,13 @@ async def admin_centre_economics_create(
 ):
     """Create a centre-economics entry AND mirror it as a row in the main
     `school_expenses` collection so /admin/expenses & P&L see it.
+
+    Special value ``center_id == "__ALL__"`` — the expense is a shared cost
+    across every active centre. We fan out one row per centre with the
+    amount split evenly; each fan-out row is stamped with a shared
+    ``fs_shared_group_id`` so admins can identify siblings later. The
+    org-wide P&L sees the full amount (sum of siblings), and each centre's
+    P&L sees only its own share — matching standard shared-cost accounting.
     """
     _fs_econ_check_permission(user)
 
@@ -3658,8 +3665,72 @@ async def admin_centre_economics_create(
     if cat_key not in FS_ECONOMICS_CATEGORIES:
         raise HTTPException(status_code=400, detail="Invalid category")
 
-    # Scope check: centre owners can only write to their own centre
     scope_cid = _fs_scope_center_id(user)
+
+    # ── ALL centres branch ───────────────────────────────────────────
+    if body.center_id == "__ALL__":
+        # Centre owners can't fan-out across centres they don't own.
+        if scope_cid:
+            raise HTTPException(status_code=403, detail="Only admins can log expenses for ALL centres")
+        active_centers = await db.centers.find(
+            {"is_active": {"$ne": False}}, {"_id": 0, "id": 1, "name": 1},
+        ).to_list(200)
+        if not active_centers:
+            raise HTTPException(status_code=400, detail="No active centres to allocate this expense to")
+
+        share = round(float(body.amount or 0) / len(active_centers), 2)
+        group_id = str(uuid.uuid4())
+        now = _now_iso()
+        exp_date = (body.expense_date or "").strip() or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        cat_info = FS_ECONOMICS_CATEGORIES[cat_key]
+        fs_label = body.other_label.strip() if cat_key == "other" and body.other_label else cat_info["label"]
+
+        fan_docs = []
+        for c in active_centers:
+            fan_docs.append({
+                "id": str(uuid.uuid4()),
+                "school_id": "",
+                "school_name": c.get("name", "Centre"),
+                "project_id": "",
+                "project_name": "",
+                "category": cat_info["expense_category"],
+                "category_name": cat_info["label"],
+                "amount": share,
+                "description": (body.description or "").strip(),
+                "expense_date": exp_date,
+                "invoice_number": "",
+                "vendor_name": (body.vendor_name or "").strip(),
+                "payment_status": "paid",
+                "payment_mode": "",
+                "notes": "",
+                "attachments": [],
+                "invoice_file_url": "",
+                "program_key": PROGRAM_KEY,
+                "fs_center_id": c.get("id", ""),
+                "fs_center_name": c.get("name", ""),
+                "fs_category": cat_key,
+                "fs_category_label": fs_label,
+                # Shared-cost markers so edits/deletes can affect siblings.
+                "fs_shared_group_id": group_id,
+                "fs_shared_total": float(body.amount or 0),
+                "fs_shared_all_centres": True,
+                "created_by": user.get("email"),
+                "created_by_name": user.get("name"),
+                "created_at": now,
+                "updated_at": now,
+            })
+        if fan_docs:
+            await db.school_expenses.insert_many(fan_docs)
+        first = fan_docs[0] if fan_docs else {}
+        first.pop("_id", None)
+        return {
+            "message": f"Shared expense split across {len(fan_docs)} centres",
+            "entry": first,
+            "fanout_count": len(fan_docs),
+            "fs_shared_group_id": group_id,
+        }
+
+    # Scope check: centre owners can only write to their own centre
     if scope_cid and scope_cid != body.center_id:
         raise HTTPException(status_code=403, detail="Cannot log economics for another centre")
 
