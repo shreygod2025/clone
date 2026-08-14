@@ -16,6 +16,7 @@ import Navbar from '../components/Navbar';
 import CitySearch from '../components/CitySearch';
 import { useUserAuth } from '../context/UserAuthContext';
 import PhoneInput from '../components/PhoneInput';
+import ResumeUpload from '../components/ResumeUpload';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -752,15 +753,12 @@ const EducatorFunnel = () => {
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
-                          Resume Link <span className="text-slate-400 font-normal">(optional)</span>
+                          Resume <span className="text-slate-400 font-normal">(optional)</span>
                         </label>
-                        <input
-                          type="url"
+                        <ResumeUpload
                           value={formData.resume_url}
-                          onChange={(e) => setFormData({ ...formData, resume_url: e.target.value })}
-                          placeholder="Google Drive / Dropbox link…"
-                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
-                          data-testid="educator-resume"
+                          onChange={(url) => setFormData({ ...formData, resume_url: url })}
+                          testId="educator-resume"
                         />
                       </div>
                     </div>
@@ -1305,15 +1303,12 @@ const EducatorFunnel = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Resume Link <span className="text-slate-400 font-normal">(optional)</span>
+                    Resume <span className="text-slate-400 font-normal">(optional)</span>
                   </label>
-                  <input
-                    type="url"
+                  <ResumeUpload
                     value={reqFormData.resume_url}
-                    onChange={(e) => setReqFormData({ ...reqFormData, resume_url: e.target.value })}
-                    placeholder="Google Drive / Dropbox link…"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent"
-                    data-testid="req-resume"
+                    onChange={(url) => setReqFormData({ ...reqFormData, resume_url: url })}
+                    testId="req-resume"
                   />
                 </div>
               </div>

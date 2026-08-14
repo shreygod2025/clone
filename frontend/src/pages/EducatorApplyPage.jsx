@@ -8,6 +8,7 @@ import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { toast } from 'sonner';
 import { format, addDays } from 'date-fns';
 import axios from 'axios';
+import ResumeUpload from '../components/ResumeUpload';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -495,16 +496,13 @@ export default function EducatorApplyPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Resume Link <span className="text-slate-400 text-xs font-normal">(optional)</span>
+                      Resume <span className="text-slate-400 text-xs font-normal">(optional)</span>
                     </label>
-                    <Input
-                      type="url"
-                      placeholder="Google Drive / Dropbox link…"
+                    <ResumeUpload
                       value={formData.resume_url}
-                      onChange={(e) => setFormData({...formData, resume_url: e.target.value})}
-                      data-testid="apply-resume"
+                      onChange={(url) => setFormData({...formData, resume_url: url})}
+                      testId="apply-resume"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1">Paste a shareable link to your CV / resume.</p>
                   </div>
                 </div>
 

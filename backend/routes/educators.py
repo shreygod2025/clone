@@ -609,6 +609,59 @@ async def send_educator_rejected_email(doc: dict):
     })
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
+
+# Public endpoint — anonymous applicants can upload a resume before the
+# `/educators/apply` submit. Returns a Cloudinary URL that the frontend
+# stores in the application payload's `resume_url`. No auth required so
+# the applicant flow stays single-page; we guard by size + extension.
+_APPLICANT_RESUME_ALLOWED_EXT = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
+_APPLICANT_RESUME_MAX_BYTES = 10 * 1024 * 1024  # 10 MB — resumes are small
+
+
+@router.post("/educators/apply/upload-resume")
+async def upload_applicant_resume(file: UploadFile = File(...)):
+    from pathlib import Path as _Path
+    from io import BytesIO as _BytesIO
+    from .misc import _get_cloudinary
+
+    file_ext = _Path(file.filename or "").suffix.lower()
+    if file_ext not in _APPLICANT_RESUME_ALLOWED_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF, DOC, DOCX, JPG, and PNG files are allowed.",
+        )
+
+    content = await file.read()
+    size = len(content)
+    if size == 0:
+        raise HTTPException(status_code=400, detail="File is empty.")
+    if size > _APPLICANT_RESUME_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large (max 10 MB, got {size / (1024 * 1024):.1f} MB).",
+        )
+
+    # Cloudinary treats PDFs/DOCs as `raw` and images as `image`.
+    resource_type = "image" if file_ext in {".jpg", ".jpeg", ".png"} else "raw"
+    public_id = f"resume_{uuid.uuid4().hex[:12]}{file_ext}"
+    try:
+        result = _get_cloudinary().uploader.upload(
+            _BytesIO(content),
+            public_id=public_id,
+            folder="oll_educator_applications",
+            resource_type=resource_type,
+        )
+    except Exception as e:
+        logger.error("[applicant-resume] cloudinary upload failed err=%s", e)
+        raise HTTPException(status_code=502, detail="Upload failed. Please retry.")
+
+    return {
+        "url": result.get("secure_url"),
+        "original_name": file.filename,
+        "size": size,
+    }
+
+
 @router.post("/educators/apply", response_model=EducatorApplication)
 async def create_educator_application(data: EducatorApplicationCreate, background_tasks: BackgroundTasks):
     # ── Deduplication: same phone OR email already exists (non-archived) ───
