@@ -687,75 +687,82 @@ const EducatorFunnel = () => {
                         className="w-full"
                       />
                     </div>
-                  </div>
-
-                  {/* Area / Locality — free-text input, styled like City. */}
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
-                      Area / Locality <span className="text-slate-400 font-normal">(optional)</span>
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        value={formData.area}
-                        onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                        placeholder="Search your area / locality..."
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
-                        data-testid="educator-area"
-                      />
-                    </div>
-                  </div>
-
-                  {/* LinkedIn + Resume — paste-a-link (LinkedIn / Google Drive / Dropbox). */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* Area / Locality — free-text input, styled like City.
+                        Kept inside the Personal Info column so admins get
+                        location context (city + area) side-by-side. */}
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
-                        LinkedIn Profile <span className="text-slate-400 font-normal">(optional)</span>
+                        Area / Locality <span className="text-slate-400 font-normal">(optional)</span>
                       </label>
-                      <input
-                        type="url"
-                        value={formData.linkedin_url}
-                        onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-                        placeholder="https://linkedin.com/in/…"
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
-                        data-testid="educator-linkedin"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
-                        Resume Link <span className="text-slate-400 font-normal">(optional)</span>
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.resume_url}
-                        onChange={(e) => setFormData({ ...formData, resume_url: e.target.value })}
-                        placeholder="Google Drive / Dropbox link…"
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
-                        data-testid="educator-resume"
-                      />
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="text"
+                          value={formData.area}
+                          onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                          placeholder="Search your area / locality..."
+                          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                          data-testid="educator-area"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Bio — mandatory */}
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
-                      About Yourself *
-                      <span className="ml-2 text-[10px] font-normal text-slate-500">
-                        (min 30 chars — teaching style, subjects, why you enjoy teaching)
-                      </span>
-                    </label>
-                    <textarea
-                      value={formData.bio}
-                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                      placeholder="Example: I have 4+ years teaching experience with children aged 8-14. I specialise in Robotics & Coding and love making complex concepts fun through hands-on projects."
-                      rows={3}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
-                      data-testid="educator-bio"
-                      maxLength={800}
-                    />
-                    <div className={`text-[10px] mt-1 text-right ${formData.bio.trim().length < 30 ? 'text-rose-500' : 'text-emerald-600'}`}>
-                      {formData.bio.trim().length}/30 characters minimum · {800 - formData.bio.length} left
+                  {/* Right column — About Yourself with the two Profile Links
+                      right below so the paired inputs sit together. */}
+                  <div className="space-y-3 sm:space-y-4">
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                        About Yourself *
+                        <span className="ml-2 text-[10px] font-normal text-slate-500">
+                          (min 30 chars — teaching style, subjects, why you enjoy teaching)
+                        </span>
+                      </label>
+                      <textarea
+                        value={formData.bio}
+                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                        placeholder="Example: I have 4+ years teaching experience with children aged 8-14. I specialise in Robotics & Coding and love making complex concepts fun through hands-on projects."
+                        rows={7}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                        data-testid="educator-bio"
+                        maxLength={800}
+                      />
+                      <div className="flex items-center justify-between mt-1">
+                        <p className={`text-[10px] font-medium ${formData.bio.trim().length < 30 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                          {formData.bio.trim().length}/30 characters minimum
+                        </p>
+                        <p className="text-[10px] text-slate-400">{800 - formData.bio.length} left</p>
+                      </div>
+                    </div>
+
+                    {/* LinkedIn + Resume — paste-a-link (LinkedIn / Drive / Dropbox). */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                          LinkedIn Profile <span className="text-slate-400 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.linkedin_url}
+                          onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+                          placeholder="https://linkedin.com/in/…"
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                          data-testid="educator-linkedin"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                          Resume Link <span className="text-slate-400 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.resume_url}
+                          onChange={(e) => setFormData({ ...formData, resume_url: e.target.value })}
+                          placeholder="Google Drive / Dropbox link…"
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                          data-testid="educator-resume"
+                        />
+                      </div>
                     </div>
                   </div>
 
