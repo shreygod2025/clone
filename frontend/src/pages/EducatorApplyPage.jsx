@@ -103,15 +103,16 @@ export default function EducatorApplyPage() {
     }
     setSubmitting(true);
     try {
-      const verifyRes = await axios.post(`${API}/api/auth/verify-otp`, {
+      // OTP verify — server responds 200 on success (throws 400 on
+      // invalid/expired). We defensively also accept an explicit
+      // `verified: true` in the payload, but successful HTTP status
+      // alone is authoritative — otherwise a missing legacy flag was
+      // making the UI shout "Invalid OTP" even when verification passed
+      // AND consumed the token, blocking any retry.
+      await axios.post(`${API}/api/auth/verify-otp`, {
         phone: fullPhone(),
         otp,
       });
-      if (!verifyRes.data?.verified) {
-        toast.error('Invalid OTP. Please try again.');
-        setSubmitting(false);
-        return;
-      }
       const submitRes = await axios.post(`${API}/api/educators/apply`, {
         name: formData.name,
         email: formData.email,

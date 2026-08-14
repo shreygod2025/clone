@@ -669,6 +669,7 @@ async def verify_otp(data: OTPVerify):
             {"_id": 0},
         )
         return {
+            "verified": True,
             "phone": data.phone,
             "user_type": "summer_camp",
             "user": booking,
@@ -694,6 +695,7 @@ async def verify_otp(data: OTPVerify):
     # For school_student, include payment details
     if data.user_type == "school_student":
         return {
+            "verified": True,
             "phone": data.phone,
             "user_type": data.user_type,
             "name": user_data.get("student_name") if user_data else None,
@@ -707,6 +709,7 @@ async def verify_otp(data: OTPVerify):
         }
     
     return {
+        "verified": True,
         "phone": data.phone,
         "user_type": data.user_type,
         "name": user_data.get("name") or user_data.get("contact_name") if user_data else None,
