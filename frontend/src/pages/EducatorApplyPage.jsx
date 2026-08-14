@@ -43,6 +43,10 @@ export default function EducatorApplyPage() {
     countryCode: '+91',
     experience: '',
     why_interested: '',
+    area: '',
+    linkedin_url: '',
+    resume_url: '',
+    teaching_mode: '',
     available_days: [],
     demo_date: null,
     demo_time: '',
@@ -121,6 +125,10 @@ export default function EducatorApplyPage() {
         experience: formData.experience,
         grades_comfortable: [],
         city: requirement.city,
+        area: formData.area || requirement.area || '',
+        linkedin_url: formData.linkedin_url,
+        resume_url: formData.resume_url,
+        teaching_mode: formData.teaching_mode,
         availability: formData.available_days.join(', ') || 'Flexible',
         demo_ready: true,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
@@ -455,6 +463,84 @@ export default function EducatorApplyPage() {
                     className="min-h-[80px]"
                   />
                 </div>
+
+                {/* Area / Locality — helps admins shortlist by proximity. */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Area / Locality <span className="text-slate-400 text-xs font-normal">(optional)</span>
+                  </label>
+                  <Input
+                    placeholder="e.g., Andheri West"
+                    value={formData.area}
+                    onChange={(e) => setFormData({...formData, area: e.target.value})}
+                    data-testid="apply-area"
+                  />
+                </div>
+
+                {/* LinkedIn + Resume URLs — plain URL inputs so applicants
+                    can paste a public link (LinkedIn / Drive / Dropbox).
+                    Uploading a file directly is a separate feature. */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      LinkedIn Profile <span className="text-slate-400 text-xs font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="https://linkedin.com/in/…"
+                      value={formData.linkedin_url}
+                      onChange={(e) => setFormData({...formData, linkedin_url: e.target.value})}
+                      data-testid="apply-linkedin"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Resume Link <span className="text-slate-400 text-xs font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="Google Drive / Dropbox link…"
+                      value={formData.resume_url}
+                      onChange={(e) => setFormData({...formData, resume_url: e.target.value})}
+                      data-testid="apply-resume"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Paste a shareable link to your CV / resume.</p>
+                  </div>
+                </div>
+
+                {/* Preferred teaching mode — required so admins know
+                    delivery preference. Only surfaced when the requirement
+                    accepts multiple modes (empty list = any mode). */}
+                {(requirement.teaching_mode && requirement.teaching_mode.length > 0
+                  ? requirement.teaching_mode
+                  : ['at_school', 'at_home', 'at_centre', 'online']
+                ).length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Preferred Teaching Mode</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(requirement.teaching_mode && requirement.teaching_mode.length > 0
+                        ? requirement.teaching_mode
+                        : ['at_school', 'at_home', 'at_centre', 'online']
+                      ).map(m => {
+                        const labels = { at_school: 'At School', at_home: 'At Home', at_centre: 'At Centre', online: 'Online' };
+                        const on = formData.teaching_mode === m;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setFormData({...formData, teaching_mode: m})}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                              on ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                            }`}
+                            data-testid={`apply-mode-${m}`}
+                          >
+                            {labels[m] || m}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Day availability */}
                 {requirement.days?.length > 0 && (

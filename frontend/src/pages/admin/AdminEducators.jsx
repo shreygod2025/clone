@@ -70,6 +70,7 @@ const AdminEducators = () => {
   const [requirementForm, setRequirementForm] = useState({
     title: '', skill: '', city: '', area: '', description: '',
     positions: 1, days: [], timing_from: '', timing_to: '',
+    teaching_mode: [],
     pay_amount: '', pay_type: 'per_session', is_active: true
   });
   
@@ -200,6 +201,7 @@ const AdminEducators = () => {
       setRequirementForm({
         title: '', skill: '', city: '', area: '', description: '',
         positions: 1, days: [], timing_from: '', timing_to: '',
+        teaching_mode: [],
         pay_amount: '', pay_type: 'per_session', is_active: true
       });
       fetchRequirements();
@@ -1140,6 +1142,7 @@ const AdminEducators = () => {
                 setRequirementForm({
                   title: '', skill: '', city: '', area: '', description: '',
                   positions: 1, days: [], timing_from: '', timing_to: '',
+                  teaching_mode: [],
                   pay_amount: '', pay_type: 'per_session', is_active: true
                 });
                 setShowRequirementModal(true);
@@ -1884,6 +1887,46 @@ const AdminEducators = () => {
                     <div className="bg-slate-50 rounded-lg p-3">
                       <p className="text-xs text-slate-500 mb-1">Experience</p>
                       <p className="text-slate-700 text-sm">{viewEducator.experience}</p>
+                    </div>
+                  )}
+
+                  {/* Teaching Mode + Area/Locality (surfaced so admins can
+                      shortlist candidates by preferred delivery format). */}
+                  {(viewEducator.teaching_mode || viewEducator.area) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {viewEducator.teaching_mode && (
+                        <div className="bg-slate-50 rounded-lg p-3" data-testid="view-teaching-mode">
+                          <p className="text-xs text-slate-500 mb-1">Preferred Teaching Mode</p>
+                          <p className="text-slate-700 text-sm font-semibold capitalize">
+                            {String(viewEducator.teaching_mode).replace(/_/g, ' ')}
+                          </p>
+                        </div>
+                      )}
+                      {viewEducator.area && (
+                        <div className="bg-slate-50 rounded-lg p-3" data-testid="view-area">
+                          <p className="text-xs text-slate-500 mb-1">Area / Locality</p>
+                          <p className="text-slate-700 text-sm">{viewEducator.area}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* LinkedIn / Resume — quick shortlist links for HR. */}
+                  {(viewEducator.linkedin_url || viewEducator.resume_url) && (
+                    <div className="bg-blue-50 rounded-lg p-3 space-y-1.5" data-testid="view-links">
+                      <p className="text-xs text-blue-700 font-semibold mb-1">Profile Links</p>
+                      {viewEducator.linkedin_url && (
+                        <a href={viewEducator.linkedin_url} target="_blank" rel="noopener noreferrer"
+                          className="block text-sm text-blue-700 hover:underline truncate" data-testid="view-linkedin">
+                          🔗 LinkedIn — {viewEducator.linkedin_url}
+                        </a>
+                      )}
+                      {viewEducator.resume_url && (
+                        <a href={viewEducator.resume_url} target="_blank" rel="noopener noreferrer"
+                          className="block text-sm text-blue-700 hover:underline truncate" data-testid="view-resume">
+                          📄 Resume — {viewEducator.resume_url}
+                        </a>
+                      )}
                     </div>
                   )}
 
@@ -3003,6 +3046,97 @@ const AdminEducators = () => {
                 rows={3}
               />
             </div>
+
+            {/* Days — optional. Chips toggle inclusion in the days list. */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Days <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                  const on = requirementForm.days.includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setRequirementForm({
+                        ...requirementForm,
+                        days: on ? requirementForm.days.filter(d => d !== day) : [...requirementForm.days, day],
+                      })}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                        on ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                      }`}
+                      data-testid={`req-day-${day}`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Timings — optional. Two side-by-side time pickers. */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Timing From <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <Input
+                  type="time"
+                  value={requirementForm.timing_from}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, timing_from: e.target.value })}
+                  data-testid="req-timing-from"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Timing To <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <Input
+                  type="time"
+                  value={requirementForm.timing_to}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, timing_to: e.target.value })}
+                  data-testid="req-timing-to"
+                />
+              </div>
+            </div>
+
+            {/* Teaching mode — multi-select chips. Requirement can accept
+                more than one mode; empty list = any mode is fine. */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Teaching Mode <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { k: 'at_school', l: 'At School' },
+                  { k: 'at_home',   l: 'At Home' },
+                  { k: 'at_centre', l: 'At Centre' },
+                  { k: 'online',    l: 'Online' },
+                ].map(m => {
+                  const on = (requirementForm.teaching_mode || []).includes(m.k);
+                  return (
+                    <button
+                      key={m.k}
+                      type="button"
+                      onClick={() => setRequirementForm({
+                        ...requirementForm,
+                        teaching_mode: on
+                          ? requirementForm.teaching_mode.filter(x => x !== m.k)
+                          : [...(requirementForm.teaching_mode || []), m.k],
+                      })}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                        on ? 'bg-[#D63031] text-white border-[#D63031]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                      }`}
+                      data-testid={`req-mode-${m.k}`}
+                    >
+                      {m.l}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Positions</label>

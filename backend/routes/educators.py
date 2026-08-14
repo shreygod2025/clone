@@ -86,8 +86,15 @@ class EducatorApplication(BaseModel):
     experience: str = ""
     grades_comfortable: List[str] = []
     city: str = ""
+    # Locality within the city — surfaced on the applicant profile so
+    # admins can match applicants to nearby requirements at a glance.
+    area: str = ""
     teaching_mode: str = ""
     availability: str = ""
+    # Contact links captured on the public apply form — used by ops to
+    # shortlist candidates faster.
+    linkedin_url: str = ""
+    resume_url: str = ""
     demo_ready: bool = False
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
@@ -162,8 +169,9 @@ class EducatorApplication(BaseModel):
     def sanitize_nullable_fields(cls, values):
         """Coerce None/wrong-type values from legacy DB records so validation never fails."""
         str_fields = [
-            'name', 'email', 'phone', 'experience', 'city', 'teaching_mode',
-            'availability', 'notes', 'meeting_link', 'source', 'added_by',
+            'name', 'email', 'phone', 'experience', 'city', 'area', 'teaching_mode',
+            'availability', 'linkedin_url', 'resume_url',
+            'notes', 'meeting_link', 'source', 'added_by',
             'assigned_to', 'profile_photo', 'bio', 'tshirt_size',
             'address_line1', 'address_line2', 'state', 'pincode',
             'emergency_contact_name', 'emergency_contact_phone',
@@ -198,8 +206,11 @@ class EducatorApplicationCreate(BaseModel):
     experience: str = ""
     grades_comfortable: List[str] = []
     city: str = ""
+    area: str = ""
     teaching_mode: str = ""  # online, offline_home, offline_center
     availability: str = ""
+    linkedin_url: str = ""
+    resume_url: str = ""
     bio: str = ""
     demo_ready: bool = False
     demo_date: Optional[str] = None
@@ -430,6 +441,10 @@ class OpenRequirement(BaseModel):
     days: List[str] = []
     timing_from: str = ""
     timing_to: str = ""
+    # Accepted teaching modes for this opening — subset of
+    # {"at_school", "at_home", "at_centre", "online"}. Optional list so a
+    # requirement can accept multiple modes. Applicant picks one.
+    teaching_mode: List[str] = []
     pay_amount: str = ""
     pay_type: str = "per_session"  # per_session, per_day, per_month
     is_active: bool = True
@@ -445,6 +460,7 @@ class OpenRequirementCreate(BaseModel):
     days: List[str] = []
     timing_from: str = ""
     timing_to: str = ""
+    teaching_mode: List[str] = []
     pay_amount: str = ""
     pay_type: str = "per_session"
     is_active: bool = True
@@ -459,6 +475,7 @@ class OpenRequirementUpdate(BaseModel):
     days: Optional[List[str]] = None
     timing_from: Optional[str] = None
     timing_to: Optional[str] = None
+    teaching_mode: Optional[List[str]] = None
     pay_amount: Optional[str] = None
     pay_type: Optional[str] = None
     is_active: Optional[bool] = None
