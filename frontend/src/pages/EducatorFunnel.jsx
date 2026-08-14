@@ -76,6 +76,9 @@ const EducatorFunnel = () => {
     grades_comfortable: [],
     city: '',
     other_city: '',
+    area: '',
+    linkedin_url: '',
+    resume_url: '',
     bio: '',
     teaching_mode: [],
     availability: [],
@@ -91,6 +94,9 @@ const EducatorFunnel = () => {
     countryCode: '+91',
     experience: '',
     why_interested: '',
+    area: '',
+    linkedin_url: '',
+    resume_url: '',
     available_days: [],
     demo_date: null,
     demo_time: '',
@@ -371,17 +377,16 @@ const EducatorFunnel = () => {
       const fullPhone = reqFormData.countryCode === '+91' ? reqFormData.phone : `${reqFormData.countryCode}${reqFormData.phone}`;
       setSubmitting(true);
       try {
-        // Verify OTP
-        const verifyRes = await axios.post(`${API}/auth/verify-otp`, {
+        // Verify OTP — axios throws on 4xx, so success means verified.
+        await axios.post(`${API}/auth/verify-otp`, {
           phone: fullPhone,
           otp: reqOtp
         });
-        
-        if (!verifyRes.data?.verified) {
-          toast.error('Invalid OTP');
-          setSubmitting(false);
-          return;
-        }
+
+        // Trust HTTP 200 from verify-otp; the legacy `verified` flag
+        // response check was causing false "Invalid OTP" toasts because
+        // the backend didn't always include it (and had already consumed
+        // the token). If verify-otp had failed, axios would have thrown.
 
         // Submit application (OTP already verified)
         await axios.post(`${API}/educators/apply`, {
@@ -392,6 +397,9 @@ const EducatorFunnel = () => {
           experience: reqFormData.experience,
           grades_comfortable: [],
           city: selectedRequirement.city,
+          area: reqFormData.area || selectedRequirement.area || '',
+          linkedin_url: reqFormData.linkedin_url,
+          resume_url: reqFormData.resume_url,
           availability: reqFormData.available_days.join(', ') || 'Flexible',
           demo_ready: true,
           demo_date: reqFormData.demo_date ? format(reqFormData.demo_date, 'yyyy-MM-dd') : null,
@@ -677,6 +685,54 @@ const EducatorFunnel = () => {
                         placeholder="Search your city..."
                         data-testid="educator-city"
                         className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Area / Locality — free-text input, styled like City. */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                      Area / Locality <span className="text-slate-400 font-normal">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.area}
+                        onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                        placeholder="Search your area / locality..."
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                        data-testid="educator-area"
+                      />
+                    </div>
+                  </div>
+
+                  {/* LinkedIn + Resume — paste-a-link (LinkedIn / Google Drive / Dropbox). */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                        LinkedIn Profile <span className="text-slate-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.linkedin_url}
+                        onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+                        placeholder="https://linkedin.com/in/…"
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                        data-testid="educator-linkedin"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">
+                        Resume Link <span className="text-slate-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.resume_url}
+                        onChange={(e) => setFormData({ ...formData, resume_url: e.target.value })}
+                        placeholder="Google Drive / Dropbox link…"
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent input-glass"
+                        data-testid="educator-resume"
                       />
                     </div>
                   </div>
@@ -1205,6 +1261,54 @@ const EducatorFunnel = () => {
                   className="min-h-[80px]"
                   data-testid="req-why"
                 />
+              </div>
+
+              {/* Area / Locality — same visual style as the City input above. */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Area / Locality <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={reqFormData.area}
+                    onChange={(e) => setReqFormData({ ...reqFormData, area: e.target.value })}
+                    placeholder="Search your area / locality..."
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent"
+                    data-testid="req-area"
+                  />
+                </div>
+              </div>
+
+              {/* LinkedIn + Resume — paste-a-link (LinkedIn / Google Drive / Dropbox). */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    LinkedIn Profile <span className="text-slate-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={reqFormData.linkedin_url}
+                    onChange={(e) => setReqFormData({ ...reqFormData, linkedin_url: e.target.value })}
+                    placeholder="https://linkedin.com/in/…"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent"
+                    data-testid="req-linkedin"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Resume Link <span className="text-slate-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={reqFormData.resume_url}
+                    onChange={(e) => setReqFormData({ ...reqFormData, resume_url: e.target.value })}
+                    placeholder="Google Drive / Dropbox link…"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D63031] focus:border-transparent"
+                    data-testid="req-resume"
+                  />
+                </div>
               </div>
 
               {selectedRequirement.days && selectedRequirement.days.length > 0 && (
