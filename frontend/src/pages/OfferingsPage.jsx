@@ -24,7 +24,7 @@ const INDIVIDUAL_COURSES = [
     gradient: 'from-[#D63031] to-[#e84142]',
     color: '#D63031',
     duration: '3-6 months',
-    classSize: '1:5 ratio'
+    classSize: '1:10 ratio'
   },
   {
     id: 'coding',

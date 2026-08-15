@@ -138,7 +138,7 @@ const SKILLS = [
 ];
 
 const HOW = [
-  { icon: Calendar,    t: '1 Class / Week',         s: '90 minutes of hands-on tech, every week.' },
+  { icon: Calendar,    t: '1 Class / Week',         s: '120 minutes of hands-on tech, every week.' },
   { icon: MapPin,      t: 'Offline Centers',        s: 'In-centre or at partner schools — never just a screen.' },
   { icon: Users,       t: 'Small Batches · Max 10', s: 'Every kid gets the educator\'s eyes & feedback.' },
   { icon: TrendingUp,  t: 'Progressive Levels',     s: 'Grade-mapped curriculum that scales as they grow.' },
@@ -298,7 +298,7 @@ const FutureSkillsLandingPage = () => {
           courseMode: 'In-Person',
           location: { '@type': 'Place', name: 'OLL Centres · Mumbai · Pune · Bengaluru · Hyderabad · Delhi NCR' },
           courseSchedule: { '@type': 'Schedule', repeatFrequency: 'P1W', duration: 'PT90M' },
-          instructor: { '@type': 'Person', name: 'OLL Educators · 2 trainers per batch · 1:5 ratio' },
+          instructor: { '@type': 'Person', name: 'OLL Educators · 1 trainer per batch · 1:10 ratio' },
         },
         aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.75', reviewCount: '500', bestRating: '5', worstRating: '1' },
       },
@@ -338,7 +338,7 @@ const FutureSkillsLandingPage = () => {
                 They'll build it.
               </h1>
               <p className="hidden sm:block text-base sm:text-lg lg:text-xl text-slate-600 max-w-xl">
-                Hands-on weekly classes in Robotics, Coding, AI, 3D Design & emerging tech — for Grades 1 to 10.
+                Future Innovator classes in Robotics, Coding, AI, 3D Design & emerging tech — for Grades 1 to 10.
                 Small batches, real kits, lasting curiosity.
               </p>
               <div className="flex flex-row flex-nowrap items-stretch gap-2 sm:gap-3">
@@ -359,6 +359,7 @@ const FutureSkillsLandingPage = () => {
                 <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Once a week · 2 hours</span>
                 <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Max 10 per batch</span>
                 <span className="flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D63031]" /> Robotic kit free w/ yearly</span>
+                <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D63031]" /> 70+ projects</span>
               </div>
             </div>
 
@@ -641,25 +642,25 @@ const FutureSkillsLandingPage = () => {
               </div>
             </div>
 
-            {/* CARD 3 · 1:5 RATIO — bold ratio number, ribbon style */}
+            {/* CARD 3 · 1:10 RATIO — bold ratio number, ribbon style */}
             <div className="relative rounded-3xl bg-gradient-to-br from-white to-blue-50/40 border-2 border-[#1E3A5F]/25 p-6 overflow-hidden shadow-xl shadow-blue-100/60 hover:border-[#1E3A5F] hover:-translate-y-1 transition-all"
               data-testid="usp-teacher-ratio">
               {/* Big ratio */}
               <div className="absolute top-3 right-3 text-[5rem] font-black leading-none bg-gradient-to-br from-[#D63031] to-[#1E3A5F] bg-clip-text text-transparent opacity-20" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                1:5
+                1:10
               </div>
               <div className="relative">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#D63031] to-[#1E3A5F] text-white flex items-center justify-center shadow-lg shadow-blue-900/20 mb-5">
                   <UserCheck className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-black text-[#0F1E33] leading-tight">2 Teachers · 1:5 Ratio</h3>
+                <h3 className="text-xl font-black text-[#0F1E33] leading-tight">1 Teacher · 1:10 Ratio</h3>
                 <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                  Two qualified educators in every batch. <strong className="text-[#1E3A5F]">One trainer for every 5 kids</strong> — no one falls behind.
+                  One qualified educator per batch. <strong className="text-[#1E3A5F]">One trainer for every 10 kids</strong> — no one falls behind.
                 </p>
                 <div className="mt-5 pt-4 border-t border-slate-200 flex items-center justify-between">
                   <div className="flex -space-x-2">
-                    {[1,2,3,4,5].map(i => (
-                      <div key={i} className="w-7 h-7 rounded-full border-2 border-white bg-gradient-to-br from-blue-100 to-red-100 flex items-center justify-center text-[10px] font-black text-[#1E3A5F]">
+                    {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                      <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-blue-100 to-red-100 flex items-center justify-center text-[9px] font-black text-[#1E3A5F]">
                         {i}
                       </div>
                     ))}

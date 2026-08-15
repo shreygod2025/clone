@@ -623,12 +623,12 @@ const LandingPage = () => {
                   One weekly class. Five future-defining skills.
                 </h3>
                 <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem', fontFamily: "'Nunito Sans', sans-serif" }}>
-                  Three age-mapped tiers — <strong style={{ color: '#D63031' }}>Junior (1–4)</strong>, <strong style={{ color: '#7B2C5C' }}>Middle (5–7)</strong>, <strong style={{ color: '#1E3A5F' }}>Senior (8–10)</strong>. Curiosity in, builders out.
+                  Three age-mapped tiers — <strong style={{ color: '#D63031' }}>Junior (3–7)</strong>, <strong style={{ color: '#7B2C5C' }}>Middle (8–11)</strong>, <strong style={{ color: '#1E3A5F' }}>Senior (12–16)</strong>. Curiosity in, builders out.
                 </p>
                 <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem', fontSize: '0.9rem', color: '#334155', fontFamily: "'Nunito Sans', sans-serif" }}>
-                  <li>✓ 90-min hands-on offline class · 1 / week</li>
+                  <li>✓ 120-min hands-on offline class · 1 / week</li>
                   <li>✓ Small batches · max 10 students · educator-led</li>
-                  <li>✓ Robotic kit free with yearly · year-end Tech Showcase</li>
+                  <li>✓ 70+ projects · Robotic kit free with yearly · year-end Tech Showcase</li>
                 </ul>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <button
@@ -650,7 +650,7 @@ const LandingPage = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
                 {[
-                  { k: '1 Class / Week', v: '90 min · offline', icon: '📅', accent: '#1E3A5F' },
+                  { k: '1 Class / Week', v: '120 min · offline', icon: '📅', accent: '#1E3A5F' },
                   { k: 'Max 10 / Batch',  v: 'Small group',     icon: '👥', accent: '#1E3A5F' },
                   { k: '₹2,000/mo',      v: 'Yearly · Save 20%', icon: '💸', accent: '#D63031' },
                   { k: 'Free Kit',       v: 'With yearly plan',  icon: '🎁', accent: '#D63031' },
