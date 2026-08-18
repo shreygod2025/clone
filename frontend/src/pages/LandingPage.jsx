@@ -310,266 +310,112 @@ const LandingPage = () => {
       </section>
       )}
 
-      {/* ── 1-DAY WORKSHOPS ─────────────────────────────── */}
-      <section data-testid="homepage-workshops-section" style={{
-        background: 'linear-gradient(180deg, #FCE899 0%, #FCE899 60%, #A8DCF0 100%)',
-        position: 'relative',
-        paddingTop: '5rem',
-        paddingBottom: '5rem',
-        overflow: 'hidden',
+      {/* ── SCHOOL PRODUCTS ────────────────────────────
+          Two flagship product families sold to schools — Robotics + Computer
+          Science curricula. Each tier click routes to a dedicated demo-booking
+          landing page. */}
+      <section data-testid="homepage-school-products" style={{
+        background: 'linear-gradient(180deg, #F4F7FE 0%, #FFFFFF 55%, #FFF7EC 100%)',
+        position: 'relative', overflow: 'hidden',
+        paddingTop: '5rem', paddingBottom: '5rem',
       }}>
-        {/* Decorative animated sun — top right corner */}
-        <style>{`
-          @keyframes hp-sun-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-          @keyframes hp-sun-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-          .hp-sun-rotor  { animation: hp-sun-spin 22s linear infinite; transform-origin: 50% 50%; }
-          .hp-sun-pulser { animation: hp-sun-pulse 3.2s ease-in-out infinite; transform-origin: 50% 50%; }
-          @keyframes hp-card-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-          .hp-cta-btn { animation: hp-card-bob 3s ease-in-out infinite; }
-          @media (prefers-reduced-motion: reduce) {
-            .hp-sun-rotor, .hp-sun-pulser, .hp-cta-btn { animation: none; }
-          }
-        `}</style>
-        <div aria-hidden="true" style={{ position: 'absolute', top: 16, right: 18, width: 84, height: 84, pointerEvents: 'none', zIndex: 0 }}>
-          <svg viewBox="0 0 100 100" className="hp-sun-pulser" style={{ width: '100%', height: '100%' }}>
-            <g className="hp-sun-rotor">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <rect key={i} x="48" y="4" width="4" height="14" rx="2" fill="#FFB627"
-                  transform={`rotate(${i * 30} 50 50)`} />
-              ))}
-            </g>
-            <circle cx="50" cy="50" r="22" fill="#FFB627" stroke="#F9D162" strokeWidth="2" />
-            <circle cx="43" cy="47" r="2" fill="#0F2960" />
-            <circle cx="57" cy="47" r="2" fill="#0F2960" />
-            <path d="M 43 56 Q 50 61 57 56" stroke="#0F2960" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          </svg>
-        </div>
-
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem', position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#FF7B6B', marginBottom: '0.6rem', fontFamily: "'Fredoka', sans-serif" }}>
-              ONE-DAY EVENTS
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#D63031', marginBottom: '0.6rem', fontFamily: "'JetBrains Mono', monospace" }}>
+              FOR SCHOOLS
             </p>
-            <h2 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, color: '#0F2960', fontSize: 'clamp(1.8rem, 4.2vw, 2.6rem)', lineHeight: 1.1, marginBottom: '0.75rem' }}>
-              Workshops &amp; Events
+            <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0F1E33', fontSize: 'clamp(1.9rem, 4.4vw, 2.75rem)', lineHeight: 1.1, marginBottom: '0.75rem' }}>
+              School Products
             </h2>
-            <p style={{ fontSize: '0.95rem', color: '#1F2937', fontFamily: "'Fredoka', sans-serif", maxWidth: 580, margin: '0 auto', lineHeight: 1.55 }}>
-              Hands-on Sunday workshops where parents and kids build something real — together.
+            <p style={{ fontSize: '1rem', color: '#475569', fontFamily: "'Nunito Sans', sans-serif", maxWidth: 620, margin: '0 auto', lineHeight: 1.55 }}>
+              End-to-end Robotics &amp; Computer Science curricula for K–12 schools. Book a live demo with our program expert to see the lab, syllabus and outcomes.
             </p>
           </div>
 
-          <div
-            onClick={() => navigate('/friendship-day')}
-            data-testid="workshop-card-friendship-day"
-            style={{
-              cursor: 'pointer',
-              borderRadius: '1.5rem',
-              overflow: 'hidden',
-              background: '#FFFEF7',
-              boxShadow: '0 24px 60px rgba(15,30,80,0.18)',
-              border: `3px solid #1E40AF`,
-              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 32px 80px rgba(15,30,80,0.28)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 24px 60px rgba(15,30,80,0.18)'; }}
-          >
-            <div className="workshop-card-grid">
-              <div style={{ padding: '2rem 1.75rem 2rem 2rem', color: '#0F2960', fontFamily: "'Fredoka', sans-serif" }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, background: '#FFFFFF', border: '2px solid #1E40AF', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#1E40AF', marginBottom: '1rem' }}>
-                  Friendship Day · 1-Day Event
-                </span>
-                <h3 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, color: '#0F2960', fontSize: 'clamp(1.45rem, 3.4vw, 1.95rem)', lineHeight: 1.15, marginBottom: '0.55rem' }}>
-                  Friendship Day Workshop
-                </h3>
-                <p style={{ color: '#475569', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '1rem', maxWidth: 480 }}>
-                  Celebrate Friendship Day with fun workshops! Choose to Design a 3D Friendship Bracelet, Code a Digital Friendship Card, or experience both workshops in one exciting event.
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1rem' }}>
-                  {[
-                    { icon: '📅', text: 'Sun, 2 Aug 2026' },
-                    { icon: '📍', text: 'Kandivali & Mira Road' },
-                    { icon: '⏱️', text: '1 hour per workshop' },
-                    { icon: '👧', text: 'Ages 6+ Years' },
-                  ].map(p => (
-                    <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: '#FFFFFF', border: '2px solid rgba(30,64,175,0.20)', fontSize: '0.78rem', fontWeight: 600, color: '#1E40AF' }}>
-                      <span>{p.icon}</span>{p.text}
-                    </span>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
-                  {[
-                    { icon: '🎨', text: 'Design a 3D Friendship Bracelet' },
-                    { icon: '💻', text: 'Code a Digital Friendship Card' },
-                    { icon: '⭐', text: 'Attend Both (Combo)' },
-                  ].map(p => (
-                    <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: '#FEF3F2', border: '2px solid rgba(214,48,49,0.25)', fontSize: '0.78rem', fontWeight: 600, color: '#D63031' }}>
-                      <span>{p.icon}</span>{p.text}
-                    </span>
-                  ))}
-                </div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate('/friendship-day'); }}
-                    className="hp-cta-btn"
-                    style={{ background: '#1E40AF', color: '#fff', fontFamily: "'Fredoka', sans-serif", fontWeight: 700, padding: '0.75rem 1.5rem', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(30,64,175,0.35)' }}
-                    data-testid="workshop-card-friendship-day-enroll"
-                  >
-                    Enroll Now →
-                  </button>
-                  <div style={{ fontSize: '0.72rem', color: '#1E40AF', fontWeight: 600 }}>Limited seats</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+            {/* ROBOTICS card family */}
+            <div style={{ background: '#fff', borderRadius: '1.5rem', border: '2px solid #E2E8F0', padding: '1.75rem', boxShadow: '0 12px 40px rgba(15,30,80,0.08)' }} data-testid="school-products-robotics">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '2rem' }}>🤖</span>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D63031', fontFamily: "'JetBrains Mono', monospace" }}>Product Family</div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0F1E33', fontFamily: "'JetBrains Mono', monospace" }}>Robotics</h3>
                 </div>
               </div>
-              {/* Right side — official Friendship Day flyer */}
-              <div style={{
-                minHeight: 240,
-                backgroundColor: '#0F2960',
-                backgroundImage: 'url(https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wqisxdqr_WhatsApp%20Image%202026-07-22%20at%209.51.11%20AM.jpeg)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-              }} />
-            </div>
-          </div>
-          <style>{`.workshop-card-grid{display:grid;grid-template-columns:1fr;gap:0}@media(min-width:900px){.workshop-card-grid{grid-template-columns:1.25fr 1fr}.workshop-card-grid>div:last-child{min-height:100% !important}}`}</style>
-        </div>
-      </section>
-
-      {/* ── Social Media Internship Readiness Program (Ages 12-18) ── */}
-      {/* Gradient continues from Workshop's #A8DCF0 (sky) downward into deep void */}
-      <section style={{
-        background: 'linear-gradient(to bottom, #A8DCF0 0%, #0f172a 12%, #0a0d18 50%, #050505 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-        paddingTop: '4rem',
-        paddingBottom: '5rem',
-      }} data-testid="homepage-smi-section">
-
-        {/* Header above card */}
-        <div style={{ textAlign: 'center', paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
-          <p style={{
-            fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: '#CCFF00', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif",
-          }}>
-            NEW · LIMITED TO 15 STUDENTS
-          </p>
-          <h2 style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 'clamp(1.7rem, 4.5vw, 3rem)',
-            fontWeight: 900,
-            color: '#F8FAFC',
-            lineHeight: 1.15,
-            marginBottom: '0.75rem',
-            maxWidth: 900,
-            margin: '0 auto 0.75rem',
-            paddingLeft: '1rem', paddingRight: '1rem',
-          }}>
-            <span style={{ color: '#CCFF00' }}>Internship Program</span>
-          </h2>
-          <p style={{ color: '#94A3B8', fontSize: '1rem', maxWidth: 520, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
-            1-month offline program where teens turn screen time into a skill that pays — and get placed as paid social media interns.
-          </p>
-        </div>
-
-        {/* Dark card - same dimensions as Summer Camp */}
-        <div style={{ maxWidth: 1000, margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #0B1205 0%, #111809 50%, #0B1205 100%)',
-            borderRadius: '1.5rem',
-            border: '1px solid rgba(204,255,0,0.2)',
-            boxShadow: '0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
-            position: 'relative',
-            overflow: 'hidden',
-            padding: '2.5rem',
-          }}>
-            {/* Grid pattern overlay */}
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.06, pointerEvents: 'none',
-              backgroundImage: 'linear-gradient(#CCFF00 1px, transparent 1px), linear-gradient(90deg, #CCFF00 1px, transparent 1px)',
-              backgroundSize: '40px 40px' }} />
-            {/* Glows */}
-            <div style={{ position: 'absolute', top: '-60px', right: '8%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(204,255,0,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: '-40px', left: '5%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,255,102,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-            <div className="grid md:grid-cols-[1fr_280px] gap-8" style={{ position: 'relative' }}>
-              {/* Left: content */}
-              <div>
-                {/* Badges */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 12px', borderRadius: '999px', background: 'rgba(204,255,0,0.15)', border: '1px solid #CCFF00', color: '#CCFF00', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#CCFF00', display: 'inline-block' }} />
-                    New Program
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: '999px', background: 'rgba(0,255,102,0.12)', border: '1px solid rgba(0,255,102,0.35)', color: '#00FF66', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-                    Ages 12–18
-                  </span>
-                </div>
-
-                {/* Heading */}
-                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: '0.75rem' }}>
-                  <span style={{ color: '#F8FAFC', display: 'block' }}>Social Media Internship</span>
-                  <span style={{ background: 'linear-gradient(90deg, #CCFF00, #00FF66)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                    Readiness Program for Teens
-                  </span>
-                </h3>
-
-                <p style={{ color: '#94A3B8', fontSize: '0.9rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 400, fontFamily: "'Nunito Sans', sans-serif" }}>
-                  Content creation, script writing, reels & shooting, editing, growth — taught hands-on with real startup briefs. Top students get placed as paid interns.
-                </p>
-
-                {/* Feature pills */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.75rem' }}>
-                  {['Mumbai + Online', 'Real Internships', '15 Seats/Batch', '4 Weeks'].map(text => (
-                    <span key={text} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#CBD5E1', fontSize: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
-                      {text}
-                    </span>
-                  ))}
-                </div>
-
-                {/* CTA */}
-                <button
-                  onClick={() => navigate('/social-media-intern')}
-                  data-testid="homepage-smi-apply-btn"
-                  style={{
-                    background: '#CCFF00', color: '#000',
-                    fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, fontSize: '0.85rem',
-                    padding: '0.85rem 2rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                    boxShadow: '0 0 28px rgba(204,255,0,0.4)',
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    transition: 'all 0.3s', letterSpacing: '0.05em',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 44px rgba(204,255,0,0.6)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(204,255,0,0.4)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  Apply Now
-                  <ArrowRight style={{ width: 16, height: 16 }} />
-                </button>
-              </div>
-
-              {/* Right: outcome tiles */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {[
-                  { k: '1 Month', v: 'Duration',          icon: '⏱' },
-                  { k: '32 Hrs',  v: 'Hands-on Training', icon: '⚡' },
-                  { k: '15',      v: 'Seats Per Batch',   icon: '🎯' },
-                  { k: '70%+',    v: 'Placement Target',  icon: '🏆' },
-                ].map(s => (
-                  <div key={s.k}
-                    onClick={() => navigate('/social-media-intern')}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.borderColor = 'rgba(204,255,0,0.35)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
+                  { label: 'Pre-School',                           route: '/school/robotics/pre-school',   sub: 'Play + explore · Ages 3–5' },
+                  { label: 'Beginner',                             route: '/school/robotics/beginner',     sub: 'Grade 1–4 · First year of Robotics', highlight: true },
+                  { label: 'Intermediate',                         route: '/school/robotics/intermediate', sub: 'Grade 5–7 · Sensors + coding' },
+                  { label: 'Advanced',                             route: '/school/robotics/advanced',     sub: 'Grade 8–10 · IoT + automation' },
+                  { label: 'ICSE — Group 3 Subject (9th & 10th)',  route: '/school/robotics/icse',          sub: 'Board-mapped elective' },
+                ].map(t => (
+                  <button key={t.label}
+                    onClick={() => navigate(t.route)}
+                    data-testid={`school-robotics-${t.label.split(' ')[0].toLowerCase()}`}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: t.highlight ? 'linear-gradient(90deg, #D63031, #1E3A5F)' : '#F8FAFC',
+                      color: t.highlight ? '#fff' : '#0F1E33',
+                      border: t.highlight ? 'none' : '1px solid #E2E8F0',
+                      padding: '0.85rem 1.1rem', borderRadius: '0.75rem', cursor: 'pointer',
+                      fontFamily: "'Nunito Sans', sans-serif", fontWeight: 700, fontSize: '0.95rem',
+                      textAlign: 'left', transition: 'transform 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; }}
                   >
-                    <span style={{ fontSize: '1.15rem', lineHeight: 1, flexShrink: 0 }}>{s.icon}</span>
-                    <div>
-                      <div style={{ color: '#CCFF00', fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2, whiteSpace: 'nowrap' }}>{s.k}</div>
-                      <div style={{ color: '#64748B', fontSize: '0.7rem', fontFamily: "'Nunito Sans', sans-serif", marginTop: '0.1rem' }}>{s.v}</div>
-                    </div>
-                  </div>
+                    <span>
+                      {t.label}
+                      <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 500, opacity: 0.75, marginTop: '0.15rem' }}>{t.sub}</span>
+                    </span>
+                    <span style={{ fontWeight: 900 }}>→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* COMPUTER SCIENCE card family */}
+            <div style={{ background: '#fff', borderRadius: '1.5rem', border: '2px solid #E2E8F0', padding: '1.75rem', boxShadow: '0 12px 40px rgba(15,30,80,0.08)' }} data-testid="school-products-cs">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '2rem' }}>💻</span>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#1E3A5F', fontFamily: "'JetBrains Mono', monospace" }}>Product Family</div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0F1E33', fontFamily: "'JetBrains Mono', monospace" }}>Computer Science</h3>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {[
+                  { label: 'ICSE',                                 route: '/school/cs/icse',      sub: 'Full board-aligned curriculum' },
+                  { label: 'CBSE',                                 route: '/school/cs/cbse',      sub: 'Full board-aligned curriculum' },
+                  { label: 'CBSE — Computational Thinking & AI',   route: '/school/cs/cbse-ct-ai', sub: 'New CBSE elective 2024+' },
+                ].map(t => (
+                  <button key={t.label}
+                    onClick={() => navigate(t.route)}
+                    data-testid={`school-cs-${t.label.split(' ')[0].toLowerCase()}`}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: '#F8FAFC', color: '#0F1E33', border: '1px solid #E2E8F0',
+                      padding: '0.85rem 1.1rem', borderRadius: '0.75rem', cursor: 'pointer',
+                      fontFamily: "'Nunito Sans', sans-serif", fontWeight: 700, fontSize: '0.95rem',
+                      textAlign: 'left', transition: 'transform 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; }}
+                  >
+                    <span>
+                      {t.label}
+                      <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 500, opacity: 0.75, marginTop: '0.15rem' }}>{t.sub}</span>
+                    </span>
+                    <span style={{ fontWeight: 900 }}>→</span>
+                  </button>
                 ))}
               </div>
             </div>
           </div>
         </div>
       </section>
+
 
       {/* ── Future Skills · Year-Round Continuous Program (Grades 1–10) ── */}
       <section style={{

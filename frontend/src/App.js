@@ -108,6 +108,7 @@ const DiscoverPayment = lazy(() => import("./pages/DiscoverPayment"));
 const DiscoverSuccess = lazy(() => import("./pages/DiscoverSuccess"));
 const FriendshipDayLanding = lazy(() => import("./pages/FriendshipDayLanding"));
 const FriendshipDaySuccess = lazy(() => import("./pages/FriendshipDaySuccess"));
+const RoboticsBeginnerLanding = lazy(() => import("./pages/school/RoboticsBeginnerLanding"));
 const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingTracker"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
@@ -345,6 +346,17 @@ function App() {
               <Route path="/discover/success" element={<DiscoverSuccess />} />
               <Route path="/friendship-day" element={<FriendshipDayLanding />} />
               <Route path="/friendship-day/success" element={<FriendshipDaySuccess />} />
+              {/* School Products — dedicated per-tier landing pages. Robotics Beginner is
+                  live; the rest fall back to the same demo-booking flow with a query
+                  param (tier=) until each gets its own dedicated page. */}
+              <Route path="/school/robotics/beginner" element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics/pre-school"    element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics/intermediate" element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics/advanced"     element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics/icse"         element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/cs/icse"               element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/cs/cbse"               element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/cs/cbse-ct-ai"         element={<RoboticsBeginnerLanding />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute permission="schools"><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
               <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute permission="orders"><SchoolPaymentTracker /></ProtectedRoute>} />
