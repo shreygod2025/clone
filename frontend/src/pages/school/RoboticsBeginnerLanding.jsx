@@ -33,6 +33,9 @@ const CURRICULUM_PDF =
 const ROBOTICS_GIF =
   'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
 
+const OLL_LOGO_COLOR =
+  'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+
 const OLL_LOGO_WHITE =
   'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
 
@@ -126,15 +129,35 @@ export default function RoboticsBeginnerLanding() {
       <Toaster position="top-right" richColors />
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
 
-        .rb-page { min-height: 100vh; background: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; color: #0A1F44; overflow-x: hidden; }
-        .rb-h1, .rb-h2, .rb-h3, .rb-h4, .rb-num { font-family: 'Anton', 'Inter', sans-serif; letter-spacing: 0.01em; text-transform: uppercase; font-weight: 400; }
+        /* Hero display face — provided by user */
+        @font-face {
+          font-family: 'Zing Rust';
+          src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
+          font-weight: 400;
+          font-style: normal;
+          font-display: swap;
+        }
+
+        .rb-page { min-height: 100vh; background: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; color: #0A1F44; overflow-x: hidden; padding-top: 78px; }
+
+        /* Hero only — Zing Rust display face */
+        .rb-hero-title { font-family: 'Zing Rust', 'Anton', 'Inter', sans-serif; letter-spacing: 0.005em; text-transform: uppercase; font-weight: 400; }
+
+        /* All other section titles — Proxima Nova Light (Montserrat 300 as free fallback) */
+        .rb-h1, .rb-h2, .rb-h3, .rb-h4 { font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; font-weight: 300; letter-spacing: -0.01em; text-transform: none; }
+        .rb-h1 { font-weight: 400; }
+        .rb-h4 { font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; }
+
+        /* Numbers keep a strong condensed feel */
+        .rb-num { font-family: 'Proxima Nova', 'Montserrat', sans-serif; font-weight: 700; letter-spacing: -0.02em; }
+
         .rb-serif { font-family: 'Libre Baskerville', Georgia, serif; }
         .rb-hand  { font-family: 'Caveat', cursive; }
         .rb-stroke { background-image: linear-gradient(90deg, #DC2626, #1E3A8A); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-        .rb-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.95rem 1.75rem; border-radius: 999px; font-weight: 800; font-size: 0.98rem; text-decoration: none; cursor: pointer; border: none; transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; font-family: 'Inter', sans-serif; }
+        .rb-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.95rem 1.75rem; border-radius: 999px; font-weight: 700; font-size: 0.95rem; text-decoration: none; cursor: pointer; border: none; transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; }
         .rb-btn-primary { background: linear-gradient(90deg, #DC2626 0%, #1E3A8A 100%); color: #fff; box-shadow: 0 16px 34px rgba(220,38,38,0.35); }
         .rb-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 22px 46px rgba(220,38,38,0.45); }
         .rb-btn-outline { background: transparent; color: #0A1F44; border: 2px solid #0A1F44; }
@@ -147,7 +170,29 @@ export default function RoboticsBeginnerLanding() {
         .rb-orb-blue  { background: rgba(30,58,138,0.5); }
         .rb-orb-light { background: rgba(96,165,250,0.5); }
 
-        .rb-topbar { position: sticky; top: 0; z-index: 40; background: rgba(10,31,68,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+        /* Floating pill nav — glassy, centered, rounded */
+        .rb-topbar {
+          position: fixed;
+          top: 14px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 60;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.55rem 0.65rem 0.55rem 1.1rem;
+          background: rgba(255,255,255,0.7);
+          backdrop-filter: blur(22px) saturate(160%);
+          -webkit-backdrop-filter: blur(22px) saturate(160%);
+          border: 1px solid rgba(255,255,255,0.55);
+          border-radius: 999px;
+          box-shadow: 0 20px 48px rgba(10,31,68,0.18), 0 0 0 1px rgba(15,30,80,0.04) inset;
+          max-width: calc(100vw - 24px);
+        }
+        .rb-topbar .rb-nav-link { color: #0A1F44; font-weight: 600; font-size: 0.85rem; text-decoration: none; padding: 0.5rem 0.85rem; border-radius: 999px; transition: background .2s ease; display: inline-flex; align-items: center; gap: 0.35rem; }
+        .rb-topbar .rb-nav-link:hover { background: rgba(15,30,80,0.06); }
+        .rb-topbar .rb-nav-divider { width: 1px; height: 22px; background: rgba(15,30,80,0.12); margin: 0 0.15rem; }
+
         .rb-glass { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(14px); }
 
         .rb-marquee-wrap { overflow: hidden; }
@@ -160,24 +205,22 @@ export default function RoboticsBeginnerLanding() {
         @media (max-width: 900px) {
           .rb-2col { grid-template-columns: 1fr !important; }
           .rb-hide-mobile { display: none !important; }
+          .rb-page { padding-top: 68px; }
         }
       `}</style>
 
-      {/* ─────────── STICKY TOP BAR ─────────── */}
+      {/* ─────────── FLOATING GLASS PILL NAV ─────────── */}
       <div className="rb-topbar" data-testid="rb-topbar">
-        <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0.85rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <img src={OLL_LOGO_WHITE} alt="OLL" style={{ height: 26 }} />
-          </a>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <a href="tel:+919820106645" className="rb-hide-mobile" style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.88rem', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Phone size={14} /> +91 98201 06645
-            </a>
-            <button onClick={bookDemo} data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.85rem' }}>
-              Book a Demo <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
+        <a href="/" style={{ display: 'flex', alignItems: 'center', paddingRight: 6 }}>
+          <img src={OLL_LOGO_COLOR} alt="OLL" style={{ height: 22 }} />
+        </a>
+        <div className="rb-nav-divider" />
+        <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-nav-download" className="rb-nav-link">
+          <Download size={14} /> <span className="rb-hide-mobile">Download Curriculum</span><span style={{ display: 'none' }}></span>
+        </a>
+        <button onClick={bookDemo} data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.85rem' }}>
+          Book a Demo <ArrowRight size={14} />
+        </button>
       </div>
 
       {/* ═══════════ 01 — HERO ═══════════ */}
@@ -193,7 +236,7 @@ export default function RoboticsBeginnerLanding() {
               <Rocket size={14} style={{ color: '#FCA5A5' }} />
               <span style={{ color: '#FCA5A5', letterSpacing: '0.12em', textTransform: 'uppercase' }}>For Schools · Robotics Beginner</span>
             </div>
-            <h1 className="rb-h1" style={{ fontSize: 'clamp(2.4rem, 5.6vw, 4.4rem)', lineHeight: 0.98, marginTop: '1.1rem', marginBottom: '1.1rem' }}>
+            <h1 className="rb-hero-title" style={{ fontSize: 'clamp(2.6rem, 6vw, 4.8rem)', lineHeight: 0.96, marginTop: '1.1rem', marginBottom: '1.1rem' }}>
               Turn your school into a<br />
               <span className="rb-stroke" style={{ backgroundImage: 'linear-gradient(90deg, #FCA5A5, #60A5FA)' }}>future-skills powerhouse.</span>
             </h1>
