@@ -66,7 +66,6 @@ const SKILLS = [
   { l: 'Aeromodelling',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/w1wq10h8_image.png' },
   { l: '3D Design',        src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif' },
   { l: 'Space Technology', src: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=600&h=800&fit=crop' },
-  { l: 'DIY Science',      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&h=800&fit=crop' },
 ];
 
 const SCHOOL_GETS = [
@@ -121,6 +120,12 @@ const GROWTH_PATH = [
   { level: 'Foundation',   verb: 'Explore',           s: 'Beginner Robotics · Grades 1–4', color: '#60A5FA' },
   { level: 'Intermediate', verb: 'Build & Compete',   s: 'Sensors, coding, teamwork · Grades 5–7', color: '#1E3A8A' },
   { level: 'Advanced',     verb: 'Innovate',          s: 'IoT, automation, showcase · Grades 8–10', color: '#DC2626' },
+];
+
+const PARTNER_SCHOOLS = [
+  'D. G. Khetan International', 'Veekays English High', 'Ryan International', 'Bombay Scottish',
+  'Podar International', 'DPS International', 'Delhi Public School', 'The Cathedral School',
+  'Modern School', 'Oberoi International', 'Ecole Mondiale', 'Jamnabai Narsee',
 ];
 
 export default function RoboticsBeginnerLanding() {
@@ -779,8 +784,8 @@ export default function RoboticsBeginnerLanding() {
                     });
                   })()}
                   {/* center hub */}
-                  <circle cx="150" cy="150" r="22" fill="#0A1F44" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
-                  <text x="150" y="152" textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 800, fontSize: 12, fill: '#FCA5A5', letterSpacing: '0.14em' }}>STEAM</text>
+                  <circle cx="150" cy="150" r="34" fill="#FFFFFF" stroke="#DC2626" strokeWidth="3" />
+                  <text x="150" y="152" textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 800, fontSize: 15, fill: '#0A1F44', letterSpacing: '0.16em' }}>STEAM</text>
                 </svg>
 
                 {/* Improves grades in — glass card */}
@@ -805,6 +810,13 @@ export default function RoboticsBeginnerLanding() {
               </div>
             </div>
 
+          </div>
+
+          {/* Download Curriculum CTA under the pentagon */}
+          <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center' }}>
+            <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-curr-download" className="rb-btn rb-btn-primary" style={{ padding: '1rem 2rem', fontSize: '1rem' }}>
+              <Download size={18} /> Download Full Curriculum
+            </a>
           </div>
         </div>
       </section>
@@ -885,10 +897,26 @@ export default function RoboticsBeginnerLanding() {
 
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>about OLL</div>
+            <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.8rem' }}>about us</div>
+            <img src={OLL_LOGO_WHITE} alt="OLL" style={{ height: 90, margin: '1rem auto 1.5rem', display: 'block' }} data-testid="rb-oll-logo-big" />
             <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05 }}>
               Trusted by schools <span style={{ color: '#FCA5A5' }}>across India.</span>
             </h2>
+
+            {/* Quick stat pills — school / student / city counts */}
+            <div style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
+              {[
+                { i: School,        k: '500+',      l: 'Schools',  c: '#DC2626' },
+                { i: GraduationCap, k: '2,00,000+', l: 'Students', c: '#60A5FA' },
+                { i: MapPin,        k: '35',        l: 'Cities',   c: '#FBBF24' },
+              ].map((s) => (
+                <div key={s.l} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', padding: '0.65rem 1.1rem', borderRadius: 999, backdropFilter: 'blur(8px)' }}>
+                  <s.i size={20} style={{ color: s.c }} />
+                  <span className="rb-num" style={{ fontSize: '1.25rem', color: '#fff' }}>{s.k}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{s.l}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* As seen on */}
@@ -942,6 +970,58 @@ export default function RoboticsBeginnerLanding() {
                 <div style={{ marginTop: '0.9rem', fontSize: '0.78rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: '#60A5FA' }}>{t.a}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ 08B — SCHOOLS WE WORK WITH ═══════════ */}
+      <section data-testid="rb-schools-with" style={{ position: 'relative', padding: '5rem 1.25rem 3rem', background: '#F8FAFC', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.6rem' }}>proof, not promises</div>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+              Schools we <span className="rb-stroke">work with.</span>
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
+              Real classrooms. Real projects. Real principals telling the story in their own words.
+            </p>
+          </div>
+
+          {/* Video slider */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            {[
+              { title: 'D. G. Khetan International',   yt: null },
+              { title: 'Veekays English High School',  yt: null },
+              { title: 'Ryan International Bengaluru', yt: null },
+            ].map((v) => (
+              <div key={v.title} style={{ background: '#0A1F44', borderRadius: '1.15rem', overflow: 'hidden', border: '1px solid #E2E8F0', boxShadow: '0 12px 30px rgba(15,30,80,0.10)' }}>
+                <div style={{ position: 'relative', aspectRatio: '16 / 10', background: 'linear-gradient(135deg, #1E3A8A, #0A1F44 130%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+                  <PlayCircle size={64} style={{ color: '#fff', opacity: 0.85, zIndex: 1 }} />
+                  <div style={{ position: 'absolute', bottom: 12, left: 14, fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>Video coming soon</div>
+                </div>
+                <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 600 }}>{v.title}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>Classroom showcase</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Rolling logo bar */}
+          <div style={{ marginTop: '3rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8' }}>
+              A few of our partner schools
+            </div>
+            <div className="rb-skills-wrap" style={{ padding: '10px 0' }}>
+              <div className="rb-skills-track" style={{ gap: '2.5rem', animationDuration: '38s' }}>
+                {[...PARTNER_SCHOOLS, ...PARTNER_SCHOOLS].map((name, i) => (
+                  <div key={i} style={{ minWidth: 200, height: 80, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1.1rem', textAlign: 'center' }}>
+                    <span style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 700, fontSize: '0.88rem', color: '#334155', lineHeight: 1.15 }}>{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
