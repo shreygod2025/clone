@@ -59,15 +59,14 @@ const WINNERS = [
 ];
 
 const SKILLS = [
-  { l: 'Robotics',         src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif' },
-  { l: 'Coding',           src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif' },
-  { l: 'AI',               src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/je1umfoj_AI%20TOOl.gif' },
-  { l: '3D Design',        src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif' },
-  { l: 'Design Thinking',  src: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=800&fit=crop' },
-  { l: 'DIY Science',      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&h=800&fit=crop' },
-  { l: 'Space Technology', src: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=600&h=800&fit=crop' },
-  { l: 'Aeromodelling',    src: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&h=800&fit=crop' },
   { l: 'Drones',           src: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=800&fit=crop' },
+  { l: 'Robotics',         src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif' },
+  { l: 'Design Thinking',  src: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=800&fit=crop' },
+  { l: 'Coding',           src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif' },
+  { l: 'Aeromodelling',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/w1wq10h8_image.png' },
+  { l: '3D Design',        src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif' },
+  { l: 'Space Technology', src: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=600&h=800&fit=crop' },
+  { l: 'DIY Science',      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&h=800&fit=crop' },
 ];
 
 const SCHOOL_GETS = [
@@ -310,7 +309,7 @@ export default function RoboticsBeginnerLanding() {
           width: max-content;
           animation: rb-skills-scroll 42s linear infinite;
         }
-        .rb-skills-wrap:hover .rb-skills-track { animation-play-state: paused; }
+        .rb-skills-wrap:hover .rb-skills-track { /* keep running on hover — no pause */ }
         @keyframes rb-skills-scroll {
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
