@@ -59,15 +59,15 @@ const WINNERS = [
 ];
 
 const SKILLS = [
-  { i: Cpu,           l: 'Robotics' },
-  { i: Code2,         l: 'Coding' },
-  { i: Brain,         l: 'AI' },
-  { i: Boxes,         l: '3D Printing' },
-  { i: Lightbulb,     l: 'Design Thinking' },
-  { i: FlaskConical,  l: 'DIY Science' },
-  { i: Rocket,        l: 'Space Technology' },
-  { i: Plane,         l: 'Aeromodelling' },
-  { i: Radio,         l: 'Drones' },
+  { l: 'Robotics',         src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif' },
+  { l: 'Coding',           src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif' },
+  { l: 'AI',               src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/je1umfoj_AI%20TOOl.gif' },
+  { l: '3D Design',        src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif' },
+  { l: 'Design Thinking',  src: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=800&fit=crop' },
+  { l: 'DIY Science',      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&h=800&fit=crop' },
+  { l: 'Space Technology', src: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=600&h=800&fit=crop' },
+  { l: 'Aeromodelling',    src: 'https://images.unsplash.com/photo-1531557088562-3aa76d7a3f45?w=600&h=800&fit=crop' },
+  { l: 'Drones',           src: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=800&fit=crop' },
 ];
 
 const SCHOOL_GETS = [
@@ -296,6 +296,50 @@ export default function RoboticsBeginnerLanding() {
         .rb-marquee-wrap { overflow: hidden; }
         .rb-marquee { display: flex; gap: 1.25rem; animation: rb-scroll 42s linear infinite; width: max-content; }
         @keyframes rb-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+        /* Skills horizontal scroller — staggered image cards */
+        .rb-skills-scroll {
+          overflow-x: auto;
+          overflow-y: hidden;
+          padding: 20px 4px 30px;
+          scroll-snap-type: x mandatory;
+          scroll-padding: 4px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .rb-skills-scroll::-webkit-scrollbar { height: 6px; }
+        .rb-skills-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.28); border-radius: 999px; }
+        .rb-skills-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 999px; }
+        .rb-skills-row { display: flex; gap: 1rem; align-items: flex-start; padding: 0 2px; }
+        .rb-skill-card {
+          position: relative;
+          flex: 0 0 240px;
+          border-radius: 22px;
+          overflow: hidden;
+          scroll-snap-align: start;
+          box-shadow: 0 22px 44px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.06) inset;
+          transition: transform .4s ease, box-shadow .4s ease;
+        }
+        .rb-skill-card:hover { transform: translateY(-6px); box-shadow: 0 30px 60px rgba(220,38,38,0.28), 0 0 0 1px rgba(255,255,255,0.1) inset; }
+        .rb-skill-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .rb-skill-card::after {
+          content: '';
+          position: absolute; left: 0; right: 0; bottom: 0; height: 55%;
+          background: linear-gradient(180deg, transparent 0%, rgba(10,15,40,0.9) 100%);
+          pointer-events: none;
+        }
+        .rb-skill-label {
+          position: absolute; left: 18px; right: 18px; bottom: 18px;
+          color: #fff;
+          font-family: 'Proxima Nova','Montserrat',sans-serif; font-weight: 700;
+          font-size: 1.15rem; letter-spacing: -0.005em;
+          z-index: 2;
+        }
+        /* Staggered heights & vertical offsets — OMOTEC-style rhythm */
+        .rb-skill-card:nth-child(5n+1) { height: 340px; margin-top: 40px; }
+        .rb-skill-card:nth-child(5n+2) { height: 420px; margin-top: 0px; }
+        .rb-skill-card:nth-child(5n+3) { height: 360px; margin-top: 60px; }
+        .rb-skill-card:nth-child(5n+4) { height: 400px; margin-top: 10px; }
+        .rb-skill-card:nth-child(5n+5) { height: 340px; margin-top: 50px; }
 
         .rb-fade-in { animation: rb-fade .55s ease both; }
         @keyframes rb-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -577,14 +621,12 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          <div className="rb-marquee-wrap" style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem' }}>
-            <div className="rb-marquee">
-              {[...SKILLS, ...SKILLS].map((s, i) => (
-                <div key={i} style={{ minWidth: 200, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '1rem', padding: '1.2rem 1.3rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-start' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #DC2626, #1E3A8A)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <s.i size={22} style={{ color: '#fff' }} />
-                  </div>
-                  <div className="rb-h4" style={{ fontSize: '1rem', color: '#fff' }}>{s.l}</div>
+          <div className="rb-skills-scroll" data-testid="rb-skills-scroll">
+            <div className="rb-skills-row">
+              {SKILLS.map((s) => (
+                <div key={s.l} className="rb-skill-card" data-testid={`rb-skill-${s.l.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <img src={s.src} alt={s.l} loading="lazy" />
+                  <div className="rb-skill-label">{s.l}</div>
                 </div>
               ))}
             </div>
