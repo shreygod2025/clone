@@ -122,11 +122,7 @@ const GROWTH_PATH = [
   { level: 'Advanced',     verb: 'Innovate',          s: 'IoT, automation, showcase · Grades 8–10', color: '#DC2626' },
 ];
 
-const PARTNER_SCHOOLS = [
-  'Parle Tilak Vidyalay', 'Maneckji Cooper', 'Hiranandani Foundation', 'TayieBiyah High',
-  'Greenlawns High School', 'Chandulal Nanavati High', 'GD Somani', 'St. Agnes School',
-  'Sanjeevani World School', 'Dosti Foundation', 'D. G. Khetan International', 'Ryan International',
-];
+const PARTNER_LOGOS = Array.from({ length: 46 }, (_, i) => `/school-logos/${i + 1}.png`);
 
 const SCHOOL_VIDEOS = [
   { name: 'Parle Tilak Vidyalay',            id: 'xHhMLBzB_GU' },
@@ -1049,7 +1045,6 @@ export default function RoboticsBeginnerLanding() {
                   </div>
                   <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
                     <div style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.2 }}>{v.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', marginTop: 4, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 }}>▶ Watch on YouTube</div>
                   </div>
                 </a>
               ))}
@@ -1062,10 +1057,10 @@ export default function RoboticsBeginnerLanding() {
               A few of our partner schools
             </div>
             <div className="rb-skills-wrap" style={{ padding: '10px 0' }}>
-              <div className="rb-skills-track" style={{ gap: '2.5rem', animationDuration: '38s' }}>
-                {[...PARTNER_SCHOOLS, ...PARTNER_SCHOOLS].map((name, i) => (
-                  <div key={i} style={{ minWidth: 200, height: 80, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1.1rem', textAlign: 'center' }}>
-                    <span style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 700, fontSize: '0.88rem', color: '#334155', lineHeight: 1.15 }}>{name}</span>
+              <div className="rb-skills-track" style={{ gap: '2rem', animationDuration: '55s', alignItems: 'center' }}>
+                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
+                  <div key={i} style={{ minWidth: 150, height: 90, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', boxShadow: '0 4px 12px rgba(15,30,80,0.05)' }}>
+                    <img src={src} alt="Partner school" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                   </div>
                 ))}
               </div>
