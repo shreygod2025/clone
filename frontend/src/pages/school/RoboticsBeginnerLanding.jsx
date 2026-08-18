@@ -123,9 +123,22 @@ const GROWTH_PATH = [
 ];
 
 const PARTNER_SCHOOLS = [
-  'D. G. Khetan International', 'Veekays English High', 'Ryan International', 'Bombay Scottish',
-  'Podar International', 'DPS International', 'Delhi Public School', 'The Cathedral School',
-  'Modern School', 'Oberoi International', 'Ecole Mondiale', 'Jamnabai Narsee',
+  'Parle Tilak Vidyalay', 'Maneckji Cooper', 'Hiranandani Foundation', 'TayieBiyah High',
+  'Greenlawns High School', 'Chandulal Nanavati High', 'GD Somani', 'St. Agnes School',
+  'Sanjeevani World School', 'Dosti Foundation', 'D. G. Khetan International', 'Ryan International',
+];
+
+const SCHOOL_VIDEOS = [
+  { name: 'Parle Tilak Vidyalay',            id: 'xHhMLBzB_GU' },
+  { name: 'Maneckji Cooper Education Trust', id: 'vOik-WmE_n8' },
+  { name: 'Hiranandani Foundation School',   id: 'OnK6oevnLeM' },
+  { name: 'TayieBiyah High School',          id: 'dWo2wr02mq4' },
+  { name: 'Greenlawns High School',          id: 'YoIu5akBkr0' },
+  { name: 'Shree Chandulal Nanavati High',   id: 'r6xeqlTixYE' },
+  { name: 'GD Somani School',                id: '5c2gZORdUxc' },
+  { name: 'St. Agnes School',                id: 'I0uZ8aIIkwU' },
+  { name: 'Sanjeevani World School',         id: 'YeyKFirPot4' },
+  { name: 'Dosti Foundation School',         id: 'sqXE6tsUQ6g' },
 ];
 
 export default function RoboticsBeginnerLanding() {
@@ -348,6 +361,42 @@ export default function RoboticsBeginnerLanding() {
         .rb-skill-card:nth-child(5n+3) { height: 360px; margin-top: 60px; }
         .rb-skill-card:nth-child(5n+4) { height: 400px; margin-top: 10px; }
         .rb-skill-card:nth-child(5n+5) { height: 340px; margin-top: 50px; }
+
+        /* Horizontal video slider — hidden scrollbar, snap */
+        .rb-vids-scroll { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 8px; }
+        .rb-vids-scroll::-webkit-scrollbar { display: none; }
+        .rb-vids-row { display: flex; gap: 1rem; padding: 0 2px; }
+        .rb-vid-card {
+          position: relative;
+          flex: 0 0 340px;
+          border-radius: 18px;
+          overflow: hidden;
+          background: #0A1F44;
+          scroll-snap-align: start;
+          box-shadow: 0 12px 30px rgba(15,30,80,0.14);
+          text-decoration: none;
+          color: inherit;
+          transition: transform .3s ease, box-shadow .3s ease;
+        }
+        .rb-vid-card:hover { transform: translateY(-4px); box-shadow: 0 22px 44px rgba(220,38,38,0.22); }
+        .rb-vid-thumb { position: relative; aspect-ratio: 16 / 9; overflow: hidden; }
+        .rb-vid-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .rb-vid-thumb::after {
+          content: '';
+          position: absolute; left: 0; right: 0; bottom: 0; height: 55%;
+          background: linear-gradient(180deg, transparent, rgba(0,0,0,0.55));
+        }
+        .rb-vid-play {
+          position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+          width: 60px; height: 60px; border-radius: 999px;
+          background: rgba(220,38,38,0.9);
+          display: flex; align-items: center; justify-content: center;
+          color: #fff;
+          box-shadow: 0 10px 30px rgba(220,38,38,0.55), 0 0 0 6px rgba(255,255,255,0.16);
+          transition: transform .3s ease, background .3s ease;
+          z-index: 2;
+        }
+        .rb-vid-card:hover .rb-vid-play { transform: translate(-50%, -50%) scale(1.08); background: #DC2626; }
 
         .rb-fade-in { animation: rb-fade .55s ease both; }
         @keyframes rb-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -987,25 +1036,24 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          {/* Video slider */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-            {[
-              { title: 'D. G. Khetan International',   yt: null },
-              { title: 'Veekays English High School',  yt: null },
-              { title: 'Ryan International Bengaluru', yt: null },
-            ].map((v) => (
-              <div key={v.title} style={{ background: '#0A1F44', borderRadius: '1.15rem', overflow: 'hidden', border: '1px solid #E2E8F0', boxShadow: '0 12px 30px rgba(15,30,80,0.10)' }}>
-                <div style={{ position: 'relative', aspectRatio: '16 / 10', background: 'linear-gradient(135deg, #1E3A8A, #0A1F44 130%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-                  <PlayCircle size={64} style={{ color: '#fff', opacity: 0.85, zIndex: 1 }} />
-                  <div style={{ position: 'absolute', bottom: 12, left: 14, fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>Video coming soon</div>
-                </div>
-                <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 600 }}>{v.title}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>Classroom showcase</div>
-                </div>
-              </div>
-            ))}
+          {/* Horizontal YouTube video slider */}
+          <div className="rb-vids-scroll" data-testid="rb-videos-scroll">
+            <div className="rb-vids-row">
+              {SCHOOL_VIDEOS.map((v) => (
+                <a key={v.id} href={`https://youtu.be/${v.id}`} target="_blank" rel="noreferrer" className="rb-vid-card" data-testid={`rb-video-${v.id}`}>
+                  <div className="rb-vid-thumb">
+                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
+                    <div className="rb-vid-play">
+                      <PlayCircle size={32} fill="rgba(255,255,255,0.15)" />
+                    </div>
+                  </div>
+                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.2 }}>{v.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', marginTop: 4, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 }}>▶ Watch on YouTube</div>
+                  </div>
+                </a>
+              ))}
+            </div>
           </div>
 
           {/* Rolling logo bar */}
