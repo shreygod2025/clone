@@ -116,22 +116,26 @@ export default function RoboticsBeginnerLanding() {
   const navigate = useNavigate();
   const [winIdx, setWinIdx] = useState(0);
   const [parentIdx, setParentIdx] = useState(0);
-  const [stageOpen, setStageOpen] = useState(false);
+  const [curtainProgress, setCurtainProgress] = useState(0);
   const bookDemo = () => navigate('/school');
 
   useEffect(() => {
     const w = setInterval(() => setWinIdx((i) => (i + 1) % WINNERS.length), 5000);
     const p = setInterval(() => setParentIdx((i) => (i + 1) % PARENT_QUOTES.length), 4500);
-    // Curtains open when stage scrolls into view
-    const stageEl = document.querySelector('[data-testid="rb-stage"]');
-    let observer;
-    if (stageEl && 'IntersectionObserver' in window) {
-      observer = new IntersectionObserver((entries) => {
-        entries.forEach((e) => { if (e.isIntersecting) setStageOpen(true); });
-      }, { threshold: 0.25 });
-      observer.observe(stageEl);
-    }
-    return () => { clearInterval(w); clearInterval(p); if (observer) observer.disconnect(); };
+    // Curtains open progressively with scroll — tied to stage element position in viewport
+    const onScroll = () => {
+      const el = document.querySelector('[data-testid="rb-stage"]');
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // 0 when stage top is at bottom of viewport, 1 when stage top has scrolled 70% up
+      const raw = (vh - rect.top) / (vh * 0.85);
+      const clamped = Math.max(0, Math.min(1, raw));
+      setCurtainProgress(clamped);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { clearInterval(w); clearInterval(p); window.removeEventListener('scroll', onScroll); };
   }, []);
 
   const goWin = (i) => setWinIdx((i + WINNERS.length) % WINNERS.length);
@@ -153,7 +157,7 @@ export default function RoboticsBeginnerLanding() {
           font-display: swap;
         }
 
-        .rb-page { min-height: 100vh; background: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; color: #0A1F44; overflow-x: hidden; padding-top: 84px; }
+        .rb-page { min-height: 100vh; background: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; color: #0A1F44; overflow-x: hidden; }
 
         /* Hero only — Zing Rust display face */
         .rb-hero-title { font-family: 'Zing Rust', 'Anton', 'Inter', sans-serif; letter-spacing: 0.005em; text-transform: uppercase; font-weight: 400; }
@@ -183,36 +187,31 @@ export default function RoboticsBeginnerLanding() {
         .rb-orb-blue  { background: rgba(30,58,138,0.5); }
         .rb-orb-light { background: rgba(96,165,250,0.5); }
 
-        /* Floating glacial-blue pill nav */
+        /* Compact floating pill nav — top-left, glacial white */
         .rb-topbar {
           position: fixed;
-          top: 16px;
-          left: 50%;
-          transform: translateX(-50%);
+          top: 22px;
+          left: 26px;
           z-index: 60;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 0.55rem 0.5rem 1.25rem;
-          background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(224,242,254,0.85) 100%);
+          padding: 0.5rem 0.55rem 0.5rem 1.15rem;
+          width: max-content;
+          background: linear-gradient(135deg, rgba(255,255,255,0.94) 0%, rgba(224,242,254,0.88) 100%);
           backdrop-filter: blur(22px) saturate(180%);
           -webkit-backdrop-filter: blur(22px) saturate(180%);
           border: 1px solid rgba(255,255,255,0.75);
           border-radius: 999px;
-          box-shadow: 0 20px 48px rgba(10,31,68,0.22), 0 0 0 1px rgba(15,30,80,0.04) inset;
-          max-width: calc(100vw - 24px);
+          box-shadow: 0 20px 48px rgba(10,31,68,0.28), 0 0 0 1px rgba(15,30,80,0.04) inset;
+          white-space: nowrap;
         }
-        .rb-topbar .rb-nav-link { color: #0A1F44; font-weight: 600; font-size: 0.9rem; text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 999px; transition: background .2s ease; display: inline-flex; align-items: center; gap: 0.4rem; }
-        .rb-topbar .rb-nav-link:hover { background: rgba(10,31,68,0.06); }
-        .rb-topbar .rb-btn-outline-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.35); padding: 0.55rem 1.15rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: all .2s ease; cursor: pointer; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; }
+        .rb-topbar .rb-btn-outline-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.35); padding: 0.55rem 1.15rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: all .2s ease; cursor: pointer; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; white-space: nowrap; }
         .rb-topbar .rb-btn-outline-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+        .rb-topbar .rb-btn { white-space: nowrap; }
 
-        /* Curtains — open on scroll into view */
-        .rb-curtain { transition: transform 1.4s cubic-bezier(0.65, 0, 0.35, 1); }
-        .rb-curtain-left  { transform: translateX(0); }
-        .rb-curtain-right { transform: translateX(0); }
-        .rb-stage-open .rb-curtain-left  { transform: translateX(-88%); }
-        .rb-stage-open .rb-curtain-right { transform: translateX(88%); }
+        /* Curtains — scroll-linked (transform set via inline style) */
+        .rb-curtain { will-change: transform; transition: transform .12s linear; }
 
         .rb-glass { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(14px); }
 
@@ -226,14 +225,13 @@ export default function RoboticsBeginnerLanding() {
         @media (max-width: 900px) {
           .rb-2col { grid-template-columns: 1fr !important; }
           .rb-hide-mobile { display: none !important; }
-          .rb-page { padding-top: 74px; }
         }
       `}</style>
 
       {/* ─────────── FLOATING GLACIAL-BLUE PILL NAV ─────────── */}
       <div className="rb-topbar" data-testid="rb-topbar">
         <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
-          <img src={OLL_LOGO_COLOR} alt="OLL" style={{ height: 32 }} />
+          <img src={OLL_LOGO_COLOR} alt="OLL" style={{ height: 44 }} />
         </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.75rem' }}>
           <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-nav-download" className="rb-btn-outline-dark">
@@ -246,7 +244,7 @@ export default function RoboticsBeginnerLanding() {
       </div>
 
       {/* ═══════════ 01 — HERO ═══════════ */}
-      <section data-testid="rb-hero" style={{ position: 'relative', background: 'linear-gradient(180deg, #0A1F44 0%, #0A1F44 60%, #10193A 100%)', color: '#fff', paddingTop: '4rem', paddingBottom: '5rem', overflow: 'hidden' }}>
+      <section data-testid="rb-hero" style={{ position: 'relative', background: 'linear-gradient(180deg, #0A1F44 0%, #0A1F44 60%, #10193A 100%)', color: '#fff', paddingTop: '7rem', paddingBottom: '5rem', overflow: 'hidden' }}>
         <div className="rb-orb rb-orb-red"   style={{ width: 460, height: 460, top: -140, left: -120 }} />
         <div className="rb-orb rb-orb-blue"  style={{ width: 520, height: 520, bottom: -180, right: -140 }} />
         <div className="rb-orb rb-orb-light" style={{ width: 380, height: 380, top: '35%', right: '30%' }} />
@@ -332,36 +330,36 @@ export default function RoboticsBeginnerLanding() {
         </div>
 
         {/* THE STAGE */}
-        <div data-testid="rb-stage" className={stageOpen ? 'rb-stage-open' : ''} style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', paddingBottom: '4rem', zIndex: 2 }}>
+        <div data-testid="rb-stage" style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', paddingBottom: '2rem', zIndex: 2 }}>
           {/* Curtain top valance (fixed) */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(180deg, #7A1616 0%, #4A0E0E 100%)', borderBottom: '3px solid #DC2626', boxShadow: '0 6px 20px rgba(220,38,38,0.35)', zIndex: 5 }} />
 
-          {/* LEFT CURTAIN — slides left on scroll */}
-          <div className="rb-curtain rb-curtain-left" style={{ position: 'absolute', top: 40, left: 0, bottom: 120, width: '50%', background: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%)', boxShadow: 'inset -30px 0 60px rgba(0,0,0,0.5)', zIndex: 4, borderRight: '2px solid rgba(0,0,0,0.3)', backgroundImage: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%), repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 24px)', backgroundBlendMode: 'overlay' }} />
+          {/* LEFT CURTAIN — slides left with scroll progress */}
+          <div className="rb-curtain" style={{ position: 'absolute', top: 40, left: 0, bottom: 120, width: '50%', background: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%)', boxShadow: 'inset -30px 0 60px rgba(0,0,0,0.5)', zIndex: 4, borderRight: '2px solid rgba(0,0,0,0.3)', backgroundImage: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%), repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 24px)', backgroundBlendMode: 'overlay', transform: `translateX(${-curtainProgress * 96}%)` }} />
 
-          {/* RIGHT CURTAIN — slides right on scroll */}
-          <div className="rb-curtain rb-curtain-right" style={{ position: 'absolute', top: 40, right: 0, bottom: 120, width: '50%', background: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%)', boxShadow: 'inset 30px 0 60px rgba(0,0,0,0.5)', zIndex: 4, borderLeft: '2px solid rgba(0,0,0,0.3)', backgroundImage: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%), repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 24px)', backgroundBlendMode: 'overlay' }} />
+          {/* RIGHT CURTAIN — slides right with scroll progress */}
+          <div className="rb-curtain" style={{ position: 'absolute', top: 40, right: 0, bottom: 120, width: '50%', background: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%)', boxShadow: 'inset 30px 0 60px rgba(0,0,0,0.5)', zIndex: 4, borderLeft: '2px solid rgba(0,0,0,0.3)', backgroundImage: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%), repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 24px)', backgroundBlendMode: 'overlay', transform: `translateX(${curtainProgress * 96}%)` }} />
 
-          {/* Backdrop with spotlight cone */}
-          <div style={{ position: 'relative', minHeight: 560, background: 'radial-gradient(ellipse at 50% 15%, rgba(255,244,200,0.28) 0%, rgba(96,165,250,0.18) 20%, rgba(30,58,138,0.35) 45%, rgba(10,15,40,0.9) 75%)', overflow: 'hidden', padding: '5rem 2rem 0' }}>
+          {/* Backdrop with spotlight — centered stack */}
+          <div style={{ position: 'relative', minHeight: 620, background: 'radial-gradient(ellipse at 50% 15%, rgba(255,244,200,0.28) 0%, rgba(96,165,250,0.18) 20%, rgba(30,58,138,0.35) 45%, rgba(10,15,40,0.9) 75%)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '3rem 2rem' }}>
             {/* Spotlight beam */}
-            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '220px solid transparent', borderRight: '220px solid transparent', borderTop: '560px solid rgba(255, 244, 200, 0.18)', filter: 'blur(24px)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '220px solid transparent', borderRight: '220px solid transparent', borderTop: '620px solid rgba(255, 244, 200, 0.18)', filter: 'blur(24px)', pointerEvents: 'none' }} />
             {/* Spotlight glow */}
             <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,244,200,0.75) 0%, rgba(255,244,200,0) 70%)', filter: 'blur(10px)' }} />
 
-            {/* Content — NOW PERFORMING AT → YOUR SCHOOL → Techfest logo */}
-            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 720, margin: '0 auto' }}>
-              <div style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '0.85rem', color: 'rgba(255,255,255,0.65)', letterSpacing: '0.32em', textTransform: 'uppercase' }}>
-                Now performing at
+            {/* Centered content — Showcasing → YOUR SCHOOL → Techfest logo */}
+            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 780 }}>
+              <div className="rb-hand" style={{ fontSize: 'clamp(2.4rem, 5vw, 3.4rem)', color: '#FCD34D', lineHeight: 1, textShadow: '0 0 30px rgba(255,244,200,0.45)' }}>
+                Showcasing
               </div>
 
-              <div className="rb-hero-title" style={{ marginTop: '0.6rem', fontSize: 'clamp(2.6rem, 6vw, 4.2rem)', lineHeight: 1, color: '#fff', textShadow: '0 0 40px rgba(255,244,200,0.55), 0 0 80px rgba(255,244,200,0.3)' }}>
+              <div className="rb-hero-title" style={{ marginTop: '1rem', fontSize: 'clamp(2.6rem, 6vw, 4.2rem)', lineHeight: 1, color: '#fff', textShadow: '0 0 40px rgba(255,244,200,0.55), 0 0 80px rgba(255,244,200,0.3)' }}>
                 YOUR SCHOOL
               </div>
 
-              {/* Techfest logo — BELOW Your School */}
-              <div style={{ marginTop: '2rem', background: '#fff', display: 'inline-block', padding: '1.25rem 2rem', borderRadius: '0.75rem', boxShadow: '0 30px 80px rgba(255,244,200,0.28), 0 0 0 4px rgba(255,255,255,0.12)' }}>
-                <img src={TECHFEST_LOGO} alt="Techfest IIT Bombay" style={{ height: 72, display: 'block' }} />
+              {/* Techfest logo */}
+              <div style={{ marginTop: '2rem', background: '#fff', display: 'inline-block', padding: '1.25rem 2rem', borderRadius: '0.75rem', boxShadow: '0 30px 80px rgba(255,244,200,0.32), 0 0 0 4px rgba(255,255,255,0.12)' }}>
+                <img src={TECHFEST_LOGO} alt="Techfest IIT Bombay" style={{ height: 78, display: 'block' }} />
               </div>
             </div>
           </div>
@@ -378,10 +376,6 @@ export default function RoboticsBeginnerLanding() {
               The Stage · IIT Bombay
             </div>
           </div>
-
-          <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', color: 'rgba(255,255,255,0.8)', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
-            From classroom projects to a <span style={{ color: '#FCA5A5', fontWeight: 500 }}>national stage</span> — the leap that changes how a child sees themselves.
-          </p>
         </div>
       </section>
 
