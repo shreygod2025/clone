@@ -24,7 +24,8 @@ import {
   School, GraduationCap, MapPin, Cpu, Code2, Brain, Boxes, Lightbulb,
   FlaskConical, Rocket, Plane, Radio, BookOpen, Package, ClipboardCheck,
   Award, LifeBuoy, Heart, Sparkles, PlayCircle, Quote, Star, CheckCircle2,
-  Camera, Share2, Eye, Hammer, Users,
+  Camera, Share2, Eye, Hammer, Users, Cog, Zap, TerminalSquare, Wifi,
+  Calculator, Palette,
 } from 'lucide-react';
 
 const CURRICULUM_PDF =
@@ -260,32 +261,26 @@ export default function RoboticsBeginnerLanding() {
           background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
           border-radius: 2px 2px 0 0;
         }
-        /* Hover overlay — click to open sample */
+        /* Hover reveal — CTA appears BELOW the card */
         .rb-book-pad { position: relative; }
-        .rb-book-pad .rb-book-hint {
-          position: absolute;
-          left: 50%;
-          top: 42%;
-          transform: translate(-50%, -50%) scale(0.9);
-          background: linear-gradient(135deg, #DC2626, #1E3A8A);
-          color: #fff;
-          padding: 0.5rem 0.9rem;
-          border-radius: 999px;
+        .rb-book-cta {
+          margin-top: 0.55rem;
+          text-align: center;
+          font-family: 'Proxima Nova', 'Montserrat', sans-serif;
           font-size: 0.72rem;
           font-weight: 700;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.1em;
           text-transform: uppercase;
+          color: #DC2626;
           opacity: 0;
-          pointer-events: none;
+          transform: translateY(-4px);
           transition: opacity .25s ease, transform .25s ease;
-          box-shadow: 0 12px 28px rgba(220,38,38,0.45);
-          white-space: nowrap;
-          z-index: 3;
-          display: inline-flex;
+          display: flex;
           align-items: center;
-          gap: 0.35rem;
+          justify-content: center;
+          gap: 0.3rem;
         }
-        .rb-book-pad:hover .rb-book-hint { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .rb-book-pad:hover .rb-book-cta { opacity: 1; transform: translateY(0); }
         .rb-book-link { display: block; text-decoration: none; color: inherit; cursor: pointer; }
 
         /* 8-book row */
@@ -629,6 +624,127 @@ export default function RoboticsBeginnerLanding() {
         </div>
       </section>
 
+      {/* ═══════════ 06A — STRUCTURED CURRICULUM ═══════════ */}
+      <section data-testid="rb-curriculum" style={{ position: 'relative', padding: '5rem 1.25rem', background: '#FFFFFF', overflow: 'hidden' }}>
+        <div className="rb-orb rb-orb-blue"  style={{ width: 380, height: 380, top: -140, left: -80, opacity: 0.18 }} />
+        <div className="rb-orb rb-orb-red"   style={{ width: 380, height: 380, bottom: -140, right: -80, opacity: 0.18 }} />
+
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="rb-hand" style={{ color: '#1E3A8A', fontSize: '1.5rem' }}>structured curriculum</div>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+              A <span className="rb-stroke">grade-wise progression</span> designed for beginners.
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 700, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
+              Every module builds on the last — from mechanical fundamentals in early grades to real-world programming and IoT by Grade 8.
+            </p>
+          </div>
+
+          {/* Two-column layout: grade ladder + STEAM pentagon */}
+          <div className="rb-2col" style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: '3rem', alignItems: 'center' }}>
+
+            {/* ── LEFT: 4-band grade ladder ── */}
+            <div data-testid="rb-grade-ladder" style={{ borderRadius: '1.25rem', overflow: 'hidden', boxShadow: '0 20px 60px rgba(15,30,80,0.10)' }}>
+              {[
+                { band: '#FEE2E2', num: '#DC2626', a: '1', b: '2', title: 'Mechanics',   sub: 'Construction',       icon: Cog },
+                { band: '#FEF3C7', num: '#D97706', a: '3', b: '4', title: 'Robotics',    sub: 'Motorised Output',   icon: Cpu },
+                { band: '#DCFCE7', num: '#16A34A', a: '5', b: '6', title: 'Electronics', sub: 'Input & Logic',      icon: Zap },
+                { band: '#D1FAE5', num: '#059669', a: '7', b: '8', title: 'Programming', sub: 'Internet of Things', icon: Wifi },
+              ].map((row) => (
+                <div key={row.title} style={{ background: row.band, display: 'grid', gridTemplateColumns: '110px 1fr auto', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 1.25rem' }}>
+                  {/* Number + brace */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div className="rb-hero-title" style={{ fontSize: '2.25rem', color: row.num, lineHeight: 1 }}>{row.a}</div>
+                      <div className="rb-hero-title" style={{ fontSize: '2.25rem', color: row.num, lineHeight: 1 }}>{row.b}</div>
+                    </div>
+                    {/* Curly brace using SVG */}
+                    <svg width="18" height="70" viewBox="0 0 18 70" style={{ marginLeft: 10, color: row.num, opacity: 0.5 }} aria-hidden>
+                      <path d="M14 2 C 6 2, 6 18, 2 35 C 6 52, 6 68, 14 68" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  {/* Title + sub */}
+                  <div>
+                    <div className="rb-h3" style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 600, fontSize: '1.5rem', color: '#0A1F44', lineHeight: 1.1 }}>{row.title}</div>
+                    <div style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', color: '#334155', marginTop: 4 }}>{row.sub}</div>
+                  </div>
+                  {/* Icon */}
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: row.num }}>
+                    <row.icon size={22} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── RIGHT: STEAM pentagon + improves grades ── */}
+            <div data-testid="rb-steam">
+              <div style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                <h3 className="rb-h3" style={{ fontSize: '1.5rem', color: '#0A1F44', fontWeight: 600 }}>
+                  Subject <span style={{ color: '#DC2626' }}>Integrated</span> Learning
+                </h3>
+                <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '0.98rem', color: '#475569', marginTop: '0.5rem', lineHeight: 1.55 }}>
+                  Every project blends STEAM disciplines — so Robotics isn&apos;t just a hobby, it lifts core subjects too.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.75rem', alignItems: 'center' }}>
+                {/* SVG pentagon with 5 triangles */}
+                <svg viewBox="0 0 260 260" style={{ width: '100%', maxWidth: 300, display: 'block' }} aria-label="STEAM pentagon">
+                  {(() => {
+                    const cx = 130, cy = 130, r = 118;
+                    const slices = [
+                      { name: 'ENGINEERING', color: '#1E3A8A', angleOffset: -90 },
+                      { name: 'ART',         color: '#60A5FA', angleOffset: -18 },
+                      { name: 'MATHEMATICS', color: '#1E40AF', angleOffset:  54 },
+                      { name: 'SCIENCE',     color: '#1E3A8A', angleOffset: 126 },
+                      { name: 'TECHNOLOGY',  color: '#60A5FA', angleOffset: 198 },
+                    ];
+                    const rad = (d) => (d * Math.PI) / 180;
+                    return slices.map((s, i) => {
+                      const half = 36;
+                      const x1 = cx + r * Math.cos(rad(s.angleOffset - half));
+                      const y1 = cy + r * Math.sin(rad(s.angleOffset - half));
+                      const x2 = cx + r * Math.cos(rad(s.angleOffset + half));
+                      const y2 = cy + r * Math.sin(rad(s.angleOffset + half));
+                      // Label position (60% from center along the slice's central axis)
+                      const lx = cx + r * 0.5 * Math.cos(rad(s.angleOffset));
+                      const ly = cy + r * 0.5 * Math.sin(rad(s.angleOffset));
+                      return (
+                        <g key={s.name}>
+                          <path d={`M${cx},${cy} L${x1},${y1} L${x2},${y2} Z`} fill={s.color} stroke="#fff" strokeWidth="4" strokeLinejoin="round" />
+                          <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 700, fontSize: 10, fill: '#fff', letterSpacing: '0.06em' }}>{s.name}</text>
+                        </g>
+                      );
+                    });
+                  })()}
+                </svg>
+
+                {/* Improves grades side card */}
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '1rem', padding: '1.25rem 1.25rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", minWidth: 180 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0A1F44', letterSpacing: '0.04em' }}>Improves grades in</div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0', display: 'grid', gap: '0.55rem' }}>
+                    {[
+                      { l: 'Physics',      i: Zap },
+                      { l: 'Maths',        i: Calculator },
+                      { l: 'Computers',    i: TerminalSquare },
+                      { l: 'Art & Craft',  i: Palette },
+                    ].map((it) => (
+                      <li key={it.l} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontSize: '0.92rem', color: '#334155', fontWeight: 300 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#DBEAFE', color: '#1E3A8A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <it.i size={14} />
+                        </div>
+                        {it.l}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════ 06B — INTERACTIVE BOOKS ═══════════ */}
       <section data-testid="rb-books" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%)', overflow: 'hidden' }}>
         <div className="rb-orb rb-orb-red"  style={{ width: 360, height: 360, top: -120, left: -80, opacity: 0.18 }} />
@@ -642,16 +758,12 @@ export default function RoboticsBeginnerLanding() {
             </h2>
             <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
               Beautifully illustrated, story-driven student books — mapped to every lesson and every kit component.
-              <span style={{ display: 'block', marginTop: '0.4rem', color: '#94A3B8', fontSize: '0.85rem', fontStyle: 'italic' }}>Hover a book to peek inside — more grades coming soon.</span>
             </p>
           </div>
 
           <div className="rb-books-grid">
             {BOOKS.map((b) => (
               <a key={b.grade} href={b.flip} target="_blank" rel="noreferrer" className="rb-book-link rb-book-pad" data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
-                <div className="rb-book-hint">
-                  <BookOpen size={12} /> Click to open sample
-                </div>
                 <div className="rb-book">
                   <div className="rb-book-inner" style={{ '--spine': b.spine }}>
                     <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
@@ -661,6 +773,9 @@ export default function RoboticsBeginnerLanding() {
                   <div className="rb-h4" style={{ fontSize: '0.78rem', color: '#0A1F44' }}>{b.grade}</div>
                   <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 1 }}>{b.theme}</div>
                 </div>
+                <div className="rb-book-cta">
+                  <BookOpen size={11} /> Click to open sample
+                </div>
               </a>
             ))}
           </div>
@@ -668,10 +783,6 @@ export default function RoboticsBeginnerLanding() {
           <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontSize: '0.95rem', color: '#DC2626', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             <BookOpen size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 6 }} />
             Click any book to open a sample
-          </p>
-
-          <p style={{ textAlign: 'center', marginTop: '0.9rem', fontSize: '0.85rem', color: '#94A3B8', fontStyle: 'italic' }}>
-            + More grades on the way. Every book aligns with age-appropriate outcomes and hands-on projects.
           </p>
         </div>
       </section>
