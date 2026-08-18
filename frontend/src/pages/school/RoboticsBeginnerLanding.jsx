@@ -116,12 +116,22 @@ export default function RoboticsBeginnerLanding() {
   const navigate = useNavigate();
   const [winIdx, setWinIdx] = useState(0);
   const [parentIdx, setParentIdx] = useState(0);
+  const [stageOpen, setStageOpen] = useState(false);
   const bookDemo = () => navigate('/school');
 
   useEffect(() => {
     const w = setInterval(() => setWinIdx((i) => (i + 1) % WINNERS.length), 5000);
     const p = setInterval(() => setParentIdx((i) => (i + 1) % PARENT_QUOTES.length), 4500);
-    return () => { clearInterval(w); clearInterval(p); };
+    // Curtains open when stage scrolls into view
+    const stageEl = document.querySelector('[data-testid="rb-stage"]');
+    let observer;
+    if (stageEl && 'IntersectionObserver' in window) {
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((e) => { if (e.isIntersecting) setStageOpen(true); });
+      }, { threshold: 0.25 });
+      observer.observe(stageEl);
+    }
+    return () => { clearInterval(w); clearInterval(p); if (observer) observer.disconnect(); };
   }, []);
 
   const goWin = (i) => setWinIdx((i + WINNERS.length) % WINNERS.length);
@@ -173,28 +183,36 @@ export default function RoboticsBeginnerLanding() {
         .rb-orb-blue  { background: rgba(30,58,138,0.5); }
         .rb-orb-light { background: rgba(96,165,250,0.5); }
 
-        /* Full-width sticky nav — navy base with glass overlay */
+        /* Floating glacial-blue pill nav */
         .rb-topbar {
           position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
+          top: 16px;
+          left: 50%;
+          transform: translateX(-50%);
           z-index: 60;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
-          padding: 0.85rem clamp(1.25rem, 4vw, 3rem);
-          background: linear-gradient(180deg, rgba(10,31,68,0.92) 0%, rgba(10,31,68,0.78) 100%);
-          backdrop-filter: blur(18px) saturate(160%);
-          -webkit-backdrop-filter: blur(18px) saturate(160%);
-          border-bottom: 1px solid rgba(255,255,255,0.08);
-          box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+          gap: 0.5rem;
+          padding: 0.5rem 0.55rem 0.5rem 1.25rem;
+          background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(224,242,254,0.85) 100%);
+          backdrop-filter: blur(22px) saturate(180%);
+          -webkit-backdrop-filter: blur(22px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.75);
+          border-radius: 999px;
+          box-shadow: 0 20px 48px rgba(10,31,68,0.22), 0 0 0 1px rgba(15,30,80,0.04) inset;
+          max-width: calc(100vw - 24px);
         }
-        .rb-topbar .rb-nav-link { color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.9rem; text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 999px; transition: background .2s ease, color .2s ease; display: inline-flex; align-items: center; gap: 0.4rem; }
-        .rb-topbar .rb-nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        .rb-topbar .rb-btn-outline-white { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.55); padding: 0.55rem 1.15rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: all .2s ease; cursor: pointer; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; }
-        .rb-topbar .rb-btn-outline-white:hover { background: #fff; color: #0A1F44; border-color: #fff; }
+        .rb-topbar .rb-nav-link { color: #0A1F44; font-weight: 600; font-size: 0.9rem; text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 999px; transition: background .2s ease; display: inline-flex; align-items: center; gap: 0.4rem; }
+        .rb-topbar .rb-nav-link:hover { background: rgba(10,31,68,0.06); }
+        .rb-topbar .rb-btn-outline-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.35); padding: 0.55rem 1.15rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: all .2s ease; cursor: pointer; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; }
+        .rb-topbar .rb-btn-outline-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+
+        /* Curtains — open on scroll into view */
+        .rb-curtain { transition: transform 1.4s cubic-bezier(0.65, 0, 0.35, 1); }
+        .rb-curtain-left  { transform: translateX(0); }
+        .rb-curtain-right { transform: translateX(0); }
+        .rb-stage-open .rb-curtain-left  { transform: translateX(-88%); }
+        .rb-stage-open .rb-curtain-right { transform: translateX(88%); }
 
         .rb-glass { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(14px); }
 
@@ -212,13 +230,13 @@ export default function RoboticsBeginnerLanding() {
         }
       `}</style>
 
-      {/* ─────────── FULL-WIDTH GLASSY NAV ─────────── */}
+      {/* ─────────── FLOATING GLACIAL-BLUE PILL NAV ─────────── */}
       <div className="rb-topbar" data-testid="rb-topbar">
         <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
-          <img src={OLL_LOGO_WHITE} alt="OLL" style={{ height: 40 }} />
+          <img src={OLL_LOGO_COLOR} alt="OLL" style={{ height: 32 }} />
         </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-nav-download" className="rb-btn-outline-white">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.75rem' }}>
+          <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-nav-download" className="rb-btn-outline-dark">
             <Download size={14} /> <span className="rb-hide-mobile">Download Curriculum</span>
           </a>
           <button onClick={bookDemo} data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.15rem', fontSize: '0.88rem' }}>
@@ -298,7 +316,10 @@ export default function RoboticsBeginnerLanding() {
       </section>
 
       {/* ═══════════ 02 — IIT BOMBAY (Theatrical Stage) ═══════════ */}
-      <section data-testid="rb-iit" style={{ position: 'relative', padding: '5rem 1.25rem 0', background: '#0A0A12', color: '#fff', overflow: 'hidden' }}>
+      <section data-testid="rb-iit" style={{ position: 'relative', padding: '5rem 1.25rem 0', background: 'linear-gradient(180deg, #10193A 0%, #0A1F44 50%, #0A1F44 100%)', color: '#fff', overflow: 'hidden' }}>
+        <div className="rb-orb rb-orb-red"   style={{ width: 400, height: 400, top: -120, left: -80, opacity: 0.3 }} />
+        <div className="rb-orb rb-orb-light" style={{ width: 400, height: 400, bottom: 200, right: -80, opacity: 0.3 }} />
+
         {/* Section intro */}
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto 3rem', textAlign: 'center', zIndex: 2 }}>
           <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>the big stage</div>
@@ -311,65 +332,54 @@ export default function RoboticsBeginnerLanding() {
         </div>
 
         {/* THE STAGE */}
-        <div data-testid="rb-stage" style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', paddingBottom: '4rem' }}>
-          {/* Theatre curtains — dark red side panels */}
-          <div style={{ position: 'absolute', top: 0, left: 0, bottom: 120, width: '14%', background: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 60%, #A11A1A 100%)', borderRadius: '0 0 100% 0 / 0 0 30% 0', boxShadow: 'inset -30px 0 60px rgba(0,0,0,0.5)', zIndex: 3 }} />
-          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 120, width: '14%', background: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 60%, #A11A1A 100%)', borderRadius: '0 0 0 100% / 0 0 0 30%', boxShadow: 'inset 30px 0 60px rgba(0,0,0,0.5)', zIndex: 3 }} />
+        <div data-testid="rb-stage" className={stageOpen ? 'rb-stage-open' : ''} style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', paddingBottom: '4rem', zIndex: 2 }}>
+          {/* Curtain top valance (fixed) */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(180deg, #7A1616 0%, #4A0E0E 100%)', borderBottom: '3px solid #DC2626', boxShadow: '0 6px 20px rgba(220,38,38,0.35)', zIndex: 5 }} />
 
-          {/* Curtain top valance */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(180deg, #7A1616 0%, #4A0E0E 100%)', borderBottom: '3px solid #DC2626', boxShadow: '0 6px 20px rgba(220,38,38,0.35)', zIndex: 4 }} />
+          {/* LEFT CURTAIN — slides left on scroll */}
+          <div className="rb-curtain rb-curtain-left" style={{ position: 'absolute', top: 40, left: 0, bottom: 120, width: '50%', background: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%)', boxShadow: 'inset -30px 0 60px rgba(0,0,0,0.5)', zIndex: 4, borderRight: '2px solid rgba(0,0,0,0.3)', backgroundImage: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%), repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 24px)', backgroundBlendMode: 'overlay' }} />
 
-          {/* Backdrop (dark) with spotlight cone */}
-          <div style={{ position: 'relative', minHeight: 520, background: 'radial-gradient(ellipse at 50% 15%, rgba(96,165,250,0.35) 0%, rgba(30,58,138,0.25) 25%, rgba(10,15,30,1) 60%)', overflow: 'hidden', padding: '4.5rem 2rem 0' }}>
-            {/* Spotlight beam from top */}
-            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '200px solid transparent', borderRight: '200px solid transparent', borderTop: '520px solid rgba(255, 244, 200, 0.18)', filter: 'blur(20px)', pointerEvents: 'none' }} />
-            {/* Spotlight glow at top */}
-            <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,244,200,0.7) 0%, rgba(255,244,200,0) 70%)', filter: 'blur(8px)' }} />
-            {/* Dust particles */}
-            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 40%, rgba(255,255,255,0.06) 0px, transparent 1px), radial-gradient(circle at 70% 30%, rgba(255,255,255,0.05) 0px, transparent 1px), radial-gradient(circle at 40% 70%, rgba(255,255,255,0.05) 0px, transparent 1px)', backgroundSize: '80px 80px, 120px 120px, 100px 100px', pointerEvents: 'none' }} />
+          {/* RIGHT CURTAIN — slides right on scroll */}
+          <div className="rb-curtain rb-curtain-right" style={{ position: 'absolute', top: 40, right: 0, bottom: 120, width: '50%', background: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%)', boxShadow: 'inset 30px 0 60px rgba(0,0,0,0.5)', zIndex: 4, borderLeft: '2px solid rgba(0,0,0,0.3)', backgroundImage: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 55%, #A11A1A 90%, #B91C1C 100%), repeating-linear-gradient(90deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 24px)', backgroundBlendMode: 'overlay' }} />
 
-            {/* Content on stage backdrop */}
-            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
-              {/* Techfest logo — the "banner" */}
-              <div style={{ background: '#fff', display: 'inline-block', padding: '1.5rem 2.25rem', borderRadius: '0.75rem', boxShadow: '0 30px 80px rgba(255,244,200,0.35), 0 0 0 4px rgba(255,255,255,0.12)' }}>
-                <img src={TECHFEST_LOGO} alt="Techfest IIT Bombay" style={{ height: 90, display: 'block' }} />
-              </div>
+          {/* Backdrop with spotlight cone */}
+          <div style={{ position: 'relative', minHeight: 560, background: 'radial-gradient(ellipse at 50% 15%, rgba(255,244,200,0.28) 0%, rgba(96,165,250,0.18) 20%, rgba(30,58,138,0.35) 45%, rgba(10,15,40,0.9) 75%)', overflow: 'hidden', padding: '5rem 2rem 0' }}>
+            {/* Spotlight beam */}
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '220px solid transparent', borderRight: '220px solid transparent', borderTop: '560px solid rgba(255, 244, 200, 0.18)', filter: 'blur(24px)', pointerEvents: 'none' }} />
+            {/* Spotlight glow */}
+            <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,244,200,0.75) 0%, rgba(255,244,200,0) 70%)', filter: 'blur(10px)' }} />
 
-              {/* Small caption */}
-              <div style={{ marginTop: '1.5rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.28em', textTransform: 'uppercase' }}>
+            {/* Content — NOW PERFORMING AT → YOUR SCHOOL → Techfest logo */}
+            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 720, margin: '0 auto' }}>
+              <div style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '0.85rem', color: 'rgba(255,255,255,0.65)', letterSpacing: '0.32em', textTransform: 'uppercase' }}>
                 Now performing at
               </div>
 
-              {/* Your School spotlight name */}
-              <div style={{ marginTop: '0.5rem' }}>
-                <div className="rb-hero-title" style={{ fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', lineHeight: 1, color: '#fff', textShadow: '0 0 40px rgba(255,244,200,0.5), 0 0 80px rgba(255,244,200,0.3)' }}>
-                  YOUR SCHOOL
-                </div>
-                <div style={{ marginTop: '0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 400, fontSize: '0.85rem', color: '#FCA5A5', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                  <Trophy size={14} /> Grade 5–10 · Robotics Showcase
-                </div>
+              <div className="rb-hero-title" style={{ marginTop: '0.6rem', fontSize: 'clamp(2.6rem, 6vw, 4.2rem)', lineHeight: 1, color: '#fff', textShadow: '0 0 40px rgba(255,244,200,0.55), 0 0 80px rgba(255,244,200,0.3)' }}>
+                YOUR SCHOOL
+              </div>
+
+              {/* Techfest logo — BELOW Your School */}
+              <div style={{ marginTop: '2rem', background: '#fff', display: 'inline-block', padding: '1.25rem 2rem', borderRadius: '0.75rem', boxShadow: '0 30px 80px rgba(255,244,200,0.28), 0 0 0 4px rgba(255,255,255,0.12)' }}>
+                <img src={TECHFEST_LOGO} alt="Techfest IIT Bombay" style={{ height: 72, display: 'block' }} />
               </div>
             </div>
           </div>
 
-          {/* THE STAGE PLATFORM (bottom) */}
-          <div style={{ position: 'relative', height: 120, background: 'linear-gradient(180deg, #2D1810 0%, #5C3421 40%, #3D2214 100%)', borderTop: '4px solid #DC2626', boxShadow: '0 -8px 30px rgba(220,38,38,0.25)', overflow: 'hidden' }}>
-            {/* wooden plank lines */}
+          {/* THE STAGE PLATFORM */}
+          <div style={{ position: 'relative', height: 120, background: 'linear-gradient(180deg, #2D1810 0%, #5C3421 40%, #3D2214 100%)', borderTop: '4px solid #DC2626', boxShadow: '0 -8px 30px rgba(220,38,38,0.25)', overflow: 'hidden', zIndex: 3 }}>
             <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.35) 1px, transparent 1px)', backgroundSize: '110px 100%' }} />
-            {/* Stage footlights */}
             <div style={{ position: 'absolute', top: 6, left: 0, right: 0, display: 'flex', justifyContent: 'space-around' }}>
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} style={{ width: 16, height: 16, borderRadius: '50%', background: 'radial-gradient(circle, #FCD34D 0%, #DC2626 100%)', boxShadow: '0 0 20px rgba(252,211,77,0.9), 0 0 40px rgba(252,211,77,0.6)' }} />
               ))}
             </div>
-            {/* Stage label */}
             <div style={{ position: 'absolute', bottom: 22, left: '50%', transform: 'translateX(-50%)', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 500, fontSize: '0.75rem', color: 'rgba(255,220,180,0.7)', letterSpacing: '0.32em', textTransform: 'uppercase' }}>
               The Stage · IIT Bombay
             </div>
           </div>
 
-          {/* Caption below stage */}
-          <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', color: 'rgba(255,255,255,0.75)', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
+          <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', color: 'rgba(255,255,255,0.8)', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
             From classroom projects to a <span style={{ color: '#FCA5A5', fontWeight: 500 }}>national stage</span> — the leap that changes how a child sees themselves.
           </p>
         </div>
