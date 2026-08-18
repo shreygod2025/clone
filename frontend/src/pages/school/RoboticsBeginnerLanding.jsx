@@ -72,10 +72,11 @@ const SCHOOL_GETS = [
   { i: BookOpen,        t: 'Structured Curriculum',       s: 'Grade-wise progression designed for beginner learners.' },
   { i: Package,         t: 'Hands-on Kits',               s: 'Students learn by building, experimenting and creating.' },
   { i: BookOpen,        t: 'Interactive Books',           s: 'Engaging student books mapped to every lesson.' },
-  { i: Hammer,          t: 'Easy-to-Teach Program',       s: 'Structured to make classroom implementation simple.' },
+  { i: Hammer,          t: 'Teacher Empowerment Program', s: 'Training + lesson plans + rubrics so teachers own the classroom from day one.' },
   { i: ClipboardCheck,  t: 'Assessment & Certification',  s: 'Track practical & conceptual learning. Certify every child.' },
   { i: Trophy,          t: 'Showcase Opportunities',      s: 'Exhibitions and competitions to demonstrate what they built.' },
   { i: LifeBuoy,        t: 'Service & Support',           s: 'Onboarding, refreshers and a dedicated success partner.' },
+  { i: TerminalSquare,  t: 'LMS & Reporting',             s: 'A Learning Management System with progress dashboards for teachers and parents.' },
 ];
 
 const PILLARS = [
@@ -962,6 +963,29 @@ export default function RoboticsBeginnerLanding() {
                 </div>
               ))}
             </div>
+
+            {/* Team card row */}
+            <div style={{ marginTop: '3rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '1.5rem', padding: '2rem 1.5rem', backdropFilter: 'blur(10px)' }} data-testid="rb-team">
+              <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.2rem', marginBottom: '0.35rem' }}>meet the team</div>
+              <h3 className="rb-h3" style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 600, marginBottom: '1.5rem' }}>The people behind OLL.</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                {[
+                  { name: 'Shreyaan Daga',     role: 'Founder & CEO',          bio: 'Youngest on Shark Tank India, on the Hot Seat of KBC.',            img: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mhektet3_Screenshot%202026-08-18%20at%2011.04.59%E2%80%AFPM.webp' },
+                  { name: 'Vidushi Daga',      role: 'Chairperson · OLL',      bio: '15+ years in education. Taught over 5 lakh kids across India.',    img: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/pn1rfxv4_Screenshot%202026-08-18%20at%2010.51.27%E2%80%AFPM.png' },
+                  { name: 'Amit Modi',         role: 'IIT Bombay Alumni',      bio: '10+ years in Robotics education for kids across India.',           img: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yg6ml9b3_Screenshot%202026-08-18%20at%2011.48.57%E2%80%AFPM.png' },
+                  { name: 'Heather Andersson', role: 'President · UNESCO WGF', bio: '15+ years in education. President, UNESCO World Genesis Foundation.', img: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/x15oswtz_Screenshot%202026-08-18%20at%2011.11.50%E2%80%AFPM.webp' },
+                ].map((m) => (
+                  <div key={m.name} style={{ textAlign: 'center', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                    <div style={{ width: 140, height: 140, borderRadius: '50%', margin: '0 auto', overflow: 'hidden', background: 'linear-gradient(135deg, #FBBF24, #F59E0B)', border: '3px solid rgba(255,255,255,0.18)', boxShadow: '0 20px 40px rgba(0,0,0,0.35)' }}>
+                      <img src={m.img} alt={m.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ marginTop: '1rem', fontSize: '1.05rem', color: '#fff', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{m.name}</div>
+                    <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: '#FCA5A5', fontWeight: 600 }}>{m.role}</div>
+                    <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.78)', fontWeight: 300, lineHeight: 1.5 }}>{m.bio}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* As seen on */}
@@ -1032,16 +1056,14 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          {/* Horizontal YouTube video slider */}
-          <div className="rb-vids-scroll" data-testid="rb-videos-scroll">
-            <div className="rb-vids-row">
-              {SCHOOL_VIDEOS.map((v) => (
-                <a key={v.id} href={`https://youtu.be/${v.id}`} target="_blank" rel="noreferrer" className="rb-vid-card" data-testid={`rb-video-${v.id}`}>
+          {/* Auto-scrolling YouTube video marquee */}
+          <div className="rb-skills-wrap" data-testid="rb-videos-scroll" style={{ padding: '10px 0' }}>
+            <div className="rb-skills-track" style={{ animationDuration: '60s', alignItems: 'stretch' }}>
+              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
+                <a key={`${v.id}-${i}`} href={`https://youtu.be/${v.id}`} target="_blank" rel="noreferrer" className="rb-vid-card" style={{ marginTop: 0 }} data-testid={i < SCHOOL_VIDEOS.length ? `rb-video-${v.id}` : undefined}>
                   <div className="rb-vid-thumb">
                     <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
-                    <div className="rb-vid-play">
-                      <PlayCircle size={32} fill="rgba(255,255,255,0.15)" />
-                    </div>
+                    <div className="rb-vid-play"><PlayCircle size={32} fill="rgba(255,255,255,0.15)" /></div>
                   </div>
                   <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
                     <div style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.2 }}>{v.name}</div>
