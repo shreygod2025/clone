@@ -86,14 +86,14 @@ const PILLARS = [
 ];
 
 const BOOKS = [
-  { grade: 'Grade 1', theme: 'Be a Creator',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9qs738wd_A3%20Book%20Chart.png',       spine: '#7C3AED' },
-  { grade: 'Grade 2', theme: "Let's Explore",   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4y6z7vtw_A3%20Book%20Chart%20%281%29.png', spine: '#0EA5E9' },
-  { grade: 'Grade 3', theme: 'Storm Rescue',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mzm4izo2_A3%20Book%20Chart%20%284%29.png', spine: '#1E3A8A' },
-  { grade: 'Grade 4', theme: 'Cyber Lab',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/fd8swouq_A3%20Book%20Chart%20%282%29.png', spine: '#059669' },
-  { grade: 'Grade 5', theme: 'Maze Mission',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h26jsi3o_A3%20Book%20Chart%20%283%29.png', spine: '#EA580C' },
-  { grade: 'Grade 6', theme: 'Robot Academy',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/v97f8iit_A3%20Book%20Chart%20%285%29.png', spine: '#0891B2' },
-  { grade: 'Grade 7', theme: 'AI Matrix',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h4cauczc_A3%20Book%20Chart%20%286%29.png', spine: '#111827' },
-  { grade: 'Grade 8', theme: 'Human + Machine', src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/el5uo7fb_A3%20Book%20Chart%20%287%29.png', spine: '#0284C7' },
+  { grade: 'Grade 1', theme: 'Be a Creator',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9qs738wd_A3%20Book%20Chart.png',       spine: '#7C3AED', flip: 'https://heyzine.com/flip-book/b88e40c849.html' },
+  { grade: 'Grade 2', theme: "Let's Explore",   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4y6z7vtw_A3%20Book%20Chart%20%281%29.png', spine: '#0EA5E9', flip: 'https://heyzine.com/flip-book/5e35827f8b.html' },
+  { grade: 'Grade 3', theme: 'Storm Rescue',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mzm4izo2_A3%20Book%20Chart%20%284%29.png', spine: '#1E3A8A', flip: 'https://heyzine.com/flip-book/6302e4b924.html' },
+  { grade: 'Grade 4', theme: 'Cyber Lab',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/fd8swouq_A3%20Book%20Chart%20%282%29.png', spine: '#059669', flip: 'https://heyzine.com/flip-book/b65650ada0.html' },
+  { grade: 'Grade 5', theme: 'Maze Mission',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h26jsi3o_A3%20Book%20Chart%20%283%29.png', spine: '#EA580C', flip: 'https://heyzine.com/flip-book/044922eea3.html' },
+  { grade: 'Grade 6', theme: 'Robot Academy',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/v97f8iit_A3%20Book%20Chart%20%285%29.png', spine: '#0891B2', flip: 'https://heyzine.com/flip-book/93d70c702f.html' },
+  { grade: 'Grade 7', theme: 'AI Matrix',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h4cauczc_A3%20Book%20Chart%20%286%29.png', spine: '#111827', flip: 'https://heyzine.com/flip-book/a26a34f273.html' },
+  { grade: 'Grade 8', theme: 'Human + Machine', src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/el5uo7fb_A3%20Book%20Chart%20%287%29.png', spine: '#0284C7', flip: 'https://heyzine.com/flip-book/32be158b45.html' },
 ];
 
 const PARENT_JOURNEY = [
@@ -260,6 +260,33 @@ export default function RoboticsBeginnerLanding() {
           background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
           border-radius: 2px 2px 0 0;
         }
+        /* Hover overlay — click to open sample */
+        .rb-book-pad { position: relative; }
+        .rb-book-pad .rb-book-hint {
+          position: absolute;
+          left: 50%;
+          top: 42%;
+          transform: translate(-50%, -50%) scale(0.9);
+          background: linear-gradient(135deg, #DC2626, #1E3A8A);
+          color: #fff;
+          padding: 0.5rem 0.9rem;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity .25s ease, transform .25s ease;
+          box-shadow: 0 12px 28px rgba(220,38,38,0.45);
+          white-space: nowrap;
+          z-index: 3;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+        }
+        .rb-book-pad:hover .rb-book-hint { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .rb-book-link { display: block; text-decoration: none; color: inherit; cursor: pointer; }
 
         /* 8-book row */
         .rb-books-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.85rem; align-items: end; }
@@ -621,7 +648,10 @@ export default function RoboticsBeginnerLanding() {
 
           <div className="rb-books-grid">
             {BOOKS.map((b) => (
-              <div key={b.grade} className="rb-book-pad" data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
+              <a key={b.grade} href={b.flip} target="_blank" rel="noreferrer" className="rb-book-link rb-book-pad" data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
+                <div className="rb-book-hint">
+                  <BookOpen size={12} /> Click to open sample
+                </div>
                 <div className="rb-book">
                   <div className="rb-book-inner" style={{ '--spine': b.spine }}>
                     <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
@@ -631,11 +661,16 @@ export default function RoboticsBeginnerLanding() {
                   <div className="rb-h4" style={{ fontSize: '0.78rem', color: '#0A1F44' }}>{b.grade}</div>
                   <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 1 }}>{b.theme}</div>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
 
-          <p style={{ textAlign: 'center', marginTop: '2.5rem', fontSize: '0.9rem', color: '#94A3B8', fontStyle: 'italic' }}>
+          <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontSize: '0.95rem', color: '#DC2626', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <BookOpen size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 6 }} />
+            Click any book to open a sample
+          </p>
+
+          <p style={{ textAlign: 'center', marginTop: '0.9rem', fontSize: '0.85rem', color: '#94A3B8', fontStyle: 'italic' }}>
             + More grades on the way. Every book aligns with age-appropriate outcomes and hands-on projects.
           </p>
         </div>
