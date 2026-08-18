@@ -223,43 +223,48 @@ export default function RoboticsBeginnerLanding() {
         .rb-topbar .rb-btn-outline-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
         .rb-topbar .rb-btn { white-space: nowrap; }
 
-        /* Book pedestal cards — OMOTEC-style, spine on left, tilt on hover */
+        /* Book pedestal cards — compact 8-in-a-row layout with 3D back-cover shadow */
         .rb-book-pad {
-          background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
-          border-radius: 22px;
-          padding: 34px 22px 24px 30px;
-          box-shadow: 0 10px 26px rgba(15,30,80,0.08), 0 1px 2px rgba(15,30,80,0.06);
+          background: linear-gradient(180deg, #FFFFFF 0%, #F5F3FF 100%);
+          border-radius: 18px;
+          padding: 22px 12px 16px 14px;
+          box-shadow: 0 8px 20px rgba(15,30,80,0.06), 0 1px 2px rgba(15,30,80,0.05);
           transition: box-shadow .4s ease, transform .4s ease;
         }
-        .rb-book-pad:hover { box-shadow: 0 24px 60px rgba(220,38,38,0.16), 0 4px 10px rgba(15,30,80,0.08); transform: translateY(-4px); }
+        .rb-book-pad:hover { box-shadow: 0 20px 44px rgba(124,58,237,0.18), 0 4px 10px rgba(15,30,80,0.08); transform: translateY(-3px); }
         .rb-book { perspective: 1400px; position: relative; }
         .rb-book-inner {
           position: relative;
           transform-style: preserve-3d;
           transform-origin: left center;
           transition: transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease;
-          border-radius: 3px 6px 6px 3px;
+          border-radius: 3px 5px 5px 3px;
+          /* Layered 3D shadow: solid back-cover offset + soft ambient + deep drop */
           box-shadow:
-            0 12px 22px rgba(0,0,0,0.28),
-            -1px 0 0 var(--spine, #B91C1C) inset,
-            -3px 0 0 -1px var(--spine, #B91C1C),
-            -5px 0 0 -2px rgba(0,0,0,0.15);
+            2px 3px 0 rgba(30, 20, 60, 0.18),
+            5px 7px 0 rgba(30, 20, 60, 0.10),
+            8px 12px 22px rgba(30, 20, 60, 0.18),
+            0 30px 48px -14px rgba(30, 20, 60, 0.30);
         }
         .rb-book:hover .rb-book-inner {
-          transform: rotateY(-28deg) translateZ(18px);
+          transform: rotateY(-22deg) translateZ(14px);
           box-shadow:
-            0 22px 40px rgba(220,38,38,0.28),
-            -1px 0 0 var(--spine, #B91C1C) inset,
-            -6px 0 0 -1px var(--spine, #B91C1C),
-            -10px 0 0 -2px rgba(0,0,0,0.18);
+            3px 4px 0 rgba(30, 20, 60, 0.22),
+            7px 9px 0 rgba(30, 20, 60, 0.12),
+            14px 18px 30px rgba(30, 20, 60, 0.24),
+            0 36px 60px -14px rgba(220, 38, 38, 0.28);
         }
-        .rb-book-cover { display: block; width: 100%; border-radius: 3px 6px 6px 3px; backface-visibility: hidden; }
-        /* Top edge — hint of pages */
+        .rb-book-cover { display: block; width: 100%; border-radius: 3px 5px 5px 3px; backface-visibility: hidden; }
         .rb-book-inner::after {
-          content: ''; position: absolute; top: -3px; left: 2px; right: -1px; height: 3px;
+          content: ''; position: absolute; top: -2px; left: 2px; right: -1px; height: 2px;
           background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
           border-radius: 2px 2px 0 0;
         }
+
+        /* 8-book row */
+        .rb-books-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.85rem; align-items: end; }
+        @media (max-width: 1180px) { .rb-books-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 640px)  { .rb-books-grid { grid-template-columns: repeat(2, 1fr); } }
 
         /* Curtains — scroll-linked (transform set via inline style) */
         .rb-curtain { will-change: transform; transition: transform .12s linear; }
@@ -602,7 +607,7 @@ export default function RoboticsBeginnerLanding() {
         <div className="rb-orb rb-orb-red"  style={{ width: 360, height: 360, top: -120, left: -80, opacity: 0.18 }} />
         <div className="rb-orb rb-orb-blue" style={{ width: 400, height: 400, bottom: -140, right: -80, opacity: 0.18 }} />
 
-        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
+        <div style={{ position: 'relative', maxWidth: 1320, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.5rem' }}>interactive books</div>
             <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
@@ -614,7 +619,7 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
+          <div className="rb-books-grid">
             {BOOKS.map((b) => (
               <div key={b.grade} className="rb-book-pad" data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
                 <div className="rb-book">
@@ -622,9 +627,9 @@ export default function RoboticsBeginnerLanding() {
                     <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
                   </div>
                 </div>
-                <div style={{ marginTop: '1.25rem', textAlign: 'center', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
-                  <div className="rb-h4" style={{ fontSize: '0.95rem', color: '#0A1F44' }}>{b.grade}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>{b.theme}</div>
+                <div style={{ marginTop: '0.85rem', textAlign: 'center', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                  <div className="rb-h4" style={{ fontSize: '0.78rem', color: '#0A1F44' }}>{b.grade}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 1 }}>{b.theme}</div>
                 </div>
               </div>
             ))}
