@@ -70,3 +70,7 @@ Cloudinary storage, Resend email, OpenAI (Emergent LLM key).
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`.
+
+
+## Changelog (Latest)
+- 2026-02: Robotics Beginner landing — swapped Team section placeholders with real portraits (Shreyaan, Vidushi, Amit, Heather) extracted from user-supplied composite. Portraits saved locally at `/app/frontend/public/team/*.png`; referenced in `RoboticsBeginnerLanding.jsx` (~L972-976).
