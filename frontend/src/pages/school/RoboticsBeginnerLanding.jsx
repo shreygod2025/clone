@@ -36,6 +36,9 @@ const ROBOTICS_GIF =
 const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
+const TECHFEST_LOGO =
+  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/cj9em2vn_image.png';
+
 const OLL_LOGO_WHITE =
   'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
 
@@ -140,7 +143,7 @@ export default function RoboticsBeginnerLanding() {
           font-display: swap;
         }
 
-        .rb-page { min-height: 100vh; background: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; color: #0A1F44; overflow-x: hidden; padding-top: 78px; }
+        .rb-page { min-height: 100vh; background: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; color: #0A1F44; overflow-x: hidden; padding-top: 84px; }
 
         /* Hero only — Zing Rust display face */
         .rb-hero-title { font-family: 'Zing Rust', 'Anton', 'Inter', sans-serif; letter-spacing: 0.005em; text-transform: uppercase; font-weight: 400; }
@@ -170,28 +173,28 @@ export default function RoboticsBeginnerLanding() {
         .rb-orb-blue  { background: rgba(30,58,138,0.5); }
         .rb-orb-light { background: rgba(96,165,250,0.5); }
 
-        /* Floating pill nav — glassy, centered, rounded */
+        /* Full-width sticky nav — navy base with glass overlay */
         .rb-topbar {
           position: fixed;
-          top: 14px;
-          left: 50%;
-          transform: translateX(-50%);
+          top: 0;
+          left: 0;
+          right: 0;
           z-index: 60;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.55rem 0.65rem 0.55rem 1.1rem;
-          background: rgba(255,255,255,0.7);
-          backdrop-filter: blur(22px) saturate(160%);
-          -webkit-backdrop-filter: blur(22px) saturate(160%);
-          border: 1px solid rgba(255,255,255,0.55);
-          border-radius: 999px;
-          box-shadow: 0 20px 48px rgba(10,31,68,0.18), 0 0 0 1px rgba(15,30,80,0.04) inset;
-          max-width: calc(100vw - 24px);
+          justify-content: space-between;
+          gap: 0.75rem;
+          padding: 0.85rem clamp(1.25rem, 4vw, 3rem);
+          background: linear-gradient(180deg, rgba(10,31,68,0.92) 0%, rgba(10,31,68,0.78) 100%);
+          backdrop-filter: blur(18px) saturate(160%);
+          -webkit-backdrop-filter: blur(18px) saturate(160%);
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.15);
         }
-        .rb-topbar .rb-nav-link { color: #0A1F44; font-weight: 600; font-size: 0.85rem; text-decoration: none; padding: 0.5rem 0.85rem; border-radius: 999px; transition: background .2s ease; display: inline-flex; align-items: center; gap: 0.35rem; }
-        .rb-topbar .rb-nav-link:hover { background: rgba(15,30,80,0.06); }
-        .rb-topbar .rb-nav-divider { width: 1px; height: 22px; background: rgba(15,30,80,0.12); margin: 0 0.15rem; }
+        .rb-topbar .rb-nav-link { color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.9rem; text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 999px; transition: background .2s ease, color .2s ease; display: inline-flex; align-items: center; gap: 0.4rem; }
+        .rb-topbar .rb-nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .rb-topbar .rb-btn-outline-white { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.55); padding: 0.55rem 1.15rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: all .2s ease; cursor: pointer; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; }
+        .rb-topbar .rb-btn-outline-white:hover { background: #fff; color: #0A1F44; border-color: #fff; }
 
         .rb-glass { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(14px); }
 
@@ -205,22 +208,23 @@ export default function RoboticsBeginnerLanding() {
         @media (max-width: 900px) {
           .rb-2col { grid-template-columns: 1fr !important; }
           .rb-hide-mobile { display: none !important; }
-          .rb-page { padding-top: 68px; }
+          .rb-page { padding-top: 74px; }
         }
       `}</style>
 
-      {/* ─────────── FLOATING GLASS PILL NAV ─────────── */}
+      {/* ─────────── FULL-WIDTH GLASSY NAV ─────────── */}
       <div className="rb-topbar" data-testid="rb-topbar">
-        <a href="/" style={{ display: 'flex', alignItems: 'center', paddingRight: 6 }}>
-          <img src={OLL_LOGO_COLOR} alt="OLL" style={{ height: 22 }} />
+        <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
+          <img src={OLL_LOGO_WHITE} alt="OLL" style={{ height: 40 }} />
         </a>
-        <div className="rb-nav-divider" />
-        <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-nav-download" className="rb-nav-link">
-          <Download size={14} /> <span className="rb-hide-mobile">Download Curriculum</span><span style={{ display: 'none' }}></span>
-        </a>
-        <button onClick={bookDemo} data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.85rem' }}>
-          Book a Demo <ArrowRight size={14} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-nav-download" className="rb-btn-outline-white">
+            <Download size={14} /> <span className="rb-hide-mobile">Download Curriculum</span>
+          </a>
+          <button onClick={bookDemo} data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.15rem', fontSize: '0.88rem' }}>
+            Book a Demo <ArrowRight size={14} />
+          </button>
+        </div>
       </div>
 
       {/* ═══════════ 01 — HERO ═══════════ */}
@@ -240,17 +244,9 @@ export default function RoboticsBeginnerLanding() {
               Turn your school into a<br />
               <span className="rb-stroke" style={{ backgroundImage: 'linear-gradient(90deg, #FCA5A5, #60A5FA)' }}>future-skills powerhouse.</span>
             </h1>
-            <p className="rb-serif" style={{ fontSize: '1.05rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.85)', maxWidth: 560, fontStyle: 'italic' }}>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', 'Inter', sans-serif", fontWeight: 300, fontSize: '1.1rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.85)', maxWidth: 560, letterSpacing: '0.005em' }}>
               Curriculum for {SKILLS_LIST}.
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.8rem' }}>
-              <button onClick={bookDemo} data-testid="rb-hero-cta" className="rb-btn rb-btn-primary">
-                Book a School Demo <ArrowRight size={18} />
-              </button>
-              <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-hero-download" className="rb-btn rb-btn-ghost-white">
-                <Download size={16} /> Download Curriculum
-              </a>
-            </div>
           </div>
 
           {/* Winners slider */}
@@ -301,51 +297,81 @@ export default function RoboticsBeginnerLanding() {
         </div>
       </section>
 
-      {/* ═══════════ 02 — IIT BOMBAY ═══════════ */}
-      <section data-testid="rb-iit" style={{ position: 'relative', padding: '5rem 1.25rem', background: '#FFFFFF', overflow: 'hidden' }}>
-        <div className="rb-orb rb-orb-red"   style={{ width: 380, height: 380, top: -120, left: -80, opacity: 0.2 }} />
-        <div className="rb-orb rb-orb-blue"  style={{ width: 420, height: 420, bottom: -140, right: -80, opacity: 0.22 }} />
+      {/* ═══════════ 02 — IIT BOMBAY (Theatrical Stage) ═══════════ */}
+      <section data-testid="rb-iit" style={{ position: 'relative', padding: '5rem 1.25rem 0', background: '#0A0A12', color: '#fff', overflow: 'hidden' }}>
+        {/* Section intro */}
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto 3rem', textAlign: 'center', zIndex: 2 }}>
+          <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>the big stage</div>
+          <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#fff', marginTop: '0.35rem' }}>
+            Put your school on a <span style={{ color: '#FCA5A5' }}>national stage.</span>
+          </h2>
+          <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1.05rem', color: 'rgba(255,255,255,0.75)', marginTop: '0.9rem', maxWidth: 640, margin: '0.9rem auto 0', lineHeight: 1.6 }}>
+            Give your students the opportunity to showcase what they&apos;ve built — at one of India&apos;s largest technology festivals.
+          </p>
+        </div>
 
-        <div className="rb-2col" style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center', zIndex: 1 }}>
-          <div>
-            <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.5rem' }}>the big stage</div>
-            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', marginTop: '0.35rem' }}>
-              Put your school on the <span className="rb-stroke">big stage.</span>
-            </h2>
-            <p style={{ fontSize: '1.05rem', color: '#475569', marginTop: '1rem', lineHeight: 1.6, maxWidth: 520 }}>
-              Give your students opportunities to showcase what they&apos;ve built at <strong style={{ color: '#0A1F44' }}>IIT Bombay Techfest</strong> — one of India&apos;s largest technology festivals.
-            </p>
-            <p className="rb-serif" style={{ fontSize: '1rem', color: '#64748B', fontStyle: 'italic', marginTop: '0.9rem', maxWidth: 520 }}>
-              From classroom projects to a national stage — the leap that changes how a child sees themselves.
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem' }}>
-              {[
-                { k: '15,000+', l: 'young makers on stage' },
-                { k: '50+',      l: 'OLL schools featured' },
-                { k: 'Annual',   l: 'showcase & competition' },
-              ].map((s) => (
-                <div key={s.l} style={{ padding: '0.9rem 1.1rem', borderLeft: '3px solid #DC2626', background: '#F8FAFC', borderRadius: '0 0.5rem 0.5rem 0' }}>
-                  <div className="rb-num" style={{ fontSize: '1.35rem', color: '#0A1F44' }}>{s.k}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600, marginTop: 2 }}>{s.l}</div>
+        {/* THE STAGE */}
+        <div data-testid="rb-stage" style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', paddingBottom: '4rem' }}>
+          {/* Theatre curtains — dark red side panels */}
+          <div style={{ position: 'absolute', top: 0, left: 0, bottom: 120, width: '14%', background: 'linear-gradient(90deg, #4A0E0E 0%, #7A1616 60%, #A11A1A 100%)', borderRadius: '0 0 100% 0 / 0 0 30% 0', boxShadow: 'inset -30px 0 60px rgba(0,0,0,0.5)', zIndex: 3 }} />
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 120, width: '14%', background: 'linear-gradient(-90deg, #4A0E0E 0%, #7A1616 60%, #A11A1A 100%)', borderRadius: '0 0 0 100% / 0 0 0 30%', boxShadow: 'inset 30px 0 60px rgba(0,0,0,0.5)', zIndex: 3 }} />
+
+          {/* Curtain top valance */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(180deg, #7A1616 0%, #4A0E0E 100%)', borderBottom: '3px solid #DC2626', boxShadow: '0 6px 20px rgba(220,38,38,0.35)', zIndex: 4 }} />
+
+          {/* Backdrop (dark) with spotlight cone */}
+          <div style={{ position: 'relative', minHeight: 520, background: 'radial-gradient(ellipse at 50% 15%, rgba(96,165,250,0.35) 0%, rgba(30,58,138,0.25) 25%, rgba(10,15,30,1) 60%)', overflow: 'hidden', padding: '4.5rem 2rem 0' }}>
+            {/* Spotlight beam from top */}
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '200px solid transparent', borderRight: '200px solid transparent', borderTop: '520px solid rgba(255, 244, 200, 0.18)', filter: 'blur(20px)', pointerEvents: 'none' }} />
+            {/* Spotlight glow at top */}
+            <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,244,200,0.7) 0%, rgba(255,244,200,0) 70%)', filter: 'blur(8px)' }} />
+            {/* Dust particles */}
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 40%, rgba(255,255,255,0.06) 0px, transparent 1px), radial-gradient(circle at 70% 30%, rgba(255,255,255,0.05) 0px, transparent 1px), radial-gradient(circle at 40% 70%, rgba(255,255,255,0.05) 0px, transparent 1px)', backgroundSize: '80px 80px, 120px 120px, 100px 100px', pointerEvents: 'none' }} />
+
+            {/* Content on stage backdrop */}
+            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
+              {/* Techfest logo — the "banner" */}
+              <div style={{ background: '#fff', display: 'inline-block', padding: '1.5rem 2.25rem', borderRadius: '0.75rem', boxShadow: '0 30px 80px rgba(255,244,200,0.35), 0 0 0 4px rgba(255,255,255,0.12)' }}>
+                <img src={TECHFEST_LOGO} alt="Techfest IIT Bombay" style={{ height: 90, display: 'block' }} />
+              </div>
+
+              {/* Small caption */}
+              <div style={{ marginTop: '1.5rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.28em', textTransform: 'uppercase' }}>
+                Now performing at
+              </div>
+
+              {/* Your School spotlight name */}
+              <div style={{ marginTop: '0.5rem' }}>
+                <div className="rb-hero-title" style={{ fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', lineHeight: 1, color: '#fff', textShadow: '0 0 40px rgba(255,244,200,0.5), 0 0 80px rgba(255,244,200,0.3)' }}>
+                  YOUR SCHOOL
                 </div>
+                <div style={{ marginTop: '0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 400, fontSize: '0.85rem', color: '#FCA5A5', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                  <Trophy size={14} /> Grade 5–10 · Robotics Showcase
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* THE STAGE PLATFORM (bottom) */}
+          <div style={{ position: 'relative', height: 120, background: 'linear-gradient(180deg, #2D1810 0%, #5C3421 40%, #3D2214 100%)', borderTop: '4px solid #DC2626', boxShadow: '0 -8px 30px rgba(220,38,38,0.25)', overflow: 'hidden' }}>
+            {/* wooden plank lines */}
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.35) 1px, transparent 1px)', backgroundSize: '110px 100%' }} />
+            {/* Stage footlights */}
+            <div style={{ position: 'absolute', top: 6, left: 0, right: 0, display: 'flex', justifyContent: 'space-around' }}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} style={{ width: 16, height: 16, borderRadius: '50%', background: 'radial-gradient(circle, #FCD34D 0%, #DC2626 100%)', boxShadow: '0 0 20px rgba(252,211,77,0.9), 0 0 40px rgba(252,211,77,0.6)' }} />
               ))}
             </div>
+            {/* Stage label */}
+            <div style={{ position: 'absolute', bottom: 22, left: '50%', transform: 'translateX(-50%)', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 500, fontSize: '0.75rem', color: 'rgba(255,220,180,0.7)', letterSpacing: '0.32em', textTransform: 'uppercase' }}>
+              The Stage · IIT Bombay
+            </div>
           </div>
 
-          {/* Big visual */}
-          <div style={{ position: 'relative', borderRadius: '1.5rem', overflow: 'hidden', background: 'linear-gradient(135deg, #DC2626, #0A1F44 120%)', minHeight: 440, padding: '2rem', color: '#fff' }}>
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.14, backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', padding: '0.4rem 0.85rem', borderRadius: 999, fontSize: '0.7rem', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>
-                <Trophy size={14} /> IIT Bombay · Techfest
-              </div>
-              <div className="rb-h1" style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', marginTop: '0.9rem', lineHeight: 1 }}>The Nation&apos;s biggest student showcase.</div>
-              <div className="rb-serif" style={{ marginTop: '0.9rem', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', lineHeight: 1.55, fontSize: '0.98rem', maxWidth: 420 }}>
-                OLL brings the country&apos;s top young builders here every year — with the projects they built in <em>your</em> classroom.
-              </div>
-            </div>
-            <img src={ROBOTICS_GIF} alt="OLL students at IIT Bombay Techfest" style={{ position: 'absolute', right: -60, bottom: -30, width: 320, borderRadius: '1rem', opacity: 0.9, mixBlendMode: 'luminosity' }} />
-          </div>
+          {/* Caption below stage */}
+          <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', color: 'rgba(255,255,255,0.75)', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
+            From classroom projects to a <span style={{ color: '#FCA5A5', fontWeight: 500 }}>national stage</span> — the leap that changes how a child sees themselves.
+          </p>
         </div>
       </section>
 
