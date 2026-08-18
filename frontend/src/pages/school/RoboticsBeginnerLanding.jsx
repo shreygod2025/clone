@@ -28,7 +28,7 @@ import { toast, Toaster } from 'sonner';
 import {
   CheckCircle2, Sparkles, Users, Cpu, ArrowRight, Phone, Mail, Building2,
   MapPin, Loader2, Download, ChevronLeft, ChevronRight, PlayCircle,
-  Quote, ShieldCheck, Rocket, GraduationCap,
+  Quote, ShieldCheck, Rocket, GraduationCap, School, Trophy,
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -48,9 +48,10 @@ const SHARK_TANK_IMG =
   'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
 
 const IMPACT = [
-  { k: '500+',    l: 'Partner Schools',   sub: 'Across CBSE, ICSE & State boards' },
-  { k: '2,00,000+', l: 'Young Learners',  sub: 'Building, coding & creating' },
-  { k: '35',      l: 'Cities in India',   sub: 'From Metros to Tier-3 towns' },
+  { k: '500+',      l: 'Schools Partnered', icon: School,         color: '#1E3A8A' },
+  { k: '2,00,000+', l: 'Students Trained',  icon: GraduationCap,  color: '#60A5FA' },
+  { k: '35',        l: 'Cities Reached',    icon: MapPin,         color: '#DC2626' },
+  { k: '950+',      l: 'Competitions Won',  icon: Trophy,         color: '#DC2626' },
 ];
 
 const OUTCOMES = [
@@ -236,7 +237,7 @@ export default function RoboticsBeginnerLanding() {
             <a href="tel:+919820106645" className="rb-hide-mobile" style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.88rem', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
               <Phone size={14} /> +91 98201 06645
             </a>
-            <a href="#demo" data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.85rem' }}>Book a Demo <ArrowRight size={14} /></a>
+            <a href="#demo" onClick={(e) => { e.preventDefault(); navigate('/school'); }} data-testid="rb-top-cta" className="rb-btn rb-btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.85rem' }}>Book a Demo <ArrowRight size={14} /></a>
           </div>
         </div>
       </div>
@@ -275,7 +276,7 @@ export default function RoboticsBeginnerLanding() {
             </p>
 
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '2rem' }}>
-              <a href="#demo" data-testid="rb-cta-primary" className="rb-btn rb-btn-primary">
+              <a href="#demo" onClick={(e) => { e.preventDefault(); navigate('/school'); }} data-testid="rb-cta-primary" className="rb-btn rb-btn-primary">
                 Book a Product Demo <ArrowRight size={18} />
               </a>
               <a href={CURRICULUM_PDF} download="OLL-Robotics-Beginner-Curriculum-2026-27.pdf" target="_blank" rel="noreferrer" data-testid="rb-cta-download" className="rb-btn rb-btn-ghost-white">
@@ -315,10 +316,10 @@ export default function RoboticsBeginnerLanding() {
 
       {/* 3) ── ABOUT OLL IMPACT ──────────────────────────── */}
       <section data-testid="rb-about-oll" style={{ position: 'relative', padding: '5rem 1.25rem', background: '#FFFFFF', overflow: 'hidden' }}>
-        <div className="rb-orb rb-orb-red"   style={{ width: 340, height: 340, top: -100, right: -80, opacity: 0.28 }} />
-        <div className="rb-orb rb-orb-light" style={{ width: 300, height: 300, bottom: -80, left: -60, opacity: 0.35 }} />
+        <div className="rb-orb rb-orb-red"   style={{ width: 340, height: 340, top: -100, right: -80, opacity: 0.18 }} />
+        <div className="rb-orb rb-orb-light" style={{ width: 300, height: 300, bottom: -80, left: -60, opacity: 0.22 }} />
 
-        <div style={{ position: 'relative', maxWidth: 1200, margin: '0 auto', textAlign: 'center', zIndex: 1 }}>
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', textAlign: 'center', zIndex: 1 }}>
           <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.5rem' }}>about OLL</div>
           <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3.2rem)', lineHeight: 1.05, color: '#0A1F44', maxWidth: 900, margin: '0.35rem auto 0.75rem' }}>
             India&apos;s <span className="rb-stroke">largest young-builder</span> movement.
@@ -327,13 +328,17 @@ export default function RoboticsBeginnerLanding() {
             We work with schools, principals and teachers to turn every classroom into a launchpad for creators, coders and changemakers.
           </p>
 
-          <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+          {/* Impact pill card — light, clean, icons + numbers (per brand reference) */}
+          <div style={{ marginTop: '3rem', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '1.5rem', padding: '2rem 1.5rem', boxShadow: '0 20px 60px rgba(15,30,80,0.08)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             {IMPACT.map((it, i) => (
-              <div key={it.l} style={{ background: '#0A1F44', color: '#fff', borderRadius: '1.25rem', padding: '2rem 1.5rem', textAlign: 'left', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(10,31,68,0.15)' }}>
-                <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: i === 0 ? 'rgba(220,38,38,0.35)' : i === 1 ? 'rgba(96,165,250,0.35)' : 'rgba(30,58,138,0.45)', filter: 'blur(30px)' }} />
-                <div className="rb-num" style={{ fontSize: 'clamp(3rem, 5.5vw, 4.4rem)', lineHeight: 1, color: '#fff', fontWeight: 400, position: 'relative' }}>{it.k}</div>
-                <div style={{ marginTop: '0.6rem', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.04em' }}>{it.l}</div>
-                <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{it.sub}</div>
+              <div key={it.l} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 1rem', borderLeft: i === 0 ? 'none' : '1px solid #E5E7EB' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: `${it.color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <it.icon size={30} strokeWidth={2} style={{ color: it.color }} />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div className="rb-num" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.4rem)', lineHeight: 1, color: '#0A1F44', fontWeight: 400 }}>{it.k}</div>
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.82rem', color: '#64748B', fontWeight: 600, letterSpacing: '0.02em' }}>{it.l}</div>
+                </div>
               </div>
             ))}
           </div>
