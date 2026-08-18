@@ -86,11 +86,14 @@ const PILLARS = [
 ];
 
 const BOOKS = [
-  { grade: 'Grade 2', theme: "Let's Explore",  src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4y6z7vtw_A3%20Book%20Chart%20%281%29.png' },
-  { grade: 'Grade 3', theme: 'Storm Rescue',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mzm4izo2_A3%20Book%20Chart%20%284%29.png' },
-  { grade: 'Grade 4', theme: 'Cyber Lab',      src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/fd8swouq_A3%20Book%20Chart%20%282%29.png' },
-  { grade: 'Grade 5', theme: 'Maze Mission',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h26jsi3o_A3%20Book%20Chart%20%283%29.png' },
-  { grade: 'Grade 6', theme: 'Robot Academy',  src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/v97f8iit_A3%20Book%20Chart%20%285%29.png' },
+  { grade: 'Grade 1', theme: 'Be a Creator',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9qs738wd_A3%20Book%20Chart.png',       spine: '#7C3AED' },
+  { grade: 'Grade 2', theme: "Let's Explore",   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4y6z7vtw_A3%20Book%20Chart%20%281%29.png', spine: '#0EA5E9' },
+  { grade: 'Grade 3', theme: 'Storm Rescue',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mzm4izo2_A3%20Book%20Chart%20%284%29.png', spine: '#1E3A8A' },
+  { grade: 'Grade 4', theme: 'Cyber Lab',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/fd8swouq_A3%20Book%20Chart%20%282%29.png', spine: '#059669' },
+  { grade: 'Grade 5', theme: 'Maze Mission',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h26jsi3o_A3%20Book%20Chart%20%283%29.png', spine: '#EA580C' },
+  { grade: 'Grade 6', theme: 'Robot Academy',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/v97f8iit_A3%20Book%20Chart%20%285%29.png', spine: '#0891B2' },
+  { grade: 'Grade 7', theme: 'AI Matrix',       src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h4cauczc_A3%20Book%20Chart%20%286%29.png', spine: '#111827' },
+  { grade: 'Grade 8', theme: 'Human + Machine', src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/el5uo7fb_A3%20Book%20Chart%20%287%29.png', spine: '#0284C7' },
 ];
 
 const PARENT_JOURNEY = [
@@ -220,11 +223,43 @@ export default function RoboticsBeginnerLanding() {
         .rb-topbar .rb-btn-outline-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
         .rb-topbar .rb-btn { white-space: nowrap; }
 
-        /* Tilting book hover */
-        .rb-book { perspective: 1200px; }
-        .rb-book-inner { transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.8,.2,1); transform-origin: left center; box-shadow: 0 20px 40px rgba(0,0,0,0.35), -6px 0 0 -2px #B91C1C; border-radius: 6px; }
-        .rb-book:hover .rb-book-inner { transform: rotateY(-32deg) translateZ(20px); box-shadow: 0 30px 60px rgba(220,38,38,0.35), -8px 0 0 -2px #DC2626; }
-        .rb-book-cover { display: block; width: 100%; border-radius: 6px; backface-visibility: hidden; }
+        /* Book pedestal cards — OMOTEC-style, spine on left, tilt on hover */
+        .rb-book-pad {
+          background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
+          border-radius: 22px;
+          padding: 34px 22px 24px 30px;
+          box-shadow: 0 10px 26px rgba(15,30,80,0.08), 0 1px 2px rgba(15,30,80,0.06);
+          transition: box-shadow .4s ease, transform .4s ease;
+        }
+        .rb-book-pad:hover { box-shadow: 0 24px 60px rgba(220,38,38,0.16), 0 4px 10px rgba(15,30,80,0.08); transform: translateY(-4px); }
+        .rb-book { perspective: 1400px; position: relative; }
+        .rb-book-inner {
+          position: relative;
+          transform-style: preserve-3d;
+          transform-origin: left center;
+          transition: transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease;
+          border-radius: 3px 6px 6px 3px;
+          box-shadow:
+            0 12px 22px rgba(0,0,0,0.28),
+            -1px 0 0 var(--spine, #B91C1C) inset,
+            -3px 0 0 -1px var(--spine, #B91C1C),
+            -5px 0 0 -2px rgba(0,0,0,0.15);
+        }
+        .rb-book:hover .rb-book-inner {
+          transform: rotateY(-28deg) translateZ(18px);
+          box-shadow:
+            0 22px 40px rgba(220,38,38,0.28),
+            -1px 0 0 var(--spine, #B91C1C) inset,
+            -6px 0 0 -1px var(--spine, #B91C1C),
+            -10px 0 0 -2px rgba(0,0,0,0.18);
+        }
+        .rb-book-cover { display: block; width: 100%; border-radius: 3px 6px 6px 3px; backface-visibility: hidden; }
+        /* Top edge — hint of pages */
+        .rb-book-inner::after {
+          content: ''; position: absolute; top: -3px; left: 2px; right: -1px; height: 3px;
+          background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
+          border-radius: 2px 2px 0 0;
+        }
 
         /* Curtains — scroll-linked (transform set via inline style) */
         .rb-curtain { will-change: transform; transition: transform .12s linear; }
@@ -579,13 +614,15 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '2rem', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
             {BOOKS.map((b) => (
-              <div key={b.grade} className="rb-book" style={{ textAlign: 'center' }} data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
-                <div className="rb-book-inner">
-                  <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
+              <div key={b.grade} className="rb-book-pad" data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
+                <div className="rb-book">
+                  <div className="rb-book-inner" style={{ '--spine': b.spine }}>
+                    <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
+                  </div>
                 </div>
-                <div style={{ marginTop: '1rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                <div style={{ marginTop: '1.25rem', textAlign: 'center', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
                   <div className="rb-h4" style={{ fontSize: '0.95rem', color: '#0A1F44' }}>{b.grade}</div>
                   <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>{b.theme}</div>
                 </div>
