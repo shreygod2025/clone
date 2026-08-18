@@ -66,7 +66,7 @@ const SKILLS = [
   { l: 'Design Thinking',  src: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=800&fit=crop' },
   { l: 'DIY Science',      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=600&h=800&fit=crop' },
   { l: 'Space Technology', src: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=600&h=800&fit=crop' },
-  { l: 'Aeromodelling',    src: 'https://images.unsplash.com/photo-1531557088562-3aa76d7a3f45?w=600&h=800&fit=crop' },
+  { l: 'Aeromodelling',    src: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&h=800&fit=crop' },
   { l: 'Drones',           src: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=800&fit=crop' },
 ];
 
@@ -297,27 +297,32 @@ export default function RoboticsBeginnerLanding() {
         .rb-marquee { display: flex; gap: 1.25rem; animation: rb-scroll 42s linear infinite; width: max-content; }
         @keyframes rb-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-        /* Skills horizontal scroller — staggered image cards */
-        .rb-skills-scroll {
-          overflow-x: auto;
-          overflow-y: hidden;
-          padding: 20px 4px 30px;
-          scroll-snap-type: x mandatory;
-          scroll-padding: 4px;
-          -webkit-overflow-scrolling: touch;
+        /* Skills auto-scrolling marquee — no visible scrollbar, uneven heights */
+        .rb-skills-wrap {
+          overflow: hidden;
+          padding: 30px 0 40px;
+          -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 30px, #000 calc(100% - 30px), transparent 100%);
+                  mask-image: linear-gradient(90deg, transparent 0, #000 30px, #000 calc(100% - 30px), transparent 100%);
         }
-        .rb-skills-scroll::-webkit-scrollbar { height: 6px; }
-        .rb-skills-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.28); border-radius: 999px; }
-        .rb-skills-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 999px; }
-        .rb-skills-row { display: flex; gap: 1rem; align-items: flex-start; padding: 0 2px; }
+        .rb-skills-track {
+          display: flex;
+          gap: 1rem;
+          width: max-content;
+          animation: rb-skills-scroll 42s linear infinite;
+        }
+        .rb-skills-wrap:hover .rb-skills-track { animation-play-state: paused; }
+        @keyframes rb-skills-scroll {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
         .rb-skill-card {
           position: relative;
           flex: 0 0 240px;
           border-radius: 22px;
           overflow: hidden;
-          scroll-snap-align: start;
           box-shadow: 0 22px 44px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.06) inset;
           transition: transform .4s ease, box-shadow .4s ease;
+          background: rgba(255,255,255,0.05);
         }
         .rb-skill-card:hover { transform: translateY(-6px); box-shadow: 0 30px 60px rgba(220,38,38,0.28), 0 0 0 1px rgba(255,255,255,0.1) inset; }
         .rb-skill-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -334,7 +339,6 @@ export default function RoboticsBeginnerLanding() {
           font-size: 1.15rem; letter-spacing: -0.005em;
           z-index: 2;
         }
-        /* Staggered heights & vertical offsets — OMOTEC-style rhythm */
         .rb-skill-card:nth-child(5n+1) { height: 340px; margin-top: 40px; }
         .rb-skill-card:nth-child(5n+2) { height: 420px; margin-top: 0px; }
         .rb-skill-card:nth-child(5n+3) { height: 360px; margin-top: 60px; }
@@ -606,36 +610,39 @@ export default function RoboticsBeginnerLanding() {
       </section>
 
       {/* ═══════════ 05 — FUTURE SKILLS BOUQUET ═══════════ */}
-      <section data-testid="rb-skills" style={{ position: 'relative', padding: '5rem 1.25rem', background: '#0A1F44', color: '#fff', overflow: 'hidden' }}>
-        <div className="rb-orb rb-orb-red"   style={{ width: 420, height: 420, top: -140, right: -80 }} />
-        <div className="rb-orb rb-orb-light" style={{ width: 380, height: 380, bottom: -140, left: -60 }} />
+      <section data-testid="rb-skills" style={{ position: 'relative', padding: '4rem 1.5rem', background: '#F8FAFC', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', maxWidth: 1280, margin: '0 auto', background: '#0A1F44', color: '#fff', borderRadius: '32px', overflow: 'hidden', padding: '3.5rem 0 3rem', boxShadow: '0 30px 80px rgba(10,31,68,0.35)' }}>
+          <div className="rb-orb rb-orb-red"   style={{ width: 420, height: 420, top: -140, right: -80 }} />
+          <div className="rb-orb rb-orb-light" style={{ width: 380, height: 380, bottom: -140, left: -60 }} />
 
-        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>the easiest way to start</div>
-            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#fff' }}>
-              Your school&apos;s <span style={{ color: '#FCA5A5' }}>first step</span> into the future.
-            </h2>
-            <p className="rb-serif" style={{ fontSize: '1rem', maxWidth: 700, margin: '0.9rem auto 0', color: 'rgba(255,255,255,0.75)', fontStyle: 'italic', lineHeight: 1.6 }}>
-              Don&apos;t limit your students to one skill — give them the opportunity to explore the technologies shaping tomorrow.
-            </p>
-          </div>
-
-          <div className="rb-skills-scroll" data-testid="rb-skills-scroll">
-            <div className="rb-skills-row">
-              {SKILLS.map((s) => (
-                <div key={s.l} className="rb-skill-card" data-testid={`rb-skill-${s.l.toLowerCase().replace(/\s+/g, '-')}`}>
-                  <img src={s.src} alt={s.l} loading="lazy" />
-                  <div className="rb-skill-label">{s.l}</div>
-                </div>
-              ))}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '0 1.5rem' }}>
+              <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>the easiest way to start</div>
+              <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#fff' }}>
+                Your school&apos;s <span style={{ color: '#FCA5A5' }}>first step</span> into the future.
+              </h2>
+              <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 700, margin: '0.9rem auto 0', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
+                Don&apos;t limit your students to one skill — give them the opportunity to explore the technologies shaping tomorrow.
+              </p>
             </div>
-          </div>
 
-          <div style={{ marginTop: '3rem', maxWidth: 780, marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}>
-            <p className="rb-serif" style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, fontStyle: 'italic' }}>
-              A complete, hands-on Robotics foundation designed for schools starting their journey. Beginner-friendly. Pocket-friendly. Easy to teach. No need to start with an advanced Robotics lab — <strong style={{ color: '#FCA5A5', fontStyle: 'normal' }}>start with the fundamentals, build student confidence, create excitement</strong> — and establish the foundation for a long-term Future Skills journey.
-            </p>
+            {/* Auto-scrolling marquee — duplicated for seamless loop, hidden scrollbar */}
+            <div className="rb-skills-wrap" data-testid="rb-skills-scroll">
+              <div className="rb-skills-track">
+                {[...SKILLS, ...SKILLS].map((s, i) => (
+                  <div key={`${s.l}-${i}`} className="rb-skill-card" data-testid={i < SKILLS.length ? `rb-skill-${s.l.toLowerCase().replace(/\s+/g, '-')}` : undefined}>
+                    <img src={s.src} alt={s.l} loading="lazy" />
+                    <div className="rb-skill-label">{s.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ maxWidth: 780, marginLeft: 'auto', marginRight: 'auto', textAlign: 'center', padding: '1.5rem 1.5rem 0' }}>
+              <p className="rb-serif" style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, fontStyle: 'italic' }}>
+                A complete, hands-on Robotics foundation designed for schools starting their journey. Beginner-friendly. Pocket-friendly. Easy to teach. No need to start with an advanced Robotics lab — <strong style={{ color: '#FCA5A5', fontStyle: 'normal' }}>start with the fundamentals, build student confidence, create excitement</strong> — and establish the foundation for a long-term Future Skills journey.
+              </p>
+            </div>
           </div>
         </div>
       </section>
