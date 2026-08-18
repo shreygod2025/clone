@@ -187,17 +187,19 @@ export default function RoboticsBeginnerLanding() {
         .rb-orb-blue  { background: rgba(30,58,138,0.5); }
         .rb-orb-light { background: rgba(96,165,250,0.5); }
 
-        /* Compact floating pill nav — top-left, glacial white */
+        /* Wide centered pill nav — spans hero content width */
         .rb-topbar {
           position: fixed;
           top: 22px;
-          left: 26px;
+          left: 50%;
+          transform: translateX(-50%);
           z-index: 60;
-          display: inline-flex;
+          display: flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0.55rem 0.5rem 1.15rem;
-          width: max-content;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: 0.55rem 0.65rem 0.55rem 1.5rem;
+          width: min(1180px, calc(100vw - 48px));
           background: linear-gradient(135deg, rgba(255,255,255,0.94) 0%, rgba(224,242,254,0.88) 100%);
           backdrop-filter: blur(22px) saturate(180%);
           -webkit-backdrop-filter: blur(22px) saturate(180%);
@@ -244,7 +246,7 @@ export default function RoboticsBeginnerLanding() {
       </div>
 
       {/* ═══════════ 01 — HERO ═══════════ */}
-      <section data-testid="rb-hero" style={{ position: 'relative', background: 'linear-gradient(180deg, #0A1F44 0%, #0A1F44 60%, #10193A 100%)', color: '#fff', paddingTop: '7rem', paddingBottom: '5rem', overflow: 'hidden' }}>
+      <section data-testid="rb-hero" style={{ position: 'relative', background: '#0A1F44', color: '#fff', paddingTop: '7rem', paddingBottom: '4rem', overflow: 'hidden' }}>
         <div className="rb-orb rb-orb-red"   style={{ width: 460, height: 460, top: -140, left: -120 }} />
         <div className="rb-orb rb-orb-blue"  style={{ width: 520, height: 520, bottom: -180, right: -140 }} />
         <div className="rb-orb rb-orb-light" style={{ width: 380, height: 380, top: '35%', right: '30%' }} />
@@ -314,7 +316,7 @@ export default function RoboticsBeginnerLanding() {
       </section>
 
       {/* ═══════════ 02 — IIT BOMBAY (Theatrical Stage) ═══════════ */}
-      <section data-testid="rb-iit" style={{ position: 'relative', padding: '5rem 1.25rem 0', background: 'linear-gradient(180deg, #10193A 0%, #0A1F44 50%, #0A1F44 100%)', color: '#fff', overflow: 'hidden' }}>
+      <section data-testid="rb-iit" style={{ position: 'relative', padding: '3rem 1.25rem 0', background: '#0A1F44', color: '#fff', overflow: 'hidden' }}>
         <div className="rb-orb rb-orb-red"   style={{ width: 400, height: 400, top: -120, left: -80, opacity: 0.3 }} />
         <div className="rb-orb rb-orb-light" style={{ width: 400, height: 400, bottom: 200, right: -80, opacity: 0.3 }} />
 
