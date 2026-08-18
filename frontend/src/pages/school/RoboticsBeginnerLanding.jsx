@@ -85,6 +85,14 @@ const PILLARS = [
   { i: Heart,   t: 'Prouder Parents',          s: 'Give families something tangible to see, experience and celebrate.', color: '#60A5FA' },
 ];
 
+const BOOKS = [
+  { grade: 'Grade 2', theme: "Let's Explore",  src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4y6z7vtw_A3%20Book%20Chart%20%281%29.png' },
+  { grade: 'Grade 3', theme: 'Storm Rescue',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mzm4izo2_A3%20Book%20Chart%20%284%29.png' },
+  { grade: 'Grade 4', theme: 'Cyber Lab',      src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/fd8swouq_A3%20Book%20Chart%20%282%29.png' },
+  { grade: 'Grade 5', theme: 'Maze Mission',   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h26jsi3o_A3%20Book%20Chart%20%283%29.png' },
+  { grade: 'Grade 6', theme: 'Robot Academy',  src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/v97f8iit_A3%20Book%20Chart%20%285%29.png' },
+];
+
 const PARENT_JOURNEY = [
   { i: Hammer,  t: 'Student builds',        s: 'Kits, code, imagination' },
   { i: Users,   t: 'Student demonstrates',  s: 'Classroom showcase' },
@@ -211,6 +219,12 @@ export default function RoboticsBeginnerLanding() {
         .rb-topbar .rb-btn-outline-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.35); padding: 0.55rem 1.15rem; border-radius: 999px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: all .2s ease; cursor: pointer; font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; white-space: nowrap; }
         .rb-topbar .rb-btn-outline-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
         .rb-topbar .rb-btn { white-space: nowrap; }
+
+        /* Tilting book hover */
+        .rb-book { perspective: 1200px; }
+        .rb-book-inner { transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.8,.2,1); transform-origin: left center; box-shadow: 0 20px 40px rgba(0,0,0,0.35), -6px 0 0 -2px #B91C1C; border-radius: 6px; }
+        .rb-book:hover .rb-book-inner { transform: rotateY(-32deg) translateZ(20px); box-shadow: 0 30px 60px rgba(220,38,38,0.35), -8px 0 0 -2px #DC2626; }
+        .rb-book-cover { display: block; width: 100%; border-radius: 6px; backface-visibility: hidden; }
 
         /* Curtains — scroll-linked (transform set via inline style) */
         .rb-curtain { will-change: transform; transition: transform .12s linear; }
@@ -545,6 +559,43 @@ export default function RoboticsBeginnerLanding() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════ 06B — INTERACTIVE BOOKS ═══════════ */}
+      <section data-testid="rb-books" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%)', overflow: 'hidden' }}>
+        <div className="rb-orb rb-orb-red"  style={{ width: 360, height: 360, top: -120, left: -80, opacity: 0.18 }} />
+        <div className="rb-orb rb-orb-blue" style={{ width: 400, height: 400, bottom: -140, right: -80, opacity: 0.18 }} />
+
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.5rem' }}>interactive books</div>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+              A book for <span className="rb-stroke">every grade.</span>
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
+              Beautifully illustrated, story-driven student books — mapped to every lesson and every kit component.
+              <span style={{ display: 'block', marginTop: '0.4rem', color: '#94A3B8', fontSize: '0.85rem', fontStyle: 'italic' }}>Hover a book to peek inside — more grades coming soon.</span>
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '2rem', alignItems: 'end' }}>
+            {BOOKS.map((b) => (
+              <div key={b.grade} className="rb-book" style={{ textAlign: 'center' }} data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
+                <div className="rb-book-inner">
+                  <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
+                </div>
+                <div style={{ marginTop: '1rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                  <div className="rb-h4" style={{ fontSize: '0.95rem', color: '#0A1F44' }}>{b.grade}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>{b.theme}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ textAlign: 'center', marginTop: '2.5rem', fontSize: '0.9rem', color: '#94A3B8', fontStyle: 'italic' }}>
+            + More grades on the way. Every book aligns with age-appropriate outcomes and hands-on projects.
+          </p>
         </div>
       </section>
 
