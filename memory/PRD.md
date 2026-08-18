@@ -24,6 +24,14 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **18 Aug 2026** — Redesigned `/school/robotics/beginner` per OLL Brand Guidelines PDF.
+  New sections: sticky top bar, hero (Anton headline + Robotics.gif + red/blue/light-blue
+  blur orbs), About OLL impact band (500+ schools · 2,00,000+ students · 35 cities),
+  As Seen On (Shark Tank + KBC), Why-schools cards, Implementation slider (5 schools with
+  logo/name/students/city/principal/feedback/video, auto-advance + arrows + dots),
+  Schools-that-work-with-us logo wall, Download Curriculum PDF CTA (OLL Beginner
+  Curriculum 2026-27), and re-styled demo booking form. Typography swapped from JetBrains
+  Mono to Anton (headings) / Inter (body) / Libre Baskerville (quotes) / Caveat (accents).
 - **08 Aug 2026** — Free Trials tab: added status chips (Scheduled / Rescheduled /
   Attended / Absent), inline Notes column (saves on blur), replaced Ref with
   "Date Added" column, removed Parent Name from phone cell, combined
