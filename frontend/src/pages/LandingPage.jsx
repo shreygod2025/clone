@@ -456,7 +456,7 @@ const LandingPage = () => {
               <img src={KBC_IMG} alt="Kaun Banega Crorepati" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
               {/* Watch pill (top-right) — STEM.ORG-style badge */}
-              <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
+              <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', bottom: 20, right: 20, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
                 <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
@@ -478,7 +478,7 @@ const LandingPage = () => {
               <img src={SHARK_TANK_IMG} alt="Shark Tank India" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
               {/* Watch pill (top-right) — STEM.ORG-style badge */}
-              <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
+              <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', bottom: 20, right: 20, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
                 <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
