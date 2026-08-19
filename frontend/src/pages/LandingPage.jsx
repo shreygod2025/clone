@@ -433,13 +433,13 @@ const LandingPage = () => {
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <div className="home-script-heading" style={{ color: '#FCA5A5' }}>
-              as seen on
+              our story
             </div>
             <h2 className="home-h2" style={{ color: '#FFFFFF' }}>
-              National television. <span style={{ color: '#FCA5A5' }}>National recognition.</span>
+              From School Student to <span style={{ color: '#FCA5A5' }}>National Fame.</span>
             </h2>
-            <p className="home-sub" style={{ color: 'rgba(255,255,255,0.78)' }}>
-              OLL has been featured on India&apos;s most-watched shows — and pitched to India&apos;s top investors on national TV.
+            <p className="home-sub" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(1.05rem, 1.55vw, 1.35rem)', lineHeight: 1.65, maxWidth: 880 }}>
+              Shreyaan Daga started OLL in 2020 at just 15, while in 10th grade. By 18, he became one of India&apos;s youngest founders to raise funding on <strong style={{ color: '#FCA5A5', fontWeight: 700 }}>Shark Tank India S2</strong> and by 20, he was featured on <strong style={{ color: '#FCA5A5', fontWeight: 700 }}>Kaun Banega Crorepati</strong> with Amitabh Bachchan.
             </p>
           </div>
 
