@@ -27,33 +27,32 @@ const PARENT_QUOTES = [
   'It\u2019s amazing to see them actually create something.',
   'Every week she comes home with a new project — and a bigger smile.',
 ];
-const PARENT_VIDEO = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4';
 
 // ── Parent & student testimonials (video card grid) ────────────────────────
 const TESTIMONIALS = [
   {
     role: 'parent', label: 'PARENT', name: 'OLL Parents',
     quote: '"Our kids come home buzzing about what they built."',
-    video: PARENT_VIDEO,
+    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4',
     thumbYT: null,
   },
   {
     role: 'student', label: 'STUDENT', name: 'Young Builder · Grade 5',
     quote: '"I made a robot that follows a line!"',
-    video: null,
-    thumbYT: 'YoIu5akBkr0',
+    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yl1ydmda_IMG_7029.MOV',
+    thumbYT: null,
   },
   {
     role: 'student', label: 'STUDENT', name: 'Young Coder · Grade 7',
     quote: '"I wrote my first Python game in class."',
-    video: null,
-    thumbYT: 'OnK6oevnLeM',
+    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4boxtvd2_IMG_7035.MOV',
+    thumbYT: null,
   },
   {
     role: 'student', label: 'STUDENT', name: 'Young Creator · Grade 9',
     quote: '"3D-printed my own phone stand this week!"',
-    video: null,
-    thumbYT: 'r6xeqlTixYE',
+    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/vo8r3dzk_IMG_7045.MOV',
+    thumbYT: null,
   },
 ];
 
@@ -456,9 +455,9 @@ const LandingPage = () => {
             >
               <img src={KBC_IMG} alt="Kaun Banega Crorepati" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
-              {/* Watch clip pill (top-right) */}
-              <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, background: '#DC2626', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', boxShadow: '0 12px 24px rgba(220,38,38,0.45)' }}>
-                <Play size={12} fill="#fff" strokeWidth={0} /> Watch clip
+              {/* Watch pill (top-right) — STEM.ORG-style badge */}
+              <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
+                <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
                 <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony · KBC</div>
@@ -478,9 +477,9 @@ const LandingPage = () => {
             >
               <img src={SHARK_TANK_IMG} alt="Shark Tank India" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
-              {/* Watch clip pill (top-right) */}
-              <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, background: '#DC2626', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', boxShadow: '0 12px 24px rgba(220,38,38,0.45)' }}>
-                <Play size={12} fill="#fff" strokeWidth={0} /> Watch clip
+              {/* Watch pill (top-right) — STEM.ORG-style badge */}
+              <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
+                <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
                 <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony LIV · Season Finale</div>
@@ -944,42 +943,49 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── INSIDE AN OLL CLASSROOM · uneven mosaic gallery (real moments) ── */}
+      {/* ── INSIDE AN OLL CLASSROOM · horizontal auto-scroll (uneven cards) ── */}
       <section data-testid="homepage-inside-classroom" style={{
         position: 'relative', overflow: 'hidden',
-        padding: '5rem 1.25rem 5.5rem',
+        padding: '5rem 0 5.5rem',
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
       }}>
         <style>{`
-          .home-mosaic-wrap { max-width: 1240px; margin: 0 auto; }
-          .home-mosaic-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; height: 460px; margin-bottom: 14px; }
-          .home-mosaic-row:last-child { margin-bottom: 0; }
-          @media (max-width: 900px) { .home-mosaic-row { height: 380px; gap: 10px; } }
-          @media (max-width: 640px) { .home-mosaic-row { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr); height: 560px; gap: 8px; margin-bottom: 8px; } }
-          .home-mosaic-tile {
-            position: relative; overflow: hidden; border-radius: 20px; cursor: pointer;
+          @keyframes home-class-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+          .home-class-wrap { position: relative; overflow: hidden; padding: 14px 0; mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent); }
+          .home-class-track { display: inline-flex; gap: 1.15rem; padding: 4px 1rem; align-items: center; animation: home-class-scroll 70s linear infinite; will-change: transform; width: max-content; }
+          .home-class-track:hover { animation-play-state: paused; }
+          .home-class-card {
+            flex-shrink: 0; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer;
             background: linear-gradient(180deg, #0A1F44 0%, #1E3A5F 100%);
-            border: 2px solid rgba(96,165,250,0.18);
+            border: 2px solid rgba(96,165,250,0.16);
             box-shadow: 0 22px 44px rgba(10,31,68,0.16);
             transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
           }
-          .home-mosaic-tile:hover { transform: translateY(-4px); box-shadow: 0 30px 60px rgba(10,31,68,0.26); border-color: #DC2626; }
-          .home-mosaic-tile img, .home-mosaic-tile video {
+          .home-class-card:hover { transform: translateY(-6px); box-shadow: 0 30px 60px rgba(10,31,68,0.28); border-color: #DC2626; }
+          .home-class-card img, .home-class-card video {
             position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
             transition: transform 0.55s ease, opacity 0.35s ease;
           }
-          .home-mosaic-tile:hover img { transform: scale(1.06); }
-          .home-mosaic-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(10,31,68,0.92) 100%); pointer-events: none; }
-          .home-mosaic-pill { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-family: 'Proxima Nova','Montserrat',sans-serif; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; backdrop-filter: blur(6px); border: 1px solid; }
-          .home-mosaic-pill.video { background: rgba(220,38,38,0.72); border-color: #DC2626; }
-          .home-mosaic-pill.photo { background: rgba(30,58,95,0.72); border-color: #60A5FA; }
-          .home-mosaic-play { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-          .home-mosaic-play > div { width: 60px; height: 60px; border-radius: 999px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(0,0,0,0.35); transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease; }
-          .home-mosaic-tile:hover .home-mosaic-play > div { transform: scale(1.12); background: #DC2626; border-color: #DC2626; }
-          .home-mosaic-cap { position: absolute; bottom: 14px; left: 16px; right: 16px; z-index: 2; color: #fff; font-family: 'Proxima Nova','Montserrat',sans-serif; }
-          .home-mosaic-cap-title { font-size: 0.95rem; font-weight: 800; line-height: 1.2; }
-          .home-mosaic-cap-sub { margin-top: 3px; font-size: 0.75rem; color: rgba(191,219,254,0.9); font-weight: 300; line-height: 1.4; }
-          @media (max-width: 640px) { .home-mosaic-cap-sub { display: none; } }
+          .home-class-card:hover img { transform: scale(1.06); }
+          .home-class-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(10,31,68,0.92) 100%); pointer-events: none; }
+          .home-class-pill { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-family: 'Proxima Nova','Montserrat',sans-serif; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; backdrop-filter: blur(6px); border: 1px solid; }
+          .home-class-pill.video { background: rgba(220,38,38,0.72); border-color: #DC2626; }
+          .home-class-pill.photo { background: rgba(30,58,95,0.72); border-color: #60A5FA; }
+          .home-class-play { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+          .home-class-play > div { width: 60px; height: 60px; border-radius: 999px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(0,0,0,0.35); transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease; }
+          .home-class-card:hover .home-class-play > div { transform: scale(1.12); background: #DC2626; border-color: #DC2626; }
+          .home-class-cap { position: absolute; bottom: 14px; left: 16px; right: 16px; z-index: 2; color: #fff; font-family: 'Proxima Nova','Montserrat',sans-serif; }
+          .home-class-cap-title { font-size: 0.98rem; font-weight: 800; line-height: 1.2; }
+          .home-class-cap-sub { margin-top: 3px; font-size: 0.76rem; color: rgba(191,219,254,0.9); font-weight: 300; line-height: 1.4; }
+          /* Uneven sizes — cycled per card index so the ribbon looks organic */
+          .home-class-size-0 { width: 300px; height: 400px; }
+          .home-class-size-1 { width: 380px; height: 280px; }
+          .home-class-size-2 { width: 260px; height: 340px; }
+          .home-class-size-3 { width: 420px; height: 320px; }
+          .home-class-size-4 { width: 320px; height: 420px; }
+          @media (max-width: 640px) {
+            .home-class-size-0, .home-class-size-1, .home-class-size-2, .home-class-size-3, .home-class-size-4 { width: 220px; height: 280px; }
+          }
         `}</style>
 
         <div style={{ textAlign: 'center', maxWidth: 1180, margin: '0 auto 2.5rem', padding: '0 1.25rem' }}>
@@ -989,74 +995,52 @@ const LandingPage = () => {
           </h2>
           <p className="home-sub">Not slides. Not lectures. Real components, real builds, real kids getting their hands dirty.</p>
           <div style={{ marginTop: '0.75rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
-            Tap any tile to play / view
+            Tap any card to play / view
           </div>
         </div>
 
-        <div className="home-mosaic-wrap" data-testid="home-classroom-mosaic">
-          {[0, 5].map((startIdx) => {
-            const bigOnLeft = startIdx === 0;
-            // Desktop grid areas (6 col × 2 rows); on mobile flattens via CSS
-            const layouts = bigOnLeft
-              ? ['col-span-3 row-span-2', 'col-2 row-1 left', 'col-1 row-1 right', 'col-2 row-2 left', 'col-1 row-2 right']
-              : ['col-2 row-1 left', 'col-1 row-1 left2', 'col-3 row-span-2 right', 'col-2 row-2 left', 'col-1 row-2 left2'];
-            const gridStyle = (idx) => {
-              if (bigOnLeft) {
-                if (idx === 0) return { gridColumn: '1 / span 3', gridRow: '1 / span 2' };
-                if (idx === 1) return { gridColumn: '4 / span 2', gridRow: '1' };
-                if (idx === 2) return { gridColumn: '6 / span 1', gridRow: '1' };
-                if (idx === 3) return { gridColumn: '4 / span 2', gridRow: '2' };
-                if (idx === 4) return { gridColumn: '6 / span 1', gridRow: '2' };
-              } else {
-                if (idx === 0) return { gridColumn: '1 / span 2', gridRow: '1' };
-                if (idx === 1) return { gridColumn: '3 / span 1', gridRow: '1' };
-                if (idx === 2) return { gridColumn: '4 / span 3', gridRow: '1 / span 2' };
-                if (idx === 3) return { gridColumn: '1 / span 2', gridRow: '2' };
-                if (idx === 4) return { gridColumn: '3 / span 1', gridRow: '2' };
-              }
-              return {};
-            };
-            return (
-              <div key={startIdx} className="home-mosaic-row">
-                {CLASSROOM_MEDIA.slice(startIdx, startIdx + 5).map((m, j) => (
-                  <div
-                    key={`${startIdx}-${j}`}
-                    className="home-mosaic-tile"
-                    style={gridStyle(j)}
-                    onClick={() => setMediaOpen(m)}
-                    data-testid={`home-classroom-tile-${startIdx + j}`}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMediaOpen(m); } }}
-                    aria-label={`View ${m.label}`}
-                  >
-                    {m.type === 'video' ? (
-                      <video src={m.src} muted playsInline preload="metadata" style={{ pointerEvents: 'none' }} />
-                    ) : (
-                      <img src={m.src} alt={m.label} loading="lazy" />
-                    )}
-                    <div className="home-mosaic-overlay" />
-                    <span className={`home-mosaic-pill ${m.type}`}>
-                      {m.type === 'video' ? <Video size={11} /> : <Sparkles size={11} />}
-                      {m.type === 'video' ? 'Video' : 'Photo'}
-                    </span>
-                    {m.type === 'video' && (
-                      <div className="home-mosaic-play">
-                        <div><Play size={22} fill="#fff" strokeWidth={0} style={{ marginLeft: 2 }} /></div>
-                      </div>
-                    )}
-                    <div className="home-mosaic-cap">
-                      <div className="home-mosaic-cap-title">{m.label}</div>
-                      <div className="home-mosaic-cap-sub">{m.caption}</div>
+        <div className="home-class-wrap" data-testid="home-classroom-slider">
+          <div className="home-class-track">
+            {[...CLASSROOM_MEDIA, ...CLASSROOM_MEDIA].map((m, i) => {
+              const originalIdx = i % CLASSROOM_MEDIA.length;
+              const sizeClass = `home-class-size-${i % 5}`;
+              return (
+                <div
+                  key={`${m.src}-${i}`}
+                  className={`home-class-card ${sizeClass}`}
+                  onClick={() => setMediaOpen(m)}
+                  data-testid={i < CLASSROOM_MEDIA.length ? `home-classroom-card-${originalIdx}` : undefined}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMediaOpen(m); } }}
+                  aria-label={`View ${m.label}`}
+                >
+                  {m.type === 'video' ? (
+                    <video src={m.src} muted playsInline preload="metadata" style={{ pointerEvents: 'none' }} />
+                  ) : (
+                    <img src={m.src} alt={m.label} loading="lazy" />
+                  )}
+                  <div className="home-class-overlay" />
+                  <span className={`home-class-pill ${m.type}`}>
+                    {m.type === 'video' ? <Video size={11} /> : <Sparkles size={11} />}
+                    {m.type === 'video' ? 'Video' : 'Photo'}
+                  </span>
+                  {m.type === 'video' && (
+                    <div className="home-class-play">
+                      <div><Play size={22} fill="#fff" strokeWidth={0} style={{ marginLeft: 2 }} /></div>
                     </div>
+                  )}
+                  <div className="home-class-cap">
+                    <div className="home-class-cap-title">{m.label}</div>
+                    <div className="home-class-cap-sub">{m.caption}</div>
                   </div>
-                ))}
-              </div>
-            );
-          })}
-          <div style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
-            {CLASSROOM_MEDIA.length} moments · captured at our centres in May 2026
+                </div>
+              );
+            })}
           </div>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
+          {CLASSROOM_MEDIA.length} moments · captured at our centres in May 2026
         </div>
       </section>
 
