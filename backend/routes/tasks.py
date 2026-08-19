@@ -406,6 +406,92 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
     return await _enrich_task(task)
 
 
+class BulkTaskCreate(BaseModel):
+    tasks: List[TaskCreate]
+
+
+@router.post("/bulk")
+async def create_tasks_bulk(payload: BulkTaskCreate, user: dict = Depends(get_current_user)):
+    """Create many tasks in one call. Shared fields (assignee/priority/due-date/etc)
+    can be repeated across rows; each row can also override its own values.
+
+    Returns a summary `{created: [<enriched task>], errors: [{index, detail}]}`.
+    Non-fatal validation errors on individual rows don't abort the batch — the
+    caller sees exactly which rows failed and why.
+    """
+    if not payload.tasks:
+        raise HTTPException(status_code=400, detail="At least one task is required")
+    if len(payload.tasks) > 50:
+        raise HTTPException(status_code=400, detail="Bulk create is limited to 50 tasks per request")
+
+    created: list[dict] = []
+    errors: list[dict] = []
+    actor_id = _current_user_id(user)
+    actor_display = user.get("name") or user.get("email", "")
+
+    for idx, row in enumerate(payload.tasks):
+        try:
+            if not row.title.strip():
+                errors.append({"index": idx, "detail": "Title is required"})
+                continue
+            if not row.assigned_to:
+                errors.append({"index": idx, "detail": "assigned_to is required"})
+                continue
+            if row.status not in VALID_STATUSES:
+                errors.append({"index": idx, "detail": f"Invalid status: {row.status}"})
+                continue
+            if row.priority not in VALID_PRIORITIES:
+                errors.append({"index": idx, "detail": f"Invalid priority: {row.priority}"})
+                continue
+            if not await _user_exists(row.assigned_to):
+                errors.append({"index": idx, "detail": "Assignee not found"})
+                continue
+            if row.project_id and not await db.projects.find_one({"id": row.project_id}, {"_id": 0, "id": 1}):
+                errors.append({"index": idx, "detail": "Project not found"})
+                continue
+
+            task = {
+                "id": str(uuid.uuid4()),
+                "code": await _next_task_code(),
+                "title": row.title.strip(),
+                "description": row.description,
+                "status": row.status,
+                "priority": row.priority,
+                "assigned_to": row.assigned_to,
+                "assigned_by": actor_id,
+                "due_date": row.due_date,
+                "project_id": row.project_id,
+                "parent_task_id": row.parent_task_id,
+                "tags": row.tags or [],
+                "gdrive_link": row.gdrive_link,
+                "attachments": row.attachments or [],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": None,
+                "rejection_reason": None,
+            }
+            await db.tasks.insert_one(task)
+
+            # Notifications (fire-and-forget; if this fails the task is still created)
+            try:
+                await create_notification(
+                    user_id=row.assigned_to,
+                    type_="task_assigned",
+                    title=f"New task: {task['title']}",
+                    message=f"Assigned by {actor_display}",
+                    task_id=task["id"],
+                    actor_id=actor_id,
+                )
+                await _notify_task_whatsapp(task, "task_assigned", actor_id)
+            except Exception:  # pragma: no cover — notification failures are non-fatal
+                pass
+
+            created.append(await _enrich_task(task))
+        except Exception as e:  # pragma: no cover — surface as row-level error
+            errors.append({"index": idx, "detail": str(e)})
+
+    return {"created": created, "errors": errors, "count": len(created)}
+
+
 @router.get("")
 async def list_tasks(
     filter: str = Query("my", pattern="^(my|by_me|team|all)$"),

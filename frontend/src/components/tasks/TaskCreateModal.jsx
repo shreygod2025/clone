@@ -290,6 +290,24 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
   const [form, setForm] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [rows, setRows] = useState([]); // [{ id, title, description, expanded, overrides }]
+
+  const supportsBulk = !isEdit && !parentTask; // no bulk when editing / creating sub-tasks
+
+  const newRow = () => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: '',
+    description: '',
+    expanded: false,
+    overrides: {
+      assigned_to: '',
+      priority: '',
+      due_date: '',
+      tags: '',
+      gdrive_link: '',
+    },
+  });
 
   const chipRefs = {
     assignee: useRef(null),
@@ -308,6 +326,9 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
 
   useEffect(() => {
     if (!open) return;
+    // Reset bulk state on every open
+    setBulkMode(false);
+    setRows([newRow()]);
     if (isEdit) {
       // Prefill from existing task
       setForm({
@@ -370,12 +391,64 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, form]);
 
   if (!open || !form) return null;
 
   const handleSubmit = async () => {
+    // ── Bulk mode: create many tasks in one shot ─────────────────────
+    if (bulkMode) {
+      const clean = rows
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => r.title.trim());
+      if (clean.length === 0) {
+        toast.error('Add at least one task with a title');
+        return;
+      }
+      const sharedAssignee = form.assigned_to;
+      if (!sharedAssignee && !clean.every(({ r }) => r.overrides.assigned_to)) {
+        toast.error('Pick a default assignee (or set one on every row)');
+        return;
+      }
+      setSubmitting(true);
+      try {
+        const payloadTasks = clean.map(({ r }) => ({
+          title: r.title.trim(),
+          description: r.description || form.description || '',
+          assigned_to: r.overrides.assigned_to || sharedAssignee,
+          priority: r.overrides.priority || form.priority,
+          due_date: (r.overrides.due_date
+            ? new Date(r.overrides.due_date).toISOString()
+            : (form.due_date ? new Date(form.due_date).toISOString() : null)),
+          project_id: form.project_id || null,
+          parent_task_id: null,
+          tags: (r.overrides.tags || form.tags || '')
+            .split(',').map(t => t.trim()).filter(Boolean),
+          gdrive_link: r.overrides.gdrive_link || form.gdrive_link || null,
+          attachments: form.attachments || [],
+        }));
+        const res = await axios.post(`${API}/tasks/bulk`, { tasks: payloadTasks }, { headers: getAuthHeaders() });
+        const created = res.data?.count ?? 0;
+        const errors = res.data?.errors || [];
+        if (created > 0) {
+          toast.success(`${created} task${created === 1 ? '' : 's'} created`);
+        }
+        if (errors.length) {
+          toast.error(`${errors.length} row${errors.length === 1 ? '' : 's'} failed: ${errors[0].detail}`);
+        }
+        if (created > 0) {
+          onCreated?.(res.data);
+          onClose();
+        }
+      } catch (e) {
+        toast.error(e?.response?.data?.detail || 'Bulk create failed');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // ── Single-task path (unchanged) ─────────────────────────────────
     if (!form.title.trim() || !form.assigned_to) {
       toast.error('Title and assignee are required');
       return;
@@ -451,28 +524,173 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <p className="text-xs font-semibold text-blue-600">
-            {isEdit ? 'Edit task' : form.parent_task_id ? 'New sub-task' : 'New task'}
+            {isEdit ? 'Edit task' : form.parent_task_id ? 'New sub-task' : bulkMode ? `New tasks (${rows.filter(r => r.title.trim()).length})` : 'New task'}
           </p>
-          <button onClick={onClose} className="p-1 rounded hover:bg-slate-100" data-testid="new-task-close">
-            <X className="w-4 h-4 text-slate-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            {supportsBulk && (
+              <button
+                type="button"
+                onClick={() => setBulkMode(v => !v)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+                  bulkMode
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800'
+                }`}
+                data-testid="task-bulk-toggle"
+                title="Add several tasks at once — the details below apply to all rows unless a row is customised."
+              >
+                {bulkMode ? '✓ Bulk mode' : '+ Add multiple'}
+              </button>
+            )}
+            <button onClick={onClose} className="p-1 rounded hover:bg-slate-100" data-testid="new-task-close">
+              <X className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
         </div>
 
         <div className="px-6 pb-5 space-y-3">
-          <input
-            autoFocus type="text" value={form.title}
-            onChange={e => setForm({ ...form, title: e.target.value })}
-            placeholder={form.parent_task_id ? 'Sub-task name…' : 'Task name… (Cmd+Enter to create)'}
-            className="w-full px-4 py-3 text-lg font-medium border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400"
-            data-testid="task-title-input"
-          />
-          <textarea
-            value={form.description}
-            onChange={e => setForm({ ...form, description: e.target.value })}
-            placeholder="Add a description… what does done look like?"
-            className="w-full px-4 py-3 border rounded-xl text-sm min-h-[100px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400 resize-none"
-          />
+          {!bulkMode && (
+            <>
+              <input
+                autoFocus type="text" value={form.title}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                placeholder={form.parent_task_id ? 'Sub-task name…' : 'Task name… (Cmd+Enter to create)'}
+                className="w-full px-4 py-3 text-lg font-medium border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400"
+                data-testid="task-title-input"
+              />
+              <textarea
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                placeholder="Add a description… what does done look like?"
+                className="w-full px-4 py-3 border rounded-xl text-sm min-h-[100px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 placeholder:text-slate-400 resize-none"
+              />
+            </>
+          )}
 
+          {bulkMode && (
+            <div className="space-y-2" data-testid="task-bulk-rows">
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Add task names below. The <strong>assignee, due date, priority</strong> and other chips below apply to every row. Expand a row to customise its own details.
+              </p>
+              {rows.map((row, idx) => {
+                const rowAssignee = row.overrides.assigned_to ? users.find(u => u.id === row.overrides.assigned_to) : null;
+                const rowPriority = row.overrides.priority || null;
+                const rowDue = row.overrides.due_date || null;
+                return (
+                  <div key={row.id} className="rounded-xl border border-slate-200 bg-white overflow-visible" data-testid={`task-bulk-row-${idx}`}>
+                    <div className="flex items-start gap-2 px-3 py-2">
+                      <span className="mt-2 text-[11px] text-slate-400 font-mono w-6 text-right shrink-0">{idx + 1}.</span>
+                      <input
+                        type="text"
+                        value={row.title}
+                        onChange={e => setRows(rs => rs.map(r => r.id === row.id ? { ...r, title: e.target.value } : r))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (idx === rows.length - 1 && row.title.trim()) {
+                              setRows(rs => [...rs, newRow()]);
+                              setTimeout(() => {
+                                const inputs = document.querySelectorAll('[data-testid^="task-bulk-row-"] input[type="text"]');
+                                inputs[idx + 1]?.focus();
+                              }, 0);
+                            }
+                          }
+                        }}
+                        autoFocus={idx === 0}
+                        placeholder={idx === 0 ? 'Task name… (Enter to add another)' : 'Task name…'}
+                        className="flex-1 min-w-0 px-2 py-1.5 text-sm border-0 outline-none focus:ring-0 placeholder:text-slate-400"
+                        data-testid={`task-bulk-title-${idx}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setRows(rs => rs.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
+                        className={`text-[11px] font-semibold px-2 py-1 rounded shrink-0 whitespace-nowrap ${
+                          row.expanded || rowAssignee || rowPriority || rowDue
+                            ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                            : 'text-slate-500 hover:bg-slate-100'
+                        }`}
+                        data-testid={`task-bulk-customize-${idx}`}
+                        title="Customise this row"
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 inline transition-transform ${row.expanded ? 'rotate-180' : ''}`} /> Customise
+                      </button>
+                      {rows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setRows(rs => rs.filter(r => r.id !== row.id))}
+                          className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0"
+                          aria-label="Remove row"
+                          data-testid={`task-bulk-remove-${idx}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {row.expanded && (
+                      <div className="border-t border-slate-100 px-3 py-2 space-y-2 bg-slate-50/60">
+                        <textarea
+                          value={row.description}
+                          onChange={e => setRows(rs => rs.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
+                          placeholder="Description for this task only…"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs min-h-[52px] outline-none focus:ring-1 focus:ring-blue-200 resize-none"
+                          data-testid={`task-bulk-desc-${idx}`}
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <label className="text-[11px] text-slate-500">
+                            <span className="block mb-0.5 font-semibold uppercase tracking-wider">Assignee</span>
+                            <select
+                              value={row.overrides.assigned_to}
+                              onChange={e => setRows(rs => rs.map(r => r.id === row.id ? { ...r, overrides: { ...r.overrides, assigned_to: e.target.value } } : r))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs bg-white"
+                              data-testid={`task-bulk-assignee-${idx}`}
+                            >
+                              <option value="">Use shared</option>
+                              {users.map(u => (
+                                <option key={u.id} value={u.id}>{u.name}{u.id === currentUser?.id ? ' (you)' : ''}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="text-[11px] text-slate-500">
+                            <span className="block mb-0.5 font-semibold uppercase tracking-wider">Priority</span>
+                            <select
+                              value={row.overrides.priority}
+                              onChange={e => setRows(rs => rs.map(r => r.id === row.id ? { ...r, overrides: { ...r.overrides, priority: e.target.value } } : r))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs bg-white"
+                              data-testid={`task-bulk-priority-${idx}`}
+                            >
+                              <option value="">Use shared</option>
+                              {Object.entries(PRIORITY_META).map(([v, m]) => (
+                                <option key={v} value={v}>{m.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="text-[11px] text-slate-500">
+                            <span className="block mb-0.5 font-semibold uppercase tracking-wider">Due date</span>
+                            <input
+                              type="date"
+                              value={row.overrides.due_date}
+                              onChange={e => setRows(rs => rs.map(r => r.id === row.id ? { ...r, overrides: { ...r.overrides, due_date: e.target.value } } : r))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs bg-white"
+                              data-testid={`task-bulk-due-${idx}`}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setRows(rs => [...rs, newRow()])}
+                className="w-full py-2 rounded-xl border-2 border-dashed border-slate-200 text-slate-500 text-xs font-semibold hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/40 transition-colors"
+                data-testid="task-bulk-add-row"
+              >
+                + Add another task
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
               <span className="w-2 h-2 bg-slate-400 rounded-full" /> TO DO
@@ -538,7 +756,13 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
             <button onClick={handleSubmit} disabled={submitting}
               className="px-5 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white rounded-lg text-sm font-medium"
               data-testid="task-submit-btn">
-              {submitting ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Task')}
+              {submitting
+                ? (isEdit ? 'Saving…' : bulkMode ? 'Creating…' : 'Creating…')
+                : (isEdit
+                    ? 'Save Changes'
+                    : bulkMode
+                      ? `Create ${rows.filter(r => r.title.trim()).length || ''} task${rows.filter(r => r.title.trim()).length === 1 ? '' : 's'}`.trim()
+                      : 'Create Task')}
             </button>
           </div>
         </div>
