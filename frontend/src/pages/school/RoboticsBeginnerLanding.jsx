@@ -96,14 +96,6 @@ const BOOKS = [
   { grade: 'Grade 8', theme: 'Human + Machine', src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/el5uo7fb_A3%20Book%20Chart%20%287%29.png', spine: '#0284C7', flip: 'https://heyzine.com/flip-book/32be158b45.html' },
 ];
 
-const PARENT_JOURNEY = [
-  { i: Hammer,  t: 'Student builds',        s: 'Kits, code, imagination' },
-  { i: Users,   t: 'Student demonstrates',  s: 'Classroom showcase' },
-  { i: Eye,     t: 'Parent watches',        s: 'Exhibitions & open days' },
-  { i: Camera,  t: 'Parent photographs',    s: 'Proud family moments' },
-  { i: Share2,  t: 'Parent shares',         s: 'The whole community sees' },
-];
-
 const PARENT_QUOTES = [
   'My child couldn\u2019t stop talking about what they built.',
   'It\u2019s amazing to see them actually create something.',
@@ -398,6 +390,31 @@ export default function RoboticsBeginnerLanding() {
         .rb-fade-in { animation: rb-fade .55s ease both; }
         @keyframes rb-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
+        /* ── Admissions growth chart ── */
+        .rb-adm-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 2rem; align-items: center; background: linear-gradient(135deg, #FFF 0%, #FFF6F6 100%); border: 1px solid #FCA5A5; border-radius: 1.5rem; padding: 2rem; box-shadow: 0 20px 60px rgba(220,38,38,0.10); overflow: hidden; position: relative; }
+        .rb-adm-wrap::before { content: ''; position: absolute; top: -80px; right: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(220,38,38,0.18), transparent 70%); pointer-events: none; }
+        .rb-adm-big { font-family: 'Zing Rust', 'Anton', sans-serif; font-size: clamp(3.5rem, 6vw, 5.5rem); line-height: 0.95; background: linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.02em; }
+        .rb-adm-lbl { font-family: 'Proxima Nova', 'Montserrat', sans-serif; font-weight: 700; color: #0A1F44; font-size: 1rem; letter-spacing: 0.02em; margin-top: 0.6rem; line-height: 1.35; }
+        .rb-adm-sub { font-size: 0.85rem; color: #64748B; line-height: 1.55; margin-top: 0.5rem; }
+        .rb-adm-pill { display: inline-flex; align-items: center; gap: 6px; background: #DC2626; color: #fff; font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; margin-bottom: 0.9rem; box-shadow: 0 8px 20px rgba(220,38,38,0.30); }
+        .rb-adm-pulse { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: rb-pulse 1.4s infinite; }
+        @keyframes rb-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.4); } }
+
+        .rb-adm-chart { position: relative; height: 260px; width: 100%; }
+        .rb-adm-chart svg { width: 100%; height: 100%; overflow: visible; }
+        .rb-adm-area { fill: url(#rbAdmArea); opacity: 0; animation: rb-adm-fadein 1.1s .7s ease forwards; }
+        .rb-adm-line { fill: none; stroke: #DC2626; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: rb-adm-draw 1.6s .1s ease-out forwards; filter: drop-shadow(0 4px 8px rgba(220,38,38,0.35)); }
+        @keyframes rb-adm-draw { to { stroke-dashoffset: 0; } }
+        @keyframes rb-adm-fadein { to { opacity: 1; } }
+        .rb-adm-dot { fill: #fff; stroke: #DC2626; stroke-width: 3; opacity: 0; animation: rb-adm-pop .35s ease forwards; }
+        .rb-adm-badge { opacity: 0; animation: rb-adm-pop .4s ease forwards; }
+        @keyframes rb-adm-pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .rb-adm-grid { stroke: #E2E8F0; stroke-width: 1; stroke-dasharray: 4 4; }
+        .rb-adm-xlbl { font-family: 'Proxima Nova', sans-serif; font-size: 11px; font-weight: 700; fill: #64748B; letter-spacing: 0.06em; }
+        .rb-adm-bval { font-family: 'Proxima Nova', sans-serif; font-size: 11px; font-weight: 800; fill: #DC2626; }
+
+        @media (max-width: 900px) { .rb-adm-wrap { grid-template-columns: 1fr !important; padding: 1.5rem; } .rb-adm-chart { height: 220px; } }
+
         @media (max-width: 900px) {
           .rb-2col { grid-template-columns: 1fr !important; }
           .rb-hide-mobile { display: none !important; }
@@ -627,18 +644,70 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          {/* 5-step journey */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-            {PARENT_JOURNEY.map((step, i) => (
-              <div key={step.t} style={{ position: 'relative', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '1rem', padding: '1.25rem', textAlign: 'center' }}>
-                <div style={{ position: 'absolute', top: 8, right: 12, fontSize: '0.66rem', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.14em' }}>0{i + 1}</div>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #DC2626, #1E3A8A)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                  <step.i size={22} />
-                </div>
-                <div className="rb-h4" style={{ fontSize: '0.95rem', color: '#0A1F44' }}>{step.t}</div>
-                <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '0.35rem' }}>{step.s}</div>
+          {/* Admissions growth chart — animated red line/area chart */}
+          <div className="rb-adm-wrap" data-testid="rb-admissions-chart" style={{ marginBottom: '2.5rem' }}>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div className="rb-adm-pill">
+                <span className="rb-adm-pulse" /> Verified with partner schools
               </div>
-            ))}
+              <div className="rb-adm-big">+218%</div>
+              <div className="rb-adm-lbl">Average admissions growth over 5 years for schools running OLL Robotics.</div>
+              <div className="rb-adm-sub">Parents drive admissions once they see what their children actually build. Robotics turns your school into the &ldquo;the one that&apos;s doing something different.&rdquo;</div>
+            </div>
+
+            {(() => {
+              const data = [
+                { y: '2020', v: 100, pct: null },
+                { y: '2021', v: 138, pct: '+38%' },
+                { y: '2022', v: 182, pct: '+32%' },
+                { y: '2023', v: 245, pct: '+35%' },
+                { y: '2024', v: 296, pct: '+21%' },
+                { y: '2025', v: 318, pct: '+7%' },
+              ];
+              const W = 560, H = 260, PL = 40, PR = 20, PT = 30, PB = 42;
+              const CW = W - PL - PR, CH = H - PT - PB;
+              const maxV = 340;
+              const xAt = (i) => PL + (i * CW) / (data.length - 1);
+              const yAt = (v) => PT + CH - (v / maxV) * CH;
+              const linePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(d.v)}`).join(' ');
+              const areaPath = `${linePath} L ${xAt(data.length - 1)} ${PT + CH} L ${PL} ${PT + CH} Z`;
+              return (
+                <div className="rb-adm-chart">
+                  <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="rbAdmArea" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"  stopColor="#DC2626" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#DC2626" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {/* horizontal grid */}
+                    {[0.25, 0.5, 0.75, 1].map((f) => (
+                      <line key={f} x1={PL} x2={W - PR} y1={PT + CH * f} y2={PT + CH * f} className="rb-adm-grid" />
+                    ))}
+                    {/* area */}
+                    <path d={areaPath} className="rb-adm-area" />
+                    {/* line */}
+                    <path d={linePath} className="rb-adm-line" />
+                    {/* dots + badges */}
+                    {data.map((d, i) => (
+                      <g key={d.y}>
+                        <circle cx={xAt(i)} cy={yAt(d.v)} r={5} className="rb-adm-dot" style={{ animationDelay: `${1.2 + i * 0.15}s` }} />
+                        {d.pct && (
+                          <g className="rb-adm-badge" style={{ animationDelay: `${1.3 + i * 0.15}s` }}>
+                            <rect x={xAt(i) - 22} y={yAt(d.v) - 30} width="44" height="20" rx="10" fill="#DC2626" />
+                            <text x={xAt(i)} y={yAt(d.v) - 16} textAnchor="middle" fontSize="11" fontWeight="800" fill="#fff" fontFamily="'Proxima Nova', sans-serif">{d.pct}</text>
+                          </g>
+                        )}
+                        <text x={xAt(i)} y={H - 18} textAnchor="middle" className="rb-adm-xlbl">{d.y}</text>
+                      </g>
+                    ))}
+                    {/* Y-axis min/max labels */}
+                    <text x={PL - 8} y={PT + 4} textAnchor="end" className="rb-adm-xlbl">{maxV}</text>
+                    <text x={PL - 8} y={PT + CH + 4} textAnchor="end" className="rb-adm-xlbl">0</text>
+                  </svg>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Rotating parent quote */}
@@ -970,13 +1039,13 @@ export default function RoboticsBeginnerLanding() {
               <h3 className="rb-h3" style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 600, marginBottom: '1.5rem' }}>The people behind OLL.</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                 {[
-                  { name: 'Shreyaan Daga',     role: 'Founder & CEO',          bio: 'Youngest on Shark Tank India, on the Hot Seat of KBC.',            img: '/team/shreyaan.png' },
-                  { name: 'Vidushi Daga',      role: 'Chairperson · OLL',      bio: '15+ years in education. Taught over 5 lakh kids across India.',    img: '/team/vidushi.png' },
-                  { name: 'Amit Modi',         role: 'IIT Bombay Alumni',      bio: '10+ years in Robotics education for kids across India.',           img: '/team/amit.png' },
-                  { name: 'Heather Andersson', role: 'President · UNESCO WGF', bio: '15+ years in education. President, UNESCO World Genesis Foundation.', img: '/team/heather.png' },
+                  { name: 'Shreyaan Daga',     role: 'Founder & CEO',          bio: 'Youngest on Shark Tank India, on the Hot Seat of KBC.',            img: '/team/shreyaan.png?v=2' },
+                  { name: 'Vidushi Daga',      role: 'Chairperson · OLL',      bio: '15+ years in education. Taught over 5 lakh kids across India.',    img: '/team/vidushi.png?v=2' },
+                  { name: 'Amit Modi',         role: 'IIT Bombay Alumni',      bio: '10+ years in Robotics education for kids across India.',           img: '/team/amit.png?v=2' },
+                  { name: 'Heather Andersson', role: 'President · UNESCO WGF', bio: '15+ years in education. President, UNESCO World Genesis Foundation.', img: '/team/heather.png?v=2' },
                 ].map((m) => (
                   <div key={m.name} style={{ textAlign: 'center', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
-                    <div style={{ width: 140, height: 140, borderRadius: '50%', margin: '0 auto', overflow: 'hidden', background: '#0A1F44', border: '3px solid rgba(255,255,255,0.18)', boxShadow: '0 20px 40px rgba(0,0,0,0.35)' }}>
+                    <div style={{ width: 140, height: 140, borderRadius: '50%', margin: '0 auto', overflow: 'hidden', background: '#FFFFFF', border: '3px solid #FBBF24', boxShadow: '0 20px 40px rgba(0,0,0,0.35), 0 0 0 6px rgba(251,191,36,0.18)' }}>
                       <img src={m.img} alt={m.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{ marginTop: '1rem', fontSize: '1.05rem', color: '#fff', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{m.name}</div>
