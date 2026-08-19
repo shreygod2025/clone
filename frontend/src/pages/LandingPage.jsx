@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { GraduationCap, Users, Building2, ArrowRight, Quote, PlayCircle } from 'lucide-react';
+import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Star, Quote as QuoteIcon } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useUserAuth } from '../context/UserAuthContext';
@@ -29,21 +29,60 @@ const PARENT_QUOTES = [
 ];
 const PARENT_VIDEO = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4';
 
+// ── Parent & student testimonials (video card grid) ────────────────────────
+const TESTIMONIALS = [
+  {
+    role: 'parent', label: 'PARENT', name: 'OLL Parents',
+    quote: '"Our kids come home buzzing about what they built."',
+    video: PARENT_VIDEO,
+    thumbYT: null,
+  },
+  {
+    role: 'student', label: 'STUDENT', name: 'Young Builder · Grade 5',
+    quote: '"I made a robot that follows a line!"',
+    video: null,
+    thumbYT: 'YoIu5akBkr0',
+  },
+  {
+    role: 'student', label: 'STUDENT', name: 'Young Coder · Grade 7',
+    quote: '"I wrote my first Python game in class."',
+    video: null,
+    thumbYT: 'OnK6oevnLeM',
+  },
+  {
+    role: 'student', label: 'STUDENT', name: 'Young Creator · Grade 9',
+    quote: '"3D-printed my own phone stand this week!"',
+    video: null,
+    thumbYT: 'r6xeqlTixYE',
+  },
+];
+
+const WRITTEN_QUOTES = [
+  { quote: 'My son went from gaming all weekend to spending Saturdays designing his own game. The shift in 3 months has been unreal.', name: 'Anita S.', context: 'Grade 5 parent' },
+  { quote: 'He builds robots at home now with parts he saves up for. The class lit a fire we didn\u2019t know was there.', name: 'Rajesh M.', context: 'Grade 8 parent' },
+  { quote: 'Best investment beyond her academics. She actually looks forward to Saturdays.', name: 'Priya K.', context: 'Grade 3 parent' },
+];
+
+// Classroom slider (Inside an OLL classroom) — placeholder Unsplash photos
+// User can swap these with real classroom media later.
+const CLASSROOM_MEDIA = [
+  { src: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=900&q=70', caption: 'Robotics build lab' },
+  { src: 'https://images.unsplash.com/photo-1596496050827-8299e0220de1?w=900&q=70', caption: 'First-time coders · Grade 3' },
+  { src: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&q=70', caption: 'Team problem-solving' },
+  { src: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=900&q=70', caption: 'IoT project · Grade 8' },
+  { src: 'https://images.unsplash.com/photo-1580894732930-0babd100d356?w=900&q=70', caption: '3D printing lab' },
+  { src: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&q=70', caption: 'Girls in STEM' },
+  { src: 'https://images.unsplash.com/photo-1610484826967-09c5720778c7?w=900&q=70', caption: 'Line-follower demo day' },
+  { src: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=900&q=70', caption: 'Weekend club showcase' },
+];
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
-  const [parentIdx, setParentIdx] = useState(0);
-  const parentVideoRef = useRef(null);
 
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-  // Rotating parent quote (matches Robotics Beginner)
-  useEffect(() => {
-    const t = setInterval(() => setParentIdx((i) => (i + 1) % PARENT_QUOTES.length), 4500);
-    return () => clearInterval(t);
   }, []);
 
   // Redirect logged-in students to their bookings page
@@ -152,13 +191,28 @@ const LandingPage = () => {
       </Helmet>
       
     <div className="min-h-screen bg-white flex flex-col">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700;800&family=Anton&display=swap');
+        @font-face {
+          font-family: 'Zing Rust';
+          src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
+          font-weight: 400 900;
+          font-display: swap;
+        }
+        .home-hero-h1 { font-family: 'Zing Rust', 'Anton', sans-serif; font-weight: 400; font-size: clamp(2.6rem, 6vw, 5rem); line-height: 1; letter-spacing: -0.01em; color: #0A1F44; }
+        .home-h2 { font-family: 'Montserrat', sans-serif; font-weight: 300; font-size: clamp(2rem, 4.4vw, 3rem); line-height: 1.1; color: #0A1F44; margin-top: 0.4rem; letter-spacing: -0.005em; }
+        .home-h2 strong { font-weight: 700; }
+        .home-sub { font-family: 'Montserrat', sans-serif; font-weight: 300; font-size: 1rem; max-width: 640px; margin: 0.9rem auto 0; color: #475569; line-height: 1.6; }
+        .home-script-heading { font-family: 'Caveat', 'Playfair Display', cursive; font-size: clamp(2rem, 4.4vw, 3rem); color: #DC2626; line-height: 1; font-weight: 700; }
+        .home-eyebrow { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; color: #DC2626; }
+      `}</style>
       <Navbar variant="pill" />
 
       {/* Main Content - Desktop: Centered with max height cards */}
       <main className="flex-1 flex flex-col justify-center px-4 py-8 md:py-12">
         {/* Tagline */}
         <div className="text-center mb-6 md:mb-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#1E3A5F] leading-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="home-hero-h1" style={{ color: '#1E3A5F' }}>
             Learn Future Skills for a Brighter Future
           </h1>
           <p className="text-base md:text-lg text-slate-500 mt-2">
@@ -353,13 +407,13 @@ const LandingPage = () => {
 
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div style={{ fontFamily: "'Caveat', 'Playfair Display', cursive", fontSize: 'clamp(2rem, 4.4vw, 3.2rem)', color: '#FCA5A5', lineHeight: 1, fontWeight: 700 }}>
+            <div className="home-script-heading" style={{ color: '#FCA5A5' }}>
               as seen on
             </div>
-            <h2 style={{ fontFamily: "'Anton', 'Zing Rust', sans-serif", fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, fontWeight: 900, letterSpacing: '-0.01em', marginTop: '0.4rem' }}>
+            <h2 className="home-h2" style={{ color: '#FFFFFF' }}>
               National television. <span style={{ color: '#FCA5A5' }}>National recognition.</span>
             </h2>
-            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 620, margin: '0.9rem auto 0', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6 }}>
+            <p className="home-sub" style={{ color: 'rgba(255,255,255,0.78)' }}>
               OLL has been featured on India&apos;s most-watched shows — and pitched to India&apos;s top investors on national TV.
             </p>
           </div>
@@ -388,6 +442,74 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ── SCHOOLS WE WORK WITH — auto-scrolling videos + partner logos ── */}
+      <section data-testid="homepage-schools-we-work-with" style={{
+        position: 'relative', overflow: 'hidden',
+        padding: '5rem 1.25rem 3rem',
+        background: '#F8FAFC',
+      }}>
+        <style>{`
+          @keyframes home-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+          .home-marquee-wrap { overflow: hidden; padding: 10px 0; }
+          .home-marquee-track { display: inline-flex; gap: 1rem; padding: 4px 8px; animation: home-scroll 60s linear infinite; will-change: transform; }
+          .home-marquee-track:hover { animation-play-state: paused; }
+          .home-vid-card { flex-shrink: 0; width: 300px; background: #0A1F44; border-radius: 1rem; overflow: hidden; text-decoration: none; box-shadow: 0 12px 30px rgba(10,31,68,0.15); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+          .home-vid-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.25); }
+          .home-vid-thumb { position: relative; aspect-ratio: 16/9; background: #0A1F44; }
+          .home-vid-thumb img { width: 100%; height: 100%; object-fit: cover; }
+          .home-vid-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); color: #fff; }
+          .home-logo-track { animation-duration: 55s; }
+        `}</style>
+
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="home-script-heading">proof, not promises</div>
+            <h2 className="home-h2">
+              Schools we <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>work with.</span>
+            </h2>
+            <p className="home-sub">Real classrooms. Real projects. Real principals telling the story in their own words.</p>
+          </div>
+
+          <div className="home-marquee-wrap" data-testid="home-schools-videos">
+            <div className="home-marquee-track">
+              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
+                <a
+                  key={`${v.id}-${i}`}
+                  href={`https://youtu.be/${v.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="home-vid-card"
+                  data-testid={i < SCHOOL_VIDEOS.length ? `home-video-${v.id}` : undefined}
+                >
+                  <div className="home-vid-thumb">
+                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
+                    <div className="home-vid-play"><PlayCircle size={38} fill="rgba(255,255,255,0.18)" /></div>
+                  </div>
+                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+                    <div style={{ fontSize: '0.98rem', fontWeight: 600, lineHeight: 1.25 }}>{v.name}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '3rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: "'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8' }}>
+              A few of our partner schools
+            </div>
+            <div className="home-marquee-wrap">
+              <div className="home-marquee-track home-logo-track" style={{ gap: '2rem', alignItems: 'center' }}>
+                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
+                  <div key={i} style={{ minWidth: 150, height: 90, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', boxShadow: '0 4px 12px rgba(15,30,80,0.05)', flexShrink: 0 }}>
+                    <img src={src} alt="Partner school" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── SCHOOL PRODUCTS ────────────────────────────
           Two flagship product families sold to schools — Robotics + Computer
           Science curricula. Each tier click routes to a dedicated demo-booking
@@ -399,13 +521,9 @@ const LandingPage = () => {
       }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem' }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#D63031', marginBottom: '0.6rem', fontFamily: "'JetBrains Mono', monospace" }}>
-              FOR SCHOOLS
-            </p>
-            <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0F1E33', fontSize: 'clamp(1.9rem, 4.4vw, 2.75rem)', lineHeight: 1.1, marginBottom: '0.75rem' }}>
-              School Products
-            </h2>
-            <p style={{ fontSize: '1rem', color: '#475569', fontFamily: "'Nunito Sans', sans-serif", maxWidth: 620, margin: '0 auto', lineHeight: 1.55 }}>
+            <div className="home-script-heading">for schools</div>
+            <h2 className="home-h2">School Products</h2>
+            <p className="home-sub">
               End-to-end Robotics &amp; Computer Science curricula for K–12 schools. Book a live demo with our program expert to see the lab, syllabus and outcomes.
             </p>
           </div>
@@ -513,13 +631,11 @@ const LandingPage = () => {
         <div style={{ position: 'absolute', bottom: '-60px', left: '6%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(30,58,95,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div className="text-center" style={{ paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem', position: 'relative' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D63031', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
-            FLAGSHIP · WEEKLY OFFLINE · GRADES 1 – 10
-          </p>
-          <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.7rem, 4.5vw, 3rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.15, marginBottom: '0.75rem' }}>
-            <span style={{ background: 'linear-gradient(90deg, #D63031, #7B2C5C, #1E3A5F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Future Skills</span> Continuous Program
+          <div className="home-script-heading">weekly · offline · grades 1 – 10</div>
+          <h2 className="home-h2">
+            <strong style={{ color: '#D63031' }}>Future Skills</strong> Continuous Program
           </h2>
-          <p style={{ color: '#475569', fontSize: '1rem', maxWidth: 640, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
+          <p className="home-sub">
             Robotics · Coding · AI · 3D Design · Emerging Tech — once a week, year-round, at your nearest centre. Small batches of 10. Robotic kit free with yearly.
           </p>
         </div>
@@ -600,177 +716,178 @@ const LandingPage = () => {
 
       {/* AI Foundations section — removed per request */}
 
-      {/* ── SCHOOLS WE WORK WITH — auto-scrolling videos + partner logos ── */}
-      <section data-testid="homepage-schools-we-work-with" style={{
-        position: 'relative', overflow: 'hidden',
-        padding: '5rem 1.25rem 3rem',
-        background: '#F8FAFC',
+      {/* ── PARENTS FEEDBACK · rating card + video testimonials + written quotes ── */}
+      <section data-testid="homepage-parents-feedback" style={{
+        position: 'relative',
+        padding: '5rem 1.25rem 4rem',
+        background: '#FFFFFF',
       }}>
-        <style>{`
-          @keyframes home-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-          .home-marquee-wrap { overflow: hidden; padding: 10px 0; }
-          .home-marquee-track { display: inline-flex; gap: 1rem; padding: 4px 8px; animation: home-scroll 60s linear infinite; will-change: transform; }
-          .home-marquee-track:hover { animation-play-state: paused; }
-          .home-vid-card { flex-shrink: 0; width: 300px; background: #0A1F44; border-radius: 1rem; overflow: hidden; text-decoration: none; box-shadow: 0 12px 30px rgba(10,31,68,0.15); transition: transform 0.25s ease, box-shadow 0.25s ease; }
-          .home-vid-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.25); }
-          .home-vid-thumb { position: relative; aspect-ratio: 16/9; background: #0A1F44; }
-          .home-vid-thumb img { width: 100%; height: 100%; object-fit: cover; }
-          .home-vid-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); color: #fff; }
-          .home-logo-track { animation-duration: 55s; }
-        `}</style>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
 
-        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <div style={{ fontFamily: "'Caveat', 'Playfair Display', cursive", fontSize: 'clamp(2rem, 4.4vw, 3rem)', color: '#DC2626', lineHeight: 1, fontWeight: 700 }}>
-              proof, not promises
+          {/* Rating summary card */}
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: '1.25rem',
+              boxShadow: '0 20px 40px rgba(15,30,80,0.08)',
+              padding: '2rem 2.25rem',
+              maxWidth: 780,
+              margin: '0 auto 3rem',
+              display: 'grid',
+              gridTemplateColumns: '220px 1fr',
+              gap: '2rem',
+              alignItems: 'center',
+            }}
+            className="home-rating-card"
+            data-testid="home-rating-card"
+          >
+            <style>{`@media (max-width: 640px) { .home-rating-card { grid-template-columns: 1fr !important; gap: 1rem !important; padding: 1.5rem !important; } }`}</style>
+            <div>
+              <div style={{ fontFamily: "'Zing Rust', 'Anton', sans-serif", fontSize: 'clamp(3.5rem, 6vw, 5rem)', lineHeight: 1, color: '#DC2626', fontWeight: 900, letterSpacing: '-0.02em' }}>
+                4.75<span style={{ fontSize: '0.4em', color: '#94A3B8', marginLeft: 6 }}>/5</span>
+              </div>
+              <div style={{ marginTop: '0.4rem', fontFamily: "'Montserrat', sans-serif", fontSize: '0.7rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626' }}>Parent Rating</div>
             </div>
-            <h2 style={{ fontFamily: "'Anton', 'Zing Rust', sans-serif", fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', fontWeight: 900, letterSpacing: '-0.01em', marginTop: '0.4rem' }}>
-              Schools we <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>work with.</span>
-            </h2>
-            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
-              Real classrooms. Real projects. Real principals telling the story in their own words.
-            </p>
-          </div>
-
-          {/* Auto-scrolling video marquee */}
-          <div className="home-marquee-wrap" data-testid="home-schools-videos">
-            <div className="home-marquee-track">
-              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
-                <a
-                  key={`${v.id}-${i}`}
-                  href={`https://youtu.be/${v.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="home-vid-card"
-                  data-testid={i < SCHOOL_VIDEOS.length ? `home-video-${v.id}` : undefined}
-                >
-                  <div className="home-vid-thumb">
-                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
-                    <div className="home-vid-play"><PlayCircle size={38} fill="rgba(255,255,255,0.18)" /></div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.6rem' }}>
+                {[0,1,2,3,4].map((i) => <Star key={i} size={20} style={{ color: '#DC2626', fill: '#DC2626' }} />)}
+                <span style={{ marginLeft: 8, color: '#64748B', fontSize: '0.85rem', fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>based on 500+ reviews</span>
+              </div>
+              {[{ s: 5, p: 82 }, { s: 4, p: 14 }, { s: 3, p: 3 }, { s: 2, p: 1 }].map((r) => (
+                <div key={r.s} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 44px', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                  <div style={{ fontSize: '0.8rem', color: '#64748B', fontFamily: "'Montserrat', sans-serif", fontWeight: 500 }}>{r.s}★</div>
+                  <div style={{ height: 8, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${r.p}%`, background: 'linear-gradient(90deg, #DC2626, #0A1F44)', borderRadius: 999 }} />
                   </div>
-                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
-                    <div style={{ fontSize: '0.98rem', fontWeight: 600, lineHeight: 1.25 }}>{v.name}</div>
-                  </div>
-                </a>
+                  <div style={{ fontSize: '0.78rem', color: '#64748B', fontFamily: "'Montserrat', sans-serif", fontWeight: 500, textAlign: 'right' }}>{r.p}%</div>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Rolling partner-schools logo bar */}
-          <div style={{ marginTop: '3rem' }}>
-            <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8' }}>
-              A few of our partner schools
+          {/* Section headline */}
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626', marginBottom: '0.5rem' }}>
+              // Real voices · real builds
             </div>
-            <div className="home-marquee-wrap">
-              <div className="home-marquee-track home-logo-track" style={{ gap: '2rem', alignItems: 'center' }}>
-                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
-                  <div key={i} style={{ minWidth: 150, height: 90, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', boxShadow: '0 4px 12px rgba(15,30,80,0.05)', flexShrink: 0 }}>
-                    <img src={src} alt="Partner school" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+            <h2 className="home-h2" style={{ color: '#0F1E33' }}>
+              Hear it from our <span style={{ color: '#0F1E33' }}>parents &amp; students</span>
+            </h2>
+          </div>
+
+          {/* Video testimonials grid */}
+          <div className="home-testimonial-grid" data-testid="home-testimonial-grid">
+            <style>{`
+              .home-testimonial-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+              @media (max-width: 1000px) { .home-testimonial-grid { grid-template-columns: repeat(2, 1fr); } }
+              @media (max-width: 560px)  { .home-testimonial-grid { grid-template-columns: 1fr; } }
+              .home-tcard { position: relative; aspect-ratio: 4/5; border-radius: 1.1rem; overflow: hidden; background: #0A1F44; box-shadow: 0 18px 40px rgba(15,30,80,0.15); cursor: pointer; text-decoration: none; transition: transform 0.35s ease, box-shadow 0.35s ease; }
+              .home-tcard:hover { transform: translateY(-6px); box-shadow: 0 28px 56px rgba(15,30,80,0.25); }
+              .home-tcard video, .home-tcard img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+              .home-tcard::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.90) 100%); pointer-events: none; }
+              .home-tbadge { position: absolute; top: 14px; left: 14px; z-index: 2; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; color: #fff; }
+              .home-tbadge.parent { background: #DC2626; }
+              .home-tbadge.student { background: #0F1E33; }
+              .home-tplay { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; color: #fff; opacity: 0.9; transition: transform 0.3s ease, opacity 0.3s ease; }
+              .home-tcard:hover .home-tplay { transform: scale(1.08); opacity: 1; }
+              .home-tcopy { position: absolute; bottom: 16px; left: 18px; right: 18px; z-index: 2; color: #fff; font-family: 'Montserrat', sans-serif; }
+              .home-tname { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
+              .home-tquote { margin-top: 4px; font-size: 0.82rem; color: rgba(255,255,255,0.85); font-style: italic; line-height: 1.4; }
+            `}</style>
+            {TESTIMONIALS.map((t, idx) => {
+              const isYT = !!t.thumbYT;
+              const props = isYT
+                ? { as: 'a', href: `https://youtu.be/${t.thumbYT}`, target: '_blank', rel: 'noreferrer' }
+                : {};
+              return (
+                <a
+                  key={t.name}
+                  href={isYT ? `https://youtu.be/${t.thumbYT}` : undefined}
+                  target={isYT ? '_blank' : undefined}
+                  rel={isYT ? 'noreferrer' : undefined}
+                  className="home-tcard"
+                  data-testid={`home-testimonial-${idx}`}
+                  {...(!isYT ? { onClick: (e) => {
+                    const vid = e.currentTarget.querySelector('video');
+                    if (!vid) return;
+                    if (vid.paused) { vid.play(); vid.muted = false; } else { vid.pause(); }
+                  }} : {})}
+                >
+                  <span className={`home-tbadge ${t.role}`}>{t.label}</span>
+                  {isYT ? (
+                    <img src={`https://i.ytimg.com/vi/${t.thumbYT}/hqdefault.jpg`} alt={t.name} loading="lazy" />
+                  ) : (
+                    <video src={t.video} autoPlay muted loop playsInline />
+                  )}
+                  <div className="home-tplay"><PlayCircle size={54} strokeWidth={1.5} /></div>
+                  <div className="home-tcopy">
+                    <div className="home-tname">{t.name}</div>
+                    <div className="home-tquote">{t.quote}</div>
                   </div>
-                ))}
+                </a>
+              );
+            })}
+          </div>
+
+          {/* Written quote cards */}
+          <div style={{ marginTop: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }} data-testid="home-written-quotes">
+            {WRITTEN_QUOTES.map((q) => (
+              <div key={q.name} style={{
+                background: '#FFFFFF',
+                border: '1px solid #F1F5F9',
+                borderRadius: '1rem',
+                padding: '1.75rem 1.5rem',
+                boxShadow: '0 10px 24px rgba(15,30,80,0.05)',
+              }}>
+                <QuoteIcon size={22} style={{ color: '#DC2626' }} />
+                <p style={{ marginTop: '1rem', fontFamily: "'Montserrat', sans-serif", fontStyle: 'italic', color: '#334155', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                  &ldquo;{q.quote}&rdquo;
+                </p>
+                <div style={{ marginTop: '1.15rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {[0,1,2,3,4].map((i) => <Star key={i} size={15} style={{ color: '#DC2626', fill: '#DC2626' }} />)}
+                </div>
+                <div style={{ marginTop: '0.5rem', fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#0F1E33' }}>
+                  {q.name}<span style={{ color: '#94A3B8', fontWeight: 500 }}>, {q.context}</span>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── PARENTS FEEDBACK (video + rotating quote) — Robotics Beginner theme ── */}
-      <section data-testid="homepage-parents-feedback" style={{
+      {/* ── INSIDE AN OLL CLASSROOM · horizontal auto-scrolling slider ── */}
+      <section data-testid="homepage-inside-classroom" style={{
         position: 'relative', overflow: 'hidden',
-        padding: '5rem 1.25rem',
-        background: '#FFFFFF',
+        padding: '4rem 0 5rem',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
       }}>
-        <div style={{ position: 'absolute', top: -140, right: -80, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.15) 0%, transparent 65%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -140, left: -60, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 65%)', pointerEvents: 'none' }} />
+        <style>{`
+          .home-class-track { display: inline-flex; gap: 1rem; animation: home-scroll 55s linear infinite; will-change: transform; padding: 8px 12px; }
+          .home-class-track:hover { animation-play-state: paused; }
+          .home-class-card { flex-shrink: 0; width: 340px; aspect-ratio: 4/3; border-radius: 1rem; overflow: hidden; position: relative; box-shadow: 0 14px 32px rgba(15,30,80,0.12); background: #0A1F44; }
+          .home-class-card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s ease; }
+          .home-class-card:hover img { transform: scale(1.05); }
+          .home-class-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(10,31,68,0.85) 100%); pointer-events: none; }
+          .home-class-cap { position: absolute; bottom: 14px; left: 18px; right: 18px; color: #fff; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 0.92rem; z-index: 1; }
+        `}</style>
+        <div style={{ textAlign: 'center', maxWidth: 1180, margin: '0 auto', padding: '0 1.25rem 2rem' }}>
+          <div className="home-script-heading">what learning looks like</div>
+          <h2 className="home-h2">
+            Inside an <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>OLL classroom.</span>
+          </h2>
+          <p className="home-sub">Not slides. Not lectures. Real components, real builds, real kids getting their hands dirty.</p>
+        </div>
 
-        <div style={{ position: 'relative', maxWidth: 1080, margin: '0 auto', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <div style={{ fontFamily: "'Caveat', 'Playfair Display', cursive", fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', color: '#DC2626', lineHeight: 1, fontWeight: 700 }}>
-              parent feedback
-            </div>
-            <h2 style={{ fontFamily: "'Anton', 'Zing Rust', sans-serif", fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', fontWeight: 900, letterSpacing: '-0.01em', marginTop: '0.4rem' }}>
-              What parents say <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>about OLL.</span>
-            </h2>
-            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 620, margin: '0.9rem auto 0', color: '#475569', fontStyle: 'italic', lineHeight: 1.6 }}>
-              The best proof isn&apos;t a stat — it&apos;s a proud parent talking about their child.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) 1.15fr', gap: '2rem', alignItems: 'stretch' }} className="home-parent-grid">
-            <style>{`
-              @media (max-width: 800px) { .home-parent-grid { grid-template-columns: 1fr !important; } }
-            `}</style>
-            {/* Video card */}
-            <button
-              type="button"
-              onClick={() => {
-                const v = parentVideoRef.current;
-                if (!v) return;
-                if (v.paused) { v.play(); v.muted = false; } else { v.pause(); }
-              }}
-              data-testid="home-parent-video-btn"
-              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', border: '1px solid #E2E8F0', boxShadow: '0 30px 60px rgba(15,30,80,0.18)', background: '#0A1F44', minHeight: 360, cursor: 'pointer', padding: 0 }}
-            >
-              <video
-                ref={parentVideoRef}
-                src={PARENT_VIDEO}
-                muted
-                loop
-                playsInline
-                autoPlay
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 60%, rgba(10,31,68,0.85) 100%)', pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', bottom: 18, left: 22, right: 22, textAlign: 'left', color: '#fff' }}>
-                <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Parent Testimonial</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Tap to unmute</div>
+        <div className="home-marquee-wrap" data-testid="home-classroom-slider">
+          <div className="home-class-track">
+            {[...CLASSROOM_MEDIA, ...CLASSROOM_MEDIA].map((m, i) => (
+              <div key={`${m.src}-${i}`} className="home-class-card">
+                <img src={m.src} alt={m.caption} loading="lazy" />
+                <div className="home-class-cap">{m.caption}</div>
               </div>
-            </button>
-
-            {/* Rotating parent quote */}
-            <div style={{
-              background: 'linear-gradient(135deg, #0A1F44, #1E3A8A)',
-              color: '#fff',
-              borderRadius: '1.5rem',
-              padding: '2.5rem 2.25rem',
-              position: 'relative',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              minHeight: 360,
-            }}>
-              <div style={{ position: 'absolute', top: -80, right: -60, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.35) 0%, transparent 70%)', pointerEvents: 'none' }} />
-              <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                <Quote size={40} style={{ color: '#FCA5A5', opacity: 0.7, margin: '0 auto' }} />
-                <p
-                  key={parentIdx}
-                  style={{
-                    fontSize: 'clamp(1.15rem, 2vw, 1.55rem)',
-                    lineHeight: 1.5,
-                    fontStyle: 'italic',
-                    marginTop: '1rem',
-                    fontFamily: "'Playfair Display', Georgia, serif",
-                    color: '#fff',
-                    animation: 'homeParentFade 0.6s ease',
-                  }}
-                >
-                  &ldquo;{PARENT_QUOTES[parentIdx]}&rdquo;
-                </p>
-                <div style={{ marginTop: '1.15rem', fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, fontFamily: "'Proxima Nova', sans-serif" }}>— A proud OLL parent</div>
-                <div style={{ marginTop: '1rem', display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
-                  {PARENT_QUOTES.map((_, i) => (
-                    <span key={i} style={{ width: i === parentIdx ? 22 : 8, height: 8, borderRadius: 999, background: i === parentIdx ? '#FCA5A5' : 'rgba(255,255,255,0.25)', transition: 'width 0.3s ease, background 0.3s ease' }} />
-                  ))}
-                </div>
-              </div>
-              <style>{`@keyframes homeParentFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }`}</style>
-            </div>
+            ))}
           </div>
-
-          <p style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.96rem', color: '#475569', fontStyle: 'italic', fontFamily: "'Playfair Display', Georgia, serif" }}>
-            Because the best learning experiences are the ones children take home — and the best achievements are the ones parents proudly share.
-          </p>
         </div>
       </section>
 
