@@ -121,7 +121,7 @@ const LandingPage = () => {
       </Helmet>
       
     <div className="min-h-screen bg-white flex flex-col">
-      <Navbar />
+      <Navbar variant="pill" />
 
       {/* Main Content - Desktop: Centered with max height cards */}
       <main className="flex-1 flex flex-col justify-center px-4 py-8 md:py-12">

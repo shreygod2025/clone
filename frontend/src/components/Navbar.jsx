@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogIn, GraduationCap, Users, Handshake } from 'lucide-react';
+import { Menu, X, User, LogIn, GraduationCap, Users, Handshake, BookOpen, ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { useUserAuth } from '../context/UserAuthContext';
+
+const LMS_URL = 'https://lms.oll.co';
 
 const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free Demo', variant = 'default' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -218,7 +220,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
 
   const isActive = (path) => location.pathname === path;
 
-  // Determine where logo/profile should navigate
+  // Determine where logo/profile should navigate (used by multiple variants)
   const getHomeLink = () => {
     if (!isLoggedIn) return '/';
     if (isEducator) return '/educator-dashboard';
@@ -229,6 +231,148 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
     if (isEducator) return '/educator-dashboard';
     return '/my-bookings';
   };
+
+  // ── Pill variant — floating glacial-blue pill (matches Robotics Beginner) ──
+  if (variant === 'pill') {
+    return (
+      <>
+        {/* Local CSS scoped to the pill nav — mirrors RoboticsBeginnerLanding */}
+        <style>{`
+          .oll-pillnav {
+            position: fixed; top: 22px; left: 50%; transform: translateX(-50%);
+            z-index: 60; display: flex; align-items: center; justify-content: space-between;
+            gap: 1rem; padding: 0.55rem 0.65rem 0.55rem 1.5rem;
+            width: min(1180px, calc(100vw - 32px));
+            background: linear-gradient(135deg, rgba(255,255,255,0.94) 0%, rgba(224,242,254,0.88) 100%);
+            backdrop-filter: blur(22px) saturate(180%);
+            -webkit-backdrop-filter: blur(22px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            border-radius: 999px;
+            box-shadow: 0 20px 48px rgba(10,31,68,0.22), 0 0 0 1px rgba(15,30,80,0.04) inset;
+            white-space: nowrap;
+          }
+          .oll-pillnav-links { display: flex; align-items: center; gap: 1.35rem; }
+          .oll-pillnav-links a {
+            font-family: 'Proxima Nova', 'Manrope', 'Inter', sans-serif;
+            font-weight: 700; font-size: 0.9rem; color: #0A1F44; opacity: 0.75;
+            text-decoration: none; transition: opacity 0.2s ease, color 0.2s ease;
+          }
+          .oll-pillnav-links a:hover { opacity: 1; color: #D63031; }
+          .oll-pillnav-links a.active { opacity: 1; color: #D63031; }
+          .oll-pillnav-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+          .oll-pill-btn-outline {
+            background: transparent; color: #0A1F44;
+            border: 1.5px solid rgba(10,31,68,0.35);
+            padding: 0.55rem 1.05rem; border-radius: 999px;
+            font-family: 'Proxima Nova', 'Manrope', sans-serif;
+            font-weight: 700; font-size: 0.86rem;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            cursor: pointer; text-decoration: none;
+            transition: all 0.2s ease;
+          }
+          .oll-pill-btn-outline:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+
+          .oll-pill-btn-primary {
+            background: linear-gradient(135deg, #D63031 0%, #B52828 100%);
+            color: #fff; border: none;
+            padding: 0.6rem 1.2rem; border-radius: 999px;
+            font-family: 'Proxima Nova', 'Manrope', sans-serif;
+            font-weight: 800; font-size: 0.86rem;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            cursor: pointer; text-decoration: none;
+            box-shadow: 0 8px 22px rgba(214,48,49,0.35);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+          }
+          .oll-pill-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(214,48,49,0.45); }
+
+          .oll-pill-profile {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #1E3A5F 0%, #0A1F44 100%);
+            color: #fff; border: 1.5px solid rgba(255,255,255,0.6);
+            box-shadow: 0 8px 18px rgba(10,31,68,0.25); cursor: pointer;
+          }
+
+          @media (max-width: 820px) {
+            .oll-pillnav-links { display: none; }
+            .oll-pillnav { padding: 0.5rem 0.5rem 0.5rem 1rem; }
+            .oll-pill-btn-outline, .oll-pill-btn-primary { padding: 0.55rem 0.9rem; font-size: 0.8rem; }
+          }
+          @media (max-width: 520px) {
+            .oll-pill-hide-sm { display: none; }
+          }
+          /* Spacer so page content isn't hidden under the fixed pill */
+          .oll-pillnav-spacer { height: 92px; }
+        `}</style>
+
+        <nav className="oll-pillnav" data-testid="pill-navbar" aria-label="Primary">
+          <Link to={getHomeLink()} style={{ display: 'flex', alignItems: 'center' }} data-testid="pill-nav-logo">
+            <img
+              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
+              alt="OLL — Skill Education Platform"
+              title="OLL — Robotics, Coding & AI Education"
+              loading="eager"
+              width="150"
+              height="44"
+              style={{ height: 40, width: 'auto' }}
+            />
+          </Link>
+
+          {/* Center nav links */}
+          <div className="oll-pillnav-links">
+            {navLinks.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={isActive(link.path) ? 'active' : ''}
+                data-testid={`pill-nav-link-${link.label.toLowerCase()}`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Right side actions */}
+          <div className="oll-pillnav-actions">
+            <a
+              href={LMS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="oll-pill-btn-outline"
+              data-testid="pill-nav-lms-login"
+              aria-label="LMS Login (opens in a new tab)"
+            >
+              <BookOpen size={14} /> <span className="oll-pill-hide-sm">LMS Login</span>
+            </a>
+
+            {isLoggedIn ? (
+              <button
+                onClick={() => navigate(getProfileLink())}
+                className="oll-pill-profile"
+                data-testid="pill-nav-profile"
+                aria-label={`${user?.name?.split(' ')[0] || 'Profile'}`}
+              >
+                {isEducator ? <GraduationCap size={18} /> : <User size={18} />}
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/login')}
+                className="oll-pill-btn-primary"
+                data-testid="pill-nav-login"
+              >
+                <LogIn size={14} /> <span className="oll-pill-hide-sm">Login</span>
+                <ArrowRight size={14} className="oll-pill-hide-sm" />
+              </button>
+            )}
+          </div>
+        </nav>
+        <div className="oll-pillnav-spacer" aria-hidden />
+      </>
+    );
+  }
+
+  // Determine where logo/profile should navigate
 
   return (
     <nav className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50 sticky top-0 z-50">
