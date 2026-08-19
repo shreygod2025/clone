@@ -79,12 +79,6 @@ const SCHOOL_GETS = [
   { i: TerminalSquare,  t: 'LMS & Reporting',             s: 'A Learning Management System with progress dashboards for teachers and parents.' },
 ];
 
-const PILLARS = [
-  { i: Rocket,  t: 'A Future-Ready Identity', s: 'Become known as a modern school preparing students for tomorrow.', color: '#DC2626' },
-  { i: Trophy,  t: 'A Culture of Achievement', s: 'Give students pathways to projects, competitions and recognition.', color: '#1E3A8A' },
-  { i: Heart,   t: 'Prouder Parents',          s: 'Give families something tangible to see, experience and celebrate.', color: '#60A5FA' },
-];
-
 const BOOKS = [
   { grade: 'Grade 1', theme: 'Be a Creator',    src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9qs738wd_A3%20Book%20Chart.png',       spine: '#7C3AED', flip: 'https://heyzine.com/flip-book/b88e40c849.html' },
   { grade: 'Grade 2', theme: "Let's Explore",   src: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4y6z7vtw_A3%20Book%20Chart%20%281%29.png', spine: '#0EA5E9', flip: 'https://heyzine.com/flip-book/5e35827f8b.html' },
@@ -679,7 +673,7 @@ export default function RoboticsBeginnerLanding() {
 
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.5rem' }}>parent satisfaction</div>
+            <div className="rb-hand" style={{ color: '#DC2626', fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', lineHeight: 1 }}>parent satisfaction</div>
             <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
               Make parents proud of what their <span className="rb-stroke">children can create.</span>
             </h2>
@@ -796,12 +790,6 @@ export default function RoboticsBeginnerLanding() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div style={{ maxWidth: 780, marginLeft: 'auto', marginRight: 'auto', textAlign: 'center', padding: '1.5rem 1.5rem 0' }}>
-              <p className="rb-serif" style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, fontStyle: 'italic' }}>
-                A complete, hands-on Robotics foundation designed for schools starting their journey. Beginner-friendly. Pocket-friendly. Easy to teach. No need to start with an advanced Robotics lab — <strong style={{ color: '#FCA5A5', fontStyle: 'normal' }}>start with the fundamentals, build student confidence, create excitement</strong> — and establish the foundation for a long-term Future Skills journey.
-              </p>
             </div>
           </div>
         </div>
@@ -1019,32 +1007,7 @@ export default function RoboticsBeginnerLanding() {
         </div>
       </section>
 
-      {/* ═══════════ 07 — WHAT YOUR SCHOOL GETS (3 pillars) ═══════════ */}
-      <section data-testid="rb-pillars" style={{ position: 'relative', padding: '5rem 1.25rem', background: '#F1F5F9', overflow: 'hidden' }}>
-        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div className="rb-hand" style={{ color: '#1E3A8A', fontSize: '1.5rem' }}>the outcome</div>
-            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
-              What your school <span className="rb-stroke">gets.</span>
-            </h2>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-            {PILLARS.map((p) => (
-              <div key={p.t} style={{ position: 'relative', background: `linear-gradient(135deg, ${p.color}, #0A1F44 130%)`, color: '#fff', borderRadius: '1.4rem', padding: '2rem 1.75rem', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '44px 44px', pointerEvents: 'none' }} />
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <p.i size={26} />
-                  </div>
-                  <h3 className="rb-h3" style={{ fontSize: '1.4rem', marginTop: '1rem', lineHeight: 1.1 }}>{p.t}</h3>
-                  <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.85)', marginTop: '0.5rem', lineHeight: 1.55 }}>{p.s}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ═══════════ 07 — (removed: What your school gets pillars section) ═══════════ */}
 
       {/* ═══════════ 08 — ABOUT OLL (Shark Tank / KBC + Trust Stats) ═══════════ */}
       <section data-testid="rb-about-oll" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', color: '#fff', overflow: 'hidden' }}>
