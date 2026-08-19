@@ -23,7 +23,7 @@ import {
   ArrowRight, Phone, Download, ChevronLeft, ChevronRight, Trophy,
   School, GraduationCap, MapPin, Cpu, Code2, Brain, Boxes, Lightbulb,
   FlaskConical, Rocket, Plane, Radio, BookOpen, Package, ClipboardCheck,
-  Award, LifeBuoy, Heart, Sparkles, PlayCircle, Quote, Star, CheckCircle2,
+  Award, LifeBuoy, Heart, Sparkles, PlayCircle, Play, Quote, Star, CheckCircle2,
   Camera, Share2, Eye, Hammer, Users, Cog, Zap, TerminalSquare, Wifi,
   Calculator, Palette, Gift,
 } from 'lucide-react';
@@ -47,6 +47,21 @@ const KBC_IMG =
   'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png';
 const SHARK_TANK_IMG =
   'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
+
+const SHARK_TANK_YT = 'https://www.youtube.com/watch?v=aVzl6yzPPTw';
+const KBC_YT        = 'https://www.youtube.com/watch?v=8M3A_InpVKw&t=883s';
+
+// Media house logos — infinite scroll ticker under the Shark Tank / KBC cards
+const MEDIA_LOGOS = [
+  { src: '/media-logos/yourstory.png',       alt: 'YourStory' },
+  { src: '/media-logos/sony-tv.png',         alt: 'Sony Entertainment TV' },
+  { src: '/media-logos/hindustan-times.png', alt: 'Hindustan Times' },
+  { src: '/media-logos/times-of-india.png',  alt: 'The Times of India' },
+  { src: '/media-logos/cnbc-tv18.png',       alt: 'CNBC TV18' },
+  { src: '/media-logos/indian-express.png',  alt: 'The Indian Express' },
+  { src: '/media-logos/business-insider.webp', alt: 'Business Insider' },
+  { src: '/media-logos/pinkvilla.png',       alt: 'Pinkvilla' },
+];
 
 const SKILLS_LIST = 'Robotics • Coding • AI • 3D Design • STEM • Space • Drones';
 
@@ -1269,24 +1284,73 @@ export default function RoboticsBeginnerLanding() {
           </div>
 
           {/* As seen on */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem', marginBottom: '3rem' }}>
-            <div data-testid="rb-media-kbc" style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 260, border: '1px solid rgba(255,255,255,0.15)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+            <a
+              href={KBC_YT}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="rb-media-kbc"
+              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 260, border: '1px solid rgba(255,255,255,0.15)', textDecoration: 'none', display: 'block', transition: 'transform 0.3s ease, box-shadow 0.3s ease', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.45)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.3)'; }}
+            >
               <img src={KBC_IMG} alt="Kaun Banega Crorepati" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.92) 100%)' }} />
+              <div data-testid="rb-kbc-watch-pill" style={{ position: 'absolute', top: 14, right: 14, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, background: '#DC2626', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', boxShadow: '0 12px 24px rgba(220,38,38,0.45)' }}>
+                <Play size={12} fill="#fff" strokeWidth={0} /> Watch clip
+              </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
                 <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Sony · KBC</div>
                 <div className="rb-h3" style={{ fontSize: '1.35rem', marginTop: 4 }}>Kaun Banega Crorepati</div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
               </div>
-            </div>
+            </a>
 
-            <div data-testid="rb-media-shark-tank" style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 260, border: '1px solid rgba(255,255,255,0.15)' }}>
+            <a
+              href={SHARK_TANK_YT}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="rb-media-shark-tank"
+              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 260, border: '1px solid rgba(255,255,255,0.15)', textDecoration: 'none', display: 'block', transition: 'transform 0.3s ease, box-shadow 0.3s ease', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.45)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.3)'; }}
+            >
               <img src={SHARK_TANK_IMG} alt="Shark Tank India" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.92) 100%)' }} />
+              <div data-testid="rb-shark-tank-watch-pill" style={{ position: 'absolute', top: 14, right: 14, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, background: '#DC2626', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', boxShadow: '0 12px 24px rgba(220,38,38,0.45)' }}>
+                <Play size={12} fill="#fff" strokeWidth={0} /> Watch clip
+              </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
                 <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Sony LIV · Season Finale</div>
                 <div className="rb-h3" style={{ fontSize: '1.35rem', marginTop: 4 }}>Shark Tank India</div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
+              </div>
+            </a>
+          </div>
+
+          {/* ── Media houses infinite scroll ticker ─────────────────── */}
+          <div data-testid="rb-media-logos" style={{ marginBottom: '2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '0.9rem' }}>
+              <span style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(252,165,165,0.85)' }}>
+                // Also covered by
+              </span>
+            </div>
+            <style>{`
+              @keyframes rb-logo-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+              .rb-logos-wrap { position: relative; overflow: hidden; padding: 8px 0; mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); }
+              .rb-logos-track { display: inline-flex; gap: 3.25rem; padding: 0 1.5rem; align-items: center; animation: rb-logo-scroll 38s linear infinite; will-change: transform; width: max-content; }
+              .rb-logos-track:hover { animation-play-state: paused; }
+              .rb-logo-item { flex-shrink: 0; height: 62px; padding: 10px 18px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.96); border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.18); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+              .rb-logo-item img { max-height: 40px; max-width: 150px; height: auto; width: auto; display: block; object-fit: contain; }
+              .rb-logo-item:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 14px 28px rgba(0,0,0,0.28); }
+            `}</style>
+            <div className="rb-logos-wrap">
+              <div className="rb-logos-track">
+                {[...MEDIA_LOGOS, ...MEDIA_LOGOS].map((l, i) => (
+                  <div key={`${l.alt}-${i}`} className="rb-logo-item" data-testid={i < MEDIA_LOGOS.length ? `rb-media-logo-${i}` : undefined}>
+                    <img src={l.src} alt={l.alt} loading="lazy" />
+                  </div>
+                ))}
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Star, Quote as QuoteIcon } from 'lucide-react';
+import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Quote as QuoteIcon, Video, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useUserAuth } from '../context/UserAuthContext';
@@ -63,27 +63,53 @@ const WRITTEN_QUOTES = [
   { quote: 'Best investment beyond her academics. She actually looks forward to Saturdays.', name: 'Priya K.', context: 'Grade 3 parent' },
 ];
 
-// Classroom slider (Inside an OLL classroom) — placeholder Unsplash photos
-// User can swap these with real classroom media later.
+// Classroom media — real photos & videos from OLL classrooms (mirrors Future Skills page)
 const CLASSROOM_MEDIA = [
-  { src: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=900&q=70', caption: 'Robotics build lab' },
-  { src: 'https://images.unsplash.com/photo-1596496050827-8299e0220de1?w=900&q=70', caption: 'First-time coders · Grade 3' },
-  { src: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&q=70', caption: 'Team problem-solving' },
-  { src: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=900&q=70', caption: 'IoT project · Grade 8' },
-  { src: 'https://images.unsplash.com/photo-1580894732930-0babd100d356?w=900&q=70', caption: '3D printing lab' },
-  { src: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&q=70', caption: 'Girls in STEM' },
-  { src: 'https://images.unsplash.com/photo-1610484826967-09c5720778c7?w=900&q=70', caption: 'Line-follower demo day' },
-  { src: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=900&q=70', caption: 'Weekend club showcase' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/5h69is60_20260504_122331.mp4', label: 'Hands-on build', caption: 'Kids assembling their first IoT & AI lab kit' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg', label: 'Live class', caption: 'Working through a circuit module step by step' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gwljm6r9_20260504_122607.jpg', label: 'Build station', caption: 'Pair-builds with the OLL IoT & AI Lab Kit' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/04pgqymv_20260504_123958.mp4', label: 'In action', caption: 'Real class footage — what a session feels like' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tqatbciw_20260504_124243.jpg', label: 'Manipulative station', caption: 'Kids exploring components together' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9p89o2y6_20260504_154936.mp4', label: 'Class showcase', caption: 'Students presenting what they built today' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rhwyg94z_20260504_163950.jpg', label: 'Batch of builders', caption: 'End-of-class group photo — the whole crew' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/geb6vgey_VID20260504135039.mp4', label: 'Build moment', caption: 'Mid-class hands-on — heads-down focus' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ctig02to_IMG-20260504-WA0020.jpg', label: 'Educator-led', caption: 'Trainers walking kids through their first build' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/e7dknsgn_VID20260504155236.mp4', label: 'In progress', caption: 'Kids deep in their build — a real session glimpse' },
 ];
+
+// Media house logos — infinite scroll ticker under the Shark Tank / KBC cards
+const MEDIA_LOGOS = [
+  { src: '/media-logos/yourstory.png',       alt: 'YourStory' },
+  { src: '/media-logos/sony-tv.png',         alt: 'Sony Entertainment TV' },
+  { src: '/media-logos/hindustan-times.png', alt: 'Hindustan Times' },
+  { src: '/media-logos/times-of-india.png',  alt: 'The Times of India' },
+  { src: '/media-logos/cnbc-tv18.png',       alt: 'CNBC TV18' },
+  { src: '/media-logos/indian-express.png',  alt: 'The Indian Express' },
+  { src: '/media-logos/business-insider.webp', alt: 'Business Insider' },
+  { src: '/media-logos/pinkvilla.png',       alt: 'Pinkvilla' },
+];
+
+// Shark Tank & KBC YouTube targets (sourced from the About page)
+const SHARK_TANK_YT = 'https://www.youtube.com/watch?v=aVzl6yzPPTw';
+const KBC_YT        = 'https://www.youtube.com/watch?v=8M3A_InpVKw&t=883s';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
+  const [mediaOpen, setMediaOpen] = useState(null); // { type, src, label, caption }
 
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Close lightbox on Escape
+  useEffect(() => {
+    if (!mediaOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setMediaOpen(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mediaOpen]);
 
   // Redirect logged-in students to their bookings page
   useEffect(() => {
@@ -419,23 +445,74 @@ const LandingPage = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
-            <div data-testid="homepage-media-kbc" style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)' }}>
+            <a
+              href={KBC_YT}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="homepage-media-kbc"
+              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)', textDecoration: 'none', display: 'block', transition: 'transform 0.3s ease, box-shadow 0.3s ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 40px 70px rgba(0,0,0,0.45)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.35)'; }}
+            >
               <img src={KBC_IMG} alt="Kaun Banega Crorepati" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
+              {/* Watch clip pill (top-right) */}
+              <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, background: '#DC2626', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', boxShadow: '0 12px 24px rgba(220,38,38,0.45)' }}>
+                <Play size={12} fill="#fff" strokeWidth={0} /> Watch clip
+              </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
                 <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony · KBC</div>
                 <div style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Kaun Banega Crorepati</div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
               </div>
-            </div>
+            </a>
 
-            <div data-testid="homepage-media-shark-tank" style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)' }}>
+            <a
+              href={SHARK_TANK_YT}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="homepage-media-shark-tank"
+              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)', textDecoration: 'none', display: 'block', transition: 'transform 0.3s ease, box-shadow 0.3s ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 40px 70px rgba(0,0,0,0.45)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.35)'; }}
+            >
               <img src={SHARK_TANK_IMG} alt="Shark Tank India" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
+              {/* Watch clip pill (top-right) */}
+              <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999, background: '#DC2626', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', boxShadow: '0 12px 24px rgba(220,38,38,0.45)' }}>
+                <Play size={12} fill="#fff" strokeWidth={0} /> Watch clip
+              </div>
               <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
                 <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony LIV · Season Finale</div>
                 <div style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Shark Tank India</div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
+              </div>
+            </a>
+          </div>
+
+          {/* ── Media houses infinite scroll ticker ────────────────────── */}
+          <div data-testid="homepage-media-logos" style={{ marginTop: '2.75rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+              <span style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(252,165,165,0.85)' }}>
+                // Also covered by
+              </span>
+            </div>
+            <style>{`
+              @keyframes home-logo-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+              .home-logos-wrap { position: relative; overflow: hidden; padding: 8px 0; mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); }
+              .home-logos-track { display: inline-flex; gap: 3.25rem; padding: 0 1.5rem; align-items: center; animation: home-logo-scroll 38s linear infinite; will-change: transform; width: max-content; }
+              .home-logos-track:hover { animation-play-state: paused; }
+              .home-logo-item { flex-shrink: 0; height: 62px; padding: 10px 18px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.96); border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.18); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+              .home-logo-item img { max-height: 40px; max-width: 150px; height: auto; width: auto; display: block; object-fit: contain; }
+              .home-logo-item:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 14px 28px rgba(0,0,0,0.28); }
+            `}</style>
+            <div className="home-logos-wrap">
+              <div className="home-logos-track">
+                {[...MEDIA_LOGOS, ...MEDIA_LOGOS].map((l, i) => (
+                  <div key={`${l.alt}-${i}`} className="home-logo-item" data-testid={i < MEDIA_LOGOS.length ? `homepage-media-logo-${i}` : undefined}>
+                    <img src={l.src} alt={l.alt} loading="lazy" />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -811,7 +888,18 @@ const LandingPage = () => {
                   {...(!isYT ? { onClick: (e) => {
                     const vid = e.currentTarget.querySelector('video');
                     if (!vid) return;
-                    if (vid.paused) { vid.play(); vid.muted = false; } else { vid.pause(); }
+                    // First click always unmutes + plays; subsequent clicks toggle play/pause with sound on
+                    if (vid.muted) {
+                      vid.muted = false;
+                      vid.currentTime = 0;
+                      const p = vid.play();
+                      if (p && p.catch) p.catch(() => {});
+                    } else if (vid.paused) {
+                      const p = vid.play();
+                      if (p && p.catch) p.catch(() => {});
+                    } else {
+                      vid.pause();
+                    }
                   }} : {})}
                 >
                   <span className={`home-tbadge ${t.role}`}>{t.label}</span>
@@ -856,40 +944,153 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── INSIDE AN OLL CLASSROOM · horizontal auto-scrolling slider ── */}
+      {/* ── INSIDE AN OLL CLASSROOM · uneven mosaic gallery (real moments) ── */}
       <section data-testid="homepage-inside-classroom" style={{
         position: 'relative', overflow: 'hidden',
-        padding: '4rem 0 5rem',
+        padding: '5rem 1.25rem 5.5rem',
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
       }}>
         <style>{`
-          .home-class-track { display: inline-flex; gap: 1rem; animation: home-scroll 55s linear infinite; will-change: transform; padding: 8px 12px; }
-          .home-class-track:hover { animation-play-state: paused; }
-          .home-class-card { flex-shrink: 0; width: 340px; aspect-ratio: 4/3; border-radius: 1rem; overflow: hidden; position: relative; box-shadow: 0 14px 32px rgba(15,30,80,0.12); background: #0A1F44; }
-          .home-class-card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s ease; }
-          .home-class-card:hover img { transform: scale(1.05); }
-          .home-class-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(10,31,68,0.85) 100%); pointer-events: none; }
-          .home-class-cap { position: absolute; bottom: 14px; left: 18px; right: 18px; color: #fff; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 0.92rem; z-index: 1; }
+          .home-mosaic-wrap { max-width: 1240px; margin: 0 auto; }
+          .home-mosaic-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; height: 460px; margin-bottom: 14px; }
+          .home-mosaic-row:last-child { margin-bottom: 0; }
+          @media (max-width: 900px) { .home-mosaic-row { height: 380px; gap: 10px; } }
+          @media (max-width: 640px) { .home-mosaic-row { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr); height: 560px; gap: 8px; margin-bottom: 8px; } }
+          .home-mosaic-tile {
+            position: relative; overflow: hidden; border-radius: 20px; cursor: pointer;
+            background: linear-gradient(180deg, #0A1F44 0%, #1E3A5F 100%);
+            border: 2px solid rgba(96,165,250,0.18);
+            box-shadow: 0 22px 44px rgba(10,31,68,0.16);
+            transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+          }
+          .home-mosaic-tile:hover { transform: translateY(-4px); box-shadow: 0 30px 60px rgba(10,31,68,0.26); border-color: #DC2626; }
+          .home-mosaic-tile img, .home-mosaic-tile video {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+            transition: transform 0.55s ease, opacity 0.35s ease;
+          }
+          .home-mosaic-tile:hover img { transform: scale(1.06); }
+          .home-mosaic-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(10,31,68,0.92) 100%); pointer-events: none; }
+          .home-mosaic-pill { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-family: 'Proxima Nova','Montserrat',sans-serif; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; backdrop-filter: blur(6px); border: 1px solid; }
+          .home-mosaic-pill.video { background: rgba(220,38,38,0.72); border-color: #DC2626; }
+          .home-mosaic-pill.photo { background: rgba(30,58,95,0.72); border-color: #60A5FA; }
+          .home-mosaic-play { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+          .home-mosaic-play > div { width: 60px; height: 60px; border-radius: 999px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(0,0,0,0.35); transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease; }
+          .home-mosaic-tile:hover .home-mosaic-play > div { transform: scale(1.12); background: #DC2626; border-color: #DC2626; }
+          .home-mosaic-cap { position: absolute; bottom: 14px; left: 16px; right: 16px; z-index: 2; color: #fff; font-family: 'Proxima Nova','Montserrat',sans-serif; }
+          .home-mosaic-cap-title { font-size: 0.95rem; font-weight: 800; line-height: 1.2; }
+          .home-mosaic-cap-sub { margin-top: 3px; font-size: 0.75rem; color: rgba(191,219,254,0.9); font-weight: 300; line-height: 1.4; }
+          @media (max-width: 640px) { .home-mosaic-cap-sub { display: none; } }
         `}</style>
-        <div style={{ textAlign: 'center', maxWidth: 1180, margin: '0 auto', padding: '0 1.25rem 2rem' }}>
+
+        <div style={{ textAlign: 'center', maxWidth: 1180, margin: '0 auto 2.5rem', padding: '0 1.25rem' }}>
           <div className="home-script-heading">what learning looks like</div>
           <h2 className="home-h2">
             Inside an <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>OLL classroom.</span>
           </h2>
           <p className="home-sub">Not slides. Not lectures. Real components, real builds, real kids getting their hands dirty.</p>
+          <div style={{ marginTop: '0.75rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
+            Tap any tile to play / view
+          </div>
         </div>
 
-        <div className="home-marquee-wrap" data-testid="home-classroom-slider">
-          <div className="home-class-track">
-            {[...CLASSROOM_MEDIA, ...CLASSROOM_MEDIA].map((m, i) => (
-              <div key={`${m.src}-${i}`} className="home-class-card">
-                <img src={m.src} alt={m.caption} loading="lazy" />
-                <div className="home-class-cap">{m.caption}</div>
+        <div className="home-mosaic-wrap" data-testid="home-classroom-mosaic">
+          {[0, 5].map((startIdx) => {
+            const bigOnLeft = startIdx === 0;
+            // Desktop grid areas (6 col × 2 rows); on mobile flattens via CSS
+            const layouts = bigOnLeft
+              ? ['col-span-3 row-span-2', 'col-2 row-1 left', 'col-1 row-1 right', 'col-2 row-2 left', 'col-1 row-2 right']
+              : ['col-2 row-1 left', 'col-1 row-1 left2', 'col-3 row-span-2 right', 'col-2 row-2 left', 'col-1 row-2 left2'];
+            const gridStyle = (idx) => {
+              if (bigOnLeft) {
+                if (idx === 0) return { gridColumn: '1 / span 3', gridRow: '1 / span 2' };
+                if (idx === 1) return { gridColumn: '4 / span 2', gridRow: '1' };
+                if (idx === 2) return { gridColumn: '6 / span 1', gridRow: '1' };
+                if (idx === 3) return { gridColumn: '4 / span 2', gridRow: '2' };
+                if (idx === 4) return { gridColumn: '6 / span 1', gridRow: '2' };
+              } else {
+                if (idx === 0) return { gridColumn: '1 / span 2', gridRow: '1' };
+                if (idx === 1) return { gridColumn: '3 / span 1', gridRow: '1' };
+                if (idx === 2) return { gridColumn: '4 / span 3', gridRow: '1 / span 2' };
+                if (idx === 3) return { gridColumn: '1 / span 2', gridRow: '2' };
+                if (idx === 4) return { gridColumn: '3 / span 1', gridRow: '2' };
+              }
+              return {};
+            };
+            return (
+              <div key={startIdx} className="home-mosaic-row">
+                {CLASSROOM_MEDIA.slice(startIdx, startIdx + 5).map((m, j) => (
+                  <div
+                    key={`${startIdx}-${j}`}
+                    className="home-mosaic-tile"
+                    style={gridStyle(j)}
+                    onClick={() => setMediaOpen(m)}
+                    data-testid={`home-classroom-tile-${startIdx + j}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMediaOpen(m); } }}
+                    aria-label={`View ${m.label}`}
+                  >
+                    {m.type === 'video' ? (
+                      <video src={m.src} muted playsInline preload="metadata" style={{ pointerEvents: 'none' }} />
+                    ) : (
+                      <img src={m.src} alt={m.label} loading="lazy" />
+                    )}
+                    <div className="home-mosaic-overlay" />
+                    <span className={`home-mosaic-pill ${m.type}`}>
+                      {m.type === 'video' ? <Video size={11} /> : <Sparkles size={11} />}
+                      {m.type === 'video' ? 'Video' : 'Photo'}
+                    </span>
+                    {m.type === 'video' && (
+                      <div className="home-mosaic-play">
+                        <div><Play size={22} fill="#fff" strokeWidth={0} style={{ marginLeft: 2 }} /></div>
+                      </div>
+                    )}
+                    <div className="home-mosaic-cap">
+                      <div className="home-mosaic-cap-title">{m.label}</div>
+                      <div className="home-mosaic-cap-sub">{m.caption}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            );
+          })}
+          <div style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
+            {CLASSROOM_MEDIA.length} moments · captured at our centres in May 2026
           </div>
         </div>
       </section>
+
+      {/* ── Classroom media lightbox modal ────────────────────────────── */}
+      {mediaOpen && (
+        <div
+          data-testid="home-classroom-lightbox"
+          onClick={(e) => { if (e.target === e.currentTarget) setMediaOpen(null); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(6,12,30,0.92)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)' }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setMediaOpen(null); }}
+            data-testid="home-classroom-lightbox-close"
+            aria-label="Close"
+            style={{ position: 'absolute', top: 20, right: 20, width: 42, height: 42, borderRadius: 999, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <X size={20} />
+          </button>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 960, borderRadius: 20, overflow: 'hidden', boxShadow: '0 40px 80px rgba(0,0,0,0.55)', background: '#0A1F44' }}>
+            {mediaOpen.type === 'video' ? (
+              <video src={mediaOpen.src} controls autoPlay playsInline style={{ width: '100%', maxHeight: '80vh', background: '#000', display: 'block' }} />
+            ) : (
+              <img src={mediaOpen.src} alt={mediaOpen.label} style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', background: '#000', display: 'block' }} />
+            )}
+            <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(180deg, rgba(10,31,68,0.4), #0A1F44)', color: '#fff' }}>
+              <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#FCA5A5' }}>
+                {mediaOpen.type === 'video' ? 'Class footage' : 'Class moment'}
+              </div>
+              <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '1.15rem', fontWeight: 800, marginTop: 4 }}>{mediaOpen.label}</div>
+              <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.9rem', marginTop: 4, color: 'rgba(191,219,254,0.9)' }}>{mediaOpen.caption}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer - Always visible */}
       <Footer />
