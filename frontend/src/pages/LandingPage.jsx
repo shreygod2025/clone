@@ -1,18 +1,49 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { GraduationCap, Users, Building2, ArrowRight, Zap } from 'lucide-react';
+import { GraduationCap, Users, Building2, ArrowRight, Quote, PlayCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useUserAuth } from '../context/UserAuthContext';
 
+// ── Shared assets from Robotics Beginner (theme parity) ────────────────────
+const KBC_IMG        = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png';
+const SHARK_TANK_IMG = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
+const PARTNER_LOGOS  = Array.from({ length: 46 }, (_, i) => `/school-logos/${i + 1}.png`);
+const SCHOOL_VIDEOS = [
+  { name: 'Parle Tilak Vidyalay',            id: 'xHhMLBzB_GU' },
+  { name: 'Maneckji Cooper Education Trust', id: 'vOik-WmE_n8' },
+  { name: 'Hiranandani Foundation School',   id: 'OnK6oevnLeM' },
+  { name: 'TayieBiyah High School',          id: 'dWo2wr02mq4' },
+  { name: 'Greenlawns High School',          id: 'YoIu5akBkr0' },
+  { name: 'Shree Chandulal Nanavati High',   id: 'r6xeqlTixYE' },
+  { name: 'GD Somani School',                id: '5c2gZORdUxc' },
+  { name: 'St. Agnes School',                id: 'I0uZ8aIIkwU' },
+  { name: 'Sanjeevani World School',         id: 'YeyKFirPot4' },
+  { name: 'Dosti Foundation School',         id: 'sqXE6tsUQ6g' },
+];
+const PARENT_QUOTES = [
+  'My child couldn\u2019t stop talking about what they built.',
+  'It\u2019s amazing to see them actually create something.',
+  'Every week she comes home with a new project — and a bigger smile.',
+];
+const PARENT_VIDEO = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4';
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
+  const [parentIdx, setParentIdx] = useState(0);
+  const parentVideoRef = useRef(null);
 
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  // Rotating parent quote (matches Robotics Beginner)
+  useEffect(() => {
+    const t = setInterval(() => setParentIdx((i) => (i + 1) % PARENT_QUOTES.length), 4500);
+    return () => clearInterval(t);
   }, []);
 
   // Redirect logged-in students to their bookings page
@@ -310,6 +341,53 @@ const LandingPage = () => {
       </section>
       )}
 
+      {/* ── AS SEEN ON — Shark Tank India + KBC (Robotics Beginner theme) ── */}
+      <section data-testid="homepage-as-seen-on" style={{
+        position: 'relative', overflow: 'hidden',
+        padding: '5rem 1.25rem',
+        background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)',
+        color: '#fff',
+      }}>
+        <div style={{ position: 'absolute', top: -140, left: '10%', width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.28) 0%, transparent 65%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -140, right: '10%', width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(96,165,250,0.22) 0%, transparent 65%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div style={{ fontFamily: "'Caveat', 'Playfair Display', cursive", fontSize: 'clamp(2rem, 4.4vw, 3.2rem)', color: '#FCA5A5', lineHeight: 1, fontWeight: 700 }}>
+              as seen on
+            </div>
+            <h2 style={{ fontFamily: "'Anton', 'Zing Rust', sans-serif", fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, fontWeight: 900, letterSpacing: '-0.01em', marginTop: '0.4rem' }}>
+              National television. <span style={{ color: '#FCA5A5' }}>National recognition.</span>
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 620, margin: '0.9rem auto 0', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6 }}>
+              OLL has been featured on India&apos;s most-watched shows — and pitched to India&apos;s top investors on national TV.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+            <div data-testid="homepage-media-kbc" style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)' }}>
+              <img src={KBC_IMG} alt="Kaun Banega Crorepati" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
+              <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
+                <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony · KBC</div>
+                <div style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Kaun Banega Crorepati</div>
+                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
+              </div>
+            </div>
+
+            <div data-testid="homepage-media-shark-tank" style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)' }}>
+              <img src={SHARK_TANK_IMG} alt="Shark Tank India" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
+              <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
+                <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony LIV · Season Finale</div>
+                <div style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Shark Tank India</div>
+                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── SCHOOL PRODUCTS ────────────────────────────
           Two flagship product families sold to schools — Robotics + Computer
           Science curricula. Each tier click routes to a dedicated demo-booking
@@ -520,99 +598,179 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── AI Foundations · 10-Day Online (Grades 6–12) ── */}
-      <section style={{
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #EFF6FF 60%, #FFFFFF 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-        paddingTop: '4.5rem',
-        paddingBottom: '5rem',
-      }} data-testid="homepage-ai-foundations-section">
-        {/* Tech grid */}
-        <div style={{
-          position: 'absolute', inset: 0, opacity: 0.07, pointerEvents: 'none',
-          backgroundImage: 'linear-gradient(#1E3A5F 1px, transparent 1px), linear-gradient(90deg, #1E3A5F 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
-        }} />
-        <div style={{ position: 'absolute', top: '-80px', right: '10%', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-60px', left: '6%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      {/* AI Foundations section — removed per request */}
 
-        <div className="text-center" style={{ paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem', position: 'relative' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#2563EB', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
-            NEW · 10-DAY ONLINE COHORT · GRADES 6 – 12
-          </p>
-          <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.7rem, 4.5vw, 3rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.15, marginBottom: '0.75rem' }}>
-            <span style={{ background: 'linear-gradient(90deg, #2563EB, #38BDF8, #6366F1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI Foundations</span> Course
-          </h2>
-          <p style={{ color: '#475569', fontSize: '1rem', maxWidth: 620, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
-            10 days. 7+ shareable AI projects. Zero code. Live online cohort capped at 12 students.
-          </p>
-        </div>
+      {/* ── SCHOOLS WE WORK WITH — auto-scrolling videos + partner logos ── */}
+      <section data-testid="homepage-schools-we-work-with" style={{
+        position: 'relative', overflow: 'hidden',
+        padding: '5rem 1.25rem 3rem',
+        background: '#F8FAFC',
+      }}>
+        <style>{`
+          @keyframes home-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+          .home-marquee-wrap { overflow: hidden; padding: 10px 0; }
+          .home-marquee-track { display: inline-flex; gap: 1rem; padding: 4px 8px; animation: home-scroll 60s linear infinite; will-change: transform; }
+          .home-marquee-track:hover { animation-play-state: paused; }
+          .home-vid-card { flex-shrink: 0; width: 300px; background: #0A1F44; border-radius: 1rem; overflow: hidden; text-decoration: none; box-shadow: 0 12px 30px rgba(10,31,68,0.15); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+          .home-vid-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.25); }
+          .home-vid-thumb { position: relative; aspect-ratio: 16/9; background: #0A1F44; }
+          .home-vid-thumb img { width: 100%; height: 100%; object-fit: cover; }
+          .home-vid-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); color: #fff; }
+          .home-logo-track { animation-duration: 55s; }
+        `}</style>
 
-        <div style={{ maxWidth: 1000, margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', position: 'relative' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%)',
-            borderRadius: '1.5rem',
-            border: '2px solid rgba(37,99,235,0.18)',
-            boxShadow: '0 30px 60px rgba(15,30,51,0.08), 0 0 0 1px rgba(37,99,235,0.04)',
-            padding: '2.5rem',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            <div className="grid md:grid-cols-[1fr_280px] gap-8" style={{ position: 'relative' }}>
-              <div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {['ChatGPT', 'Midjourney', 'Suno', 'Runway', 'Vibe Coding', 'Canva AI', 'Gamma'].map(t => (
-                    <span key={t} style={{ fontSize: '0.7rem', padding: '0.25rem 0.65rem', borderRadius: 999, background: 'rgba(37,99,235,0.08)', color: '#1D4ED8', border: '1px solid rgba(37,99,235,0.2)', fontWeight: 700, fontFamily: "'Nunito Sans', sans-serif" }}>
-                      {t}
-                    </span>
-                  ))}
-                </div>
-                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.5rem', fontWeight: 900, color: '#0F1E33', marginBottom: '0.5rem' }}>
-                  Build real AI projects, every single day.
-                </h3>
-                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem', fontFamily: "'Nunito Sans', sans-serif" }}>
-                  Two parallel tracks — Explorer (Grade 6–8) and Creator (Grade 9–12) — taught by OLL Expert Educator <strong style={{ color: '#1E3A5F' }}>Vrishank Mistry</strong>. Same 10 days, right depth for the right age.
-                </p>
-                <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem', fontSize: '0.9rem', color: '#334155', fontFamily: "'Nunito Sans', sans-serif" }}>
-                  <li>✓ AI images, music, videos, study tools, design & vibe-coded apps</li>
-                  <li>✓ 7+ portfolio projects · OLL Certificate (UNESCO-linked)</li>
-                  <li>✓ Live online cohort · 12 students per batch</li>
-                </ul>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <button
-                    onClick={() => navigate('/ai-foundations')}
-                    data-testid="homepage-ai-foundations-cta-btn"
-                    style={{ background: '#1E3A5F', color: '#fff', padding: '0.85rem 1.75rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: 'pointer', boxShadow: '0 12px 28px rgba(30,58,95,0.25)' }}
-                  >
-                    See Curriculum →
-                  </button>
-                </div>
-              </div>
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div style={{ fontFamily: "'Caveat', 'Playfair Display', cursive", fontSize: 'clamp(2rem, 4.4vw, 3rem)', color: '#DC2626', lineHeight: 1, fontWeight: 700 }}>
+              proof, not promises
+            </div>
+            <h2 style={{ fontFamily: "'Anton', 'Zing Rust', sans-serif", fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', fontWeight: 900, letterSpacing: '-0.01em', marginTop: '0.4rem' }}>
+              Schools we <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>work with.</span>
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
+              Real classrooms. Real projects. Real principals telling the story in their own words.
+            </p>
+          </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
-                {[
-                  { k: '10 Days', v: 'Online live', icon: '🌐' },
-                  { k: '7+ Projects', v: 'Portfolio-grade', icon: '🎨' },
-                  { k: '12 Seats', v: 'Per cohort', icon: '👥' },
-                  { k: 'Certificate', v: 'UNESCO-linked', icon: '🎓' },
-                ].map(s => (
-                  <div key={s.k}
-                    onClick={() => navigate('/ai-foundations')}
-                    style={{ background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.1)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-                  >
-                    <span style={{ fontSize: '1.15rem', lineHeight: 1 }}>{s.icon}</span>
-                    <div>
-                      <div style={{ color: '#1D4ED8', fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2 }}>{s.k}</div>
-                      <div style={{ color: '#64748B', fontSize: '0.7rem', fontFamily: "'Nunito Sans', sans-serif", marginTop: '0.1rem' }}>{s.v}</div>
-                    </div>
+          {/* Auto-scrolling video marquee */}
+          <div className="home-marquee-wrap" data-testid="home-schools-videos">
+            <div className="home-marquee-track">
+              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
+                <a
+                  key={`${v.id}-${i}`}
+                  href={`https://youtu.be/${v.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="home-vid-card"
+                  data-testid={i < SCHOOL_VIDEOS.length ? `home-video-${v.id}` : undefined}
+                >
+                  <div className="home-vid-thumb">
+                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
+                    <div className="home-vid-play"><PlayCircle size={38} fill="rgba(255,255,255,0.18)" /></div>
+                  </div>
+                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                    <div style={{ fontSize: '0.98rem', fontWeight: 600, lineHeight: 1.25 }}>{v.name}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Rolling partner-schools logo bar */}
+          <div style={{ marginTop: '3rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8' }}>
+              A few of our partner schools
+            </div>
+            <div className="home-marquee-wrap">
+              <div className="home-marquee-track home-logo-track" style={{ gap: '2rem', alignItems: 'center' }}>
+                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
+                  <div key={i} style={{ minWidth: 150, height: 90, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', boxShadow: '0 4px 12px rgba(15,30,80,0.05)', flexShrink: 0 }}>
+                    <img src={src} alt="Partner school" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                   </div>
                 ))}
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── PARENTS FEEDBACK (video + rotating quote) — Robotics Beginner theme ── */}
+      <section data-testid="homepage-parents-feedback" style={{
+        position: 'relative', overflow: 'hidden',
+        padding: '5rem 1.25rem',
+        background: '#FFFFFF',
+      }}>
+        <div style={{ position: 'absolute', top: -140, right: -80, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.15) 0%, transparent 65%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -140, left: -60, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 65%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', maxWidth: 1080, margin: '0 auto', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div style={{ fontFamily: "'Caveat', 'Playfair Display', cursive", fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', color: '#DC2626', lineHeight: 1, fontWeight: 700 }}>
+              parent feedback
+            </div>
+            <h2 style={{ fontFamily: "'Anton', 'Zing Rust', sans-serif", fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', fontWeight: 900, letterSpacing: '-0.01em', marginTop: '0.4rem' }}>
+              What parents say <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>about OLL.</span>
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 620, margin: '0.9rem auto 0', color: '#475569', fontStyle: 'italic', lineHeight: 1.6 }}>
+              The best proof isn&apos;t a stat — it&apos;s a proud parent talking about their child.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) 1.15fr', gap: '2rem', alignItems: 'stretch' }} className="home-parent-grid">
+            <style>{`
+              @media (max-width: 800px) { .home-parent-grid { grid-template-columns: 1fr !important; } }
+            `}</style>
+            {/* Video card */}
+            <button
+              type="button"
+              onClick={() => {
+                const v = parentVideoRef.current;
+                if (!v) return;
+                if (v.paused) { v.play(); v.muted = false; } else { v.pause(); }
+              }}
+              data-testid="home-parent-video-btn"
+              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', border: '1px solid #E2E8F0', boxShadow: '0 30px 60px rgba(15,30,80,0.18)', background: '#0A1F44', minHeight: 360, cursor: 'pointer', padding: 0 }}
+            >
+              <video
+                ref={parentVideoRef}
+                src={PARENT_VIDEO}
+                muted
+                loop
+                playsInline
+                autoPlay
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 60%, rgba(10,31,68,0.85) 100%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: 18, left: 22, right: 22, textAlign: 'left', color: '#fff' }}>
+                <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Parent Testimonial</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Tap to unmute</div>
+              </div>
+            </button>
+
+            {/* Rotating parent quote */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0A1F44, #1E3A8A)',
+              color: '#fff',
+              borderRadius: '1.5rem',
+              padding: '2.5rem 2.25rem',
+              position: 'relative',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: 360,
+            }}>
+              <div style={{ position: 'absolute', top: -80, right: -60, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.35) 0%, transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                <Quote size={40} style={{ color: '#FCA5A5', opacity: 0.7, margin: '0 auto' }} />
+                <p
+                  key={parentIdx}
+                  style={{
+                    fontSize: 'clamp(1.15rem, 2vw, 1.55rem)',
+                    lineHeight: 1.5,
+                    fontStyle: 'italic',
+                    marginTop: '1rem',
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    color: '#fff',
+                    animation: 'homeParentFade 0.6s ease',
+                  }}
+                >
+                  &ldquo;{PARENT_QUOTES[parentIdx]}&rdquo;
+                </p>
+                <div style={{ marginTop: '1.15rem', fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, fontFamily: "'Proxima Nova', sans-serif" }}>— A proud OLL parent</div>
+                <div style={{ marginTop: '1rem', display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
+                  {PARENT_QUOTES.map((_, i) => (
+                    <span key={i} style={{ width: i === parentIdx ? 22 : 8, height: 8, borderRadius: 999, background: i === parentIdx ? '#FCA5A5' : 'rgba(255,255,255,0.25)', transition: 'width 0.3s ease, background 0.3s ease' }} />
+                  ))}
+                </div>
+              </div>
+              <style>{`@keyframes homeParentFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }`}</style>
+            </div>
+          </div>
+
+          <p style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.96rem', color: '#475569', fontStyle: 'italic', fontFamily: "'Playfair Display', Georgia, serif" }}>
+            Because the best learning experiences are the ones children take home — and the best achievements are the ones parents proudly share.
+          </p>
         </div>
       </section>
 
