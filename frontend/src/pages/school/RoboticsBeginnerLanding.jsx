@@ -25,7 +25,7 @@ import {
   FlaskConical, Rocket, Plane, Radio, BookOpen, Package, ClipboardCheck,
   Award, LifeBuoy, Heart, Sparkles, PlayCircle, Quote, Star, CheckCircle2,
   Camera, Share2, Eye, Hammer, Users, Cog, Zap, TerminalSquare, Wifi,
-  Calculator, Palette,
+  Calculator, Palette, Gift,
 } from 'lucide-react';
 
 const CURRICULUM_PDF =
@@ -96,6 +96,27 @@ const PARENT_QUOTES = [
   'Every week she comes home with a new project — and a bigger smile.',
 ];
 
+const PARTS_BREAKDOWN = [
+  { i: Cog,   t: 'Construction', s: 'Chassis, frames, wheels, mounts',              color: '#DC2626' },
+  { i: Cpu,   t: 'Electronics',  s: 'Micro-controllers, sensors, motors',           color: '#1E3A8A' },
+  { i: Code2, t: 'Coding',       s: 'Block-based to Python — grade by grade',       color: '#0EA5E9' },
+  { i: Brain, t: 'AI',           s: 'Vision, voice, ML play from Grade 6 upward',   color: '#7C3AED' },
+];
+
+const TAKE_HOME_KITS = [
+  { grade: 'Grade 1', theme: 'Be a Creator',    src: '/kits/grade-1.png', bg: '#FBBF24' },
+  { grade: 'Grade 2', theme: "Let's Explore",   src: '/kits/grade-2.png', bg: '#F97316' },
+  { grade: 'Grade 3', theme: 'Discover',        src: '/kits/grade-3.png', bg: '#84CC16' },
+  { grade: 'Grade 4', theme: 'Innovate',        src: '/kits/grade-4.png', bg: '#22C55E' },
+  { grade: 'Grade 5', theme: 'Prototype',       src: '/kits/grade-5.png', bg: '#1E3A8A' },
+  { grade: 'Grade 6', theme: 'Robot Academy',   src: '/kits/grade-6.png', bg: '#0F172A' },
+];
+
+const LAB_KITS = [
+  { title: 'Master Lab Kit · Junior',   sub: 'Grades 1–5 · Class-set of components',  src: '/kits/master-lab.png',   bg: '#0EA5E9' },
+  { title: 'Master Lab Kit · Advanced', sub: 'Grades 6–8 · Robotics, Coding & A.I.',  src: '/kits/master-lab-2.png', bg: '#1E3A8A' },
+];
+
 const TRUST_STATS = [
   { k: '4.8/5', l: 'School Rating',   i: Star,           color: '#DC2626' },
   { k: '98%',   l: 'Renewal Rate',    i: Heart,          color: '#1E3A8A' },
@@ -131,6 +152,7 @@ export default function RoboticsBeginnerLanding() {
   const [curtainProgress, setCurtainProgress] = useState(0);
   const [chartKey, setChartKey] = useState(0);
   const [growthCount, setGrowthCount] = useState(0);
+  const [activeKit, setActiveKit] = useState(null);
   const chartRef = useRef(null);
   const certRef = useRef(null);
   const bookDemo = () => navigate('/school');
@@ -465,6 +487,74 @@ export default function RoboticsBeginnerLanding() {
         .rb-cert-frame.rb-cert-in::after { opacity: 1; }
         .rb-cert-badge { position: absolute; top: -14px; right: -14px; background: linear-gradient(135deg, #DC2626, #1E3A8A); color: #fff; padding: 0.5rem 1rem; border-radius: 999px; font-family: 'Proxima Nova', sans-serif; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; box-shadow: 0 12px 30px rgba(220,38,38,0.35); z-index: 2; opacity: 0; transform: scale(0.6) rotate(-8deg); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s, opacity 0.5s ease 0.55s; }
         .rb-cert-frame.rb-cert-in .rb-cert-badge { opacity: 1; transform: scale(1) rotate(-8deg); }
+
+        /* ── Hands-on Kits section ── */
+        .rb-kits-sub { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.22em; text-transform: uppercase; color: #DC2626; margin-bottom: 0.6rem; }
+        .rb-kits-title { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: clamp(1.4rem, 2.4vw, 1.9rem); color: #0A1F44; margin-bottom: 1.5rem; line-height: 1.15; }
+
+        .rb-kit-placeholder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+        .rb-kit-ph { position: relative; aspect-ratio: 16/10; border-radius: 1rem; background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; color: #64748B; border: 2px dashed #CBD5E1; overflow: hidden; transition: all 0.3s ease; }
+        .rb-kit-ph:hover { border-color: #DC2626; color: #DC2626; transform: translateY(-4px); }
+        .rb-kit-ph-label { font-family: 'Proxima Nova', sans-serif; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
+        .rb-kit-ph-sub { font-size: 0.7rem; color: #94A3B8; font-style: italic; }
+
+        .rb-parts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+        .rb-part-card { position: relative; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 1.25rem; padding: 1.5rem 1.25rem; text-align: center; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); overflow: hidden; }
+        .rb-part-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--pc); transform: scaleX(0); transform-origin: left; transition: transform 0.5s ease; }
+        .rb-part-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.10); border-color: var(--pc); }
+        .rb-part-card:hover::before { transform: scaleX(1); }
+        .rb-part-icon { width: 56px; height: 56px; border-radius: 16px; background: color-mix(in srgb, var(--pc) 12%, transparent); color: var(--pc); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.9rem; }
+        .rb-part-t { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 1.05rem; color: #0A1F44; margin-bottom: 0.3rem; }
+        .rb-part-s { font-size: 0.85rem; color: #64748B; line-height: 1.45; }
+
+        .rb-takehome-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
+        @media (max-width: 1080px) { .rb-takehome-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 620px)  { .rb-takehome-grid { grid-template-columns: repeat(2, 1fr); } }
+        .rb-kit-card { position: relative; cursor: pointer; background: var(--kb); border-radius: 1.25rem; padding: 1rem; overflow: hidden; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); border: 2px solid transparent; }
+        .rb-kit-card::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 100%, rgba(255,255,255,0.25), transparent 60%); pointer-events: none; opacity: 0; transition: opacity 0.4s ease; }
+        .rb-kit-card:hover { transform: translateY(-8px) rotate(-1deg); box-shadow: 0 30px 60px rgba(0,0,0,0.28); border-color: rgba(255,255,255,0.4); }
+        .rb-kit-card:hover::after { opacity: 1; }
+        .rb-kit-img { width: 100%; height: 150px; object-fit: contain; display: block; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.20)); transition: transform 0.4s ease; }
+        .rb-kit-card:hover .rb-kit-img { transform: scale(1.06) rotate(2deg); }
+        .rb-kit-tag { display: inline-block; margin-top: 0.7rem; background: rgba(255,255,255,0.20); color: #FFFFFF; font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; backdrop-filter: blur(6px); }
+        .rb-kit-name { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.95rem; color: #FFFFFF; margin-top: 0.35rem; line-height: 1.2; }
+        .rb-kit-theme { font-size: 0.72rem; color: rgba(255,255,255,0.85); margin-top: 0.15rem; font-style: italic; }
+        .rb-kit-hint { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.22); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; backdrop-filter: blur(6px); opacity: 0; transform: translateY(-4px); transition: all 0.3s ease; }
+        .rb-kit-card:hover .rb-kit-hint { opacity: 1; transform: translateY(0); }
+
+        .rb-lab-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+        @media (max-width: 720px) { .rb-lab-grid { grid-template-columns: 1fr; } }
+        .rb-lab-card { background: var(--kb); border-radius: 1.25rem; padding: 1.5rem; display: grid; grid-template-columns: 160px 1fr; gap: 1.25rem; align-items: center; cursor: pointer; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); border: 2px solid transparent; }
+        .rb-lab-card:hover { transform: translateY(-6px); box-shadow: 0 30px 60px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.35); }
+        .rb-lab-card img { width: 100%; height: 130px; object-fit: contain; filter: drop-shadow(0 10px 16px rgba(0,0,0,0.25)); }
+
+        /* Offer ribbon */
+        .rb-offer { position: relative; margin-top: 3rem; background: linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%); color: #fff; border-radius: 1.5rem; padding: 2.5rem 2rem; overflow: hidden; box-shadow: 0 30px 80px rgba(220,38,38,0.35); }
+        .rb-offer::before, .rb-offer::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+        .rb-offer::before { width: 260px; height: 260px; top: -100px; right: -60px; background: radial-gradient(circle, rgba(255,255,255,0.20), transparent 70%); }
+        .rb-offer::after  { width: 220px; height: 220px; bottom: -100px; left: -60px; background: radial-gradient(circle, rgba(255,255,255,0.15), transparent 70%); }
+        .rb-offer-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.30); color: #FEE2E2; font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; padding: 7px 14px; border-radius: 999px; margin-bottom: 1rem; }
+        .rb-offer h3 { font-family: 'Zing Rust', 'Anton', sans-serif; font-size: clamp(2rem, 4vw, 3rem); line-height: 1; letter-spacing: -0.01em; margin: 0; }
+        .rb-offer h3 span { color: #FBBF24; }
+        .rb-offer p { font-family: 'Proxima Nova', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.9); margin: 0.7rem 0 1.25rem; max-width: 620px; line-height: 1.55; }
+        .rb-offer-btn { background: #FFFFFF; color: #DC2626; border: none; border-radius: 999px; padding: 14px 26px; font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.9rem; letter-spacing: 0.06em; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.25); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+        .rb-offer-btn:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,0,0,0.35); }
+        .rb-slots-bar { margin-top: 1.5rem; background: rgba(0,0,0,0.25); border-radius: 999px; height: 10px; overflow: hidden; position: relative; }
+        .rb-slots-fill { height: 100%; background: linear-gradient(90deg, #FBBF24, #FFFFFF); border-radius: 999px; width: 23%; animation: rb-slot-grow 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        @keyframes rb-slot-grow { from { width: 0; } to { width: 23%; } }
+        .rb-slots-caption { display: flex; justify-content: space-between; margin-top: 0.5rem; font-family: 'Proxima Nova', sans-serif; font-size: 0.78rem; color: rgba(255,255,255,0.85); font-weight: 700; letter-spacing: 0.06em; }
+
+        /* Kit inspection modal */
+        .rb-modal-back { position: fixed; inset: 0; background: rgba(10,31,68,0.75); backdrop-filter: blur(8px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1.5rem; animation: rb-mfade 0.25s ease; }
+        @keyframes rb-mfade { from { opacity: 0; } to { opacity: 1; } }
+        .rb-modal { background: #FFFFFF; color: #0A1F44; max-width: 780px; width: 100%; max-height: 90vh; overflow-y: auto; border-radius: 1.5rem; box-shadow: 0 40px 100px rgba(0,0,0,0.5); animation: rb-mpop 0.35s cubic-bezier(0.22, 1, 0.36, 1); display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; }
+        @keyframes rb-mpop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @media (max-width: 720px) { .rb-modal { grid-template-columns: 1fr; } }
+        .rb-modal-img { background: var(--kb, #F1F5F9); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .rb-modal-img img { width: 100%; max-width: 260px; height: auto; filter: drop-shadow(0 14px 22px rgba(0,0,0,0.25)); }
+        .rb-modal-body { padding: 2rem 1.75rem; }
+        .rb-modal-close { position: absolute; top: 1rem; right: 1rem; background: #FFFFFF; color: #0A1F44; border: 1px solid #E2E8F0; border-radius: 50%; width: 40px; height: 40px; font-size: 1.4rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 210; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .rb-modal-close:hover { color: #DC2626; }
 
         @media (max-width: 900px) {
           .rb-2col { grid-template-columns: 1fr !important; }
@@ -1009,6 +1099,123 @@ export default function RoboticsBeginnerLanding() {
 
       {/* ═══════════ 07 — (removed: What your school gets pillars section) ═══════════ */}
 
+      {/* ═══════════ 07.5 — HANDS-ON KITS ═══════════ */}
+      <section data-testid="rb-kits" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #F1F5F9 0%, #FFFFFF 60%)', overflow: 'hidden' }}>
+        <div className="rb-orb rb-orb-red" style={{ width: 380, height: 380, top: -140, left: -80, opacity: 0.15 }} />
+        <div className="rb-orb rb-orb-blue" style={{ width: 320, height: 320, bottom: -100, right: -80, opacity: 0.18 }} />
+
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
+          {/* Section header */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="rb-hand" style={{ color: '#DC2626', fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', lineHeight: 1 }}>hands-on kits</div>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', marginTop: '0.4rem' }}>
+              Real hardware in <span className="rb-stroke">every child&apos;s hands.</span>
+            </h2>
+            <p className="rb-serif" style={{ fontSize: '1rem', maxWidth: 700, margin: '0.9rem auto 0', color: '#475569', fontStyle: 'italic', lineHeight: 1.6 }}>
+              Every OLL kit is designed grade-by-grade — with the exact components, coding platform and AI tools each child needs for that year.
+            </p>
+          </div>
+
+          {/* ── Projects that students can make (placeholder for future media) ── */}
+          <div style={{ marginBottom: '3.5rem' }}>
+            <div className="rb-kits-sub">01 · Projects</div>
+            <div className="rb-kits-title">Projects your students will actually build.</div>
+            <div className="rb-kit-placeholder-grid" data-testid="rb-kits-projects">
+              {['Line Follower Bot', 'Obstacle Avoider', 'Smart Home Model', 'IoT Weather Station', 'Robotic Arm', 'AI Vision Bot'].map((p) => (
+                <div key={p} className="rb-kit-ph">
+                  <PlayCircle size={30} strokeWidth={1.6} />
+                  <div className="rb-kit-ph-label">{p}</div>
+                  <div className="rb-kit-ph-sub">Photo & video coming soon</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Parts breakdown ── */}
+          <div style={{ marginBottom: '3.5rem' }}>
+            <div className="rb-kits-sub">02 · Parts Breakdown</div>
+            <div className="rb-kits-title">4 pillars in every kit — matched to the curriculum.</div>
+            <div className="rb-parts-grid" data-testid="rb-kits-parts">
+              {PARTS_BREAKDOWN.map((p) => (
+                <div key={p.t} className="rb-part-card" style={{ '--pc': p.color }}>
+                  <div className="rb-part-icon"><p.i size={26} /></div>
+                  <div className="rb-part-t">{p.t}</div>
+                  <div className="rb-part-s">{p.s}</div>
+                  <div style={{ marginTop: '0.9rem', fontSize: '0.7rem', color: '#94A3B8', fontStyle: 'italic', letterSpacing: '0.05em' }}>Component images coming soon</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Individual Take-home kits ── */}
+          <div style={{ marginBottom: '3.5rem' }}>
+            <div className="rb-kits-sub">03 · Individual Take-Home Kits</div>
+            <div className="rb-kits-title">A dedicated kit — one for every child, one for every grade.</div>
+            <div className="rb-takehome-grid" data-testid="rb-kits-takehome">
+              {TAKE_HOME_KITS.map((k) => (
+                <div
+                  key={k.grade}
+                  className="rb-kit-card"
+                  style={{ '--kb': k.bg }}
+                  onClick={() => setActiveKit({ type: 'grade', ...k })}
+                  data-testid={`rb-kit-${k.grade.toLowerCase().replace(' ', '-')}`}
+                >
+                  <div className="rb-kit-hint">Click to peek inside</div>
+                  <img src={k.src} alt={`${k.grade} Robotics Kit`} className="rb-kit-img" loading="lazy" />
+                  <div className="rb-kit-tag">{k.grade}</div>
+                  <div className="rb-kit-name">Robotics Kit</div>
+                  <div className="rb-kit-theme">{k.theme}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Lab setup - Master Kit ── */}
+          <div style={{ marginBottom: '3rem' }}>
+            <div className="rb-kits-sub">04 · Lab Setup — Master Kit</div>
+            <div className="rb-kits-title">Set up a full Robotics Lab in a single carton.</div>
+            <div className="rb-lab-grid" data-testid="rb-kits-lab">
+              {LAB_KITS.map((l) => (
+                <div
+                  key={l.title}
+                  className="rb-lab-card"
+                  style={{ '--kb': l.bg }}
+                  onClick={() => setActiveKit({ type: 'lab', grade: l.title, theme: l.sub, src: l.src, bg: l.bg })}
+                  data-testid={`rb-lab-${l.title.toLowerCase().includes('junior') ? 'junior' : 'advanced'}`}
+                >
+                  <img src={l.src} alt={l.title} loading="lazy" />
+                  <div>
+                    <div className="rb-kit-tag">Master Kit</div>
+                    <div style={{ fontFamily: "'Proxima Nova', sans-serif", fontWeight: 800, fontSize: '1.15rem', color: '#FFFFFF', marginTop: '0.5rem', lineHeight: 1.2 }}>{l.title}</div>
+                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', marginTop: '0.3rem', fontStyle: 'italic' }}>{l.sub}</div>
+                    <div style={{ marginTop: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'Proxima Nova', sans-serif", fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#FFFFFF', opacity: 0.9 }}>
+                      Click to see what&apos;s inside <ArrowRight size={14} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Offer — Free Robotics Lab for first 100 schools ── */}
+          <div className="rb-offer" data-testid="rb-kits-offer">
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div className="rb-offer-pill"><Gift size={13} /> Limited launch offer</div>
+              <h3>Get a Robotics Lab <span>FREE.</span></h3>
+              <p>Only for the <strong style={{ color: '#FBBF24' }}>first 100 schools</strong> that book a demo this season. One complete Master Lab Kit — on the house — when you sign up for the Robotics Beginner program.</p>
+              <button className="rb-offer-btn" onClick={bookDemo} data-testid="rb-offer-book-demo">
+                Book a Demo <ArrowRight size={16} />
+              </button>
+              <div className="rb-slots-bar"><div className="rb-slots-fill" /></div>
+              <div className="rb-slots-caption">
+                <span>23 / 100 slots booked</span>
+                <span style={{ color: '#FBBF24' }}>Hurry — 77 slots remaining</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════ 08 — ABOUT OLL (Shark Tank / KBC + Trust Stats) ═══════════ */}
       <section data-testid="rb-about-oll" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', color: '#fff', overflow: 'hidden' }}>
         <div className="rb-orb rb-orb-red"   style={{ width: 420, height: 420, top: -140, left: '10%' }} />
@@ -1199,6 +1406,55 @@ export default function RoboticsBeginnerLanding() {
           </div>
         </div>
       </section>
+
+      {/* ═══════════ Kit inspection modal ═══════════ */}
+      {activeKit && (
+        <div className="rb-modal-back" onClick={() => setActiveKit(null)} data-testid="rb-kit-modal">
+          <div className="rb-modal" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
+            <button className="rb-modal-close" onClick={() => setActiveKit(null)} data-testid="rb-kit-modal-close" aria-label="Close">×</button>
+            <div className="rb-modal-img" style={{ '--kb': activeKit.bg }}>
+              <img src={activeKit.src} alt={`${activeKit.grade} kit`} />
+            </div>
+            <div className="rb-modal-body">
+              <div style={{ fontFamily: "'Proxima Nova', sans-serif", fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#DC2626', marginBottom: '0.5rem' }}>
+                {activeKit.type === 'lab' ? "What's inside — Master Lab Kit" : `What's inside — ${activeKit.grade} Kit`}
+              </div>
+              <h3 className="rb-h3" style={{ fontSize: '1.4rem', color: '#0A1F44', lineHeight: 1.2, marginBottom: '0.35rem' }}>
+                {activeKit.type === 'lab' ? activeKit.grade : `${activeKit.grade} — Robotics Kit`}
+              </h3>
+              <div style={{ fontStyle: 'italic', color: '#64748B', fontSize: '0.9rem', marginBottom: '1.25rem' }}>{activeKit.theme}</div>
+
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.7rem' }}>
+                {(activeKit.type === 'lab'
+                  ? [
+                      { i: Cog,   t: 'Construction sets for 30 students' },
+                      { i: Cpu,   t: 'Micro-controllers, sensors & motors — class-set quantities' },
+                      { i: Code2, t: 'Block-based + Python coding platform access' },
+                      { i: Brain, t: 'AI Vision & voice add-on modules' },
+                      { i: BookOpen, t: 'Teacher handbook + lesson plans + student workbooks' },
+                    ]
+                  : [
+                      { i: Cog,   t: 'Grade-specific chassis, frames & mounts' },
+                      { i: Cpu,   t: 'Micro-controller with sensors & motors matched to the grade' },
+                      { i: Code2, t: 'Coding platform access (block-based → Python)' },
+                      { i: BookOpen, t: 'Student workbook with 20+ hands-on projects' },
+                      { i: Award, t: 'Certificate on programme completion' },
+                    ]
+                ).map((it) => (
+                  <li key={it.t} style={{ display: 'flex', gap: '0.7rem', alignItems: 'flex-start', color: '#334155', fontSize: '0.92rem', lineHeight: 1.5 }}>
+                    <it.i size={18} style={{ color: '#DC2626', flexShrink: 0, marginTop: 2 }} />
+                    <span>{it.t}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div style={{ marginTop: '1.5rem', padding: '0.9rem 1rem', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '0.75rem', fontSize: '0.82rem', color: '#78350F', fontStyle: 'italic' }}>
+                Detailed component photos coming soon — reach out to your OLL coordinator for a full bill of materials.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
