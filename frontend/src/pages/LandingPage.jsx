@@ -78,14 +78,14 @@ const CLASSROOM_MEDIA = [
 
 // Media house logos — infinite scroll ticker under the Shark Tank / KBC cards
 const MEDIA_LOGOS = [
-  { src: '/media-logos/yourstory.png',       alt: 'YourStory' },
-  { src: '/media-logos/sony-tv.png',         alt: 'Sony Entertainment TV' },
-  { src: '/media-logos/hindustan-times.png', alt: 'Hindustan Times' },
-  { src: '/media-logos/times-of-india.png',  alt: 'The Times of India' },
-  { src: '/media-logos/cnbc-tv18.png',       alt: 'CNBC TV18' },
-  { src: '/media-logos/indian-express.png',  alt: 'The Indian Express' },
-  { src: '/media-logos/business-insider.webp', alt: 'Business Insider' },
-  { src: '/media-logos/pinkvilla.png',       alt: 'Pinkvilla' },
+  { src: '/media-logos/yourstory.svg',       alt: 'YourStory' },
+  { src: '/media-logos/sony-tv.svg',         alt: 'Sony Entertainment TV' },
+  { src: '/media-logos/hindustan-times.svg', alt: 'Hindustan Times' },
+  { src: '/media-logos/times-of-india.svg',  alt: 'The Times of India' },
+  { src: '/media-logos/cnbc-tv18.svg',       alt: 'CNBC TV18' },
+  { src: '/media-logos/indian-express.svg',  alt: 'The Indian Express' },
+  { src: '/media-logos/business-insider.svg', alt: 'Business Insider' },
+  { src: '/media-logos/pinkvilla.svg',       alt: 'Pinkvilla' },
 ];
 
 // Shark Tank & KBC YouTube targets (sourced from the About page)
@@ -501,9 +501,9 @@ const LandingPage = () => {
               .home-logos-wrap { position: relative; overflow: hidden; padding: 8px 0; mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); }
               .home-logos-track { display: inline-flex; gap: 3.25rem; padding: 0 1.5rem; align-items: center; animation: home-logo-scroll 38s linear infinite; will-change: transform; width: max-content; }
               .home-logos-track:hover { animation-play-state: paused; }
-              .home-logo-item { flex-shrink: 0; height: 62px; padding: 10px 18px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.96); border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.18); transition: transform 0.25s ease, box-shadow 0.25s ease; }
-              .home-logo-item img { max-height: 40px; max-width: 150px; height: auto; width: auto; display: block; object-fit: contain; }
-              .home-logo-item:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 14px 28px rgba(0,0,0,0.28); }
+              .home-logo-item { flex-shrink: 0; height: 44px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.88; filter: brightness(0) invert(1); transition: opacity 0.25s ease, filter 0.25s ease, transform 0.25s ease; }
+              .home-logo-item img { max-height: 44px; max-width: 170px; height: auto; width: auto; display: block; object-fit: contain; }
+              .home-logo-item:hover { opacity: 1; filter: none; transform: scale(1.06); }
             `}</style>
             <div className="home-logos-wrap">
               <div className="home-logos-track">
