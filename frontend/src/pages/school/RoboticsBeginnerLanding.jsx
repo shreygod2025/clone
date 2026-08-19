@@ -16,7 +16,7 @@
  * Palette: navy #0A1F44, red #DC2626, light blue #60A5FA. Red/blue/light-blue
  * blur orbs and glass panels throughout, matching OLL Brand Guidelines PDF.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import {
@@ -135,7 +135,37 @@ export default function RoboticsBeginnerLanding() {
   const [winIdx, setWinIdx] = useState(0);
   const [parentIdx, setParentIdx] = useState(0);
   const [curtainProgress, setCurtainProgress] = useState(0);
+  const [chartKey, setChartKey] = useState(0);
+  const [growthCount, setGrowthCount] = useState(0);
+  const chartRef = useRef(null);
   const bookDemo = () => navigate('/school');
+
+  // Scroll-triggered admissions chart animation — re-plays every time it enters the viewport
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            setChartKey((k) => k + 1);
+            // Count up 0 → 21
+            let start = 0;
+            const target = 21;
+            const step = () => {
+              start += 1;
+              setGrowthCount(start);
+              if (start < target) setTimeout(step, 55);
+            };
+            setGrowthCount(0);
+            setTimeout(step, 300);
+          }
+        });
+      },
+      { threshold: 0.35 }
+    );
+    obs.observe(chartRef.current);
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     const w = setInterval(() => setWinIdx((i) => (i + 1) % WINNERS.length), 5000);
@@ -644,14 +674,11 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          {/* Admissions growth chart — animated red line/area chart */}
-          <div className="rb-adm-wrap" data-testid="rb-admissions-chart" style={{ marginBottom: '2.5rem' }}>
+          {/* Admissions growth chart — animated red line/area chart (re-plays on scroll into view) */}
+          <div className="rb-adm-wrap" data-testid="rb-admissions-chart" ref={chartRef} style={{ marginBottom: '2.5rem' }}>
             <div style={{ position: 'relative', zIndex: 1 }}>
-              <div className="rb-adm-pill">
-                <span className="rb-adm-pulse" /> Verified with partner schools
-              </div>
-              <div className="rb-adm-big">+218%</div>
-              <div className="rb-adm-lbl">Average admissions growth over 5 years for schools running OLL Robotics.</div>
+              <div className="rb-adm-big">+{growthCount}%</div>
+              <div className="rb-adm-lbl">Average annual admissions growth for schools running OLL Robotics.</div>
               <div className="rb-adm-sub">Parents drive admissions once they see what their children actually build. Robotics turns your school into the &ldquo;the one that&apos;s doing something different.&rdquo;</div>
             </div>
 
@@ -672,7 +699,7 @@ export default function RoboticsBeginnerLanding() {
               const linePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(d.v)}`).join(' ');
               const areaPath = `${linePath} L ${xAt(data.length - 1)} ${PT + CH} L ${PL} ${PT + CH} Z`;
               return (
-                <div className="rb-adm-chart">
+                <div className="rb-adm-chart" key={chartKey}>
                   <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
                     <defs>
                       <linearGradient id="rbAdmArea" x1="0" y1="0" x2="0" y2="1">
@@ -1080,35 +1107,7 @@ export default function RoboticsBeginnerLanding() {
             </div>
           </div>
 
-          {/* Trust stats */}
-          <div style={{ background: '#FFFFFF', color: '#0A1F44', borderRadius: '1.5rem', padding: '2rem 1.5rem', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            {TRUST_STATS.map((s, i) => (
-              <div key={s.l} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 1rem', borderLeft: i === 0 ? 'none' : '1px solid #E5E7EB' }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: `${s.color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <s.i size={26} style={{ color: s.color }} />
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div className="rb-num" style={{ fontSize: 'clamp(1.7rem, 3vw, 2.4rem)', lineHeight: 1, color: '#0A1F44' }}>{s.k}</div>
-                  <div style={{ marginTop: '0.35rem', fontSize: '0.82rem', color: '#64748B', fontWeight: 600 }}>{s.l}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Principal testimonials */}
-          <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-            {[
-              { q: 'OLL Robotics has become the highlight of our STEM curriculum. Children walk in excited every week.', a: 'Mrs. Meena Bhatia · Principal, D. G. Khetan International' },
-              { q: 'The kits and lesson plans are so well-thought that our teachers were confident from Week 1.',       a: 'Dr. R. Menon · Principal, Veekays English High' },
-              { q: 'From backbenchers to toppers, everyone finds their pace. That inclusivity won us over.',            a: 'Mr. Anand Kumar · Principal, Ryan International' },
-            ].map((t) => (
-              <div key={t.a} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '1rem', padding: '1.5rem', backdropFilter: 'blur(8px)' }}>
-                <Quote size={22} style={{ color: '#FCA5A5', opacity: 0.7 }} />
-                <p className="rb-serif" style={{ fontStyle: 'italic', fontSize: '0.98rem', lineHeight: 1.55, marginTop: '0.4rem', color: 'rgba(255,255,255,0.9)' }}>&ldquo;{t.q}&rdquo;</p>
-                <div style={{ marginTop: '0.9rem', fontSize: '0.78rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: '#60A5FA' }}>{t.a}</div>
-              </div>
-            ))}
-          </div>
+          {/* Trust stats + principal testimonials removed per request */}
         </div>
       </section>
 
