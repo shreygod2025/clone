@@ -138,6 +138,7 @@ export default function RoboticsBeginnerLanding() {
   const [chartKey, setChartKey] = useState(0);
   const [growthCount, setGrowthCount] = useState(0);
   const chartRef = useRef(null);
+  const certRef = useRef(null);
   const bookDemo = () => navigate('/school');
 
   // Scroll-triggered admissions chart animation — re-plays every time it enters the viewport
@@ -164,6 +165,23 @@ export default function RoboticsBeginnerLanding() {
       { threshold: 0.35 }
     );
     obs.observe(chartRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  // Certificate scroll-in "grow big" animation — toggles class on enter/leave so it replays
+  useEffect(() => {
+    if (!certRef.current) return;
+    const el = certRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) el.classList.add('rb-cert-in');
+          else el.classList.remove('rb-cert-in');
+        });
+      },
+      { threshold: 0.25 }
+    );
+    obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
@@ -445,6 +463,15 @@ export default function RoboticsBeginnerLanding() {
 
         @media (max-width: 900px) { .rb-adm-wrap { grid-template-columns: 1fr !important; padding: 1.5rem; } .rb-adm-chart { height: 220px; } }
 
+        /* ── STEM Certificate — scroll-in "grow big" animation ── */
+        .rb-cert-frame { position: relative; opacity: 0; transform: scale(0.55) translateY(40px); transform-origin: center center; transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.7s ease; will-change: transform, opacity; filter: drop-shadow(0 40px 80px rgba(15, 30, 80, 0.28)); }
+        .rb-cert-frame.rb-cert-in { opacity: 1; transform: scale(1) translateY(0); }
+        .rb-cert-frame img { width: 100%; height: auto; display: block; border-radius: 14px; border: 1px solid #E2E8F0; box-shadow: 0 30px 80px rgba(15, 30, 80, 0.18); }
+        .rb-cert-frame::after { content: ''; position: absolute; inset: 0; border-radius: 14px; background: linear-gradient(135deg, rgba(220,38,38,0.10) 0%, rgba(30,58,138,0.10) 100%); mix-blend-mode: overlay; pointer-events: none; opacity: 0; transition: opacity 0.8s ease 0.6s; }
+        .rb-cert-frame.rb-cert-in::after { opacity: 1; }
+        .rb-cert-badge { position: absolute; top: -14px; right: -14px; background: linear-gradient(135deg, #DC2626, #1E3A8A); color: #fff; padding: 0.5rem 1rem; border-radius: 999px; font-family: 'Proxima Nova', sans-serif; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; box-shadow: 0 12px 30px rgba(220,38,38,0.35); z-index: 2; opacity: 0; transform: scale(0.6) rotate(-8deg); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s, opacity 0.5s ease 0.55s; }
+        .rb-cert-frame.rb-cert-in .rb-cert-badge { opacity: 1; transform: scale(1) rotate(-8deg); }
+
         @media (max-width: 900px) {
           .rb-2col { grid-template-columns: 1fr !important; }
           .rb-hide-mobile { display: none !important; }
@@ -609,8 +636,8 @@ export default function RoboticsBeginnerLanding() {
 
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div className="rb-hand" style={{ color: '#1E3A8A', fontSize: '1.5rem' }}>international recognition</div>
-            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+            <div className="rb-hand" style={{ color: '#1E3A8A', fontSize: 'clamp(2.4rem, 5vw, 3.6rem)', lineHeight: 1 }}>international recognition</div>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44', marginTop: '0.4rem' }}>
               Recognition that goes <span className="rb-stroke">beyond the classroom.</span>
             </h2>
             <p className="rb-serif" style={{ fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', fontStyle: 'italic', lineHeight: 1.6 }}>
@@ -618,24 +645,11 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          <div className="rb-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', alignItems: 'center' }}>
-            {/* Certificate mock */}
-            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '1.25rem', padding: '2rem', boxShadow: '0 30px 80px rgba(15,30,80,0.12)', position: 'relative' }}>
-              <div style={{ border: '2px solid #E2E8F0', borderRadius: '0.8rem', padding: '2rem 1.75rem', textAlign: 'center', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(90deg, #DC2626, #1E3A8A)', color: '#fff', padding: '0.4rem 1rem', borderRadius: 999, fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 800 }}>STEM.org Accredited</div>
-                <Award size={44} style={{ color: '#DC2626', margin: '0.5rem auto 0.8rem' }} />
-                <div style={{ fontSize: '0.72rem', color: '#94A3B8', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 800 }}>Certificate of Excellence</div>
-                <div className="rb-h2" style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: '#0A1F44', margin: '0.7rem 0 0.4rem' }}>
-                  Your School Name
-                </div>
-                <div className="rb-serif" style={{ fontStyle: 'italic', color: '#64748B', fontSize: '0.9rem', maxWidth: 340, margin: '0 auto' }}>
-                  is hereby certified for delivering an OLL-powered STEM education programme meeting international standards.
-                </div>
-                <div style={{ marginTop: '1.4rem', paddingTop: '1rem', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94A3B8', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700 }}>
-                  <span>STEM.org · USA</span>
-                  <span>Valid 2026 – 2027</span>
-                </div>
-              </div>
+          <div className="rb-2col" style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '3rem', alignItems: 'center' }}>
+            {/* Real certificate image — scale-up animation on scroll into view */}
+            <div className="rb-cert-frame" ref={certRef}>
+              <span className="rb-cert-badge">STEM.org Accredited</span>
+              <img src="/school/certificate.png" alt="OLL Certificate of Recognition — STEM.org Accredited" loading="lazy" />
             </div>
 
             <div>
