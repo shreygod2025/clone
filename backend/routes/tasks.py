@@ -544,8 +544,12 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
 
     uid = _current_user_id(user)
     is_admin = user.get("role") == "admin"
-    if not is_admin and uid not in (t.get("assigned_to"), t.get("assigned_by")):
-        raise HTTPException(status_code=403, detail="Not allowed to modify this task")
+
+    # Reassignment (changing assigned_to) stays admin-only — that changes task ownership.
+    # Every other edit (title/description/priority/due date/tags/status/etc.) is open
+    # to any signed-in team member so people don't get blocked waiting on an approver.
+    if data.assigned_to is not None and not is_admin:
+        raise HTTPException(status_code=403, detail="Only admin can reassign a task")
 
     updates: dict = {}
     for field in ("title", "description", "priority", "due_date", "project_id", "tags", "gdrive_link", "attachments", "assigned_to"):
@@ -567,9 +571,7 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         raise HTTPException(status_code=400, detail=f"Invalid priority: {data.priority}")
 
     if data.assigned_to is not None:
-        # Only admin can reassign
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="Only admin can reassign a task")
+        # Only admin can reassign — guard already applied at the top, keep validation here
         if data.assigned_to and not await _user_exists(data.assigned_to):
             raise HTTPException(status_code=404, detail="Assignee not found")
         updates["assigned_to"] = data.assigned_to

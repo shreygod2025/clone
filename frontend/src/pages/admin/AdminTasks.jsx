@@ -529,7 +529,9 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
     (task.status === 'pending_approval' && (isApprover || isAdmin))
   );
   const canStart = task.status === 'pending' && isAssignee;
-  const canEdit = isAssignee || isApprover || isAdmin;
+  // Anyone signed into the tasks module can edit (no more "waiting on the assignee/admin" bottleneck).
+  // Reassignment stays admin-only; that's enforced at the backend PATCH endpoint.
+  const canEdit = true;
 
   const attachmentCount = (task.attachments || []).length + (task.gdrive_link ? 1 : 0);
   const tagList = Array.isArray(task.tags) ? task.tags : [];

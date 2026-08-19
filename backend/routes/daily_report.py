@@ -889,16 +889,44 @@ async def send_daily_reports(force: bool = False, recipients=None):
         return
 
     if not force:
-        # ── Distributed daily lock ─────────────────────────────────────
+        # ── Atomic distributed daily lock ─────────────────────────────
+        # `find_one_and_update` with upsert can race across replicas when
+        # there is no unique index on the query field, so multiple workers
+        # each "win" and fire duplicate emails. Instead we rely on a UNIQUE
+        # index on `date` and try `insert_one`: exactly one caller succeeds,
+        # everyone else gets DuplicateKeyError and bails out cleanly.
         today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        lock_result = await db.daily_report_locks.find_one_and_update(
-            {"date": today_key},
-            {"$setOnInsert": {"date": today_key, "locked_at": datetime.now(timezone.utc).isoformat()}},
-            upsert=True,
-            return_document=False
-        )
-        if lock_result is not None:
-            logger.info(f"[DailyReport] Lock exists for {today_key} — skipping duplicate send.")
+        try:
+            # Ensure the unique index exists (idempotent). If production already
+            # has duplicate lock docs, the index creation will fail — clean them
+            # up first, then retry.
+            try:
+                await db.daily_report_locks.create_index("date", unique=True)
+            except Exception:
+                # Purge duplicates: keep the earliest lock per date, drop the rest.
+                pipe = [
+                    {"$group": {"_id": "$date", "ids": {"$push": "$_id"}, "count": {"$sum": 1}}},
+                    {"$match": {"count": {"$gt": 1}}},
+                ]
+                async for row in db.daily_report_locks.aggregate(pipe):
+                    keep = row["ids"][0]
+                    to_drop = [i for i in row["ids"] if i != keep]
+                    if to_drop:
+                        await db.daily_report_locks.delete_many({"_id": {"$in": to_drop}})
+                # Retry index creation now that dupes are gone.
+                await db.daily_report_locks.create_index("date", unique=True)
+        except Exception as idx_err:  # pragma: no cover — pathological case
+            logger.warning(f"[DailyReport] Lock index ensure failed: {idx_err}")
+
+        from pymongo.errors import DuplicateKeyError
+        try:
+            await db.daily_report_locks.insert_one({
+                "date": today_key,
+                "locked_at": datetime.now(timezone.utc).isoformat(),
+                "locked_by_pid": os.getpid(),
+            })
+        except DuplicateKeyError:
+            logger.info(f"[DailyReport] Lock already held for {today_key} — skipping duplicate send.")
             return
         logger.info(f"[DailyReport] Acquired lock for {today_key} — proceeding.")
         # ───────────────────────────────────────────────────────────────

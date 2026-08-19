@@ -64,16 +64,20 @@ const AdminLayout = ({ children, title }) => {
     // Manager-only items — hidden from non-managers regardless of role
     if (item.requiresManager && !user?.is_manager) return false;
 
-    // Admin / super_admin sees everything (except manager-only above)
-    if (user?.role === 'admin' || user?.role === 'super_admin') return true;
+    // super_admin is the only unrestricted role — always sees everything (except manager-only above).
+    if (user?.role === 'super_admin') return true;
 
     // Dashboard is always visible
     if (item.permission === null) return true;
 
+    // Admin WITHOUT explicit permissions still sees everything (backward compat for legacy admins).
+    // Admin WITH permissions[] is treated as feature-restricted: they only see the tabs they were assigned.
+    const userPermissions = user?.permissions || [];
+    if (user?.role === 'admin' && userPermissions.length === 0) return true;
+
     // Check if team member has permission (supports sub-permissions e.g.
     // "orders.robotics_shop" implicitly grants access to the Orders parent
     // tab so the user can navigate there).
-    const userPermissions = user?.permissions || [];
     if (userPermissions.includes(item.permission)) return true;
     const subPrefix = `${item.permission}.`;
     return userPermissions.some(p => p.startsWith(subPrefix));
