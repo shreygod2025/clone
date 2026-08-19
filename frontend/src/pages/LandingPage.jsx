@@ -518,73 +518,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── SCHOOLS WE WORK WITH — auto-scrolling videos + partner logos ── */}
-      <section data-testid="homepage-schools-we-work-with" style={{
-        position: 'relative', overflow: 'hidden',
-        padding: '5rem 1.25rem 3rem',
-        background: '#F8FAFC',
-      }}>
-        <style>{`
-          @keyframes home-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-          .home-marquee-wrap { overflow: hidden; padding: 10px 0; }
-          .home-marquee-track { display: inline-flex; gap: 1rem; padding: 4px 8px; animation: home-scroll 60s linear infinite; will-change: transform; }
-          .home-marquee-track:hover { animation-play-state: paused; }
-          .home-vid-card { flex-shrink: 0; width: 300px; background: #0A1F44; border-radius: 1rem; overflow: hidden; text-decoration: none; box-shadow: 0 12px 30px rgba(10,31,68,0.15); transition: transform 0.25s ease, box-shadow 0.25s ease; }
-          .home-vid-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.25); }
-          .home-vid-thumb { position: relative; aspect-ratio: 16/9; background: #0A1F44; }
-          .home-vid-thumb img { width: 100%; height: 100%; object-fit: cover; }
-          .home-vid-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); color: #fff; }
-          .home-logo-track { animation-duration: 55s; }
-        `}</style>
-
-        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <div className="home-script-heading">proof, not promises</div>
-            <h2 className="home-h2">
-              Schools we <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>work with.</span>
-            </h2>
-            <p className="home-sub">Real classrooms. Real projects. Real principals telling the story in their own words.</p>
-          </div>
-
-          <div className="home-marquee-wrap" data-testid="home-schools-videos">
-            <div className="home-marquee-track">
-              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
-                <a
-                  key={`${v.id}-${i}`}
-                  href={`https://youtu.be/${v.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="home-vid-card"
-                  data-testid={i < SCHOOL_VIDEOS.length ? `home-video-${v.id}` : undefined}
-                >
-                  <div className="home-vid-thumb">
-                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
-                    <div className="home-vid-play"><PlayCircle size={38} fill="rgba(255,255,255,0.18)" /></div>
-                  </div>
-                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
-                    <div style={{ fontSize: '0.98rem', fontWeight: 600, lineHeight: 1.25 }}>{v.name}</div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginTop: '3rem' }}>
-            <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: "'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8' }}>
-              A few of our partner schools
-            </div>
-            <div className="home-marquee-wrap">
-              <div className="home-marquee-track home-logo-track" style={{ gap: '2rem', alignItems: 'center' }}>
-                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
-                  <div key={i} style={{ minWidth: 150, height: 90, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', boxShadow: '0 4px 12px rgba(15,30,80,0.05)', flexShrink: 0 }}>
-                    <img src={src} alt="Partner school" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── SCHOOL PRODUCTS ────────────────────────────
           Two flagship product families sold to schools — Robotics + Computer
@@ -687,6 +620,75 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* ── SCHOOLS WE WORK WITH — auto-scrolling videos + partner logos ── */}
+      <section data-testid="homepage-schools-we-work-with" style={{
+        position: 'relative', overflow: 'hidden',
+        padding: '5rem 1.25rem 3rem',
+        background: '#F8FAFC',
+      }}>
+        <style>{`
+          @keyframes home-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+          .home-marquee-wrap { overflow: hidden; padding: 10px 0; }
+          .home-marquee-track { display: inline-flex; gap: 1rem; padding: 4px 8px; animation: home-scroll 60s linear infinite; will-change: transform; }
+          .home-marquee-track:hover { animation-play-state: paused; }
+          .home-vid-card { flex-shrink: 0; width: 300px; background: #0A1F44; border-radius: 1rem; overflow: hidden; text-decoration: none; box-shadow: 0 12px 30px rgba(10,31,68,0.15); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+          .home-vid-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.25); }
+          .home-vid-thumb { position: relative; aspect-ratio: 16/9; background: #0A1F44; }
+          .home-vid-thumb img { width: 100%; height: 100%; object-fit: cover; }
+          .home-vid-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); color: #fff; }
+          .home-logo-track { animation-duration: 55s; }
+        `}</style>
+
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="home-script-heading">proof, not promises</div>
+            <h2 className="home-h2">
+              Schools we <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>work with.</span>
+            </h2>
+            <p className="home-sub">Real classrooms. Real projects. Real principals telling the story in their own words.</p>
+          </div>
+
+          <div className="home-marquee-wrap" data-testid="home-schools-videos">
+            <div className="home-marquee-track">
+              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
+                <a
+                  key={`${v.id}-${i}`}
+                  href={`https://youtu.be/${v.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="home-vid-card"
+                  data-testid={i < SCHOOL_VIDEOS.length ? `home-video-${v.id}` : undefined}
+                >
+                  <div className="home-vid-thumb">
+                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
+                    <div className="home-vid-play"><PlayCircle size={38} fill="rgba(255,255,255,0.18)" /></div>
+                  </div>
+                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+                    <div style={{ fontSize: '0.98rem', fontWeight: 600, lineHeight: 1.25 }}>{v.name}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '3rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: "'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8' }}>
+              A few of our partner schools
+            </div>
+            <div className="home-marquee-wrap">
+              <div className="home-marquee-track home-logo-track" style={{ gap: '2rem', alignItems: 'center' }}>
+                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
+                  <div key={i} style={{ minWidth: 150, height: 90, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', boxShadow: '0 4px 12px rgba(15,30,80,0.05)', flexShrink: 0 }}>
+                    <img src={src} alt="Partner school" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
 
       {/* ── Future Skills · Year-Round Continuous Program (Grades 1–10) ── */}
