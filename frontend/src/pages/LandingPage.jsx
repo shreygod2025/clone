@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Quote as QuoteIcon, Video, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -110,6 +109,105 @@ const LandingPage = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [mediaOpen]);
 
+  // ── SEO: imperative <head> injection (react-helmet-async unreliable here) ─
+  useEffect(() => {
+    const CANONICAL = 'https://oll.co/';
+    const TITLE = 'OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship Classes';
+    const DESC = "OLL offers Robotics, AI, Coding, Entrepreneurship & Financial Literacy skill classes for students of all ages. Lab setups & programs for ICSE, CBSE, State Board schools. Book a free demo today!";
+    const KEYWORDS = "OLL, OLL India, robotics classes, AI classes, coding for kids, entrepreneurship classes, financial literacy, STEM education, robotics lab setup, ICSE robotics, CBSE robotics, skill education India, future skills, coding classes near me";
+    const OG_IMG = 'https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png';
+    document.title = TITLE;
+    const upsertMeta = (key, value, attr = 'name') => {
+      let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
+      el.setAttribute('content', value);
+    };
+    upsertMeta('description', DESC);
+    upsertMeta('keywords', KEYWORDS);
+    upsertMeta('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
+    upsertMeta('theme-color', '#0A1F44');
+    upsertMeta('og:type', 'website', 'property');
+    upsertMeta('og:url', CANONICAL, 'property');
+    upsertMeta('og:title', 'OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship', 'property');
+    upsertMeta('og:description', 'Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Expert educators, flexible timings. Book a free demo!', 'property');
+    upsertMeta('og:image', OG_IMG, 'property');
+    upsertMeta('og:image:width', '1200', 'property');
+    upsertMeta('og:image:height', '630', 'property');
+    upsertMeta('og:site_name', 'OLL', 'property');
+    upsertMeta('og:locale', 'en_IN', 'property');
+    upsertMeta('twitter:card', 'summary_large_image');
+    upsertMeta('twitter:url', CANONICAL);
+    upsertMeta('twitter:title', 'OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship');
+    upsertMeta('twitter:description', 'Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Book a free demo!');
+    upsertMeta('twitter:image', OG_IMG);
+    let canon = document.head.querySelector('link[rel="canonical"]');
+    if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
+    canon.href = CANONICAL;
+    // Preconnects
+    const preconnects = ['https://customer-assets.emergentagent.com', 'https://i.ytimg.com', 'https://fonts.googleapis.com'];
+    preconnects.forEach((href) => {
+      if (!document.head.querySelector(`link[rel="preconnect"][href="${href}"]`)) {
+        const l = document.createElement('link'); l.rel = 'preconnect'; l.href = href; l.crossOrigin = 'anonymous'; document.head.appendChild(l);
+      }
+    });
+    // JSON-LD schemas (Organization + WebSite already in index.html; only add page-specific ones)
+    const schemas = [
+      {
+        "@context": "https://schema.org", "@type": "BreadcrumbList",
+        "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://oll.co/" }]
+      },
+      {
+        "@context": "https://schema.org", "@type": "ItemList", "name": "OLL Skill Courses",
+        "itemListElement": [
+          {"@type": "Course", "position": 1, "name": "Robotics for Kids", "description": "Build robots and learn electronics, mechanics & programming", "provider": {"@type": "Organization", "name": "OLL"}},
+          {"@type": "Course", "position": 2, "name": "AI & Machine Learning", "description": "Learn artificial intelligence concepts and build AI projects", "provider": {"@type": "Organization", "name": "OLL"}},
+          {"@type": "Course", "position": 3, "name": "Coding & Programming", "description": "Learn coding from scratch - Python, Scratch, JavaScript", "provider": {"@type": "Organization", "name": "OLL"}},
+          {"@type": "Course", "position": 4, "name": "Entrepreneurship", "description": "Business thinking, innovation and startup fundamentals", "provider": {"@type": "Organization", "name": "OLL"}},
+          {"@type": "Course", "position": 5, "name": "Financial Literacy", "description": "Money management, investing basics and financial planning", "provider": {"@type": "Organization", "name": "OLL"}}
+        ]
+      },
+      {
+        "@context": "https://schema.org", "@type": "VideoObject",
+        "name": "OLL on Shark Tank India (Season 2)",
+        "description": "OLL founder Shreyaan Daga pitches OLL to India's top investors on Shark Tank India S2, becoming one of the youngest founders to raise funding on national TV.",
+        "thumbnailUrl": "https://i.ytimg.com/vi/aVzl6yzPPTw/maxresdefault.jpg",
+        "uploadDate": "2023-03-01",
+        "contentUrl": "https://www.youtube.com/watch?v=aVzl6yzPPTw",
+        "embedUrl": "https://www.youtube.com/embed/aVzl6yzPPTw",
+        "publisher": { "@type": "Organization", "name": "OLL", "logo": { "@type": "ImageObject", "url": "https://oll.co/favicon.png" } }
+      },
+      {
+        "@context": "https://schema.org", "@type": "VideoObject",
+        "name": "OLL on Kaun Banega Crorepati with Amitabh Bachchan",
+        "description": "OLL founder Shreyaan Daga featured as one of India's leading young EdTech founders on Kaun Banega Crorepati with Amitabh Bachchan.",
+        "thumbnailUrl": "https://i.ytimg.com/vi/8M3A_InpVKw/maxresdefault.jpg",
+        "uploadDate": "2025-08-01",
+        "contentUrl": "https://www.youtube.com/watch?v=8M3A_InpVKw&t=883s",
+        "embedUrl": "https://www.youtube.com/embed/8M3A_InpVKw?start=883",
+        "publisher": { "@type": "Organization", "name": "OLL", "logo": { "@type": "ImageObject", "url": "https://oll.co/favicon.png" } }
+      },
+      {
+        "@context": "https://schema.org", "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "What does OLL offer?", "acceptedAnswer": { "@type": "Answer", "text": "OLL offers Robotics, AI, Coding, Entrepreneurship and Financial Literacy programs for kids and schools. We provide student classes and turnkey school lab setups for CBSE, ICSE and State Board schools." } },
+          { "@type": "Question", "name": "Which grades does OLL teach?", "acceptedAnswer": { "@type": "Answer", "text": "OLL programs span Grades 1 to 10 with grade-wise curricula from Robotics Beginner (Grade 1-4) through Robotics Advanced (Grade 8-10), plus Computer Science and AI." } },
+          { "@type": "Question", "name": "Is OLL accredited?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. OLL is STEM.org accredited and has been featured on Shark Tank India and Kaun Banega Crorepati as one of India's leading EdTech companies for kids." } },
+          { "@type": "Question", "name": "How can I book a free demo?", "acceptedAnswer": { "@type": "Answer", "text": "Click Book Free Trial or Book Demo on the homepage — you can book a student demo, a school lab demo, or connect with an OLL centre near you." } },
+          { "@type": "Question", "name": "Does OLL have physical centres?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. OLL has centres across India where students attend weekly hands-on Robotics, Coding & AI classes. Use the Centres link in the nav to find the nearest one." } }
+        ]
+      }
+    ];
+    const addedIds = [];
+    schemas.forEach((obj, i) => {
+      const id = `home-jsonld-${i}`;
+      let el = document.getElementById(id);
+      if (!el) { el = document.createElement('script'); el.type = 'application/ld+json'; el.id = id; document.head.appendChild(el); }
+      el.textContent = JSON.stringify(obj);
+      addedIds.push(id);
+    });
+    return () => { addedIds.forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); }); };
+  }, []);
+
   // Redirect logged-in students to their bookings page
   useEffect(() => {
     if (isLoggedIn && user?.user_type === 'student') {
@@ -156,64 +254,6 @@ const LandingPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship Classes</title>
-        <meta name="description" content="OLL offers Robotics, AI, Coding, Entrepreneurship & Financial Literacy skill classes for students of all ages. Lab setups & programs for ICSE, CBSE, State Board schools. Book a free demo today!" />
-        <meta name="keywords" content="OLL, OLL India, robotics classes, AI classes, coding for kids, entrepreneurship classes, financial literacy, STEM education, robotics lab setup, ICSE robotics, CBSE robotics, skill education India, future skills, coding classes near me" />
-
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co/" />
-        <meta property="og:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
-        <meta property="og:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Expert educators, flexible timings. Book a free demo!" />
-        <meta property="og:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="OLL" />
-
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:url" content="https://oll.co/" />
-        <meta name="twitter:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
-        <meta name="twitter:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Book a free demo!" />
-        <meta name="twitter:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
-
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "EducationalOrganization",
-            "name": "OLL",
-            "alternateName": ["OLL India", "OLL - Learn Future Skills"],
-            "url": "https://oll.co",
-            "logo": "https://oll.co/favicon.png",
-            "description": "India's leading platform for Robotics, Coding, AI, Entrepreneurship & Financial Literacy education for students aged 4–16. Lab setups and programs for ICSE, CBSE & State Board schools. As seen on Shark Tank India and Kaun Banega Crorepati.",
-            "foundingDate": "2020",
-            "sameAs": [
-              "https://www.facebook.com/ollcompany",
-              "https://www.instagram.com/ollindia/",
-              "https://www.linkedin.com/company/ollindia/",
-              "https://www.youtube.com/@ollindia",
-              "https://x.com/Onlinelivelearn"
-            ],
-            "address": { "@type": "PostalAddress", "addressLocality": "Mumbai", "addressRegion": "Maharashtra", "addressCountry": "IN" },
-            "areaServed": "IN",
-            "knowsAbout": ["Robotics", "Artificial Intelligence", "Coding", "Entrepreneurship", "Financial Literacy", "STEM Education", "3D Design", "Machine Learning"]
-          })}
-        </script>
-
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "ItemList",
-            "name": "OLL Skill Courses",
-            "itemListElement": [
-              {"@type": "Course", "position": 1, "name": "Robotics for Kids", "description": "Build robots and learn electronics, mechanics & programming", "provider": {"@type": "Organization", "name": "OLL"}},
-              {"@type": "Course", "position": 2, "name": "AI & Machine Learning", "description": "Learn artificial intelligence concepts and build AI projects", "provider": {"@type": "Organization", "name": "OLL"}},
-              {"@type": "Course", "position": 3, "name": "Coding & Programming", "description": "Learn coding from scratch - Python, Scratch, JavaScript", "provider": {"@type": "Organization", "name": "OLL"}},
-              {"@type": "Course", "position": 4, "name": "Entrepreneurship", "description": "Business thinking, innovation and startup fundamentals", "provider": {"@type": "Organization", "name": "OLL"}},
-              {"@type": "Course", "position": 5, "name": "Financial Literacy", "description": "Money management, investing basics and financial planning", "provider": {"@type": "Organization", "name": "OLL"}}
-            ]
-          })}
-        </script>
-      </Helmet>
       
     <div className="min-h-screen bg-white flex flex-col">
       <style>{`
@@ -230,6 +270,16 @@ const LandingPage = () => {
         .home-sub { font-family: 'Montserrat', sans-serif; font-weight: 300; font-size: 1rem; max-width: 640px; margin: 0.9rem auto 0; color: #475569; line-height: 1.6; }
         .home-script-heading { font-family: 'Caveat', 'Playfair Display', cursive; font-size: clamp(2rem, 4.4vw, 3rem); color: #DC2626; line-height: 1; font-weight: 700; }
         .home-eyebrow { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; color: #DC2626; }
+        /* Media card caption/pill responsive tweaks */
+        .home-media-caption { position: absolute; bottom: 20px; left: 22px; right: 22px; padding-right: 118px; }
+        .home-media-caption .home-media-title { font-size: 1.5rem; }
+        .home-media-caption .home-media-sub { font-size: 0.85rem; }
+        @media (max-width: 640px) {
+          .home-media-caption { left: 16px; right: 16px; bottom: 14px; padding-right: 100px; }
+          .home-media-caption .home-media-title { font-size: 1.15rem; }
+          .home-media-caption .home-media-sub { font-size: 0.75rem; }
+          .home-watch-pill { bottom: 14px !important; right: 14px !important; padding: 7px 12px !important; font-size: 0.68rem !important; letter-spacing: 0.14em !important; }
+        }
       `}</style>
       <Navbar variant="pill" />
 
@@ -459,10 +509,10 @@ const LandingPage = () => {
               <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', bottom: 20, right: 20, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
                 <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
-              <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
+              <div className="home-media-caption">
                 <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony · KBC</div>
-                <div style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Kaun Banega Crorepati</div>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
+                <div className="home-media-title" style={{ color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Kaun Banega Crorepati</div>
+                <div className="home-media-sub" style={{ color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
               </div>
             </a>
 
@@ -481,10 +531,10 @@ const LandingPage = () => {
               <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', bottom: 20, right: 20, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
                 <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
-              <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
+              <div className="home-media-caption">
                 <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony LIV · Season Finale</div>
-                <div style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Shark Tank India</div>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
+                <div className="home-media-title" style={{ color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Shark Tank India</div>
+                <div className="home-media-sub" style={{ color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
               </div>
             </a>
           </div>
@@ -986,7 +1036,14 @@ const LandingPage = () => {
           .home-class-size-3 { width: 420px; height: 320px; }
           .home-class-size-4 { width: 320px; height: 420px; }
           @media (max-width: 640px) {
-            .home-class-size-0, .home-class-size-1, .home-class-size-2, .home-class-size-3, .home-class-size-4 { width: 220px; height: 280px; }
+            .home-class-size-0 { width: 200px; height: 280px; }
+            .home-class-size-1 { width: 240px; height: 200px; }
+            .home-class-size-2 { width: 180px; height: 240px; }
+            .home-class-size-3 { width: 260px; height: 220px; }
+            .home-class-size-4 { width: 210px; height: 290px; }
+            .home-class-cap-title { font-size: 0.8rem !important; }
+            .home-class-cap-sub { display: none; }
+            .home-class-play > div { width: 46px; height: 46px; }
           }
         `}</style>
 

@@ -238,6 +238,97 @@ export default function RoboticsBeginnerLanding() {
   const goWin = (i) => setWinIdx((i + WINNERS.length) % WINNERS.length);
   const currentWinner = WINNERS[winIdx];
 
+  // ── SEO: imperative <head> injection (react-helmet-async unreliable) ──
+  useEffect(() => {
+    const CANONICAL = 'https://oll.co/school/robotics/beginner';
+    const TITLE = 'Robotics for Schools (Grade 1–4) | OLL — Turn Your School Into a Future-Skills Powerhouse';
+    const DESC = "OLL's Beginner Robotics program equips CBSE, ICSE & State Board schools with an end-to-end curriculum, lab kits, teacher training and STEM.org-accredited outcomes for Grades 1–4. Book a school demo.";
+    const KEYWORDS = "robotics for schools, school robotics program, robotics curriculum India, STEM lab setup, ICSE robotics, CBSE robotics, robotics grade 1, robotics grade 2, robotics grade 3, robotics grade 4, STEM.org accredited, school robotics lab, OLL robotics beginner, primary school robotics, K-12 robotics";
+    const OG_IMG = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
+    document.title = TITLE;
+    const upsertMeta = (key, value, attr = 'name') => {
+      let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
+      el.setAttribute('content', value);
+    };
+    upsertMeta('description', DESC);
+    upsertMeta('keywords', KEYWORDS);
+    upsertMeta('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
+    upsertMeta('theme-color', '#0A1F44');
+    upsertMeta('og:type', 'product', 'property');
+    upsertMeta('og:url', CANONICAL, 'property');
+    upsertMeta('og:title', 'Robotics for Schools (Grade 1–4) | OLL — Future-Skills Powerhouse', 'property');
+    upsertMeta('og:description', 'End-to-end Beginner Robotics program for schools: curriculum, lab kits, teacher training, competitions and STEM.org-accredited outcomes. Featured on Shark Tank India & KBC.', 'property');
+    upsertMeta('og:image', OG_IMG, 'property');
+    upsertMeta('og:image:width', '1200', 'property');
+    upsertMeta('og:image:height', '630', 'property');
+    upsertMeta('og:site_name', 'OLL', 'property');
+    upsertMeta('og:locale', 'en_IN', 'property');
+    upsertMeta('twitter:card', 'summary_large_image');
+    upsertMeta('twitter:url', CANONICAL);
+    upsertMeta('twitter:title', 'Robotics for Schools (Grade 1–4) | OLL');
+    upsertMeta('twitter:description', 'Turn your school into a future-skills powerhouse. Full Beginner Robotics curriculum, kits, training & STEM.org-accredited outcomes.');
+    upsertMeta('twitter:image', OG_IMG);
+    let canon = document.head.querySelector('link[rel="canonical"]');
+    if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
+    canon.href = CANONICAL;
+    const schemas = [
+      {
+        "@context": "https://schema.org", "@type": "Course",
+        "name": "Beginner Robotics Program for Schools (Grade 1–4)",
+        "description": "Turnkey Robotics program for schools — end-to-end Beginner curriculum for Grades 1–4 with lab kits, teacher training, competitions and STEM.org-accredited outcomes. Designed for CBSE, ICSE and State Board schools.",
+        "url": CANONICAL, "inLanguage": "en",
+        "educationalLevel": "Primary School (Grades 1–4)",
+        "coursePrerequisites": "None — first-year introduction to robotics.",
+        "teaches": ["Robotics", "Electronics", "Mechanics", "Block Coding", "STEM Reasoning", "Design Thinking"],
+        "provider": { "@type": "EducationalOrganization", "name": "OLL", "url": "https://oll.co", "logo": "https://oll.co/favicon.png", "sameAs": ["https://www.instagram.com/ollindia/", "https://www.linkedin.com/company/ollindia/", "https://www.youtube.com/@ollindia"] },
+        "hasCourseInstance": { "@type": "CourseInstance", "courseMode": "onsite", "location": { "@type": "Place", "name": "Partner Schools across India" }, "courseWorkload": "PT2H" },
+        "audience": { "@type": "EducationalAudience", "educationalRole": "student", "audienceType": "Children · Grades 1–4" },
+        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "500", "bestRating": "5", "worstRating": "1" },
+        "offers": { "@type": "Offer", "category": "School Program", "priceCurrency": "INR", "availability": "https://schema.org/InStock", "url": "https://oll.co/school" }
+      },
+      {
+        "@context": "https://schema.org", "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "OLL", "item": "https://oll.co/" },
+          { "@type": "ListItem", "position": 2, "name": "For Schools", "item": "https://oll.co/school" },
+          { "@type": "ListItem", "position": 3, "name": "Robotics", "item": "https://oll.co/school#robotics" },
+          { "@type": "ListItem", "position": 4, "name": "Beginner (Grade 1–4)", "item": CANONICAL }
+        ]
+      },
+      {
+        "@context": "https://schema.org", "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Which grades is the OLL Beginner Robotics program for?", "acceptedAnswer": { "@type": "Answer", "text": "Grades 1 to 4. It is designed as a first-year introduction to Robotics with age-appropriate builds, block-coding basics and STEM problem-solving." } },
+          { "@type": "Question", "name": "Does the program come with a Robotics lab kit for the school?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Each school receives grade-wise hands-on kits (sensors, motors, structural parts, storage) along with printed workbooks and a teacher's manual." } },
+          { "@type": "Question", "name": "Is the curriculum accredited?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The OLL Robotics curriculum is STEM.org accredited and is aligned with CBSE, ICSE and major State Board learning outcomes." } },
+          { "@type": "Question", "name": "Do you provide teacher training?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. All partner schools get structured teacher-training sessions, ongoing pedagogy support and access to lesson plans through the OLL LMS." } },
+          { "@type": "Question", "name": "Has OLL been featured on national television?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — OLL was featured on Shark Tank India (Season 2) and Kaun Banega Crorepati with Amitabh Bachchan." } },
+          { "@type": "Question", "name": "How does a school get started?", "acceptedAnswer": { "@type": "Answer", "text": "Book a free live demo with our school program expert. We walk you through the lab setup, syllabus, kit and outcomes tailored to your board and student count." } }
+        ]
+      },
+      {
+        "@context": "https://schema.org", "@type": "Product",
+        "name": "OLL Robotics — Beginner (Grade 1–4) School Program",
+        "description": "Turnkey Robotics program for CBSE / ICSE / State Board schools: 1-year Beginner curriculum, hands-on kits, teacher training and STEM.org-accredited outcomes.",
+        "image": ["https://oll.co/favicon.png"],
+        "brand": { "@type": "Brand", "name": "OLL" },
+        "category": "K-12 School Programs · Robotics",
+        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "500", "bestRating": "5", "worstRating": "1" },
+        "offers": { "@type": "AggregateOffer", "priceCurrency": "INR", "lowPrice": "0", "offerCount": "1", "availability": "https://schema.org/InStock", "url": "https://oll.co/school" }
+      }
+    ];
+    const addedIds = [];
+    schemas.forEach((obj, i) => {
+      const id = `rb-jsonld-${i}`;
+      let el = document.getElementById(id);
+      if (!el) { el = document.createElement('script'); el.type = 'application/ld+json'; el.id = id; document.head.appendChild(el); }
+      el.textContent = JSON.stringify(obj);
+      addedIds.push(id);
+    });
+    return () => { addedIds.forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); }); };
+  }, []);
+
   return (
     <div className="rb-page">
       <Toaster position="top-right" richColors />
@@ -276,6 +367,17 @@ export default function RoboticsBeginnerLanding() {
         .rb-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 22px 46px rgba(220,38,38,0.45); }
         .rb-btn-outline { background: transparent; color: #0A1F44; border: 2px solid #0A1F44; }
         .rb-btn-outline:hover { background: #0A1F44; color: #fff; }
+
+        /* Media card caption/pill responsive tweaks (Shark Tank / KBC) */
+        .rb-media-caption { position: absolute; bottom: 20px; left: 22px; right: 22px; padding-right: 118px; }
+        .rb-media-caption .rb-media-title { font-size: 1.35rem; }
+        .rb-media-caption .rb-media-sub { font-size: 0.85rem; }
+        @media (max-width: 640px) {
+          .rb-media-caption { left: 16px; right: 16px; bottom: 14px; padding-right: 100px; }
+          .rb-media-caption .rb-media-title { font-size: 1.1rem; }
+          .rb-media-caption .rb-media-sub { font-size: 0.75rem; }
+          .rb-watch-pill { bottom: 14px !important; right: 14px !important; padding: 7px 12px !important; font-size: 0.68rem !important; letter-spacing: 0.14em !important; }
+        }
         .rb-btn-ghost-white { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(8px); }
         .rb-btn-ghost-white:hover { background: rgba(255,255,255,0.16); }
 
@@ -1296,13 +1398,13 @@ export default function RoboticsBeginnerLanding() {
             >
               <img src={KBC_IMG} alt="Kaun Banega Crorepati" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.92) 100%)' }} />
-              <div data-testid="rb-kbc-watch-pill" style={{ position: 'absolute', bottom: 18, right: 18, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
+              <div className="rb-watch-pill" data-testid="rb-kbc-watch-pill" style={{ position: 'absolute', bottom: 18, right: 18, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
                 <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
-              <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
+              <div className="rb-media-caption">
                 <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Sony · KBC</div>
-                <div className="rb-h3" style={{ fontSize: '1.35rem', marginTop: 4 }}>Kaun Banega Crorepati</div>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
+                <div className="rb-h3 rb-media-title" style={{ marginTop: 4 }}>Kaun Banega Crorepati</div>
+                <div className="rb-media-sub" style={{ color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
               </div>
             </a>
 
@@ -1317,13 +1419,13 @@ export default function RoboticsBeginnerLanding() {
             >
               <img src={SHARK_TANK_IMG} alt="Shark Tank India" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.92) 100%)' }} />
-              <div data-testid="rb-shark-tank-watch-pill" style={{ position: 'absolute', bottom: 18, right: 18, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
+              <div className="rb-watch-pill" data-testid="rb-shark-tank-watch-pill" style={{ position: 'absolute', bottom: 18, right: 18, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
                 <Play size={13} fill="#fff" strokeWidth={0} /> Watch
               </div>
-              <div style={{ position: 'absolute', bottom: 20, left: 22, right: 22 }}>
+              <div className="rb-media-caption">
                 <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Sony LIV · Season Finale</div>
-                <div className="rb-h3" style={{ fontSize: '1.35rem', marginTop: 4 }}>Shark Tank India</div>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
+                <div className="rb-h3 rb-media-title" style={{ marginTop: 4 }}>Shark Tank India</div>
+                <div className="rb-media-sub" style={{ color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
               </div>
             </a>
           </div>
