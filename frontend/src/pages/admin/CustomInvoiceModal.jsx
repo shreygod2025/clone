@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Button } from '../../components/ui/button';
-import { Plus, Trash2, Download, FileText, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Download, FileText, Loader2, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
@@ -21,6 +21,13 @@ const INDIAN_STATES = [
 ];
 
 const emptyRow = () => ({ desc: '', qty: '', rate: '' });
+const emptyTranche = (idx = 1) => ({
+  id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `t-${Date.now()}-${idx}`,
+  name: `Tranche ${idx}`,
+  amount: '',
+  due_date: '',
+  status: 'pending', // paid | pending
+});
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('oll_token');
@@ -50,6 +57,7 @@ export default function CustomInvoiceModal({ open, onClose }) {
     notes: '',
   });
   const [items, setItems] = useState([emptyRow()]);
+  const [tranches, setTranches] = useState([]); // optional payment tranches
   const [generating, setGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -87,6 +95,32 @@ export default function CustomInvoiceModal({ open, onClose }) {
     ? subtotal * (gstRate / 100)
     : 0;
 
+  // Invoice grand total — used by the Payment Tranches feature to cap sum
+  const invoiceTotal = subtotal + ((form.gst_type === 'exclusive_18' || form.gst_type === 'exclusive') ? gstAmount : 0);
+
+  // ── Payment Tranches math ─────────────────────────────────────────────
+  const tranchesTotal = tranches.reduce((s, t) => s + Number(t.amount || 0), 0);
+  const tranchesRemaining = Math.max(0, invoiceTotal - tranchesTotal);
+  const tranchesExceed = tranchesTotal > invoiceTotal + 0.001;
+  const tranchesPaidSum = tranches.reduce((s, t) => s + (t.status === 'paid' ? Number(t.amount || 0) : 0), 0);
+  const derivedTrancheStatus = (() => {
+    if (tranches.length === 0) return null;
+    const allPaid = tranches.every(t => t.status === 'paid' && Number(t.amount || 0) > 0);
+    if (allPaid) return 'paid';
+    const anyPaid = tranches.some(t => t.status === 'paid' && Number(t.amount || 0) > 0);
+    return anyPaid ? 'partial' : 'pending';
+  })();
+
+  const addTranche = () => {
+    setTranches(prev => {
+      const nextIdx = prev.length + 1;
+      const nextDefault = Math.max(0, invoiceTotal - prev.reduce((s, t) => s + Number(t.amount || 0), 0));
+      return [...prev, { ...emptyTranche(nextIdx), amount: nextDefault > 0 ? Number(nextDefault.toFixed(2)) : '' }];
+    });
+  };
+  const removeTranche = (id) => setTranches(prev => prev.filter(t => t.id !== id));
+  const updateTranche = (id, patch) => setTranches(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
+
   const handleGenerate = async () => {
     // Validation
     if (!form.customer_name.trim()) {
@@ -101,6 +135,18 @@ export default function CustomInvoiceModal({ open, onClose }) {
     if (subtotal <= 0) {
       toast.error('Subtotal must be greater than 0');
       return;
+    }
+    // Payment Tranches — optional block: validate only if user added any
+    if (tranches.length > 0) {
+      const missing = tranches.findIndex(t => !Number(t.amount) || Number(t.amount) <= 0);
+      if (missing !== -1) {
+        toast.error(`Tranche #${missing + 1} is missing an amount`);
+        return;
+      }
+      if (tranchesExceed) {
+        toast.error(`Tranche total (₹${tranchesTotal.toLocaleString('en-IN')}) exceeds the invoice total (₹${invoiceTotal.toLocaleString('en-IN')})`);
+        return;
+      }
     }
 
     setGenerating(true);
@@ -172,6 +218,14 @@ export default function CustomInvoiceModal({ open, onClose }) {
 
       // Persist to backend so admin can re-download later
       try {
+        // When tranches are used, they take precedence for paid amount + status
+        const effectiveStatus = tranches.length > 0 ? derivedTrancheStatus : form.payment_status;
+        const effectivePaid = tranches.length > 0
+          ? tranchesPaidSum
+          : (form.payment_status === 'partial'
+              ? Number(form.paid_amount || 0)
+              : (form.payment_status === 'paid' ? totalAmount : 0));
+
         await axios.post(`${API}/admin/custom-invoices`, {
           customer_name: form.customer_name,
           address: form.address,
@@ -189,10 +243,15 @@ export default function CustomInvoiceModal({ open, onClose }) {
           pdf_base64: base64,
           // Invoice metadata
           invoice_date: form.invoice_date || today,
-          payment_status: form.payment_status,
-          paid_amount: form.payment_status === 'partial'
-            ? Number(form.paid_amount || 0)
-            : (form.payment_status === 'paid' ? totalAmount : 0),
+          payment_status: effectiveStatus,
+          paid_amount: effectivePaid,
+          // Payment tranches (optional)
+          tranches: tranches.map((t, i) => ({
+            name: (t.name || `Tranche ${i + 1}`).trim(),
+            amount: Number(t.amount || 0),
+            due_date: t.due_date || '',
+            status: t.status === 'paid' ? 'paid' : 'pending',
+          })),
         }, { headers: getAuthHeaders() });
         toast.success(`Custom invoice saved · ${invoiceNo}`);
       } catch (saveErr) {
@@ -221,6 +280,7 @@ export default function CustomInvoiceModal({ open, onClose }) {
         notes: '',
       });
       setItems([emptyRow()]);
+      setTranches([]);
     } catch (err) {
       console.error(err);
       toast.error('Failed to generate custom invoice');
@@ -472,6 +532,171 @@ export default function CustomInvoiceModal({ open, onClose }) {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* ── Payment Tranches (optional) ─────────────────────────── */}
+          <div className="rounded-lg border border-slate-200 bg-white p-3" data-testid="custom-invoice-tranches">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <div>
+                <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500">
+                  Payment Tranches <span className="text-slate-400 normal-case tracking-normal font-normal">· optional</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Break the total into scheduled tranches (e.g. 1st ₹20,000, 2nd ₹30,000, 3rd ₹50,000). Skip this for a single-payment invoice.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addTranche}
+                disabled={invoiceTotal <= 0 || tranchesRemaining <= 0}
+                data-testid="custom-invoice-add-tranche"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Tranche
+              </Button>
+            </div>
+
+            {tranches.length === 0 ? (
+              <div className="text-[11px] text-slate-500 italic bg-slate-50 border border-dashed border-slate-200 rounded-md px-3 py-2">
+                No tranches yet — the full invoice amount will be treated as one payment.
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {tranches.map((t, idx) => {
+                    const amt = Number(t.amount || 0);
+                    return (
+                      <div
+                        key={t.id}
+                        className="grid grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 rounded-md px-2 py-2"
+                        data-testid={`custom-invoice-tranche-row-${idx}`}
+                      >
+                        <div className="col-span-12 md:col-span-3">
+                          <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Name/Number</label>
+                          <Input
+                            value={t.name}
+                            onChange={(e) => updateTranche(t.id, { name: e.target.value })}
+                            placeholder={`Tranche ${idx + 1}`}
+                            className="mt-0.5 h-9"
+                            data-testid={`custom-invoice-tranche-name-${idx}`}
+                          />
+                        </div>
+                        <div className="col-span-6 md:col-span-3">
+                          <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Amount (₹) *</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={t.amount}
+                            onChange={(e) => updateTranche(t.id, { amount: e.target.value })}
+                            placeholder="0.00"
+                            className="mt-0.5 h-9"
+                            data-testid={`custom-invoice-tranche-amount-${idx}`}
+                          />
+                        </div>
+                        <div className="col-span-6 md:col-span-3">
+                          <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Due Date</label>
+                          <Input
+                            type="date"
+                            value={t.due_date}
+                            onChange={(e) => updateTranche(t.id, { due_date: e.target.value })}
+                            className="mt-0.5 h-9"
+                            data-testid={`custom-invoice-tranche-due-${idx}`}
+                          />
+                        </div>
+                        <div className="col-span-10 md:col-span-2">
+                          <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Status</label>
+                          <select
+                            value={t.status}
+                            onChange={(e) => updateTranche(t.id, { status: e.target.value })}
+                            className={`mt-0.5 h-9 w-full px-2 rounded-md border text-xs font-medium ${
+                              t.status === 'paid'
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                : 'border-amber-300 bg-amber-50 text-amber-800'
+                            }`}
+                            data-testid={`custom-invoice-tranche-status-${idx}`}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                          </select>
+                        </div>
+                        <div className="col-span-2 md:col-span-1 flex items-end justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removeTranche(t.id)}
+                            className="h-9 w-9 rounded-md border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center justify-center"
+                            aria-label={`Remove tranche ${idx + 1}`}
+                            data-testid={`custom-invoice-tranche-remove-${idx}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {amt > 0 && (
+                          <div className="col-span-12 flex flex-wrap items-center justify-between gap-2 pl-1">
+                            <div className="text-[11px] text-slate-500">
+                              {t.status === 'paid' ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Marked as paid</span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-amber-700"><Clock className="w-3 h-3" /> Awaiting payment</span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              {invoiceTotal > 0 && (
+                                <span>{((amt / invoiceTotal) * 100).toFixed(1)}% of invoice</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Live summary */}
+                <div className={`mt-3 rounded-md border px-3 py-2 text-xs ${tranchesExceed ? 'bg-red-50 border-red-200 text-red-800' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Total Amount</div>
+                      <div className="font-semibold text-slate-900" data-testid="custom-invoice-tranche-invoice-total">
+                        ₹{invoiceTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Tranche Total</div>
+                      <div className={`font-semibold ${tranchesExceed ? 'text-red-700' : 'text-slate-900'}`} data-testid="custom-invoice-tranche-sum">
+                        ₹{tranchesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Remaining</div>
+                      <div className={`font-semibold ${tranchesRemaining === 0 && !tranchesExceed ? 'text-emerald-700' : 'text-slate-900'}`} data-testid="custom-invoice-tranche-remaining">
+                        ₹{tranchesRemaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Paid via Tranches</div>
+                      <div className="font-semibold text-emerald-700" data-testid="custom-invoice-tranche-paid">
+                        ₹{tranchesPaidSum.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+                  {tranchesExceed && (
+                    <div className="mt-2 text-[11px] font-medium">
+                      Tranche total exceeds the invoice total by ₹{(tranchesTotal - invoiceTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}. Adjust amounts before generating.
+                    </div>
+                  )}
+                  {!tranchesExceed && derivedTrancheStatus && (
+                    <div className="mt-2 text-[11px] text-slate-600">
+                      Auto-derived payment status: <strong className="uppercase tracking-wide">{derivedTrancheStatus}</strong>
+                      {derivedTrancheStatus !== 'pending' && (
+                        <span> · Amount received (from paid tranches): <strong>₹{tranchesPaidSum.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Place of Supply (drives GST math) ─────────────────── */}

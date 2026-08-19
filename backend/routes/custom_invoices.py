@@ -94,6 +94,52 @@ async def create_custom_invoice(
     if not invoice_date:
         invoice_date = datetime.now(timezone.utc).date().isoformat()
 
+    # ── Payment tranches (optional) ──────────────────────────────────────
+    tranches_in = payload.get("tranches") or []
+    if not isinstance(tranches_in, list):
+        tranches_in = []
+    tranches_clean: list[dict] = []
+    for i, t in enumerate(tranches_in):
+        if not isinstance(t, dict):
+            continue
+        try:
+            amt = float(t.get("amount") or 0)
+        except (TypeError, ValueError):
+            amt = 0.0
+        if amt <= 0:
+            raise HTTPException(status_code=400, detail=f"Tranche {i + 1} must have amount > 0")
+        status = (t.get("status") or "pending").strip().lower()
+        if status not in {"paid", "pending"}:
+            status = "pending"
+        tranches_clean.append({
+            "id": (t.get("id") or str(uuid.uuid4())),
+            "name": (t.get("name") or f"Tranche {i + 1}").strip(),
+            "amount": amt,
+            "due_date": (t.get("due_date") or "").strip(),
+            "status": status,
+        })
+    if tranches_clean:
+        trance_sum = sum(x["amount"] for x in tranches_clean)
+        if trance_sum > total_amount + 0.01:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Tranche total (₹{trance_sum:.2f}) exceeds invoice total "
+                    f"(₹{total_amount:.2f})"
+                ),
+            )
+        # Auto-derive payment status + paid_amount from tranches
+        paid_from_tranches = sum(x["amount"] for x in tranches_clean if x["status"] == "paid")
+        if paid_from_tranches <= 0:
+            payment_status = "pending"
+            paid_amount = 0.0
+        elif abs(paid_from_tranches - total_amount) < 0.01 and all(x["status"] == "paid" for x in tranches_clean):
+            payment_status = "paid"
+            paid_amount = total_amount
+        else:
+            payment_status = "partial"
+            paid_amount = paid_from_tranches
+
     doc = {
         "id": str(uuid.uuid4()),
         "invoice_no": invoice_no,
@@ -110,6 +156,7 @@ async def create_custom_invoice(
         "invoice_date": invoice_date,
         "payment_status": payment_status,
         "paid_amount": paid_amount,
+        "tranches": tranches_clean,
         "created_by": user.get("email", "admin"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
