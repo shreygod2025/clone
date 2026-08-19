@@ -270,6 +270,57 @@ async def get_shop_products(category: Optional[str] = None):
     return {"products": merged, "delivery_charge": DELIVERY_CHARGE, "count": len(merged)}
 
 
+def _slugify(text: str) -> str:
+    """Lower-case, hyphen-separated slug. Kept tiny + dependency-free so it
+    matches the frontend `slugify` helper 1:1."""
+    import re
+    text = (text or "").lower().strip()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    return re.sub(r"-+", "-", text).strip("-") or "product"
+
+
+@router.get("/shop/products/{slug}")
+async def get_shop_product_by_slug(slug: str):
+    """Public: fetch a single product by SEO slug.
+
+    Slug format: `{slugified-name}-{first-8-of-product-id}`. We match on the
+    trailing id fragment for stability (renaming a product won't 404 an old
+    URL as long as the id fragment stays). Also accepts the raw product id
+    for admin/backwards use.
+    """
+    vendor_products = await _fetch_vendor_catalog()
+    overrides = await _get_overrides_map()
+    merged = [_merge_product(v, overrides.get(v["id"])) for v in vendor_products if v.get("id")]
+    merged = [p for p in merged if p["show_on_shop"]]
+
+    # 1) exact-id fast path
+    exact = next((p for p in merged if p["id"] == slug), None)
+    if exact:
+        product = exact
+    else:
+        # 2) match on trailing id fragment (min 6 chars to avoid collisions)
+        tail = slug.rsplit("-", 1)[-1] if "-" in slug else slug
+        if len(tail) < 6:
+            raise HTTPException(status_code=404, detail="Product not found")
+        candidates = [p for p in merged if p["id"].replace("-", "").startswith(tail)]
+        if not candidates:
+            raise HTTPException(status_code=404, detail="Product not found")
+        product = candidates[0]
+
+    # Attach canonical slug + related products (same category, up to 4)
+    canonical_slug = f"{_slugify(product['name'])}-{product['id'].replace('-', '')[:8]}"
+    related = [
+        {**p, "slug": f"{_slugify(p['name'])}-{p['id'].replace('-', '')[:8]}"}
+        for p in merged
+        if p["id"] != product["id"] and p["category"] == product["category"]
+    ][:4]
+    return {
+        "product": {**product, "slug": canonical_slug},
+        "related": related,
+        "delivery_charge": DELIVERY_CHARGE,
+    }
+
+
 class ShopCartItem(BaseModel):
     product_id: str
     quantity: int = Field(gt=0, le=20)

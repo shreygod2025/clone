@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import Footer from '../components/Footer';
 import CartDrawer from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
+import { productSlug } from '../utils/slug';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -220,32 +221,36 @@ const ShopPage = () => {
                 className="group bg-white rounded-2xl overflow-hidden border border-slate-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
                 data-testid={`shop-product-${p.id}`}
               >
-                <div className="relative aspect-square bg-slate-100 overflow-hidden">
-                  <img
-                    src={p.image_url}
-                    alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) => {
-                      if (e.currentTarget.dataset.fallback !== '1') {
-                        e.currentTarget.dataset.fallback = '1';
-                        e.currentTarget.src = fallbackImage(p.id);
-                      }
-                    }}
-                  />
-                  {p.mrp > p.selling_price && (
-                    <span className="absolute top-2 left-2 bg-[#D63031] text-white text-[10px] font-bold px-2 py-1 rounded-full">
-                      {Math.round(((p.mrp - p.selling_price) / p.mrp) * 100)}% OFF
-                    </span>
-                  )}
-                </div>
+                <Link to={`/shop/product/${productSlug(p)}`} className="block" aria-label={`View details for ${p.name}`} data-testid={`shop-product-link-${p.id}`}>
+                  <div className="relative aspect-square bg-slate-100 overflow-hidden">
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                      onError={(e) => {
+                        if (e.currentTarget.dataset.fallback !== '1') {
+                          e.currentTarget.dataset.fallback = '1';
+                          e.currentTarget.src = fallbackImage(p.id);
+                        }
+                      }}
+                    />
+                    {p.mrp > p.selling_price && (
+                      <span className="absolute top-2 left-2 bg-[#D63031] text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                        {Math.round(((p.mrp - p.selling_price) / p.mrp) * 100)}% OFF
+                      </span>
+                    )}
+                  </div>
+                </Link>
                 <div className="p-3 sm:p-4 flex-1 flex flex-col">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
                     {p.category}
                   </p>
-                  <h3 className="font-bold text-slate-900 leading-tight line-clamp-2 min-h-[40px]">
-                    {p.name.trim()}
-                  </h3>
+                  <Link to={`/shop/product/${productSlug(p)}`} className="focus:outline-none">
+                    <h3 className="font-bold text-slate-900 leading-tight line-clamp-2 min-h-[40px] hover:text-[#D63031] transition-colors">
+                      {p.name.trim()}
+                    </h3>
+                  </Link>
                   <p className="mt-1 text-xs text-slate-500 line-clamp-2">{p.description}</p>
                   <div className="mt-3 flex items-baseline gap-2">
                     <span className="text-lg font-bold text-slate-900">
@@ -257,13 +262,22 @@ const ShopPage = () => {
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleAdd(p)}
-                    className="mt-3 w-full bg-slate-900 hover:bg-[#D63031] text-white text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors"
-                    data-testid={`shop-add-${p.id}`}
-                  >
-                    Add to Cart
-                  </button>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Link
+                      to={`/shop/product/${productSlug(p)}`}
+                      className="text-center bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors"
+                      data-testid={`shop-view-${p.id}`}
+                    >
+                      View
+                    </Link>
+                    <button
+                      onClick={() => handleAdd(p)}
+                      className="bg-slate-900 hover:bg-[#D63031] text-white text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors"
+                      data-testid={`shop-add-${p.id}`}
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

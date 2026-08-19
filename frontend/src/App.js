@@ -147,6 +147,7 @@ import { CartProvider } from "./context/CartContext";
 // Robotics Shop
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const ShopCheckoutPage = lazy(() => import("./pages/ShopCheckoutPage"));
+const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const ShopSuccessPage = lazy(() => import("./pages/ShopSuccessPage"));
 const AdminShopPanel = lazy(() => import("./pages/admin/AdminShopPanel"));
 const AccessDenied = lazy(() => import("./pages/admin/AccessDenied"));
@@ -329,6 +330,7 @@ function App() {
 
               {/* Robotics Kit Shop */}
               <Route path="/shop" element={<ShopPage />} />
+              <Route path="/shop/product/:slug" element={<ProductDetailPage />} />
               <Route path="/shop/checkout" element={<ShopCheckoutPage />} />
               <Route path="/shop/success" element={<ShopSuccessPage />} />
               

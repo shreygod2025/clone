@@ -117,6 +117,25 @@ async def sitemap_xml():
         # If the DB is briefly unavailable we still serve the static list.
         pass
 
+    # Shop product URLs — SEO-friendly PDPs (best-effort; skip on failure)
+    try:
+        from .shop import (
+            _fetch_vendor_catalog,
+            _get_overrides_map,
+            _merge_product,
+            _slugify,
+        )
+        vendor_products = await _fetch_vendor_catalog()
+        overrides = await _get_overrides_map()
+        merged = [_merge_product(v, overrides.get(v["id"])) for v in vendor_products if v.get("id")]
+        for p in merged:
+            if not p.get("show_on_shop"):
+                continue
+            slug = f"{_slugify(p['name'])}-{p['id'].replace('-', '')[:8]}"
+            parts.append(_entry(f"/shop/product/{slug}", today, "weekly", "0.7"))
+    except Exception:
+        pass
+
     parts.append("</urlset>\n")
     xml = "".join(parts)
     return Response(
