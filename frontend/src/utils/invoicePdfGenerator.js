@@ -646,16 +646,29 @@ export async function generateInvoicePDF(payment, schoolData, {
   doc.text(`Rs. ${formatINR(gst.totalWithGST)}`, totalsX + totalsW - 2, y - 6, { align: 'right' });
 
   y += 2;
-  // Balance Due: 0 if fully paid, remaining if partial, full amount otherwise
-  const paidAmount = payment.status === 'paid'
-    ? gst.totalWithGST  // fully paid → balance = 0
-    : Number(payment.paid_amount || 0);
-  const balanceDue = Math.max(0, gst.totalWithGST - paidAmount);
+  // ── Tranches → Payment Schedule & Balance Due override ────────────────
+  const tranches = Array.isArray(payment.tranches) ? payment.tranches : [];
+  const trancheSum = tranches.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const paidFromTranches = tranches.reduce((s, t) => s + (String(t.status).toLowerCase() === 'paid' ? (Number(t.amount) || 0) : 0), 0);
+  const hasTranches = tranches.length > 0 && trancheSum > 0;
+
+  // Balance Due logic:
+  //  • With tranches → Balance Due = Total − (sum of ALL tranche amounts)
+  //    (i.e. the "Remaining" that hasn't been scheduled into a tranche yet).
+  //  • Without tranches → legacy behaviour (Total − paid_amount).
+  const paidAmount = hasTranches
+    ? paidFromTranches
+    : (payment.status === 'paid'
+        ? gst.totalWithGST
+        : Number(payment.paid_amount || 0));
+  const balanceDue = hasTranches
+    ? Math.max(0, gst.totalWithGST - trancheSum)
+    : Math.max(0, gst.totalWithGST - paidAmount);
 
   if (paidAmount > 0 && payment.status !== 'paid') {
     addTotalRow('Amount Paid', `Rs. ${formatINR(paidAmount)}`, false);
   }
-  if (payment.status === 'paid') {
+  if (payment.status === 'paid' && !hasTranches) {
     addTotalRow('Amount Paid', `Rs. ${formatINR(gst.totalWithGST)}`, false);
   }
   addTotalRow('Balance Due', `Rs. ${formatINR(balanceDue)}`, true);
@@ -674,6 +687,88 @@ export async function generateInvoicePDF(payment, schoolData, {
   doc.setTextColor(30, 30, 30);
   doc.text(amountInWords(gst.totalWithGST), innerLeft + 2, y);
   y += 7;
+
+  // ─── Payment Schedule (tranches) ─────────────────────────────────────
+  if (hasTranches) {
+    doc.setDrawColor(200, 200, 200);
+    doc.line(innerLeft, y, innerRight, y);
+    y += 5;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 95);
+    doc.text('Payment Schedule', innerLeft + 2, y);
+    y += 3;
+
+    // Header row
+    const scheduleCols = [
+      { label: '#', w: 10, align: 'left' },
+      { label: 'Tranche',       w: 62, align: 'left' },
+      { label: 'Due Date',      w: 30, align: 'left' },
+      { label: 'Amount',        w: 32, align: 'right' },
+      { label: 'Status',        w: (innerRight - innerLeft) - 10 - 62 - 30 - 32 - 4, align: 'left' },
+    ];
+    // Header background
+    doc.setFillColor(241, 245, 249);
+    doc.rect(innerLeft + 2, y, innerRight - innerLeft - 4, 6, 'F');
+    doc.setFontSize(6.8);
+    doc.setTextColor(30, 58, 95);
+    doc.setFont('helvetica', 'bold');
+    let cx = innerLeft + 2 + 2;
+    scheduleCols.forEach((c) => {
+      const tx = c.align === 'right' ? cx + c.w - 2 : cx + 1;
+      doc.text(c.label.toUpperCase(), tx, y + 4, c.align === 'right' ? { align: 'right' } : undefined);
+      cx += c.w;
+    });
+    y += 6;
+
+    // Body rows
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    tranches.forEach((t, i) => {
+      const rowY = y;
+      // Alternate light background
+      if (i % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(innerLeft + 2, rowY, innerRight - innerLeft - 4, 6, 'F');
+      }
+      let rcx = innerLeft + 2 + 2;
+      const rowVals = [
+        String(i + 1),
+        (t.name || `Tranche ${i + 1}`),
+        t.due_date ? new Date(t.due_date).toLocaleDateString('en-IN') : '—',
+        `Rs. ${formatINR(Number(t.amount) || 0)}`,
+        (t.status || 'pending').toUpperCase(),
+      ];
+      scheduleCols.forEach((c, j) => {
+        // Status colour
+        if (j === 4) {
+          const s = String(rowVals[4]).toLowerCase();
+          if (s === 'paid') doc.setTextColor(22, 163, 74);
+          else if (s === 'overdue') doc.setTextColor(220, 38, 38);
+          else doc.setTextColor(180, 130, 0);
+          doc.setFont('helvetica', 'bold');
+        } else {
+          doc.setTextColor(45, 55, 72);
+          doc.setFont('helvetica', j === 3 ? 'bold' : 'normal');
+        }
+        const tx = c.align === 'right' ? rcx + c.w - 2 : rcx + 1;
+        doc.text(String(rowVals[j]), tx, rowY + 4, c.align === 'right' ? { align: 'right' } : undefined);
+        rcx += c.w;
+      });
+      y += 6;
+    });
+
+    // Schedule summary line
+    doc.setFontSize(7);
+    doc.setTextColor(45, 55, 72);
+    doc.setFont('helvetica', 'normal');
+    const scheduledCovered = trancheSum;
+    const scheduledPaid = paidFromTranches;
+    const scheduledRemaining = Math.max(0, gst.totalWithGST - scheduledCovered);
+    y += 2;
+    doc.text(`Scheduled via tranches: Rs. ${formatINR(scheduledCovered)}  ·  Paid so far: Rs. ${formatINR(scheduledPaid)}  ·  Unscheduled remaining: Rs. ${formatINR(scheduledRemaining)}`, innerLeft + 2, y);
+    y += 5;
+  }
 
   // ─── Notes ───
   doc.setDrawColor(200, 200, 200);

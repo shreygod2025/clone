@@ -175,6 +175,15 @@ export default function CustomInvoiceModal({ open, onClose }) {
         paid_amount: form.payment_status === 'partial' ? Number(form.paid_amount || 0) : (form.payment_status === 'paid' ? totalAmount : 0),
         payment_date: invoiceDateISO,
         qty: valid.reduce((s, r) => s + Number(r.qty || 0), 0),
+        // ── Payment tranches (optional) — the PDF generator renders a
+        //    "Payment Schedule" table when this array is non-empty and
+        //    treats Balance Due = Total − sum(tranches).
+        tranches: tranches.map((t, i) => ({
+          name: (t.name || `Tranche ${i + 1}`).trim(),
+          amount: Number(t.amount) || 0,
+          due_date: t.due_date || '',
+          status: t.status || 'pending',
+        })),
       };
       // The schoolData is now mostly a carrier — billTo / shipTo overrides drive
       // the actual rendering. We still pass state so it's available as fallback.
