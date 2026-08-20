@@ -4875,6 +4875,21 @@ ${FOOTER}</div></body></html>`
           <CalendarClock className="w-3.5 h-3.5" />
           Onboarding Tracker
         </a>
+        {(() => {
+          const role = user?.role;
+          const perms = user?.permissions || [];
+          const canSeePricing = role === 'admin' || role === 'super_admin' || perms.includes('pricing');
+          return canSeePricing ? (
+            <a
+              href="/pricing"
+              className="inline-flex items-center gap-2 px-4 py-2 mb-2 text-xs font-bold uppercase tracking-wider bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-full transition-colors"
+              data-testid="open-pricing-calculator"
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              Pricing
+            </a>
+          ) : null;
+        })()}
       </div>
 
       {/* Dashboard Tab */}

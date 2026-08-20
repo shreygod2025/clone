@@ -304,7 +304,7 @@ async def direct_add_active_gp(
         gp_role = {
             "id": str(uuid.uuid4()),
             "name": "Growth Partner",
-            "permissions": ["dashboard", "students", "schools", "growth_partners"],
+            "permissions": ["dashboard", "students", "schools", "growth_partners", "pricing"],
             "created_at": now,
         }
         await db.roles.insert_one(gp_role)
@@ -319,7 +319,7 @@ async def direct_add_active_gp(
         "role_id": gp_role["id"],
         "city": city,
         "phone": phone,
-        "permissions": ["dashboard", "students", "schools", "growth_partners"],
+        "permissions": ["dashboard", "students", "schools", "growth_partners", "pricing"],
         "is_growth_partner": True,
         "gp_onboarding_id": onboarding_id,
         "is_active": True,
@@ -608,7 +608,7 @@ async def activate_gp(
             "id": str(uuid.uuid4()),
             "name": "GP Manager",
             "description": "Growth Partner Manager - Can manage schools and student leads",
-            "permissions": ["dashboard", "students", "schools", "growth_partners"],
+            "permissions": ["dashboard", "students", "schools", "growth_partners", "pricing"],
             "is_system": False,
             "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -632,7 +632,7 @@ async def activate_gp(
         password_hash=bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
         role_id=role_id,
         city=onboarding.get('city', ''),
-        permissions=["dashboard", "students", "schools", "growth_partners"]  # GP Manager permissions
+        permissions=["dashboard", "students", "schools", "growth_partners", "pricing"]  # GP Manager permissions
     )
     
     doc = team_user.model_dump()
@@ -1031,7 +1031,7 @@ async def complete_gp_onboarding(
             "id": str(uuid.uuid4()),
             "name": "GP Manager",
             "description": "Growth Partner Manager - Can manage schools and student leads",
-            "permissions": ["dashboard", "students", "schools", "growth_partners"],
+            "permissions": ["dashboard", "students", "schools", "growth_partners", "pricing"],
             "is_system": False,
             "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat()

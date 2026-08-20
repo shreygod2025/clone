@@ -36,6 +36,7 @@ const ALL_SECTIONS = [
   { value: 'expenses.pnl',  label: '↳ P&L only',          description: 'View Profit & Loss only', parent: 'expenses' },
   { value: 'educators', label: 'Educators', description: 'Manage educator applications and assignments' },
   { value: 'growth_partners', label: 'Growth Partners', description: 'Manage growth partner applications' },
+  { value: 'pricing', label: 'Pricing Calculator', description: 'Access the Growth Partner pricing / margin calculator at /pricing' },
   { value: 'team_applications', label: 'Team Applications', description: 'View and manage team applications' },
   { value: 'support', label: 'Support Center', description: 'Handle support queries' },
   { value: 'blogs', label: 'Blogs', description: 'Create and manage blog posts' },
@@ -57,7 +58,7 @@ const DEFAULT_ROLES = [
   {
     name: 'Growth Partner',
     description: 'Growth partners can view their referrals and leads',
-    permissions: ['dashboard', 'students', 'growth_partners'],
+    permissions: ['dashboard', 'students', 'growth_partners', 'pricing'],
     is_system: true
   },
   {

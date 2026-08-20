@@ -703,7 +703,7 @@ async def update_growth_partner(
                     "id": str(uuid.uuid4()),
                     "name": "GP Manager",
                     "description": "Growth Partner Manager - Can manage schools and student leads",
-                    "permissions": ["dashboard", "schools", "students", "growth_partners"],
+                    "permissions": ["dashboard", "schools", "students", "growth_partners", "pricing"],
                     "is_system": False,
                     "is_active": True,
                     "created_at": datetime.now(timezone.utc).isoformat(),
@@ -722,7 +722,7 @@ async def update_growth_partner(
                 "role_name": "GP Manager",
                 "is_active": True,
                 "growth_partner_id": partner_id,  # Link back to GP
-                "permissions": ['dashboard', 'schools', 'students', 'growth_partners'],  # GP Manager permissions
+                "permissions": ['dashboard', 'schools', 'students', 'growth_partners', 'pricing'],  # GP Manager permissions
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
