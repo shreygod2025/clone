@@ -330,17 +330,25 @@ class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=2, max_length=80)
     email: Optional[EmailStr] = None
     phone: str = Field(min_length=10, max_length=15)
-    line1: str = Field(min_length=4, max_length=200)
+    line1: Optional[str] = ""
     line2: Optional[str] = ""
-    city: str = Field(min_length=2, max_length=60)
-    state: str = Field(min_length=2, max_length=60)
-    pincode: str = Field(min_length=6, max_length=6)
+    city: Optional[str] = ""
+    state: Optional[str] = ""
+    pincode: Optional[str] = ""
     notes: Optional[str] = ""
 
 
 class ShopOrderCreate(BaseModel):
     items: List[ShopCartItem]
     shipping: ShippingAddress
+    fulfillment_type: Optional[str] = "delivery"  # "delivery" | "pickup"
+
+
+# OLL office pickup address (kept in one place so future edits are trivial)
+PICKUP_ADDRESS = (
+    "103, 1st Floor, Kshitij Building, Veera Desai Rd, Dattaguru Nagar, "
+    "Azad Nagar, Andheri West, Mumbai, Maharashtra 400053"
+)
 
 
 @router.post("/shop/orders")
@@ -348,6 +356,22 @@ async def create_shop_order(body: ShopOrderCreate):
     """Create a pending shop order; returns order_id used for payment init."""
     if not body.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
+
+    fulfillment_type = (body.fulfillment_type or "delivery").lower()
+    if fulfillment_type not in {"delivery", "pickup"}:
+        fulfillment_type = "delivery"
+
+    # For home delivery, address fields become required.
+    if fulfillment_type == "delivery":
+        addr = body.shipping
+        missing: list[str] = []
+        if not (addr.line1 or "").strip():   missing.append("address line 1")
+        if not (addr.city or "").strip():    missing.append("city")
+        if not (addr.state or "").strip():   missing.append("state")
+        if not re.match(r"^\d{6}$", (addr.pincode or "").strip()):
+            missing.append("6-digit pincode")
+        if missing:
+            raise HTTPException(status_code=422, detail=f"Missing/invalid for delivery: {', '.join(missing)}")
 
     vendor_products = await _fetch_vendor_catalog()
     overrides = await _get_overrides_map()
@@ -375,7 +399,7 @@ async def create_shop_order(body: ShopOrderCreate):
             "line_total": line_total,
         })
 
-    delivery = DELIVERY_CHARGE if subtotal > 0 else 0.0
+    delivery = (DELIVERY_CHARGE if subtotal > 0 else 0.0) if fulfillment_type == "delivery" else 0.0
     total = round(subtotal + delivery, 2)
     order_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
@@ -385,6 +409,8 @@ async def create_shop_order(body: ShopOrderCreate):
         "order_no": f"OLL-SHOP-{int(time.time())}",
         "items": line_items,
         "shipping": body.shipping.model_dump(),
+        "fulfillment_type": fulfillment_type,  # "delivery" | "pickup"
+        "pickup_address": PICKUP_ADDRESS if fulfillment_type == "pickup" else None,
         "subtotal": round(subtotal, 2),
         "delivery_charge": delivery,
         "total": total,
@@ -496,15 +522,22 @@ async def _submit_vendor_pos(order: dict) -> List[dict]:
         groups[vid]["subtotal"] += float(it.get("line_total") or 0)
 
     shipping = order["shipping"]
-    delivery_address = ", ".join(
-        x for x in [
-            shipping.get("line1"),
-            shipping.get("line2"),
-            shipping.get("city"),
-            shipping.get("state"),
-            shipping.get("pincode"),
-        ] if x
-    )
+    fulfillment_type = order.get("fulfillment_type") or "delivery"
+    if fulfillment_type == "pickup":
+        # Vendor still ships to the OLL office where the customer will pick up.
+        delivery_address = order.get("pickup_address") or PICKUP_ADDRESS
+        vendor_city = "Mumbai"
+    else:
+        delivery_address = ", ".join(
+            x for x in [
+                shipping.get("line1"),
+                shipping.get("line2"),
+                shipping.get("city"),
+                shipping.get("state"),
+                shipping.get("pincode"),
+            ] if x
+        )
+        vendor_city = shipping.get("city")
     # delivery date = today + 7 days (vendor expects YYYY-MM-DD)
     from datetime import timedelta
     delivery_date = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d")
@@ -514,7 +547,7 @@ async def _submit_vendor_pos(order: dict) -> List[dict]:
         payload = {
             "delivery_date": delivery_date,
             "school_name": "OLL Shop Customer",
-            "city": shipping.get("city"),
+            "city": vendor_city,
             "delivery_address": delivery_address,
             "contact_person": shipping.get("full_name"),
             "contact_number": shipping.get("phone"),

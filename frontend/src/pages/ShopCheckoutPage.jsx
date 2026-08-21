@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
-import { ArrowLeft, Shield, Loader2 } from 'lucide-react';
+import { ArrowLeft, Shield, Loader2, Truck, Store, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCart } from '../context/CartContext';
 import { openCashfreeCheckout } from '../utils/cashfreeCheckout';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const DELIVERY = 150;
+
+const PICKUP_ADDRESS = '103, 1st Floor, Kshitij Building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053';
 
 const initialForm = {
   full_name: '',
@@ -25,6 +27,7 @@ const initialForm = {
 const ShopCheckoutPage = () => {
   const { items, subtotal, clearCart } = useCart();
   const [form, setForm] = useState(initialForm);
+  const [fulfillmentType, setFulfillmentType] = useState('delivery'); // 'delivery' | 'pickup'
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -34,7 +37,8 @@ const ShopCheckoutPage = () => {
     }
   }, [items.length, navigate]);
 
-  const total = subtotal > 0 ? subtotal + DELIVERY : 0;
+  const deliveryCharge = subtotal > 0 && fulfillmentType === 'delivery' ? DELIVERY : 0;
+  const total = subtotal > 0 ? subtotal + deliveryCharge : 0;
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -44,10 +48,12 @@ const ShopCheckoutPage = () => {
     if (form.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.push('Please enter a valid email or leave it blank');
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length < 10) errs.push('10-digit phone is required');
-    if (form.line1.trim().length < 4) errs.push('Address line 1 is required');
-    if (form.city.trim().length < 2) errs.push('City is required');
-    if (form.state.trim().length < 2) errs.push('State is required');
-    if (!/^\d{6}$/.test(form.pincode)) errs.push('6-digit pincode is required');
+    if (fulfillmentType === 'delivery') {
+      if (form.line1.trim().length < 4) errs.push('Address line 1 is required');
+      if (form.city.trim().length < 2) errs.push('City is required');
+      if (form.state.trim().length < 2) errs.push('State is required');
+      if (!/^\d{6}$/.test(form.pincode)) errs.push('6-digit pincode is required');
+    }
     return errs;
   };
 
@@ -63,6 +69,7 @@ const ShopCheckoutPage = () => {
       // 1. Create order
       const createRes = await axios.post(`${API}/shop/orders`, {
         items: items.map((it) => ({ product_id: it.product_id, quantity: it.quantity })),
+        fulfillment_type: fulfillmentType,
         shipping: {
           ...form,
           phone: form.phone.replace(/\D/g, ''),
@@ -116,9 +123,52 @@ const ShopCheckoutPage = () => {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid lg:grid-cols-[1.4fr,1fr] gap-8">
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 space-y-5" data-testid="shop-checkout-form">
-          <h1 className="text-2xl font-bold text-slate-900">Shipping & Contact</h1>
+          {/* ── Fulfillment options ─────────────────────────── */}
+          <section data-testid="checkout-fulfillment-section">
+            <h1 className="text-2xl font-bold text-slate-900">Fulfillment</h1>
+            <p className="text-sm text-slate-500 mt-1">Choose how you&apos;d like to receive your order.</p>
+            <div className="mt-4 grid sm:grid-cols-2 gap-3">
+              <FulfillmentCard
+                testId="fulfillment-option-delivery"
+                icon={<Truck className="w-5 h-5" />}
+                title="Deliver to My Address"
+                subtitle={subtotal > 0 ? `+ ₹${DELIVERY} delivery` : 'Delivery charges apply'}
+                selected={fulfillmentType === 'delivery'}
+                onClick={() => setFulfillmentType('delivery')}
+              />
+              <FulfillmentCard
+                testId="fulfillment-option-pickup"
+                icon={<Store className="w-5 h-5" />}
+                title="Pickup from OLL Office"
+                subtitle="Free · No delivery charges"
+                selected={fulfillmentType === 'pickup'}
+                onClick={() => setFulfillmentType('pickup')}
+              />
+            </div>
+
+            {fulfillmentType === 'pickup' && (
+              <div
+                className="mt-4 flex gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200"
+                data-testid="pickup-address-block"
+              >
+                <MapPin className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <div className="font-semibold text-slate-900">Pickup Address</div>
+                  <div className="text-slate-600 leading-relaxed mt-0.5">{PICKUP_ADDRESS}</div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Bring a copy of your order confirmation. Mon–Sat, 10:00 AM – 6:00 PM.
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* ── Shipping & Contact ─────────────────────────── */}
+          <h2 className="text-2xl font-bold text-slate-900 pt-2">
+            {fulfillmentType === 'pickup' ? 'Contact Details' : 'Shipping & Contact'}
+          </h2>
           <p className="text-sm text-slate-500 -mt-3">
-            We'll send the order confirmation, tracking and any updates here.
+            We&apos;ll send the order confirmation, tracking and any updates here.
           </p>
 
           <div className="grid sm:grid-cols-2 gap-4">
@@ -132,21 +182,31 @@ const ShopCheckoutPage = () => {
             placeholder="10-digit mobile"
             testId="checkout-phone"
           />
-          <Field label="Address Line 1 *" value={form.line1} onChange={setField('line1')} testId="checkout-line1" />
-          <Field label="Address Line 2" value={form.line2} onChange={setField('line2')} testId="checkout-line2" />
-          <div className="grid sm:grid-cols-3 gap-4">
-            <Field label="City *" value={form.city} onChange={setField('city')} testId="checkout-city" />
-            <Field label="State *" value={form.state} onChange={setField('state')} testId="checkout-state" />
-            <Field label="Pincode *" value={form.pincode} onChange={setField('pincode')} placeholder="6 digits" testId="checkout-pincode" />
-          </div>
+
+          {fulfillmentType === 'delivery' && (
+            <div className="space-y-4" data-testid="delivery-address-block">
+              <Field label="Address Line 1 *" value={form.line1} onChange={setField('line1')} testId="checkout-line1" />
+              <Field label="Address Line 2" value={form.line2} onChange={setField('line2')} testId="checkout-line2" />
+              <div className="grid sm:grid-cols-3 gap-4">
+                <Field label="City *" value={form.city} onChange={setField('city')} testId="checkout-city" />
+                <Field label="State *" value={form.state} onChange={setField('state')} testId="checkout-state" />
+                <Field label="Pincode *" value={form.pincode} onChange={setField('pincode')} placeholder="6 digits" testId="checkout-pincode" />
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Delivery notes</label>
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+              {fulfillmentType === 'pickup' ? 'Notes' : 'Delivery notes'}
+            </label>
             <textarea
               value={form.notes}
               onChange={setField('notes')}
               rows={2}
               className="mt-1 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-sm"
-              placeholder="Anything we should know? Landmarks, gift wrap, alternate phone…"
+              placeholder={fulfillmentType === 'pickup'
+                ? 'Anything we should know? Preferred pickup date, alternate contact…'
+                : 'Anything we should know? Landmarks, gift wrap, alternate phone…'}
               data-testid="checkout-notes"
             />
           </div>
@@ -193,8 +253,19 @@ const ShopCheckoutPage = () => {
               <span>₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between text-white/70">
-              <span>Delivery</span>
-              <span>₹{DELIVERY}</span>
+              <span>
+                Delivery
+                <span className="ml-1 text-[10px] uppercase tracking-wider text-white/40" data-testid="checkout-fulfillment-label">
+                  {fulfillmentType === 'pickup' ? '· Pickup' : '· Home'}
+                </span>
+              </span>
+              <span data-testid="checkout-delivery-charge">
+                {deliveryCharge === 0 ? (
+                  <span className="text-emerald-400 font-semibold">FREE</span>
+                ) : (
+                  <>₹{deliveryCharge}</>
+                )}
+              </span>
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t border-white/10">
               <span>Total</span>
@@ -206,6 +277,33 @@ const ShopCheckoutPage = () => {
     </div>
   );
 };
+
+const FulfillmentCard = ({ testId, icon, title, subtitle, selected, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    data-testid={testId}
+    aria-pressed={selected}
+    className={`text-left flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
+      selected
+        ? 'border-[#D63031] bg-red-50 shadow-sm'
+        : 'border-slate-200 bg-white hover:border-slate-300'
+    }`}
+  >
+    <span className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${selected ? 'bg-[#D63031] text-white' : 'bg-slate-100 text-slate-600'}`}>
+      {icon}
+    </span>
+    <span className="flex-1">
+      <span className="block text-sm font-bold text-slate-900">{title}</span>
+      <span className={`block text-xs mt-0.5 ${selected ? 'text-[#D63031] font-semibold' : 'text-slate-500'}`}>{subtitle}</span>
+    </span>
+    <span
+      className={`mt-1 w-4 h-4 rounded-full border-2 flex-shrink-0 ${
+        selected ? 'border-[#D63031] bg-[#D63031]' : 'border-slate-300 bg-white'
+      }`}
+    />
+  </button>
+);
 
 const Field = ({ label, value, onChange, type = 'text', placeholder, testId }) => (
   <div>
