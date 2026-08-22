@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Trophy, Flag, Zap, Cpu, Users, MapPin, ShieldCheck, Play,
+  Trophy, Flag, Zap, Cpu, Users, MapPin, ShieldCheck,
   ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown,
 } from 'lucide-react';
 import Footer from '../components/Footer';
@@ -106,6 +106,17 @@ const ROUND_PATHS = [
           'Winners advance directly to the Grand Finale at IIT Bombay · 16–18 Dec 2026.',
         ],
       },
+      {
+        n: 3, tag: 'Grand Finale · IIT Bombay', dot: '#10B981', icon: Trophy,
+        title: 'Grand Finale · IIT Bombay · 16–18 Dec 2026',
+        lead: 'Three days on the iconic IIT Bombay campus. Battles. Races. Winners crowned live on the Techfest arena.',
+        bullets: [
+          'RoboSumo and RoboRacer knockout brackets on Techfest\u2019s live arena stage.',
+          'Prize money for the top 3 teams of each track.',
+          'Certificate of Finalist Recognition for every finalist.',
+          'Networking with STEM pioneers, engineers and Techfest alumni across three days.',
+        ],
+      },
     ],
   },
   {
@@ -138,16 +149,10 @@ const ROUND_PATHS = [
   },
 ];
 
-const WINNER_REEL = [
-  { title: 'RoboSumo · Final Push', team: 'Team Cyclone · DPS Delhi', ytId: 'YoIu5akBkr0' },
-  { title: 'RoboRacer · Photo Finish', team: 'Team Nitro · Sacred Heart Kolkata', ytId: 'OnK6oevnLeM' },
-  { title: 'Innovation · Live Demo', team: 'Team Kaizen · Ryan International', ytId: 'r6xeqlTixYE' },
-];
-
 const FAQS = [
   { q: 'Who can participate?', a: 'RoboSumo and RoboRacer are open to all school students in teams of 3–5. The Robotics Innovation Challenge has Junior (Grades 4–7) and Senior (Grades 8–12) categories.' },
   { q: 'Do I need to buy the OLL kit?', a: 'The OLL Robo Sumo and Robo Racer kits are officially designed for the competition. They give you the exact metal body, motors, wheels, controller and arena/track needed to compete.' },
-  { q: 'What are the rounds for each track?', a: 'RoboSumo and RoboRacer follow a 2-round path — Round 1 is an online submission, Round 2 is a live Regional Qualifier in your city; winners fast-track to the Grand Finale. The Robotics Innovation Challenge follows its own 2-round path — Round 1 is an online prototype submission, Round 2 is a direct Grand Finale at IIT Bombay (no regional qualifier).' },
+  { q: 'What are the rounds for each track?', a: 'RoboSumo and RoboRacer follow a 3-round path — R1 online submission, R2 live Regional Qualifier in your city, R3 Grand Finale at IIT Bombay (16–18 Dec 2026). The Robotics Innovation Challenge follows a 2-round path — R1 online prototype submission, R2 Direct Grand Finale at IIT Bombay (no regional qualifier).' },
   { q: 'What are the prizes?', a: 'Prize money is awarded to the top three teams of each track. Payouts are made via NEFT after winners submit their bank details in the on-site form, with final payment by May 2027.' },
   { q: 'What do participants receive?', a: 'Every participant with an accepted entry gets a Certificate of Participation. Grand Finale competitors additionally receive a Certificate of Finalist Recognition.' },
   { q: 'Where is the Grand Finale?', a: 'IIT Bombay, 16–18 December 2026 — the flagship Techfest campus edition.' },
@@ -251,6 +256,10 @@ export default function TechfestPage() {
             linear-gradient(180deg, #0A1F44 0%, #1E3A5F 45%, #0A1F44 100%);
           background-attachment: fixed;
         }
+        /* iOS + mobile: fixed background is janky/unsupported — fall back to scroll */
+        @media (max-width: 820px), (hover: none) and (pointer: coarse) {
+          .tf-page { background-attachment: scroll; }
+        }
 
         /* ── Type system ─────────────────────────────────────── */
         .tf-h1 { font-family: 'Zing Rust', 'Bebas Neue', 'Anton', sans-serif; font-weight: 400; letter-spacing: 0.005em; line-height: 0.92; text-transform: uppercase; }
@@ -297,12 +306,22 @@ export default function TechfestPage() {
         .tf-btn.solid-white { background: #fff; color: #DC2626; box-shadow: 0 12px 24px rgba(0,0,0,0.28); }
         .tf-btn.tiny { padding: 8px 14px; font-size: 0.7rem; }
         @media (max-width: 640px) {
-          .tf-pillnav-inner { padding: 6px 6px 6px 12px; }
-          .tf-pillnav-brands img { height: 22px; }
-          .tf-pillnav-brands img.tf-mark { height: 32px; }
-          .tf-pillnav-brands .divider { height: 24px; }
-          .tf-btn { padding: 8px 12px; font-size: 0.68rem; }
+          .tf-pillnav { top: 8px; padding: 0 8px; }
+          .tf-pillnav-inner { padding: 6px 6px 6px 10px; }
+          .tf-pillnav-brands { gap: 8px; }
+          .tf-pillnav-brands img { height: 20px; }
+          .tf-pillnav-brands img.tf-mark { height: 30px; }
+          .tf-pillnav-brands .divider { height: 22px; }
+          .tf-pillnav-ctas { gap: 6px; }
+          .tf-btn { padding: 8px 10px; font-size: 0.65rem; letter-spacing: 0.03em; gap: 4px; }
           .tf-btn .tf-hide-sm { display: none; }
+        }
+        @media (max-width: 420px) {
+          .tf-pillnav-brands { gap: 6px; }
+          .tf-pillnav-brands img { height: 18px; }
+          .tf-pillnav-brands img.tf-mark { height: 26px; }
+          .tf-pillnav-brands .divider { height: 18px; }
+          .tf-btn { padding: 7px 9px; font-size: 0.6rem; }
         }
 
         /* Racing stripe animation */
@@ -330,7 +349,7 @@ export default function TechfestPage() {
               <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-hide-sm">Buy </span>Kits
             </button>
             <a href="https://techfest.org" target="_blank" rel="noreferrer" className="tf-btn primary" data-testid="techfest-nav-register">
-              <Flag className="w-3.5 h-3.5" /> Register Now
+              <Flag className="w-3.5 h-3.5" /> Register<span className="tf-hide-sm"> Now</span>
             </a>
           </div>
         </div>
@@ -347,7 +366,7 @@ export default function TechfestPage() {
                 <span className="tf-eyebrow text-white/85">OLL × Techfest IIT Bombay</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] animate-pulse" />
               </div>
-              <h1 className="tf-h1 text-5xl sm:text-6xl md:text-7xl lg:text-[6rem]">
+              <h1 className="tf-h1 text-4xl sm:text-6xl md:text-7xl lg:text-[6rem] leading-[0.95] break-words">
                 OLL <span className="text-[#FCA5A5]">Robotics</span> Championship
               </h1>
               <p className="tf-body text-base md:text-lg text-white/85 mt-6 max-w-xl leading-relaxed">
@@ -387,7 +406,7 @@ export default function TechfestPage() {
             <div className="tf-eyebrow text-[#FCA5A5]">the road to iit bombay</div>
             <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">Competition Rounds.</h2>
             <p className="tf-body text-white/75 mt-4 max-w-2xl mx-auto text-base md:text-lg">
-              Two rounds per track. Every team earns their spot on the Grand Finale stage at IIT Bombay, 16–18 December 2026.
+              Every team earns their spot on the Grand Finale stage at IIT Bombay, 16–18 December 2026. Follow the path for your track below.
             </p>
           </div>
 
@@ -406,7 +425,7 @@ export default function TechfestPage() {
                     </div>
                   </div>
 
-                  <ol className="grid md:grid-cols-2 gap-5">
+                  <ol className={`grid gap-5 ${path.rounds.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                     {path.rounds.map((r) => {
                       const Icon = r.icon;
                       return (
@@ -562,43 +581,6 @@ export default function TechfestPage() {
           <KitCard testId="techfest-kit-racer" title="Robo Racer Car Kit" tagline="Build. Code. Race. Win." image={RACER_TRACK}
             highlights={['Complete RC Chassis', '2 Motors + 4 Wheels', 'Modular Racing Track (240 × 120 cm)', 'Batteries + Switch', 'User Manual & Stickers']}
             slug="robo-racer-kit-specially-made-for-iit-bombay-8bf545dc" />
-        </div>
-      </section>
-
-      {/* ── WINNER REEL ────────────────────────────────────── */}
-      <section className="tf-band-light py-16 lg:py-24" data-testid="techfest-winner-reel">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <div className="tf-eyebrow text-[#DC2626]">last year on the arena</div>
-            <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2">Winner Reel.</h2>
-            <p className="tf-body text-slate-600 mt-3 max-w-2xl mx-auto">
-              Highlights from the previous OLL Robotics Championship at IIT Bombay — the pushes, the photo finishes, the pitches that took home the trophies.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {WINNER_REEL.map((v) => (
-              <a
-                key={v.ytId}
-                href={`https://www.youtube.com/watch?v=${v.ytId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="group relative block rounded-2xl overflow-hidden aspect-video border border-slate-200 shadow-lg hover:shadow-2xl transition-shadow"
-                data-testid={`techfest-reel-${v.ytId}`}
-              >
-                <img src={`https://i.ytimg.com/vi/${v.ytId}/maxresdefault.jpg`} alt={v.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 40%, rgba(10,31,68,0.9) 100%)' }} />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="w-14 h-14 rounded-full bg-white/25 border-2 border-white/60 backdrop-blur flex items-center justify-center group-hover:bg-[#DC2626] group-hover:border-[#DC2626] transition-colors">
-                    <Play className="w-6 h-6 text-white" fill="#fff" strokeWidth={0} style={{ marginLeft: 3 }} />
-                  </span>
-                </div>
-                <div className="absolute bottom-3 left-4 right-4 text-white">
-                  <div className="tf-eyebrow text-[#FCA5A5]">{v.team}</div>
-                  <div className="tf-section-title text-lg font-semibold mt-1 leading-tight">{v.title}</div>
-                </div>
-              </a>
-            ))}
-          </div>
         </div>
       </section>
 

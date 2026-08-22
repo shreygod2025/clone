@@ -303,8 +303,10 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
           }
 
           @media (max-width: 820px) {
-            .oll-pillnav-links { display: none; }
-            .oll-pillnav { padding: 0.5rem 0.5rem 0.5rem 1rem; }
+            .oll-pillnav-links { gap: 0; }
+            .oll-pillnav-links a:not(.oll-pill-hl) { display: none; }
+            .oll-pillnav-links a.oll-pill-hl { padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+            .oll-pillnav { padding: 0.5rem 0.5rem 0.5rem 1rem; gap: 0.5rem; }
             .oll-pill-btn-outline, .oll-pill-btn-primary { padding: 0.55rem 0.9rem; font-size: 0.8rem; }
           }
           @media (max-width: 520px) {
