@@ -151,6 +151,7 @@ const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const ShopSuccessPage = lazy(() => import("./pages/ShopSuccessPage"));
 const AdminShopPanel = lazy(() => import("./pages/admin/AdminShopPanel"));
 const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
+const TechfestPage = lazy(() => import("./pages/TechfestPage"));
 const AccessDenied = lazy(() => import("./pages/admin/AccessDenied"));
 
 const ProtectedRoute = ({ children, permission = null }) => {
@@ -342,6 +343,7 @@ function App() {
               <Route path="/admin/link-preview-tester" element={<ProtectedRoute permission="settings"><AdminLinkPreviewTester /></ProtectedRoute>} />
               <Route path="/admin/schools" element={<ProtectedRoute permission="schools"><AdminSchoolCRM /></ProtectedRoute>} />
               <Route path="/pricing" element={<ProtectedRoute permission="pricing"><AdminPricing /></ProtectedRoute>} />
+              <Route path="/techfest" element={<TechfestPage />} />
               <Route path="/admin/success-stories" element={<ProtectedRoute><AdminSuccessStories /></ProtectedRoute>} />
               <Route path="/admin/schools/:schoolId/reports" element={<ProtectedRoute permission="schools"><SchoolReports /></ProtectedRoute>} />
               <Route path="/admin/schools/:schoolId/lms-report" element={<ProtectedRoute permission="schools"><LMSSchoolReport /></ProtectedRoute>} />

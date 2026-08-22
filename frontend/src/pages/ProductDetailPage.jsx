@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import {
   ShoppingCart, ChevronRight, Truck, Shield, Sparkles,
-  ArrowLeft, Package, BadgeCheck, Star,
+  ArrowLeft, Package, BadgeCheck, Star, Trophy, Flag, Zap, ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../components/Footer';
@@ -356,6 +356,9 @@ const ProductDetailPage = () => {
             <p>{product.description || 'A curated OLL Robotics kit built for hands-on learning.'}</p>
           </div>
 
+          {/* Techfest badge — appears for the two official IIT Bombay Techfest kits */}
+          <TechfestBadge slug={slug} />
+
           {/* SKU + vendor */}
           <dl className="mt-5 grid grid-cols-2 gap-3 text-xs text-slate-500">
             {product.sku && (
@@ -429,6 +432,9 @@ const ProductDetailPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Techfest deep-dive — only for the two official IIT Bombay Techfest kits */}
+      <TechfestDeepDive slug={slug} />
 
       {/* Related products */}
       {related.length > 0 && (
@@ -510,3 +516,177 @@ const TrustBadge = ({ icon, title, sub }) => (
 );
 
 export default ProductDetailPage;
+
+// ─── Techfest add-ons (rendered only when slug matches a Techfest kit) ─────
+const isTechfestSlug = (slug) => {
+  if (!slug) return null;
+  const s = slug.toLowerCase();
+  if (s.includes('sumo') && (s.includes('techfest') || s.includes('iit-bombay'))) return 'sumo';
+  if (s.includes('racer') && (s.includes('techfest') || s.includes('iit-bombay'))) return 'racer';
+  return null;
+};
+
+const TechfestBadge = ({ slug }) => {
+  const kind = isTechfestSlug(slug);
+  if (!kind) return null;
+  const copy = kind === 'sumo'
+    ? { tagline: 'Build. Battle. Win.', track: 'RoboSumo · 1v1 Push Battle' }
+    : { tagline: 'Build. Code. Race. Win.', track: 'RoboRacer · 1v1 Speed Duel' };
+  return (
+    <div
+      className="mt-5 relative overflow-hidden rounded-2xl p-4 sm:p-5 border-2 border-[#DC2626]/20"
+      style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 100%)' }}
+      data-testid="pdp-techfest-badge"
+    >
+      <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full blur-3xl bg-[#DC2626] opacity-40 pointer-events-none" />
+      <div className="relative flex items-center gap-4">
+        <Trophy className="w-8 h-8 text-[#FCA5A5] flex-shrink-0" />
+        <div className="min-w-0 flex-1 text-white">
+          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#FCA5A5]">
+            Officially made for
+          </div>
+          <div className="text-lg sm:text-xl font-black leading-tight mt-0.5">
+            Techfest IIT Bombay 2026 · {copy.track}
+          </div>
+          <div className="text-[13px] text-white/80 mt-1 font-light">
+            {copy.tagline} · Grand Finale <strong className="font-semibold text-white">16–18 Dec 2026</strong> at IIT Bombay.
+          </div>
+        </div>
+        <Link
+          to="/techfest"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white text-[11px] font-bold uppercase tracking-wider flex-shrink-0"
+          data-testid="pdp-techfest-badge-cta"
+        >
+          Compete <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+const TechfestDeepDive = ({ slug }) => {
+  const kind = isTechfestSlug(slug);
+  if (!kind) return null;
+
+  const isSumo = kind === 'sumo';
+  const gallery = isSumo
+    ? ['/techfest/1.png', '/techfest/2.png', '/techfest/3.png', '/techfest/4.png']
+    : ['/techfest/5.png', '/techfest/6.png', '/techfest/7.png'];
+
+  const inclusions = isSumo ? [
+    { k: 'Metal Body', v: 'Pre-cut & pre-drilled · 20cm × 20cm' },
+    { k: '4 High-Grip Wheels', v: 'Maximum traction, cross-terrain tread' },
+    { k: '4 High-Torque BO Motors', v: 'Aggressive push, low RPM' },
+    { k: 'Dual-Channel Motor Driver', v: 'Precise, independent motor control' },
+    { k: 'Wired Controller', v: 'Ergonomic, low-latency' },
+    { k: 'Soldering Iron 25W', v: '1 per kit — for assembly' },
+    { k: 'Sumo Arena Mat', v: '150cm × 150cm high-contrast fight mat' },
+    { k: 'Structure Components', v: 'Screws, nuts, standoffs, hardware' },
+  ] : [
+    { k: '1 × RC Chassis', v: 'Aerodynamic body, painted & branded' },
+    { k: '2 × Motors + 4 Wheels', v: 'Tuned drivetrain' },
+    { k: '1 × Battery Holder + 2 × AA', v: 'Ready to power on out of the box' },
+    { k: '1 × Switch, 1 × Screwdriver', v: 'Plus screws, nuts & stickers' },
+    { k: '1 × User Manual', v: 'Step-by-step build & code guide' },
+    { k: 'Racing Track', v: 'Modular 240cm × 120cm track with ramps + turns' },
+  ];
+
+  const arenaSpecs = isSumo ? [
+    { k: 'Arena', v: '150 cm circular ring, marked boundary' },
+    { k: 'Bot Envelope', v: '25 × 25 × 25 cm max' },
+    { k: 'Bot Weight', v: '3 kg max (incl. battery)' },
+    { k: 'Control', v: 'Autonomous, wired or wireless RC' },
+    { k: 'Match', v: '2 min · knockout · first push-out wins' },
+  ] : [
+    { k: 'Track', v: '10–12 m straight · 2 parallel lanes' },
+    { k: 'Bot Envelope', v: '20 × 15 × 15 cm max' },
+    { k: 'Bot Weight', v: '1.5 kg max (incl. battery)' },
+    { k: 'Control', v: 'Wireless RC only · 1 channel per team' },
+    { k: 'Heat', v: '2 min · knockout · first across finish wins' },
+  ];
+
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-14" data-testid="pdp-techfest-deepdive">
+      <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+        {/* Header ribbon */}
+        <div className="relative px-6 sm:px-10 py-6 text-white" style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #DC2626 130%)' }}>
+          <div className="flex flex-wrap items-center gap-4 justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-white/70">Techfest IIT Bombay 2026</div>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-1">
+                {isSumo ? 'Robo Sumo · Battle-Ready Kit' : 'Robo Racer · Race-Ready Kit'}
+              </h2>
+              <div className="text-sm text-white/80 mt-1 font-light">
+                {isSumo ? 'Full metal chassis · 4-motor drive · 150cm arena mat · everything for the ring.'
+                        : '1v1 racing kit · modular 240cm × 120cm track · batteries included · out-of-box race.'}
+              </div>
+            </div>
+            <Link
+              to="/techfest"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white text-[#DC2626] text-xs font-black uppercase tracking-widest shadow-lg"
+              data-testid="pdp-techfest-deepdive-cta"
+            >
+              View Competition <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="grid md:grid-cols-[1.15fr,1fr] gap-0">
+          {/* Gallery */}
+          <div className="bg-slate-50 p-6 sm:p-8">
+            <div className="grid grid-cols-2 gap-3">
+              {gallery.map((src, i) => (
+                <div
+                  key={src}
+                  className={`rounded-2xl overflow-hidden bg-white border border-slate-200 ${i === 0 ? 'col-span-2 aspect-[16/9]' : 'aspect-square'}`}
+                >
+                  <img src={src} alt={`${isSumo ? 'Robo Sumo' : 'Robo Racer'} view ${i + 1}`} loading="lazy" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 sm:p-8 space-y-6">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#DC2626] flex items-center gap-1.5">
+                {isSumo ? <Flag className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />} Kit Includes
+              </div>
+              <ul className="mt-3 space-y-2.5">
+                {inclusions.map((it) => (
+                  <li key={it.k} className="flex items-start gap-2.5">
+                    <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <div className="font-bold text-slate-900">{it.k}</div>
+                      <div className="text-xs text-slate-500 leading-relaxed">{it.v}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#0A1F44]">
+                Arena &amp; Bot Rules · Techfest Rulebook
+              </div>
+              <div className="mt-3 grid gap-2 text-xs text-slate-700">
+                {arenaSpecs.map((s) => (
+                  <div key={s.k} className="flex items-baseline gap-3 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0">
+                    <div className="w-28 font-bold text-slate-500 uppercase tracking-wider text-[10px] flex-shrink-0">{s.k}</div>
+                    <div className="flex-1">{s.v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-[11px] text-slate-500 leading-relaxed">
+              Prize money for top 3 teams of each track · Certificate of Participation for every entry ·
+              Certificate of Finalist Recognition for Grand Finale · Payouts by May 2027.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
