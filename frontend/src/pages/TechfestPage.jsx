@@ -4,8 +4,10 @@ import {
   Trophy, Flag, Zap, Cpu, Users, MapPin, Calendar, ShieldCheck,
   ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown,
 } from 'lucide-react';
+import Footer from '../components/Footer';
 
-const TECHFEST_LOGO = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/techfest_logo.png';
+const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+const TECHFEST_LOGO_URL = 'https://techfest.org/static/img/techfest.svg';
 const SUMO_HERO   = '/techfest/1.png';
 const SUMO_BOX    = '/techfest/2.png';
 const RACER_HERO  = '/techfest/5.png';
@@ -124,8 +126,8 @@ export default function TechfestPage() {
 
   useEffect(() => {
     const CANONICAL = 'https://oll.co/techfest';
-    const TITLE = 'OLL × Techfest IIT Bombay 2026 — RoboSumo, RoboRacer & Robotics Innovation Challenge';
-    const DESC = 'Compete in RoboSumo, RoboRacer and the Robotics Innovation Challenge at Techfest IIT Bombay 2026. Grade-wise categories, OLL regional qualifiers and a Grand Finale at IIT Bombay from 16–18 December 2026. Prize money for top 3 teams of each track.';
+    const TITLE = 'Techfest IIT Bombay 2026 · India\u2019s Biggest School Tech Fest | OLL RoboSumo, RoboRacer & Innovation Challenge';
+    const DESC = 'Compete in RoboSumo, RoboRacer and the Robotics Innovation Challenge at Techfest IIT Bombay 2026 — India\u2019s biggest school tech fest. Grade-wise categories, OLL regional qualifiers and a Grand Finale at IIT Bombay from 16–18 December 2026. Prize money for top 3 teams of each track.';
     document.title = TITLE;
     upsertMeta('description', DESC);
     upsertMeta('keywords', 'techfest, IIT Bombay, robotics competition, RoboSumo, RoboRacer, robotics innovation challenge, OLL Techfest, school robotics competition, robotics championship India');
@@ -195,7 +197,72 @@ export default function TechfestPage() {
         @keyframes tf-grain { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-2%,-3%); } 50% { transform: translate(3%,-1%); } 75% { transform: translate(-1%,2%); } }
         .tf-grain::before { content:''; position: absolute; inset:-50%; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E"); mix-blend-mode: overlay; opacity:.10; pointer-events:none; animation: tf-grain 22s steps(2) infinite; }
         @keyframes tf-track-move { 0% { background-position: 0 0; } 100% { background-position: 200% 0; } }
+
+        /* ── Techfest pill navbar (sticky) ────────────────────── */
+        .tf-pillnav { position: sticky; top: 12px; z-index: 60; margin: 12px auto 0; padding: 0 12px; }
+        .tf-pillnav-inner {
+          max-width: 1220px; margin: 0 auto;
+          background: rgba(255,255,255,0.86);
+          -webkit-backdrop-filter: saturate(180%) blur(14px);
+          backdrop-filter: saturate(180%) blur(14px);
+          border: 1px solid rgba(10,31,68,0.08);
+          box-shadow: 0 20px 44px rgba(10,31,68,0.10), 0 2px 6px rgba(10,31,68,0.06);
+          border-radius: 999px;
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 8px 10px 8px 18px;
+        }
+        .tf-pillnav-brands { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        .tf-pillnav-brands .divider { width: 1px; height: 26px; background: rgba(10,31,68,0.15); }
+        .tf-pillnav-brands img { display: block; max-height: 32px; width: auto; }
+        .tf-pillnav-ctas { display: flex; align-items: center; gap: 8px; }
+        .tf-pillnav-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 9px 16px; border-radius: 999px;
+          font-family: 'Montserrat', sans-serif; font-weight: 800;
+          font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .tf-pillnav-btn.primary { background: #DC2626; color: #fff; box-shadow: 0 12px 22px rgba(220,38,38,0.35); }
+        .tf-pillnav-btn.primary:hover { background: #B91C1C; transform: translateY(-1px); }
+        .tf-pillnav-btn.ghost { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.25); }
+        .tf-pillnav-btn.ghost:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+        @media (max-width: 640px) {
+          .tf-pillnav-inner { padding: 6px 6px 6px 12px; }
+          .tf-pillnav-brands img { max-height: 24px; }
+          .tf-pillnav-brands .divider { height: 20px; }
+          .tf-pillnav-btn { padding: 7px 12px; font-size: 0.66rem; letter-spacing: 0.06em; }
+          .tf-pillnav-btn .tf-pill-hide { display: none; }
+        }
       `}</style>
+
+      {/* ── Sticky rounded navbar ─────────────────────────────── */}
+      <nav className="tf-pillnav" aria-label="Techfest primary navigation" data-testid="techfest-pillnav">
+        <div className="tf-pillnav-inner">
+          <div className="tf-pillnav-brands">
+            <Link to="/" data-testid="techfest-nav-oll-logo" aria-label="OLL Home">
+              <img src={OLL_LOGO} alt="OLL" />
+            </Link>
+            <span className="divider" aria-hidden="true" />
+            <a href="https://techfest.org" target="_blank" rel="noreferrer" data-testid="techfest-nav-techfest-logo" aria-label="Techfest IIT Bombay">
+              <img src={TECHFEST_LOGO_URL} alt="Techfest IIT Bombay" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.insertAdjacentHTML('afterend', '<span style="font-family:Bebas Neue,sans-serif;letter-spacing:.06em;font-size:1.1rem;color:#0A1F44;">TECHFEST<sup style=\'font-size:.6rem\'>®</sup> IIT BOMBAY</span>'); }} />
+            </a>
+          </div>
+          <div className="tf-pillnav-ctas">
+            <Link to="/shop" className="tf-pillnav-btn ghost" data-testid="techfest-nav-buy-kits">
+              <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-pill-hide">Buy </span>Kits
+            </Link>
+            <a
+              href="https://techfest.org"
+              target="_blank"
+              rel="noreferrer"
+              className="tf-pillnav-btn primary"
+              data-testid="techfest-nav-register"
+            >
+              <Flag className="w-3.5 h-3.5" /> Register Now
+            </a>
+          </div>
+        </div>
+      </nav>
 
       {/* ─── HERO ─────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden tf-grain" style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 45%, #0A1F44 100%)' }}>
@@ -210,12 +277,12 @@ export default function TechfestPage() {
                 <span className="tf-eyebrow text-white/80">OLL × Techfest IIT Bombay</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] animate-pulse" />
               </div>
-              <div className="tf-script text-3xl md:text-4xl mb-2 text-[#FCA5A5]">India&apos;s biggest college tech fest.</div>
+              <div className="tf-script text-3xl md:text-4xl mb-2 text-[#FCA5A5]">India&apos;s biggest school tech fest.</div>
               <h1 className="tf-h1 text-5xl sm:text-6xl md:text-7xl lg:text-[5.75rem] font-black">
                 Build. Battle. <span className="text-[#DC2626]">Race.</span> Win.
               </h1>
               <p className="tf-body font-light text-base md:text-lg text-white/85 mt-6 max-w-xl leading-relaxed">
-                Compete across three flagship robotics tracks at Techfest 2026-27 — the biggest science &amp; tech festival in Asia. Regional qualifiers powered by OLL. Grand Finale live at IIT Bombay <strong className="font-bold text-white">16–18 December 2026</strong>.
+                Compete across three flagship robotics tracks at Techfest 2026-27 — the biggest science &amp; tech festival for schools. Regional qualifiers powered by OLL. Grand Finale live at IIT Bombay <strong className="font-bold text-white">16–18 December 2026</strong>.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <a
@@ -498,6 +565,8 @@ export default function TechfestPage() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }

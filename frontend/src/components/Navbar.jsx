@@ -216,6 +216,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
     { path: '/offerings', label: 'Offerings' },
     { path: '/about', label: 'About' },
     { path: '/centers', label: 'Centers' },
+    { path: '/techfest', label: 'Techfest', highlight: true },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -259,6 +260,13 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
           }
           .oll-pillnav-links a:hover { opacity: 1; color: #D63031; }
           .oll-pillnav-links a.active { opacity: 1; color: #D63031; }
+          .oll-pillnav-links a.oll-pill-hl {
+            background: #DC2626; color: #fff !important; opacity: 1 !important;
+            padding: 0.4rem 0.85rem; border-radius: 999px;
+            box-shadow: 0 8px 18px rgba(220,38,38,0.35);
+          }
+          .oll-pillnav-links a.oll-pill-hl:hover { background: #B91C1C; color: #fff !important; }
+          .oll-pillnav-links a.oll-pill-hl.active { background: #B91C1C; color: #fff !important; }
           .oll-pillnav-actions { display: flex; align-items: center; gap: 0.5rem; }
 
           .oll-pill-btn-outline {
@@ -325,7 +333,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
               <Link
                 key={link.path}
                 to={link.path}
-                className={isActive(link.path) ? 'active' : ''}
+                className={`${isActive(link.path) ? 'active' : ''} ${link.highlight ? 'oll-pill-hl' : ''}`.trim()}
                 data-testid={`pill-nav-link-${link.label.toLowerCase()}`}
               >
                 {link.label}

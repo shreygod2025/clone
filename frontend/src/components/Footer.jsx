@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { 
   Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube,
   ChevronDown, ChevronUp, Cpu, Code, Brain, TrendingUp, GraduationCap,
-  FileText, Shield, RefreshCcw, HelpCircle, Building2, ShoppingBag
+  FileText, Shield, RefreshCcw, HelpCircle, Building2, ShoppingBag, Trophy
 } from 'lucide-react';
 
 // All Student Offerings
@@ -313,6 +313,11 @@ const Footer = ({ variant = 'full' }) => {
               <li>
                 <Link to="/shop" className="hover:text-white transition-colors flex items-center gap-1 text-amber-300" data-testid="footer-shop-link">
                   <ShoppingBag className="w-3.5 h-3.5" /> Robotics Shop
+                </Link>
+              </li>
+              <li>
+                <Link to="/techfest" className="hover:text-white transition-colors flex items-center gap-1 text-[#FCA5A5] font-semibold" data-testid="footer-techfest-link">
+                  <Trophy className="w-3.5 h-3.5" /> Techfest IIT Bombay 2026
                 </Link>
               </li>
               <li><Link to="/centers" className="hover:text-white transition-colors">Learning Centers</Link></li>
