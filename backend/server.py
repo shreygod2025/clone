@@ -4147,6 +4147,10 @@ api_router.include_router(friendship_day_router)
 from routes.public_receipts import router as public_receipts_router
 api_router.include_router(public_receipts_router)
 
+# Techfest × OLL Robotics Championship — lead capture
+from routes.techfest import router as techfest_router
+api_router.include_router(techfest_router)
+
 app.include_router(api_router)
 
 # SEO routes mount at the root (NOT under /api/) — Google requests
