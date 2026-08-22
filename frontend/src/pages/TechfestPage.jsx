@@ -7,7 +7,7 @@ import {
 import Footer from '../components/Footer';
 
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
-const TECHFEST_LOGO = '/techfest/techfest-logo.svg';
+const TECHFEST_LOGO = '/techfest/techfest-iitb-logo.webp';
 
 const SUMO_HERO   = '/techfest/1.webp';
 const SUMO_BOX    = '/techfest/2.webp';
@@ -60,13 +60,13 @@ const TRACKS = [
   {
     key: 'ric', label: 'Robotics Innovation Challenge', tag: 'Ideate · Prototype · Pitch', icon: Sparkles, color: '#DC2626',
     tagline: 'Spot a real problem. Build a real solution.',
-    long: 'This track steps away from head-to-head combat. Students spot a real-world problem and design an original robotic prototype, automation system, or STEM concept to solve it, then defend it before a judging panel. Two rounds: online submission → live prototype presentation at IIT Bombay.',
+    long: 'This track steps away from head-to-head combat. Students spot a real-world problem and design an original robotic prototype, automation system, or STEM concept to solve it, then defend it before a judging panel. Two rounds: online submission → direct Grand Finale at IIT Bombay (no regional qualifier).',
     hero: null,
     stats: [
       { k: 'Junior',  v: 'Grades 4–7' },
       { k: 'Senior',  v: 'Grades 8–12' },
       { k: 'Round 1', v: 'Online submission' },
-      { k: 'Round 2', v: 'Live at IIT Bombay' },
+      { k: 'Round 2', v: 'Direct Grand Finale' },
     ],
     rules: [
       'Junior theme: Smart Solutions for Everyday Life (waste, water, safety, plant care, home help, energy).',
@@ -78,41 +78,63 @@ const TRACKS = [
   },
 ];
 
-const ROUNDS = [
+const ROUND_PATHS = [
   {
-    n: 1, tag: 'Regional Qualifiers', dot: '#DC2626',
-    title: 'OLL Regional Qualifiers · Across India',
-    lead: 'Powered by OLL. Held city-by-city so schools can compete without leaving their region.',
-    bullets: [
-      'Multi-city qualifiers — Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, Pune, Chennai, Ahmedabad and more.',
-      'RoboSumo and RoboRacer play knockout brackets in a live arena — top teams get the golden ticket.',
-      'Certificate of Regional Qualifier awarded to every participating team.',
-      'Winners fast-track directly to the Grand Finale — no online round required.',
+    key: 'sumo-racer',
+    tracks: 'RoboSumo · RoboRacer',
+    accent: '#DC2626',
+    icon: CircleDot,
+    rounds: [
+      {
+        n: 1, tag: 'Online Submission', dot: '#F59E0B', icon: Layers,
+        title: 'Online Registration & Design Submission',
+        lead: 'Enter your team on techfest.org and submit a design brief + a 1–3 min bot demo video.',
+        bullets: [
+          'Register on techfest.org and pick your track (RoboSumo or RoboRacer).',
+          'Upload a design write-up, chassis diagram and a 1–3 min bot demo video.',
+          'Panels shortlist teams based on originality, engineering rigour and control strategy.',
+        ],
+      },
+      {
+        n: 2, tag: 'Regional Qualifier', dot: '#DC2626', icon: MapPin,
+        title: 'OLL Regional Qualifier · Live Arena',
+        lead: 'Shortlisted teams battle it out city-by-city in a live knockout arena. Winners fast-track to the Grand Finale at IIT Bombay.',
+        bullets: [
+          'Multi-city qualifiers — Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, Pune, Chennai, Ahmedabad and more.',
+          'Live 1v1 knockout brackets on the OLL arena stage — top teams get the golden ticket.',
+          'Certificate of Regional Qualifier awarded to every participating team.',
+          'Winners advance directly to the Grand Finale at IIT Bombay · 16–18 Dec 2026.',
+        ],
+      },
     ],
-    icon: MapPin,
   },
   {
-    n: 2, tag: 'Online Semi-Finals', dot: '#F59E0B',
-    title: 'Techfest Portal Submissions',
-    lead: 'For teams outside the Regional Qualifier bracket, and mandatory for the Robotics Innovation Challenge.',
-    bullets: [
-      'Register directly on techfest.org and submit designs, technical write-up and a 1–3 min demo video.',
-      'Panels shortlist bots and prototypes based on originality, engineering rigour and real-world impact.',
-      'Shortlisted teams get an official invitation to compete on-campus at IIT Bombay.',
+    key: 'ric',
+    tracks: 'Robotics Innovation Challenge',
+    accent: '#10B981',
+    icon: Sparkles,
+    rounds: [
+      {
+        n: 1, tag: 'Online Submission', dot: '#F59E0B', icon: Layers,
+        title: 'Online Prototype Submission',
+        lead: 'Junior (Grades 4–7) or Senior (Grades 8–12). Spot a real-world problem, submit your prototype online.',
+        bullets: [
+          '1-page problem write-up + 500–800 word technical abstract + design diagram.',
+          '1–3 min demo video of your working prototype or simulation.',
+          'Judged on originality, engineering rigour and real-world impact.',
+        ],
+      },
+      {
+        n: 2, tag: 'Direct Grand Finale', dot: '#10B981', icon: Trophy,
+        title: 'Direct Grand Finale · IIT Bombay',
+        lead: 'No regionals for this track — shortlisted teams head straight to the flagship stage at IIT Bombay, 16–18 Dec 2026.',
+        bullets: [
+          '10-min live prototype demo + 5-min judge Q&A on the Techfest stage.',
+          'Category winners (Junior & Senior) crowned live at IIT Bombay.',
+          'Prize money for top 3 teams · Certificate of Finalist Recognition for every finalist.',
+        ],
+      },
     ],
-    icon: Layers,
-  },
-  {
-    n: 3, tag: 'Grand Finale · IIT Bombay', dot: '#10B981',
-    title: 'Grand Finale · IIT Bombay · 16–18 Dec 2026',
-    lead: 'Three days on the iconic IIT Bombay campus. Battles. Races. Pitch showcases. Winners crowned live.',
-    bullets: [
-      'RoboSumo and RoboRacer knockout brackets on Techfest\u2019s live arena stage.',
-      'Robotics Innovation Challenge: 10-min live demo + 5-min judge Q&A.',
-      'Prize money for top 3 teams of each track · Certificate of Finalist Recognition for every finalist.',
-      'Networking with STEM pioneers, engineers and Techfest alumni across three days.',
-    ],
-    icon: Trophy,
   },
 ];
 
@@ -125,7 +147,7 @@ const WINNER_REEL = [
 const FAQS = [
   { q: 'Who can participate?', a: 'RoboSumo and RoboRacer are open to all school students in teams of 3–5. The Robotics Innovation Challenge has Junior (Grades 4–7) and Senior (Grades 8–12) categories.' },
   { q: 'Do I need to buy the OLL kit?', a: 'The OLL Robo Sumo and Robo Racer kits are officially designed for the competition. They give you the exact metal body, motors, wheels, controller and arena/track needed to compete.' },
-  { q: 'What is the OLL Regional Qualifier bypass?', a: 'Teams that qualify through the OLL Regional Qualifiers advance straight to the Grand Finale for RoboSumo and RoboRacer. This bypass does not apply to the Robotics Innovation Challenge — it uses its own two-round structure.' },
+  { q: 'What are the rounds for each track?', a: 'RoboSumo and RoboRacer follow a 2-round path — Round 1 is an online submission, Round 2 is a live Regional Qualifier in your city; winners fast-track to the Grand Finale. The Robotics Innovation Challenge follows its own 2-round path — Round 1 is an online prototype submission, Round 2 is a direct Grand Finale at IIT Bombay (no regional qualifier).' },
   { q: 'What are the prizes?', a: 'Prize money is awarded to the top three teams of each track. Payouts are made via NEFT after winners submit their bank details in the on-site form, with final payment by May 2027.' },
   { q: 'What do participants receive?', a: 'Every participant with an accepted entry gets a Certificate of Participation. Grand Finale competitors additionally receive a Certificate of Finalist Recognition.' },
   { q: 'Where is the Grand Finale?', a: 'IIT Bombay, 16–18 December 2026 — the flagship Techfest campus edition.' },
@@ -221,7 +243,7 @@ export default function TechfestPage() {
 
         /* Page-wide gradient — flows behind the sticky nav too */
         .tf-page {
-          min-height: 100vh; color: #ffffff; overflow-x: hidden;
+          min-height: 100vh; color: #ffffff; overflow-x: clip;
           font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
           background:
             radial-gradient(circle at 15% 8%, rgba(220,38,38,0.30), transparent 40%),
@@ -254,9 +276,9 @@ export default function TechfestPage() {
           padding: 8px 10px 8px 18px;
         }
         .tf-pillnav-brands { display: flex; align-items: center; gap: 14px; min-width: 0; }
-        .tf-pillnav-brands .divider { width: 1px; height: 26px; background: rgba(10,31,68,0.15); }
+        .tf-pillnav-brands .divider { width: 1px; height: 30px; background: rgba(10,31,68,0.15); }
         .tf-pillnav-brands img { display: block; height: 30px; width: auto; }
-        .tf-pillnav-brands img.tf-mark { height: 34px; }
+        .tf-pillnav-brands img.tf-mark { height: 44px; }
         .tf-pillnav-ctas { display: flex; align-items: center; gap: 8px; }
         .tf-btn {
           display: inline-flex; align-items: center; gap: 6px;
@@ -277,8 +299,8 @@ export default function TechfestPage() {
         @media (max-width: 640px) {
           .tf-pillnav-inner { padding: 6px 6px 6px 12px; }
           .tf-pillnav-brands img { height: 22px; }
-          .tf-pillnav-brands img.tf-mark { height: 26px; }
-          .tf-pillnav-brands .divider { height: 20px; }
+          .tf-pillnav-brands img.tf-mark { height: 32px; }
+          .tf-pillnav-brands .divider { height: 24px; }
           .tf-btn { padding: 8px 12px; font-size: 0.68rem; }
           .tf-btn .tf-hide-sm { display: none; }
         }
@@ -365,42 +387,59 @@ export default function TechfestPage() {
             <div className="tf-eyebrow text-[#FCA5A5]">the road to iit bombay</div>
             <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">Competition Rounds.</h2>
             <p className="tf-body text-white/75 mt-4 max-w-2xl mx-auto text-base md:text-lg">
-              Three rounds. One championship. Every team enters through their nearest OLL Regional Qualifier or via the Techfest online round, then earns their spot at IIT Bombay.
+              Two rounds per track. Every team earns their spot on the Grand Finale stage at IIT Bombay, 16–18 December 2026.
             </p>
           </div>
 
-          <ol className="space-y-6">
-            {ROUNDS.map((r) => {
-              const Icon = r.icon;
+          <div className="space-y-10">
+            {ROUND_PATHS.map((path) => {
+              const PathIcon = path.icon;
               return (
-                <li key={r.n} className="relative rounded-3xl tf-band-glass p-6 md:p-8 backdrop-blur-sm" data-testid={`techfest-round-${r.n}`}>
-                  <div className="grid md:grid-cols-[minmax(160px,220px),1fr] gap-6">
-                    <div className="flex md:flex-col items-start gap-3">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: r.dot }}>
-                        <Icon className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="tf-eyebrow" style={{ color: r.dot }}>Round {r.n}</div>
-                        <div className="tf-h1 text-3xl md:text-4xl text-white mt-1">{r.tag}</div>
-                      </div>
+                <div key={path.key} data-testid={`techfest-round-path-${path.key}`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: path.accent }}>
+                      <PathIcon className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <div className="tf-section-title text-2xl md:text-3xl text-white">{r.title}</div>
-                      <div className="tf-body text-white/80 mt-2 text-sm md:text-base">{r.lead}</div>
-                      <ul className="mt-4 space-y-2 tf-body font-light text-white/85 text-sm">
-                        {r.bullets.map((b, i) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: r.dot }} />
-                            <span>{b}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="tf-eyebrow" style={{ color: path.accent }}>Track path</div>
+                      <div className="tf-h1 text-2xl md:text-3xl text-white leading-tight">{path.tracks}</div>
                     </div>
                   </div>
-                </li>
+
+                  <ol className="grid md:grid-cols-2 gap-5">
+                    {path.rounds.map((r) => {
+                      const Icon = r.icon;
+                      return (
+                        <li key={r.n} className="relative rounded-3xl tf-band-glass p-6 md:p-7 backdrop-blur-sm" data-testid={`techfest-round-${path.key}-${r.n}`}>
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: r.dot }}>
+                              <Icon className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="tf-eyebrow" style={{ color: r.dot }}>Round {r.n}</div>
+                              <div className="tf-h1 text-2xl md:text-3xl text-white mt-1">{r.tag}</div>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <div className="tf-section-title text-lg md:text-xl text-white">{r.title}</div>
+                            <div className="tf-body text-white/80 mt-2 text-sm md:text-base">{r.lead}</div>
+                            <ul className="mt-4 space-y-2 tf-body font-light text-white/85 text-sm">
+                              {r.bullets.map((b, i) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: r.dot }} />
+                                  <span>{b}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
               );
             })}
-          </ol>
+          </div>
 
           {/* Regional map placeholder */}
           <div className="mt-10 rounded-3xl tf-band-glass p-6 md:p-8" data-testid="techfest-regional-map">
