@@ -570,8 +570,8 @@ const TechfestDeepDive = ({ slug }) => {
 
   const isSumo = kind === 'sumo';
   const gallery = isSumo
-    ? ['/techfest/1.png', '/techfest/2.png', '/techfest/3.png', '/techfest/4.png']
-    : ['/techfest/5.png', '/techfest/6.png', '/techfest/7.png'];
+    ? ['/techfest/1.webp', '/techfest/2.webp', '/techfest/3.webp', '/techfest/4.webp']
+    : ['/techfest/5.webp', '/techfest/6.webp', '/techfest/7.webp'];
 
   const inclusions = isSumo ? [
     { k: 'Metal Body', v: 'Pre-cut & pre-drilled · 20cm × 20cm' },

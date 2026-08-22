@@ -1,34 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Trophy, Flag, Zap, Cpu, Users, MapPin, Calendar, ShieldCheck,
+  Trophy, Flag, Zap, Cpu, Users, MapPin, ShieldCheck, Play,
   ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown,
 } from 'lucide-react';
 import Footer from '../components/Footer';
 
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
-const TECHFEST_LOGO_URL = 'https://techfest.org/static/img/techfest.svg';
-const SUMO_HERO   = '/techfest/1.png';
-const SUMO_BOX    = '/techfest/2.png';
-const RACER_HERO  = '/techfest/5.png';
-const RACER_TRACK = '/techfest/6.png';
+const TECHFEST_LOGO = '/techfest/techfest-logo.svg';
+
+const SUMO_HERO   = '/techfest/1.webp';
+const SUMO_BOX    = '/techfest/2.webp';
+const RACER_HERO  = '/techfest/5.webp';
+const RACER_TRACK = '/techfest/6.webp';
 
 const TRACKS = [
   {
-    key: 'sumo',
-    label: 'RoboSumo',
-    tag: 'Battle · 1v1',
-    icon: CircleDot,
-    color: '#DC2626',
+    key: 'sumo', label: 'RoboSumo', tag: 'Battle · 1v1', icon: CircleDot, color: '#DC2626',
     tagline: 'Push. Grip. Dominate.',
-    short: 'A head-to-head pushing contest between two bots inside a circular ring. Testing structural design, traction, and pushing power — rules adapted from the Technoxian World Robotics Championship.',
     long: 'RoboSumo turns mechanical design and control programming into a head-to-head duel. Teams build a fully autonomous, wireless bot and send it into the arena to push the opponent clean over the edge. No weapons, no flipping — just raw traction, weight distribution, and sharp control strategy going toe-to-toe.',
     hero: SUMO_HERO,
     stats: [
-      { k: 'Arena', v: '150 cm circular' },
-      { k: 'Bot Size', v: '25 × 25 × 25 cm' },
-      { k: 'Max Weight', v: '3 kg' },
-      { k: 'Match', v: '2 min · Knockout' },
+      { k: 'Arena',     v: '150 cm circular' },
+      { k: 'Bot Size',  v: '25 × 25 × 25 cm' },
+      { k: 'Max Weight',v: '3 kg' },
+      { k: 'Match',     v: '2 min · Knockout' },
     ],
     rules: [
       '1v1 face-off with bots placed at opposite starting points.',
@@ -41,20 +37,15 @@ const TRACKS = [
     productSlug: 'robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a',
   },
   {
-    key: 'racer',
-    label: 'RoboRacer',
-    tag: 'Race · 1v1',
-    icon: Zap,
-    color: '#1E3A5F',
+    key: 'racer', label: 'RoboRacer', tag: 'Race · 1v1', icon: Zap, color: '#1E3A5F',
     tagline: 'Build. Code. Race. Win.',
-    short: 'A head-to-head speed contest between two RC bots on a shared track. Drivetrain design, agility and race-line strategy decide the winner.',
     long: 'RoboRacer puts drivetrain design and nerve to the test. Teams build RC bots and race them head-to-head down a shared track, from a standing start to the finish line. Whether built for raw top speed or tight control, every bot lives or dies by its traction, steering, and the driver\u2019s reflexes.',
     hero: RACER_HERO,
     stats: [
-      { k: 'Track', v: '10–12 m · 2 lanes' },
-      { k: 'Bot Size', v: '20 × 15 × 15 cm' },
+      { k: 'Track',      v: '10–12 m · 2 lanes' },
+      { k: 'Bot Size',   v: '20 × 15 × 15 cm' },
       { k: 'Max Weight', v: '1.5 kg' },
-      { k: 'Heat', v: '2 min · Knockout' },
+      { k: 'Heat',       v: '2 min · Knockout' },
     ],
     rules: [
       '1v1 heat between two bots in adjacent lanes, launched on the referee\u2019s signal.',
@@ -67,18 +58,13 @@ const TRACKS = [
     productSlug: 'robo-racer-kit-specially-made-for-iit-bombay-8bf545dc',
   },
   {
-    key: 'ric',
-    label: 'Robotics Innovation Challenge',
-    tag: 'Ideate · Prototype · Pitch',
-    icon: Sparkles,
-    color: '#DC2626',
+    key: 'ric', label: 'Robotics Innovation Challenge', tag: 'Ideate · Prototype · Pitch', icon: Sparkles, color: '#DC2626',
     tagline: 'Spot a real problem. Build a real solution.',
-    short: 'Research-and-presentation track. Students identify a real-world problem, build an original prototype, and pitch it to a judging panel — with its own two-round online-to-onsite structure.',
     long: 'This track steps away from head-to-head combat. Students spot a real-world problem and design an original robotic prototype, automation system, or STEM concept to solve it, then defend it before a judging panel. Two rounds: online submission → live prototype presentation at IIT Bombay.',
     hero: null,
     stats: [
-      { k: 'Junior', v: 'Grades 4–7' },
-      { k: 'Senior', v: 'Grades 8–12' },
+      { k: 'Junior',  v: 'Grades 4–7' },
+      { k: 'Senior',  v: 'Grades 8–12' },
       { k: 'Round 1', v: 'Online submission' },
       { k: 'Round 2', v: 'Live at IIT Bombay' },
     ],
@@ -87,17 +73,53 @@ const TRACKS = [
       'Senior theme: Robotics & Automation for a Smart, Sustainable Future (agriculture, disaster, health, energy, mobility, environment).',
       'Round 1 submission: 1-page problem write-up, 500-800 word technical abstract, design diagram, 1–3 min demo video.',
       'Round 2 at IIT Bombay: 10 min live demo + 5 min judge Q&A.',
-      'Round 1 shortlists; final rankings are decided only in Round 2.',
+      'Round 1 shortlists; final rankings decided only in Round 2.',
     ],
   },
 ];
 
-const TIMELINE = [
-  { label: 'Registration Opens', value: 'On techfest.org', icon: Users, tone: 'live' },
-  { label: 'Round 1 Submission', value: 'TBA · via Techfest portal', icon: Layers, tone: 'upcoming' },
-  { label: 'Round 1 Results', value: 'TBA', icon: Flag, tone: 'upcoming' },
-  { label: 'OLL Regional Qualifiers', value: 'Dates live on /techfest', icon: MapPin, tone: 'live' },
-  { label: 'Grand Finale · IIT Bombay', value: '16–18 December 2026', icon: Trophy, tone: 'headline' },
+const ROUNDS = [
+  {
+    n: 1, tag: 'Regional Qualifiers', dot: '#DC2626',
+    title: 'OLL Regional Qualifiers · Across India',
+    lead: 'Powered by OLL. Held city-by-city so schools can compete without leaving their region.',
+    bullets: [
+      'Multi-city qualifiers — Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, Pune, Chennai, Ahmedabad and more.',
+      'RoboSumo and RoboRacer play knockout brackets in a live arena — top teams get the golden ticket.',
+      'Certificate of Regional Qualifier awarded to every participating team.',
+      'Winners fast-track directly to the Grand Finale — no online round required.',
+    ],
+    icon: MapPin,
+  },
+  {
+    n: 2, tag: 'Online Semi-Finals', dot: '#F59E0B',
+    title: 'Techfest Portal Submissions',
+    lead: 'For teams outside the Regional Qualifier bracket, and mandatory for the Robotics Innovation Challenge.',
+    bullets: [
+      'Register directly on techfest.org and submit designs, technical write-up and a 1–3 min demo video.',
+      'Panels shortlist bots and prototypes based on originality, engineering rigour and real-world impact.',
+      'Shortlisted teams get an official invitation to compete on-campus at IIT Bombay.',
+    ],
+    icon: Layers,
+  },
+  {
+    n: 3, tag: 'Grand Finale · IIT Bombay', dot: '#10B981',
+    title: 'Grand Finale · IIT Bombay · 16–18 Dec 2026',
+    lead: 'Three days on the iconic IIT Bombay campus. Battles. Races. Pitch showcases. Winners crowned live.',
+    bullets: [
+      'RoboSumo and RoboRacer knockout brackets on Techfest\u2019s live arena stage.',
+      'Robotics Innovation Challenge: 10-min live demo + 5-min judge Q&A.',
+      'Prize money for top 3 teams of each track · Certificate of Finalist Recognition for every finalist.',
+      'Networking with STEM pioneers, engineers and Techfest alumni across three days.',
+    ],
+    icon: Trophy,
+  },
+];
+
+const WINNER_REEL = [
+  { title: 'RoboSumo · Final Push', team: 'Team Cyclone · DPS Delhi', ytId: 'YoIu5akBkr0' },
+  { title: 'RoboRacer · Photo Finish', team: 'Team Nitro · Sacred Heart Kolkata', ytId: 'OnK6oevnLeM' },
+  { title: 'Innovation · Live Demo', team: 'Team Kaizen · Ryan International', ytId: 'r6xeqlTixYE' },
 ];
 
 const FAQS = [
@@ -105,11 +127,10 @@ const FAQS = [
   { q: 'Do I need to buy the OLL kit?', a: 'The OLL Robo Sumo and Robo Racer kits are officially designed for the competition. They give you the exact metal body, motors, wheels, controller and arena/track needed to compete.' },
   { q: 'What is the OLL Regional Qualifier bypass?', a: 'Teams that qualify through the OLL Regional Qualifiers advance straight to the Grand Finale for RoboSumo and RoboRacer. This bypass does not apply to the Robotics Innovation Challenge — it uses its own two-round structure.' },
   { q: 'What are the prizes?', a: 'Prize money is awarded to the top three teams of each track. Payouts are made via NEFT after winners submit their bank details in the on-site form, with final payment by May 2027.' },
-  { q: 'What do participants receive?', a: 'Every participant with an accepted entry gets a Certificate of Participation. Grand Finale competitors additionally receive a Certificate of Finalist recognition.' },
+  { q: 'What do participants receive?', a: 'Every participant with an accepted entry gets a Certificate of Participation. Grand Finale competitors additionally receive a Certificate of Finalist Recognition.' },
   { q: 'Where is the Grand Finale?', a: 'IIT Bombay, 16–18 December 2026 — the flagship Techfest campus edition.' },
 ];
 
-// ─── Imperative SEO tags (react-helmet-async unreliable here) ────────────────
 const upsertMeta = (key, value, attr = 'name') => {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
   if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
@@ -119,31 +140,37 @@ const upsertMeta = (key, value, attr = 'name') => {
 export default function TechfestPage() {
   const [activeTrack, setActiveTrack] = useState('sumo');
   const [openFaq, setOpenFaq] = useState(0);
+  const kitsRef = useRef(null);
 
   const track = useMemo(() => TRACKS.find((t) => t.key === activeTrack) || TRACKS[0], [activeTrack]);
+
+  const scrollToKits = (e) => {
+    e?.preventDefault?.();
+    kitsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
     const CANONICAL = 'https://oll.co/techfest';
-    const TITLE = 'Techfest IIT Bombay 2026 · India\u2019s Biggest School Tech Fest | OLL RoboSumo, RoboRacer & Innovation Challenge';
-    const DESC = 'Compete in RoboSumo, RoboRacer and the Robotics Innovation Challenge at Techfest IIT Bombay 2026 — India\u2019s biggest school tech fest. Grade-wise categories, OLL regional qualifiers and a Grand Finale at IIT Bombay from 16–18 December 2026. Prize money for top 3 teams of each track.';
+    const TITLE = 'OLL Robotics Championship · Techfest IIT Bombay 2026 | India\u2019s Biggest School Tech Fest';
+    const DESC = 'Compete in RoboSumo, RoboRacer and the Robotics Innovation Challenge at the OLL Robotics Championship, powered by Techfest IIT Bombay 2026. Regional qualifiers across India, Grand Finale at IIT Bombay 16–18 December 2026. Prize money for top 3 teams of each track.';
     document.title = TITLE;
     upsertMeta('description', DESC);
-    upsertMeta('keywords', 'techfest, IIT Bombay, robotics competition, RoboSumo, RoboRacer, robotics innovation challenge, OLL Techfest, school robotics competition, robotics championship India');
+    upsertMeta('keywords', 'OLL Robotics Championship, techfest, IIT Bombay, robotics competition, RoboSumo, RoboRacer, robotics innovation challenge, school robotics competition India, robotics championship India');
     upsertMeta('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
     upsertMeta('theme-color', '#0A1F44');
     upsertMeta('og:type', 'website', 'property');
     upsertMeta('og:url', CANONICAL, 'property');
     upsertMeta('og:title', TITLE, 'property');
     upsertMeta('og:description', DESC, 'property');
-    upsertMeta('og:image', 'https://oll.co/techfest/1.png', 'property');
+    upsertMeta('og:image', 'https://oll.co/techfest/1.webp', 'property');
     upsertMeta('og:site_name', 'OLL', 'property');
     upsertMeta('og:locale', 'en_IN', 'property');
     upsertMeta('twitter:card', 'summary_large_image');
     upsertMeta('twitter:title', TITLE);
     upsertMeta('twitter:description', DESC);
-    upsertMeta('twitter:image', 'https://oll.co/techfest/1.png');
+    upsertMeta('twitter:image', 'https://oll.co/techfest/1.webp');
     let canon = document.head.querySelector('link[rel="canonical"]');
     if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
     canon.href = CANONICAL;
@@ -151,7 +178,7 @@ export default function TechfestPage() {
     const schemas = [
       {
         "@context": "https://schema.org", "@type": "Event",
-        "name": "Techfest IIT Bombay 2026 · Robotics Championships",
+        "name": "OLL Robotics Championship · Techfest IIT Bombay 2026",
         "description": DESC,
         "startDate": "2026-12-16", "endDate": "2026-12-18",
         "eventStatus": "https://schema.org/EventScheduled",
@@ -161,17 +188,13 @@ export default function TechfestPage() {
         "url": CANONICAL,
         "offers": { "@type": "Offer", "url": "https://techfest.org", "price": "0", "priceCurrency": "INR", "availability": "https://schema.org/InStock" }
       },
-      {
-        "@context": "https://schema.org", "@type": "FAQPage",
-        "mainEntity": FAQS.map((f) => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } }))
-      },
-      {
-        "@context": "https://schema.org", "@type": "BreadcrumbList",
+      { "@context": "https://schema.org", "@type": "FAQPage",
+        "mainEntity": FAQS.map((f) => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })) },
+      { "@context": "https://schema.org", "@type": "BreadcrumbList",
         "itemListElement": [
           { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://oll.co/" },
-          { "@type": "ListItem", "position": 2, "name": "Techfest 2026", "item": CANONICAL }
-        ]
-      }
+          { "@type": "ListItem", "position": 2, "name": "OLL Robotics Championship", "item": CANONICAL }
+        ] }
     ];
     const addedIds = [];
     schemas.forEach((obj, i) => {
@@ -185,57 +208,90 @@ export default function TechfestPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-[#0A1F44]" data-testid="techfest-page">
+    <div className="tf-page" data-testid="techfest-page">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@700&family=Montserrat:wght@300;600;800;900&display=swap');
-        .tf-body { font-family: 'Montserrat', system-ui, sans-serif; }
-        .tf-h1 { font-family: 'Bebas Neue', 'Anton', sans-serif; letter-spacing: 0.01em; line-height: 0.92; }
-        .tf-script { font-family: 'Caveat', cursive; }
-        .tf-eyebrow { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; }
-        .tf-fadeup { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
-        .tf-fadeup.on { opacity: 1; transform: none; }
-        @keyframes tf-grain { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-2%,-3%); } 50% { transform: translate(3%,-1%); } 75% { transform: translate(-1%,2%); } }
-        .tf-grain::before { content:''; position: absolute; inset:-50%; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E"); mix-blend-mode: overlay; opacity:.10; pointer-events:none; animation: tf-grain 22s steps(2) infinite; }
-        @keyframes tf-track-move { 0% { background-position: 0 0; } 100% { background-position: 200% 0; } }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
 
-        /* ── Techfest pill navbar (sticky) ────────────────────── */
+        /* ── Fonts ───────────────────────────────────────────── */
+        @font-face {
+          font-family: 'Zing Rust';
+          src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
+          font-weight: 400; font-style: normal; font-display: swap;
+        }
+
+        /* Page-wide gradient — flows behind the sticky nav too */
+        .tf-page {
+          min-height: 100vh; color: #ffffff; overflow-x: hidden;
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          background:
+            radial-gradient(circle at 15% 8%, rgba(220,38,38,0.30), transparent 40%),
+            radial-gradient(circle at 85% 30%, rgba(96,165,250,0.22), transparent 50%),
+            linear-gradient(180deg, #0A1F44 0%, #1E3A5F 45%, #0A1F44 100%);
+          background-attachment: fixed;
+        }
+
+        /* ── Type system ─────────────────────────────────────── */
+        .tf-h1 { font-family: 'Zing Rust', 'Bebas Neue', 'Anton', sans-serif; font-weight: 400; letter-spacing: 0.005em; line-height: 0.92; text-transform: uppercase; }
+        .tf-section-title { font-family: 'Proxima Nova', 'Montserrat', sans-serif; font-weight: 300; letter-spacing: -0.005em; line-height: 1.05; text-transform: none; }
+        .tf-eyebrow { font-family: 'Proxima Nova', 'Montserrat', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; }
+        .tf-body { font-family: 'Proxima Nova', 'Montserrat', sans-serif; font-weight: 300; }
+
+        /* Content bands (light backgrounds inside the flowing gradient) */
+        .tf-band-light { background: rgba(255,255,255,0.98); color: #0A1F44; }
+        .tf-band-glass { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+
+        /* ── Sticky rounded nav (matches OLL pill) ───────────── */
         .tf-pillnav { position: sticky; top: 12px; z-index: 60; margin: 12px auto 0; padding: 0 12px; }
         .tf-pillnav-inner {
           max-width: 1220px; margin: 0 auto;
-          background: rgba(255,255,255,0.86);
+          background: rgba(255,255,255,0.94);
           -webkit-backdrop-filter: saturate(180%) blur(14px);
           backdrop-filter: saturate(180%) blur(14px);
-          border: 1px solid rgba(10,31,68,0.08);
-          box-shadow: 0 20px 44px rgba(10,31,68,0.10), 0 2px 6px rgba(10,31,68,0.06);
+          border: 1px solid rgba(255,255,255,0.5);
+          box-shadow: 0 20px 44px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.12);
           border-radius: 999px;
           display: flex; align-items: center; justify-content: space-between;
           padding: 8px 10px 8px 18px;
         }
         .tf-pillnav-brands { display: flex; align-items: center; gap: 14px; min-width: 0; }
         .tf-pillnav-brands .divider { width: 1px; height: 26px; background: rgba(10,31,68,0.15); }
-        .tf-pillnav-brands img { display: block; max-height: 32px; width: auto; }
+        .tf-pillnav-brands img { display: block; height: 30px; width: auto; }
+        .tf-pillnav-brands img.tf-mark { height: 34px; }
         .tf-pillnav-ctas { display: flex; align-items: center; gap: 8px; }
-        .tf-pillnav-btn {
+        .tf-btn {
           display: inline-flex; align-items: center; gap: 6px;
-          padding: 9px 16px; border-radius: 999px;
-          font-family: 'Montserrat', sans-serif; font-weight: 800;
-          font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+          padding: 10px 18px; border-radius: 999px;
+          font-family: 'Proxima Nova', 'Montserrat', sans-serif;
+          font-weight: 700; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase;
           transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+          cursor: pointer; text-decoration: none;
         }
-        .tf-pillnav-btn.primary { background: #DC2626; color: #fff; box-shadow: 0 12px 22px rgba(220,38,38,0.35); }
-        .tf-pillnav-btn.primary:hover { background: #B91C1C; transform: translateY(-1px); }
-        .tf-pillnav-btn.ghost { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.25); }
-        .tf-pillnav-btn.ghost:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+        .tf-btn.primary { background: #DC2626; color: #fff; box-shadow: 0 12px 22px rgba(220,38,38,0.35); }
+        .tf-btn.primary:hover { background: #B91C1C; transform: translateY(-1px); }
+        .tf-btn.ghost-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.30); }
+        .tf-btn.ghost-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+        .tf-btn.ghost-light { background: rgba(255,255,255,0.10); color: #fff; border: 1.5px solid rgba(255,255,255,0.28); }
+        .tf-btn.ghost-light:hover { background: rgba(255,255,255,0.20); }
+        .tf-btn.solid-white { background: #fff; color: #DC2626; box-shadow: 0 12px 24px rgba(0,0,0,0.28); }
+        .tf-btn.tiny { padding: 8px 14px; font-size: 0.7rem; }
         @media (max-width: 640px) {
           .tf-pillnav-inner { padding: 6px 6px 6px 12px; }
-          .tf-pillnav-brands img { max-height: 24px; }
+          .tf-pillnav-brands img { height: 22px; }
+          .tf-pillnav-brands img.tf-mark { height: 26px; }
           .tf-pillnav-brands .divider { height: 20px; }
-          .tf-pillnav-btn { padding: 7px 12px; font-size: 0.66rem; letter-spacing: 0.06em; }
-          .tf-pillnav-btn .tf-pill-hide { display: none; }
+          .tf-btn { padding: 8px 12px; font-size: 0.68rem; }
+          .tf-btn .tf-hide-sm { display: none; }
         }
+
+        /* Racing stripe animation */
+        @keyframes tf-track-move { 0% { background-position: 0 0; } 100% { background-position: 200% 0; } }
+
+        /* Grain overlay */
+        @keyframes tf-grain { 0%,100%{ transform: translate(0,0); } 25%{ transform: translate(-2%,-3%); } 50%{ transform: translate(3%,-1%); } 75%{ transform: translate(-1%,2%); } }
+        .tf-grain::before { content:''; position:absolute; inset:-50%; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E"); mix-blend-mode: overlay; opacity:.08; pointer-events:none; animation: tf-grain 22s steps(2) infinite; }
       `}</style>
 
-      {/* ── Sticky rounded navbar ─────────────────────────────── */}
+      {/* ── Sticky pill nav (on the gradient) ───────────────── */}
       <nav className="tf-pillnav" aria-label="Techfest primary navigation" data-testid="techfest-pillnav">
         <div className="tf-pillnav-inner">
           <div className="tf-pillnav-brands">
@@ -244,321 +300,338 @@ export default function TechfestPage() {
             </Link>
             <span className="divider" aria-hidden="true" />
             <a href="https://techfest.org" target="_blank" rel="noreferrer" data-testid="techfest-nav-techfest-logo" aria-label="Techfest IIT Bombay">
-              <img src={TECHFEST_LOGO_URL} alt="Techfest IIT Bombay" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.insertAdjacentHTML('afterend', '<span style="font-family:Bebas Neue,sans-serif;letter-spacing:.06em;font-size:1.1rem;color:#0A1F44;">TECHFEST<sup style=\'font-size:.6rem\'>®</sup> IIT BOMBAY</span>'); }} />
+              <img className="tf-mark" src={TECHFEST_LOGO} alt="Techfest IIT Bombay" />
             </a>
           </div>
           <div className="tf-pillnav-ctas">
-            <Link to="/shop" className="tf-pillnav-btn ghost" data-testid="techfest-nav-buy-kits">
-              <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-pill-hide">Buy </span>Kits
-            </Link>
-            <a
-              href="https://techfest.org"
-              target="_blank"
-              rel="noreferrer"
-              className="tf-pillnav-btn primary"
-              data-testid="techfest-nav-register"
-            >
+            <button onClick={scrollToKits} className="tf-btn ghost-dark" data-testid="techfest-nav-buy-kits">
+              <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-hide-sm">Buy </span>Kits
+            </button>
+            <a href="https://techfest.org" target="_blank" rel="noreferrer" className="tf-btn primary" data-testid="techfest-nav-register">
               <Flag className="w-3.5 h-3.5" /> Register Now
             </a>
           </div>
         </div>
       </nav>
 
-      {/* ─── HERO ─────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden tf-grain" style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 45%, #0A1F44 100%)' }}>
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 15% 30%, rgba(220,38,38,0.35), transparent 55%), radial-gradient(circle at 85% 70%, rgba(96,165,250,0.25), transparent 60%)' }} />
-        {/* Racing-stripe accent */}
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden tf-grain">
+        {/* Racing stripe at bottom */}
         <div className="absolute inset-x-0 bottom-0 h-2" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #DC2626 0 40px, #FFFFFF 40px 80px)', animation: 'tf-track-move 12s linear infinite', backgroundSize: '200% 100%' }} />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 lg:pt-24 lg:pb-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 lg:pt-16 lg:pb-32">
           <div className="grid lg:grid-cols-[1.15fr,1fr] gap-10 items-center">
-            <div className="text-white">
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-6" data-testid="techfest-hero-badge">
-                <span className="tf-eyebrow text-white/80">OLL × Techfest IIT Bombay</span>
+            <div>
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full tf-band-glass mb-6" data-testid="techfest-hero-badge">
+                <span className="tf-eyebrow text-white/85">OLL × Techfest IIT Bombay</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] animate-pulse" />
               </div>
-              <div className="tf-script text-3xl md:text-4xl mb-2 text-[#FCA5A5]">India&apos;s biggest school tech fest.</div>
-              <h1 className="tf-h1 text-5xl sm:text-6xl md:text-7xl lg:text-[5.75rem] font-black">
-                Build. Battle. <span className="text-[#DC2626]">Race.</span> Win.
+              <h1 className="tf-h1 text-5xl sm:text-6xl md:text-7xl lg:text-[6rem]">
+                OLL <span className="text-[#FCA5A5]">Robotics</span> Championship
               </h1>
-              <p className="tf-body font-light text-base md:text-lg text-white/85 mt-6 max-w-xl leading-relaxed">
-                Compete across three flagship robotics tracks at Techfest 2026-27 — the biggest science &amp; tech festival for schools. Regional qualifiers powered by OLL. Grand Finale live at IIT Bombay <strong className="font-bold text-white">16–18 December 2026</strong>.
+              <p className="tf-body text-base md:text-lg text-white/85 mt-6 max-w-xl leading-relaxed">
+                India&apos;s biggest school tech fest. Compete across three flagship robotics tracks at Techfest 2026-27, powered by OLL. Regional qualifiers across India. Grand Finale live at IIT Bombay <strong style={{ fontWeight: 700, color: '#fff' }}>16–18 December 2026</strong>.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a
-                  href="https://techfest.org"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-red-900/30 transition"
-                  data-testid="techfest-register-btn"
-                >
+                <a href="https://techfest.org" target="_blank" rel="noreferrer" className="tf-btn primary" data-testid="techfest-register-btn">
                   Register on Techfest.org <ArrowRight className="w-4 h-4" />
                 </a>
-                <Link
-                  to="/shop"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold text-sm uppercase tracking-widest transition"
-                  data-testid="techfest-shop-btn"
-                >
+                <button onClick={scrollToKits} className="tf-btn ghost-light" data-testid="techfest-shop-btn">
                   Get the Kits
-                </Link>
+                </button>
               </div>
-              <div className="mt-8 flex flex-wrap items-center gap-6 text-xs text-white/70 font-semibold">
+              <div className="mt-8 flex flex-wrap items-center gap-6 text-xs text-white/70 font-semibold" style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif" }}>
                 <span className="inline-flex items-center gap-1.5"><Trophy className="w-4 h-4 text-[#FCA5A5]" /> Prize Money · Top 3 per track</span>
                 <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-[#60A5FA]" /> STEM.org-Aligned Curriculum</span>
                 <span className="inline-flex items-center gap-1.5"><Users className="w-4 h-4 text-[#FCA5A5]" /> Teams of 3–5</span>
               </div>
             </div>
-            {/* Hero card stack */}
             <div className="relative">
               <div className="absolute -top-4 -right-4 w-40 h-40 rounded-full blur-3xl bg-[#DC2626] opacity-40" />
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-white/10 rotate-1">
-                <img src={SUMO_HERO} alt="OLL Robo Sumo Kit for Techfest IIT Bombay" className="w-full block" loading="lazy" />
+                <img src={SUMO_HERO} alt="OLL Robo Sumo Kit for Techfest IIT Bombay" className="w-full block" width={1400} height={790} loading="eager" fetchPriority="high" />
               </div>
               <div className="mt-4 relative rounded-3xl overflow-hidden shadow-2xl border-2 border-white/10 -rotate-1 hidden md:block">
-                <img src={RACER_HERO} alt="OLL Robo Racer Kit for Techfest IIT Bombay" className="w-full block" loading="lazy" />
+                <img src={RACER_HERO} alt="OLL Robo Racer Kit for Techfest IIT Bombay" className="w-full block" width={1400} height={790} loading="lazy" />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── TRACK TABS ───────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24" data-testid="techfest-tracks-section">
-        <div className="text-center mb-10">
-          <div className="tf-script text-3xl text-[#DC2626]">three tracks. one championship.</div>
-          <h2 className="tf-h1 text-4xl md:text-5xl mt-1">Pick your Battle.</h2>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {TRACKS.map((t) => {
-            const active = t.key === activeTrack;
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setActiveTrack(t.key)}
-                data-testid={`techfest-tab-${t.key}`}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all ${
-                  active
-                    ? 'bg-[#0A1F44] text-white shadow-lg'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Icon className="w-4 h-4" /> {t.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid lg:grid-cols-[1.1fr,1fr] gap-8 items-start" key={track.key}>
-          <div className="tf-fadeup on order-2 lg:order-1">
-            <div className="tf-eyebrow text-[#DC2626] flex items-center gap-2">
-              <track.icon className="w-4 h-4" /> {track.tag}
-            </div>
-            <h3 className="tf-h1 text-4xl md:text-5xl mt-2">{track.label}.</h3>
-            <div className="tf-script text-2xl text-[#0A1F44]/70 mt-1">{track.tagline}</div>
-            <p className="tf-body font-light text-slate-700 mt-5 leading-relaxed">{track.long}</p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              {track.stats.map((s) => (
-                <div key={s.k} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <div className="tf-eyebrow text-slate-500">{s.k}</div>
-                  <div className="tf-h1 text-2xl mt-1 text-[#0A1F44]">{s.v}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6">
-              <div className="tf-eyebrow text-slate-500 mb-3">Rules &amp; Arena</div>
-              <ul className="space-y-2 tf-body font-light text-sm text-slate-700 leading-relaxed">
-                {track.rules.map((r, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#DC2626] flex-shrink-0" />
-                    <span>{r}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {track.productSlug && (
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to={`/shop/product/${track.productSlug}`}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-900/30"
-                  data-testid={`techfest-cta-kit-${track.key}`}
-                >
-                  Get the Official {track.label} Kit <ArrowRight className="w-4 h-4" />
-                </Link>
-                <a
-                  href="https://techfest.org"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border-2 border-[#0A1F44] text-[#0A1F44] font-bold text-xs uppercase tracking-widest hover:bg-[#0A1F44] hover:text-white transition"
-                >
-                  Register on Techfest.org
-                </a>
-              </div>
-            )}
+      {/* ── COMPETITION ROUNDS ─────────────────────────────── */}
+      <section className="relative py-16 lg:py-24" data-testid="techfest-rounds-section">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="tf-eyebrow text-[#FCA5A5]">the road to iit bombay</div>
+            <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">Competition Rounds.</h2>
+            <p className="tf-body text-white/75 mt-4 max-w-2xl mx-auto text-base md:text-lg">
+              Three rounds. One championship. Every team enters through their nearest OLL Regional Qualifier or via the Techfest online round, then earns their spot at IIT Bombay.
+            </p>
           </div>
 
-          <div className="order-1 lg:order-2">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-50">
-              {track.hero ? (
-                <img src={track.hero} alt={`${track.label} kit`} className="w-full block" loading="lazy" />
-              ) : (
-                <div className="p-10 lg:p-14" style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 100%)' }}>
-                  <Sparkles className="w-14 h-14 text-[#FCA5A5]" />
-                  <div className="tf-script text-4xl text-[#FCA5A5] mt-4">real problems.</div>
-                  <div className="tf-h1 text-5xl md:text-6xl text-white mt-1">Real Prototypes.</div>
-                  <p className="tf-body font-light text-white/80 mt-4 leading-relaxed">
-                    Junior &amp; Senior categories · online Round 1 → live prototype demo at IIT Bombay for Round 2 · originality, technical execution and real-world relevance judged live by the Techfest panel.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── TIMELINE ─────────────────────────────────────────────── */}
-      <section className="bg-[#0A1F44] py-16 lg:py-24 relative overflow-hidden" data-testid="techfest-timeline-section">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(220,38,38,0.25), transparent 55%)' }} />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 text-white">
-            <div className="tf-script text-3xl text-[#FCA5A5]">the road to iit bombay.</div>
-            <h2 className="tf-h1 text-4xl md:text-5xl mt-1">Timeline.</h2>
-          </div>
-          <div className="grid md:grid-cols-5 gap-3">
-            {TIMELINE.map((t, i) => {
-              const Icon = t.icon;
-              const isHead = t.tone === 'headline';
+          <ol className="space-y-6">
+            {ROUNDS.map((r) => {
+              const Icon = r.icon;
               return (
-                <div
-                  key={i}
-                  className={`relative rounded-2xl p-5 border ${isHead ? 'bg-[#DC2626] border-[#DC2626] text-white' : 'bg-white/5 border-white/10 text-white'}`}
-                  data-testid={`techfest-timeline-${i}`}
-                >
-                  <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${isHead ? 'bg-white text-[#DC2626]' : 'bg-white/10 text-white'} mb-3`}>
-                    <Icon className="w-5 h-5" />
+                <li key={r.n} className="relative rounded-3xl tf-band-glass p-6 md:p-8 backdrop-blur-sm" data-testid={`techfest-round-${r.n}`}>
+                  <div className="grid md:grid-cols-[minmax(160px,220px),1fr] gap-6">
+                    <div className="flex md:flex-col items-start gap-3">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: r.dot }}>
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="tf-eyebrow" style={{ color: r.dot }}>Round {r.n}</div>
+                        <div className="tf-h1 text-3xl md:text-4xl text-white mt-1">{r.tag}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="tf-section-title text-2xl md:text-3xl text-white">{r.title}</div>
+                      <div className="tf-body text-white/80 mt-2 text-sm md:text-base">{r.lead}</div>
+                      <ul className="mt-4 space-y-2 tf-body font-light text-white/85 text-sm">
+                        {r.bullets.map((b, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: r.dot }} />
+                            <span>{b}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <div className="tf-eyebrow text-white/60">{t.label}</div>
-                  <div className="tf-h1 text-xl mt-1">{t.value}</div>
-                </div>
+                </li>
+              );
+            })}
+          </ol>
+
+          {/* Regional map placeholder */}
+          <div className="mt-10 rounded-3xl tf-band-glass p-6 md:p-8" data-testid="techfest-regional-map">
+            <div className="grid md:grid-cols-[1fr,minmax(200px,260px)] gap-4 items-center">
+              <div>
+                <div className="tf-eyebrow text-[#FCA5A5]">Regional qualifier map</div>
+                <div className="tf-section-title text-2xl md:text-3xl text-white mt-1">Qualifiers across India · 2026.</div>
+                <p className="tf-body text-white/75 mt-2 text-sm md:text-base">
+                  Mumbai · Delhi · Bengaluru · Hyderabad · Pune · Chennai · Kolkata · Ahmedabad · Jaipur · Chandigarh — the OLL Regional Qualifier tour goes to your city. Exact dates & registration links go live on this page as they open.
+                </p>
+              </div>
+              <a href="https://techfest.org" target="_blank" rel="noreferrer" className="tf-btn primary self-start md:self-center" data-testid="techfest-rounds-cta">
+                Find Nearest Qualifier <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRACK TABS ─────────────────────────────────────── */}
+      <section className="relative py-16 lg:py-24 tf-band-light" data-testid="techfest-tracks-section">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="tf-eyebrow text-[#DC2626]">three tracks · one championship</div>
+            <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2">Pick your Battle.</h2>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mb-10">
+            {TRACKS.map((t) => {
+              const active = t.key === activeTrack;
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTrack(t.key)}
+                  data-testid={`techfest-tab-${t.key}`}
+                  className={`tf-btn ${active ? 'primary' : 'ghost-dark'}`}
+                >
+                  <Icon className="w-4 h-4" /> {t.label}
+                </button>
               );
             })}
           </div>
-          <div className="text-center text-white/60 text-xs mt-6 tf-body">
-            Exact submission and result dates published on <a href="https://techfest.org" target="_blank" rel="noreferrer" className="text-[#FCA5A5] underline">techfest.org</a>. Regional qualifier dates live on this page.
+
+          <div className="grid lg:grid-cols-[1.1fr,1fr] gap-8 items-start" key={track.key}>
+            <div className="order-2 lg:order-1">
+              <div className="tf-eyebrow text-[#DC2626] flex items-center gap-2">
+                <track.icon className="w-4 h-4" /> {track.tag}
+              </div>
+              <h3 className="tf-h1 text-4xl md:text-5xl mt-2 text-[#0A1F44]">{track.label}.</h3>
+              <div className="tf-section-title text-lg md:text-xl text-slate-500 mt-1">{track.tagline}</div>
+              <p className="tf-body text-slate-700 mt-5 leading-relaxed">{track.long}</p>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {track.stats.map((s) => (
+                  <div key={s.k} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <div className="tf-eyebrow text-slate-500">{s.k}</div>
+                    <div className="tf-h1 text-2xl mt-1 text-[#0A1F44]">{s.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6">
+                <div className="tf-eyebrow text-slate-500 mb-3">Rules &amp; Arena</div>
+                <ul className="space-y-2 tf-body text-sm text-slate-700 leading-relaxed">
+                  {track.rules.map((r, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#DC2626] flex-shrink-0" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {track.productSlug && (
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <button onClick={scrollToKits} className="tf-btn primary" data-testid={`techfest-cta-kit-${track.key}`}>
+                    Get the Official {track.label} Kit <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <a href="https://techfest.org" target="_blank" rel="noreferrer" className="tf-btn ghost-dark">
+                    Register on Techfest.org
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="order-1 lg:order-2">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-50">
+                {track.hero ? (
+                  <img src={track.hero} alt={`${track.label} kit`} className="w-full block" width={1400} height={790} loading="lazy" />
+                ) : (
+                  <div className="p-10 lg:p-14" style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 100%)' }}>
+                    <Sparkles className="w-14 h-14 text-[#FCA5A5]" />
+                    <div className="tf-section-title text-2xl text-white mt-4">Real problems.</div>
+                    <div className="tf-h1 text-5xl md:text-6xl text-white mt-1">Real Prototypes.</div>
+                    <p className="tf-body text-white/80 mt-4 leading-relaxed">
+                      Junior &amp; Senior categories · online Round 1 → live prototype demo at IIT Bombay for Round 2 · originality, technical execution and real-world relevance judged live by the Techfest panel.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ─── OLL KITS ────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24" data-testid="techfest-kits-section">
+      {/* ── OLL KITS ────────────────────────────────────────── */}
+      <section ref={kitsRef} id="kits" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24" data-testid="techfest-kits-section">
         <div className="text-center mb-10">
-          <div className="tf-script text-3xl text-[#DC2626]">official gear.</div>
-          <h2 className="tf-h1 text-4xl md:text-5xl mt-1">The Techfest-Ready Kits.</h2>
-          <p className="tf-body font-light text-slate-600 mt-3 max-w-2xl mx-auto">
+          <div className="tf-eyebrow text-[#FCA5A5]">official gear</div>
+          <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">The Techfest-Ready Kits.</h2>
+          <p className="tf-body text-white/75 mt-3 max-w-2xl mx-auto">
             Every part in the arena has been engineered for the competition rulebook — the OLL Techfest kits ship with the exact metal body, motors, wheels, controllers and arenas you need to compete.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6">
-          <KitCard
-            testId="techfest-kit-sumo"
-            title="Robo Sumo Kit"
-            tagline="Build. Battle. Win."
-            image={SUMO_BOX}
+          <KitCard testId="techfest-kit-sumo" title="Robo Sumo Kit" tagline="Build. Battle. Win." image={SUMO_BOX}
             highlights={['Full Metal Body', '4 Powerful Motors', 'High-Grip Wheels', 'Wired Controller', 'Sumo Arena Mat (150 × 150 cm)']}
-            slug="robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a"
-          />
-          <KitCard
-            testId="techfest-kit-racer"
-            title="Robo Racer Car Kit"
-            tagline="Build. Code. Race. Win."
-            image={RACER_TRACK}
+            slug="robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a" />
+          <KitCard testId="techfest-kit-racer" title="Robo Racer Car Kit" tagline="Build. Code. Race. Win." image={RACER_TRACK}
             highlights={['Complete RC Chassis', '2 Motors + 4 Wheels', 'Modular Racing Track (240 × 120 cm)', 'Batteries + Switch', 'User Manual & Stickers']}
-            slug="robo-racer-kit-specially-made-for-iit-bombay-8bf545dc"
-          />
+            slug="robo-racer-kit-specially-made-for-iit-bombay-8bf545dc" />
         </div>
       </section>
 
-      {/* ─── PRIZES & CERTS ──────────────────────────────────────── */}
-      <section className="bg-slate-50 py-16 lg:py-24" data-testid="techfest-prizes-section">
+      {/* ── WINNER REEL ────────────────────────────────────── */}
+      <section className="tf-band-light py-16 lg:py-24" data-testid="techfest-winner-reel">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="tf-eyebrow text-[#DC2626]">last year on the arena</div>
+            <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2">Winner Reel.</h2>
+            <p className="tf-body text-slate-600 mt-3 max-w-2xl mx-auto">
+              Highlights from the previous OLL Robotics Championship at IIT Bombay — the pushes, the photo finishes, the pitches that took home the trophies.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {WINNER_REEL.map((v) => (
+              <a
+                key={v.ytId}
+                href={`https://www.youtube.com/watch?v=${v.ytId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative block rounded-2xl overflow-hidden aspect-video border border-slate-200 shadow-lg hover:shadow-2xl transition-shadow"
+                data-testid={`techfest-reel-${v.ytId}`}
+              >
+                <img src={`https://i.ytimg.com/vi/${v.ytId}/maxresdefault.jpg`} alt={v.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 40%, rgba(10,31,68,0.9) 100%)' }} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="w-14 h-14 rounded-full bg-white/25 border-2 border-white/60 backdrop-blur flex items-center justify-center group-hover:bg-[#DC2626] group-hover:border-[#DC2626] transition-colors">
+                    <Play className="w-6 h-6 text-white" fill="#fff" strokeWidth={0} style={{ marginLeft: 3 }} />
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-4 right-4 text-white">
+                  <div className="tf-eyebrow text-[#FCA5A5]">{v.team}</div>
+                  <div className="tf-section-title text-lg font-semibold mt-1 leading-tight">{v.title}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRIZES / CERTS ─────────────────────────────────── */}
+      <section className="py-16 lg:py-24" data-testid="techfest-prizes-section">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 relative overflow-hidden rounded-3xl p-8 lg:p-10 text-white" style={{ background: 'linear-gradient(135deg, #DC2626 0%, #7f1d1d 100%)' }}>
             <Trophy className="absolute -right-6 -bottom-6 w-40 h-40 text-white/10" />
-            <div className="tf-eyebrow text-white/70">Prize Money</div>
+            <div className="tf-eyebrow text-white/80">Prize Money</div>
             <h2 className="tf-h1 text-4xl md:text-5xl mt-2">Top 3 per Track.</h2>
-            <p className="tf-body font-light text-white/85 mt-4 max-w-xl">
-              Prize money is awarded to the top three teams of each track. Winners submit bank details via the on-site form after the finale; payouts via NEFT by May 2027.
+            <p className="tf-body text-white/85 mt-4 max-w-xl">
+              Prize money awarded to the top three teams of each track. Winners submit bank details via the on-site form after the finale; payouts via NEFT by May 2027.
             </p>
           </div>
-          <div className="rounded-3xl p-8 lg:p-10 bg-white border border-slate-200">
-            <ShieldCheck className="w-8 h-8 text-[#0A1F44]" />
-            <div className="tf-eyebrow text-slate-500 mt-4">Certificates</div>
-            <div className="tf-h1 text-2xl mt-1 text-[#0A1F44]">Recognition for every team.</div>
-            <ul className="mt-4 space-y-2 tf-body text-sm text-slate-700 font-light">
-              <li className="flex items-start gap-2"><Target className="w-4 h-4 text-[#DC2626] mt-0.5" /> <span><strong>Certificate of Participation</strong> for every accepted entry.</span></li>
-              <li className="flex items-start gap-2"><Trophy className="w-4 h-4 text-[#DC2626] mt-0.5" /> <span><strong>Certificate of Finalist Recognition</strong> for Grand Finale competitors.</span></li>
+          <div className="rounded-3xl p-8 lg:p-10 tf-band-glass text-white">
+            <ShieldCheck className="w-8 h-8 text-[#FCA5A5]" />
+            <div className="tf-eyebrow text-white/70 mt-4">Certificates</div>
+            <div className="tf-section-title text-2xl mt-1">Recognition for every team.</div>
+            <ul className="mt-4 space-y-2 tf-body text-sm text-white/85">
+              <li className="flex items-start gap-2"><Target className="w-4 h-4 text-[#FCA5A5] mt-0.5" /> <span><strong style={{ fontWeight: 700 }}>Certificate of Participation</strong> for every accepted entry.</span></li>
+              <li className="flex items-start gap-2"><Trophy className="w-4 h-4 text-[#FCA5A5] mt-0.5" /> <span><strong style={{ fontWeight: 700 }}>Certificate of Finalist Recognition</strong> for Grand Finale competitors.</span></li>
             </ul>
           </div>
         </div>
       </section>
 
-      {/* ─── FAQ ─────────────────────────────────────────────────── */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24" data-testid="techfest-faq-section">
-        <div className="text-center mb-10">
-          <div className="tf-script text-3xl text-[#DC2626]">need answers?</div>
-          <h2 className="tf-h1 text-4xl md:text-5xl mt-1">Frequently Asked.</h2>
-        </div>
-        <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {FAQS.map((f, i) => {
-            const open = openFaq === i;
-            return (
-              <div key={i}>
-                <button
-                  className="w-full flex items-start gap-3 text-left px-5 py-4 hover:bg-slate-50"
-                  onClick={() => setOpenFaq(open ? -1 : i)}
-                  data-testid={`techfest-faq-${i}`}
-                  aria-expanded={open}
-                >
-                  <ChevronDown className={`w-4 h-4 mt-1 text-[#DC2626] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-                  <span className="flex-1 tf-body font-bold text-[#0A1F44]">{f.q}</span>
-                </button>
-                {open && (
-                  <div className="px-5 pb-5 pl-12 tf-body font-light text-slate-600 leading-relaxed text-sm">{f.a}</div>
-                )}
-              </div>
-            );
-          })}
+      {/* ── FAQ ─────────────────────────────────────────────── */}
+      <section className="tf-band-light py-16 lg:py-24" data-testid="techfest-faq-section">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="tf-eyebrow text-[#DC2626]">need answers?</div>
+            <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2">Frequently Asked.</h2>
+          </div>
+          <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {FAQS.map((f, i) => {
+              const open = openFaq === i;
+              return (
+                <div key={i}>
+                  <button
+                    className="w-full flex items-start gap-3 text-left px-5 py-4 hover:bg-slate-50"
+                    onClick={() => setOpenFaq(open ? -1 : i)}
+                    data-testid={`techfest-faq-${i}`}
+                    aria-expanded={open}
+                  >
+                    <ChevronDown className={`w-4 h-4 mt-1 text-[#DC2626] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                    <span className="flex-1 tf-body font-bold text-[#0A1F44]" style={{ fontWeight: 700 }}>{f.q}</span>
+                  </button>
+                  {open && (
+                    <div className="px-5 pb-5 pl-12 tf-body text-slate-600 leading-relaxed text-sm">{f.a}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* ─── FINAL CTA ───────────────────────────────────────────── */}
+      {/* ── FINAL CTA ──────────────────────────────────────── */}
       <section className="relative overflow-hidden text-white tf-grain" style={{ background: 'linear-gradient(135deg, #0A1F44 0%, #DC2626 100%)' }}>
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center">
-          <div className="tf-script text-3xl md:text-4xl text-[#FCA5A5]">the arena is ready.</div>
+          <div className="tf-eyebrow text-[#FCA5A5]">the arena is ready</div>
           <h2 className="tf-h1 text-5xl md:text-6xl lg:text-7xl mt-2">Are You?</h2>
-          <p className="tf-body font-light text-white/85 mt-5 max-w-xl mx-auto">
+          <p className="tf-body text-white/85 mt-5 max-w-xl mx-auto">
             Grab the kit, gather your team, register on techfest.org and start the road to IIT Bombay. Regional qualifiers open across India through 2026.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a
-              href="https://techfest.org"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#DC2626] font-bold text-sm uppercase tracking-widest shadow-2xl"
-              data-testid="techfest-final-register"
-            >
+            <a href="https://techfest.org" target="_blank" rel="noreferrer" className="tf-btn solid-white" data-testid="techfest-final-register">
               Register Now <ArrowRight className="w-4 h-4" />
             </a>
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white/10 border-2 border-white/40 text-white font-bold text-sm uppercase tracking-widest hover:bg-white/20"
-              data-testid="techfest-final-shop"
-            >
+            <button onClick={scrollToKits} className="tf-btn ghost-light" data-testid="techfest-final-shop">
               Shop the Kits
-            </Link>
+            </button>
           </div>
           <div className="mt-10 text-xs text-white/60 tf-body">
             Official communication · <a href="mailto:siddhi@techfest.org" className="underline">siddhi@techfest.org</a>
@@ -578,10 +651,10 @@ const KitCard = ({ testId, title, tagline, image, highlights, slug }) => (
     data-testid={testId}
   >
     <div className="aspect-[16/10] overflow-hidden bg-slate-50">
-      <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+      <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width={1400} height={880} loading="lazy" />
     </div>
     <div className="p-5 lg:p-6">
-      <div className="tf-script text-2xl text-[#DC2626]">{tagline}</div>
+      <div className="tf-section-title text-lg text-[#DC2626]" style={{ fontWeight: 300 }}>{tagline}</div>
       <div className="tf-h1 text-3xl mt-1 text-[#0A1F44]">{title}</div>
       <ul className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
         {highlights.map((h) => (

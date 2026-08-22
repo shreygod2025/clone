@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" width="260" height="60">
+  <defs>
+    <linearGradient id="tfg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#111"/>
+      <stop offset="100%" stop-color="#111"/>
+    </linearGradient>
+  </defs>
+  <!-- Techfest wordmark -->
+  <text x="6" y="34" font-family="'Bebas Neue','Impact','Arial Narrow',sans-serif" font-size="30" font-weight="700" fill="#111" letter-spacing="0.6">TECHFEST</text>
+  <text x="192" y="18" font-family="Arial,sans-serif" font-size="8" fill="#111">®</text>
+  <line x1="6" y1="40" x2="254" y2="40" stroke="#111" stroke-width="0.75"/>
+  <text x="6" y="54" font-family="Arial,sans-serif" font-size="10" font-weight="700" fill="#111" letter-spacing="4">IIT BOMBAY</text>
+</svg>
