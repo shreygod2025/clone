@@ -485,6 +485,76 @@ const PAGE_QUERY_CONFIG = {
     ],
   },
 
+  // Techfest × OLL Robotics Championship — /techfest and /techfest/register
+  techfest: {
+    label: 'OLL × Techfest IIT Bombay · Help',
+    queries: [
+      {
+        value: 'registration', label: 'Registration & Eligibility', icon: '📝',
+        subCategories: [
+          { value: 'how_to_register',      label: 'How do I register?' },
+          { value: 'individual_vs_team',   label: 'Individual vs Team registration' },
+          { value: 'school_registration',  label: 'Register my whole school' },
+          { value: 'educator_registration',label: 'Register as an Educator / Mentor' },
+          { value: 'age_grades',           label: 'Which grades can participate?' },
+          { value: 'more_than_one',        label: 'Can a student join more than 1 track?' },
+          { value: 'confirmation',         label: 'I registered but got no confirmation' },
+          { value: 'other',                label: 'Other' },
+        ],
+      },
+      {
+        value: 'tracks_rounds', label: 'Tracks & Rounds', icon: '🏆',
+        subCategories: [
+          { value: 'which_track',          label: 'Which track should we pick?' },
+          { value: 'sumo_racer_rounds',    label: 'RoboSumo / RoboRacer — rounds & format' },
+          { value: 'ric_rounds',           label: 'Robotics Innovation Challenge — rounds' },
+          { value: 'rubric',               label: 'Judging rubric details' },
+          { value: 'submission_format',    label: 'Online submission format & deadlines' },
+          { value: 'other',                label: 'Other' },
+        ],
+      },
+      {
+        value: 'kits', label: 'RoboSumo / RoboRacer Kits', icon: '🤖',
+        subCategories: [
+          { value: 'mandatory',            label: 'Is the OLL kit mandatory?' },
+          { value: 'bulk_school',          label: 'Bulk order for our school' },
+          { value: 'shipping',             label: 'Delivery time & shipping charges' },
+          { value: 'pickup',               label: 'Can we pick up from OLL office?' },
+          { value: 'kit_contents',         label: 'What comes inside the kit?' },
+          { value: 'other',                label: 'Other' },
+        ],
+      },
+      {
+        value: 'regionals', label: 'Regional Qualifier & Grand Finale', icon: '📍',
+        subCategories: [
+          { value: 'my_city',              label: 'Which city hosts my regional qualifier?' },
+          { value: 'venue_dates',          label: 'Regional venue & date' },
+          { value: 'finale_iitb',          label: 'Grand Finale at IIT Bombay — dates & schedule' },
+          { value: 'travel_stay',          label: 'Travel & accommodation for the finale' },
+          { value: 'other',                label: 'Other' },
+        ],
+      },
+      {
+        value: 'prizes_fees', label: 'Prizes, Fees & Certificates', icon: '🏅',
+        subCategories: [
+          { value: 'fee',                  label: 'Is there a registration fee?' },
+          { value: 'prize_split',          label: 'Prize money breakdown (upto ₹1,50,000)' },
+          { value: 'certificates',         label: 'Certificates for participants' },
+          { value: 'other',                label: 'Other' },
+        ],
+      },
+      {
+        value: 'other', label: 'Other Question', icon: '❓',
+        subCategories: [
+          { value: 'general',              label: 'General question' },
+          { value: 'partnership',          label: 'Partnership / sponsorship enquiry' },
+          { value: 'media',                label: 'Media / press enquiry' },
+          { value: 'feedback',             label: 'Feedback / suggestion' },
+        ],
+      },
+    ],
+  },
+
   // Summer Camp page - specific to camp bookings & queries
   summer_camp: {
     label: 'Summer Camp Help',
@@ -591,6 +661,11 @@ const PAGE_QUERY_CONFIG = {
 
 // Get page config based on URL
 const getPageConfig = (path, isLoggedIn) => {
+  // PRIORITY 0: Techfest campaign & register page — dedicated FAQ list
+  if (path.includes('/techfest')) {
+    return PAGE_QUERY_CONFIG.techfest;
+  }
+
   // PRIORITY 1: School student payment page - ALWAYS show payment FAQs regardless of login
   // This must be checked first since payment page users need payment-specific help
   if (path.includes('/school-pay')) {
@@ -628,6 +703,7 @@ const getPageConfig = (path, isLoggedIn) => {
 
 // Get page type key for quick actions lookup
 const getPageTypeKey = (path) => {
+  if (path.includes('/techfest')) return 'techfest';
   if (path.includes('/workshops/') || path.includes('/workshop/')) return 'workshop';
   if (path.includes('/robotics') || path.includes('/coding') || path.includes('/ai') || 
       path.includes('/course') || path.includes('/program')) return 'course';
@@ -643,6 +719,7 @@ const getPageTypeKey = (path) => {
 // Map page type → inquiry_type used by Admin Support Center filter
 // Keeps admin "User Type" filter useful instead of dumping everything in 'general'
 const getInquiryTypeForPage = (path) => {
+  if (path.includes('/techfest')) return 'school';
   if (path.includes('/educator')) return 'teacher';
   if (path.includes('/centers') || path.includes('/growth-partner')) return 'growth_partner';
   if (path.includes('/admin')) return 'team';
