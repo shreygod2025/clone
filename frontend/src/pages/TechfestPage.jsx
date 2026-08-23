@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Trophy, Flag, Zap, Cpu, Users, MapPin, ShieldCheck,
   ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown,
-  X, User, GraduationCap, Building2, CheckCircle2, Loader2,
 } from 'lucide-react';
 import Footer from '../components/Footer';
 
@@ -174,11 +173,11 @@ const FAQS = [
 ];
 
 const ZONES = [
-  { name: 'North Zone',   accent: '#F59E0B', cities: ['Delhi', 'Chandigarh', 'Jaipur', 'Lucknow', 'Noida'] },
-  { name: 'South Zone',   accent: '#10B981', cities: ['Bengaluru', 'Chennai', 'Hyderabad', 'Kochi', 'Coimbatore'] },
-  { name: 'East Zone',    accent: '#8B5CF6', cities: ['Kolkata', 'Bhubaneswar', 'Guwahati', 'Patna', 'Ranchi'] },
-  { name: 'West Zone',    accent: '#DC2626', cities: ['Mumbai', 'Pune', 'Ahmedabad', 'Surat', 'Nagpur'] },
-  { name: 'Central Zone', accent: '#0EA5E9', cities: ['Bhopal', 'Indore', 'Raipur', 'Bilaspur', 'Jabalpur'] },
+  { name: 'West Zone',    accent: '#DC2626', cities: ['Mumbai'] },
+  { name: 'East Zone',    accent: '#8B5CF6', cities: ['Kanpur'] },
+  { name: 'North Zone',   accent: '#F59E0B', cities: ['Delhi'] },
+  { name: 'South Zone',   accent: '#10B981', cities: ['Bangalore'] },
+  { name: 'Central Zone', accent: '#0EA5E9', cities: ['Indore'] },
 ];
 
 const HERO_VIDEO = '/techfest/hero-video.mp4';
@@ -193,8 +192,8 @@ const upsertMeta = (key, value, attr = 'name') => {
 export default function TechfestPage() {
   const [activeTrack, setActiveTrack] = useState('sumo');
   const [openFaq, setOpenFaq] = useState(0);
-  const [registerOpen, setRegisterOpen] = useState(false);
   const kitsRef = useRef(null);
+  const navigate = useNavigate();
 
   const track = useMemo(() => TRACKS.find((t) => t.key === activeTrack) || TRACKS[0], [activeTrack]);
 
@@ -205,7 +204,7 @@ export default function TechfestPage() {
 
   const openRegister = (e) => {
     e?.preventDefault?.();
-    setRegisterOpen(true);
+    navigate('/techfest/register');
   };
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -600,6 +599,26 @@ export default function TechfestPage() {
                                 </li>
                               ))}
                             </ul>
+                            {path.key === 'sumo-racer' && r.n === 2 && (
+                              <div className="mt-5 rounded-2xl border border-white/15 overflow-hidden" data-testid="techfest-r2-zone-table">
+                                <div className="grid grid-cols-[110px,1fr] text-[11px] uppercase tracking-widest text-white/60 bg-white/[0.04] px-4 py-2 font-bold">
+                                  <div>Zone</div>
+                                  <div>Host City</div>
+                                </div>
+                                {ZONES.map((z, i) => (
+                                  <div
+                                    key={z.name}
+                                    className={`grid grid-cols-[110px,1fr] items-center px-4 py-2.5 tf-body text-sm ${i > 0 ? 'border-t border-white/10' : ''}`}
+                                  >
+                                    <div className="flex items-center gap-2 text-white font-bold" style={{ fontWeight: 700 }}>
+                                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: z.accent }} />
+                                      {z.name.replace(' Zone', '')}
+                                    </div>
+                                    <div className="text-white/90">{z.cities[0]}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </li>
                       );
@@ -608,48 +627,6 @@ export default function TechfestPage() {
                 </div>
               );
             })}
-          </div>
-
-          {/* Zone × City breakdown — applies to RoboSumo & RoboRacer regional qualifiers */}
-          <div className="mt-12" data-testid="techfest-regional-zones">
-            <div className="text-center mb-8">
-              <div className="tf-eyebrow text-[#FCA5A5]">RoboSumo · RoboRacer · Regional Qualifiers</div>
-              <div className="tf-section-title text-2xl md:text-3xl text-white mt-1">5 Zones · 25 Cities across India.</div>
-              <p className="tf-body text-white/70 mt-2 text-sm md:text-base max-w-2xl mx-auto">
-                Live 1v1 knockout arenas moving city-to-city through 2026. Winners fast-track to the Grand Finale at IIT Bombay. Exact venue dates go live as they open.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {ZONES.map((z) => (
-                <div
-                  key={z.name}
-                  className="rounded-2xl tf-band-glass p-5 backdrop-blur-sm border-l-4"
-                  style={{ borderLeftColor: z.accent }}
-                  data-testid={`techfest-zone-${z.name.split(' ')[0].toLowerCase()}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" style={{ color: z.accent }} />
-                    <div className="tf-h1 text-xl md:text-2xl text-white leading-tight">{z.name}</div>
-                  </div>
-                  <ul className="mt-3 flex flex-wrap gap-1.5">
-                    {z.cities.map((c) => (
-                      <li
-                        key={c}
-                        className="tf-body text-xs md:text-sm text-white/90 px-2.5 py-1 rounded-full border"
-                        style={{ borderColor: 'rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)' }}
-                      >
-                        {c}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <div className="text-center mt-6">
-              <button onClick={openRegister} className="tf-btn primary" data-testid="techfest-rounds-cta">
-                Find Nearest Qualifier <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -749,7 +726,6 @@ export default function TechfestPage() {
         </div>
       </section>
 
-      <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
       <Footer />
     </div>
   );
@@ -782,273 +758,3 @@ const KitCard = ({ testId, title, tagline, image, highlights, slug }) => (
 );
 
 
-// ─────────────────────────────────────────────────────────────
-// Register Modal — 3 flows (Individual / Educator / School)
-// ─────────────────────────────────────────────────────────────
-const RegisterModal = ({ open, onClose }) => {
-  const [flow, setFlow] = useState(null); // null | 'educator' | 'school'
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({});
-
-  useEffect(() => {
-    if (!open) {
-      // Reset on close
-      setTimeout(() => { setFlow(null); setDone(false); setError(''); setForm({}); setSubmitting(false); }, 200);
-    } else {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [open]);
-
-  if (!open) return null;
-
-  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (submitting) return;
-    setError('');
-    setSubmitting(true);
-    try {
-      const payload = { type: flow, ...form };
-      const res = await fetch(`${API_BASE}/api/techfest/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || 'Something went wrong. Please try again.');
-      setDone(true);
-    } catch (err) {
-      setError(err.message || 'Something went wrong.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(10,31,68,0.72)', backdropFilter: 'blur(6px)' }}
-      onClick={onClose}
-      data-testid="techfest-register-modal"
-    >
-      <style>{`
-        .tf-reg-input {
-          width: 100%; padding: 12px 14px; border-radius: 12px;
-          border: 1.5px solid #e2e8f0; background: #ffffff;
-          font-family: 'Proxima Nova', 'Montserrat', sans-serif;
-          font-size: 0.95rem; color: #0A1F44;
-          transition: border-color .15s ease, box-shadow .15s ease;
-        }
-        .tf-reg-input:focus { outline: none; border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.15); }
-        .tf-reg-label { font-family: 'Proxima Nova','Montserrat',sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; margin-bottom: 6px; display: block; }
-      `}</style>
-      <div
-        className="relative bg-white w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 z-10"
-          aria-label="Close register modal"
-          data-testid="techfest-register-close"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="px-6 sm:px-8 pt-8 pb-4">
-          <div className="tf-eyebrow text-[#DC2626]" style={{ letterSpacing: '0.24em', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>OLL × Techfest IIT Bombay 2026</div>
-          <h3 className="tf-h1 text-3xl sm:text-4xl mt-2 text-[#0A1F44]">Register for the Championship.</h3>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-8">
-          {done ? (
-            <div className="py-8 text-center" data-testid="techfest-register-success">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 mx-auto flex items-center justify-center">
-                <CheckCircle2 className="w-9 h-9 text-emerald-600" />
-              </div>
-              <div className="tf-h1 text-3xl mt-4 text-[#0A1F44]">You&apos;re in.</div>
-              <p className="tf-body text-slate-600 mt-2 max-w-md mx-auto">
-                Thanks for registering. The OLL team will reach out on your phone and email within 24 hours with the next steps for {flow === 'school' ? 'your school' : 'your team'}.
-              </p>
-              <button
-                onClick={onClose}
-                className="mt-6 tf-btn primary"
-                style={{ padding: '10px 22px' }}
-                data-testid="techfest-register-done-btn"
-              >
-                Close
-              </button>
-            </div>
-          ) : !flow ? (
-            <div className="py-4">
-              <p className="tf-body text-slate-600 text-sm sm:text-base mb-6">
-                Pick how you&apos;d like to register. Every path leads to the same Grand Finale at IIT Bombay, 16–18 Dec 2026.
-              </p>
-              <div className="grid gap-3">
-                <a
-                  href="https://techfest.org"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex items-start gap-4 p-5 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"
-                  data-testid="techfest-register-option-individual"
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#0A1F44,#1E3A5F)' }}>
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="tf-h1 text-xl text-[#0A1F44]">Register as an Individual</div>
-                    <div className="tf-body text-sm text-slate-600 mt-1">Redirects to techfest.org where you can enter your team and pick your track directly.</div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-slate-400 mt-3 group-hover:text-[#DC2626] group-hover:translate-x-1 transition" />
-                </a>
-
-                <button
-                  onClick={() => setFlow('educator')}
-                  className="group text-left flex items-start gap-4 p-5 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"
-                  data-testid="techfest-register-option-educator"
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
-                    <GraduationCap className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="tf-h1 text-xl text-[#0A1F44]">Register as an Educator / Mentor</div>
-                    <div className="tf-body text-sm text-slate-600 mt-1">You&apos;ll be mentoring one or more student teams. We&apos;ll get in touch to help you onboard.</div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-slate-400 mt-3 group-hover:text-[#DC2626] group-hover:translate-x-1 transition" />
-                </button>
-
-                <button
-                  onClick={() => setFlow('school')}
-                  className="group text-left flex items-start gap-4 p-5 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"
-                  data-testid="techfest-register-option-school"
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#0EA5E9,#0369a1)' }}>
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="tf-h1 text-xl text-[#0A1F44]">Register as a School</div>
-                    <div className="tf-body text-sm text-slate-600 mt-1">Enter your entire institution with a dedicated coordinator, bulk kit pricing and a school-level dashboard.</div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-slate-400 mt-3 group-hover:text-[#DC2626] group-hover:translate-x-1 transition" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={submit} className="py-2" data-testid={`techfest-register-form-${flow}`}>
-              <button
-                type="button"
-                onClick={() => { setFlow(null); setError(''); }}
-                className="tf-body text-sm text-slate-500 hover:text-[#DC2626] mb-4 inline-flex items-center gap-1"
-              >
-                <ArrowRight className="w-3.5 h-3.5 rotate-180" /> Back to options
-              </button>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="tf-reg-label">Full Name*</label>
-                  <input required minLength={2} className="tf-reg-input" value={form.name || ''} onChange={setField('name')} data-testid="techfest-reg-field-name" />
-                </div>
-                <div>
-                  <label className="tf-reg-label">Email*</label>
-                  <input required type="email" className="tf-reg-input" value={form.email || ''} onChange={setField('email')} data-testid="techfest-reg-field-email" />
-                </div>
-                <div>
-                  <label className="tf-reg-label">Phone (WhatsApp)*</label>
-                  <input required type="tel" className="tf-reg-input" value={form.phone || ''} onChange={setField('phone')} data-testid="techfest-reg-field-phone" />
-                </div>
-                <div>
-                  <label className="tf-reg-label">City*</label>
-                  <input required className="tf-reg-input" value={form.city || ''} onChange={setField('city')} data-testid="techfest-reg-field-city" />
-                </div>
-
-                {flow === 'educator' ? (
-                  <>
-                    <div>
-                      <label className="tf-reg-label">School / Institute you mentor</label>
-                      <input className="tf-reg-input" value={form.school_or_institute || ''} onChange={setField('school_or_institute')} data-testid="techfest-reg-field-school-or-institute" />
-                    </div>
-                    <div>
-                      <label className="tf-reg-label">Grade you teach</label>
-                      <select className="tf-reg-input" value={form.grade_taught || ''} onChange={setField('grade_taught')} data-testid="techfest-reg-field-grade">
-                        <option value="">Select</option>
-                        <option>Grades 4–7 (Junior)</option>
-                        <option>Grades 8–12 (Senior)</option>
-                        <option>Both</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="tf-reg-label">Years of mentoring experience</label>
-                      <select className="tf-reg-input" value={form.experience || ''} onChange={setField('experience')} data-testid="techfest-reg-field-experience">
-                        <option value="">Select</option>
-                        <option>0–1 years</option>
-                        <option>2–4 years</option>
-                        <option>5+ years</option>
-                      </select>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="tf-reg-label">School Name*</label>
-                      <input required className="tf-reg-input" value={form.school_name || ''} onChange={setField('school_name')} data-testid="techfest-reg-field-school-name" />
-                    </div>
-                    <div>
-                      <label className="tf-reg-label">Your Role / Designation*</label>
-                      <input required className="tf-reg-input" placeholder="e.g. Principal, Coordinator" value={form.role_designation || ''} onChange={setField('role_designation')} data-testid="techfest-reg-field-role" />
-                    </div>
-                    <div>
-                      <label className="tf-reg-label">Number of Students likely to participate</label>
-                      <select className="tf-reg-input" value={form.student_count || ''} onChange={setField('student_count')} data-testid="techfest-reg-field-student-count">
-                        <option value="">Select</option>
-                        <option>1–20</option>
-                        <option>21–50</option>
-                        <option>51–100</option>
-                        <option>100+</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="tf-reg-label">Tracks of interest</label>
-                      <select className="tf-reg-input" value={(form.tracks || [])[0] || ''} onChange={(e) => setForm((f) => ({ ...f, tracks: e.target.value ? [e.target.value] : [] }))} data-testid="techfest-reg-field-tracks">
-                        <option value="">Select</option>
-                        <option>RoboSumo</option>
-                        <option>RoboRacer</option>
-                        <option>Robotics Innovation Challenge</option>
-                        <option>All three tracks</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                <div className="sm:col-span-2">
-                  <label className="tf-reg-label">Anything else you&apos;d like us to know?</label>
-                  <textarea className="tf-reg-input" rows={3} value={form.message || ''} onChange={setField('message')} data-testid="techfest-reg-field-message" />
-                </div>
-              </div>
-
-              {error && (
-                <div className="mt-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2" data-testid="techfest-register-error">{error}</div>
-              )}
-
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="tf-btn primary disabled:opacity-70"
-                  style={{ padding: '12px 26px' }}
-                  data-testid="techfest-register-submit"
-                >
-                  {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : <>Submit Registration <ArrowRight className="w-4 h-4" /></>}
-                </button>
-                <span className="tf-body text-xs text-slate-500">By submitting, you agree to be contacted by the OLL team about the Championship.</span>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};

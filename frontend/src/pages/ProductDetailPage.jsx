@@ -27,6 +27,17 @@ const fallbackImage = (id = '') => {
   return FALLBACK_IMAGES[h % FALLBACK_IMAGES.length];
 };
 
+// Techfest kit detection (shared)
+const isTechfestSlug = (slug) => {
+  if (!slug) return null;
+  const s = slug.toLowerCase();
+  if (s.includes('sumo') && (s.includes('techfest') || s.includes('iit-bombay'))) return 'sumo';
+  if (s.includes('racer') && (s.includes('techfest') || s.includes('iit-bombay'))) return 'racer';
+  return null;
+};
+const OLL_HORIZONTAL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+const TECHFEST_IITB_LOGO = '/techfest/techfest-iitb-logo.webp';
+
 const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -37,6 +48,9 @@ const ProductDetailPage = () => {
   const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const techfestKind = isTechfestSlug(slug);
+  const isTechfest = !!techfestKind;
 
   useEffect(() => {
     let mounted = true;
@@ -232,7 +246,7 @@ const ProductDetailPage = () => {
     return (
       <div className="min-h-screen bg-slate-50">
         {helmetNode}
-        <NavBar count={count} openDrawer={openDrawer} />
+        {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={() => {}} onAdd={() => {}} /> : <NavBar count={count} openDrawer={openDrawer} />}
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid lg:grid-cols-2 gap-8">
           <div className="bg-slate-200 rounded-2xl h-[420px] animate-pulse" />
           <div className="space-y-4">
@@ -272,7 +286,7 @@ const ProductDetailPage = () => {
     <div className="min-h-screen bg-slate-50" data-testid="product-detail-page">
       {helmetNode}
 
-      <NavBar count={count} openDrawer={openDrawer} />
+      {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={handleBuyNow} onAdd={handleAdd} /> : <NavBar count={count} openDrawer={openDrawer} />}
 
       {/* Breadcrumb — visible + SEO friendly */}
       <nav
@@ -351,9 +365,23 @@ const ProductDetailPage = () => {
           </div>
           <p className="mt-1 text-xs text-slate-500">Inclusive of all taxes · Flat ₹150 shipping</p>
 
-          {/* Description */}
-          <div className="mt-6 prose prose-sm max-w-none text-slate-700 leading-relaxed" data-testid="pdp-description">
-            <p>{product.description || 'A curated OLL Robotics kit built for hands-on learning.'}</p>
+          {/* Description — mobile-friendly: smaller font + collapsed with view-more */}
+          <div className="mt-6" data-testid="pdp-description">
+            <p
+              className={`text-slate-700 leading-relaxed text-xs sm:text-sm md:text-base ${!descExpanded ? 'line-clamp-4 sm:line-clamp-none' : ''}`}
+            >
+              {product.description || 'A curated OLL Robotics kit built for hands-on learning.'}
+            </p>
+            {(product.description || '').length > 220 && (
+              <button
+                type="button"
+                onClick={() => setDescExpanded((v) => !v)}
+                className="sm:hidden mt-1 text-xs font-bold text-[#D63031] uppercase tracking-wider"
+                data-testid="pdp-description-toggle"
+              >
+                {descExpanded ? 'View less ↑' : 'View more ↓'}
+              </button>
+            )}
           </div>
 
           {/* Techfest badge — appears for the two official IIT Bombay Techfest kits */}
@@ -515,16 +543,52 @@ const TrustBadge = ({ icon, title, sub }) => (
   </div>
 );
 
+// ── Techfest-branded sticky nav (OLL × Techfest IIT Bombay) — sumo/racer only ─
+const TechfestKitNavBar = ({ count, openDrawer, onBuyNow, onAdd }) => (
+  <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm" data-testid="pdp-techfest-navbar">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 sm:gap-4">
+      <Link to="/techfest" className="flex items-center gap-2 sm:gap-3 flex-shrink-0" data-testid="pdp-techfest-nav-home" aria-label="Back to Techfest campaign">
+        <img src={OLL_HORIZONTAL_LOGO} alt="OLL" className="h-7 sm:h-9 w-auto block" loading="eager" />
+        <span className="hidden sm:block w-px h-8 bg-slate-200" aria-hidden="true" />
+        <img src={TECHFEST_IITB_LOGO} alt="Techfest IIT Bombay" className="h-9 sm:h-11 w-auto block" loading="eager" />
+      </Link>
+      <div className="flex-1" />
+      {/* Sticky Buy CTA — mobile-first */}
+      <button
+        onClick={onAdd}
+        className="inline-flex items-center gap-1.5 border border-slate-300 hover:border-slate-900 text-slate-900 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors"
+        data-testid="pdp-sticky-add"
+      >
+        <ShoppingCart className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Add to Cart</span>
+        <span className="sm:hidden">Add</span>
+      </button>
+      <button
+        onClick={onBuyNow}
+        className="inline-flex items-center gap-1.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-full px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shadow-md"
+        data-testid="pdp-sticky-buy"
+      >
+        Buy Now
+      </button>
+      <button
+        onClick={openDrawer}
+        className="relative flex-shrink-0 hidden sm:inline-flex items-center justify-center bg-slate-900 hover:bg-[#DC2626] text-white rounded-full w-10 h-10 transition-colors"
+        aria-label="Open cart"
+      >
+        <ShoppingCart className="w-4 h-4" />
+        {count > 0 && (
+          <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-900 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {count}
+          </span>
+        )}
+      </button>
+    </div>
+  </nav>
+);
+
 export default ProductDetailPage;
 
 // ─── Techfest add-ons (rendered only when slug matches a Techfest kit) ─────
-const isTechfestSlug = (slug) => {
-  if (!slug) return null;
-  const s = slug.toLowerCase();
-  if (s.includes('sumo') && (s.includes('techfest') || s.includes('iit-bombay'))) return 'sumo';
-  if (s.includes('racer') && (s.includes('techfest') || s.includes('iit-bombay'))) return 'racer';
-  return null;
-};
 
 const TechfestBadge = ({ slug }) => {
   const kind = isTechfestSlug(slug);
