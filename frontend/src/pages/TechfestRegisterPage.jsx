@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight, ArrowLeft, User, GraduationCap, Building2, CheckCircle2, Loader2,
+  FileText, FileDown, MessageCircle,
 } from 'lucide-react';
 
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -130,7 +131,59 @@ export default function TechfestRegisterPage() {
                 <p className="text-slate-600 mt-2 max-w-md mx-auto font-light">
                   Thanks for registering. The OLL team will reach out on your phone and email within 24 hours with next steps for {flow === 'school' ? 'your school' : 'your team'}.
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3 justify-center">
+
+                {/* Downloads + WhatsApp — shown for school & educator flows */}
+                <div className="mt-8 grid gap-3 max-w-lg mx-auto text-left" data-testid="techfest-register-resources">
+                  <a
+                    href="/techfest/parent-circular.docx"
+                    download
+                    className="group flex items-center gap-3 p-4 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"
+                    data-testid="techfest-download-parent-circular"
+                  >
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[#0A1F44] leading-tight">Parent Circular</div>
+                      <div className="text-xs text-slate-600 font-light mt-0.5">Share with your students&apos; parents · .docx</div>
+                    </div>
+                    <FileDown className="w-4 h-4 text-slate-400 group-hover:text-[#DC2626]" />
+                  </a>
+                  <a
+                    href="/techfest/problem-statement.pdf"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center gap-3 p-4 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"
+                    data-testid="techfest-download-problem-statement"
+                  >
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#0A1F44,#1E3A5F)' }}>
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[#0A1F44] leading-tight">Detailed Problem Statement</div>
+                      <div className="text-xs text-slate-600 font-light mt-0.5">IIT Bombay OLL Championship 2026 · .pdf</div>
+                    </div>
+                    <FileDown className="w-4 h-4 text-slate-400 group-hover:text-[#DC2626]" />
+                  </a>
+                  <a
+                    href="https://chat.whatsapp.com/L3QZmVcVxbxEugCCDTQxzr"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center gap-3 p-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
+                    data-testid="techfest-join-whatsapp"
+                  >
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)' }}>
+                      <MessageCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[#0A1F44] leading-tight">Join the WhatsApp Community</div>
+                      <div className="text-xs text-slate-600 font-light mt-0.5">Live updates, mentor Q&amp;A, and cohort chat</div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition" />
+                  </a>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-3 justify-center">
                   <button onClick={() => navigate('/techfest')} className="trp-btn primary" data-testid="techfest-register-done-btn">
                     Back to Championship <ArrowRight className="w-4 h-4" />
                   </button>
@@ -244,6 +297,18 @@ export default function TechfestRegisterPage() {
                           <option>30+</option>
                         </select>
                       </div>
+                      <div className="sm:col-span-2">
+                        <label className="trp-label">Full School Address*</label>
+                        <textarea required rows={2} className="trp-input" placeholder="Street, area, city, state, PIN" value={form.school_address || ''} onChange={setField('school_address')} data-testid="techfest-reg-field-school-address" />
+                      </div>
+                      <div>
+                        <label className="trp-label">School Official Email*</label>
+                        <input required type="email" className="trp-input" placeholder="office@school.edu" value={form.school_email || ''} onChange={setField('school_email')} data-testid="techfest-reg-field-school-email" />
+                      </div>
+                      <div>
+                        <label className="trp-label">School Phone No.*</label>
+                        <input required type="tel" className="trp-input" placeholder="e.g. 022-2222-3333" value={form.school_phone || ''} onChange={setField('school_phone')} data-testid="techfest-reg-field-school-phone" />
+                      </div>
                     </>
                   ) : (
                     <>
@@ -264,6 +329,18 @@ export default function TechfestRegisterPage() {
                           <option>51–100</option>
                           <option>100+</option>
                         </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="trp-label">Full School Address*</label>
+                        <textarea required rows={2} className="trp-input" placeholder="Street, area, city, state, PIN" value={form.school_address || ''} onChange={setField('school_address')} data-testid="techfest-reg-field-school-address" />
+                      </div>
+                      <div>
+                        <label className="trp-label">School Official Email*</label>
+                        <input required type="email" className="trp-input" placeholder="office@school.edu" value={form.school_email || ''} onChange={setField('school_email')} data-testid="techfest-reg-field-school-email" />
+                      </div>
+                      <div>
+                        <label className="trp-label">School Phone No.*</label>
+                        <input required type="tel" className="trp-input" placeholder="e.g. 022-2222-3333" value={form.school_phone || ''} onChange={setField('school_phone')} data-testid="techfest-reg-field-school-phone" />
                       </div>
                     </>
                   )}

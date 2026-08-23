@@ -35,6 +35,7 @@ const ALL_SECTIONS = [
   { value: 'expenses.list', label: '↳ Expenses list only', description: 'Manage expense entries — hides P&L', parent: 'expenses' },
   { value: 'expenses.pnl',  label: '↳ P&L only',          description: 'View Profit & Loss only', parent: 'expenses' },
   { value: 'educators', label: 'Educators', description: 'Manage educator applications and assignments' },
+  { value: 'competitions', label: 'Competitions', description: 'Manage Techfest & other competition registrations' },
   { value: 'growth_partners', label: 'Growth Partners', description: 'Manage growth partner applications' },
   { value: 'pricing', label: 'Pricing Calculator', description: 'Access the Growth Partner pricing / margin calculator at /pricing' },
   { value: 'team_applications', label: 'Team Applications', description: 'View and manage team applications' },

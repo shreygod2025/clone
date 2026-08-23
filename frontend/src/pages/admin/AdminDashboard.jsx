@@ -33,6 +33,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
     { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'expenses' },
     { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
+    { path: '/admin/competitions', icon: Trophy, label: 'Competitions', permission: 'competitions' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },

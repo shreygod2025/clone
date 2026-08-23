@@ -113,6 +113,7 @@ const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingT
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
 const AdminEducators = lazy(() => import("./pages/admin/AdminEducators"));
+const AdminCompetitions = lazy(() => import("./pages/admin/AdminCompetitions"));
 const AdminGrowthPartners = lazy(() => import("./pages/admin/AdminGrowthPartners"));
 const AdminGPOnboarding = lazy(() => import("./pages/admin/AdminGPOnboarding"));
 const AdminTeamApplications = lazy(() => import("./pages/admin/AdminTeamApplications"));
@@ -371,6 +372,7 @@ function App() {
               <Route path="/admin/orders" element={<ProtectedRoute permission="orders"><AdminOrders /></ProtectedRoute>} />
               <Route path="/admin/expenses" element={<ProtectedRoute permission="expenses"><AdminExpenses /></ProtectedRoute>} />
               <Route path="/admin/educators" element={<ProtectedRoute permission="educators"><AdminEducators /></ProtectedRoute>} />
+              <Route path="/admin/competitions" element={<ProtectedRoute permission="competitions"><AdminCompetitions /></ProtectedRoute>} />
               <Route path="/admin/growth-partners" element={<ProtectedRoute permission="growth_partners"><AdminGrowthPartners /></ProtectedRoute>} />
               <Route path="/admin/gp-onboarding" element={<ProtectedRoute permission="growth_partners"><AdminGPOnboarding /></ProtectedRoute>} />
               <Route path="/admin/team-applications" element={<ProtectedRoute permission="team_applications"><AdminTeamApplications /></ProtectedRoute>} />
