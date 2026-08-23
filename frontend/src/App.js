@@ -347,6 +347,7 @@ function App() {
               <Route path="/pricing" element={<ProtectedRoute permission="pricing"><AdminPricing /></ProtectedRoute>} />
               <Route path="/techfest" element={<TechfestPage />} />
               <Route path="/techfest/register" element={<TechfestRegisterPage />} />
+              <Route path="/school-offerings/robotics/iit-bombay-competitions" element={<Navigate to="/techfest" replace />} />
               <Route path="/admin/success-stories" element={<ProtectedRoute><AdminSuccessStories /></ProtectedRoute>} />
               <Route path="/admin/schools/:schoolId/reports" element={<ProtectedRoute permission="schools"><SchoolReports /></ProtectedRoute>} />
               <Route path="/admin/schools/:schoolId/lms-report" element={<ProtectedRoute permission="schools"><LMSSchoolReport /></ProtectedRoute>} />
