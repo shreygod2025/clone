@@ -146,7 +146,7 @@ export default function TechfestRegisterPage() {
                 </p>
                 <div className="grid gap-3">
                   <a
-                    href="https://techfest.org"
+                    href="https://techfest.org/competitions/oll"
                     target="_blank"
                     rel="noreferrer"
                     className="group flex items-start gap-4 p-5 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"

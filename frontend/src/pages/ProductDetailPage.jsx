@@ -307,11 +307,11 @@ const ProductDetailPage = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Image */}
         <div className="lg:sticky lg:top-24 self-start">
-          <div className="relative aspect-square bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className={`relative bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm ${isTechfest ? 'aspect-[4/3]' : 'aspect-square'}`}>
             <img
               src={product.image_url || fallbackImage(product.id)}
               alt={product.name}
-              className="w-full h-full object-cover"
+              className={`w-full h-full block ${isTechfest ? 'object-contain p-3' : 'object-cover'}`}
               loading="eager"
               onError={(e) => {
                 if (e.currentTarget.dataset.fallback !== '1') {
