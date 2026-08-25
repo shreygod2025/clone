@@ -36,18 +36,18 @@ def _shell(title: str, preheader: str, body_html: str) -> str:
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 0;">
   <tr><td align="center">
     <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
-      <!-- Header — OLL × Techfest lockup on the campaign gradient -->
+      <!-- Header — OLL × Techfest lockup on a clean white background (dark-text logos need light bg) -->
       <tr>
-        <td style="background:linear-gradient(135deg,#0A1F44 0%,#1E3A5F 100%);padding:22px 28px;">
+        <td style="background:#ffffff;padding:22px 28px;border-bottom:4px solid #DC2626;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td style="vertical-align:middle;">
-                <img src="{OLL_LOGO_URL}" alt="OLL" height="34" style="height:34px;display:inline-block;vertical-align:middle;" />
-                <span style="display:inline-block;width:1px;height:28px;background:rgba(255,255,255,0.35);margin:0 12px;vertical-align:middle;"></span>
-                <img src="{TECHFEST_LOGO_URL}" alt="Techfest IIT Bombay" height="38" style="height:38px;display:inline-block;vertical-align:middle;background:#fff;padding:4px 8px;border-radius:6px;" />
+                <img src="{OLL_LOGO_URL}" alt="OLL" height="48" style="height:48px;display:inline-block;vertical-align:middle;" />
+                <span style="display:inline-block;width:1px;height:44px;background:#e2e8f0;margin:0 16px;vertical-align:middle;"></span>
+                <img src="{TECHFEST_LOGO_URL}" alt="Techfest IIT Bombay" height="52" style="height:52px;display:inline-block;vertical-align:middle;" />
               </td>
               <td align="right" style="vertical-align:middle;">
-                <span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#FCA5A5;">Championship 2026</span>
+                <span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#DC2626;">Championship 2026</span>
               </td>
             </tr>
           </table>
