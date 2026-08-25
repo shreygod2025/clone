@@ -11,7 +11,7 @@ from typing import Optional
 
 # Both logos are already served from /app/frontend/public/techfest and OLL's asset host.
 OLL_LOGO_URL = "https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
-TECHFEST_LOGO_URL = "https://eventmate-19.emergent.host/techfest/techfest-iitb-logo.webp"
+TECHFEST_LOGO_URL = "https://eventmate-19.emergent.host/techfest/techfest-iitb-logo-email.png"
 
 CAMPAIGN_URL = "https://eventmate-19.emergent.host/techfest"
 REGISTER_URL = "https://eventmate-19.emergent.host/techfest/register"
