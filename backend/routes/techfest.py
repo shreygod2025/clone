@@ -25,30 +25,49 @@ logger = logging.getLogger(__name__)
 
 async def _dispatch_email(to_email: str, subject: str, html: str) -> dict:
     """Try Gmail first, fall back to Resend so preview environments (which lack
-    GMAIL_APP_PASSWORD) still send successfully."""
+    GMAIL_APP_PASSWORD) still send successfully. Every mail is sent
+    From `Techfest Team <techfest@oll.co>` with Reply-To `techfest@oll.co`."""
+    from_addr = "Techfest Team <techfest@oll.co>"
+    reply_to = "techfest@oll.co"
+
+    # ── Gmail path (production) ────────────────────────────────────────
     try:
-        from server import send_email_gmail  # type: ignore
-        gm = await send_email_gmail(to_email, subject, html)
-        if gm.get("success"):
-            return {"provider": "gmail", **gm}
+        from server import GMAIL_APP_PASSWORD, GMAIL_EMAIL  # type: ignore
+        if GMAIL_APP_PASSWORD:
+            import smtplib
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = from_addr
+            msg['To'] = to_email
+            msg['Reply-To'] = reply_to
+            msg.attach(MIMEText(html, 'html'))
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+                server.sendmail(GMAIL_EMAIL, to_email, msg.as_string())
+            return {"provider": "gmail", "success": True}
+        gmail_err = "GMAIL_APP_PASSWORD missing"
     except Exception as exc:  # noqa: BLE001
-        gm = {"success": False, "error": str(exc)}
-    # Fallback → Resend
+        gmail_err = str(exc)
+
+    # ── Resend fallback ────────────────────────────────────────────────
     try:
-        import asyncio, resend, os  # type: ignore
+        import asyncio, os, resend  # type: ignore
         resend.api_key = os.environ.get("RESEND_API_KEY", "")
         if not resend.api_key:
-            return {"provider": "none", **gm, "resend_error": "RESEND_API_KEY missing"}
+            return {"provider": "none", "success": False, "gmail_error": gmail_err, "resend_error": "RESEND_API_KEY missing"}
         params = {
-            "from": os.environ.get("SENDER_EMAIL", "OLL Team <hello@oll.co>"),
+            "from": from_addr,
             "to": [to_email],
+            "reply_to": reply_to,
             "subject": subject,
             "html": html,
         }
         resp = await asyncio.to_thread(resend.Emails.send, params)
         return {"provider": "resend", "success": True, "id": resp.get("id")}
     except Exception as exc:  # noqa: BLE001
-        return {"provider": "none", "success": False, "gmail_error": gm.get("error"), "resend_error": str(exc)}
+        return {"provider": "none", "success": False, "gmail_error": gmail_err, "resend_error": str(exc)}
 
 
 async def _send_techfest_confirmation(to_email: str, name: str, reg_type: str) -> None:

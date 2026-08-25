@@ -11,7 +11,8 @@ from typing import Optional
 
 # Both logos are already served from /app/frontend/public/techfest and OLL's asset host.
 OLL_LOGO_URL = "https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
-TECHFEST_LOGO_URL = "https://eventmate-19.emergent.host/techfest/techfest-iitb-logo-email.png"
+# Served from the preview app (production URL 404s the logo until the next deploy).
+TECHFEST_LOGO_URL = "https://camp-lead-capture.preview.emergentagent.com/techfest/techfest-iitb-logo-email.png"
 
 CAMPAIGN_URL = "https://eventmate-19.emergent.host/techfest"
 REGISTER_URL = "https://eventmate-19.emergent.host/techfest/register"
@@ -20,6 +21,7 @@ PARENT_CIRCULAR_URL = "https://eventmate-19.emergent.host/techfest/parent-circul
 WHATSAPP_URL = "https://chat.whatsapp.com/L3QZmVcVxbxEugCCDTQxzr"
 SUMO_KIT_URL = "https://eventmate-19.emergent.host/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a"
 RACER_KIT_URL = "https://eventmate-19.emergent.host/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc"
+TECHFEST_SUPPORT_EMAIL = "techfest@oll.co"
 
 
 def _shell(title: str, preheader: str, body_html: str) -> str:
@@ -65,7 +67,7 @@ def _shell(title: str, preheader: str, body_html: str) -> str:
             <a href="{PROBLEM_STATEMENT_URL}" style="color:#FCA5A5;text-decoration:none;">Problem Statement (PDF)</a> &nbsp;·&nbsp;
             <a href="{WHATSAPP_URL}" style="color:#FCA5A5;text-decoration:none;">WhatsApp community</a>
           </div>
-          <div style="margin-top:14px;color:#94a3b8;">You&apos;re receiving this because you (or someone at your school) reached out to OLL about the Championship. Reach us at <a href="mailto:hello@oll.co" style="color:#FCA5A5;text-decoration:none;">hello@oll.co</a>.</div>
+          <div style="margin-top:14px;color:#94a3b8;">You&apos;re receiving this because you (or someone at your school) reached out to OLL about the Championship. Reach us at <a href="mailto:techfest@oll.co" style="color:#FCA5A5;text-decoration:none;">techfest@oll.co</a>.</div>
         </td>
       </tr>
     </table>
