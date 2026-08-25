@@ -32,7 +32,7 @@ const TRACKS = [
       '2 restart / sudden-death rounds if no elimination; referee decides on control & dominance if still tied.',
       'No weapons, sharp mechanisms, flipping mechanisms, or projectiles.',
       'Bot must be the team\u2019s own original design — ready-made kits are not permitted.',
-      'A 2-minute grace period is allowed to fix a non-functional bot; otherwise both teams are disqualified.',
+      'A 2-minute grace period is allowed to fix a non-functional bot.',
     ],
     productSlug: 'robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a',
   },
@@ -541,6 +541,16 @@ export default function TechfestPage() {
                   </li>
                 ))}
               </ul>
+              <a
+                href="/techfest/problem-statement.pdf"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#DC2626] hover:text-[#7f1d1d]"
+                data-testid={`techfest-problem-statement-${track.key}`}
+              >
+                Read the full Problem Statement <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+              <p className="tf-body text-[11px] text-slate-500 mt-1">Detailed rules, bot spec, submission format &amp; judging criteria — IIT Bombay OLL Championship 2026-27 PDF.</p>
             </div>
 
             {track.rubric && (
@@ -689,7 +699,15 @@ export default function TechfestPage() {
 
       {/* ── PRIZES / CERTS ─────────────────────────────────── */}
       <section className="py-16 lg:py-24" data-testid="techfest-prizes-section">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-3 gap-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="tf-eyebrow text-[#FCA5A5]">what winners take home</div>
+            <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">Prizes &amp; Certificates.</h2>
+            <p className="tf-body text-white/75 mt-3 max-w-2xl mx-auto">
+              A ₹1,50,000 prize pool, certificates for every participant and a spot on the biggest robotics stage in India.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 relative overflow-hidden rounded-3xl p-8 lg:p-10 text-white" style={{ background: 'linear-gradient(135deg, #DC2626 0%, #7f1d1d 100%)' }}>
             <Trophy className="absolute -right-6 -bottom-6 w-40 h-40 text-white/10" />
             <div className="tf-eyebrow text-white/80">Prize Money</div>
@@ -706,6 +724,7 @@ export default function TechfestPage() {
               <li className="flex items-start gap-2"><Target className="w-4 h-4 text-[#FCA5A5] mt-0.5" /> <span><strong style={{ fontWeight: 700 }}>Certificate of Participation</strong> for every accepted entry.</span></li>
               <li className="flex items-start gap-2"><Trophy className="w-4 h-4 text-[#FCA5A5] mt-0.5" /> <span><strong style={{ fontWeight: 700 }}>Certificate of Finalist Recognition</strong> for Grand Finale competitors.</span></li>
             </ul>
+          </div>
           </div>
         </div>
       </section>

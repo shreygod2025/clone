@@ -38,7 +38,6 @@ export default function AdminCompetitions() {
   const fileInputRef = useRef(null);
 
   const load = async () => {
-    if (tab === 'student') { setRows([]); setLoading(false); return; }
     setLoading(true);
     try {
       const res = await axios.get(`${API}/admin/techfest/registrations`, {
@@ -62,7 +61,6 @@ export default function AdminCompetitions() {
   }, [rows, q]);
 
   const handleExport = async () => {
-    if (tab === 'student') { toast.info('Student registrations happen on techfest.org — export not available here.'); return; }
     setExporting(true);
     try {
       const res = await axios.get(`${API}/admin/techfest/registrations/export`, {
@@ -78,7 +76,6 @@ export default function AdminCompetitions() {
   };
 
   const handleImportClick = () => {
-    if (tab === 'student') { toast.info('Student registrations happen on techfest.org — import not applicable here.'); return; }
     fileInputRef.current?.click();
   };
 
@@ -170,10 +167,10 @@ export default function AdminCompetitions() {
             </div>
             <div className="flex items-center gap-2">
               <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} data-testid="admin-competitions-import-input" />
-              <Button variant="outline" size="sm" onClick={handleImportClick} disabled={importing || tab === 'student'} data-testid="admin-competitions-import-btn">
+              <Button variant="outline" size="sm" onClick={handleImportClick} disabled={importing} data-testid="admin-competitions-import-btn">
                 {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />} Import CSV
               </Button>
-              <Button size="sm" onClick={handleExport} disabled={exporting || tab === 'student'} className="bg-[#0A1F44] hover:bg-[#1E3A5F]" data-testid="admin-competitions-export-btn">
+              <Button size="sm" onClick={handleExport} disabled={exporting} className="bg-[#0A1F44] hover:bg-[#1E3A5F]" data-testid="admin-competitions-export-btn">
                 {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Export CSV
               </Button>
             </div>
@@ -183,18 +180,20 @@ export default function AdminCompetitions() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…</div>
-            ) : tab === 'student' ? (
-              <div className="p-10 text-center" data-testid="admin-competitions-empty-student">
-                <User className="w-10 h-10 mx-auto text-slate-300" />
-                <div className="mt-3 font-bold text-slate-800">Students register on techfest.org</div>
-                <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">Individual student registrations happen directly on the official Techfest IIT Bombay portal. Data for individual entries is available in the Techfest admin export.</p>
-                <a href="https://techfest.org/competitions/oll" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#DC2626] hover:underline">
-                  Open techfest.org/competitions/oll <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
             ) : filtered.length === 0 ? (
-              <div className="p-10 text-center text-slate-500" data-testid="admin-competitions-empty">
-                No {tab} registrations {q ? 'match your search' : 'yet'}.
+              <div className="p-10 text-center" data-testid={tab === 'student' ? 'admin-competitions-empty-student' : 'admin-competitions-empty'}>
+                {tab === 'student' ? (
+                  <>
+                    <User className="w-10 h-10 mx-auto text-slate-300" />
+                    <div className="mt-3 font-bold text-slate-800">No student registrations yet</div>
+                    <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">Individual students register on techfest.org. Use <strong>Import CSV</strong> above to bulk-load a student roster from the Techfest export (must have a <code>type</code> column set to <code>student</code>).</p>
+                    <a href="https://techfest.org/competitions/oll" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#DC2626] hover:underline">
+                      Open techfest.org/competitions/oll <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </>
+                ) : (
+                  <span className="text-slate-500">No {tab} registrations {q ? 'match your search' : 'yet'}.</span>
+                )}
               </div>
             ) : (
               <table className="w-full text-sm" data-testid={`admin-competitions-table-${tab}`}>
@@ -210,13 +209,18 @@ export default function AdminCompetitions() {
                         <th className="text-left px-3 py-3 font-bold">School</th>
                         <th className="text-left px-3 py-3 font-bold">Role</th>
                       </>
-                    ) : (
+                    ) : tab === 'educator' ? (
                       <>
                         <th className="text-left px-3 py-3 font-bold">School / Institute</th>
                         <th className="text-left px-3 py-3 font-bold">Subject</th>
                       </>
+                    ) : (
+                      <>
+                        <th className="text-left px-3 py-3 font-bold">School</th>
+                        <th className="text-left px-3 py-3 font-bold">Grade · Team · Track</th>
+                      </>
                     )}
-                    <th className="text-left px-3 py-3 font-bold">Students</th>
+                    <th className="text-left px-3 py-3 font-bold">{tab === 'student' ? 'Team size' : 'Students'}</th>
                     <th className="text-left px-3 py-3 font-bold">School Address</th>
                     <th className="text-left px-3 py-3 font-bold">School Contact</th>
                     <th className="text-left px-3 py-3 font-bold">Status</th>
@@ -238,10 +242,18 @@ export default function AdminCompetitions() {
                           <td className="px-3 py-3 text-slate-700">{r.school_name || '—'}</td>
                           <td className="px-3 py-3 text-slate-700">{r.role_designation || '—'}</td>
                         </>
-                      ) : (
+                      ) : tab === 'educator' ? (
                         <>
                           <td className="px-3 py-3 text-slate-700">{r.school_or_institute || '—'}</td>
                           <td className="px-3 py-3 text-slate-700">{r.grade_taught || '—'}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-3 py-3 text-slate-700">{r.school_name || r.school_or_institute || '—'}</td>
+                          <td className="px-3 py-3 text-slate-700 text-[12px]">
+                            <div>{r.grade || '—'} {r.team_name ? `· ${r.team_name}` : ''}</div>
+                            {r.track && <div className="text-slate-500">{r.track}</div>}
+                          </td>
                         </>
                       )}
                       <td className="px-3 py-3 text-slate-700">{r.student_count || '—'}</td>

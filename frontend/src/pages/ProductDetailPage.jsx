@@ -648,6 +648,7 @@ const TechfestDeepDive = ({ slug }) => {
     { k: 'Structure Components', v: 'Screws, nuts, standoffs, hardware' },
   ] : [
     { k: '1 × RC Chassis', v: 'Aerodynamic body, painted & branded' },
+    { k: '1 × RC Controller', v: 'Wireless remote · 1-channel per team' },
     { k: '2 × Motors + 4 Wheels', v: 'Tuned drivetrain' },
     { k: '1 × Battery Holder + 2 × AA', v: 'Ready to power on out of the box' },
     { k: '1 × Switch, 1 × Screwdriver', v: 'Plus screws, nuts & stickers' },

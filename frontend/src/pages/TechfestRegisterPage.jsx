@@ -344,6 +344,53 @@ export default function TechfestRegisterPage() {
                       </div>
                     </>
                   )}
+
+                  {/* Shared block — does your school already teach robotics? */}
+                  <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+                    <label className="trp-label">Do you already teach robotics in your school?*</label>
+                    <div className="flex gap-2">
+                      {['Yes', 'No'].map((opt) => {
+                        const active = form.teaches_robotics === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, teaches_robotics: opt, robotics_format: opt === 'Yes' ? (f.robotics_format || '') : '', robotics_external_company: opt === 'Yes' ? (f.robotics_external_company || '') : '' }))}
+                            className="flex-1 py-2.5 rounded-xl border-2 text-sm font-bold transition-colors"
+                            style={{
+                              borderColor: active ? '#DC2626' : '#e2e8f0',
+                              background: active ? 'rgba(220,38,38,0.08)' : '#fff',
+                              color: active ? '#DC2626' : '#0A1F44',
+                            }}
+                            data-testid={`techfest-reg-field-teaches-robotics-${opt.toLowerCase()}`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Hidden input to satisfy required — we don't actually submit this since we push everything from state */}
+                    <input type="hidden" required value={form.teaches_robotics || ''} readOnly />
+                  </div>
+
+                  {form.teaches_robotics === 'Yes' && (
+                    <div className="sm:col-span-2">
+                      <label className="trp-label">In what form?*</label>
+                      <select required className="trp-input" value={form.robotics_format || ''} onChange={setField('robotics_format')} data-testid="techfest-reg-field-robotics-format">
+                        <option value="">Select</option>
+                        <option>In timetable as a subject</option>
+                        <option>Afterschool classes</option>
+                        <option>Through an external company</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {form.teaches_robotics === 'Yes' && form.robotics_format === 'Through an external company' && (
+                    <div className="sm:col-span-2">
+                      <label className="trp-label">Which company?*</label>
+                      <input required className="trp-input" placeholder="e.g. WhiteHat Jr, Vidyalai" value={form.robotics_external_company || ''} onChange={setField('robotics_external_company')} data-testid="techfest-reg-field-robotics-external-company" />
+                    </div>
+                  )}
                 </div>
 
                 {error && (

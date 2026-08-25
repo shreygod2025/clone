@@ -8,19 +8,62 @@ Admin:
 import csv
 import io
 import re
+import logging
 from datetime import datetime, timezone
 from typing import Optional, Literal, List
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, EmailStr, Field
 
 from .shared import db, get_current_user
+from .techfest_emails import registration_confirmed_html, school_invite_html
+
+
+logger = logging.getLogger(__name__)
+
+
+async def _dispatch_email(to_email: str, subject: str, html: str) -> dict:
+    """Try Gmail first, fall back to Resend so preview environments (which lack
+    GMAIL_APP_PASSWORD) still send successfully."""
+    try:
+        from server import send_email_gmail  # type: ignore
+        gm = await send_email_gmail(to_email, subject, html)
+        if gm.get("success"):
+            return {"provider": "gmail", **gm}
+    except Exception as exc:  # noqa: BLE001
+        gm = {"success": False, "error": str(exc)}
+    # Fallback → Resend
+    try:
+        import asyncio, resend, os  # type: ignore
+        resend.api_key = os.environ.get("RESEND_API_KEY", "")
+        if not resend.api_key:
+            return {"provider": "none", **gm, "resend_error": "RESEND_API_KEY missing"}
+        params = {
+            "from": os.environ.get("SENDER_EMAIL", "OLL Team <hello@oll.co>"),
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        }
+        resp = await asyncio.to_thread(resend.Emails.send, params)
+        return {"provider": "resend", "success": True, "id": resp.get("id")}
+    except Exception as exc:  # noqa: BLE001
+        return {"provider": "none", "success": False, "gmail_error": gm.get("error"), "resend_error": str(exc)}
+
+
+async def _send_techfest_confirmation(to_email: str, name: str, reg_type: str) -> None:
+    """Background task: send registration confirmation email."""
+    try:
+        subject = "You're in — OLL Robotics Championship @ Techfest IIT Bombay 2026"
+        html = registration_confirmed_html(name=name, reg_type=reg_type)
+        await _dispatch_email(to_email, subject, html)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("techfest confirmation email failed for %s: %s", to_email, exc)
 
 
 router = APIRouter()
 
-RegistrantType = Literal["educator", "school"]
+RegistrantType = Literal["educator", "school", "student"]
 
 
 class TechfestRegisterIn(BaseModel):
@@ -42,6 +85,9 @@ class TechfestRegisterIn(BaseModel):
     school_address: Optional[str] = Field(None, max_length=500)
     school_email: Optional[str] = Field(None, max_length=120)
     school_phone: Optional[str] = Field(None, max_length=20)
+    teaches_robotics: Optional[str] = Field(None, max_length=8)  # 'Yes' | 'No'
+    robotics_format: Optional[str] = Field(None, max_length=80)
+    robotics_external_company: Optional[str] = Field(None, max_length=120)
     message: Optional[str] = Field(None, max_length=1000)
 
 
@@ -50,7 +96,7 @@ def _sanitise_phone(raw: str) -> str:
 
 
 @router.post("/techfest/register")
-async def register_techfest(payload: TechfestRegisterIn):
+async def register_techfest(payload: TechfestRegisterIn, background_tasks: BackgroundTasks):
     now = datetime.now(timezone.utc)
     phone = _sanitise_phone(payload.phone)
     if len(re.sub(r"\D", "", phone)) < 6:
@@ -80,7 +126,8 @@ async def register_techfest(payload: TechfestRegisterIn):
             "tracks": payload.tracks or [],
         })
     # Shared additions
-    for k in ("school_address", "school_email", "school_phone"):
+    for k in ("school_address", "school_email", "school_phone",
+              "teaches_robotics", "robotics_format", "robotics_external_company"):
         val = (getattr(payload, k) or "").strip() or None
         if val:
             doc[k] = val
@@ -98,6 +145,10 @@ async def register_techfest(payload: TechfestRegisterIn):
         return {"ok": True, "duplicate": True, "id": str(existing["_id"])}
 
     result = await db.techfest_registrations.insert_one(doc)
+
+    # Fire-and-forget confirmation email
+    background_tasks.add_task(_send_techfest_confirmation, doc["email"], doc["name"], doc["type"])
+
     return {"ok": True, "duplicate": False, "id": str(result.inserted_id)}
 
 
@@ -130,6 +181,8 @@ _EXPORT_COLS = [
     "school_name", "school_or_institute", "role_designation", "grade_taught",
     "experience", "student_count", "tracks",
     "school_address", "school_email", "school_phone",
+    "teaches_robotics", "robotics_format", "robotics_external_company",
+    "grade", "team_name", "track",
     "message", "status",
 ]
 
@@ -189,7 +242,7 @@ async def import_techfest_csv(
     for idx, row in enumerate(reader, 2):  # row 1 is header
         try:
             r_type = (row.get("type") or "").strip().lower()
-            if r_type not in ("educator", "school"):
+            if r_type not in ("educator", "school", "student"):
                 skipped += 1
                 continue
             email = (row.get("email") or "").strip().lower()
@@ -208,7 +261,9 @@ async def import_techfest_csv(
             }
             for k in ("school_name", "school_or_institute", "role_designation",
                       "grade_taught", "experience", "student_count",
-                      "school_address", "school_email", "school_phone", "message"):
+                      "school_address", "school_email", "school_phone",
+                      "teaches_robotics", "robotics_format", "robotics_external_company",
+                      "grade", "team_name", "track", "message"):
                 v = (row.get(k) or "").strip()
                 if v:
                     doc[k] = v
@@ -237,4 +292,35 @@ async def import_techfest_csv(
         "updated": updated,
         "skipped": skipped,
         "errors": errors[:20],
+    }
+
+
+
+# ── Sample email endpoints (dev / preview): send to shreyaan@oll.co ──────
+@router.post("/admin/techfest/emails/send-samples")
+async def send_sample_techfest_emails(user: dict = Depends(_admin)):
+    """Send the two Techfest email samples (school outreach + post-registration
+    confirmation) to shreyaan@oll.co for review."""
+    target = "shreyaan@oll.co"
+
+    invite_html = school_invite_html(school_name="Sample School")
+    invite_res = await _dispatch_email(
+        target,
+        "[SAMPLE] Register your school — OLL Robotics Championship @ Techfest IIT Bombay",
+        invite_html,
+    )
+
+    confirm_html = registration_confirmed_html(
+        name="Sample Principal", reg_type="school",
+    )
+    confirm_res = await _dispatch_email(
+        target,
+        "[SAMPLE] Registration confirmed — OLL Robotics Championship @ Techfest IIT Bombay",
+        confirm_html,
+    )
+    return {
+        "ok": True,
+        "recipient": target,
+        "invite": invite_res,
+        "confirmation": confirm_res,
     }
