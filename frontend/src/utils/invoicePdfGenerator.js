@@ -243,9 +243,15 @@ export async function generateInvoicePDF(payment, schoolData, {
 
   // ─── Invoice Details ───
   const invoiceNo = generateInvoiceNumber(payment);
-  const invoiceDate = payment.payment_date
-    ? new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Prefer the actual invoice date from the record (custom invoices store it
+  // as `invoice_date`; legacy records may use `date` / `payment_date` / `created_at`).
+  // Falling back to `new Date()` caused every download to show today's date.
+  const invoiceDateRaw = payment.invoice_date
+    || payment.date
+    || payment.payment_date
+    || payment.created_at
+    || new Date().toISOString();
+  const invoiceDate = new Date(invoiceDateRaw).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const dueDate = payment.due_date
     ? new Date(payment.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : invoiceDate;
