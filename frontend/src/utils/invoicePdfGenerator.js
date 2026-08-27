@@ -197,9 +197,20 @@ export async function generateInvoicePDF(payment, schoolData, {
   try { signImg = await loadImageAsDataURL('/shreyaan_sign.png', 200, 100); } catch (e) { console.warn('[invoicePdfGenerator] Could not load signature image — invoice will render without signature:', e?.message || e); }
 
   // ─── Border ───
-  doc.setDrawColor(30, 58, 95);
-  doc.setLineWidth(0.5);
-  doc.rect(margin - 2, margin - 2, contentWidth + 4, pageHeight - margin * 2 + 4);
+  const drawBorder = () => {
+    doc.setDrawColor(30, 58, 95);
+    doc.setLineWidth(0.5);
+    doc.rect(margin - 2, margin - 2, contentWidth + 4, pageHeight - margin * 2 + 4);
+  };
+  const innerBottom = pageHeight - margin - 2; // 2mm padding inside the border
+  const ensureSpace = (needed) => {
+    if (y + needed > innerBottom) {
+      doc.addPage();
+      drawBorder();
+      y = margin;
+    }
+  };
+  drawBorder();
 
   // ─── Header: OLL Logo + OLL Company Info (ALWAYS OLL, never distributor) ─
   const logoH = 30;
@@ -817,6 +828,9 @@ export async function generateInvoicePDF(payment, schoolData, {
   y += 4;
 
   // ─── Signature ───
+  // Signature block needs ~30mm — if it won't fit inside the bordered area,
+  // push it onto a fresh page (with its own border) so it never overflows.
+  ensureSpace(30);
   doc.setDrawColor(200, 200, 200);
   doc.line(innerLeft, y, innerRight, y);
   y += 3;
