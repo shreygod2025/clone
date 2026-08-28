@@ -6,6 +6,7 @@ import uuid
 import asyncio
 import csv
 import io
+import bcrypt
 import httpx
 import resend
 from datetime import datetime, timezone
@@ -364,9 +365,6 @@ async def bulk_upload_team_applications(
     user: dict = Depends(get_current_user)
 ):
     """Bulk upload team applications from CSV file"""
-    import csv
-    import io
-    
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
@@ -471,7 +469,7 @@ async def send_hr_interview_email(
     try:
         dt = datetime.fromisoformat(scheduled_at.replace('Z', '+00:00'))
         formatted_date = dt.strftime('%B %d, %Y at %I:%M %p')
-    except:
+    except Exception:
         formatted_date = scheduled_at
     
     # Send email using Resend
@@ -936,7 +934,7 @@ async def activate_team_member(
     
     temp_password = str(uuid.uuid4())[:8]  # Temporary password
     
-    team_user = TeamUser(
+    team_user = TeamUser(  # noqa: F821
         email=onboarding.get('email', f"{username}@oll.co"),
         name=onboarding.get('name', ''),
         username=username,

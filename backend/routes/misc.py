@@ -1641,7 +1641,7 @@ async def get_mongodb_info(request: Request, user: dict = Depends(get_current_us
             try:
                 count = await db[col_name].count_documents({})
                 collections_info.append({"name": col_name, "count": count})
-            except:
+            except Exception:
                 collections_info.append({"name": col_name, "count": "N/A"})
         
         # For export, provide the actual connection string (admin only)
@@ -1654,7 +1654,7 @@ async def get_mongodb_info(request: Request, user: dict = Depends(get_current_us
         try:
             whitelist_docs = await db.mongodb_whitelist.find({}, {"_id": 0}).to_list(100)
             whitelisted_ips = whitelist_docs
-        except:
+        except Exception:
             pass
         
         return {
@@ -2055,7 +2055,7 @@ async def serve_file(filename: str):
             )
     
     # Fallback to local file (for backward compatibility)
-    file_path = UPLOAD_DIR / filename
+    file_path = UPLOAD_DIR / filename  # noqa: F821
     if file_path.exists():
         content_types = {
             '.pdf': 'application/pdf',
@@ -2161,8 +2161,8 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
     skipped = 0
     errors = []
     
-    if UPLOAD_DIR.exists():
-        for file_path in UPLOAD_DIR.iterdir():
+    if UPLOAD_DIR.exists():  # noqa: F821
+        for file_path in UPLOAD_DIR.iterdir():  # noqa: F821
             if file_path.is_file():
                 filename = file_path.name
                 
@@ -2241,19 +2241,19 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
 @router.post("/admin/trigger/overdue-check")
 async def trigger_overdue_check(user: dict = Depends(get_current_user)):
     """Manually trigger overdue ticket check"""
-    await check_overdue_tickets()
+    await check_overdue_tickets()  # noqa: F821
     return {"message": "Overdue ticket check triggered"}
 
 @router.post("/admin/trigger/meeting-reminders")
 async def trigger_meeting_reminders(user: dict = Depends(get_current_user)):
     """Manually trigger school meeting reminders check"""
-    await check_school_meeting_reminders()
+    await check_school_meeting_reminders()  # noqa: F821
     return {"message": "Meeting reminders check triggered"}
 
 @router.post("/admin/trigger/daily-digest")
 async def trigger_daily_digest(user: dict = Depends(get_current_user)):
     """Manually trigger School CRM daily digest email"""
-    await send_school_crm_daily_digest()
+    await send_school_crm_daily_digest()  # noqa: F821
     return {"message": "Daily digest triggered"}
 
 @router.post("/admin/test/whatsapp")

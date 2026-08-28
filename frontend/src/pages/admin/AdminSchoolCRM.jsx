@@ -489,7 +489,10 @@ const AdminSchoolCRM = () => {
   const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchAllStatuses, setSearchAllStatuses] = useState(false);
+  // Search across ALL stages by default — the previous stage-scoped behaviour
+  // hid legitimate matches sitting in a different pipeline stage. Users still
+  // get a "Search this stage only" toggle to scope back down.
+  const [searchAllStatuses, setSearchAllStatuses] = useState(true);
   const [activeSection, setActiveSection] = useState('new');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   
@@ -4076,16 +4079,33 @@ ${FOOTER}</div></body></html>`
           )}
         </div>
         <div className="flex flex-col items-end gap-1">
-          {/* Show status badge when searching all statuses */}
-          {searchAllStatuses && searchQuery.trim() && (
-            <span className={`px-2 py-1 rounded text-xs font-medium ${
-              STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 
-              (inquiry.status === 'lost_lead' ? 'bg-red-400' : inquiry.status === 'lost_customer' ? 'bg-red-600' : 'bg-slate-100')
-            } text-white`}>
-              {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || 
-               (inquiry.status === 'lost_lead' ? 'Lost Lead' : inquiry.status === 'lost_customer' ? 'Lost Customer' : inquiry.status)}
-            </span>
-          )}
+          {/* Show status badge when searching all statuses — clickable so a
+              user can jump to the stage that owns this school. */}
+          {searchAllStatuses && searchQuery.trim() && (() => {
+            const section = STATUS_SECTIONS.find(s => s.value === inquiry.status);
+            const isLostLead = inquiry.status === 'lost_lead';
+            const isLostCustomer = inquiry.status === 'lost_customer';
+            const targetSection = section?.value || (isLostLead || isLostCustomer || inquiry.status === 'lost' ? 'lost' : null);
+            const badgeColor = section?.color || (isLostLead ? 'bg-red-400' : isLostCustomer ? 'bg-red-600' : 'bg-slate-100');
+            const label = section?.label || (isLostLead ? 'Lost Lead' : isLostCustomer ? 'Lost Customer' : inquiry.status);
+            return (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (targetSection && targetSection !== activeSection) {
+                    setActiveSection(targetSection);
+                    setSearchAllStatuses(false);
+                  }
+                }}
+                title={targetSection && targetSection !== activeSection ? `Go to ${label} stage` : label}
+                className={`px-2 py-1 rounded text-xs font-medium ${badgeColor} text-white hover:brightness-110 transition`}
+                data-testid={`school-stage-jump-${inquiry.id || ''}`}
+              >
+                {label} {targetSection && targetSection !== activeSection ? '→' : ''}
+              </button>
+            );
+          })()}
         </div>
       </div>
 
@@ -5015,11 +5035,11 @@ ${FOOTER}</div></body></html>`
               <label className="flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={searchAllStatuses}
-                  onChange={(e) => setSearchAllStatuses(e.target.checked)}
+                  checked={!searchAllStatuses}
+                  onChange={(e) => setSearchAllStatuses(!e.target.checked)}
                   className="rounded border-slate-300"
                 />
-                Search all
+                Search this stage only
               </label>
             </div>
             <div className="flex flex-wrap gap-2">

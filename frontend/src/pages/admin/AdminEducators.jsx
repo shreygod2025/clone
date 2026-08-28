@@ -797,7 +797,19 @@ const AdminEducators = () => {
     const matchesSearch = edu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       edu.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       edu.phone?.includes(searchQuery);
-    
+
+    // If a search query is active, ignore the active tab so recruiters can
+    // find an applicant no matter which stage they're currently sitting in.
+    if (searchQuery.trim()) {
+      // Assignee filter still applies during global search
+      let matchesAssigneeGlobal = true;
+      if (assigneeFilter !== 'all') {
+        if (assigneeFilter === 'unassigned') matchesAssigneeGlobal = !edu.assigned_to;
+        else matchesAssigneeGlobal = edu.assigned_to === assigneeFilter;
+      }
+      return matchesSearch && matchesAssigneeGlobal;
+    }
+
     // For applicants tab, filter by new and demo_scheduled
     let matchesTab = false;
     if (activeTab === 'applicants') {

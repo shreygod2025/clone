@@ -464,7 +464,7 @@ async def send_meeting_reminders_job(secret: str = None):
     # Find schools with upcoming meetings
     schools = await db.school_inquiries.find({
         "status": {"$in": ["new", "meeting_done", "converted", "active"]},
-        "meeting_date": {"$exists": True, "$ne": None, "$ne": ""}
+        "meeting_date": {"$exists": True, "$nin": [None, ""]}
     }, {"_id": 0}).to_list(500)
     
     for school in schools:
@@ -481,7 +481,7 @@ async def send_meeting_reminders_job(secret: str = None):
                     f"{meeting_date_str} {meeting_time_str}",
                     "%Y-%m-%d %H:%M"
                 ).replace(tzinfo=timezone.utc)
-            except:
+            except Exception:
                 continue
             
             # Calculate time until meeting

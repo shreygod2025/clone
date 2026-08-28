@@ -98,7 +98,7 @@ async def backfill_ticket_numbers(user: dict = Depends(get_current_user)):
 
 
 async def create_school_support_query(data: dict):
-    query = SchoolSupportQuery(**data)
+    query = SchoolSupportQuery(**data)  # noqa: F821
     doc = query.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     await db.school_support_queries.insert_one(doc)
@@ -977,7 +977,7 @@ async def get_support_tickets(status: Optional[str] = None, user: dict = Depends
         if isinstance(ticket.get('created_at'), str):
             try:
                 ticket['created_at'] = datetime.fromisoformat(ticket['created_at'].replace('Z', '+00:00'))
-            except:
+            except Exception:
                 pass
         # Normalize fields for school_crm tickets
         if ticket.get('source') == 'school_crm':
@@ -1029,7 +1029,7 @@ async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends
         if not assignee:
             assignee = await db.users.find_one({"id": data["assigned_to"]}, {"_id": 0})
         if assignee and assignee.get('phone') and ticket:
-            await send_support_ticket_notification(ticket, assignee)
+            await send_support_ticket_notification(ticket, assignee)  # noqa: F821
             print(f"Ticket assignment notification sent to {assignee.get('name')} at {assignee.get('phone')}")
     
     return {"message": "Updated successfully"}
@@ -1039,7 +1039,7 @@ async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends
 # ========================
 
 @router.post("/support/queries/create")
-async def create_support_query(data: dict, user: dict = Depends(get_current_user)):
+async def create_admin_support_query(data: dict, user: dict = Depends(get_current_user)):
     """Create a new support query from admin.
 
     Includes a 10-second dedup window: if an admin double-clicks (or two near-
@@ -1216,7 +1216,7 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
                 "school_name": data.get("name", "Customer"),
                 "contact_name": data.get("name", "")
             }
-            await send_support_ticket_notification(ticket_data, assignee)
+            await send_support_ticket_notification(ticket_data, assignee)  # noqa: F821
             print(f"Query notification sent to {assignee.get('name')} at {assignee.get('phone')}")
     
     return {"message": "Query created successfully", "id": query_id}

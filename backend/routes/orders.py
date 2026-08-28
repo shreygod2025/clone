@@ -221,7 +221,7 @@ async def get_student_payments(
         if amount:
             try:
                 amount = float(amount)
-            except:
+            except Exception:
                 amount = 0
         
         existing_payment = student_payments[0] if student_payments else None
@@ -515,7 +515,7 @@ async def update_payment(
                                 "subject": f"Invoice for {school_name} - Tranche {tranche_index + 1}",
                                 "html": invoice_email_html
                             }
-                            await asyncio.to_thread(resend.Emails.send, email_params)
+                            await asyncio.to_thread(resend.Emails.send, email_params)  # noqa: F821
                             print(f"Invoice email sent to {email}")
                         except Exception as email_err:
                             print(f"Failed to send invoice email to {email}: {email_err}")

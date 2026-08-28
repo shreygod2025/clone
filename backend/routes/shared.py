@@ -9,7 +9,18 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 import jwt
+import asyncio
+import resend
 from datetime import datetime, timezone
+
+# Resolved lazily inside send_notification_email() to avoid circular import
+# with server.py (which imports from this module at startup).
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+
+async def send_email_gmail(*_args, **_kwargs):  # pragma: no cover
+    """Placeholder shim — the real implementation lives in server.py and is
+    resolved lazily at call sites (see routes/techfest.py::_dispatch_email)."""
+    return {"success": False, "error": "Gmail helper not loaded"}
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')

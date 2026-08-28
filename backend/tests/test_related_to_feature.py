@@ -43,7 +43,7 @@ class TestRelatedToFeature:
             for query_id in self.created_query_ids:
                 try:
                     requests.delete(f"{BASE_URL}/api/support/queries/{query_id}", headers=headers)
-                except:
+                except Exception:
                     pass
     
     def get_auth_headers(self):

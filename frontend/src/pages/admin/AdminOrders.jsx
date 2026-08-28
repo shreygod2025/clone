@@ -613,15 +613,23 @@ const AdminOrders = () => {
 
   const _filteredPayments = React.useMemo(() => {
     const src = rawPayments || [];
+    // School tab needs to search by school + contact fields; student tab by
+    // student + parent + email + phone. Prior version only searched student
+    // fields, which broke school-name search on the School Payments tab.
+    const searchFields = activeTab === 'school'
+      ? ['school_name', 'contact_name', 'name', 'notes', 'admin_comment']
+      : ['student_name', 'parent_name', 'email', 'phone', 'description'];
     return src.filter(p => {
       const searchLower = (searchQuery || '').toLowerCase();
-      const matchesSearch = !searchLower || [p.student_name, p.parent_name, p.email, p.phone, p.description]
-        .filter(Boolean).some(x => String(x).toLowerCase().includes(searchLower));
+      const matchesSearch = !searchLower || searchFields
+        .map(f => p[f])
+        .filter(Boolean)
+        .some(x => String(x).toLowerCase().includes(searchLower));
       const status = p.status || 'pending';
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [rawPayments, searchQuery, statusFilter]);
+  }, [rawPayments, searchQuery, statusFilter, activeTab]);
 
   // Sort by due date (most recent first), then by status (overdue > pending > paid)
   const _sortedPayments = [..._filteredPayments].sort((a, b) => {

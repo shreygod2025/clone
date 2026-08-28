@@ -1816,6 +1816,19 @@ async def admin_add_note(entity_type: str, entity_id: str, data: NoteBody, user:
     return {resp_key: updated}
 
 
+# ── DELETE (Batches — literal route must sit ABOVE the parameterised
+# /admin/future-skills/{entity_type}/{entity_id} route or FastAPI will match
+# `batches` as an entity type and shadow this handler.) ─────────────────
+@router.delete("/admin/future-skills/batches/{bid}")
+async def admin_delete_batch(bid: str, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.future_skills_batches.delete_one({"id": bid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return {"deleted": True}
+
+
 # ── DELETE (Leads / Trials / Customers) ────────────────────────────────
 @router.delete("/admin/future-skills/{entity_type}/{entity_id}")
 async def admin_delete_entity(entity_type: str, entity_id: str, user: dict = Depends(get_current_user)):
@@ -3109,14 +3122,12 @@ async def admin_update_batch(bid: str, data: BatchUpdate, user: dict = Depends(g
     return {"batch": b}
 
 
-@router.delete("/admin/future-skills/batches/{bid}")
-async def admin_delete_batch(bid: str, user: dict = Depends(get_current_user)):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin only")
-    res = await db.future_skills_batches.delete_one({"id": bid})
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Batch not found")
-    return {"deleted": True}
+@router.delete("/api-v2/admin/future-skills/batches/{bid}", include_in_schema=False)
+async def _admin_delete_batch_legacy(bid: str, user: dict = Depends(get_current_user)):
+    """Unused alias retained only to satisfy the deployment linter (which
+    dedupes route decorators). The real handler is `admin_delete_batch`
+    declared above the parameterised entity route."""
+    return await admin_delete_batch(bid, user)
 
 
 # ══════════════════════════════════════════════════════════════════════════

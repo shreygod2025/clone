@@ -758,7 +758,7 @@ async def get_b2c_insights(
                 elif age <= 15: age_groups['11-15'] += 1
                 elif age <= 18: age_groups['16-18'] += 1
                 else: age_groups['Adult'] += 1
-            except: age_groups['Unknown'] += 1
+            except Exception: age_groups['Unknown'] += 1
         else:
             age_groups['Unknown'] += 1
     
@@ -798,7 +798,7 @@ async def get_b2c_insights(
                     day_name = d.strftime('%A')
                     if day_name in day_counts:
                         day_counts[day_name] += 1
-            except: pass
+            except Exception: pass
         if demo_time:
             try:
                 hour = int(demo_time.split(':')[0])
@@ -806,7 +806,7 @@ async def get_b2c_insights(
                 elif 12 <= hour < 16: time_slots['Afternoon (12-4)'] += 1
                 elif 16 <= hour < 20: time_slots['Evening (4-8)'] += 1
                 else: time_slots['Night (8+)'] += 1
-            except: pass
+            except Exception: pass
     
     # Calculate revenue
     student_revenue = sum(float(s.get('payment_amount', 0) or 0) for s in students if s.get('status') == 'converted')
@@ -1548,7 +1548,7 @@ async def get_public_report_data(
                     exp_dt = exp_date
                 if start <= exp_dt <= end:
                     expenses.append(e)
-            except:
+            except Exception:
                 pass
     
     # ── Calculate Overview Metrics ──

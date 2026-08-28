@@ -47,7 +47,7 @@ class TestSchoolCRMFixes:
                         json={"status": "archived"},
                         headers=headers
                     )
-                except:
+                except Exception:
                     pass
     
     def get_headers(self):

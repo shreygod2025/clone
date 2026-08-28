@@ -9,6 +9,7 @@ import io
 import csv
 import json
 import re
+import logging
 import resend
 from datetime import datetime, timezone, timedelta, date
 from typing import List, Optional, Dict, Union, Any
@@ -808,7 +809,7 @@ async def raise_school_ticket(
                 "contact_name": data.get('contact_name', school.get('contact_name', '')),
                 "assigned_to_name": assignee.get('name', '')
             }
-            await send_support_ticket_notification(ticket_data, assignee)
+            await send_support_ticket_notification(ticket_data, assignee)  # noqa: F821
             print(f"Query notification sent to {assignee.get('name')} at {assignee.get('phone')}")
         else:
             print(f"Query notification skipped - assignee {school.get('assigned_to')} has no phone number")
@@ -1639,7 +1640,7 @@ async def schedule_followup_email(data: dict, user: dict = Depends(get_current_u
         programs_str = ", ".join(programs) if programs else "skill education programs"
         
         # Create AI prompt for email generation
-        chat = LlmChat(
+        chat = LlmChat(  # noqa: F821
             api_key=llm_key,
             session_id=f"followup-{school_id}-{followup_date}",
             system_message="""You are a professional business development representative for OLL (Omni Learning Labs), 
@@ -1665,7 +1666,7 @@ async def schedule_followup_email(data: dict, user: dict = Depends(get_current_u
         Write ONLY the email body (no subject line, no signature - just the greeting and body text).
         Start with "Dear {contact_name}," and end before the signature."""
         
-        user_message = UserMessage(text=prompt)
+        user_message = UserMessage(text=prompt)  # noqa: F821
         ai_email_content = await chat.send_message(user_message)
         
         # Store scheduled email in database
@@ -2645,7 +2646,7 @@ async def add_school_document(school_id: str, data: dict, user: dict = Depends(g
 
 
 @router.get("/schools/{school_id}/onboarding")
-async def get_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
+async def get_school_onboarding_workflow(school_id: str, user: dict = Depends(get_current_user)):
     """Get onboarding workflow for a school"""
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:

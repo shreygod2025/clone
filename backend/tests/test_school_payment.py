@@ -172,7 +172,7 @@ class TestFormValidation:
         else:
             try:
                 print(f"Response: {response.json()}")
-            except:
+            except Exception:
                 print(f"Response text: {response.text}")
 
 

@@ -100,9 +100,8 @@ CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")
 CASHFREE_ENVIRONMENT = os.getenv("CASHFREE_ENVIRONMENT", "SANDBOX")
 CASHFREE_API_VERSION = "2023-08-01"
 
-# Payment Sync Scheduler Configuration
-PAYMENT_SYNC_ENABLED = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"
-PAYMENT_SYNC_INTERVAL_MINUTES = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTES", "60"))  # Default: every hour
+# Payment Sync Scheduler Configuration — re-imported near register block below.
+# (Values are also read from routes.payments to keep a single source of truth.)
 
 # Initialize Cashfree credentials globally (lazy — only when first payment is made)
 def get_cashfree_client():
@@ -142,7 +141,6 @@ async def ping():
 
 # ── Security middleware ───────────────────────────────────────────────────
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi import Request
 from fastapi.responses import JSONResponse
 
 @app.middleware("http")
@@ -650,7 +648,7 @@ async def check_school_meeting_reminders():
         schools_with_meetings = await db.school_inquiries.find({
             "meeting_scheduled": True,
             "status": {"$nin": ["converted", "lost", "renewed"]},
-            "meeting_date": {"$exists": True, "$ne": None, "$ne": ""}
+            "meeting_date": {"$exists": True, "$nin": [None, ""]}
         }).to_list(500)
         
         print(f"[SCHEDULER] Found {len(schools_with_meetings)} schools with scheduled meetings")

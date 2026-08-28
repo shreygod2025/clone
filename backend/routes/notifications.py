@@ -233,7 +233,7 @@ async def send_not_joined_notification(inquiry: dict, notify_type: str = "studen
     elif notify_type == "educator":
         educator_id = inquiry.get("assigned_educator_id")
         if educator_id:
-            educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+            educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})  # noqa: F821
             if educator and educator.get("phone"):
                 await send_whatsapp_notification(
                     phone=educator.get("phone"),

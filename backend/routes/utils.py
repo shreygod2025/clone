@@ -43,18 +43,18 @@ def parse_date_field(date_val):
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt
-        except:
+        except Exception:
             pass
         try:
             # Handle simple date format
             dt = datetime.strptime(date_val, "%Y-%m-%d")
             return dt.replace(tzinfo=timezone.utc)
-        except:
+        except Exception:
             pass
         try:
             # Handle datetime without timezone
             dt = datetime.strptime(date_val, "%Y-%m-%dT%H:%M:%S")
             return dt.replace(tzinfo=timezone.utc)
-        except:
+        except Exception:
             pass
     return None
