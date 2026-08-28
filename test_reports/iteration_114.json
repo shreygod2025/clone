@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 114 — tested (a) PATCH /api/schools/{id}/manage-tranches, (b) POST /api/schools/{id}/extra-students, (c) school_share/gp_share expense reverse sync in /api/school-expenses (POST/PATCH/DELETE), (d) /api/school-expenses/pnl-summary status broadening, plus frontend smoke of the Manage Tranches modal (AdminOrders) and the Extra Students block (AdminSchoolCRM). New pytest suite: 19/19 passing. Frontend: Manage Tranches modal fully renders and works; Extra Students block renders + saves (verified 200 + DB write) but is UNREACHABLE from the Edit button of converted/active/renewed schools — the amber block was added to the conversion & renewal-convert modals only, while 'Edit' on those tabs opens a different modal (editOnboardData / 'Edit School: X').",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/school-expenses (reverse sync helper)", "issue": "Operator-precedence bug in _resync_school_share_from_expenses: `if total > 0 and not onboarding.get(type_field) or onboarding.get(type_field) == 'none':` evaluates as (total>0 and not tf) or (tf=='none'). Result: when the last share expense is deleted (total=0) but the type was 'none', the type is flipped to 'amount' with amount 0. Wrap in parentheses."},
+      {"endpoint": "/api/school-expenses (reverse sync helper)", "issue": "school_share_value / gp_share_value are only written when total > 0 and never reset on delete, so the school modal can show a stale value (e.g. '4444') alongside amount 0."},
+      {"endpoint": "PATCH /api/schools/{id}/manage-tranches", "issue": "total_amount is only overwritten when the explicit sum > 0; deleting every tranche (or saving percentage-only tranches) leaves the previous total_amount in place (observed: tranches summing 150000 while total_amount stayed 15000 on the test school)."},
+      {"endpoint": "GET /api/orders/school-payments", "issue": "Only statuses converted/active/renewed are included, so extra-student tranches created from the renewal-convert modal for a renewal_meeting school do not appear in Orders until the status flips to renewed."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminSchoolCRM · editOnboardData modal ('Edit School: X')", "issue": "Extra Students block is missing from the modal that actually opens when admin clicks Edit on Converted / Active Schools / Renewed tabs (handleEditOnboarding → editOnboardData). Verified with Gokuldham High school (converted) and Dosti Foundation School (active): extra-students-section count = 0. The block only exists in the conversion modal (showOnboardModal, gated to converted/active/renewed/renewal_meeting — but that modal is opened from meeting_done leads, so the gate is false there too) and in the renewal-convert modal (gated to renewal_meeting/renewed — 'Direct Renewal' on an active school renders it hidden, count = 0). Net effect: the requested flow is unreachable for converted/active schools.", "selector": "[data-testid=\"extra-students-section\"]", "priority": "HIGH"},
+      {"component": "AdminSchoolCRM · renewal-convert modal", "issue": "'Save Extra Students' button had no data-testid (only the onboard-modal copy had one). Added data-testid=\"save-extra-students-renewal-btn\" (test-scope fix).", "selector": "[data-testid=\"save-extra-students-renewal-btn\"]", "priority": "LOW"},
+      {"component": "AdminOrders · Manage Tranches modal", "issue": "Percentage, Status and Notes inputs have no data-testid (only tranche-N-amount/date/gst/up/down/delete exist). Also the 'Manage Tranches' button renders only when payment_tranches.length > 0, so a converted school with zero tranches can never add its first tranche from Orders.", "selector": "[data-testid=\"manage-tranches-modal\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Renewal modal → Save Extra Students", "issue": "POST returns 200 and DB is updated (grade_pricing + tranche + totals; card price refreshed 10,000 → 11,000), but the still-open modal keeps its stale local grade_pricing/Grand Total (₹10,000). If the admin then clicks the modal's main Save/Renew, the stale grade_pricing/total_amount will overwrite the values just written by extra-students.", "affected_selectors": ["[data-testid=\"extra-students-renewal-section\"]", "[data-testid=\"save-extra-students-renewal-btn\"]"]}
+    ],
+    "design_issues": [
+      {"screen": "AdminOrders · Manage Tranches modal", "issues": ["Due Date column uses the native browser date input (mm/dd/yyyy + native picker) instead of the shadcn calendar used elsewhere; the input is also clipped so the native calendar icon is cut off", "Payment Mode / GST / Status use raw <select> elements instead of the shadcn Select used across the app — visual inconsistency"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter114_tranches_extra_students_share_sync.py",
+    "/app/test_reports/pytest/iter114_results.xml"
+  ],
+  "action_items": [
+    "Render the Extra Students amber block inside the editOnboardData modal ('Edit School: X') so admins of converted/active/renewed schools can reach it, and/or fix the status gates (conversion modal gate is false when opened from a meeting_done lead; renewal modal gate excludes 'active').",
+    "Refresh the open modal's local onboardData/renewalConvertData (grade_pricing, total_students, total_amount) after a successful extra-students POST to avoid a stale-state overwrite on the next Save.",
+    "Fix the operator precedence in _resync_school_share_from_expenses and reset school_share_value/gp_share_value when the aggregate drops to 0.",
+    "manage-tranches: recompute total_amount even when the explicit sum is 0 (or on empty tranche list) and expose the Manage Tranches button when a school has no tranches yet.",
+    "Add data-testid to percentage/status/notes tranche inputs in the Manage Tranches modal."
+  ],
+  "critical_code_review_comments": [
+    "AdminSchoolCRM.jsx is ~11.4k lines and AdminOrders.jsx ~3.8k — both far above the 700-line guideline; the duplicated Extra Students block (two near-identical ~100-line copies at L7308 and L9589) is exactly the DRY/maintainability failure that caused the gate mismatch. Extract into a shared <ExtraStudentsBlock/> component used by all three modals.",
+    "manage_school_tranches replaces payment_tranches wholesale and only filters payments[] by tranche_index < len(new) — reordering tranches silently re-links paid payment records to a different tranche (amount/receipt mismatch). Consider a stable tranche id.",
+    "Both new endpoints accept an untyped `dict` payload; no Pydantic model means no validation of amount/date/status enums."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter114_tranches_extra_students_share_sync.py",
+    "/app/frontend/src/pages/admin/AdminSchoolCRM.jsx (added data-testid=\"save-extra-students-renewal-btn\" only)"
+  ],
+  "success_rate": {"backend": "100% (19/19 pytest)", "frontend": "60% (Manage Tranches OK; Extra Students works only via the renewal_meeting path, unreachable from Converted/Active/Renewed Edit)"},
+  "seed_data_creation": "Created TEST_ExtraStudents QA School (status renewal_meeting) to reach the renewal-convert modal, saved a Grade 6 · 4 × ₹250 batch (tranche + grade row + totals verified in DB), then DELETED the school. Test school Dosti Foundation School (e271fbf6…) tranches/mode/gst restored via fixture teardown; all TEST_ expenses deleted.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@oll.co / GodisGreat@2026 (from /app/memory/test_credentials.md). NOTE: /app/backend/tests/conftest.py defaults TEST_ADMIN_PASSWORD to a stale value ('Dagaji03@') — old suites relying on it will fail auth.",
+  "context_for_next_testing_agent": "Regression suite: pytest /app/backend/tests/test_iter114_tranches_extra_students_share_sync.py (self-restoring fixture on school e271fbf6-d0e2-42b5-a4b9-43949ada40c8). Endpoint paths: GET /api/schools/inquiry/{id}, GET /api/schools/inquiries?status=..., GET /api/orders/school-payments, GET /api/school-expenses/pnl-summary (returns {rows, totals, cost_keys} — rows have no status field). UI navigation: /admin/schools → data-testid tab-leads → stage pills by button text (New Leads / Meeting Done / Converted / Active Schools / Renewal Meeting / Renewed); Edit on converted/active/renewed = editOnboardData modal (no Extra Students block); renewal-convert modal reachable via Renewal ▸ Direct Renewal (active) or data-testid renew-convert-{id} (renewal_meeting). Orders: data-testid view-details-{school_id} → open-manage-tranches → manage-tranches-modal.",
+  "rca_of_the_issue": "Extra Students UI unreachable: the block was placed in showOnboardModal (conversion) and showRenewalConvertModal (renewal) with status gates ['converted','active','renewed','renewal_meeting'] and ['renewal_meeting','renewed'] respectively. The Converted/Active/Renewed tab 'Edit' button calls handleEditOnboarding → editOnboardData, a third modal that has no such block; the conversion modal is only opened from meeting_done leads (gate false); 'Direct Renewal' is offered on active schools (gate false). Only a renewal_meeting school hits a passing gate — verified end-to-end there (POST 200, DB tranche 'Extra Students · Grade 6 · 4 × ₹250', totals 14 students / ₹11,000)."
+}

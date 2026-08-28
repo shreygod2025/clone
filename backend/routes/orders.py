@@ -128,9 +128,12 @@ async def get_school_payments(
     """Get all school payments from converted/active schools with payment tranches"""
     payments = []
     
-    # Get all schools with onboarding_data containing payment tranches
+    # Get all schools with onboarding_data containing payment tranches.
+    # Broadened to include renewal_meeting so extra-student tranches added
+    # from the Renewal Convert modal are visible on the Orders page while
+    # the renewal is still in progress (before the status flips to renewed).
     schools = await db.school_inquiries.find({
-        "status": {"$in": ["converted", "active", "renewed"]},
+        "status": {"$in": ["converted", "active", "renewed", "renewal_meeting"]},
     }).to_list(length=None)
     
     for school in schools:

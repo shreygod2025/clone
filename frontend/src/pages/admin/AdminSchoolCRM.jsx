@@ -560,6 +560,12 @@ const AdminSchoolCRM = () => {
   const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
   const [renewalMeetingData, setRenewalMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
   const [showRenewalConvertModal, setShowRenewalConvertModal] = useState(null);
+  // Extra Students — quick-add batches that generate a pending payment tranche.
+  // Shared between the Onboard (converted/active edit) and Renewal Convert
+  // (renewal_meeting/renewed) modals. Each entry: { grade, students,
+  // price_per_student, notes, date, increment_existing }.
+  const [extraStudentsEntries, setExtraStudentsEntries] = useState([]);
+  const [savingExtraStudents, setSavingExtraStudents] = useState(false);
   const [schoolPoData, setSchoolPoData] = useState(null);  // PO data from ProcureWay
   const [loadingPoData, setLoadingPoData] = useState(false);
   const [syncingExpenses, setSyncingExpenses] = useState(false);
@@ -2684,6 +2690,56 @@ ${FOOTER}</div></body></html>`
       ...prev,
       grade_pricing: [...prev.grade_pricing, { grade: '', students: '', price_per_student: '' }]
     }));
+  };
+
+  // Extra Students helpers — used by both Onboard and Renewal Convert modals.
+  const addExtraStudentEntry = (defaultGrade = '', defaultPrice = '') => {
+    setExtraStudentsEntries(prev => [
+      ...prev,
+      {
+        grade: defaultGrade || '',
+        students: '',
+        price_per_student: defaultPrice || '',
+        notes: '',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        increment_existing: false,
+      },
+    ]);
+  };
+  const updateExtraStudentEntry = (idx, field, value) => {
+    setExtraStudentsEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  };
+  const removeExtraStudentEntry = (idx) => {
+    setExtraStudentsEntries(prev => prev.filter((_, i) => i !== idx));
+  };
+  const submitExtraStudents = async (schoolId) => {
+    const valid = extraStudentsEntries
+      .filter(e => e.grade && Number(e.students) > 0 && Number(e.price_per_student) > 0)
+      .map(e => ({
+        grade: e.grade,
+        students: Number(e.students),
+        price_per_student: Number(e.price_per_student),
+        notes: e.notes || '',
+        date: e.date || '',
+        increment_existing: !!e.increment_existing,
+      }));
+    if (!valid.length) return { added: 0 };
+    setSavingExtraStudents(true);
+    try {
+      const res = await axios.post(
+        `${API}/schools/${schoolId}/extra-students`,
+        { entries: valid },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(`Added ${res.data?.added_tranches?.length || valid.length} extra-student tranche(s)`);
+      setExtraStudentsEntries([]);
+      return { added: valid.length };
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to add extra students');
+      throw err;
+    } finally {
+      setSavingExtraStudents(false);
+    }
   };
 
   const updateGradePricing = (index, field, value) => {
@@ -6929,7 +6985,7 @@ ${FOOTER}</div></body></html>`
       </Dialog>
 
       {/* Renewal Convert Modal */}
-      <Dialog open={!!showRenewalConvertModal} onOpenChange={() => setShowRenewalConvertModal(null)}>
+      <Dialog open={!!showRenewalConvertModal} onOpenChange={() => { setShowRenewalConvertModal(null); setExtraStudentsEntries([]); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" preventClose>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -7246,6 +7302,134 @@ ${FOOTER}</div></body></html>`
                   {renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
                   ₹{renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
                 </div>
+              </div>
+            )}
+
+            {/* Extra Students — for renewal_meeting/renewed schools */}
+            {showRenewalConvertModal?.id && ['renewal_meeting', 'renewed'].includes(showRenewalConvertModal?.status) && (
+              <div className="border border-amber-200 bg-amber-50/60 rounded-lg p-4 space-y-3" data-testid="extra-students-renewal-section">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-semibold text-amber-800">Add Extra Students (mid-contract)</label>
+                    <p className="text-xs text-amber-700/80 mt-0.5">Adds a new pending payment tranche in the Orders section for the delta.</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => addExtraStudentEntry()} className="border-amber-300 text-amber-700 hover:bg-amber-100">
+                    <Plus className="w-4 h-4 mr-1" /> Add Batch
+                  </Button>
+                </div>
+                {extraStudentsEntries.length === 0 && (
+                  <div className="text-center text-xs text-amber-700/60 py-2">No extra-student batches queued.</div>
+                )}
+                {extraStudentsEntries.map((e, idx) => {
+                  const amount = (Number(e.students) || 0) * (Number(e.price_per_student) || 0);
+                  const existingGrades = (renewalConvertData.grade_pricing || []).map(g => g.grade).filter(Boolean);
+                  return (
+                    <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
+                      <div className="grid grid-cols-6 gap-2 items-center">
+                        <div className="col-span-2">
+                          <label className="block text-xs text-slate-500 mb-1">Grade</label>
+                          <Input
+                            list={`grade-suggest-r-${idx}`}
+                            placeholder="Grade 3"
+                            value={e.grade}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'grade', ev.target.value)}
+                            className="h-9"
+                          />
+                          <datalist id={`grade-suggest-r-${idx}`}>
+                            {existingGrades.map((g) => <option key={g} value={g} />)}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Students</label>
+                          <Input
+                            type="number"
+                            value={e.students}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'students', ev.target.value)}
+                            placeholder="10"
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">₹ / student</label>
+                          <Input
+                            type="number"
+                            value={e.price_per_student}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'price_per_student', ev.target.value)}
+                            placeholder="1000"
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Due date</label>
+                          <Input
+                            type="date"
+                            value={e.date}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'date', ev.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => removeExtraStudentEntry(idx)} className="text-red-500">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-6 gap-2 mt-2 items-center">
+                        <div className="col-span-4">
+                          <Input
+                            value={e.notes}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'notes', ev.target.value)}
+                            placeholder="Notes (optional)"
+                            className="h-9"
+                          />
+                        </div>
+                        <label className="col-span-2 flex items-center gap-1 text-xs text-slate-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!e.increment_existing}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'increment_existing', ev.target.checked)}
+                          />
+                          Bump existing grade row
+                        </label>
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-amber-800 text-right">
+                        Tranche amount: ₹{amount.toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
+                {extraStudentsEntries.length > 0 && (
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200">
+                    <Button variant="outline" size="sm" onClick={() => setExtraStudentsEntries([])} disabled={savingExtraStudents}>
+                      Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      disabled={savingExtraStudents}
+                      data-testid="save-extra-students-renewal-btn"
+                      onClick={async () => {
+                        try {
+                          await submitExtraStudents(showRenewalConvertModal.id);
+                          try {
+                            const r = await axios.get(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, { headers: getAuthHeaders() });
+                            const od = r.data?.onboarding_data || {};
+                            setRenewalConvertData(prev => ({
+                              ...prev,
+                              grade_pricing: od.grade_pricing || prev.grade_pricing,
+                              payment_tranches: od.payment_tranches || prev.payment_tranches,
+                              total_students: od.total_students ?? prev.total_students,
+                              total_amount: od.total_amount ?? prev.total_amount,
+                            }));
+                          } catch (_) { /* non-fatal */ }
+                          fetchInquiries();
+                        } catch (e) { /* toast already shown */ }
+                      }}
+                    >
+                      {savingExtraStudents ? 'Saving…' : 'Save Extra Students'}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -9121,7 +9305,7 @@ ${FOOTER}</div></body></html>`
       </Dialog>
 
       {/* School Onboarding Modal */}
-      <Dialog open={!!showOnboardModal} onOpenChange={() => setShowOnboardModal(null)}>
+      <Dialog open={!!showOnboardModal} onOpenChange={() => { setShowOnboardModal(null); setExtraStudentsEntries([]); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -9410,6 +9594,131 @@ ${FOOTER}</div></body></html>`
                 ₹{onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
               </div>
             </div>
+            )}
+
+            {/* Extra Students — only shown when we have a live school (converted/active/renewed) */}
+            {showOnboardModal?.id && ['converted', 'active', 'renewed', 'renewal_meeting'].includes(showOnboardModal?.status) && (
+              <div className="border border-amber-200 bg-amber-50/60 rounded-lg p-4 space-y-3" data-testid="extra-students-section">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-semibold text-amber-800">Add Extra Students (mid-contract)</label>
+                    <p className="text-xs text-amber-700/80 mt-0.5">Adds a new pending payment tranche in the Orders section for the delta. Doesn't touch the tranches you already have above.</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => addExtraStudentEntry()} className="border-amber-300 text-amber-700 hover:bg-amber-100" data-testid="add-extra-students-btn">
+                    <Plus className="w-4 h-4 mr-1" /> Add Batch
+                  </Button>
+                </div>
+                {extraStudentsEntries.length === 0 && (
+                  <div className="text-center text-xs text-amber-700/60 py-2">No extra-student batches queued. Click "Add Batch" to append one.</div>
+                )}
+                {extraStudentsEntries.map((e, idx) => {
+                  const amount = (Number(e.students) || 0) * (Number(e.price_per_student) || 0);
+                  const existingGrades = (onboardData.grade_pricing || []).map(g => g.grade).filter(Boolean);
+                  return (
+                    <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
+                      <div className="grid grid-cols-6 gap-2 items-center">
+                        <div className="col-span-2">
+                          <label className="block text-xs text-slate-500 mb-1">Grade</label>
+                          <Input
+                            list={`grade-suggest-${idx}`}
+                            placeholder="Grade 3"
+                            value={e.grade}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'grade', ev.target.value)}
+                            className="h-9"
+                            data-testid={`extra-students-${idx}-grade`}
+                          />
+                          <datalist id={`grade-suggest-${idx}`}>
+                            {existingGrades.map((g) => <option key={g} value={g} />)}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Students</label>
+                          <Input
+                            type="number"
+                            value={e.students}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'students', ev.target.value)}
+                            placeholder="10"
+                            className="h-9"
+                            data-testid={`extra-students-${idx}-count`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">₹ / student</label>
+                          <Input
+                            type="number"
+                            value={e.price_per_student}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'price_per_student', ev.target.value)}
+                            placeholder="1000"
+                            className="h-9"
+                            data-testid={`extra-students-${idx}-price`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Due date</label>
+                          <Input
+                            type="date"
+                            value={e.date}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'date', ev.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => removeExtraStudentEntry(idx)} className="text-red-500">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-6 gap-2 mt-2 items-center">
+                        <div className="col-span-4">
+                          <Input
+                            value={e.notes}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'notes', ev.target.value)}
+                            placeholder="Notes (optional)"
+                            className="h-9"
+                          />
+                        </div>
+                        <label className="col-span-2 flex items-center gap-1 text-xs text-slate-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!e.increment_existing}
+                            onChange={(ev) => updateExtraStudentEntry(idx, 'increment_existing', ev.target.checked)}
+                          />
+                          Bump existing grade row (else adds as "(Extra)")
+                        </label>
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-amber-800 text-right">
+                        Tranche amount: ₹{amount.toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
+                {extraStudentsEntries.length > 0 && (
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setExtraStudentsEntries([])}
+                      disabled={savingExtraStudents}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      disabled={savingExtraStudents}
+                      onClick={async () => {
+                        try {
+                          await submitExtraStudents(showOnboardModal.id);
+                          fetchInquiries();
+                        } catch (e) { /* toast already shown */ }
+                      }}
+                      data-testid="save-extra-students-btn"
+                    >
+                      {savingExtraStudents ? 'Saving…' : 'Save Extra Students'}
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Grand Total */}
@@ -10191,7 +10500,7 @@ ${FOOTER}</div></body></html>`
       </Dialog>
 
       {/* Edit Onboarding Modal */}
-      <Dialog open={!!showEditOnboardingModal} onOpenChange={() => { setShowEditOnboardingModal(null); setEditOnboardData(null); }}>
+      <Dialog open={!!showEditOnboardingModal} onOpenChange={() => { setShowEditOnboardingModal(null); setEditOnboardData(null); setExtraStudentsEntries([]); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -10574,6 +10883,111 @@ ${FOOTER}</div></body></html>`
                   </div>
                 )}
               </div>
+              )}
+
+              {/* Extra Students — mid-contract batch add for converted/active/renewed schools */}
+              {showEditOnboardingModal?.id && ['converted', 'active', 'renewed', 'renewal_meeting'].includes(showEditOnboardingModal?.status) && (
+                <div className="border border-amber-200 bg-amber-50/60 rounded-lg p-4 space-y-3" data-testid="extra-students-section">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-semibold text-amber-800">Add Extra Students (mid-contract)</label>
+                      <p className="text-xs text-amber-700/80 mt-0.5">Adds a new pending payment tranche in the Orders section for the delta. Doesn't touch the tranches you already have.</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => addExtraStudentEntry()} className="border-amber-300 text-amber-700 hover:bg-amber-100" data-testid="add-extra-students-btn">
+                      <Plus className="w-4 h-4 mr-1" /> Add Batch
+                    </Button>
+                  </div>
+                  {extraStudentsEntries.length === 0 && (
+                    <div className="text-center text-xs text-amber-700/60 py-2">No extra-student batches queued.</div>
+                  )}
+                  {extraStudentsEntries.map((e, idx) => {
+                    const amount = (Number(e.students) || 0) * (Number(e.price_per_student) || 0);
+                    const existingGrades = (editOnboardData.grade_pricing || []).map(g => g.grade).filter(Boolean);
+                    return (
+                      <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
+                        <div className="grid grid-cols-6 gap-2 items-center">
+                          <div className="col-span-2">
+                            <label className="block text-xs text-slate-500 mb-1">Grade</label>
+                            <Input
+                              list={`grade-suggest-e-${idx}`}
+                              placeholder="Grade 3"
+                              value={e.grade}
+                              onChange={(ev) => updateExtraStudentEntry(idx, 'grade', ev.target.value)}
+                              className="h-9"
+                              data-testid={`extra-students-${idx}-grade`}
+                            />
+                            <datalist id={`grade-suggest-e-${idx}`}>
+                              {existingGrades.map((g) => <option key={g} value={g} />)}
+                            </datalist>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Students</label>
+                            <Input type="number" value={e.students} onChange={(ev) => updateExtraStudentEntry(idx, 'students', ev.target.value)} placeholder="10" className="h-9" data-testid={`extra-students-${idx}-count`} />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">₹ / student</label>
+                            <Input type="number" value={e.price_per_student} onChange={(ev) => updateExtraStudentEntry(idx, 'price_per_student', ev.target.value)} placeholder="1000" className="h-9" data-testid={`extra-students-${idx}-price`} />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Due date</label>
+                            <Input type="date" value={e.date} onChange={(ev) => updateExtraStudentEntry(idx, 'date', ev.target.value)} className="h-9" />
+                          </div>
+                          <div className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => removeExtraStudentEntry(idx)} className="text-red-500">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-6 gap-2 mt-2 items-center">
+                          <div className="col-span-4">
+                            <Input value={e.notes} onChange={(ev) => updateExtraStudentEntry(idx, 'notes', ev.target.value)} placeholder="Notes (optional)" className="h-9" />
+                          </div>
+                          <label className="col-span-2 flex items-center gap-1 text-xs text-slate-600 cursor-pointer">
+                            <input type="checkbox" checked={!!e.increment_existing} onChange={(ev) => updateExtraStudentEntry(idx, 'increment_existing', ev.target.checked)} />
+                            Bump existing grade row
+                          </label>
+                        </div>
+                        <div className="mt-2 text-sm font-semibold text-amber-800 text-right">
+                          Tranche amount: ₹{amount.toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {extraStudentsEntries.length > 0 && (
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200">
+                      <Button variant="outline" size="sm" onClick={() => setExtraStudentsEntries([])} disabled={savingExtraStudents}>Clear</Button>
+                      <Button
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                        disabled={savingExtraStudents}
+                        onClick={async () => {
+                          try {
+                            await submitExtraStudents(showEditOnboardingModal.id);
+                            // Refetch this school and merge into editOnboardData so
+                            // the modal's grade_pricing / totals reflect the newly
+                            // appended (Extra) row and the admin doesn't overwrite
+                            // it on the next Save.
+                            try {
+                              const r = await axios.get(`${API}/schools/inquiry/${showEditOnboardingModal.id}`, { headers: getAuthHeaders() });
+                              const od = r.data?.onboarding_data || {};
+                              setEditOnboardData(prev => prev ? {
+                                ...prev,
+                                grade_pricing: od.grade_pricing || prev.grade_pricing,
+                                payment_tranches: od.payment_tranches || prev.payment_tranches,
+                                total_students: od.total_students ?? prev.total_students,
+                                total_amount: od.total_amount ?? prev.total_amount,
+                              } : prev);
+                            } catch (_) { /* non-fatal */ }
+                            fetchInquiries();
+                          } catch (e) { /* toast already shown */ }
+                        }}
+                        data-testid="save-extra-students-btn"
+                      >
+                        {savingExtraStudents ? 'Saving…' : 'Save Extra Students'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Grand Total with GST */}

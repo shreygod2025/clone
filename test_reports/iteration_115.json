@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 115 — RETEST of the four iteration-114 fixes. Backend: new pytest suite /app/backend/tests/test_iter115_retest_fixes.py = 12/12 passing; iter114 regression suite = 19/19 passing. All three backend fixes verified: (1) manage-tranches now always overwrites total_amount (empty list → 0, percentage-only → 0, 150000 → 1000 downgrade works), (2) _resync_school_share_from_expenses overwrites a stale share_value with the new aggregate, resets amount→0 + value→'' on delete-all while keeping type='amount', and leaves a manually set type='percentage' value untouched, (3) GET /api/orders/school-payments now returns tranches for a renewal_meeting school (verified with a temp TEST_ school, since no renewal_meeting school exists in the DB). Frontend: Extra Students block IS now present in the 'Edit School: X' (editOnboardData) modal for an active school — full flow verified end-to-end: Add Batch → Grade 3 / 5 / 1000 → Save Extra Students → toast 'Added 1 extra-student tranche(s)' → POST 200 → modal auto-refetched (Grand Total 5,000 → 10,000, new '(Extra)' grade row) → GET /api/schools/inquiry/{id} shows the new 'Extra Students · Grade 3 · 5 × ₹1,000' tranche. AdminOrders Manage Tranches modal: all requested data-testids (tranche-0-percentage/status/notes plus amount/date/gst/up/delete) exist; deleting all rows and saving from the UI drove total_amount to 0 and rendered the 'No tranches yet — click Manage Tranches' empty state with the button still visible. Regression: /api/school-expenses/pnl-summary still returns rows and includes a zero-revenue meeting_done school with an expense.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/schools/{id}/extra-students", "issue": "Adding the same grade twice with increment_existing=false appends a second identically-named grade_pricing row ('Grade 3 (Extra)' twice). Consider merging into the existing '(Extra)' row or suffixing/counting so the school modal doesn't show duplicate rows."},
+      {"endpoint": "PATCH /api/schools/{id}/manage-tranches", "issue": "Still replaces payment_tranches wholesale and re-links payments[] purely by index (tranche_index < len(new)); reordering rows silently re-links a paid payment to a different tranche. Unchanged from iter114 — needs a stable tranche id."},
+      {"endpoint": "DB hygiene", "issue": "~68 legacy 'TEST_*' school inquiries from older test iterations are still in school_inquiries (TEST_Pipeline_School_*, TEST_Active_School, …). Not created by this run; consider a cleanup script."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminOrders · school payments list", "issue": "The 'Manage Tranches' button now always renders inside the details panel (verified with 0 tranches), but the Orders list itself is built from tranche rows, so a school with zero tranches disappears from the list entirely (view-details-{id} count = 0 after deleting all tranches). Net effect is unchanged from iter114: a converted/active school with no tranches still cannot get its first tranche added from Orders.", "selector": "[data-testid=\"view-details-{school_id}\"]", "priority": "MEDIUM"},
+      {"component": "AdminOrders · Manage Tranches modal", "issue": "Row delete uses native window.confirm() and the modal uses raw <select> + native date input (mm/dd/yyyy) instead of the shadcn Select/Calendar used elsewhere — visual inconsistency (carried over from iter114).", "selector": "[data-testid=\"tranche-0-delete\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edit School modal (AdminSchoolCRM)", "issues": ["DialogContent missing Description/aria-describedby (console warning) — accessibility only", "Duplicate identical 'Grade 3 (Extra)' rows displayed after two extra-student saves (backend data issue surfaced in UI)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter115_retest_fixes.py",
+    "/app/backend/tests/test_iter114_tranches_extra_students_share_sync.py",
+    "/app/test_reports/pytest/iter115_results.xml"
+  ],
+  "action_items": [
+    "Optional: make schools with zero tranches reachable on the Orders page (e.g. include converted/active schools with no tranches as a row, or add a school picker) so the always-visible Manage Tranches button is actually reachable for first-tranche entry.",
+    "Optional: merge repeat extra-student batches for the same grade instead of appending duplicate '(Extra)' grade rows.",
+    "Optional: replace index-based payment↔tranche linking with a stable tranche id; replace window.confirm and native select/date inputs in the Manage Tranches modal with shadcn components."
+  ],
+  "critical_code_review_comments": [
+    "The Extra Students block now exists in three near-identical copies in AdminSchoolCRM.jsx (~L7308 renewal, ~L9601 onboard, ~L10890 edit) with duplicated data-testid values ('extra-students-section', 'save-extra-students-btn'). Extract a shared <ExtraStudentsBlock/> — the duplication is what caused the iter114 gate mismatch and now makes strict-mode selectors ambiguous if two modals ever mount together.",
+    "AdminSchoolCRM.jsx is ~13.8k lines and AdminOrders.jsx ~3.8k — far beyond the 700-line guideline.",
+    "manage_school_tranches and extra_students still take untyped `dict` payloads; no Pydantic validation of amount/date/status enums."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter115_retest_fixes.py (new test suite only)"
+  ],
+  "success_rate": {"backend": "100% (12/12 new + 19/19 iter114 regression)", "frontend": "95% (all requested flows pass; only residual gap is that a 0-tranche school is not listed on Orders)"},
+  "seed_data_creation": "Created + deleted a temp school 'TEST_RenewalMeeting QA School' (status renewal_meeting, one 4321 tranche) to verify the orders fix. All TEST_ expenses on Dosti Foundation School removed. Dosti Foundation School (e271fbf6-d0e2-42b5-a4b9-43949ada40c8) left with 2 tranches of ₹5,000 ('Extra Students · Grade 3 · 5 × ₹1,000'), total_amount 10000, total_students 10, 2 'Grade 3 (Extra)' grade rows (created by the UI flow test) — share amounts/values are 0/'' with type 'amount'.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@oll.co / GodisGreat@2026 (from /app/memory/test_credentials.md). Frontend auth token is in localStorage key 'oll_token'. Note /app/backend/tests/conftest.py still defaults TEST_ADMIN_PASSWORD to a stale value.",
+  "context_for_next_testing_agent": "Regression: pytest /app/backend/tests/test_iter115_retest_fixes.py (self-restoring fixture on school e271fbf6…). UI navigation that works: /admin/login (admin-email/admin-password/admin-submit) → /admin/schools → data-testid tab-leads → button 'Active Schools' → data-testid edit-{school_id} opens the 'Edit School: X' modal which now contains extra-students-section + add-extra-students-btn + extra-students-0-grade/count/price + save-extra-students-btn. Orders: /admin/orders → view-details-{school_id} → open-manage-tranches → manage-tranches-modal (tranche-N-amount/percentage/date/gst/status/notes/up/delete, add-tranche-btn, 'Save Tranches'). Row delete uses window.confirm — register page.on('dialog', d.accept()) or the click is a no-op. No renewal_meeting school exists in the DB; create one to exercise that code path.",
+  "rca_of_the_issue": "All four iter114 defects confirmed fixed in code and behaviour: schools.py manage_school_tranches now assigns onboarding['total_amount'] = round(explicit_total,2) unconditionally; expenses.py _resync_school_share_from_expenses parenthesises the type backfill and writes/clears value_field whenever type=='amount'; orders.py get_school_payments includes 'renewal_meeting' in the status $in; AdminSchoolCRM.jsx renders the Extra Students block in the editOnboardData modal (L10889 gate on showEditOnboardingModal.status ∈ converted/active/renewed/renewal_meeting) and refetches the school into editOnboardData after a successful POST, eliminating the stale-state overwrite reported in iter114."
+}

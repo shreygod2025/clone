@@ -7,7 +7,7 @@ import {
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus, ShoppingBag, MessageSquare
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus, ShoppingBag, MessageSquare, Edit3, Plus, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -212,6 +212,8 @@ const AdminOrders = () => {
     invoice_place_of_supply: '',
   });
   const [showSchoolDetails, setShowSchoolDetails] = useState(null);
+  const [manageTranchesModal, setManageTranchesModal] = useState(null); // { school_id, school_name, payment_mode, gst_type, tranches: [] }
+  const [savingTranches, setSavingTranches] = useState(false);
   const [showStudentDetails, setShowStudentDetails] = useState(null);
   const [showViewModal, setShowViewModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -2823,23 +2825,58 @@ const AdminOrders = () => {
                   )}
 
                   {/* Payment Tranches */}
-                  {showSchoolDetails.onboarding_data.payment_tranches?.length > 0 && (
-                    <div className="bg-yellow-50 rounded-lg p-4">
-                      <h4 className="text-sm font-semibold text-yellow-700 mb-3">Payment Tranches</h4>
-                      <div className="space-y-2">
-                        {showSchoolDetails.onboarding_data.payment_tranches.map((t, idx) => (
-                          <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-3">
-                            <span className="font-medium">Tranche {idx + 1}</span>
-                            {t.percentage && <span className="text-slate-600">{t.percentage}%</span>}
-                            <span className="font-bold">₹{(t.amount || 0).toLocaleString()}</span>
-                            <span className="text-sm text-slate-500">
-                              {t.date ? format(parseISO(t.date), 'MMM d, yyyy') : '-'}
-                            </span>
+                  {(() => {
+                    const tranches = showSchoolDetails.onboarding_data?.payment_tranches || [];
+                    const openManage = () => setManageTranchesModal({
+                      school_id: showSchoolDetails.id,
+                      school_name: showSchoolDetails.school_name,
+                      payment_mode: showSchoolDetails.onboarding_data?.payment_mode || 'from_school',
+                      gst_type: showSchoolDetails.onboarding_data?.gst_type || '',
+                      tranches: tranches.map(t => ({
+                        amount: t.amount || '',
+                        percentage: t.percentage || '',
+                        date: t.date || '',
+                        notes: t.notes || '',
+                        gst_type: t.gst_type || '',
+                        status: t.status || '',
+                        payment_mode: t.payment_mode || '',
+                      })),
+                    });
+                    return (
+                      <div className="bg-yellow-50 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-yellow-700">Payment Tranches</h4>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid="open-manage-tranches"
+                            onClick={openManage}
+                            className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 mr-1" /> Manage Tranches
+                          </Button>
+                        </div>
+                        {tranches.length === 0 ? (
+                          <div className="text-center text-sm text-yellow-700/80 py-3">
+                            No tranches yet — click <span className="font-semibold">Manage Tranches</span> to add the first one.
                           </div>
-                        ))}
+                        ) : (
+                          <div className="space-y-2">
+                            {tranches.map((t, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-3">
+                                <span className="font-medium">Tranche {idx + 1}</span>
+                                {t.percentage && <span className="text-slate-600">{t.percentage}%</span>}
+                                <span className="font-bold">₹{(t.amount || 0).toLocaleString()}</span>
+                                <span className="text-sm text-slate-500">
+                                  {t.date ? format(parseISO(t.date), 'MMM d, yyyy') : '-'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* MOU Document */}
                   {showSchoolDetails.onboarding_data.mou_url && (
@@ -3529,6 +3566,263 @@ const AdminOrders = () => {
                 </div>
               )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Tranches Modal — Full CRUD for a school's payment tranches */}
+      <Dialog open={!!manageTranchesModal} onOpenChange={(open) => !open && setManageTranchesModal(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="manage-tranches-modal">
+          {manageTranchesModal && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Manage Payment Tranches · {manageTranchesModal.school_name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">School Payment Mode</label>
+                    <select
+                      value={manageTranchesModal.payment_mode}
+                      onChange={(e) => setManageTranchesModal({ ...manageTranchesModal, payment_mode: e.target.value })}
+                      className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      data-testid="tranches-payment-mode"
+                    >
+                      <option value="from_school">From School</option>
+                      <option value="from_student">From Student</option>
+                      <option value="from_distributor">From Distributor</option>
+                      <option value="online">Online (No tranches)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">School GST Type (default)</label>
+                    <select
+                      value={manageTranchesModal.gst_type}
+                      onChange={(e) => setManageTranchesModal({ ...manageTranchesModal, gst_type: e.target.value })}
+                      className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      data-testid="tranches-gst-type"
+                    >
+                      <option value="">-- Not set --</option>
+                      <option value="exclusive_18">Exclusive 18% GST</option>
+                      <option value="inclusive_18">Inclusive 18% GST</option>
+                      <option value="none">No GST</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-2 grid grid-cols-12 gap-2 text-xs font-semibold text-slate-600">
+                    <div className="col-span-1">#</div>
+                    <div className="col-span-2">Amount (₹)</div>
+                    <div className="col-span-1">%</div>
+                    <div className="col-span-2">Due Date</div>
+                    <div className="col-span-2">GST</div>
+                    <div className="col-span-1">Status</div>
+                    <div className="col-span-2">Notes</div>
+                    <div className="col-span-1 text-right">Actions</div>
+                  </div>
+                  {manageTranchesModal.tranches.length === 0 && (
+                    <div className="p-4 text-center text-sm text-slate-500">No tranches — click "Add Tranche" below.</div>
+                  )}
+                  {manageTranchesModal.tranches.map((t, idx) => (
+                    <div key={idx} className="px-4 py-2 grid grid-cols-12 gap-2 items-center border-t border-slate-100">
+                      <div className="col-span-1 text-sm font-semibold text-slate-700">{idx + 1}</div>
+                      <div className="col-span-2">
+                        <Input
+                          type="number"
+                          value={t.amount}
+                          onChange={(e) => {
+                            const next = [...manageTranchesModal.tranches];
+                            next[idx] = { ...next[idx], amount: e.target.value };
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          placeholder="0"
+                          className="h-9"
+                          data-testid={`tranche-${idx}-amount`}
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <Input
+                          type="number"
+                          value={t.percentage}
+                          onChange={(e) => {
+                            const next = [...manageTranchesModal.tranches];
+                            next[idx] = { ...next[idx], percentage: e.target.value };
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          placeholder="%"
+                          className="h-9"
+                          data-testid={`tranche-${idx}-percentage`}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          type="date"
+                          value={t.date}
+                          onChange={(e) => {
+                            const next = [...manageTranchesModal.tranches];
+                            next[idx] = { ...next[idx], date: e.target.value };
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          className="h-9"
+                          data-testid={`tranche-${idx}-date`}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <select
+                          value={t.gst_type}
+                          onChange={(e) => {
+                            const next = [...manageTranchesModal.tranches];
+                            next[idx] = { ...next[idx], gst_type: e.target.value };
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm"
+                          data-testid={`tranche-${idx}-gst`}
+                        >
+                          <option value="">(default)</option>
+                          <option value="exclusive_18">Excl. 18%</option>
+                          <option value="inclusive_18">Incl. 18%</option>
+                          <option value="none">No GST</option>
+                        </select>
+                      </div>
+                      <div className="col-span-1">
+                        <select
+                          value={t.status}
+                          onChange={(e) => {
+                            const next = [...manageTranchesModal.tranches];
+                            next[idx] = { ...next[idx], status: e.target.value };
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm"
+                          data-testid={`tranche-${idx}-status`}
+                        >
+                          <option value="">Pending</option>
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="partial">Partial</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          value={t.notes}
+                          onChange={(e) => {
+                            const next = [...manageTranchesModal.tranches];
+                            next[idx] = { ...next[idx], notes: e.target.value };
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          placeholder="Notes"
+                          className="h-9"
+                          data-testid={`tranche-${idx}-notes`}
+                        />
+                      </div>
+                      <div className="col-span-1 flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const next = [...manageTranchesModal.tranches];
+                            [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
+                          title="Move up"
+                          data-testid={`tranche-${idx}-up`}
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === manageTranchesModal.tranches.length - 1}
+                          onClick={() => {
+                            if (idx === manageTranchesModal.tranches.length - 1) return;
+                            const next = [...manageTranchesModal.tranches];
+                            [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
+                          title="Move down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!confirm(`Remove tranche ${idx + 1}? Any paid amount tied to this position will be dropped.`)) return;
+                            const next = manageTranchesModal.tranches.filter((_, i) => i !== idx);
+                            setManageTranchesModal({ ...manageTranchesModal, tranches: next });
+                          }}
+                          className="p-1 rounded hover:bg-red-50 text-red-600"
+                          title="Delete tranche"
+                          data-testid={`tranche-${idx}-delete`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setManageTranchesModal({
+                        ...manageTranchesModal,
+                        tranches: [
+                          ...manageTranchesModal.tranches,
+                          { amount: '', percentage: '', date: '', notes: '', gst_type: '', status: '', payment_mode: '' },
+                        ],
+                      });
+                    }}
+                    data-testid="add-tranche-btn"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Tranche
+                  </Button>
+                  <div className="text-sm font-semibold text-slate-700">
+                    New Total: ₹{manageTranchesModal.tranches.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0).toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                  <Button variant="outline" onClick={() => setManageTranchesModal(null)}>Cancel</Button>
+                  <Button
+                    disabled={savingTranches}
+                    onClick={async () => {
+                      setSavingTranches(true);
+                      try {
+                        await axios.patch(
+                          `${API}/schools/${manageTranchesModal.school_id}/manage-tranches`,
+                          {
+                            payment_mode: manageTranchesModal.payment_mode,
+                            gst_type: manageTranchesModal.gst_type,
+                            payment_tranches: manageTranchesModal.tranches,
+                          },
+                          { headers: getAuthHeaders() }
+                        );
+                        toast.success('Tranches updated');
+                        // Refresh school details and payments list
+                        try {
+                          const res = await axios.get(`${API}/orders/school-details/${manageTranchesModal.school_id}`, { headers: getAuthHeaders() });
+                          setShowSchoolDetails(res.data);
+                        } catch (e) { /* non-fatal */ }
+                        fetchPayments();
+                        setManageTranchesModal(null);
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Failed to update tranches');
+                      } finally {
+                        setSavingTranches(false);
+                      }
+                    }}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    data-testid="save-tranches-btn"
+                  >
+                    {savingTranches ? 'Saving...' : 'Save Tranches'}
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

@@ -2190,6 +2190,270 @@ async def toggle_accounts_reminders(
     return {"ok": True, "enabled": enabled}
 
 
+@router.patch("/schools/{school_id}/manage-tranches")
+async def manage_school_tranches(
+    school_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Full CRUD on a school's payment tranches from /admin/orders.
+
+    Body:
+        {
+            "payment_mode": "from_school",                # optional
+            "gst_type": "exclusive_18",                   # optional, school-level default
+            "payment_tranches": [                          # required, replaces existing
+                {"amount": "10000", "percentage": "", "date": "2026-01-15",
+                 "notes": "Advance", "gst_type": "exclusive_18", "status": "pending",
+                 "payment_mode": "online"},
+                ...
+            ]
+        }
+
+    Behaviour:
+      • Replaces `onboarding_data.payment_tranches` wholesale.
+      • Trims `school.payments[]` to only records whose `tranche_index` is
+        still valid (`< len(new_tranches)`); paid tranches at the same index
+        stay linked so paid_amount / receipt_url are preserved when admin only
+        edits amount/date/notes.
+      • Recomputes `onboarding_data.total_amount` from the sum of tranche
+        amounts (only for tranches with an explicit amount; percentage-only
+        tranches are computed off the resulting total downstream in the
+        orders/pnl endpoints).
+      • Also accepts `payment_mode` / `gst_type` at the top level to update
+        the school-level defaults shown on the Orders page.
+    """
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    tranches_in = payload.get("payment_tranches")
+    if tranches_in is None or not isinstance(tranches_in, list):
+        raise HTTPException(status_code=400, detail="payment_tranches list required")
+
+    # Normalise every tranche (stringify like the rest of the codebase).
+    cleaned_tranches = []
+    for t in tranches_in:
+        cleaned_tranches.append({
+            "amount": str(t.get("amount") or ""),
+            "percentage": str(t.get("percentage") or ""),
+            "date": str(t.get("date") or ""),
+            "notes": str(t.get("notes") or ""),
+            "gst_type": str(t.get("gst_type") or ""),
+            "status": str(t.get("status") or ""),
+            "payment_mode": str(t.get("payment_mode") or ""),
+        })
+
+    # Sum of explicit amounts → new total_amount (fallback preserves legacy).
+    explicit_total = 0.0
+    for t in cleaned_tranches:
+        try:
+            explicit_total += float(t.get("amount") or 0)
+        except (TypeError, ValueError):
+            pass
+
+    onboarding = dict(school.get("onboarding_data") or {})
+    onboarding["payment_tranches"] = cleaned_tranches
+    # Always overwrite total_amount so deleting every tranche zeroes it out
+    # instead of leaving a stale legacy value in place. Percentage-only
+    # tranches still leave 0 here — downstream endpoints derive their real
+    # value from `total_amount` when a tranche only has a percentage, so admin
+    # must set at least one explicit amount OR keep the pre-existing
+    # total_amount elsewhere.
+    onboarding["total_amount"] = round(explicit_total, 2)
+    if "payment_mode" in payload:
+        onboarding["payment_mode"] = str(payload.get("payment_mode") or "")
+    if "gst_type" in payload:
+        onboarding["gst_type"] = str(payload.get("gst_type") or "")
+
+    # Trim orphaned payment records (tranche_index that no longer exists).
+    payments = school.get("payments") or []
+    trimmed_payments = [
+        p for p in payments if int(p.get("tranche_index", -1)) < len(cleaned_tranches)
+    ]
+
+    activity_entry = {
+        "type": "tranches_updated",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "description": f"Payment tranches updated ({len(cleaned_tranches)} tranche{'s' if len(cleaned_tranches) != 1 else ''}, new total ₹{explicit_total:,.0f})",
+        "by": user.get("name", user.get("email", "Admin")),
+    }
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {
+            "$set": {
+                "onboarding_data": onboarding,
+                "payments": trimmed_payments,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {"activity_log": activity_entry},
+        },
+    )
+    clear_payment_cache(f"school_payment_{school_id}")
+    return {"ok": True, "tranches": cleaned_tranches, "total_amount": explicit_total}
+
+
+@router.post("/schools/{school_id}/extra-students")
+async def add_extra_students(
+    school_id: str,
+    payload: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Add mid-contract "extra students" to a school and auto-generate a
+    pending payment tranche for the delta.
+
+    Body:
+        {
+            "entries": [
+                {"grade": "Grade 3", "students": 20, "price_per_student": 1000,
+                 "notes": "New batch joined mid-year", "date": "2026-02-15",
+                 "gst_type": "", "increment_existing": false}
+            ]
+        }
+
+    Behaviour:
+      • For each entry:
+          – If `increment_existing` = true AND a matching grade row exists in
+            `onboarding_data.grade_pricing`, bump its `students` count and
+            reuse its `price_per_student`.
+          – Otherwise append a new `grade_pricing` row labelled
+            "<grade> (Extra)".
+      • For every entry, appends one new tranche to
+        `onboarding_data.payment_tranches` with:
+            amount = students × price_per_student
+            notes  = "Extra Students · <grade> · N × ₹P"
+            date   = entry.date or today
+            status = "pending"
+            payment_mode = school's existing mode (defaults to `from_school`)
+      • Recomputes `total_students` and `total_amount`.
+    """
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    entries = payload.get("entries") or []
+    if not entries:
+        raise HTTPException(status_code=400, detail="At least one entry is required")
+
+    onboarding = dict(school.get("onboarding_data") or {})
+    grade_pricing = list(onboarding.get("grade_pricing") or [])
+    tranches = list(onboarding.get("payment_tranches") or [])
+    existing_mode = onboarding.get("payment_mode") or "from_school"
+    school_gst = onboarding.get("gst_type") or ""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    new_tranche_summaries = []
+    for e in entries:
+        try:
+            students = int(float(e.get("students") or 0))
+        except (TypeError, ValueError):
+            students = 0
+        try:
+            price = float(e.get("price_per_student") or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        grade = str(e.get("grade") or "").strip() or "Extra"
+        if students <= 0 or price <= 0:
+            continue
+
+        amount = round(students * price, 2)
+        increment = bool(e.get("increment_existing"))
+
+        if increment:
+            # Bump existing grade row if we find one; else append new row.
+            found = False
+            for gp in grade_pricing:
+                if str(gp.get("grade") or "").strip().lower() == grade.lower():
+                    try:
+                        gp["students"] = int(float(gp.get("students") or 0)) + students
+                    except (TypeError, ValueError):
+                        gp["students"] = students
+                    if not gp.get("price_per_student"):
+                        gp["price_per_student"] = price
+                    found = True
+                    break
+            if not found:
+                grade_pricing.append({
+                    "grade": grade,
+                    "students": students,
+                    "price_per_student": price,
+                })
+        else:
+            grade_pricing.append({
+                "grade": f"{grade} (Extra)",
+                "students": students,
+                "price_per_student": price,
+            })
+
+        tranche_note = e.get("notes") or (
+            f"Extra Students · {grade} · {students} × ₹{price:,.0f}"
+        )
+        tranches.append({
+            "amount": str(amount),
+            "percentage": "",
+            "date": str(e.get("date") or today),
+            "notes": tranche_note,
+            "gst_type": str(e.get("gst_type") or school_gst or ""),
+            "status": "pending",
+            "payment_mode": str(e.get("payment_mode") or existing_mode),
+            "extra_students": True,
+            "extra_students_grade": grade,
+            "extra_students_count": students,
+            "extra_students_price": price,
+        })
+        new_tranche_summaries.append(tranche_note)
+
+    if not new_tranche_summaries:
+        raise HTTPException(status_code=400, detail="No valid entries provided (need students and price_per_student > 0)")
+
+    # Recompute totals from the updated grade_pricing.
+    total_students = 0
+    total_amount = 0.0
+    for gp in grade_pricing:
+        try:
+            s = int(float(gp.get("students") or 0))
+        except (TypeError, ValueError):
+            s = 0
+        try:
+            p = float(gp.get("price_per_student") or 0)
+        except (TypeError, ValueError):
+            p = 0.0
+        total_students += s
+        total_amount += s * p
+
+    onboarding["grade_pricing"] = grade_pricing
+    onboarding["payment_tranches"] = tranches
+    onboarding["total_students"] = total_students
+    onboarding["total_amount"] = round(total_amount, 2)
+
+    activity_entry = {
+        "type": "extra_students_added",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "description": f"Extra students added: {'; '.join(new_tranche_summaries)}",
+        "by": user.get("name", user.get("email", "Admin")),
+    }
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {
+            "$set": {
+                "onboarding_data": onboarding,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {"activity_log": activity_entry},
+        },
+    )
+    clear_payment_cache(f"school_payment_{school_id}")
+    return {
+        "ok": True,
+        "added_tranches": new_tranche_summaries,
+        "total_students": total_students,
+        "total_amount": round(total_amount, 2),
+        "grade_pricing": grade_pricing,
+        "payment_tranches": tranches,
+    }
+
+
 @router.patch("/schools/{school_id}/invoice-name-override")
 async def set_invoice_name_override(
     school_id: str,

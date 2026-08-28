@@ -551,7 +551,67 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
 
     await db.school_expenses.insert_one(expense)
     expense.pop('_id', None)  # Remove MongoDB ObjectId before returning
+
+    # Reverse sync: when an admin adds a School Share / GP Share expense
+    # directly from /admin/expenses, also refresh the linked school's
+    # onboarding_data.{school_share_amount|gp_share_amount} so the amount
+    # shown in the school edit modal + P&L cost column stays consistent.
+    # Direct db.update — no round-trip through /schools endpoints — so the
+    # auto-sync in schools.py doesn't fire back and create a duplicate.
+    await _resync_school_share_from_expenses(expense.get("school_id"), expense.get("category"))
+
     return {"message": "Expense created successfully", "expense": expense}
+
+
+async def _resync_school_share_from_expenses(school_id: str, category: str):
+    """Aggregate all school_share / gp_share expenses for a school and write
+    the sum back into `school_inquiries.onboarding_data.{school|gp}_share_amount`.
+
+    Called after any insert / update / delete of a share-type expense so the
+    School CRM edit modal + P&L pick up expense-side edits made from the
+    Expenses page. No-op for non-share categories or when school_id missing.
+    """
+    if not school_id or category not in ("school_share", "gp_share"):
+        return
+    field = "school_share_amount" if category == "school_share" else "gp_share_amount"
+    type_field = "school_share_type" if category == "school_share" else "gp_share_type"
+    pipeline = [
+        {"$match": {"school_id": school_id, "category": category}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}},
+    ]
+    agg = await db.school_expenses.aggregate(pipeline).to_list(1)
+    total = float(agg[0]["total"]) if agg else 0.0
+    existing = await db.school_inquiries.find_one(
+        {"id": school_id},
+        {"_id": 0, "onboarding_data": 1},
+    )
+    if not existing:
+        return
+    onboarding = dict(existing.get("onboarding_data") or {})
+    onboarding[field] = total
+    value_field = "school_share_value" if category == "school_share" else "gp_share_value"
+    if total > 0:
+        # Backfill type + value when the admin has never configured them (or
+        # explicitly cleared them to 'none') in the school modal so the modal
+        # reflects the expense-driven amount instead of showing 0.
+        if not onboarding.get(type_field) or onboarding.get(type_field) == "none":
+            onboarding[type_field] = "amount"
+        # When we're in the auto-managed 'amount' mode, keep the displayed
+        # `_value` string in sync with the aggregate. If admin set the type to
+        # 'percentage' manually, leave their percentage value alone.
+        if onboarding.get(type_field) == "amount":
+            onboarding[value_field] = str(total)
+    else:
+        # Aggregate went to zero (all share expenses deleted) — reset the
+        # cached value so the school modal doesn't show a stale value
+        # alongside amount ₹0. Preserve type if admin set it manually to
+        # 'percentage' — only clear when we're in auto-managed 'amount' mode.
+        if onboarding.get(type_field) == "amount":
+            onboarding[value_field] = ""
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {"onboarding_data": onboarding}},
+    )
 
 
 @router.patch("/school-expenses/{expense_id}")
@@ -587,6 +647,14 @@ async def update_school_expense(expense_id: str, data: dict, user: dict = Depend
             update_data["project_name"] = ""
 
     await db.school_expenses.update_one({"id": expense_id}, {"$set": update_data})
+
+    # If this update touched a share-type expense (amount changed, or category
+    # was flipped to/from school_share/gp_share), resync the linked school's
+    # onboarding_data so the school edit modal reflects the latest total.
+    updated_exp = await db.school_expenses.find_one({"id": expense_id}, {"_id": 0, "school_id": 1, "category": 1})
+    if updated_exp:
+        await _resync_school_share_from_expenses(updated_exp.get("school_id"), updated_exp.get("category"))
+
     return {"message": "Expense updated successfully"}
 
 
@@ -620,7 +688,11 @@ async def get_project_expenses(project_id: str, user: dict = Depends(get_current
 @router.delete("/school-expenses/{expense_id}")
 async def delete_school_expense(expense_id: str, user: dict = Depends(get_current_user)):
     """Delete an expense entry"""
+    # Capture share-type context before deleting so we can resync afterwards.
+    exp = await db.school_expenses.find_one({"id": expense_id}, {"_id": 0, "school_id": 1, "category": 1})
     await db.school_expenses.delete_one({"id": expense_id})
+    if exp:
+        await _resync_school_share_from_expenses(exp.get("school_id"), exp.get("category"))
     return {"message": "Expense deleted successfully"}
 
 
