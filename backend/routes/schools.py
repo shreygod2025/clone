@@ -1534,8 +1534,22 @@ async def send_crm_email_for_school(
             sender_name=sender_name,
             extra_data=extra_data,
             pdf_base64=data.get("pdf_base64"),
-            pdf_filename=data.get("pdf_filename")
+            pdf_filename=data.get("pdf_filename"),
+            # Preview + editable-field passthroughs (Feb 2026 upgrade).
+            preview=bool(data.get("preview")),
+            cc=data.get("cc") or [],
+            bcc=data.get("bcc") or [],
+            reply_to_override=data.get("reply_to") or None,
+            additional_to=data.get("additional_to") or [],
+            subject_override=data.get("subject_override") or None,
+            body_override=data.get("body_override") or None,
         )
+
+        # In preview mode, short-circuit: skip activity_log write and return
+        # the rendered {subject, html, to, cc, reply_to} to the caller so the
+        # frontend can populate its edit modal.
+        if data.get("preview"):
+            return result
 
         if result.get("success"):
             # Human-friendly email type labels

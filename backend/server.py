@@ -2013,7 +2013,24 @@ async def send_school_crm_email(
     sender_name: str = "OLL Team",
     extra_data: dict = None,
     pdf_base64: str = None,
-    pdf_filename: str = None
+    pdf_filename: str = None,
+    # Preview + override params (Feb 2026):
+    #   preview        → skip the actual send, just return the rendered
+    #                    {subject, html, to, cc, reply_to} so the frontend
+    #                    can show a preview modal for admin to edit.
+    #   cc / bcc       → additional recipients (list of emails).
+    #   reply_to_override → replaces the default `info@oll.co` reply-to.
+    #   additional_to  → extra `To` recipients that get merged with the
+    #                    primary `to_email`.
+    #   subject_override → rewrite the subject before send.
+    #   body_override  → rewrite the full HTML body before send.
+    preview: bool = False,
+    cc: list = None,
+    bcc: list = None,
+    reply_to_override: str = None,
+    additional_to: list = None,
+    subject_override: str = None,
+    body_override: str = None,
 ) -> dict:
     """
     Send a School CRM email using Resend with reply-to info@oll.co.
@@ -2037,16 +2054,31 @@ async def send_school_crm_email(
             "followup_3": build_followup_3_html,
             "followup_4": build_followup_4_html,
         }
-        html_content = builders[email_type](contact_name, school_name, sender_name)
-        subject = template_info["subject"].format(school_name=school_name)
+        html_content = body_override or builders[email_type](contact_name, school_name, sender_name)
+        subject = subject_override or template_info["subject"].format(school_name=school_name)
+        # Combine primary + additional recipients (deduped, filtering empties).
+        recipients = [e for e in ([to_email] + (additional_to or [])) if e]
+        cc_list = [e for e in (cc or []) if e]
+        bcc_list = [e for e in (bcc or []) if e]
+        reply_to = reply_to_override or "info@oll.co"
+        if preview:
+            return {
+                "success": True, "preview": True, "subject": subject,
+                "html": html_content, "to": recipients, "cc": cc_list,
+                "bcc": bcc_list, "reply_to": reply_to,
+            }
         try:
             params: dict = {
                 "from": SENDER_EMAIL,
-                "to": [to_email],
-                "reply_to": "info@oll.co",
+                "to": recipients,
+                "reply_to": reply_to,
                 "subject": subject,
                 "html": html_content
             }
+            if cc_list:
+                params["cc"] = cc_list
+            if bcc_list:
+                params["bcc"] = bcc_list
             if pdf_base64 and pdf_filename:
                 params["attachments"] = [{"filename": pdf_filename, "content": pdf_base64}]
             email_response = await asyncio.to_thread(resend.Emails.send, params)
@@ -2128,16 +2160,34 @@ async def send_school_crm_email(
         meeting_action_text="Your meeting has been <strong>rescheduled</strong>" if email_type == "meeting_reschedule" else "We're pleased to confirm our upcoming meeting to discuss the OLL program"
     )
 
-    subject = template_info["subject"].format(school_name=school_name)
+    subject = subject_override or template_info["subject"].format(school_name=school_name)
+    if body_override:
+        html_content = body_override
+
+    recipients = [e for e in ([to_email] + (additional_to or [])) if e]
+    cc_list = [e for e in (cc or []) if e]
+    bcc_list = [e for e in (bcc or []) if e]
+    reply_to = reply_to_override or "info@oll.co"
+
+    if preview:
+        return {
+            "success": True, "preview": True, "subject": subject,
+            "html": html_content, "to": recipients, "cc": cc_list,
+            "bcc": bcc_list, "reply_to": reply_to,
+        }
 
     try:
         params: dict = {
             "from": SENDER_EMAIL,
-            "to": [to_email],
-            "reply_to": "info@oll.co",
+            "to": recipients,
+            "reply_to": reply_to,
             "subject": subject,
             "html": html_content
         }
+        if cc_list:
+            params["cc"] = cc_list
+        if bcc_list:
+            params["bcc"] = bcc_list
 
         # Attach PDF if provided
         if pdf_base64 and pdf_filename:

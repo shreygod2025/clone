@@ -163,6 +163,24 @@ const TICKET_RELATED_TO_OPTIONS = {
 };
 
 import CitySearch from '../../components/CitySearch';
+// Convert a Grades-From/Grades-To pair into the shorthand admins type into
+// the "Grade (e.g. 1-5)" text field of the grade_pricing table. Keeps Jr./Sr.
+// KG labels compact (Jr.KG / Sr.KG) and strips ordinal suffixes (1st → 1) so
+// the shorthand stays scannable ("Jr.KG - 10", "1 - 5").
+const GRADE_SHORTHAND = {
+  'Jr. Kg': 'Jr.KG',
+  'Sr. Kg': 'Sr.KG',
+  '1st': '1', '2nd': '2', '3rd': '3', '4th': '4', '5th': '5',
+  '6th': '6', '7th': '7', '8th': '8', '9th': '9', '10th': '10',
+};
+const gradeRangeShorthand = (from, to) => {
+  if (!from && !to) return '';
+  const f = GRADE_SHORTHAND[from] ?? from;
+  const t = GRADE_SHORTHAND[to] ?? to;
+  if (f && t && f !== t) return `${f}-${t}`;
+  return f || t || '';
+};
+
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB', 'Not Affiliated'];
 
 // Approx. student-count tiers requested by ops. Midpoint is used to compute a
@@ -903,10 +921,18 @@ const AdminSchoolCRM = () => {
   // Email modal states
   const [showEmailModal, setShowEmailModal] = useState(null); // school inquiry object
   const [emailModalType, setEmailModalType] = useState('introduction');
-  const [emailModalSending, setEmailModalSending] = useState(false);
+  const [emailModalTaskId, setEmailModalTaskId] = useState(null);
   const [emailModalCustomMsg, setEmailModalCustomMsg] = useState('');
   const [emailModalToEmail, setEmailModalToEmail] = useState('');
-  const [emailModalTaskId, setEmailModalTaskId] = useState(null);
+  // Preview + editable-recipient fields (Feb 2026).
+  const [emailModalAdditionalTo, setEmailModalAdditionalTo] = useState('');
+  const [emailModalCc, setEmailModalCc] = useState('');
+  const [emailModalReplyTo, setEmailModalReplyTo] = useState('');
+  const [emailModalSubject, setEmailModalSubject] = useState('');
+  const [emailModalBodyHtml, setEmailModalBodyHtml] = useState('');
+  const [emailModalPreviewLoading, setEmailModalPreviewLoading] = useState(false);
+  const [emailModalEditingBody, setEmailModalEditingBody] = useState(false);
+  const [emailModalSending, setEmailModalSending] = useState(false);
 
   const [newLead, setNewLead] = useState({
     school_name: '',
@@ -1396,6 +1422,61 @@ const AdminSchoolCRM = () => {
     // Store task_id so the endpoint can mark it as sent
     setEmailModalTaskId(task.id);
   };
+
+  // Reset editable-recipient state when the email modal opens or the type
+  // changes, and pull a fresh preview from the backend so admin can review
+  // the exact subject + body before hitting Send.
+  useEffect(() => {
+    if (!showEmailModal) {
+      setEmailModalAdditionalTo('');
+      setEmailModalCc('');
+      setEmailModalReplyTo('');
+      setEmailModalSubject('');
+      setEmailModalBodyHtml('');
+      setEmailModalEditingBody(false);
+      return;
+    }
+    const meEmail = user?.email || '';
+    // Default: CC and Reply-To both point to the admin sending the email so
+    // any school reply lands in their inbox (and their manager can see the
+    // outbound thread in cc).
+    setEmailModalCc(meEmail);
+    setEmailModalReplyTo(meEmail);
+    setEmailModalAdditionalTo('');
+    setEmailModalSubject('');
+    setEmailModalBodyHtml('');
+    setEmailModalEditingBody(false);
+    // Fetch preview (best-effort — if the endpoint errors we just leave the
+    // fields blank and let the caller send the default template).
+    const fetchPreview = async () => {
+      if (!emailModalToEmail || emailModalToEmail.endsWith('@school.oll')) return;
+      setEmailModalPreviewLoading(true);
+      try {
+        const res = await axios.post(
+          `${API}/schools/${showEmailModal.id}/send-crm-email`,
+          {
+            preview: true,
+            email_type: emailModalType,
+            to_email: emailModalToEmail,
+            custom_message: emailModalCustomMsg,
+            meeting_date: showEmailModal.meeting_date,
+            meeting_time: showEmailModal.meeting_time,
+            meeting_mode: showEmailModal.meeting_type,
+          },
+          { headers: getAuthHeaders() }
+        );
+        if (res.data?.subject) setEmailModalSubject(res.data.subject);
+        if (res.data?.html) setEmailModalBodyHtml(res.data.html);
+      } catch (err) {
+        // Non-fatal — admin can still send with the default template.
+        console.warn('Preview fetch failed', err);
+      } finally {
+        setEmailModalPreviewLoading(false);
+      }
+    };
+    fetchPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEmailModal?.id, emailModalType]);
 
   const buildMeetingDoneTemplate = (type, schoolName = 'your school', contactName = 'there') => {
     const BASE_STYLE = `font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;margin:0;padding:0`;
@@ -6689,7 +6770,19 @@ ${FOOTER}</div></body></html>`
                   <label className="block text-xs font-medium text-slate-600 mb-1">Grades From</label>
                   <select
                     value={editLeadData.grades_from}
-                    onChange={(e) => setEditLeadData(prev => ({ ...prev, grades_from: e.target.value }))}
+                    onChange={(e) => setEditLeadData(prev => {
+                      const from = e.target.value;
+                      // Auto-populate the first empty Grade row so admins don't
+                      // have to retype "Jr.KG-10" when they've already picked
+                      // the from/to dropdowns above. Only touch a truly empty
+                      // row so we don't clobber a hand-edited value.
+                      const shorthand = gradeRangeShorthand(from, prev.grades_to);
+                      const gp = [...(prev.grade_pricing || [])];
+                      if (shorthand && gp.length > 0 && !gp[0].grade) {
+                        gp[0] = { ...gp[0], grade: shorthand };
+                      }
+                      return { ...prev, grades_from: from, grade_pricing: gp };
+                    })}
                     className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
                   >
                     {['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(g => (
@@ -6701,7 +6794,15 @@ ${FOOTER}</div></body></html>`
                   <label className="block text-xs font-medium text-slate-600 mb-1">Grades To</label>
                   <select
                     value={editLeadData.grades_to}
-                    onChange={(e) => setEditLeadData(prev => ({ ...prev, grades_to: e.target.value }))}
+                    onChange={(e) => setEditLeadData(prev => {
+                      const to = e.target.value;
+                      const shorthand = gradeRangeShorthand(prev.grades_from, to);
+                      const gp = [...(prev.grade_pricing || [])];
+                      if (shorthand && gp.length > 0 && !gp[0].grade) {
+                        gp[0] = { ...gp[0], grade: shorthand };
+                      }
+                      return { ...prev, grades_to: to, grade_pricing: gp };
+                    })}
                     className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
                   >
                     {['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(g => (
@@ -9263,7 +9364,7 @@ ${FOOTER}</div></body></html>`
 
             {/* To Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">To Email</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">To</label>
               <Input
                 value={emailModalToEmail}
                 onChange={(e) => setEmailModalToEmail(e.target.value)}
@@ -9274,6 +9375,52 @@ ${FOOTER}</div></body></html>`
               {(!emailModalToEmail || emailModalToEmail.endsWith('@school.oll')) && (
                 <p className="text-xs text-amber-600 mt-1">Please enter a valid email address</p>
               )}
+            </div>
+
+            {/* Additional recipients / CC / Reply-To */}
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Additional recipients (comma-separated)</label>
+                <Input
+                  value={emailModalAdditionalTo}
+                  onChange={(e) => setEmailModalAdditionalTo(e.target.value)}
+                  placeholder="colleague@school.com, principal@school.com"
+                  data-testid="email-modal-additional-to"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">CC</label>
+                  <Input
+                    value={emailModalCc}
+                    onChange={(e) => setEmailModalCc(e.target.value)}
+                    placeholder="me@oll.co, boss@oll.co"
+                    data-testid="email-modal-cc"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Auto-set to you — edit or add more</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Reply-To</label>
+                  <Input
+                    value={emailModalReplyTo}
+                    onChange={(e) => setEmailModalReplyTo(e.target.value)}
+                    placeholder="me@oll.co"
+                    data-testid="email-modal-reply-to"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Replies come to you (defaults to info@oll.co if empty)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Subject</label>
+              <Input
+                value={emailModalSubject}
+                onChange={(e) => setEmailModalSubject(e.target.value)}
+                placeholder={emailModalPreviewLoading ? 'Loading preview…' : 'Subject line'}
+                data-testid="email-modal-subject"
+              />
             </div>
 
             {/* Custom message (for followup) */}
@@ -9290,8 +9437,41 @@ ${FOOTER}</div></body></html>`
               </div>
             )}
 
+            {/* Body preview + edit toggle */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-slate-600">Email Body Preview</label>
+                <button
+                  type="button"
+                  onClick={() => setEmailModalEditingBody(v => !v)}
+                  className="text-xs text-blue-600 hover:underline"
+                  data-testid="email-modal-toggle-edit-body"
+                >
+                  {emailModalEditingBody ? 'Preview' : 'Edit HTML'}
+                </button>
+              </div>
+              {emailModalPreviewLoading ? (
+                <div className="border border-slate-200 rounded-lg h-40 flex items-center justify-center text-xs text-slate-400">
+                  Loading preview…
+                </div>
+              ) : emailModalEditingBody ? (
+                <Textarea
+                  value={emailModalBodyHtml}
+                  onChange={(e) => setEmailModalBodyHtml(e.target.value)}
+                  className="h-56 text-xs font-mono"
+                  data-testid="email-modal-body-editor"
+                />
+              ) : (
+                <div
+                  className="border border-slate-200 rounded-lg max-h-56 overflow-y-auto bg-white p-3 text-sm"
+                  data-testid="email-modal-body-preview"
+                  dangerouslySetInnerHTML={{ __html: emailModalBodyHtml || '<p class="text-slate-400">Preview will appear here…</p>' }}
+                />
+              )}
+            </div>
+
             <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
-              <strong>Reply-to:</strong> info@oll.co &nbsp;|&nbsp; <strong>From:</strong> OLL Team
+              <strong>From:</strong> OLL Team &nbsp;|&nbsp; <strong>Reply-to:</strong> {emailModalReplyTo || 'info@oll.co'}
               {emailModalType === 'proposal' && (
                 lastProposalPDF?.schoolId === showEmailModal?.id
                   ? <span className="ml-2 text-green-700 font-semibold">&#10003; Proposal PDF will be attached (cached)</span>
@@ -9344,6 +9524,9 @@ ${FOOTER}</div></body></html>`
                       }
                     }
 
+                    // Parse the comma-separated recipient / cc / bcc strings
+                    // so admins can type "a@x.com, b@y.com" naturally.
+                    const parseEmails = (s) => (s || '').split(',').map(x => x.trim()).filter(Boolean);
                     await axios.post(`${API}/schools/${showEmailModal.id}/send-crm-email`, {
                       email_type: emailModalType,
                       to_email: emailModalToEmail,
@@ -9352,6 +9535,12 @@ ${FOOTER}</div></body></html>`
                       meeting_time: showEmailModal.meeting_time,
                       meeting_mode: showEmailModal.meeting_type,
                       task_id: emailModalTaskId || undefined,
+                      // Preview + editable field overrides.
+                      additional_to: parseEmails(emailModalAdditionalTo),
+                      cc: parseEmails(emailModalCc),
+                      reply_to: emailModalReplyTo || undefined,
+                      subject_override: emailModalSubject || undefined,
+                      body_override: emailModalBodyHtml || undefined,
                       ...pdfAttachment,
                     }, { headers: getAuthHeaders() });
                     const attached = Object.keys(pdfAttachment).length > 0;
