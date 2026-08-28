@@ -48,6 +48,7 @@ class SchoolInquiry(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     school_name: str
     contact_name: str = ""
+    contact_role: str = ""  # Primary contact role (principal, director, computer_teacher, …)
     email: Optional[str] = ""          # made optional — AI-created leads may have no email
     phone: str = ""
     location: str = ""
@@ -98,6 +99,7 @@ class SchoolInquiry(BaseModel):
 class SchoolInquiryCreate(BaseModel):
     school_name: str
     contact_name: str
+    contact_role: str = ""  # Primary contact role
     email: EmailStr
     phone: str
     location: str = ""
@@ -126,6 +128,7 @@ class SchoolInquiryUpdate(BaseModel):
     status: Optional[str] = None
     school_name: Optional[str] = None
     contact_name: Optional[str] = None
+    contact_role: Optional[str] = None  # Primary contact role
     phone: Optional[str] = None
     email: Optional[str] = None
     location: Optional[str] = None

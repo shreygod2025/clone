@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import LinkLmsSchoolModal from './LinkLmsSchoolModal';
 import { useAuth } from '../../context/AuthContext';
@@ -163,12 +163,111 @@ const TICKET_RELATED_TO_OPTIONS = {
 };
 
 import CitySearch from '../../components/CitySearch';
-const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
+const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB', 'Not Affiliated'];
+
+// Primary contact role options — matches the roles used inside school_contacts[]
+// with the addition of "Computer Teacher" requested by ops (Feb 2026).
+const PRIMARY_CONTACT_ROLES = [
+  { value: 'principal', label: 'Principal' },
+  { value: 'director', label: 'Director' },
+  { value: 'trustee_owner', label: 'Trustee / Owner' },
+  { value: 'vice_principal', label: 'Vice Principal' },
+  { value: 'coordinator', label: 'Coordinator' },
+  { value: 'primary_coordinator', label: 'Primary Coordinator' },
+  { value: 'secondary_coordinator', label: 'Secondary Coordinator' },
+  { value: 'computer_teacher', label: 'Computer Teacher' },
+  { value: 'teacher', label: 'Teacher' },
+  { value: 'head_of_department', label: 'Head of Department' },
+  { value: 'accounts', label: 'Accounts' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'other', label: 'Other' },
+];
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
   '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
   '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'
 ];
+
+// Searchable assignee filter — dropdown with a live typeahead so admins can
+// find the right teammate quickly even with 40+ active users. Kept minimal on
+// purpose: no external combobox library, just a controlled div + input.
+const AssigneeSearchFilter = ({ value, onChange, teamUsers }) => {
+  const [open, setOpen] = React.useState(false);
+  const [q, setQ] = React.useState('');
+  const wrapperRef = React.useRef(null);
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  const activeUsers = (teamUsers || []).filter(u => u.is_active);
+  const filtered = q
+    ? activeUsers.filter(u =>
+        (u.name || '').toLowerCase().includes(q.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(q.toLowerCase()) ||
+        (u.role || '').toLowerCase().includes(q.toLowerCase())
+      )
+    : activeUsers;
+  const currentLabel =
+    value === 'all' ? 'All people'
+    : value === 'unassigned' ? 'Unassigned'
+    : (activeUsers.find(u => u.id === value)?.name || 'Select…');
+  return (
+    <div ref={wrapperRef} className="relative flex-1 sm:flex-none">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm min-w-[180px] flex items-center justify-between gap-2"
+        data-testid="school-assignee-filter"
+      >
+        <span className="truncate">{currentLabel}</span>
+        <svg className={`w-3 h-3 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 min-w-[240px] bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-hidden flex flex-col">
+          <input
+            autoFocus
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search team member…"
+            className="border-b border-slate-100 px-3 py-2 text-sm focus:outline-none"
+            data-testid="school-assignee-filter-search"
+          />
+          <div className="overflow-y-auto flex-1">
+            <button type="button" onClick={() => { onChange('all'); setOpen(false); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${value === 'all' ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}>
+              All people
+            </button>
+            <button type="button" onClick={() => { onChange('unassigned'); setOpen(false); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${value === 'unassigned' ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}>
+              Unassigned
+            </button>
+            {filtered.length === 0 && (
+              <div className="px-3 py-4 text-xs text-slate-400 text-center">No match for "{q}"</div>
+            )}
+            {filtered.map(u => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => { onChange(u.id); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${value === u.id ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{u.name}</span>
+                  {u.role === 'growth_partner' && (
+                    <span className="text-[10px] uppercase text-purple-600 bg-purple-50 rounded px-1.5 py-0.5">GP</span>
+                  )}
+                </div>
+                {u.city && <div className="text-[11px] text-slate-400">{u.city}</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Helper function to get absolute URL for uploads
 const getAbsoluteUrl = (url) => {
@@ -495,6 +594,8 @@ const AdminSchoolCRM = () => {
   const [searchAllStatuses, setSearchAllStatuses] = useState(true);
   const [activeSection, setActiveSection] = useState('new');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [sortMode, setSortMode] = useState('default'); // 'default' | 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc'
   
   // Main Tab State - dashboard, leads, contacts
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -793,10 +894,12 @@ const AdminSchoolCRM = () => {
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
+    contact_role: '',
     phone: '',
     countryCode: '+91',
     email: '',
     location: '',
+    address: '',
     board: '',
     student_count: '',
     meeting_type: 'offline',
@@ -807,7 +910,8 @@ const AdminSchoolCRM = () => {
     notes: '',
     quoted_price: '',
     selected_offerings: [],
-    assign_option: 'self',
+    assign_option: 'self',   // 'self' | 'admin' | 'gp'
+    assigned_gp_id: '',      // used when assign_option === 'gp'
     sendIntroEmail: false,
     school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
   });
@@ -2868,13 +2972,26 @@ ${FOOTER}</div></body></html>`
     const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
     // Clean phone for email generation - remove spaces and special chars
     const cleanPhone = newLead.phone.replace(/[^0-9]/g, '');
+    // Resolve assignee: 'self' → me, 'admin' → let backend auto-assign, 'gp' → chosen GP
+    let assign_option = newLead.assign_option;
+    let explicit_assigned_to = '';
+    if (newLead.assign_option === 'gp') {
+      if (!newLead.assigned_gp_id) {
+        toast.error('Please pick a Growth Partner to assign this lead to');
+        return;
+      }
+      explicit_assigned_to = newLead.assigned_gp_id;
+      assign_option = 'admin'; // route through admin path but with explicit assignee
+    }
     try {
       const response = await axios.post(`${API}/schools/inquiry`, {
         school_name: newLead.school_name,
         contact_name: newLead.contact_name,
+        contact_role: newLead.contact_role || '',
         email: newLead.email || `${cleanPhone}@school.oll`,
         phone: fullPhone,
         location: newLead.location,
+        address: newLead.address || '',
         school_size: newLead.student_count || '',
         fee_range: '',
         board: newLead.board,
@@ -2888,7 +3005,8 @@ ${FOOTER}</div></body></html>`
         notes: newLead.notes,
         quoted_price: newLead.quoted_price,
         selected_offerings: newLead.selected_offerings,
-        assign_option: newLead.assign_option,
+        assign_option,
+        assigned_to: explicit_assigned_to,
         added_by: user?.id || user?.email,
         added_by_name: user?.name || 'Admin',
         school_contacts: newLead.school_contacts.filter(c => c.name)
@@ -2918,16 +3036,18 @@ ${FOOTER}</div></body></html>`
       }
 
       setShowAddForm(false);
-      setNewLead({ 
-        school_name: '', 
-        contact_name: '', 
-        phone: '', 
+      setNewLead({
+        school_name: '',
+        contact_name: '',
+        contact_role: '',
+        phone: '',
         countryCode: '+91',
         email: '',
-        location: '', 
-        board: '', 
+        location: '',
+        address: '',
+        board: '',
         student_count: '',
-        meeting_type: 'offline', 
+        meeting_type: 'offline',
         meeting_date: null,
         meeting_time: '',
         source: 'manual',
@@ -2936,6 +3056,7 @@ ${FOOTER}</div></body></html>`
         quoted_price: '',
         selected_offerings: [],
         assign_option: 'self',
+        assigned_gp_id: '',
         sendIntroEmail: false,
         school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
       });
@@ -4039,16 +4160,46 @@ ${FOOTER}</div></body></html>`
     
     // Assignee filter — match if the user is EITHER the assignee OR the RM,
     // so RMs see their schools even when the assigned_to field belongs to someone else.
+    // Broadened Feb 2026 to also match by name/email because older records
+    // sometimes store the assignee as an email string rather than a user id
+    // (auto-imports, migration artefacts) — the plain-id check missed those.
     let matchesAssignee = true;
     if (assigneeFilter !== 'all') {
       if (assigneeFilter === 'unassigned') {
         matchesAssignee = !inq.assigned_to && !inq.relationship_manager_id;
       } else {
-        matchesAssignee = inq.assigned_to === assigneeFilter || inq.relationship_manager_id === assigneeFilter;
+        const selectedUser = teamUsers.find(u => u.id === assigneeFilter);
+        const selectedEmail = (selectedUser?.email || '').toLowerCase();
+        const selectedName = (selectedUser?.name || '').toLowerCase();
+        const assignedTo = (inq.assigned_to || '').toLowerCase();
+        const assignedName = (inq.assigned_to_name || '').toLowerCase();
+        const rmId = (inq.relationship_manager_id || '').toLowerCase();
+        const rmName = (inq.relationship_manager_name || '').toLowerCase();
+        const filterLower = assigneeFilter.toLowerCase();
+        matchesAssignee =
+          inq.assigned_to === assigneeFilter ||
+          inq.relationship_manager_id === assigneeFilter ||
+          (!!selectedEmail && (assignedTo === selectedEmail || rmId === selectedEmail)) ||
+          (!!selectedName && (assignedName === selectedName || rmName === selectedName)) ||
+          assignedTo === filterLower ||
+          rmId === filterLower;
       }
     }
     
     return matchesSearch && matchesSection && matchesAssignee;
+  });
+
+  // Apply sort — kept outside the filter so re-runs on filter/search stay cheap.
+  const sortedInquiries = [...filteredInquiries].sort((a, b) => {
+    const aDate = new Date(a.created_at || 0).getTime();
+    const bDate = new Date(b.created_at || 0).getTime();
+    switch (sortMode) {
+      case 'date_desc': return bDate - aDate;
+      case 'date_asc':  return aDate - bDate;
+      case 'name_asc':  return (a.school_name || '').localeCompare(b.school_name || '');
+      case 'name_desc': return (b.school_name || '').localeCompare(a.school_name || '');
+      default:          return bDate - aDate; // default: newest first
+    }
   });
 
   // Count function that groups lost statuses under 'lost' tab
@@ -4181,6 +4332,11 @@ ${FOOTER}</div></body></html>`
           <p className="flex items-center gap-1 text-[#D63031] font-medium text-xs">
             <Calendar className="w-3 h-3" />
             {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
+          </p>
+        )}
+        {inquiry.created_at && (
+          <p className="text-[10px] text-slate-400">
+            Added {format(new Date(inquiry.created_at), 'dd MMM yyyy')}
           </p>
         )}
         {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
@@ -5099,28 +5255,50 @@ ${FOOTER}</div></body></html>`
               </label>
             </div>
             <div className="flex flex-wrap gap-2">
-              <select
+              <AssigneeSearchFilter
                 value={assigneeFilter}
-                onChange={(e) => setAssigneeFilter(e.target.value)}
-                className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm flex-1 sm:flex-none"
-                data-testid="school-assignee-filter"
+                onChange={setAssigneeFilter}
+                teamUsers={teamUsers}
+              />
+              <Button
+                onClick={() => setShowBulkImportModal(true)}
+                variant="outline"
+                className="flex items-center gap-2 flex-1 sm:flex-none justify-center"
+                data-testid="bulk-import-btn"
               >
-                <option value="all">All people</option>
-                <option value="unassigned">Unassigned</option>
-                {teamUsers.filter(u => u.is_active).map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
+                <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">Bulk</span> Import
+              </Button>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value)}
+                className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                data-testid="school-sort-select"
+                title="Sort schools"
+              >
+                <option value="default">Newest first</option>
+                <option value="date_desc">Date added ↓ (newest)</option>
+                <option value="date_asc">Date added ↑ (oldest)</option>
+                <option value="name_asc">Name A → Z</option>
+                <option value="name_desc">Name Z → A</option>
               </select>
-              {activeSection === 'active' && (
-                <Button
-                  onClick={() => setShowBulkImportModal(true)}
-                  variant="outline"
-                  className="flex items-center gap-2 flex-1 sm:flex-none justify-center"
-                  data-testid="bulk-import-btn"
+              <div className="flex bg-slate-100 rounded-lg p-0.5" data-testid="school-view-toggle">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 h-9 rounded-md text-xs font-medium ${viewMode === 'grid' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                  data-testid="school-view-grid"
                 >
-                  <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">Bulk</span> Import
-                </Button>
-              )}
+                  Grid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 h-9 rounded-md text-xs font-medium ${viewMode === 'list' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                  data-testid="school-view-list"
+                >
+                  List
+                </button>
+              </div>
               <Button
                 onClick={handleLmsSync}
                 disabled={lmsSyncing}
@@ -5244,9 +5422,65 @@ ${FOOTER}</div></body></html>`
             )}
           </div>
         </div>
+      ) : viewMode === 'list' ? (
+        <div className="overflow-x-auto border border-slate-200 rounded-lg" data-testid="school-list-view">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="text-left px-3 py-2">School</th>
+                <th className="text-left px-3 py-2">Contact</th>
+                <th className="text-left px-3 py-2 hidden md:table-cell">Phone</th>
+                <th className="text-left px-3 py-2 hidden lg:table-cell">City</th>
+                <th className="text-left px-3 py-2 hidden lg:table-cell">Board</th>
+                <th className="text-left px-3 py-2 hidden md:table-cell">Assignee</th>
+                <th className="text-left px-3 py-2">Date Added</th>
+                <th className="text-right px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedInquiries.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">No schools match the current filters</td></tr>
+              )}
+              {sortedInquiries.map((inq) => {
+                const assignee = teamUsers.find(u => u.id === inq.assigned_to);
+                return (
+                  <tr key={inq.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                    <td className="px-3 py-2 font-medium text-slate-800">{inq.school_name}</td>
+                    <td className="px-3 py-2 text-slate-600">
+                      {inq.contact_name}
+                      {inq.contact_role && (
+                        <span className="text-[10px] uppercase text-slate-400 ml-1">· {String(inq.contact_role).replace(/_/g,' ')}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 hidden md:table-cell">{inq.phone}</td>
+                    <td className="px-3 py-2 text-slate-600 hidden lg:table-cell">{inq.location}</td>
+                    <td className="px-3 py-2 text-slate-600 hidden lg:table-cell">{inq.board}</td>
+                    <td className="px-3 py-2 text-slate-600 hidden md:table-cell">
+                      {assignee?.name || inq.assigned_to_name || <span className="text-slate-400">Unassigned</span>}
+                    </td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">
+                      {inq.created_at ? format(new Date(inq.created_at), 'dd MMM yyyy') : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditLeadModal(inq)}
+                        data-testid={`school-list-view-btn-${inq.id}`}
+                        title="Edit lead"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredInquiries.map((inquiry) => renderSchoolCard(inquiry))}
+          {sortedInquiries.map((inquiry) => renderSchoolCard(inquiry))}
         </div>
       )}
         </>
@@ -8289,46 +8523,63 @@ ${FOOTER}</div></body></html>`
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Contact Name *</label>
-                <Input
-                  placeholder="Contact person"
-                  value={newLead.contact_name}
-                  onChange={(e) => setNewLead({...newLead, contact_name: e.target.value})}
-                  data-testid="new-school-contact"
-                />
-              </div>
-              <div className="relative">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
-                <PhoneInput
-                  value={newLead.phone}
-                  onChange={(val) => {
-                    setNewLead({...newLead, phone: val});
-                    searchAutocomplete(val, 'phone');
-                  }}
-                  countryCode={newLead.countryCode}
-                  onCountryCodeChange={(code) => setNewLead({...newLead, countryCode: code})}
-                  placeholder="Phone number"
-                  data-testid="new-school-phone"
-                />
-                {/* Autocomplete dropdown */}
-                {showAutocomplete && autocompleteField === 'phone' && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {autocompleteSuggestions.map((s, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => handleAutocompleteFill(s)}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
-                      >
-                        <p className="font-medium text-sm">{s.school_name || s.name}</p>
-                        <p className="text-xs text-slate-500">{s.phone} • {s.location || 'No location'}</p>
-                      </button>
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold text-slate-800 mb-3">Primary Contact</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Contact Name *</label>
+                  <Input
+                    placeholder="Contact person"
+                    value={newLead.contact_name}
+                    onChange={(e) => setNewLead({...newLead, contact_name: e.target.value})}
+                    data-testid="new-school-contact"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                  <select
+                    value={newLead.contact_role}
+                    onChange={(e) => setNewLead({...newLead, contact_role: e.target.value})}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                    data-testid="new-school-contact-role"
+                  >
+                    <option value="">Select role</option>
+                    {PRIMARY_CONTACT_ROLES.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
                     ))}
-                  </div>
-                )}
+                  </select>
+                </div>
+                <div className="relative">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
+                  <PhoneInput
+                    value={newLead.phone}
+                    onChange={(val) => {
+                      setNewLead({...newLead, phone: val});
+                      searchAutocomplete(val, 'phone');
+                    }}
+                    countryCode={newLead.countryCode}
+                    onCountryCodeChange={(code) => setNewLead({...newLead, countryCode: code})}
+                    placeholder="Phone number"
+                    data-testid="new-school-phone"
+                  />
+                  {/* Autocomplete dropdown */}
+                  {showAutocomplete && autocompleteField === 'phone' && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {autocompleteSuggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleAutocompleteFill(s)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                        >
+                          <p className="font-medium text-sm">{s.school_name || s.name}</p>
+                          <p className="text-xs text-slate-500">{s.phone} • {s.location || 'No location'}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="relative">
@@ -8395,6 +8646,18 @@ ${FOOTER}</div></body></html>`
                   data-testid="new-school-students"
                 />
               </div>
+            </div>
+
+            {/* School Address */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">School Address</label>
+              <Textarea
+                placeholder="Full postal address (optional)"
+                value={newLead.address}
+                onChange={(e) => setNewLead({...newLead, address: e.target.value})}
+                className="min-h-[60px]"
+                data-testid="new-school-address"
+              />
             </div>
             
             {/* School Team Contacts */}
@@ -8494,12 +8757,12 @@ ${FOOTER}</div></body></html>`
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Date</label>
+                  <p className="text-xs text-slate-500 mb-1">Past dates allowed for historic entries</p>
                   <div className="border rounded-lg p-2">
                     <CalendarComponent
                       mode="single"
                       selected={newLead.meeting_date}
                       onSelect={(date) => setNewLead({...newLead, meeting_date: date})}
-                      disabled={(date) => date < startOfDay(new Date())}
                       className="rounded-md"
                     />
                   </div>
@@ -8618,7 +8881,7 @@ ${FOOTER}</div></body></html>`
             {/* Assignment Option */}
             <div className="bg-blue-50 rounded-lg p-4">
               <label className="block text-sm font-medium text-slate-700 mb-3">Lead Assignment</label>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
@@ -8627,6 +8890,7 @@ ${FOOTER}</div></body></html>`
                     checked={newLead.assign_option === 'self'}
                     onChange={(e) => setNewLead({...newLead, assign_option: e.target.value})}
                     className="w-4 h-4 text-blue-600"
+                    data-testid="assign-self"
                   />
                   <span className="text-sm text-slate-700">Assign to me</span>
                 </label>
@@ -8638,10 +8902,66 @@ ${FOOTER}</div></body></html>`
                     checked={newLead.assign_option === 'admin'}
                     onChange={(e) => setNewLead({...newLead, assign_option: e.target.value})}
                     className="w-4 h-4 text-blue-600"
+                    data-testid="assign-admin"
                   />
                   <span className="text-sm text-slate-700">Let admin assign</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="assign_option"
+                    value="gp"
+                    checked={newLead.assign_option === 'gp'}
+                    onChange={(e) => {
+                      // Auto-pick the GP whose city matches the school's city
+                      // so the coordinator doesn't have to hunt through the list.
+                      const gps = (teamUsers || []).filter(u => u.is_active && (u.role || '').toLowerCase() === 'growth_partner');
+                      const cityLower = (newLead.location || '').trim().toLowerCase();
+                      const cityMatch = cityLower
+                        ? gps.find(g => (g.city || '').trim().toLowerCase() === cityLower)
+                        : null;
+                      setNewLead({
+                        ...newLead,
+                        assign_option: e.target.value,
+                        assigned_gp_id: cityMatch ? cityMatch.id : newLead.assigned_gp_id,
+                      });
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                    data-testid="assign-gp"
+                  />
+                  <span className="text-sm text-slate-700">Assign to GP</span>
+                </label>
               </div>
+              {newLead.assign_option === 'gp' && (() => {
+                const gps = (teamUsers || []).filter(u => u.is_active && (u.role || '').toLowerCase() === 'growth_partner');
+                const cityLower = (newLead.location || '').trim().toLowerCase();
+                const cityMatch = cityLower ? gps.find(g => (g.city || '').trim().toLowerCase() === cityLower) : null;
+                return (
+                  <div className="mt-3 space-y-1">
+                    <label className="block text-xs font-medium text-slate-600">Growth Partner</label>
+                    <select
+                      value={newLead.assigned_gp_id}
+                      onChange={(e) => setNewLead({...newLead, assigned_gp_id: e.target.value})}
+                      className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                      data-testid="assign-gp-select"
+                    >
+                      <option value="">— Select a Growth Partner —</option>
+                      {gps.length === 0 && <option value="" disabled>No active Growth Partners in the team</option>}
+                      {gps.map(gp => (
+                        <option key={gp.id} value={gp.id}>
+                          {gp.name}{gp.city ? ` · ${gp.city}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {cityMatch && newLead.assigned_gp_id === cityMatch.id && (
+                      <p className="text-xs text-emerald-700">✓ Auto-picked {cityMatch.name} (matches school city {cityMatch.city})</p>
+                    )}
+                    {cityLower && !cityMatch && (
+                      <p className="text-xs text-amber-700">No GP registered for {newLead.location}. Pick manually above.</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Send Introduction Email Checkbox */}
