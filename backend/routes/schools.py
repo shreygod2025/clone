@@ -72,6 +72,10 @@ class SchoolInquiry(BaseModel):
     followup_comment: str = ""
     conversion_amount: Optional[Union[str, int, float]] = None
     quoted_price: Optional[Union[str, int, float]] = None  # Price quoted during meeting
+    quoted_price_mode: str = "fixed"    # 'fixed' (total) | 'per_student' (× student_count)
+    student_count_tier: str = ""        # 100-300, 300-500, 500-800, 800-1000, 1000-1500, 1500+, other
+    is_upsell: bool = False             # true when created against an existing school
+    parent_inquiry_id: str = ""         # original school inquiry id (upsell chain root)
     selected_offerings: Optional[List[str]] = None  # Offerings selected during meeting
     source: str = "website"
     referred_by: str = ""  # Name of person who referred (when source is referral)
@@ -97,6 +101,7 @@ class SchoolInquiry(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class SchoolInquiryCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     school_name: str
     contact_name: str
     contact_role: str = ""  # Primary contact role
@@ -104,6 +109,7 @@ class SchoolInquiryCreate(BaseModel):
     phone: str
     location: str = ""
     school_size: str = ""
+    student_count_tier: str = ""  # 100-300, 300-500, 500-800, 800-1000, 1000-1500, 1500+, other
     fee_range: str = ""
     board: str = ""
     address: str = ""  # Full school address
@@ -111,6 +117,9 @@ class SchoolInquiryCreate(BaseModel):
     support_needed: List[str] = []
     selected_offerings: Optional[List[str]] = None
     quoted_price: Optional[str] = None
+    quoted_price_mode: str = "fixed"  # 'fixed' | 'per_student'
+    is_upsell: bool = False
+    parent_inquiry_id: str = ""
     meeting_date: Optional[str] = None
     meeting_time: Optional[str] = None
     meeting_type: str = "offline"
@@ -151,6 +160,10 @@ class SchoolInquiryUpdate(BaseModel):
     followup_comment: Optional[str] = None
     conversion_amount: Optional[Union[str, int, float]] = None
     quoted_price: Optional[Union[str, int, float]] = None  # Price quoted during meeting
+    quoted_price_mode: Optional[str] = None  # 'fixed' | 'per_student'
+    student_count_tier: Optional[str] = None
+    is_upsell: Optional[bool] = None
+    parent_inquiry_id: Optional[str] = None
     assigned_to: Optional[str] = None
     onboarding_data: Optional[dict] = None
     proposal_data: Optional[dict] = None  # Edit Lead / Generate Proposal data

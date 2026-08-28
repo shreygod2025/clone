@@ -165,6 +165,18 @@ const TICKET_RELATED_TO_OPTIONS = {
 import CitySearch from '../../components/CitySearch';
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB', 'Not Affiliated'];
 
+// Approx. student-count tiers requested by ops. Midpoint is used to compute a
+// live "approx lead value" when the admin picks a Per-Student pricing mode.
+const STUDENT_COUNT_TIERS = [
+  { value: '100-300',   label: '100 – 300',   midpoint: 200  },
+  { value: '300-500',   label: '300 – 500',   midpoint: 400  },
+  { value: '500-800',   label: '500 – 800',   midpoint: 650  },
+  { value: '800-1000',  label: '800 – 1000',  midpoint: 900  },
+  { value: '1000-1500', label: '1000 – 1500', midpoint: 1250 },
+  { value: '1500+',     label: '1500+',       midpoint: 1750 },
+  { value: 'other',     label: 'Other (enter exact)', midpoint: 0 },
+];
+
 // Primary contact role options — matches the roles used inside school_contacts[]
 // with the addition of "Computer Teacher" requested by ops (Feb 2026).
 const PRIMARY_CONTACT_ROLES = [
@@ -594,6 +606,8 @@ const AdminSchoolCRM = () => {
   const [searchAllStatuses, setSearchAllStatuses] = useState(true);
   const [activeSection, setActiveSection] = useState('new');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [cityFilter, setCityFilter] = useState('all');
+  const [offeringFilter, setOfferingFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [sortMode, setSortMode] = useState('default'); // 'default' | 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc'
   
@@ -623,6 +637,9 @@ const AdminSchoolCRM = () => {
   const [showFollowupModal, setShowFollowupModal] = useState(null);
   const [showOnboardModal, setShowOnboardModal] = useState(null);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  // Inquiry history modal — lists all upsell/repeat inquiries for a given school
+  // (matched by phone + school_name) so admins can see the timeline in one place.
+  const [historyModal, setHistoryModal] = useState(null);
   // LMS sync state — feeds the "Sync LMS" button + last-synced pill
   const [lmsSyncing, setLmsSyncing] = useState(false);
   const [lmsSyncStatus, setLmsSyncStatus] = useState(null); // { last_sync_at, last_created, last_linked, last_total }
@@ -902,6 +919,7 @@ const AdminSchoolCRM = () => {
     address: '',
     board: '',
     student_count: '',
+    student_count_tier: '',   // '100-300' | '300-500' | ... | '1500+' | 'other'
     meeting_type: 'offline',
     meeting_date: null,
     meeting_time: '',
@@ -909,9 +927,12 @@ const AdminSchoolCRM = () => {
     referred_by: '',
     notes: '',
     quoted_price: '',
+    quoted_price_mode: 'fixed', // 'fixed' | 'per_student'
     selected_offerings: [],
     assign_option: 'self',   // 'self' | 'admin' | 'gp'
     assigned_gp_id: '',      // used when assign_option === 'gp'
+    is_upsell: false,        // set to true when picked from existing-school autocomplete
+    parent_inquiry_id: '',   // links this upsell to the original school inquiry
     sendIntroEmail: false,
     school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
   });
@@ -1514,19 +1535,30 @@ ${FOOTER}</div></body></html>`
   };
 
   const handleAutocompleteFill = (suggestion) => {
-    setNewLead({
-      ...newLead,
+    // When admin picks an existing school from the autocomplete, the intent is
+    // usually an UPSELL — retain the existing school context (name, contact,
+    // phone, address, board, city) and let the admin only pick a new
+    // offering + meeting + quoted price. We stamp is_upsell so downstream
+    // logic (badge on card, history rollup) can tell the two apart, and we
+    // capture the parent inquiry_id so the backend can link records.
+    setNewLead(prev => ({
+      ...prev,
       school_name: suggestion.school_name || '',
       contact_name: suggestion.contact_name || '',
+      contact_role: suggestion.contact_role || prev.contact_role || '',
       phone: suggestion.phone || '',
       email: suggestion.email || '',
       location: suggestion.location || '',
+      address: suggestion.address || prev.address || '',
       board: suggestion.board || '',
-      student_count: suggestion.student_count || '',
+      student_count: suggestion.student_count || prev.student_count || '',
+      student_count_tier: suggestion.student_count_tier || prev.student_count_tier || '',
       meeting_type: suggestion.meeting_type || 'offline',
-    });
+      is_upsell: true,
+      parent_inquiry_id: suggestion.id || '',
+    }));
     setShowAutocomplete(false);
-    toast.info('Form auto-filled from existing record');
+    toast.info(`Existing school — this will be tracked as an Upsell inquiry for ${suggestion.school_name}`);
   };
 
   const fetchInquiries = async () => {
@@ -2993,6 +3025,7 @@ ${FOOTER}</div></body></html>`
         location: newLead.location,
         address: newLead.address || '',
         school_size: newLead.student_count || '',
+        student_count_tier: newLead.student_count_tier || '',
         fee_range: '',
         board: newLead.board,
         meeting_type: newLead.meeting_type,
@@ -3004,6 +3037,9 @@ ${FOOTER}</div></body></html>`
         referred_by: newLead.referred_by,
         notes: newLead.notes,
         quoted_price: newLead.quoted_price,
+        quoted_price_mode: newLead.quoted_price_mode || 'fixed',
+        is_upsell: !!newLead.is_upsell,
+        parent_inquiry_id: newLead.parent_inquiry_id || '',
         selected_offerings: newLead.selected_offerings,
         assign_option,
         assigned_to: explicit_assigned_to,
@@ -3047,6 +3083,7 @@ ${FOOTER}</div></body></html>`
         address: '',
         board: '',
         student_count: '',
+        student_count_tier: '',
         meeting_type: 'offline',
         meeting_date: null,
         meeting_time: '',
@@ -3054,6 +3091,7 @@ ${FOOTER}</div></body></html>`
         referred_by: '',
         notes: '',
         quoted_price: '',
+        quoted_price_mode: 'fixed',
         selected_offerings: [],
         assign_option: 'self',
         assigned_gp_id: '',
@@ -4185,8 +4223,24 @@ ${FOOTER}</div></body></html>`
           rmId === filterLower;
       }
     }
-    
-    return matchesSearch && matchesSection && matchesAssignee;
+
+    // City filter (case-insensitive substring match against inquiry.location)
+    let matchesCity = true;
+    if (cityFilter !== 'all') {
+      matchesCity = (inq.location || '').trim().toLowerCase() === cityFilter.toLowerCase();
+    }
+
+    // Offering filter — inquiry.selected_offerings is stored as an array of
+    // offering IDs (strings). Match if the filter value appears in the array
+    // or is contained in the legacy `programs_interested` fallback.
+    let matchesOffering = true;
+    if (offeringFilter !== 'all') {
+      const offs = inq.selected_offerings || [];
+      const legacy = inq.programs_interested || [];
+      matchesOffering = offs.includes(offeringFilter) || legacy.includes(offeringFilter);
+    }
+
+    return matchesSearch && matchesSection && matchesAssignee && matchesCity && matchesOffering;
   });
 
   // Apply sort — kept outside the filter so re-runs on filter/search stay cheap.
@@ -4335,8 +4389,33 @@ ${FOOTER}</div></body></html>`
           </p>
         )}
         {inquiry.created_at && (
-          <p className="text-[10px] text-slate-400">
-            Added {format(new Date(inquiry.created_at), 'dd MMM yyyy')}
+          <p className="text-[10px] text-slate-400 flex items-center gap-2">
+            <span>Added {format(new Date(inquiry.created_at), 'dd MMM yyyy')}</span>
+            {(() => {
+              // Count sibling inquiries — same phone or school_name — so admins
+              // know at a glance whether this school has repeat activity.
+              const siblings = inquiries.filter(x =>
+                x.id !== inquiry.id &&
+                ((x.phone && inquiry.phone && x.phone === inquiry.phone) ||
+                 (x.school_name && inquiry.school_name && x.school_name.trim().toLowerCase() === inquiry.school_name.trim().toLowerCase()))
+              );
+              if (siblings.length === 0) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setHistoryModal(inquiry); }}
+                  className="text-blue-600 hover:underline flex items-center gap-0.5"
+                  data-testid={`view-history-${inquiry.id}`}
+                >
+                  <History className="w-3 h-3" /> View history ({siblings.length + 1})
+                </button>
+              );
+            })()}
+          </p>
+        )}
+        {inquiry.is_upsell && (
+          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 inline-flex items-center gap-1 mt-0.5" data-testid={`upsell-badge-${inquiry.id}`}>
+            <RefreshCcw className="w-3 h-3" /> Upsell / Repeat customer
           </p>
         )}
         {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
@@ -5260,6 +5339,33 @@ ${FOOTER}</div></body></html>`
                 onChange={setAssigneeFilter}
                 teamUsers={teamUsers}
               />
+              {/* City filter — derived from inquiries so admin only sees cities in play. */}
+              {(() => {
+                const cities = Array.from(new Set(inquiries.map(i => (i.location || '').trim()).filter(Boolean))).sort();
+                return (
+                  <select
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                    data-testid="school-city-filter"
+                  >
+                    <option value="all">All Cities</option>
+                    {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                );
+              })()}
+              {/* Offering filter — sourced from the offerings collection. */}
+              <select
+                value={offeringFilter}
+                onChange={(e) => setOfferingFilter(e.target.value)}
+                className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                data-testid="school-offering-filter"
+              >
+                <option value="all">All Offerings</option>
+                {offerings.map(o => (
+                  <option key={o.id || o.name} value={o.id || o.name}>{o.name || o.title || o.id}</option>
+                ))}
+              </select>
               <Button
                 onClick={() => setShowBulkImportModal(true)}
                 variant="outline"
@@ -5522,7 +5628,14 @@ ${FOOTER}</div></body></html>`
               <option value="trustee_owner">Trustee/Owner</option>
               <option value="director">Director</option>
               <option value="coordinator">Coordinator</option>
+              <option value="primary_coordinator">Primary Coordinator</option>
+              <option value="secondary_coordinator">Secondary Coordinator</option>
+              <option value="computer_teacher">Computer Teacher</option>
+              <option value="teacher">Teacher</option>
+              <option value="head_of_department">Head of Department</option>
               <option value="accounts">Accounts</option>
+              <option value="admin">Admin</option>
+              <option value="other">Other</option>
               <option value="Primary Contact">Primary Contact</option>
             </select>
             <select
@@ -6855,14 +6968,9 @@ ${FOOTER}</div></body></html>`
                         data-testid={`edit-contact-role-${idx}`}
                       >
                         <option value="">Select Role</option>
-                        <option value="principal">Principal</option>
-                        <option value="vice_principal">Vice Principal</option>
-                        <option value="trustee_owner">Trustee/Owner</option>
-                        <option value="director">Director</option>
-                        <option value="coordinator">Coordinator</option>
-                        <option value="accounts">Accounts</option>
-                        <option value="primary_coordinator">Primary Coordinator</option>
-                        <option value="secondary_coordinator">Secondary Coordinator</option>
+                        {PRIMARY_CONTACT_ROLES.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -7851,14 +7959,9 @@ ${FOOTER}</div></body></html>`
                         className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
                       >
                         <option value="">Select Role *</option>
-                        <option value="principal">Principal</option>
-                        <option value="vice_principal">Vice Principal</option>
-                        <option value="trustee_owner">Trustee/Owner</option>
-                        <option value="director">Director</option>
-                        <option value="coordinator">Coordinator</option>
-                        <option value="accounts">Accounts</option>
-                        <option value="primary_coordinator">Primary Coordinator</option>
-                        <option value="secondary_coordinator">Secondary Coordinator</option>
+                        {PRIMARY_CONTACT_ROLES.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -8491,6 +8594,25 @@ ${FOOTER}</div></body></html>`
             <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">
               💡 Type at least 3 characters in School Name, Phone, or Email to auto-fill from existing records
             </div>
+
+            {/* Upsell banner — surfaced when admin picked from autocomplete */}
+            {newLead.is_upsell && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3" data-testid="upsell-banner">
+                <RefreshCcw className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-800">Existing school — this will be logged as an Upsell inquiry</p>
+                  <p className="text-xs text-amber-700">School details are pre-filled from the original record. Update the Offering / Meeting / Quoted Price for this new opportunity.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNewLead({ ...newLead, is_upsell: false, parent_inquiry_id: '' })}
+                  className="text-amber-700 text-xs underline"
+                  data-testid="clear-upsell-banner"
+                >
+                  Not an upsell
+                </button>
+              </div>
+            )}
             
             <div className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-2">School Name *</label>
@@ -8638,26 +8760,89 @@ ${FOOTER}</div></body></html>`
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Est. Students</label>
-                <Input
-                  type="number"
-                  placeholder="Student count"
-                  value={newLead.student_count}
-                  onChange={(e) => setNewLead({...newLead, student_count: e.target.value})}
-                  data-testid="new-school-students"
-                />
+                <select
+                  value={newLead.student_count_tier}
+                  onChange={(e) => {
+                    const tier = e.target.value;
+                    const tierMeta = STUDENT_COUNT_TIERS.find(t => t.value === tier);
+                    setNewLead({
+                      ...newLead,
+                      student_count_tier: tier,
+                      // For fixed tiers, snap the exact count to the midpoint so
+                      // downstream logic (approx lead value, kit sizing) has a
+                      // number to work with. When admin picks "other", we clear
+                      // the number so they can type the precise value.
+                      student_count: tier && tier !== 'other' ? String(tierMeta?.midpoint || '') : '',
+                    });
+                  }}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                  data-testid="new-school-students-tier"
+                >
+                  <option value="">Select tier</option>
+                  {STUDENT_COUNT_TIERS.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                {newLead.student_count_tier === 'other' && (
+                  <Input
+                    type="number"
+                    placeholder="Exact student count"
+                    value={newLead.student_count}
+                    onChange={(e) => setNewLead({ ...newLead, student_count: e.target.value })}
+                    className="mt-2"
+                    data-testid="new-school-students"
+                  />
+                )}
               </div>
             </div>
 
-            {/* School Address */}
+            {/* School Address — with Locate Me (browser geolocation) */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">School Address</label>
-              <Textarea
-                placeholder="Full postal address (optional)"
-                value={newLead.address}
-                onChange={(e) => setNewLead({...newLead, address: e.target.value})}
-                className="min-h-[60px]"
-                data-testid="new-school-address"
-              />
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder="Full postal address (optional)"
+                  value={newLead.address}
+                  onChange={(e) => setNewLead({...newLead, address: e.target.value})}
+                  className="min-h-[60px] flex-1"
+                  data-testid="new-school-address"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-fit self-start whitespace-nowrap"
+                  data-testid="locate-me-btn"
+                  onClick={() => {
+                    if (!navigator.geolocation) {
+                      toast.error('Geolocation not supported by this browser');
+                      return;
+                    }
+                    toast.info('Fetching your location…');
+                    navigator.geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        try {
+                          // Reverse-geocode via OpenStreetMap (no API key needed).
+                          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`, {
+                            headers: { 'Accept-Language': 'en' },
+                          });
+                          const j = await res.json();
+                          const line = j?.display_name || `${latitude},${longitude}`;
+                          setNewLead((prev) => ({ ...prev, address: line, location: prev.location || j?.address?.city || j?.address?.town || j?.address?.village || '' }));
+                          toast.success('Address filled from your location');
+                        } catch (err) {
+                          setNewLead((prev) => ({ ...prev, address: `${latitude}, ${longitude}` }));
+                          toast.warning('Filled coordinates — reverse geocoding unavailable');
+                        }
+                      },
+                      (err) => toast.error(err.message || 'Could not read location'),
+                      { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                  }}
+                >
+                  <MapPin className="w-4 h-4 mr-1" /> Locate Me
+                </Button>
+              </div>
             </div>
             
             {/* School Team Contacts */}
@@ -8685,14 +8870,9 @@ ${FOOTER}</div></body></html>`
                         data-testid={`new-contact-role-${idx}`}
                       >
                         <option value="">Select Role</option>
-                        <option value="principal">Principal</option>
-                        <option value="vice_principal">Vice Principal</option>
-                        <option value="trustee_owner">Trustee/Owner</option>
-                        <option value="director">Director</option>
-                        <option value="coordinator">Coordinator</option>
-                        <option value="accounts">Accounts</option>
-                        <option value="primary_coordinator">Primary Coordinator</option>
-                        <option value="secondary_coordinator">Secondary Coordinator</option>
+                        {PRIMARY_CONTACT_ROLES.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -8828,16 +9008,58 @@ ${FOOTER}</div></body></html>`
               </div>
             )}
 
-            {/* Quoted Price */}
+            {/* Quoted Price — Per Student × approx count OR Fixed contract value */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Quoted Price (₹)</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <label className="flex items-center gap-1 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="quoted_price_mode"
+                    checked={newLead.quoted_price_mode === 'fixed'}
+                    onChange={() => setNewLead({ ...newLead, quoted_price_mode: 'fixed' })}
+                    data-testid="quoted-price-mode-fixed"
+                  />
+                  Fixed contract value
+                </label>
+                <label className="flex items-center gap-1 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="quoted_price_mode"
+                    checked={newLead.quoted_price_mode === 'per_student'}
+                    onChange={() => setNewLead({ ...newLead, quoted_price_mode: 'per_student' })}
+                    data-testid="quoted-price-mode-per-student"
+                  />
+                  Per student × count
+                </label>
+              </div>
               <Input
                 type="number"
-                placeholder="Enter quoted price"
+                placeholder={newLead.quoted_price_mode === 'per_student' ? 'Price per student (₹)' : 'Total quoted price (₹)'}
                 value={newLead.quoted_price}
                 onChange={(e) => setNewLead({...newLead, quoted_price: e.target.value})}
                 data-testid="new-school-quoted-price"
               />
+              {/* Live approx lead value */}
+              {(() => {
+                const price = parseFloat(newLead.quoted_price) || 0;
+                if (!price) return null;
+                if (newLead.quoted_price_mode === 'per_student') {
+                  const count = parseInt(newLead.student_count) || 0;
+                  const tier = STUDENT_COUNT_TIERS.find(t => t.value === newLead.student_count_tier);
+                  const used = count || tier?.midpoint || 0;
+                  if (!used) return <p className="text-xs text-amber-600 mt-1">Pick a student-count tier above to compute lead value</p>;
+                  const total = price * used;
+                  return (
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Approx lead value: <span className="font-bold">₹{total.toLocaleString()}</span> ({used} students × ₹{price.toLocaleString()})
+                    </p>
+                  );
+                }
+                return (
+                  <p className="text-xs text-slate-500 mt-1">Total contract value: ₹{price.toLocaleString()}</p>
+                );
+              })()}
             </div>
 
             <div>
@@ -10243,14 +10465,9 @@ ${FOOTER}</div></body></html>`
                         className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
                       >
                         <option value="">Select Role *</option>
-                        <option value="principal">Principal</option>
-                        <option value="vice_principal">Vice Principal</option>
-                        <option value="trustee_owner">Trustee/Owner</option>
-                        <option value="director">Director</option>
-                        <option value="coordinator">Coordinator</option>
-                        <option value="accounts">Accounts</option>
-                        <option value="primary_coordinator">Primary Coordinator</option>
-                        <option value="secondary_coordinator">Secondary Coordinator</option>
+                        {PRIMARY_CONTACT_ROLES.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -11530,14 +11747,9 @@ ${FOOTER}</div></body></html>`
                           className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
                         >
                           <option value="">Select Role *</option>
-                          <option value="principal">Principal</option>
-                          <option value="vice_principal">Vice Principal</option>
-                          <option value="trustee_owner">Trustee/Owner</option>
-                          <option value="director">Director</option>
-                          <option value="coordinator">Coordinator</option>
-                          <option value="accounts">Accounts</option>
-                          <option value="primary_coordinator">Primary Coordinator</option>
-                          <option value="secondary_coordinator">Secondary Coordinator</option>
+                          {PRIMARY_CONTACT_ROLES.map(r => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -14111,6 +14323,61 @@ ${FOOTER}</div></body></html>`
         onClose={() => setShowLinkLmsModal(null)}
         onLinked={() => fetchInquiries()}
       />
+
+      {/* Inquiry History Modal — timeline of all inquiries for a given school */}
+      <Dialog open={!!historyModal} onOpenChange={(open) => !open && setHistoryModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" data-testid="history-modal">
+          {historyModal && (() => {
+            const anchor = historyModal;
+            const siblings = inquiries.filter(x =>
+              (x.phone && anchor.phone && x.phone === anchor.phone) ||
+              (x.school_name && anchor.school_name && x.school_name.trim().toLowerCase() === anchor.school_name.trim().toLowerCase())
+            ).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Inquiry History · {anchor.school_name}</DialogTitle>
+                  <p className="text-xs text-slate-500 mt-1">{siblings.length} inquiries linked by phone / school name</p>
+                </DialogHeader>
+                <div className="overflow-y-auto pr-2 space-y-2">
+                  {siblings.map((s, idx) => {
+                    const section = STATUS_SECTIONS.find(x => x.value === s.status);
+                    return (
+                      <div
+                        key={s.id}
+                        className={`border rounded-lg p-3 ${s.id === anchor.id ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200'}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs text-slate-400">#{idx + 1} • {s.created_at ? format(new Date(s.created_at), 'dd MMM yyyy · h:mm a') : '—'}</p>
+                            <p className="font-medium text-slate-800 mt-0.5">
+                              {s.is_upsell ? '🔁 Upsell · ' : ''}
+                              {(s.selected_offerings && s.selected_offerings.length > 0)
+                                ? s.selected_offerings.slice(0, 3).map(id => (offerings.find(o => (o.id || o.name) === id)?.name || id)).join(', ')
+                                : (s.notes ? s.notes.split('\n')[0].slice(0, 70) : 'No offering specified')}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-600">
+                              {s.quoted_price && <span>Quoted: ₹{Number(s.quoted_price).toLocaleString()}</span>}
+                              {s.conversion_amount && <span>Converted: ₹{Number(s.conversion_amount).toLocaleString()}</span>}
+                              {s.assigned_to_name && <span>• {s.assigned_to_name}</span>}
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${section?.color || 'bg-slate-100'} text-white uppercase whitespace-nowrap`}>
+                            {section?.label || s.status}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end pt-2 border-t">
+                  <Button variant="outline" onClick={() => setHistoryModal(null)}>Close</Button>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
     </AdminLayout>
