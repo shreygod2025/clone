@@ -233,11 +233,15 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
 
     # ── 1. Build revenue from school_inquiries ────────────────────────────────
     # Broadened from ["converted", "active", "renewed"] to also include
-    # onboarding/in_progress — schools mid-setup already have real kit_cost
-    # and logistics_cost expenses (POs raised before final conversion). The
-    # narrower filter caused those costs to silently disappear from the P&L.
+    # onboarding/in_progress/renewal_meeting/meeting_done — schools mid-setup
+    # or up for renewal already have real kit_cost, logistics_cost, and
+    # school_share expenses. A narrower filter caused those costs to silently
+    # disappear from the P&L when the school hadn't been marked "active" yet.
     schools = await db.school_inquiries.find(
-        {"status": {"$in": ["converted", "active", "renewed", "onboarding", "in_progress"]}},
+        {"status": {"$in": [
+            "converted", "active", "renewed", "onboarding", "in_progress",
+            "renewal_meeting", "meeting_done",
+        ]}},
         {"_id": 0, "id": 1, "school_name": 1, "status": 1, "onboarding_data": 1, "payments": 1},
     ).to_list(1000)
 
@@ -368,13 +372,43 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         cat = row["_id"]["category"]
         exp_map.setdefault(sid, {})[cat] = row["total"]
 
+    # Backfill: if an expense references a school not in the revenue set (e.g.
+    # school still in `new`/`follow_up`/`lost`, or the id has drifted), we
+    # still want it visible in the master P&L so bookkeeping additions never
+    # silently disappear. Fetch those schools' names in one round-trip.
+    missing_ids = [sid for sid in exp_map.keys() if sid and sid not in school_rev]
+    if missing_ids:
+        extra_schools = await db.school_inquiries.find(
+            {"id": {"$in": missing_ids}},
+            {"_id": 0, "id": 1, "school_name": 1, "onboarding_data": 1},
+        ).to_list(1000)
+        for s in extra_schools:
+            sid = s.get("id")
+            od = s.get("onboarding_data") or {}
+            school_rev[sid] = {
+                "school_name":       s.get("school_name", "Unknown"),
+                "student_count":     int(od.get("total_students") or 0),
+                "total_revenue":     0.0,
+                "net_revenue":       0.0,
+                "gst":               0.0,
+                "received":          0.0,
+                "online_collected":  0.0,
+                "payment_method":    od.get("payment_method") or od.get("payment_mode") or "",
+            }
+
     # ── 3. Build rows ─────────────────────────────────────────────────────────
     rows = []
     for sid, rev in school_rev.items():
         nr = rev["net_revenue"]
         tr = rev["total_revenue"]
-        # Skip schools with no contract value — they are converted but not yet fully set up
-        if tr == 0 and nr == 0:
+        school_exp_preview = exp_map.get(sid, {})
+        has_expenses = any(float(v or 0) for v in school_exp_preview.values())
+        # Only skip schools with NO revenue AND NO expenses. Previously we
+        # dropped any zero-revenue school even if it had real expenses, which
+        # caused manually-added costs (e.g. School Share, marketing) to vanish
+        # from the master P&L. Keeping the row lets admins see and reconcile
+        # the expense against the school it belongs to.
+        if tr == 0 and nr == 0 and not has_expenses:
             continue
         received   = rev["received"]
         # Compare received to total_revenue (gross incl. GST) — consistent since paid_amount is gross too
