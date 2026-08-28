@@ -82,6 +82,8 @@ const AdminEducators = () => {
   
   // Bulk Import state
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportRequirementId, setBulkImportRequirementId] = useState('');
+  const [bulkImportMode, setBulkImportMode] = useState('applicants'); // 'applicants' | 'active'
   const [bulkImportFile, setBulkImportFile] = useState(null);
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [bulkImportLoading, setBulkImportLoading] = useState(false);
@@ -264,7 +266,11 @@ const AdminEducators = () => {
     setBulkImportLoading(true);
     const formData = new FormData();
     formData.append('file', bulkImportFile);
-    
+    if (bulkImportRequirementId) {
+      formData.append('default_requirement_id', bulkImportRequirementId);
+    }
+    formData.append('import_as', bulkImportMode);
+
     try {
       const response = await axios.post(`${API}/educators/bulk-import`, formData, {
         headers: {
@@ -272,10 +278,20 @@ const AdminEducators = () => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      toast.success(`Successfully imported ${response.data.imported} educators`);
+      const linked = response.data?.linked_to_requirement;
+      toast.success(
+        linked
+          ? `Imported ${response.data.imported} applicants → ${linked}`
+          : `Successfully imported ${response.data.imported} ${bulkImportMode === 'active' ? 'educators' : 'applicants'}`
+      );
+      if (response.data.total_errors > 0) {
+        toast.warning(`${response.data.total_errors} row(s) had issues — check the first-10 error list`);
+        console.warn('Bulk import errors:', response.data.errors);
+      }
       setShowBulkImportModal(false);
       setBulkImportFile(null);
       setBulkImportPreview([]);
+      setBulkImportRequirementId('');
       fetchEducators();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to import educators');
@@ -304,11 +320,14 @@ const AdminEducators = () => {
   };
 
   const downloadSampleCSV = () => {
-    const headers = 'name,email,phone,skills,city,experience';
-    const sample1 = 'John Doe,john@example.com,9876543210,"Robotics,Coding",Mumbai,3 years';
-    const sample2 = 'Jane Smith,jane@example.com,9876543211,"AI,Python",Pune,5 years';
+    // Column order matches the backend parser. `requirement_title` (or
+    // `requirement_id`) is optional — leave blank to fall back to the
+    // batch-level requirement picked in the modal dropdown.
+    const headers = 'name,email,phone,skills,city,experience,requirement_title';
+    const sample1 = 'John Doe,john@example.com,9876543210,"Robotics,Coding",Mumbai,3 years,Robotics Educator';
+    const sample2 = 'Jane Smith,jane@example.com,9876543211,"AI,Python",Pune,5 years,';
     const csv = [headers, sample1, sample2].join('\n');
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1165,19 +1184,22 @@ const AdminEducators = () => {
               <span className="hidden sm:inline">Add</span> Requirement
             </Button>
           )}
-          {activeTab === 'active' && (
+          {(activeTab === 'active' || activeTab === 'applicants') && (
             <div className="flex gap-2">
-              <Button 
-                onClick={() => setShowAddEducatorModal(true)}
-                className="bg-[#D63031] hover:bg-[#c0392b]"
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Add</span> Educator
-              </Button>
-              <Button 
+              {activeTab === 'active' && (
+                <Button
+                  onClick={() => setShowAddEducatorModal(true)}
+                  className="bg-[#D63031] hover:bg-[#c0392b]"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Add</span> Educator
+                </Button>
+              )}
+              <Button
                 onClick={() => setShowBulkImportModal(true)}
                 variant="outline"
                 className="border-[#1E3A5F] text-[#1E3A5F]"
+                data-testid="bulk-import-open-btn"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Bulk</span> Import
@@ -3292,27 +3314,78 @@ const AdminEducators = () => {
 
       {/* Bulk Import Modal */}
       <Dialog open={showBulkImportModal} onOpenChange={setShowBulkImportModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" data-testid="bulk-import-modal">
           <DialogHeader>
-            <DialogTitle className="text-[#1E3A5F]">Bulk Import Educators</DialogTitle>
+            <DialogTitle className="text-[#1E3A5F]">Bulk Import Applicants</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="bg-slate-50 rounded-lg p-4">
               <p className="text-sm text-slate-600 mb-3">
-                Upload a CSV file with educator details. The file should have these columns:
+                Upload a CSV with these columns. <code className="text-xs bg-slate-200 px-1 rounded">requirement_title</code> is optional — leave blank and every row uses the dropdown below.
               </p>
               <code className="text-xs bg-slate-200 px-2 py-1 rounded block">
-                name, email, phone, skills, city, experience
+                name, email, phone, skills, city, experience, requirement_title
               </code>
               <Button
                 variant="link"
                 onClick={downloadSampleCSV}
                 className="text-[#D63031] p-0 h-auto mt-2"
+                data-testid="download-sample-csv"
               >
                 Download Sample CSV
               </Button>
             </div>
-            
+
+            {/* Requirement dropdown — applies to every row that doesn't specify its own */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Link Applicants to Requirement <span className="text-xs text-slate-400 font-normal">(optional)</span>
+              </label>
+              <select
+                value={bulkImportRequirementId}
+                onChange={(e) => setBulkImportRequirementId(e.target.value)}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                data-testid="bulk-import-requirement-select"
+              >
+                <option value="">— No default requirement (unlinked) —</option>
+                {requirements.filter(r => r.is_active !== false).map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.title}{r.city ? ` · ${r.city}` : ''}{r.skill ? ` · ${r.skill}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                Any row with its own <code className="bg-slate-100 px-1 rounded">requirement_title</code> or <code className="bg-slate-100 px-1 rounded">requirement_id</code> in the CSV overrides this.
+              </p>
+            </div>
+
+            {/* Import mode */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Import as</label>
+              <div className="flex gap-2 text-sm">
+                <label className={`flex-1 border rounded-lg p-2 cursor-pointer ${bulkImportMode === 'applicants' ? 'border-[#D63031] bg-red-50' : 'border-slate-200'}`}>
+                  <input
+                    type="radio"
+                    checked={bulkImportMode === 'applicants'}
+                    onChange={() => setBulkImportMode('applicants')}
+                    className="mr-2"
+                    data-testid="bulk-import-mode-applicants"
+                  />
+                  Applicants <span className="text-xs text-slate-500">(status: new)</span>
+                </label>
+                <label className={`flex-1 border rounded-lg p-2 cursor-pointer ${bulkImportMode === 'active' ? 'border-[#D63031] bg-red-50' : 'border-slate-200'}`}>
+                  <input
+                    type="radio"
+                    checked={bulkImportMode === 'active'}
+                    onChange={() => setBulkImportMode('active')}
+                    className="mr-2"
+                    data-testid="bulk-import-mode-active"
+                  />
+                  Active Educators <span className="text-xs text-slate-500">(pre-onboarded)</span>
+                </label>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Select CSV File</label>
               <input
@@ -3320,6 +3393,7 @@ const AdminEducators = () => {
                 accept=".csv"
                 onChange={handleBulkImportFile}
                 className="w-full text-sm border border-slate-200 rounded-lg p-2"
+                data-testid="bulk-import-file-input"
               />
             </div>
 
@@ -3334,6 +3408,7 @@ const AdminEducators = () => {
                         <th className="text-left p-1">Email</th>
                         <th className="text-left p-1">Phone</th>
                         <th className="text-left p-1">City</th>
+                        <th className="text-left p-1">Requirement</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3343,6 +3418,9 @@ const AdminEducators = () => {
                           <td className="p-1">{row.email}</td>
                           <td className="p-1">{row.phone}</td>
                           <td className="p-1">{row.city}</td>
+                          <td className="p-1 text-slate-500">
+                            {row.requirement_title || row.requirement_id || (bulkImportRequirementId ? (requirements.find(r => r.id === bulkImportRequirementId)?.title || '—') : '—')}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -3355,12 +3433,13 @@ const AdminEducators = () => {
               <Button variant="outline" onClick={() => setShowBulkImportModal(false)} className="flex-1">
                 Cancel
               </Button>
-              <Button 
-                onClick={handleBulkImport} 
+              <Button
+                onClick={handleBulkImport}
                 disabled={!bulkImportFile || bulkImportLoading}
                 className="flex-1 bg-[#D63031] hover:bg-[#c0392b]"
+                data-testid="bulk-import-submit"
               >
-                {bulkImportLoading ? 'Importing...' : 'Import Educators'}
+                {bulkImportLoading ? 'Importing...' : (bulkImportMode === 'active' ? 'Import Educators' : 'Import Applicants')}
               </Button>
             </div>
           </div>

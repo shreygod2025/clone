@@ -1592,31 +1592,69 @@ async def deduplicate_educator_applications(user: dict = Depends(get_current_use
 
 
 @router.post("/educators/bulk-import")
-async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    """Bulk import educators from CSV file"""
+async def bulk_import_educators(
+    file: UploadFile = File(...),
+    default_requirement_id: Optional[str] = Form(None),
+    import_as: str = Form("applicants"),  # "applicants" (status=new) or "active" (legacy behaviour)
+    user: dict = Depends(get_current_user),
+):
+    """Bulk import educators from CSV file.
+
+    New in Feb 2026:
+      • `default_requirement_id` (form field) — every row without its own
+        `requirement_id` / `requirement_title` column gets linked to this
+        requirement. UI supplies it from the dropdown in the Bulk Import
+        modal.
+      • Per-row override via CSV columns `requirement_id` or
+        `requirement_title` (case-insensitive title match against
+        `open_requirements`).
+      • `import_as = "applicants"` (default) marks each imported row with
+        `status = "new"` so they appear under the Applicants tab (bucketed
+        with website applicants). Set to "active" to preserve the legacy
+        "already onboarded educator" behaviour.
+    """
     from io import StringIO
 
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="File must be a CSV")
-    
+
     content = await file.read()
     text = content.decode('utf-8')
-    
+
     reader = csv.DictReader(StringIO(text))
-    
+
+    # ── Pre-resolve the default requirement (if any) ──────────────────────
+    default_req_doc = None
+    if default_requirement_id:
+        default_req_doc = await db.open_requirements.find_one(
+            {"id": default_requirement_id}, {"_id": 0, "id": 1, "title": 1}
+        )
+        if not default_req_doc:
+            raise HTTPException(status_code=400, detail="default_requirement_id not found")
+
+    # ── Cache requirements once so per-row title lookups are O(1) ─────────
+    all_reqs = await db.open_requirements.find(
+        {}, {"_id": 0, "id": 1, "title": 1}
+    ).to_list(2000)
+    reqs_by_id = {str(r.get("id")): r for r in all_reqs if r.get("id")}
+    reqs_by_title = {str(r.get("title", "")).strip().lower(): r for r in all_reqs if r.get("title")}
+
+    as_applicant = (import_as or "applicants").lower() != "active"
+    default_status = "new" if as_applicant else "active"
+
     imported = 0
     errors = []
-    
+
     for idx, row in enumerate(reader, start=2):  # Start at 2 because row 1 is header
         try:
-            name = row.get('name', '').strip()
-            email = row.get('email', '').strip()
-            phone = row.get('phone', '').strip()
-            
+            name = (row.get('name') or '').strip()
+            email = (row.get('email') or '').strip()
+            phone = (row.get('phone') or '').strip()
+
             if not name or not email or not phone:
                 errors.append(f"Row {idx}: Missing required fields")
                 continue
-            
+
             # Check for duplicates
             existing = await db.educator_applications.find_one(
                 {"$or": [{"email": email}, {"phone": phone}]},
@@ -1625,36 +1663,62 @@ async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depen
             if existing:
                 errors.append(f"Row {idx}: Educator with email {email} or phone {phone} already exists")
                 continue
-            
+
             # Parse skills
             skills_str = row.get('skills', '')
             skills = [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
-            
+
+            # Resolve the requirement for THIS row (per-row column beats batch default).
+            row_req_id = (row.get('requirement_id') or '').strip()
+            row_req_title = (row.get('requirement_title') or row.get('requirement') or '').strip()
+            resolved_req = None
+            if row_req_id and row_req_id in reqs_by_id:
+                resolved_req = reqs_by_id[row_req_id]
+            elif row_req_title and row_req_title.lower() in reqs_by_title:
+                resolved_req = reqs_by_title[row_req_title.lower()]
+            elif row_req_id or row_req_title:
+                # CSV explicitly named a requirement but we couldn't find it —
+                # surface a clear error instead of silently importing without a
+                # link so the admin notices the typo.
+                errors.append(
+                    f"Row {idx}: Requirement '{row_req_id or row_req_title}' not found — skipped"
+                )
+                continue
+            elif default_req_doc:
+                resolved_req = default_req_doc
+
             educator = {
                 "id": str(uuid.uuid4()),
                 "name": name,
                 "email": email,
                 "phone": phone,
-                "city": row.get('city', '').strip(),
+                "city": (row.get('city') or '').strip(),
                 "skills": skills,
-                "experience": row.get('experience', '').strip(),
-                "status": "active",
+                "experience": (row.get('experience') or '').strip(),
+                "status": default_status,
                 "source": "bulk_import",
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "added_by": user.get("email", "admin"),
-                "onboarding_completed": True
+                # Legacy behaviour marked bulk imports as already onboarded so
+                # they landed straight in the Active list. Only preserve that
+                # when the admin explicitly chose import_as='active'.
+                "onboarding_completed": not as_applicant,
             }
-            
+            if resolved_req:
+                educator["requirement_id"] = resolved_req.get("id")
+                educator["requirement_title"] = resolved_req.get("title")
+
             await db.educator_applications.insert_one(educator)
             imported += 1
-            
+
         except Exception as e:
             errors.append(f"Row {idx}: {str(e)}")
-    
+
     return {
         "imported": imported,
         "errors": errors[:10] if errors else [],  # Return first 10 errors
-        "total_errors": len(errors)
+        "total_errors": len(errors),
+        "linked_to_requirement": default_req_doc.get("title") if default_req_doc else None,
     }
 
 # PDF Generation Helper Functions
