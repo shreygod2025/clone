@@ -1276,10 +1276,19 @@ const AdminSchoolCRM = () => {
           })) : [{ grade: '', students: '', price_per_student: '' }]),
       total_students: existingOnboardData.total_students || 0,
       total_amount: existingOnboardData.total_amount || inquiry.quoted_price || 0,
+      // Cascade fallback: onboarding_data (if user already began onboarding) → top-level
+      // inquiry.school_contacts (saved by Add Lead flow) → proposal_data.school_contacts
+      // (saved by Edit Lead flow) → single blank row seeded from primary contact fields.
       school_contacts: existingOnboardData.school_contacts?.length > 0 
         ? existingOnboardData.school_contacts 
-        : [{ name: inquiry.contact_name || '', phone_number: inquiry.phone || '', country_code: '+91', email: inquiry.email || '', role: 'principal' }],
-      school_address: existingOnboardData.school_address || inquiry.location || '',
+        : (inquiry.school_contacts?.length > 0
+            ? inquiry.school_contacts
+            : (proposalData.school_contacts?.length > 0
+                ? proposalData.school_contacts
+                : [{ name: inquiry.contact_name || '', phone_number: inquiry.phone || '', country_code: '+91', email: inquiry.email || '', role: inquiry.contact_role || '' }])),
+      // Cascade fallback: onboarding_data.school_address → proposal_data.school_address →
+      // top-level inquiry.address (full postal address saved by Add Lead) → inquiry.location (city only).
+      school_address: existingOnboardData.school_address || proposalData.school_address || inquiry.address || inquiry.location || '',
       additional_services: existingOnboardData.additional_services?.length > 0
         ? existingOnboardData.additional_services
         : [{ item: '', qty: '', price: '' }],

@@ -24,6 +24,14 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — Fixed Onboarding/Convert modal prefill bugs on `/admin/schools`:
+  School Team Contacts role was hardcoded to "Principal" and the previously entered
+  postal Address (from Add Lead) was ignored. `openConversionModal` now cascades:
+  `onboarding_data → inquiry.school_contacts → proposal_data.school_contacts` for
+  contacts, and `onboarding_data → proposal_data → inquiry.address → inquiry.location`
+  for address. Default contact role now uses `inquiry.contact_role` (empty if unset)
+  instead of the hardcoded "principal". File: `AdminSchoolCRM.jsx` (openConversionModal).
+
 - **18 Aug 2026** — Redesigned `/school/robotics/beginner` per OLL Brand Guidelines PDF.
   New sections: sticky top bar, hero (Anton headline + Robotics.gif + red/blue/light-blue
   blur orbs), About OLL impact band (500+ schools · 2,00,000+ students · 35 cities),
