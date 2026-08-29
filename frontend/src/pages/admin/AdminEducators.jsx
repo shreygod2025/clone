@@ -236,19 +236,37 @@ const AdminEducators = () => {
   const handleBulkImportFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     setBulkImportFile(file);
     const reader = new FileReader();
+    // CSV parser that respects double-quoted fields — the previous
+    // `line.split(',')` version broke on "Robotics,Coding" style skills
+    // and shifted every column to the right, which is why bulk-imported
+    // rows were showing an empty City on the card grid.
+    const parseCsvLine = (line) => {
+      const out = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; continue; }
+        if (ch === '"') { inQuotes = !inQuotes; continue; }
+        if (ch === ',' && !inQuotes) { out.push(cur.trim()); cur = ''; continue; }
+        cur += ch;
+      }
+      out.push(cur.trim());
+      return out;
+    };
     reader.onload = (event) => {
       const text = event.target.result;
-      const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      
+      const lines = text.split(/\r?\n/).filter(line => line.trim());
+      const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+
       const preview = lines.slice(1, 6).map(line => {
-        const values = line.split(',');
+        const values = parseCsvLine(line);
         const obj = {};
         headers.forEach((h, i) => {
-          obj[h] = values[i]?.trim() || '';
+          obj[h] = values[i] || '';
         });
         return obj;
       });
@@ -320,11 +338,12 @@ const AdminEducators = () => {
   };
 
   const downloadSampleCSV = () => {
-    // Column order matches the backend parser. `requirement_title` (or
-    // `requirement_id`) is optional — leave blank to fall back to the
-    // batch-level requirement picked in the modal dropdown.
+    // Column order matches the backend parser. `requirement_title` is
+    // optional — leave blank to fall back to the batch-level requirement
+    // picked in the modal dropdown. Empty here so the sample import doesn't
+    // fail on requirement mismatches when admins download-and-try.
     const headers = 'name,email,phone,skills,city,experience,requirement_title';
-    const sample1 = 'John Doe,john@example.com,9876543210,"Robotics,Coding",Mumbai,3 years,Robotics Educator';
+    const sample1 = 'John Doe,john@example.com,9876543210,"Robotics,Coding",Mumbai,3 years,';
     const sample2 = 'Jane Smith,jane@example.com,9876543211,"AI,Python",Pune,5 years,';
     const csv = [headers, sample1, sample2].join('\n');
 
@@ -1624,6 +1643,14 @@ const AdminEducators = () => {
               </div>
 
               <div className="space-y-2 text-sm text-slate-600 mb-3">
+                {/* City — always render so a missing value doesn't look like
+                    the skills row is standing in for the city field. */}
+                <p className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-slate-400" />
+                  {educator.city
+                    ? <>{educator.city}{educator.state && `, ${educator.state}`}</>
+                    : <span className="text-slate-400 italic">No city on file</span>}
+                </p>
                 {educator.skills?.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {educator.skills.map((skill, idx) => (
@@ -1632,12 +1659,6 @@ const AdminEducators = () => {
                       </span>
                     ))}
                   </div>
-                )}
-                {educator.city && (
-                  <p className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-400" />
-                    {educator.city}{educator.state && `, ${educator.state}`}
-                  </p>
                 )}
                 {(educator.availability || educator.experience) && (
                   <p className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">

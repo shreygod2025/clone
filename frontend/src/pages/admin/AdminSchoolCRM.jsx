@@ -964,7 +964,7 @@ const AdminSchoolCRM = () => {
   });
 
   useEffect(() => {
-    fetchInquiries();
+    fetchInquiries({ background: false });  // initial load — show spinner
     fetchTeamUsers();
     fetchOfferings();
     fetchRelationshipManagers();
@@ -1642,18 +1642,43 @@ ${FOOTER}</div></body></html>`
     toast.info(`Existing school — this will be tracked as an Upsell inquiry for ${suggestion.school_name}`);
   };
 
-  const fetchInquiries = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API}/schools/inquiries`, {
-        headers: getAuthHeaders()
-      });
-      setInquiries(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch inquiries');
-    } finally {
-      setLoading(false);
+  // Deduplicate concurrent inquiry refetches — 39 call sites in this file
+  // means a single Save can trigger 3-4 fetches in quick succession from
+  // chained handlers. Merging them into one keeps the CRM snappy.
+  // Default is background=true so post-save refreshes don't flash the
+  // "loading…" state over the whole grid; the initial mount passes
+  // background=false explicitly to still show the first-load spinner.
+  const inquiriesInFlightRef = useRef(null);
+  const fetchInquiries = async ({ background = true } = {}) => {
+    if (inquiriesInFlightRef.current) return inquiriesInFlightRef.current;
+    if (!background) setLoading(true);
+    const p = (async () => {
+      try {
+        const response = await axios.get(`${API}/schools/inquiries`, {
+          headers: getAuthHeaders()
+        });
+        setInquiries(response.data);
+      } catch (error) {
+        if (!background) toast.error('Failed to fetch inquiries');
+      } finally {
+        if (!background) setLoading(false);
+        inquiriesInFlightRef.current = null;
+      }
+    })();
+    inquiriesInFlightRef.current = p;
+    return p;
+  };
+
+  // Optimistic patch — updates the specific inquiry in local state so the
+  // card reflects the change immediately, then triggers a background refresh
+  // to catch server-computed derived fields (activity_log, followup_tasks…).
+  // Call sites can pass `null` for patch to just trigger the background sync.
+  const patchInquiryLocally = (id, patch) => {
+    if (patch && id) {
+      setInquiries(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
     }
+    // Fire-and-forget background refetch — no loading flicker.
+    fetchInquiries({ background: true });
   };
 
   const handleStatusChange = async (inquiry, newStatus, additionalData = {}) => {
@@ -6000,6 +6025,14 @@ ${FOOTER}</div></body></html>`
                         <MapPin className="w-4 h-4" /> {viewInquiry.location || 'N/A'}
                       </p>
                     </div>
+                    {viewInquiry.address && (
+                      <div className="bg-slate-50 rounded-lg p-3 col-span-2" data-testid="school-details-address">
+                        <p className="text-xs text-slate-500 mb-1">School Address</p>
+                        <p className="font-medium text-[#1E3A5F] flex items-start gap-1 whitespace-pre-wrap">
+                          <MapPin className="w-4 h-4 mt-0.5 shrink-0" /> {viewInquiry.address}
+                        </p>
+                      </div>
+                    )}
                     <div className="bg-slate-50 rounded-lg p-3">
                       <p className="text-xs text-slate-500 mb-1">Board</p>
                       <p className="font-medium text-[#1E3A5F]">{viewInquiry.board || 'N/A'}</p>
