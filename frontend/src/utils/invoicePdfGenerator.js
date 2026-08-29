@@ -799,12 +799,12 @@ export async function generateInvoicePDF(payment, schoolData, {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
   doc.text('We appreciate your business and look forward to helping you again soon.', innerLeft + 2, y);
-  y += 7;
+  y += 4;
 
   // ─── Terms & Conditions ───
   doc.setDrawColor(200, 200, 200);
   doc.line(innerLeft, y, innerRight, y);
-  y += 5;
+  y += 4;
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
@@ -823,17 +823,17 @@ export async function generateInvoicePDF(payment, schoolData, {
   ];
   terms.forEach(t => {
     doc.text(t, innerLeft + 2, y);
-    y += 3.5;
+    y += 3;
   });
-  y += 4;
+  y += 2;
 
   // ─── Signature ───
-  // Signature block needs ~30mm — if it won't fit inside the bordered area,
-  // push it onto a fresh page (with its own border) so it never overflows.
-  ensureSpace(30);
+  // Compact signature block (~22mm) so it stays on the same page as invoice
+  // content for typical invoices. Only overflows to a new page for very long invoices.
+  ensureSpace(22);
   doc.setDrawColor(200, 200, 200);
   doc.line(innerLeft, y, innerRight, y);
-  y += 3;
+  y += 2;
 
   const signX = innerRight - 52;
   doc.setFontSize(7);
@@ -842,15 +842,15 @@ export async function generateInvoicePDF(payment, schoolData, {
   doc.text(`For ${COMPANY.name}`, signX, y + 3);
 
   if (signImg) {
-    doc.addImage(signImg, 'JPEG', signX + 5, y + 5, 30, 15);
+    doc.addImage(signImg, 'JPEG', signX + 5, y + 4, 26, 12);
   }
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text('Shreyaan Daga', signX + 10, y + 23);
+  doc.text('Shreyaan Daga', signX + 10, y + 18);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text('Authorized Signatory', signX + 6, y + 27);
+  doc.text('Authorized Signatory', signX + 6, y + 21);
 
   // ─── Save & return ───
   const fileName = `Invoice_${schoolName.replace(/\s+/g, '_')}_${invoiceNo.replace('/', '_')}.pdf`;
