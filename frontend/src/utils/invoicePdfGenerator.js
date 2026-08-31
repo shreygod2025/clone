@@ -828,29 +828,38 @@ export async function generateInvoicePDF(payment, schoolData, {
   y += 2;
 
   // ─── Signature ───
-  // Compact signature block (~22mm) so it stays on the same page as invoice
-  // content for typical invoices. Only overflows to a new page for very long invoices.
-  ensureSpace(22);
+  // Anchor the signature block at a fixed position near the bottom of the current
+  // page. This guarantees it sits on the same page as the invoice content instead
+  // of drifting onto a nearly-empty second page. Only page-breaks if the preceding
+  // Terms section has already flowed past the reserved signature strip.
+  const signBlockH = 22;
+  let signTopY = innerBottom - signBlockH;
+  if (y > signTopY - 2) {
+    doc.addPage();
+    drawBorder();
+    signTopY = innerBottom - signBlockH;
+  }
+  // Divider line just above the anchored signature strip.
   doc.setDrawColor(200, 200, 200);
-  doc.line(innerLeft, y, innerRight, y);
-  y += 2;
+  doc.line(innerLeft, signTopY, innerRight, signTopY);
+  const sy = signTopY + 2;
 
   const signX = innerRight - 52;
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(`For ${COMPANY.name}`, signX, y + 3);
+  doc.text(`For ${COMPANY.name}`, signX, sy + 3);
 
   if (signImg) {
-    doc.addImage(signImg, 'JPEG', signX + 5, y + 4, 26, 12);
+    doc.addImage(signImg, 'JPEG', signX + 5, sy + 4, 26, 12);
   }
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text('Shreyaan Daga', signX + 10, y + 18);
+  doc.text('Shreyaan Daga', signX + 10, sy + 18);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text('Authorized Signatory', signX + 6, y + 21);
+  doc.text('Authorized Signatory', signX + 6, sy + 21);
 
   // ─── Save & return ───
   const fileName = `Invoice_${schoolName.replace(/\s+/g, '_')}_${invoiceNo.replace('/', '_')}.pdf`;
