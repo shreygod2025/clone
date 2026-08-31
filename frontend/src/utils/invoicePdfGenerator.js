@@ -787,21 +787,20 @@ export async function generateInvoicePDF(payment, schoolData, {
     y += 5;
   }
 
-  // ─── Notes ───
+  // ─── Notes (inline, single line to save vertical space) ───
   doc.setDrawColor(200, 200, 200);
   doc.line(innerLeft, y, innerRight, y);
-  y += 5;
-  doc.setFontSize(7.5);
+  y += 4;
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text('Notes', innerLeft + 2, y);
-  y += 4;
+  doc.text('Notes:', innerLeft + 2, y);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text('We appreciate your business and look forward to helping you again soon.', innerLeft + 2, y);
+  doc.text('We appreciate your business and look forward to helping you again soon.', innerLeft + 14, y);
   y += 4;
 
-  // ─── Terms & Conditions ───
+  // ─── Terms & Conditions (2-column layout for compactness) ───
   doc.setDrawColor(200, 200, 200);
   doc.line(innerLeft, y, innerRight, y);
   y += 4;
@@ -821,20 +820,26 @@ export async function generateInvoicePDF(payment, schoolData, {
     `A/C No. ${COMPANY.accountNo}, IFSC Code: ${COMPANY.ifsc}`,
     `Regd office: ${COMPANY.regdOffice}`,
   ];
-  terms.forEach(t => {
-    doc.text(t, innerLeft + 2, y);
-    y += 3;
-  });
-  y += 2;
+  // Render in 2 columns: rows 0-2 in col1, rows 3-5 in col2
+  const col1X = innerLeft + 2;
+  const col2X = innerLeft + (contentWidth / 2) + 2;
+  const termsStartY = y;
+  const colRows = Math.ceil(terms.length / 2);
+  for (let i = 0; i < terms.length; i++) {
+    const col = i < colRows ? 0 : 1;
+    const rowInCol = col === 0 ? i : i - colRows;
+    const x = col === 0 ? col1X : col2X;
+    doc.text(terms[i], x, termsStartY + rowInCol * 3.2);
+  }
+  y = termsStartY + colRows * 3.2 + 2;
 
   // ─── Signature ───
-  // Anchor the signature block at a fixed position near the bottom of the current
-  // page. This guarantees it sits on the same page as the invoice content instead
-  // of drifting onto a nearly-empty second page. Only page-breaks if the preceding
-  // Terms section has already flowed past the reserved signature strip.
-  const signBlockH = 22;
+  // Anchor the signature block near the bottom of the current page so it always
+  // sits on page 1 for typical invoices. Only page-breaks if Terms actually
+  // overflowed into the signature strip.
+  const signBlockH = 20;
   let signTopY = innerBottom - signBlockH;
-  if (y > signTopY - 2) {
+  if (y > signTopY - 1) {
     doc.addPage();
     drawBorder();
     signTopY = innerBottom - signBlockH;
@@ -842,7 +847,7 @@ export async function generateInvoicePDF(payment, schoolData, {
   // Divider line just above the anchored signature strip.
   doc.setDrawColor(200, 200, 200);
   doc.line(innerLeft, signTopY, innerRight, signTopY);
-  const sy = signTopY + 2;
+  const sy = signTopY + 1;
 
   const signX = innerRight - 52;
   doc.setFontSize(7);
@@ -851,15 +856,15 @@ export async function generateInvoicePDF(payment, schoolData, {
   doc.text(`For ${COMPANY.name}`, signX, sy + 3);
 
   if (signImg) {
-    doc.addImage(signImg, 'JPEG', signX + 5, sy + 4, 26, 12);
+    doc.addImage(signImg, 'JPEG', signX + 5, sy + 4, 24, 10);
   }
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text('Shreyaan Daga', signX + 10, sy + 18);
+  doc.text('Shreyaan Daga', signX + 10, sy + 15);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text('Authorized Signatory', signX + 6, sy + 21);
+  doc.text('Authorized Signatory', signX + 6, sy + 18);
 
   // ─── Save & return ───
   const fileName = `Invoice_${schoolName.replace(/\s+/g, '_')}_${invoiceNo.replace('/', '_')}.pdf`;
