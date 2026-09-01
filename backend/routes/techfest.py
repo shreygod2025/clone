@@ -107,6 +107,10 @@ class TechfestRegisterIn(BaseModel):
     teaches_robotics: Optional[str] = Field(None, max_length=8)  # 'Yes' | 'No'
     robotics_format: Optional[str] = Field(None, max_length=80)
     robotics_external_company: Optional[str] = Field(None, max_length=120)
+    # How-did-you-find-out-about-us
+    source: Optional[str] = Field(None, max_length=40)  # social_media | google | iit_techfest | through_someone | referral | other
+    source_details: Optional[str] = Field(None, max_length=120)  # name of person for "through_someone"
+    referrer_slug: Optional[str] = Field(None, max_length=60)  # auto-filled from /techfest?ref=slug
     message: Optional[str] = Field(None, max_length=1000)
 
 
@@ -146,10 +150,14 @@ async def register_techfest(payload: TechfestRegisterIn, background_tasks: Backg
         })
     # Shared additions
     for k in ("school_address", "school_email", "school_phone",
-              "teaches_robotics", "robotics_format", "robotics_external_company"):
+              "teaches_robotics", "robotics_format", "robotics_external_company",
+              "source", "source_details", "referrer_slug"):
         val = (getattr(payload, k) or "").strip() or None
         if val:
             doc[k] = val
+    # Normalise referrer_slug
+    if doc.get("referrer_slug"):
+        doc["referrer_slug"] = re.sub(r"[^a-z0-9-]", "", doc["referrer_slug"].lower())[:60] or None
     if payload.message:
         doc["message"] = payload.message.strip()
 
@@ -182,7 +190,7 @@ async def list_techfest_registrations(
     type: Optional[RegistrantType] = None,
     user: dict = Depends(_admin),
 ):
-    query = {}
+    query = {"deleted_at": {"$exists": False}}
     if type:
         query["type"] = type
     cursor = db.techfest_registrations.find(query).sort("created_at", -1).limit(1000)
@@ -193,6 +201,185 @@ async def list_techfest_registrations(
     return {"items": out, "count": len(out)}
 
 
+# ── Registration edit + soft delete ─────────────────────────────────────
+class TechfestRegistrationPatch(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    school_name: Optional[str] = None
+    school_or_institute: Optional[str] = None
+    role_designation: Optional[str] = None
+    grade_taught: Optional[str] = None
+    student_count: Optional[str] = None
+    school_address: Optional[str] = None
+    school_email: Optional[str] = None
+    school_phone: Optional[str] = None
+    teaches_robotics: Optional[str] = None
+    robotics_format: Optional[str] = None
+    robotics_external_company: Optional[str] = None
+    source: Optional[str] = None
+    source_details: Optional[str] = None
+    referrer_slug: Optional[str] = None
+    status: Optional[str] = None
+
+
+@router.patch("/admin/techfest/registrations/{reg_id}")
+async def update_techfest_registration(
+    reg_id: str,
+    payload: TechfestRegistrationPatch,
+    user: dict = Depends(_admin),
+):
+    from bson import ObjectId
+    try:
+        oid = ObjectId(reg_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid registration id")
+    existing = await db.techfest_registrations.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    updates = {}
+    for k, v in payload.model_dump(exclude_none=True).items():
+        if isinstance(v, str):
+            v = v.strip()
+        updates[k] = v or None
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.techfest_registrations.update_one({"_id": oid}, {"$set": updates})
+    return {"ok": True}
+
+
+@router.delete("/admin/techfest/registrations/{reg_id}")
+async def soft_delete_techfest_registration(
+    reg_id: str,
+    user: dict = Depends(_admin),
+):
+    from bson import ObjectId
+    try:
+        oid = ObjectId(reg_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid registration id")
+    res = await db.techfest_registrations.update_one(
+        {"_id": oid},
+        {"$set": {
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_by": user.get("email") or user.get("id") or "admin",
+        }},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    return {"ok": True}
+
+
+# ── Referrers CRUD + rollup ─────────────────────────────────────────────
+class ReferrerIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    slug: Optional[str] = Field(None, max_length=60)
+    notes: Optional[str] = Field(None, max_length=300)
+
+
+def _make_slug(raw: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", (raw or "").lower()).strip("-")
+    return s[:60] or "ref"
+
+
+@router.post("/admin/techfest/referrers")
+async def create_referrer(payload: ReferrerIn, user: dict = Depends(_admin)):
+    slug = _make_slug(payload.slug or payload.name)
+    # Ensure unique slug
+    base = slug
+    i = 1
+    while await db.techfest_referrers.find_one({"slug": slug}):
+        i += 1
+        slug = f"{base}-{i}"
+    doc = {
+        "name": payload.name.strip(),
+        "slug": slug,
+        "notes": (payload.notes or "").strip() or None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("email") or user.get("id") or "admin",
+    }
+    res = await db.techfest_referrers.insert_one(doc)
+    doc["_id"] = str(res.inserted_id)
+    return doc
+
+
+@router.get("/admin/techfest/referrers")
+async def list_referrers(user: dict = Depends(_admin)):
+    cursor = db.techfest_referrers.find({"deleted_at": {"$exists": False}}).sort("created_at", -1)
+    items = []
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        items.append(doc)
+    # Compute counts per slug
+    pipeline = [
+        {"$match": {"referrer_slug": {"$exists": True, "$ne": None}, "deleted_at": {"$exists": False}}},
+        {"$group": {
+            "_id": {"slug": "$referrer_slug", "type": "$type"},
+            "count": {"$sum": 1},
+        }},
+    ]
+    counts_by_slug: dict = {}
+    async for grp in db.techfest_registrations.aggregate(pipeline):
+        slug = grp["_id"]["slug"]
+        t = grp["_id"]["type"]
+        counts_by_slug.setdefault(slug, {"school": 0, "educator": 0, "student": 0})
+        counts_by_slug[slug][t] = grp["count"]
+    for it in items:
+        c = counts_by_slug.get(it["slug"], {"school": 0, "educator": 0, "student": 0})
+        it["school_count"] = c.get("school", 0)
+        it["educator_count"] = c.get("educator", 0)
+        it["student_count"] = c.get("student", 0)
+        it["total_count"] = it["school_count"] + it["educator_count"] + it["student_count"]
+    return {"items": items, "count": len(items)}
+
+
+@router.patch("/admin/techfest/referrers/{ref_id}")
+async def update_referrer(ref_id: str, payload: ReferrerIn, user: dict = Depends(_admin)):
+    from bson import ObjectId
+    try:
+        oid = ObjectId(ref_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid referrer id")
+    updates = {"name": payload.name.strip()}
+    if payload.notes is not None:
+        updates["notes"] = payload.notes.strip() or None
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.techfest_referrers.update_one({"_id": oid}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Referrer not found")
+    return {"ok": True}
+
+
+@router.delete("/admin/techfest/referrers/{ref_id}")
+async def delete_referrer(ref_id: str, user: dict = Depends(_admin)):
+    from bson import ObjectId
+    try:
+        oid = ObjectId(ref_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid referrer id")
+    res = await db.techfest_referrers.update_one(
+        {"_id": oid},
+        {"$set": {"deleted_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Referrer not found")
+    return {"ok": True}
+
+
+# Public: resolve slug (used by /techfest?ref=... to validate the ref exists)
+@router.get("/techfest/referrer/{slug}")
+async def public_get_referrer(slug: str):
+    slug = re.sub(r"[^a-z0-9-]", "", slug.lower())[:60]
+    if not slug:
+        raise HTTPException(status_code=404, detail="Not found")
+    doc = await db.techfest_referrers.find_one({"slug": slug, "deleted_at": {"$exists": False}})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Referrer not found")
+    return {"slug": doc["slug"], "name": doc["name"]}
+
+
 
 # CSV column order — shared for export + import
 _EXPORT_COLS = [
@@ -201,6 +388,7 @@ _EXPORT_COLS = [
     "experience", "student_count", "tracks",
     "school_address", "school_email", "school_phone",
     "teaches_robotics", "robotics_format", "robotics_external_company",
+    "source", "source_details", "referrer_slug",
     "grade", "team_name", "track",
     "message", "status",
 ]
@@ -211,7 +399,7 @@ async def export_techfest_csv(
     type: Optional[RegistrantType] = None,
     user: dict = Depends(_admin),
 ):
-    query = {}
+    query = {"deleted_at": {"$exists": False}}
     if type:
         query["type"] = type
     cursor = db.techfest_registrations.find(query).sort("created_at", 1)
@@ -282,6 +470,7 @@ async def import_techfest_csv(
                       "grade_taught", "experience", "student_count",
                       "school_address", "school_email", "school_phone",
                       "teaches_robotics", "robotics_format", "robotics_external_company",
+                      "source", "source_details", "referrer_slug",
                       "grade", "team_name", "track", "message"):
                 v = (row.get(k) or "").strip()
                 if v:

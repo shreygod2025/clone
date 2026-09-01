@@ -19,10 +19,12 @@ export default function TechfestRegisterPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const flow = searchParams.get('as'); // null | 'educator' | 'school'
+  const refSlug = searchParams.get('ref') || '';
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({});
+  const [refName, setRefName] = useState('');  // display name of the referrer, if slug resolves
 
   useEffect(() => { window.scrollTo(0, 0); }, [flow, done]);
 
@@ -32,15 +34,33 @@ export default function TechfestRegisterPage() {
     upsertMeta('robots', 'noindex, nofollow');
   }, []);
 
+  // Resolve referrer slug → name (best-effort; if not found, silently ignore)
+  useEffect(() => {
+    if (!refSlug) { setRefName(''); return; }
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/techfest/referrer/${encodeURIComponent(refSlug)}`);
+        if (r.ok) {
+          const d = await r.json();
+          setRefName(d?.name || '');
+        } else {
+          setRefName('');
+        }
+      } catch { setRefName(''); }
+    })();
+  }, [refSlug]);
+
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const pickFlow = (f) => {
     setError(''); setDone(false); setForm({});
-    setSearchParams({ as: f });
+    const next = { as: f };
+    if (refSlug) next.ref = refSlug;
+    setSearchParams(next);
   };
   const resetFlow = () => {
     setError(''); setDone(false); setForm({});
-    setSearchParams({});
+    setSearchParams(refSlug ? { ref: refSlug } : {});
   };
 
   const submit = async (e) => {
@@ -49,7 +69,20 @@ export default function TechfestRegisterPage() {
     setError('');
     setSubmitting(true);
     try {
-      const payload = { type: flow, ...form };
+      // Auto-tag source when arriving via a referrer link. An explicit dropdown
+      // selection by the user takes precedence.
+      const autoSource = refSlug && !form.source ? 'referral' : form.source;
+      const payload = {
+        type: flow,
+        ...form,
+        source: autoSource || undefined,
+        // If the user picks "Through Someone", the name goes into source_details.
+        // For "Referral", we keep source_details as the friendly referrer name if resolved.
+        source_details: form.source === 'through_someone'
+          ? (form.source_details || undefined)
+          : (autoSource === 'referral' ? (refName || refSlug || undefined) : (form.source_details || undefined)),
+        referrer_slug: refSlug || undefined,
+      };
       const res = await fetch(`${API_BASE}/api/techfest/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -389,6 +422,51 @@ export default function TechfestRegisterPage() {
                     <div className="sm:col-span-2">
                       <label className="trp-label">Which company?*</label>
                       <input required className="trp-input" placeholder="e.g. WhiteHat Jr, Vidyalai" value={form.robotics_external_company || ''} onChange={setField('robotics_external_company')} data-testid="techfest-reg-field-robotics-external-company" />
+                    </div>
+                  )}
+
+                  {/* How did you find out about us? */}
+                  <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+                    <label className="trp-label">How did you find out about us?*</label>
+                    {refSlug ? (
+                      <div
+                        className="trp-input flex items-center justify-between bg-red-50 border-red-200"
+                        data-testid="techfest-reg-field-source-referral-pill"
+                      >
+                        <span className="text-sm text-[#0A1F44]">
+                          Referred by <strong>{refName || refSlug}</strong>
+                        </span>
+                        <span className="text-[10px] font-bold tracking-widest text-[#DC2626]">REFERRAL</span>
+                      </div>
+                    ) : (
+                      <select
+                        required
+                        className="trp-input"
+                        value={form.source || ''}
+                        onChange={setField('source')}
+                        data-testid="techfest-reg-field-source"
+                      >
+                        <option value="">Select</option>
+                        <option value="social_media">Social Media</option>
+                        <option value="google">Google Search</option>
+                        <option value="iit_techfest">IIT Techfest</option>
+                        <option value="through_someone">Through Someone</option>
+                        <option value="other">Other</option>
+                      </select>
+                    )}
+                  </div>
+
+                  {!refSlug && form.source === 'through_someone' && (
+                    <div className="sm:col-span-2">
+                      <label className="trp-label">Their Name*</label>
+                      <input
+                        required
+                        className="trp-input"
+                        placeholder="e.g. Rahul Sharma"
+                        value={form.source_details || ''}
+                        onChange={setField('source_details')}
+                        data-testid="techfest-reg-field-source-details"
+                      />
                     </div>
                   )}
                 </div>

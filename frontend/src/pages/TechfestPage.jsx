@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy, Flag, Zap, Cpu, Users, MapPin, ShieldCheck,
   ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown,
@@ -195,6 +195,8 @@ export default function TechfestPage() {
   const [openFaq, setOpenFaq] = useState(0);
   const kitsRef = useRef(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refSlug = searchParams.get('ref') || '';
 
   const track = useMemo(() => TRACKS.find((t) => t.key === activeTrack) || TRACKS[0], [activeTrack]);
 
@@ -205,7 +207,7 @@ export default function TechfestPage() {
 
   const openRegister = (e) => {
     e?.preventDefault?.();
-    navigate('/techfest/register');
+    navigate(refSlug ? `/techfest/register?ref=${encodeURIComponent(refSlug)}` : '/techfest/register');
   };
 
   useEffect(() => { window.scrollTo(0, 0); }, []);

@@ -24,6 +24,23 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — Techfest Admin + Registration upgrades:
+  1. `/admin/competitions` now shows **Robotics** column (Yes/No + format + vendor)
+     and **Source** column, plus per-row **Edit** / **Soft-Delete** actions with a
+     Dialog-based edit modal. Soft-deleted rows are excluded from list/export.
+  2. Techfest registration form (school + educator) captures **How did you find
+     out about us?** — Social Media / Google Search / IIT Techfest / Through
+     Someone (with name field) / Other. When the visitor arrives via
+     `oll.co/techfest?ref={slug}` the source is auto-tagged as `referral` and
+     the referrer's friendly name is shown as a pill (no manual selection).
+  3. New **Referrers** tab: admin can create referral slugs, copy shareable
+     `oll.co/techfest?ref={slug}` links, and see per-slug counts of Schools /
+     Educators / Students / Total. Backend: `POST/GET/PATCH/DELETE
+     /api/admin/techfest/referrers`, public `GET /api/techfest/referrer/{slug}`.
+     `/techfest` landing preserves `?ref=` when navigating to `/techfest/register`.
+- **Feb 2026** — Invoice PDF signature block now anchored at fixed bottom of
+  page 1 (Notes inlined, Terms rendered in 2 columns, sig 24×10mm).
+
 - **Feb 2026** — Fixed Onboarding/Convert modal prefill bugs on `/admin/schools`:
   School Team Contacts role was hardcoded to "Principal" and the previously entered
   postal Address (from Add Lead) was ignored. `openConversionModal` now cascades:
