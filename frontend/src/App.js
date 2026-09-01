@@ -109,6 +109,7 @@ const DiscoverSuccess = lazy(() => import("./pages/DiscoverSuccess"));
 const FriendshipDayLanding = lazy(() => import("./pages/FriendshipDayLanding"));
 const FriendshipDaySuccess = lazy(() => import("./pages/FriendshipDaySuccess"));
 const RoboticsBeginnerLanding = lazy(() => import("./pages/school/RoboticsBeginnerLanding"));
+const RoboticsICSE910Landing = lazy(() => import("./pages/school/RoboticsICSE910Landing"));
 const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingTracker"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
@@ -360,6 +361,9 @@ function App() {
                   live; the rest fall back to the same demo-booking flow with a query
                   param (tier=) until each gets its own dedicated page. */}
               <Route path="/school/robotics/beginner" element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics/icse-9-10" element={<RoboticsICSE910Landing />} />
+              <Route path="/school/robotics/icse-9" element={<Navigate to="/school/robotics/icse-9-10" replace />} />
+              <Route path="/school/robotics/icse-10" element={<Navigate to="/school/robotics/icse-9-10" replace />} />
               <Route path="/school/robotics/pre-school"    element={<RoboticsBeginnerLanding />} />
               <Route path="/school/robotics/intermediate" element={<RoboticsBeginnerLanding />} />
               <Route path="/school/robotics/advanced"     element={<RoboticsBeginnerLanding />} />
