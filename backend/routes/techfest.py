@@ -203,7 +203,8 @@ def _is_admin(user: dict) -> bool:
 
 
 async def _get_or_create_user_slug(user: dict) -> Optional[str]:
-    """Return the slug owned by this team user, creating one on first call."""
+    """Return the slug owned by this team user, creating one on first call.
+    Uses `firstname-l` format and stamps notes as "Team" for auto-provisioned rows."""
     email = (user.get("email") or "").strip().lower()
     if not email:
         return None
@@ -212,18 +213,12 @@ async def _get_or_create_user_slug(user: dict) -> Optional[str]:
     })
     if existing:
         return existing["slug"]
-    # Auto-generate slug from name or email local-part
-    seed = (user.get("name") or email.split("@", 1)[0])
-    slug = _make_slug(seed)
-    base = slug
-    i = 1
-    while await db.techfest_referrers.find_one({"slug": slug}):
-        i += 1
-        slug = f"{base}-{i}"
+    base = _team_slug(user.get("name") or "", email)
+    slug = await _unique_slug(base)
     doc = {
         "name": user.get("name") or email,
         "slug": slug,
-        "notes": None,
+        "notes": "Team",
         "owner_email": email,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": email,
@@ -364,6 +359,68 @@ def _make_slug(raw: str) -> str:
     return s[:60] or "ref"
 
 
+def _team_slug(name: str, email: str) -> str:
+    """Build a slug in the format `firstname-l` (last-name initial).
+    Falls back to email local-part when the name is a single word or empty."""
+    name = (name or "").strip()
+    if not name:
+        name = (email or "").split("@", 1)[0]
+    parts = [p for p in re.split(r"\s+", name) if p]
+    if not parts:
+        return "ref"
+    first = re.sub(r"[^a-z0-9]", "", parts[0].lower())
+    last_initial = ""
+    if len(parts) > 1:
+        tail = re.sub(r"[^a-z0-9]", "", parts[-1].lower())
+        last_initial = tail[:1]
+    slug = f"{first}-{last_initial}" if last_initial else first
+    return slug[:60] or "ref"
+
+
+async def _unique_slug(base: str, exclude_id=None) -> str:
+    """Return an unused slug — appending `-2`, `-3`, … if the base collides."""
+    slug = base
+    i = 1
+    while True:
+        q = {"slug": slug}
+        if exclude_id is not None:
+            q["_id"] = {"$ne": exclude_id}
+        if not await db.techfest_referrers.find_one(q):
+            return slug
+        i += 1
+        slug = f"{base}-{i}"
+
+
+async def _sync_team_referrers() -> int:
+    """Ensure every active team_user has a `techfest_referrers` row.
+    Returns the number of new referrer rows inserted."""
+    inserted = 0
+    cursor = db.team_users.find(
+        {"$or": [{"is_active": {"$exists": False}}, {"is_active": True}]},
+        {"_id": 0, "id": 1, "name": 1, "email": 1},
+    )
+    async for tu in cursor:
+        email = (tu.get("email") or "").strip().lower()
+        if not email:
+            continue
+        # Skip if this user already owns a referrer (soft-deleted or not — we
+        # don't recreate a link that an admin has explicitly deleted).
+        if await db.techfest_referrers.find_one({"owner_email": email}):
+            continue
+        base = _team_slug(tu.get("name") or "", email)
+        slug = await _unique_slug(base)
+        await db.techfest_referrers.insert_one({
+            "name": tu.get("name") or email,
+            "slug": slug,
+            "notes": "Team",
+            "owner_email": email,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": "system:sync-team",
+        })
+        inserted += 1
+    return inserted
+
+
 @router.post("/admin/techfest/referrers")
 async def create_referrer(payload: ReferrerIn, user: dict = Depends(_admin_or_team)):
     # Non-admins may only own one referrer at a time — return theirs if exists.
@@ -422,8 +479,23 @@ async def get_my_referrer(user: dict = Depends(_admin_or_team)):
     return doc
 
 
+@router.post("/admin/techfest/referrers/sync-team")
+async def sync_team_referrers(user: dict = Depends(_admin)):
+    """Admin: ensure every active team_user has a Techfest referrer row.
+    Idempotent — existing rows (including soft-deleted) are not touched."""
+    n = await _sync_team_referrers()
+    return {"ok": True, "inserted": n}
+
+
 @router.get("/admin/techfest/referrers")
 async def list_referrers(user: dict = Depends(_admin_or_team)):
+    # Admins: on every load, opportunistically ensure every team_user has a
+    # referrer row so the table matches the current team roster.
+    if _is_admin(user):
+        try:
+            await _sync_team_referrers()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("team referrer sync failed: %s", exc)
     query = {"deleted_at": {"$exists": False}}
     if not _is_admin(user):
         query["owner_email"] = (user.get("email") or "").strip().lower()
