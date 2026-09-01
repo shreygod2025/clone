@@ -603,7 +603,7 @@ const LandingPage = () => {
                   { label: 'Beginner',                             route: '/school/robotics/beginner',     sub: 'Grade 1–4 · First year of Robotics', highlight: true },
                   { label: 'Intermediate',                         route: '/school/robotics/intermediate', sub: 'Grade 5–7 · Sensors + coding' },
                   { label: 'Advanced',                             route: '/school/robotics/advanced',     sub: 'Grade 8–10 · IoT + automation' },
-                  { label: 'ICSE — Group 3 Subject (9th & 10th)',  route: '/school/robotics/icse',          sub: 'Board-mapped elective' },
+                  { label: 'ICSE — Group 3 Subject (9th & 10th)',  route: '/school/robotics/icse-9-10',      sub: 'Board-mapped elective' },
                 ].map(t => (
                   <button key={t.label}
                     onClick={() => navigate(t.route)}
