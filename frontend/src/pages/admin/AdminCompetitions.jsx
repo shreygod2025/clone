@@ -68,7 +68,8 @@ const sourceSummary = (r) => {
 };
 
 export default function AdminCompetitions() {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const [tab, setTab] = useState('school');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +77,9 @@ export default function AdminCompetitions() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef(null);
+
+  // My referral link (for non-admins & shown as a helper card for everyone)
+  const [myRef, setMyRef] = useState(null);
 
   // Referrers state
   const [referrers, setReferrers] = useState([]);
@@ -89,7 +93,13 @@ export default function AdminCompetitions() {
   const [editForm, setEditForm] = useState({});
   const [savingReg, setSavingReg] = useState(false);
 
+  const visibleTabs = isAdmin ? TABS : TABS.filter((t) => t.key !== 'referrers');
   const isRegistrationTab = tab === 'school' || tab === 'educator' || tab === 'student';
+
+  // Guard: if a non-admin somehow lands on the referrers tab, snap back to schools.
+  useEffect(() => {
+    if (!isAdmin && tab === 'referrers') setTab('school');
+  }, [isAdmin, tab]);
 
   const load = async () => {
     if (!isRegistrationTab) return;
@@ -119,6 +129,21 @@ export default function AdminCompetitions() {
     else load();
      
   }, [tab]);
+
+  // Fetch the current user's own referral link + counts on mount.
+  // Admin sees this as a helper card; team members see it as their primary tool.
+  const loadMyRef = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/techfest/referrers/me`, { headers: getAuthHeaders() });
+      setMyRef(res.data || null);
+    } catch (err) {
+      // Silently ignore — page still works without a personal link.
+      console.warn('Failed to load personal referrer link', err?.response?.data || err);
+    }
+  };
+  useEffect(() => { loadMyRef();  }, []);
+  // Refresh my counts whenever the registrations list refreshes.
+  useEffect(() => { if (isRegistrationTab && !loading) loadMyRef();  }, [rows, loading]);
 
   const filtered = useMemo(() => {
     if (!q.trim()) return rows;
@@ -270,12 +295,55 @@ export default function AdminCompetitions() {
             <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Admin · Competitions</div>
             <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mt-1">Competitions.</h1>
             <p className="text-slate-600 mt-1 text-sm sm:text-base max-w-2xl">
-              All OLL-run competitions in one place. Click a competition to see its registrations, filter by role, and import/export CSVs.
+              {isAdmin
+                ? 'All OLL-run competitions in one place. Click a competition to see its registrations, filter by role, and import/export CSVs.'
+                : 'Track schools and educators who signed up through your personal referral link.'}
             </p>
           </div>
         </div>
 
-        {/* Competitions grid — Techfest as the first (currently only) card */}
+        {/* My personal referral link — visible to everyone. Team members see it as
+            their primary tool; admins see it as their own share link alongside the
+            Referrers tab. */}
+        {myRef && (
+          <div className="mb-6 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-4 sm:p-5" data-testid="admin-competitions-my-ref-card">
+            <div className="flex flex-wrap items-start gap-4 justify-between">
+              <div className="flex items-start gap-3 flex-1 min-w-[240px]">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0">
+                  <Link2 className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Your Referral Link</div>
+                  <div className="text-sm text-slate-700 mt-0.5">Share this link — every school & educator who registers through it will show up below.</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <code className="text-[12px] sm:text-sm bg-white border border-emerald-200 rounded-lg px-2.5 py-1.5 font-mono text-emerald-800 max-w-full break-all" data-testid="admin-competitions-my-ref-link">{buildRefLink(myRef.slug)}</code>
+                    <Button size="sm" onClick={() => copyRefLink(myRef.slug)} className="bg-emerald-600 hover:bg-emerald-700" data-testid="admin-competitions-my-ref-copy">
+                      <Copy className="w-3.5 h-3.5 mr-1" /> Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-center pr-1">
+                <div>
+                  <div className="text-2xl font-bold text-blue-700 tabular-nums leading-tight" data-testid="admin-competitions-my-ref-school-count">{myRef.school_count}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Schools</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-red-700 tabular-nums leading-tight" data-testid="admin-competitions-my-ref-educator-count">{myRef.educator_count}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Educators</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-900 tabular-nums leading-tight">{myRef.total_count}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Total</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Competitions grid — Techfest as the first (currently only) card.
+            Only shown to admins — team users see a simpler view focused on their leads. */}
+        {isAdmin && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8" data-testid="admin-competitions-grid">
           <div className="relative rounded-2xl border-2 border-[#DC2626] bg-gradient-to-br from-[#0A1F44] via-[#1E3A5F] to-[#0A1F44] text-white p-5 shadow-lg overflow-hidden">
             <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-[#DC2626]/40 blur-3xl" />
@@ -291,11 +359,12 @@ export default function AdminCompetitions() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Tabs — School / Educator / Student / Referrers */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex flex-wrap border-b border-slate-200" role="tablist" data-testid="admin-competitions-tabs">
-            {TABS.map((t) => {
+            {visibleTabs.map((t) => {
               const active = t.key === tab;
               const Icon = t.icon;
               const count = active ? (t.key === 'referrers' ? referrers.length : rows.length) : null;
@@ -335,9 +404,11 @@ export default function AdminCompetitions() {
               </div>
               <div className="flex items-center gap-2">
                 <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} data-testid="admin-competitions-import-input" />
-                <Button variant="outline" size="sm" onClick={handleImportClick} disabled={importing} data-testid="admin-competitions-import-btn">
-                  {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />} Import CSV
-                </Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={handleImportClick} disabled={importing} data-testid="admin-competitions-import-btn">
+                    {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />} Import CSV
+                  </Button>
+                )}
                 <Button size="sm" onClick={handleExport} disabled={exporting} className="bg-[#0A1F44] hover:bg-[#1E3A5F]" data-testid="admin-competitions-export-btn">
                   {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Export CSV
                 </Button>

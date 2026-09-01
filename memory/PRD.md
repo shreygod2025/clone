@@ -24,6 +24,15 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — Team-user-scoped referral links on `/admin/competitions`:
+  Every team user now gets an auto-provisioned personal referrer link
+  (`oll.co/techfest?ref={slug}`), visible as a green banner on the page with
+  live counts (schools · educators · total). Non-admin users see *only* the
+  registrations attributed to their own slug — list, export, edit and
+  soft-delete are all scoped by `owner_email` on the backend (403 on cross-user
+  actions). Admin retains full access + the Referrers tab. New endpoint:
+  `GET /api/admin/techfest/referrers/me`.
+
 - **Feb 2026** — Techfest Admin + Registration upgrades:
   1. `/admin/competitions` now shows **Robotics** column (Yes/No + format + vendor)
      and **Source** column, plus per-row **Edit** / **Soft-Delete** actions with a

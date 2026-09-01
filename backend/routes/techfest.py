@@ -185,14 +185,83 @@ async def _admin(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+async def _admin_or_team(user: dict = Depends(get_current_user)) -> dict:
+    """Allow any authenticated team user. Non-admins get a *scoped* view of
+    Techfest data limited to registrations attributed to their referral slug."""
+    role = user.get("role")
+    if role in ("admin", "super_admin"):
+        return user
+    # team_members and role-permissioned users are fine — scope is applied per endpoint
+    email = user.get("email")
+    if not email:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return user
+
+
+def _is_admin(user: dict) -> bool:
+    return user.get("role") in ("admin", "super_admin")
+
+
+async def _get_or_create_user_slug(user: dict) -> Optional[str]:
+    """Return the slug owned by this team user, creating one on first call."""
+    email = (user.get("email") or "").strip().lower()
+    if not email:
+        return None
+    existing = await db.techfest_referrers.find_one({
+        "owner_email": email, "deleted_at": {"$exists": False}
+    })
+    if existing:
+        return existing["slug"]
+    # Auto-generate slug from name or email local-part
+    seed = (user.get("name") or email.split("@", 1)[0])
+    slug = _make_slug(seed)
+    base = slug
+    i = 1
+    while await db.techfest_referrers.find_one({"slug": slug}):
+        i += 1
+        slug = f"{base}-{i}"
+    doc = {
+        "name": user.get("name") or email,
+        "slug": slug,
+        "notes": None,
+        "owner_email": email,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": email,
+    }
+    await db.techfest_referrers.insert_one(doc)
+    return slug
+
+
+async def _user_scope_slugs(user: dict) -> List[str]:
+    """All slugs a non-admin user owns (usually one)."""
+    if _is_admin(user):
+        return []  # empty means "no scope filter"
+    email = (user.get("email") or "").strip().lower()
+    if not email:
+        return ["__none__"]
+    cursor = db.techfest_referrers.find(
+        {"owner_email": email, "deleted_at": {"$exists": False}}, {"slug": 1},
+    )
+    slugs = [d["slug"] async for d in cursor]
+    # Ensure at least one slug exists for the user (auto-provision)
+    if not slugs:
+        s = await _get_or_create_user_slug(user)
+        if s:
+            slugs = [s]
+    return slugs or ["__none__"]
+
+
 @router.get("/admin/techfest/registrations")
 async def list_techfest_registrations(
     type: Optional[RegistrantType] = None,
-    user: dict = Depends(_admin),
+    user: dict = Depends(_admin_or_team),
 ):
     query = {"deleted_at": {"$exists": False}}
     if type:
         query["type"] = type
+    if not _is_admin(user):
+        slugs = await _user_scope_slugs(user)
+        query["referrer_slug"] = {"$in": slugs}
     cursor = db.techfest_registrations.find(query).sort("created_at", -1).limit(1000)
     out = []
     async for doc in cursor:
@@ -228,7 +297,7 @@ class TechfestRegistrationPatch(BaseModel):
 async def update_techfest_registration(
     reg_id: str,
     payload: TechfestRegistrationPatch,
-    user: dict = Depends(_admin),
+    user: dict = Depends(_admin_or_team),
 ):
     from bson import ObjectId
     try:
@@ -238,6 +307,10 @@ async def update_techfest_registration(
     existing = await db.techfest_registrations.find_one({"_id": oid})
     if not existing:
         raise HTTPException(status_code=404, detail="Registration not found")
+    if not _is_admin(user):
+        slugs = await _user_scope_slugs(user)
+        if existing.get("referrer_slug") not in slugs:
+            raise HTTPException(status_code=403, detail="Not allowed to edit this registration")
     updates = {}
     for k, v in payload.model_dump(exclude_none=True).items():
         if isinstance(v, str):
@@ -253,13 +326,20 @@ async def update_techfest_registration(
 @router.delete("/admin/techfest/registrations/{reg_id}")
 async def soft_delete_techfest_registration(
     reg_id: str,
-    user: dict = Depends(_admin),
+    user: dict = Depends(_admin_or_team),
 ):
     from bson import ObjectId
     try:
         oid = ObjectId(reg_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid registration id")
+    existing = await db.techfest_registrations.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if not _is_admin(user):
+        slugs = await _user_scope_slugs(user)
+        if existing.get("referrer_slug") not in slugs:
+            raise HTTPException(status_code=403, detail="Not allowed to delete this registration")
     res = await db.techfest_registrations.update_one(
         {"_id": oid},
         {"$set": {
@@ -285,7 +365,16 @@ def _make_slug(raw: str) -> str:
 
 
 @router.post("/admin/techfest/referrers")
-async def create_referrer(payload: ReferrerIn, user: dict = Depends(_admin)):
+async def create_referrer(payload: ReferrerIn, user: dict = Depends(_admin_or_team)):
+    # Non-admins may only own one referrer at a time — return theirs if exists.
+    if not _is_admin(user):
+        email = (user.get("email") or "").strip().lower()
+        mine = await db.techfest_referrers.find_one({
+            "owner_email": email, "deleted_at": {"$exists": False}
+        })
+        if mine:
+            mine["_id"] = str(mine["_id"])
+            return mine
     slug = _make_slug(payload.slug or payload.name)
     # Ensure unique slug
     base = slug
@@ -297,6 +386,7 @@ async def create_referrer(payload: ReferrerIn, user: dict = Depends(_admin)):
         "name": payload.name.strip(),
         "slug": slug,
         "notes": (payload.notes or "").strip() or None,
+        "owner_email": (user.get("email") or "").strip().lower(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user.get("email") or user.get("id") or "admin",
     }
@@ -305,16 +395,50 @@ async def create_referrer(payload: ReferrerIn, user: dict = Depends(_admin)):
     return doc
 
 
+@router.get("/admin/techfest/referrers/me")
+async def get_my_referrer(user: dict = Depends(_admin_or_team)):
+    """Return (auto-creating if needed) the caller's own referrer link, plus counts.
+    Used by the Competitions page to show the current user's shareable slug."""
+    slug = await _get_or_create_user_slug(user)
+    if not slug:
+        raise HTTPException(status_code=400, detail="Could not resolve current user")
+    doc = await db.techfest_referrers.find_one({"slug": slug})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Referrer not found")
+    doc["_id"] = str(doc["_id"])
+    # Compute counts
+    pipeline = [
+        {"$match": {"referrer_slug": slug, "deleted_at": {"$exists": False}}},
+        {"$group": {"_id": "$type", "count": {"$sum": 1}}},
+    ]
+    counts = {"school": 0, "educator": 0, "student": 0}
+    async for grp in db.techfest_registrations.aggregate(pipeline):
+        t = grp["_id"]
+        counts[t] = grp["count"]
+    doc["school_count"] = counts["school"]
+    doc["educator_count"] = counts["educator"]
+    doc["student_count"] = counts["student"]
+    doc["total_count"] = sum(counts.values())
+    return doc
+
+
 @router.get("/admin/techfest/referrers")
-async def list_referrers(user: dict = Depends(_admin)):
-    cursor = db.techfest_referrers.find({"deleted_at": {"$exists": False}}).sort("created_at", -1)
+async def list_referrers(user: dict = Depends(_admin_or_team)):
+    query = {"deleted_at": {"$exists": False}}
+    if not _is_admin(user):
+        query["owner_email"] = (user.get("email") or "").strip().lower()
+    cursor = db.techfest_referrers.find(query).sort("created_at", -1)
     items = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
         items.append(doc)
     # Compute counts per slug
+    slug_filter = [it["slug"] for it in items] if not _is_admin(user) else None
+    match: dict = {"referrer_slug": {"$exists": True, "$ne": None}, "deleted_at": {"$exists": False}}
+    if slug_filter is not None:
+        match["referrer_slug"] = {"$in": slug_filter} if slug_filter else "__none__"
     pipeline = [
-        {"$match": {"referrer_slug": {"$exists": True, "$ne": None}, "deleted_at": {"$exists": False}}},
+        {"$match": match},
         {"$group": {
             "_id": {"slug": "$referrer_slug", "type": "$type"},
             "count": {"$sum": 1},
@@ -336,19 +460,23 @@ async def list_referrers(user: dict = Depends(_admin)):
 
 
 @router.patch("/admin/techfest/referrers/{ref_id}")
-async def update_referrer(ref_id: str, payload: ReferrerIn, user: dict = Depends(_admin)):
+async def update_referrer(ref_id: str, payload: ReferrerIn, user: dict = Depends(_admin_or_team)):
     from bson import ObjectId
     try:
         oid = ObjectId(ref_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid referrer id")
+    existing = await db.techfest_referrers.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Referrer not found")
+    if not _is_admin(user):
+        if existing.get("owner_email") != (user.get("email") or "").strip().lower():
+            raise HTTPException(status_code=403, detail="Not allowed to edit this referrer")
     updates = {"name": payload.name.strip()}
     if payload.notes is not None:
         updates["notes"] = payload.notes.strip() or None
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    res = await db.techfest_referrers.update_one({"_id": oid}, {"$set": updates})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Referrer not found")
+    await db.techfest_referrers.update_one({"_id": oid}, {"$set": updates})
     return {"ok": True}
 
 
@@ -397,11 +525,14 @@ _EXPORT_COLS = [
 @router.get("/admin/techfest/registrations/export")
 async def export_techfest_csv(
     type: Optional[RegistrantType] = None,
-    user: dict = Depends(_admin),
+    user: dict = Depends(_admin_or_team),
 ):
     query = {"deleted_at": {"$exists": False}}
     if type:
         query["type"] = type
+    if not _is_admin(user):
+        slugs = await _user_scope_slugs(user)
+        query["referrer_slug"] = {"$in": slugs}
     cursor = db.techfest_registrations.find(query).sort("created_at", 1)
     rows = []
     async for doc in cursor:
