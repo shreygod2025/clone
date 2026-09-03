@@ -103,6 +103,14 @@ const BOARD_TOPPERS = [
   { name: 'Kabir Shah',    school: 'Maria Regina Angel Opus',   score: '99/100', grade: 'ICSE X · 2026', color: '#7C3AED' },
 ];
 
+// Four pillars of OLL's topper-making formula (replaces the old kit highlights).
+const FORMULA_PILLARS = [
+  { i: Package,       t: 'Hands-on Practical Learning', s: 'Take-home Kit provided to each child so every chapter is anchored in a real build, not just theory.' },
+  { i: BookOpen,      t: 'Content-Rich Textbooks',      s: 'Board-aligned textbooks paired with ready-made videos and lesson plans for every session.' },
+  { i: CheckCircle2,  t: 'Regular Assessments',         s: 'Chapter quizzes, past-paper drills and mock tests keep students board-exam-ready all year.' },
+  { i: Users,         t: '24/7 Doubt Solving',          s: 'Direct WhatsApp + call access to OLL expert educators — no student is ever stuck.' },
+];
+
 const KIT_HIGHLIGHTS = [
   { i: Package,   t: '30+ Hands-on Activities',       s: 'From Blinking LED to a Multi-Sensor Autonomous Robot — every concept anchored in a real build.' },
   { i: Cpu,       t: 'Arduino + Sensors + Motors',    s: 'Ultrasonic, IR, LDR, servo, DC motors, LEDs, buzzer — everything a Grade-9/10 syllabus demands.' },
@@ -376,13 +384,10 @@ export default function RoboticsICSE910Landing() {
 
       {/* ── Board Exam Toppers marquee ────────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-toppers">
-        <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
-          <div>
-            <div className="icse-script text-[#DC2626] text-3xl">the class of 2026</div>
-            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">More students scoring the board.</h2>
-            <p className="icse-light text-slate-600 max-w-2xl mt-2">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
-          </div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">More photos coming soon</div>
+        <div className="text-center mb-10">
+          <div className="icse-script text-[#DC2626] text-3xl">Results speak loudest</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">OLL students top the board</h2>
+          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
         </div>
 
         {/* Marquee of the rest of the toppers */}
@@ -423,67 +428,40 @@ export default function RoboticsICSE910Landing() {
         </div>
       </section>
 
-      {/* ── What's Inside the Kit ─────────────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-kit-deep">
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
-          <div className="space-y-5">
-            {/* Kit components tray */}
-            <div className="relative icse-anim-fadeup">
-              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#0A1F44]/20 to-[#DC2626]/15 blur-3xl" />
-              <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-                <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[240px] sm:h-[300px] object-contain bg-slate-50 p-2" />
-                <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">The Practical Kit</div>
-                    <div className="text-sm font-bold text-[#0A1F44]">30+ Components · Organised Tray</div>
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 bg-[#DC2626] px-3 py-1.5 rounded-full">
-                    <Package className="w-3.5 h-3.5 text-white" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">Included</span>
-                  </div>
-                </div>
+      {/* ── OLL's Formula for Creating Toppers ────────────────────────── */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-formula">
+        <div className="text-center mb-12">
+          <div className="icse-script text-[#DC2626] text-3xl">the winning method</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">What's OLL's formula for creating Toppers?</h2>
+          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+            Four non-negotiables baked into every OLL classroom — the reason our students keep
+            landing on the ICSE Group 3 topper list, year after year.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl mx-auto">
+          {FORMULA_PILLARS.map(({ i: Icon, t, s }, idx) => (
+            <div
+              key={t}
+              className="icse-card p-6 sm:p-7 flex gap-4 icse-anim-fadeup"
+              style={{ animationDelay: `${idx * 0.12}s` }}
+              data-testid={`icse-formula-pillar-${idx + 1}`}
+            >
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
+                <Icon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="icse-display text-[#0A1F44] text-xl">{t}</div>
+                <div className="icse-light text-sm text-slate-600 mt-1.5 leading-relaxed">{s}</div>
               </div>
             </div>
-            {/* Textbook covers */}
-            <div className="relative icse-anim-fadeup icse-anim-delay-1">
-              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#60A5FA]/25 to-[#DC2626]/15 blur-3xl" />
-              <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-                <img src={KIT_TEXTBOOKS} alt="OLL ICSE Robotics & AI Textbooks — Grade 9 & Grade 10" className="w-full h-[240px] sm:h-[300px] object-contain bg-white p-2" />
-                <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">Board-Aligned Textbooks</div>
-                    <div className="text-sm font-bold text-[#0A1F44]">Grade 9 &amp; Grade 10 · Code 66</div>
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 bg-[#0A1F44] px-3 py-1.5 rounded-full">
-                    <BookOpen className="w-3.5 h-3.5 text-white" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">2-Book Set</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <div className="icse-script text-[#DC2626] text-3xl">the lab kit</div>
-            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Build. Code. Innovate.</h2>
-            <p className="icse-light text-slate-600 mt-4">
-              Every kit ships in an organised transparent case so classrooms stay clean and inventory
-              is one glance away. All components are STEM.org tested for school-grade safety — paired
-              with two beautifully designed, board-aligned textbooks for Grades 9 &amp; 10.
-            </p>
-            <div className="mt-6 space-y-3">
-              {KIT_HIGHLIGHTS.map(({ i: Icon, t, s }) => (
-                <div key={t} className="flex gap-3 icse-card p-4">
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-[#0A1F44]">{t}</div>
-                    <div className="icse-light text-sm text-slate-600 mt-0.5">{s}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
+        </div>
+
+        <div className="mt-10 text-center">
+          <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-formula-cta">
+            See it in action — Book a Demo <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </section>
 
