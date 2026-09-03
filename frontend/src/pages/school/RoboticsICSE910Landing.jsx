@@ -59,7 +59,8 @@ const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
 const CURRICULUM_PDF =
-  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/m5rar4q3_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%289th%20-%2010th%20%202026%20%281%29.pdf';
+  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4cp6p9fa_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026%20%281%29_compressed.pdf';
+const CURRICULUM_PDF_NAME = 'OLL-ICSE-9-10-Robotics-AI-Curriculum-Brochure.pdf';
 
 const KIT_HERO = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
 const KIT_COMPONENTS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rywcpwtg_Screenshot%202026-09-01%20at%208.25.18%E2%80%AFPM.png';
@@ -96,7 +97,7 @@ const BOOK_COMPARISON = [
   { label: 'Number of Chapters',          g9: '3 (Robotics) & 4 (AI)',                                                                                  g10: '5 (Robotics) & 4 (AI)' },
   { label: 'Number of Activities',        g9: '30',                                                                                                     g10: '40' },
   { label: 'Subject Covered',             g9: 'Robotics & AI for Class 9 (ICSE Subject Code 66)',                                                       g10: 'Robotics & AI for Class 10 (ICSE Subject Code 66)' },
-  { label: 'Software & Hardware',         g9: 'Windows 10, PictoBlox Python, PictoBlox AI, PictoBlox ML, Python Libraries, Quarky, Arduino',            g10: 'Windows 10, PictoBlox Python, PictoBlox AI, PictoBlox ML, Python Libraries, Quarky, Arduino' },
+  { label: 'Software & Hardware',         g9: 'Windows 10, PictoBlox, OLL Virtual Labs (OLL AI Labs · OLL Python Lab · OLL Machine Learning Lab), Python Libraries, Arduino',            g10: 'Windows 10, PictoBlox, OLL Virtual Labs (OLL AI Labs · OLL Python Lab · OLL Machine Learning Lab), Python Libraries, Arduino' },
   { label: 'Competition',                 g9: 'Yes — OLL × Techfest IIT Bombay',                                                                        g10: 'Yes — OLL × Techfest IIT Bombay' },
   { label: 'Technologies Covered',        g9: 'Robotics, AI, Data Science, Machine Learning',                                                           g10: 'Robotics, AI, Data Science, Machine Learning' },
   { label: 'Sessions Required',           g9: '80 total — 40 Lab + 40 Classroom',                                                                       g10: '80 total — 40 Lab + 40 Classroom' },
@@ -105,7 +106,7 @@ const BOOK_COMPARISON = [
   { label: 'Book Sections',               g9: 'Part A: Robotics · Part B: AI · Part C: Lab Activities · Part D: Project / Field Visit / Portfolio',      g10: 'Part A: Robotics · Part B: AI · Part C: Lab Activities · Part D: Project / Field Visit / Portfolio' },
   { label: 'Robotics — Table of Contents',g9: 'Unit 1: Intro to Robotics · Unit 2: Robot as a System · Unit 3: Concepts in Robotics',                    g10: 'Unit 1: New Age Robotic Systems · Unit 2: From Robots to Cobots · Unit 3: Components · Unit 4: Design & Motion · Unit 5: Integrating Robots as a System' },
   { label: 'AI — Table of Contents',      g9: 'Unit 1: Intro to AI · Unit 2: Data & Evolution of Computing · Unit 3: Python · Unit 4: AI Framework',    g10: 'Unit 1: Decision Making in Machines · Unit 2: Machine Intelligence & Cybersecurity · Unit 3: AI Project Framework · Unit 4: Python' },
-  { label: 'Lab Activities Detail',       g9: 'Python Basics (12) · Robotics with Quarky (7) · AI with PictoBlox (6) · ML with PictoBlox (5)',           g10: 'Advance Python (17) · Robotics with Quarky (10) · AI with PictoBlox (2) · ML with PictoBlox (10) · AI + Robotics (1)' },
+  { label: 'Lab Activities Detail',       g9: 'Python Basics (12) · Robotics with Arduino (7) · AI with PictoBlox (6) · ML with OLL Virtual Labs (5)',           g10: 'Advance Python (17) · Robotics with Arduino (10) · AI with PictoBlox (2) · ML with OLL Virtual Labs (10) · AI + Robotics (1)' },
 ];
 
 // Spotlight — top-scoring student pinned before the marquee. Placeholder
@@ -388,15 +389,44 @@ export default function RoboticsICSE910Landing() {
   const gradeData = gradeTab === '9' ? GRADE_9 : GRADE_10;
 
   const openBrochureModal = (e) => { if (e) e.preventDefault(); setBrochureError(''); setShowBrochureModal(true); };
+
+  // Force an actual FILE DOWNLOAD (not a preview tab).
+  // Strategy: fetch → Blob → object URL → click a hidden <a download>.
+  // Falls back to opening in a new tab if the fetch is blocked by CORS.
+  const triggerPdfDownload = async () => {
+    try {
+      const res = await fetch(CURRICULUM_PDF, { mode: 'cors' });
+      if (!res.ok) throw new Error('fetch-fail');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = CURRICULUM_PDF_NAME;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (err) {
+      // Fallback — open in new tab so the user can still get the file
+      const a = document.createElement('a');
+      a.href = CURRICULUM_PDF;
+      a.download = CURRICULUM_PDF_NAME;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   const submitBrochureLead = async (e) => {
     e.preventDefault();
     if (!brochureForm.school_name.trim() || !brochureForm.phone.trim()) {
       setBrochureError('Please fill in both fields.'); return;
     }
     setBrochureSubmitting(true); setBrochureError('');
-    // Open the PDF synchronously in a new tab so the popup blocker doesn't block it
-    // (popup blockers only fire on `window.open` calls outside a user gesture chain).
-    const pdfWin = window.open(CURRICULUM_PDF, '_blank');
+    // Kick off the actual PDF download immediately so the click stays inside the user gesture.
+    triggerPdfDownload();
     try {
       const API = process.env.REACT_APP_BACKEND_URL;
       await fetch(`${API}/api/schools/inquiry`, {
@@ -414,20 +444,12 @@ export default function RoboticsICSE910Landing() {
           assign_option: 'admin',
         }),
       });
-      // If popup got blocked, fall back to same-tab navigation via a hidden anchor.
-      if (!pdfWin || pdfWin.closed) {
-        const a = document.createElement('a');
-        a.href = CURRICULUM_PDF;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
       setShowBrochureModal(false);
       setBrochureForm({ school_name: '', phone: '' });
     } catch (err) {
-      setBrochureError('Lead saved locally — opening PDF now.');
+      // Lead POST failed but the PDF is already downloading — close cleanly.
+      setShowBrochureModal(false);
+      setBrochureForm({ school_name: '', phone: '' });
     } finally {
       setBrochureSubmitting(false);
     }
