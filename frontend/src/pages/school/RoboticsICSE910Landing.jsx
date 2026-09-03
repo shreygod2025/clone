@@ -384,10 +384,16 @@ export default function RoboticsICSE910Landing() {
 
       {/* ── Board Exam Toppers marquee ────────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-toppers">
-        <div className="text-center mb-10">
-          <div className="icse-script text-[#DC2626] text-3xl">Results speak loudest</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">OLL students top the board</h2>
-          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
+        <div className="relative rounded-[36px] overflow-hidden p-8 sm:p-12 text-center mb-10" style={{
+          background: 'linear-gradient(135deg,#0A1F44 0%, #1E3A5F 100%)',
+        }}>
+          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#DC2626]/40 blur-3xl" />
+          <div className="absolute -bottom-14 -left-16 w-64 h-64 rounded-full bg-[#0A1F44]/25 blur-3xl" />
+          <div className="relative">
+            <div className="icse-script text-[#DC2626] text-3xl">Results speak loudest</div>
+            <h2 className="icse-display text-white text-4xl sm:text-5xl mt-1">OLL students top the board</h2>
+            <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
+          </div>
         </div>
 
         {/* Marquee of the rest of the toppers */}
