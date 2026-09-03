@@ -499,8 +499,6 @@ export default function RoboticsICSE910Landing() {
           /* Tap targets — comfortable buttons */
           .icse-btn { padding: 12px 18px !important; font-size: 0.78rem !important; }
           .icse-btn.primary, .icse-btn.outline, .icse-btn.ghost { min-height: 46px; }
-          /* Book covers shrink so the comparison table stays scannable */
-          [data-testid="icse-book-compare-table"] img { height: 130px !important; }
           /* Kit box + components tray images fit nicely on small screens */
           [data-testid="icse-practical-kits"] img { height: 200px !important; }
           /* Formula pillar cards — stack icon on top so text isn't cramped */
@@ -508,6 +506,28 @@ export default function RoboticsICSE910Landing() {
           [data-testid^="icse-formula-pillar"] > div:first-child { width: 44px !important; height: 44px !important; }
           /* About Us team — larger avatars on mobile */
           [data-testid="icse-team"] img { width: 96px; height: 96px; }
+
+          /* ── Book comparison table → stacked cards ─────────────── */
+          [data-testid="icse-book-compare-table"] { display: block; }
+          [data-testid="icse-book-compare-table"] thead { display: none; }
+          [data-testid="icse-book-compare-table"] tbody { display: block; }
+          [data-testid="icse-book-compare-table"] tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 0; border-top: 1px solid #E2E8F0; }
+          [data-testid="icse-book-compare-table"] tr:first-child { border-top: none; }
+          [data-testid="icse-book-compare-table"] td { display: block; padding: 12px 14px !important; border-right: none !important; }
+          [data-testid="icse-book-compare-table"] td:first-child { grid-column: 1 / -1; background: #FEF2F2; font-size: 0.72rem !important; letter-spacing: 0.14em; text-transform: uppercase; color: #7f1d1d !important; padding: 8px 14px !important; }
+          [data-testid="icse-book-compare-table"] td:nth-child(2) { border-right: 1px solid #E2E8F0 !important; position: relative; }
+          [data-testid="icse-book-compare-table"] td:nth-child(2)::before { content: 'Grade 9'; display: block; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; color: #DC2626; font-weight: 900; margin-bottom: 4px; }
+          [data-testid="icse-book-compare-table"] td:nth-child(3)::before { content: 'Grade 10'; display: block; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; color: #0A1F44; font-weight: 900; margin-bottom: 4px; }
+          /* Mobile book covers header (shown above the stacked comparison) */
+          .icse-book-mobile-header { display: grid !important; }
+
+          /* ── Schools we work with — force horizontal marquee ──── */
+          .icse-videos-wrap { overflow: hidden !important; }
+          .icse-videos-track, .icse-logos-track { flex-wrap: nowrap !important; white-space: nowrap; }
+          .icse-vid-card { min-width: 240px !important; }
+
+          /* ── About Us "Watch" pill: move to TOP-right to avoid overlap ── */
+          [data-testid="icse-about-oll"] a .absolute.bottom-4.right-4 { bottom: auto !important; top: 12px !important; right: 12px !important; padding: 6px 12px !important; font-size: 0.65rem !important; }
         }
         /* ── Mobile sticky bottom CTA bar ─────────────────────────── */
         .icse-mobile-cta {
@@ -529,10 +549,8 @@ export default function RoboticsICSE910Landing() {
       <div className="icse-orb-blue" style={{ top: '20%',    right: '-140px' }} />
       <div className="icse-orb-gold" style={{ bottom: '30%', left: '-100px' }} />
 
-      {/* ── Sticky Nav (uses fixed positioning — sticky is broken here because
-          the app-wide `overflow-x: hidden` on html/body creates a scroll container
-          which cancels `position: sticky` from working on children). ─────── */}
-      <nav className="fixed top-3 left-0 right-0 z-50 px-3" data-testid="icse-nav">
+      {/* ── Sticky Nav (desktop/tablet only — mobile uses the sticky bottom CTA bar). ─── */}
+      <nav className="fixed top-3 left-0 right-0 z-50 px-3 hidden sm:block" data-testid="icse-nav">
         <div className="icse-nav-pill">
           <a href="/" className="flex items-center gap-3">
             <img src={OLL_LOGO_COLOR} alt="OLL — Skills for All logo · Official ICSE Robotics & AI kit partner" className="h-9 sm:h-10 w-auto" />
@@ -554,7 +572,7 @@ export default function RoboticsICSE910Landing() {
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-10" data-testid="icse-hero">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-32 pb-10" data-testid="icse-hero">
         <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-white/90 border border-emerald-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
@@ -756,6 +774,17 @@ export default function RoboticsICSE910Landing() {
 
         {/* Comparison table */}
         <div className="relative bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden">
+          {/* Mobile-only book cover header — table thead is hidden on <640px */}
+          <div className="grid grid-cols-2 gap-3 p-4 bg-gradient-to-r from-[#DC2626]/10 via-white to-[#0A1F44]/10 sm:hidden" data-testid="icse-book-mobile-covers">
+            <a href="#" onClick={(e) => { e.preventDefault(); openBrochureModal(); }} className="text-center block" data-testid="icse-book-cover-9-m">
+              <img src={BOOK_GRADE_9} alt="OLL ICSE Class 9 Robotics & AI textbook" className="h-[160px] w-auto mx-auto object-contain drop-shadow-xl" loading="lazy" />
+              <div className="mt-2 icse-display text-[#0A1F44] text-lg">Grade 9</div>
+            </a>
+            <a href="#" onClick={(e) => { e.preventDefault(); openBrochureModal(); }} className="text-center block" data-testid="icse-book-cover-10-m">
+              <img src={BOOK_GRADE_10} alt="OLL ICSE Class 10 Robotics & AI textbook" className="h-[160px] w-auto mx-auto object-contain drop-shadow-xl" loading="lazy" />
+              <div className="mt-2 icse-display text-[#0A1F44] text-lg">Grade 10</div>
+            </a>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="icse-book-compare-table">
               <thead className="bg-gradient-to-r from-[#DC2626]/10 via-white to-[#0A1F44]/10">
