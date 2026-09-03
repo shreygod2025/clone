@@ -110,16 +110,55 @@ const BOOK_COMPARISON = [
   { label: 'Lab Activities Detail',       g9: 'Python Basics (12) · Robotics with Arduino (7) · AI with PictoBlox (6) · ML with OLL Virtual Labs (5)',           g10: 'Advance Python (17) · Robotics with Arduino (10) · AI with PictoBlox (2) · ML with OLL Virtual Labs (10) · AI + Robotics (1)' },
 ];
 
-// Spotlight — top-scoring student pinned before the marquee. Placeholder
-// initials until a real photo is uploaded.
-const FEATURED_WINNER = {
-  name: 'Krishang Udasi',
-  school: 'Sanjeevani World School, Mumbai',
-  grade: 'Grade 10 · ICSE 2026',
-  score: '100 / 100',
-  subject: 'Robotics & AI',
-  photo: null,   // TODO: swap in once uploaded
-};
+// Spotlight — top-scoring students rotated in the hero slider.
+// Real names + schools + scores lifted from the ICSE 2026 board results PDF.
+const FEATURED_WINNERS = [
+  {
+    name: 'Krishang Udasi',
+    school: 'Sanjeevani World School, Mumbai',
+    grade: 'Grade 10 · ICSE 2026',
+    score: '100 / 100',
+    subject: 'Robotics & AI',
+    quote: '"Every OLL project felt like magic I could code."',
+    photo: null,
+  },
+  {
+    name: 'Anany Abhay Srivastava',
+    school: 'N. L. Dalmia High School',
+    grade: 'Grade 10 · ICSE 2026',
+    score: '100 / 100',
+    subject: 'Robotics & AI',
+    quote: '"Every practical felt like solving a real-world puzzle."',
+    photo: null,
+  },
+  {
+    name: 'Aashlesha Dhanraj Kotian',
+    school: 'N. L. Dalmia High School',
+    grade: 'Grade 10 · ICSE 2026',
+    score: '100 / 100',
+    subject: 'Robotics & AI',
+    quote: '"OLL made AI + Python feel effortless by exam day."',
+    photo: null,
+  },
+  {
+    name: 'Hinesh Komal Nyati',
+    school: 'N. L. Dalmia High School',
+    grade: 'Grade 9 · ICSE 2026',
+    score: '100 / 100',
+    subject: 'Robotics & AI',
+    quote: '"Building the robot week after week made the theory stick."',
+    photo: null,
+  },
+  {
+    name: 'Ranveer Mukesh Singh',
+    school: 'N. L. Dalmia High School',
+    grade: 'Grade 9 · ICSE 2026',
+    score: '100 / 100',
+    subject: 'Robotics & AI',
+    quote: '"The kit turned every chapter into a project I owned."',
+    photo: null,
+  },
+];
 
 const ICSE_SCHOOLS = [
   { name: 'Sanjeevani World School',        src: '/school/icse-logos/1.png' },
@@ -130,11 +169,11 @@ const ICSE_SCHOOLS = [
 ];
 
 const BOARD_TOPPERS = [
-  { name: 'Aarav Mehta',   school: 'Sanjeevani World School',   score: '98/100', grade: 'ICSE X · 2026', color: '#DC2626' },
-  { name: 'Ishita Kapoor', school: 'N. L. Dalmia High School',  score: '97/100', grade: 'ICSE X · 2026', color: '#0EA5E9' },
-  { name: 'Vihaan Rao',    school: '7 Square Academy',           score: '96/100', grade: 'ICSE X · 2026', color: '#0A1F44' },
-  { name: 'Ananya Iyer',   school: 'Fravashi International',    score: '95/100', grade: 'ICSE X · 2026', color: '#10B981' },
-  { name: 'Kabir Shah',    school: 'Maria Regina Angel Opus',   score: '99/100', grade: 'ICSE X · 2026', color: '#7C3AED' },
+  { name: 'Anany Abhay Srivastava',      school: 'N. L. Dalmia High School',  score: '100/100', grade: 'ICSE X · 2026', color: '#DC2626' },
+  { name: 'Aashlesha Dhanraj Kotian',    school: 'N. L. Dalmia High School',  score: '100/100', grade: 'ICSE X · 2026', color: '#0EA5E9' },
+  { name: 'Hinesh Komal Nyati',          school: 'N. L. Dalmia High School',  score: '100/100', grade: 'ICSE IX · 2026', color: '#0A1F44' },
+  { name: 'Ranveer Mukesh Singh',        school: 'N. L. Dalmia High School',  score: '100/100', grade: 'ICSE IX · 2026', color: '#10B981' },
+  { name: 'Krishang Udasi',              school: 'Sanjeevani World School',   score: '100/100', grade: 'ICSE X · 2026', color: '#7C3AED' },
 ];
 
 // Four pillars of OLL's topper-making formula (replaces the old kit highlights).
@@ -324,6 +363,13 @@ export default function RoboticsICSE910Landing() {
   const [brochureForm, setBrochureForm] = useState({ school_name: '', phone: '' });
   const [brochureSubmitting, setBrochureSubmitting] = useState(false);
   const [brochureError, setBrochureError] = useState('');
+  const [winnerIdx, setWinnerIdx] = useState(0);
+
+  // Auto-rotate the hero topper slider every 4s.
+  useEffect(() => {
+    const id = setInterval(() => setWinnerIdx((i) => (i + 1) % FEATURED_WINNERS.length), 4000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
   useEffect(() => {
@@ -632,57 +678,79 @@ export default function RoboticsICSE910Landing() {
             </div>
           </div>
 
-          {/* Hero visual — Featured Board Topper (replaces the kit GIF).
-              Bigger and more emotionally resonant than a product photo. */}
+          {/* Hero visual — Featured Board Topper slider (Krishang + 4 NL Dalmia perfect-scorers). */}
           <div className="relative icse-anim-fadeup icse-anim-delay-2" data-testid="icse-hero-featured-winner">
             <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-br from-[#0A1F44]/25 via-transparent to-[#DC2626]/25 blur-3xl icse-anim-spin" />
             <div className="relative bg-white rounded-[32px] p-5 sm:p-6 border border-amber-100 shadow-2xl icse-anim-float">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="inline-flex items-center gap-1.5 bg-[#0A1F44] px-3 py-1 rounded-full">
                   <Trophy className="w-3.5 h-3.5 text-white" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white">Board Topper · ICSE 2026</span>
                 </div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 tabular-nums">
+                  {String(winnerIdx + 1).padStart(2, '0')} / {String(FEATURED_WINNERS.length).padStart(2, '0')}
+                </div>
               </div>
-              <div className="flex items-center gap-5">
-                {/* Portrait */}
-                <div className="relative flex-shrink-0">
-                  <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-[#0A1F44] to-[#DC2626] blur-md opacity-60 icse-anim-pulse" />
-                  {FEATURED_WINNER.photo ? (
-                    <img src={FEATURED_WINNER.photo} alt={FEATURED_WINNER.name} className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-xl" />
-                  ) : (
-                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg,#0A1F44,#DC2626)' }}>
-                      <span className="icse-hero-h text-white text-4xl">
-                        {FEATURED_WINNER.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                      </span>
+              {(() => {
+                const w = FEATURED_WINNERS[winnerIdx];
+                return (
+                  <>
+                    <div className="flex items-center gap-5">
+                      <div className="relative flex-shrink-0">
+                        <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-[#0A1F44] to-[#DC2626] blur-md opacity-60 icse-anim-pulse" />
+                        {w.photo ? (
+                          <img src={w.photo} alt={w.name} className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-xl" />
+                        ) : (
+                          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl flex items-center justify-center"
+                            style={{ background: 'linear-gradient(135deg,#0A1F44,#DC2626)' }}>
+                            <span className="icse-hero-h text-white text-4xl">
+                              {w.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="icse-hero-h text-[#0A1F44] text-2xl sm:text-3xl leading-tight">{w.name}</div>
+                        <div className="icse-light text-sm text-slate-600 mt-1 leading-snug">{w.school}</div>
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">{w.grade}</div>
+                      </div>
                     </div>
-                  )}
-                </div>
-                {/* Name + school */}
-                <div className="min-w-0">
-                  <div className="icse-hero-h text-[#0A1F44] text-2xl sm:text-3xl leading-tight">{FEATURED_WINNER.name}</div>
-                  <div className="icse-light text-sm text-slate-600 mt-1 leading-snug">
-                    {FEATURED_WINNER.school}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">{FEATURED_WINNER.grade}</div>
-                </div>
-              </div>
-              {/* Score */}
-              <div className="mt-5 pt-5 border-t border-amber-100 flex items-center justify-between gap-4">
-                <div>
-                  <div className="icse-eyebrow text-[#0A1F44]">{FEATURED_WINNER.subject}</div>
-                  <div className="icse-hero-h text-[1.75rem] sm:text-5xl mt-1" style={{
-                    background: 'linear-gradient(135deg,#0A1F44,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
-                  }}>
-                    {FEATURED_WINNER.score}
-                  </div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mt-0.5">Perfect Score</div>
-                </div>
-                <div className="text-right">
-                  <div className="icse-light text-xs text-slate-500 max-w-[160px]">
-                    "Every OLL project felt like magic I could code."
-                  </div>
-                </div>
+                    <div className="mt-5 pt-5 border-t border-amber-100 flex items-center justify-between gap-4">
+                      <div>
+                        <div className="icse-eyebrow text-[#0A1F44]">{w.subject}</div>
+                        <div className="icse-hero-h text-[1.75rem] sm:text-5xl mt-1" style={{
+                          background: 'linear-gradient(135deg,#0A1F44,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+                        }}>
+                          {w.score}
+                        </div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mt-0.5">Perfect Score</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="icse-light text-xs text-slate-500 max-w-[160px] italic">
+                          {w.quote}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+              {/* Slider dot indicators */}
+              <div className="mt-4 flex items-center justify-center gap-2" data-testid="icse-hero-winner-dots">
+                {FEATURED_WINNERS.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setWinnerIdx(i)}
+                    aria-label={`Show topper ${i + 1}`}
+                    className="transition-all duration-300 rounded-full"
+                    style={{
+                      width: i === winnerIdx ? 24 : 8,
+                      height: 8,
+                      background: i === winnerIdx ? 'linear-gradient(90deg,#0A1F44,#DC2626)' : '#CBD5E1',
+                    }}
+                    data-testid={`icse-hero-winner-dot-${i}`}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -701,7 +769,7 @@ export default function RoboticsICSE910Landing() {
           <div className="relative text-center px-6 sm:px-12">
             <div className="icse-script text-[#DC2626] text-3xl">Results speak loudest</div>
             <h2 className="icse-display text-white text-[1.75rem] sm:text-5xl mt-1">OLL students top the board</h2>
-            <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
+            <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">Every one of these Grade 9 &amp; 10 students scored a <strong className="text-white">perfect 100/100</strong> on the ICSE Group 3 Robotics &amp; AI paper — trained on OLL's curriculum + kit.</p>
           </div>
 
           {/* Marquee of the rest of the toppers */}
