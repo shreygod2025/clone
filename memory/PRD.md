@@ -24,6 +24,12 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — ICSE 9/10 Landing Kit Box image fix: `RoboticsICSE910Landing.jsx`
+  now points `KIT_BOX_PRODUCT` to the correct transparent-case product photo
+  (asset `n2zt8acf_...`, showing OLL Grade 9 & 10 ICSE Robotics & AI Lab Kit with
+  STEM.org accreditation + 30+ Hands-on Activities badge). Previously pointed to
+  a Kit Highlights text-card screenshot by mistake.
+
 - **Feb 2026** — Team-user-scoped referral links on `/admin/competitions`:
   Every team user now gets an auto-provisioned personal referrer link
   (`oll.co/techfest?ref={slug}`), visible as a green banner on the page with
