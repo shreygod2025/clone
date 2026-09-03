@@ -37,6 +37,8 @@ const KIT_TEXTBOOKS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb
 const BOOK_GRADE_9  = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kla2pir4_1.png';
 const BOOK_GRADE_10 = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4847emq3_2.png';
 const KIT_BOX_PRODUCT = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png';
+const PROJECT_ROBOTICS = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
+const PROJECT_AI = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4fexubbk_image.png';
 
 // 36-item kit components list (from OLL brochure). Split into 2 columns.
 const KIT_COMPONENTS_LIST = [
@@ -268,6 +270,10 @@ const upsertMeta = (key, value, attr = 'name') => {
 export default function RoboticsICSE910Landing() {
   const navigate = useNavigate();
   const [gradeTab, setGradeTab] = useState('9');
+  const [showBrochureModal, setShowBrochureModal] = useState(false);
+  const [brochureForm, setBrochureForm] = useState({ school_name: '', phone: '' });
+  const [brochureSubmitting, setBrochureSubmitting] = useState(false);
+  const [brochureError, setBrochureError] = useState('');
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
   useEffect(() => {
@@ -278,6 +284,41 @@ export default function RoboticsICSE910Landing() {
 
   const goBookDemo = () => navigate('/school?product=icse-9-10&source=icse-9-10-landing');
   const gradeData = gradeTab === '9' ? GRADE_9 : GRADE_10;
+
+  const openBrochureModal = (e) => { if (e) e.preventDefault(); setBrochureError(''); setShowBrochureModal(true); };
+  const submitBrochureLead = async (e) => {
+    e.preventDefault();
+    if (!brochureForm.school_name.trim() || !brochureForm.phone.trim()) {
+      setBrochureError('Please fill in both fields.'); return;
+    }
+    setBrochureSubmitting(true); setBrochureError('');
+    try {
+      const API = process.env.REACT_APP_BACKEND_URL;
+      await fetch(`${API}/api/schools/inquiry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          school_name: brochureForm.school_name.trim(),
+          contact_name: '',
+          email: `lead_${brochureForm.phone.replace(/\D/g,'')}@pending.oll.co`,
+          phone: brochureForm.phone.trim(),
+          selected_offerings: ['9th & 10th ICSE'],
+          programs_interested: ['Robotics'],
+          source: 'icse-9-10-brochure-download',
+          notes: 'Lead captured via ICSE 9-10 landing page — Curriculum PDF download gate.',
+          assign_option: 'admin',
+        }),
+      });
+      // Trigger PDF download in a new tab regardless of API success (best-effort lead capture).
+      window.open(CURRICULUM_PDF, '_blank', 'noopener,noreferrer');
+      setShowBrochureModal(false);
+      setBrochureForm({ school_name: '', phone: '' });
+    } catch (err) {
+      setBrochureError('Something went wrong. Please try again.');
+    } finally {
+      setBrochureSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen relative" style={{
@@ -351,11 +392,11 @@ export default function RoboticsICSE910Landing() {
             </span>
           </a>
           <div className="flex items-center gap-2">
-            <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer"
+            <button type="button" onClick={openBrochureModal}
               className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#0A1F44] px-3 py-2 rounded-full hover:bg-slate-100 transition"
               data-testid="icse-nav-download">
               <Download className="w-3.5 h-3.5" /> Curriculum PDF
-            </a>
+            </button>
             <button onClick={goBookDemo} className="icse-btn primary" style={{ padding: '10px 20px', fontSize: '0.72rem' }} data-testid="icse-nav-cta">
               Book Demo <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -368,13 +409,13 @@ export default function RoboticsICSE910Landing() {
         <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-white/90 border border-emerald-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="icse-eyebrow text-emerald-700">STEM.org Accredited · NEP 2020 aligned</span>
+              <Trophy className="w-3.5 h-3.5 text-amber-600" />
+              <span className="icse-eyebrow text-amber-700">ICSE Topper Recommends</span>
             </div>
-            <h1 className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(2.6rem, 5.5vw, 4.8rem)' }}>
-              ICSE Grade 9 &amp; 10<br/>
-              <span style={{ color: '#DC2626' }}>Robotics + AI</span><br/>
-              <span style={{ color: '#0A1F44' }}>Board-Exam Ready.</span>
+            <h1 className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(2.2rem, 4.8vw, 4.2rem)' }}>
+              Your 9<span className="lowercase">th</span> &amp; 10<span className="lowercase">th</span> Grade students can{' '}
+              <span style={{ color: '#DC2626' }}>TOP</span>{' '}
+              in the ICSE <span style={{ color: '#DC2626' }}>Robotics &amp; AI</span> Board Exams
             </h1>
             <p className="icse-light mt-6 text-slate-700 text-base sm:text-lg max-w-xl icse-anim-fadeup icse-anim-delay-2">
               The complete <strong className="text-[#0A1F44] font-bold">ICSE Group 3 · Code 66</strong> Robotics program.
@@ -385,9 +426,9 @@ export default function RoboticsICSE910Landing() {
               <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-hero-cta">
                 Book a School Demo <ArrowRight className="w-4 h-4" />
               </button>
-              <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="icse-btn outline" data-testid="icse-hero-download">
+              <button type="button" onClick={openBrochureModal} className="icse-btn outline" data-testid="icse-hero-download">
                 <Download className="w-4 h-4" /> Download Brochure
-              </a>
+              </button>
             </div>
             <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {TRUST_STATS.map((s, i) => (
@@ -691,7 +732,7 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-curriculum">
         <div className="text-center">
           <div className="icse-script text-[#DC2626] text-3xl">structured curriculum</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Follow a Structured Curriculum Mapped as per ICSE</h2>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Follow a Structured Curriculum Mapped as per ICSE guidelines</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
             Every chapter and every lab activity is lifted verbatim from the ICSE Group 3 Code 66 syllabus for Classes 9 &amp; 10.
           </p>
@@ -712,15 +753,15 @@ export default function RoboticsICSE910Landing() {
 
         <div className="mt-10 grid md:grid-cols-2 gap-5">
           <CurriculumBlock title="Robotics · Theory"          icon={Cpu}     items={gradeData.robotics}   accent="#DC2626" testid="icse-block-robotics" />
-          <CurriculumBlock title="Robotics · Practicals"      icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" />
+          <CurriculumBlock title="Robotics · Practicals"      icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" previewImg={PROJECT_ROBOTICS} previewAlt="Obstacle-avoiding robotic car project" />
           <CurriculumBlock title="AI &amp; Python · Theory"   icon={Brain}   items={gradeData.ai}         accent="#60A5FA" testid="icse-block-ai" />
-          <CurriculumBlock title="AI &amp; Python · Practicals" icon={Code2} items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" />
+          <CurriculumBlock title="AI &amp; Python · Practicals" icon={Code2} items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" previewImg={PROJECT_AI} previewAlt="AI-Enabled School Management System project" />
         </div>
 
         <div className="mt-10 text-center">
-          <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="icse-btn outline" data-testid="icse-curriculum-download">
+          <button type="button" onClick={openBrochureModal} className="icse-btn outline" data-testid="icse-curriculum-download">
             <Download className="w-4 h-4" /> View Full Brochure (PDF)
-          </a>
+          </button>
         </div>
       </section>
 
@@ -767,9 +808,9 @@ export default function RoboticsICSE910Landing() {
               <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-final-cta-btn">
                 Book a School Demo <ArrowRight className="w-4 h-4" />
               </button>
-              <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="icse-btn ghost">
+              <button type="button" onClick={openBrochureModal} className="icse-btn ghost">
                 <Download className="w-4 h-4" /> Download Curriculum
-              </a>
+              </button>
             </div>
             <div className="mt-8 flex items-center justify-center gap-2 text-white/70 text-xs icse-light">
               <CheckCircle2 className="w-3.5 h-3.5" /> No commitment · No cost · Just answers.
@@ -782,11 +823,52 @@ export default function RoboticsICSE910Landing() {
       <footer className="border-t border-slate-100 py-8 text-center text-slate-500 text-xs icse-light">
         © 2026 OLL · Skills for All · <a href="/school" className="hover:text-[#DC2626] font-bold">Explore all school programs</a>
       </footer>
+
+      {/* ── Brochure Lead-Capture Modal ─────────────────────────────── */}
+      {showBrochureModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" data-testid="icse-brochure-modal" onClick={() => setShowBrochureModal(false)}>
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 sm:p-8" style={{ background: 'linear-gradient(135deg,#0A1F44 0%, #1E3A5F 100%)' }}>
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-[#DC2626]" />
+                <span className="icse-eyebrow text-white/80">One quick step</span>
+              </div>
+              <div className="icse-script text-[#DC2626] text-2xl mt-2">get the full brochure</div>
+              <h3 className="icse-display text-white text-2xl sm:text-3xl mt-1">Where should we send the ICSE 9 &amp; 10 curriculum?</h3>
+              <p className="icse-light text-white/70 text-sm mt-2">Enter your school name and phone number — we'll open the PDF and a schools-team advisor will reach out with a demo slot.</p>
+            </div>
+            <form onSubmit={submitBrochureLead} className="p-6 sm:p-8 space-y-4">
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">School Name *</label>
+                <input type="text" required autoFocus value={brochureForm.school_name}
+                  onChange={(e) => setBrochureForm({ ...brochureForm, school_name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#DC2626] focus:outline-none focus:ring-2 focus:ring-[#DC2626]/20 icse-body text-slate-800"
+                  placeholder="e.g., Sanjeevani World School" data-testid="icse-brochure-school" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">Contact Phone Number *</label>
+                <input type="tel" required value={brochureForm.phone}
+                  onChange={(e) => setBrochureForm({ ...brochureForm, phone: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#DC2626] focus:outline-none focus:ring-2 focus:ring-[#DC2626]/20 icse-body text-slate-800"
+                  placeholder="+91 98XXXXXXXX" data-testid="icse-brochure-phone" />
+              </div>
+              {brochureError && <div className="text-sm text-[#DC2626] font-bold">{brochureError}</div>}
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setShowBrochureModal(false)} className="icse-btn outline flex-1 justify-center" data-testid="icse-brochure-cancel">Cancel</button>
+                <button type="submit" disabled={brochureSubmitting} className="icse-btn primary flex-1 justify-center" data-testid="icse-brochure-submit">
+                  {brochureSubmitting ? 'Sending…' : (<>Download PDF <Download className="w-4 h-4" /></>)}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 icse-light text-center pt-1">We'll never spam. One-time contact from OLL's schools team.</p>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CurriculumBlock({ title, icon: Icon, items, accent, testid }) {
+function CurriculumBlock({ title, icon: Icon, items, accent, testid, previewImg, previewAlt }) {
   const isGrouped = items.length > 0 && typeof items[0] === 'object';
   return (
     <div className="icse-card p-6 sm:p-7" data-testid={testid}>
@@ -796,6 +878,14 @@ function CurriculumBlock({ title, icon: Icon, items, accent, testid }) {
         </div>
         <div className="icse-display text-[#0A1F44] text-xl" dangerouslySetInnerHTML={{ __html: title }} />
       </div>
+      {previewImg && (
+        <div className="mb-5 rounded-2xl overflow-hidden border border-slate-100 bg-slate-50">
+          <img src={previewImg} alt={previewAlt || ''} className="w-full h-40 object-contain bg-white p-2" loading="lazy" />
+          <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-t border-slate-100">
+            Sample student project
+          </div>
+        </div>
+      )}
       {isGrouped ? (
         <div className="space-y-4">
           {items.map((group) => (
