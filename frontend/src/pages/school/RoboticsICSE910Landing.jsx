@@ -23,7 +23,37 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Download, ShieldCheck, Trophy, Cpu, Code2, Brain,
   CheckCircle2, Sparkles, Users, BookOpen, Package, Award, Flame,
+  School, GraduationCap, MapPin, PlayCircle, Play,
 } from 'lucide-react';
+import Footer from '../../components/Footer';
+
+const OLL_LOGO_WHITE =
+  'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
+const KBC_IMG =
+  'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png';
+const SHARK_TANK_IMG =
+  'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
+const SHARK_TANK_YT = 'https://www.youtube.com/watch?v=aVzl6yzPPTw';
+const KBC_YT        = 'https://www.youtube.com/watch?v=8M3A_InpVKw&t=883s';
+const TEAM = [
+  { name: 'Shreyaan Daga',     role: 'Founder & CEO',          bio: 'Youngest on Shark Tank India, on the Hot Seat of KBC.',            img: '/team/shreyaan.png?v=2' },
+  { name: 'Vidushi Daga',      role: 'Chairperson · OLL',      bio: '15+ years in education. Taught over 5 lakh kids across India.',    img: '/team/vidushi.png?v=2' },
+  { name: 'Amit Modi',         role: 'IIT Bombay Alumni',      bio: '10+ years in Robotics education for kids across India.',           img: '/team/amit.png?v=2' },
+  { name: 'Heather Andersson', role: 'President · UNESCO WGF', bio: '15+ years in education. President, UNESCO World Genesis Foundation.', img: '/team/heather.png?v=2' },
+];
+const SCHOOL_VIDEOS = [
+  { name: 'Parle Tilak Vidyalay',            id: 'xHhMLBzB_GU' },
+  { name: 'Maneckji Cooper Education Trust', id: 'vOik-WmE_n8' },
+  { name: 'Hiranandani Foundation School',   id: 'OnK6oevnLeM' },
+  { name: 'TayieBiyah High School',          id: 'dWo2wr02mq4' },
+  { name: 'Greenlawns High School',          id: 'YoIu5akBkr0' },
+  { name: 'Shree Chandulal Nanavati High',   id: 'r6xeqlTixYE' },
+  { name: 'GD Somani School',                id: '5c2gZORdUxc' },
+  { name: 'St. Agnes School',                id: 'I0uZ8aIIkwU' },
+  { name: 'Sanjeevani World School',         id: 'YeyKFirPot4' },
+  { name: 'Dosti Foundation School',         id: 'sqXE6tsUQ6g' },
+];
+const PARTNER_LOGOS = Array.from({ length: 46 }, (_, i) => `/school-logos/${i + 1}.png`);
 
 const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -469,7 +499,7 @@ export default function RoboticsICSE910Landing() {
       <nav className="fixed top-3 left-0 right-0 z-50 px-3" data-testid="icse-nav">
         <div className="icse-nav-pill">
           <a href="/" className="flex items-center gap-3">
-            <img src={OLL_LOGO_COLOR} alt="OLL — Skills for All logo · Official ICSE Robotics & AI kit partner" className="h-9 sm:h-10" width="120" height="40" />
+            <img src={OLL_LOGO_COLOR} alt="OLL — Skills for All logo · Official ICSE Robotics & AI kit partner" className="h-9 sm:h-10 w-auto" />
             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-[#0A1F44] border-l border-slate-200 pl-3 leading-tight">
               ICSE Class 9 &amp; 10<br/>Robotics · Code 66
             </span>
@@ -902,10 +932,131 @@ export default function RoboticsICSE910Landing() {
         </div>
       </section>
 
-      {/* Simple footer */}
-      <footer className="border-t border-slate-100 py-8 text-center text-slate-500 text-xs icse-light">
-        © 2026 OLL · Skills for All · <a href="/school" className="hover:text-[#DC2626] font-bold">Explore all school programs</a>
-      </footer>
+      {/* ══════════ ABOUT US ══════════ */}
+      <section data-testid="icse-about-oll" className="relative overflow-hidden" style={{ padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', color: '#fff' }}>
+        <div className="absolute rounded-full blur-3xl" style={{ width: 420, height: 420, top: -140, left: '10%', background: 'rgba(220,38,38,0.35)' }} />
+        <div className="absolute rounded-full blur-3xl" style={{ width: 380, height: 380, bottom: -140, right: '10%', background: 'rgba(96,165,250,0.25)' }} />
+        <div className="relative max-w-6xl mx-auto text-center">
+          <div className="icse-script text-[#FCA5A5] text-3xl">about us</div>
+          <img src={OLL_LOGO_WHITE} alt="OLL — Skills for All" className="h-20 mx-auto my-5" loading="lazy" />
+          <h2 className="icse-display text-white text-4xl sm:text-5xl">
+            Trusted by schools <span style={{ color: '#FCA5A5' }}>across India.</span>
+          </h2>
+          <div className="mt-8 flex flex-wrap gap-3 justify-center">
+            {[
+              { i: School,        k: '500+',      l: 'Schools',  c: '#DC2626' },
+              { i: GraduationCap, k: '2,00,000+', l: 'Students', c: '#60A5FA' },
+              { i: MapPin,        k: '35',        l: 'Cities',   c: '#FBBF24' },
+            ].map(({ i: Icon, k, l, c }) => (
+              <div key={l} className="inline-flex items-center gap-2.5 rounded-full px-5 py-2.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }} data-testid={`icse-about-stat-${l.toLowerCase()}`}>
+                <Icon size={20} style={{ color: c }} />
+                <span className="icse-display text-white text-xl">{k}</span>
+                <span className="icse-light text-sm text-white/80">{l}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Meet the Team */}
+          <div className="mt-12 p-8 rounded-3xl text-left" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }} data-testid="icse-team">
+            <div className="text-center mb-8">
+              <div className="icse-script text-[#FCA5A5] text-2xl">meet the team</div>
+              <h3 className="icse-display text-white text-2xl mt-1">The people behind OLL.</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {TEAM.map((m) => (
+                <div key={m.name} className="text-center">
+                  <div className="w-32 h-32 rounded-full mx-auto overflow-hidden bg-white" style={{ border: '3px solid #FBBF24', boxShadow: '0 20px 40px rgba(0,0,0,0.35), 0 0 0 6px rgba(251,191,36,0.18)' }}>
+                    <img src={m.img} alt={`${m.name} — ${m.role}`} loading="lazy" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="mt-4 text-white font-bold text-sm uppercase tracking-wide">{m.name}</div>
+                  <div className="text-[#FCA5A5] font-bold text-xs mt-1">{m.role}</div>
+                  <div className="text-white/75 text-xs mt-1.5 icse-light leading-relaxed">{m.bio}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* As seen on — KBC + Shark Tank */}
+          <div className="grid md:grid-cols-2 gap-5 mt-12">
+            {[
+              { href: KBC_YT, img: KBC_IMG, tag: 'Sony · KBC', title: 'Kaun Banega Crorepati', sub: "Featured as India's leading EdTech for kids", accent: '#FCA5A5' },
+              { href: SHARK_TANK_YT, img: SHARK_TANK_IMG, tag: 'Sony LIV · Season Finale', title: 'Shark Tank India', sub: "Pitched to India's top investors on national TV", accent: '#60A5FA' },
+            ].map((c) => (
+              <a key={c.title} href={c.href} target="_blank" rel="noreferrer" className="relative rounded-2xl overflow-hidden block group" style={{ height: 260, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+                <img src={c.img} alt={c.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.92) 100%)' }} />
+                <div className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-white text-xs font-bold uppercase tracking-widest" style={{ background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', border: '2px solid rgba(255,255,255,0.55)' }}>
+                  <Play size={13} fill="#fff" strokeWidth={0} /> Watch
+                </div>
+                <div className="absolute bottom-5 left-5 text-left">
+                  <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: c.accent }}>{c.tag}</div>
+                  <div className="icse-display text-white text-xl mt-1">{c.title}</div>
+                  <div className="text-white/80 text-xs icse-light mt-1">{c.sub}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ SCHOOLS WE WORK WITH ══════════ */}
+      <section data-testid="icse-schools-with" className="relative py-20 overflow-hidden bg-slate-50">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <div className="icse-script text-[#DC2626] text-3xl">proof, not promises</div>
+            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">
+              Schools we <span style={{ color: '#DC2626' }}>work with.</span>
+            </h2>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+              Real classrooms. Real projects. Real principals telling the story in their own words.
+            </p>
+          </div>
+
+          {/* YouTube marquee */}
+          <style>{`
+            @keyframes icse-marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+            .icse-videos-wrap { position: relative; overflow: hidden; padding: 10px 0; mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent); }
+            .icse-videos-track { display: inline-flex; gap: 1.25rem; align-items: stretch; animation: icse-marquee-scroll 60s linear infinite; width: max-content; }
+            .icse-videos-track:hover { animation-play-state: paused; }
+            .icse-vid-card { min-width: 280px; border-radius: 1.15rem; overflow: hidden; background: #0A1F44; border: 1px solid rgba(15,30,80,0.15); box-shadow: 0 16px 32px rgba(15,30,80,0.15); text-decoration: none; display: block; transition: transform 0.25s ease; }
+            .icse-vid-card:hover { transform: translateY(-3px); }
+            .icse-vid-thumb { position: relative; height: 158px; overflow: hidden; }
+            .icse-vid-thumb img { width: 100%; height: 100%; object-fit: cover; }
+            .icse-vid-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,31,68,0.35); }
+            .icse-logos-track { display: inline-flex; gap: 2rem; align-items: center; animation: icse-marquee-scroll 55s linear infinite; width: max-content; }
+            .icse-logos-track:hover { animation-play-state: paused; }
+          `}</style>
+          <div className="icse-videos-wrap">
+            <div className="icse-videos-track">
+              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
+                <a key={`${v.id}-${i}`} href={`https://youtu.be/${v.id}`} target="_blank" rel="noreferrer" className="icse-vid-card" data-testid={i < SCHOOL_VIDEOS.length ? `icse-school-video-${v.id}` : undefined}>
+                  <div className="icse-vid-thumb">
+                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={`${v.name} — OLL Robotics classroom video`} loading="lazy" />
+                    <div className="icse-vid-play"><PlayCircle size={38} color="#fff" fill="rgba(255,255,255,0.15)" /></div>
+                  </div>
+                  <div className="px-4 py-3 text-white icse-body text-sm">{v.name}</div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Partner logo marquee */}
+          <div className="mt-12">
+            <div className="text-center mb-4 text-xs uppercase tracking-widest font-bold text-slate-400 icse-eyebrow">A few of our partner schools</div>
+            <div className="icse-videos-wrap">
+              <div className="icse-logos-track">
+                {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((src, i) => (
+                  <div key={i} className="flex items-center justify-center bg-white rounded-2xl p-3" style={{ minWidth: 150, height: 90, border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(15,30,80,0.05)' }}>
+                    <img src={src} alt="Partner school logo" loading="lazy" className="max-h-full max-w-full object-contain" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
 
       {/* ── Brochure Lead-Capture Modal ─────────────────────────────── */}
       {showBrochureModal && (

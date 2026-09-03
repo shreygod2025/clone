@@ -19,6 +19,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
+import Footer from '../../components/Footer';
 import {
   ArrowRight, Phone, Download, ChevronLeft, ChevronRight, Trophy,
   School, GraduationCap, MapPin, Cpu, Code2, Brain, Boxes, Lightbulb,
@@ -1621,6 +1622,7 @@ export default function RoboticsBeginnerLanding() {
           </div>
         </div>
       )}
+      <Footer />
     </div>
   );
 }
