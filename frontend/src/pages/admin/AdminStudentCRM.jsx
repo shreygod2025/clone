@@ -410,7 +410,7 @@ const AdminStudentCRM = () => {
       } else {
         alert(`Cashfree status: ${res.data?.status || 'unknown'}. If payment was made, manually update the status.`);
       }
-      fetchCampBookings();
+      fetchCampDashboard();
     } catch {
       alert('Verification check failed. Try updating status manually.');
     }

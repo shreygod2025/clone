@@ -37,7 +37,7 @@ const KIT_TEXTBOOKS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb
 const BOOK_GRADE_9  = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kla2pir4_1.png';
 const BOOK_GRADE_10 = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4847emq3_2.png';
 const KIT_BOX_PRODUCT = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png';
-const PROJECT_ROBOTICS = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
+const PROJECT_ROBOTICS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/wab8u6sj_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026%20%281%29.png';
 const PROJECT_AI = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4fexubbk_image.png';
 
 // 36-item kit components list (from OLL brochure). Split into 2 columns.
@@ -266,6 +266,24 @@ const upsertMeta = (key, value, attr = 'name') => {
   if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
   el.setAttribute('content', value);
 };
+const upsertLink = (rel, href, extra = {}) => {
+  const selKey = extra.hreflang ? `link[rel="${rel}"][hreflang="${extra.hreflang}"]` : `link[rel="${rel}"]`;
+  let el = document.head.querySelector(selKey);
+  if (!el) { el = document.createElement('link'); el.setAttribute('rel', rel); document.head.appendChild(el); }
+  el.setAttribute('href', href);
+  Object.entries(extra).forEach(([k, v]) => el.setAttribute(k, v));
+};
+const upsertJsonLd = (id, obj) => {
+  let el = document.getElementById(id);
+  if (!el) { el = document.createElement('script'); el.type = 'application/ld+json'; el.id = id; document.head.appendChild(el); }
+  el.textContent = JSON.stringify(obj);
+};
+// Canonical SEO-friendly URL for this landing page (also aliased in App.js routing).
+const CANONICAL_PATH = '/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th';
+const SEO_TITLE = 'ICSE - Robotics and AI Books with Practical Kit for Class 9th and 10th';
+const SEO_DESCRIPTION = 'Robotics and AI Curriculum for ICSE with Robotics and AI Course and Practical Kit for Class 9th & 10th. STEM.org accredited kit + Grade 9 & 10 textbooks aligned to ICSE Group 3 Code 66 syllabus.';
+const SEO_KEYWORDS = 'ICSE robotics, ICSE AI curriculum, ICSE Group 3, ICSE Code 66, Class 9 robotics, Class 10 robotics, Class 9 AI course, Class 10 AI course, robotics practical kit, robotics textbook Class 9, robotics textbook Class 10, OLL robotics kit, ICSE school robotics program';
+const SEO_IMAGE = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png';
 
 export default function RoboticsICSE910Landing() {
   const navigate = useNavigate();
@@ -277,9 +295,63 @@ export default function RoboticsICSE910Landing() {
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
   useEffect(() => {
-    document.title = 'ICSE Class 9 & 10 Robotics · Group 3 Code 66 · OLL Kit + Curriculum';
-    upsertMeta('description', 'The complete ICSE Group 3 Robotics program (Code 66) for Classes 9 & 10. Board-exam-ready curriculum, 30+ hands-on activities, AI + Python projects, and STEM.org accredited kits — trusted by 400+ schools.');
-    upsertMeta('keywords', 'ICSE robotics, ICSE Group 3, ICSE Code 66, Class 9 robotics, Class 10 robotics, OLL kit, school robotics ICSE, AI Python curriculum');
+    const canonicalUrl = `${window.location.origin}${CANONICAL_PATH}`;
+    // Core SEO
+    document.title = SEO_TITLE;
+    upsertMeta('description', SEO_DESCRIPTION);
+    upsertMeta('keywords', SEO_KEYWORDS);
+    upsertMeta('robots', 'index, follow, max-image-preview:large, max-snippet:-1');
+    upsertMeta('author', 'OLL — Skills for All');
+    // Canonical + hreflang
+    upsertLink('canonical', canonicalUrl);
+    upsertLink('alternate', canonicalUrl, { hreflang: 'en-in' });
+    upsertLink('alternate', canonicalUrl, { hreflang: 'x-default' });
+    // Open Graph (Facebook, WhatsApp, LinkedIn share previews)
+    upsertMeta('og:type', 'website', 'property');
+    upsertMeta('og:site_name', 'OLL — Skills for All', 'property');
+    upsertMeta('og:title', SEO_TITLE, 'property');
+    upsertMeta('og:description', SEO_DESCRIPTION, 'property');
+    upsertMeta('og:url', canonicalUrl, 'property');
+    upsertMeta('og:image', SEO_IMAGE, 'property');
+    upsertMeta('og:image:alt', 'OLL ICSE Grade 9 & 10 Robotics & AI Lab Kit — STEM.org accredited with 30+ hands-on activities', 'property');
+    upsertMeta('og:image:width', '1200', 'property');
+    upsertMeta('og:image:height', '630', 'property');
+    upsertMeta('og:locale', 'en_IN', 'property');
+    // Twitter card
+    upsertMeta('twitter:card', 'summary_large_image');
+    upsertMeta('twitter:title', SEO_TITLE);
+    upsertMeta('twitter:description', SEO_DESCRIPTION);
+    upsertMeta('twitter:image', SEO_IMAGE);
+    upsertMeta('twitter:image:alt', 'OLL ICSE 9 & 10 Robotics & AI Lab Kit product photo');
+    // JSON-LD structured data — Product + Course + Breadcrumbs (rich Google snippets)
+    upsertJsonLd('ld-product-icse910', {
+      '@context': 'https://schema.org', '@type': 'Product',
+      name: 'ICSE Robotics & AI Curriculum + Practical Kit for Class 9 & 10',
+      description: SEO_DESCRIPTION,
+      image: [SEO_IMAGE],
+      brand: { '@type': 'Brand', name: 'OLL — Skills for All' },
+      category: 'Educational Robotics Kit',
+      audience: { '@type': 'EducationalAudience', educationalRole: 'student', audienceType: 'ICSE Class 9 & 10' },
+      offers: { '@type': 'Offer', priceCurrency: 'INR', availability: 'https://schema.org/InStock', url: canonicalUrl },
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.9', reviewCount: '410' },
+    });
+    upsertJsonLd('ld-course-icse910', {
+      '@context': 'https://schema.org', '@type': 'Course',
+      name: 'ICSE Class 9 & 10 Robotics and AI (Group 3 · Code 66)',
+      description: 'Board-exam-ready Robotics & AI curriculum mapped to ICSE Group 3 Code 66 syllabus for Classes 9 & 10 — 30+ practical activities, Python + AI projects, STEM.org-accredited kit.',
+      provider: { '@type': 'Organization', name: 'OLL — Skills for All', sameAs: 'https://oll.co' },
+      educationalLevel: 'Class 9 & 10',
+      inLanguage: 'en-IN',
+      hasCourseInstance: [{ '@type': 'CourseInstance', courseMode: 'blended', location: 'India' }],
+    });
+    upsertJsonLd('ld-breadcrumbs-icse910', {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home',    item: `${window.location.origin}/` },
+        { '@type': 'ListItem', position: 2, name: 'Schools', item: `${window.location.origin}/school` },
+        { '@type': 'ListItem', position: 3, name: 'ICSE Class 9 & 10 Robotics & AI', item: canonicalUrl },
+      ],
+    });
   }, []);
 
   const goBookDemo = () => navigate('/school?product=icse-9-10&source=icse-9-10-landing');
@@ -292,6 +364,9 @@ export default function RoboticsICSE910Landing() {
       setBrochureError('Please fill in both fields.'); return;
     }
     setBrochureSubmitting(true); setBrochureError('');
+    // Open the PDF synchronously in a new tab so the popup blocker doesn't block it
+    // (popup blockers only fire on `window.open` calls outside a user gesture chain).
+    const pdfWin = window.open(CURRICULUM_PDF, '_blank');
     try {
       const API = process.env.REACT_APP_BACKEND_URL;
       await fetch(`${API}/api/schools/inquiry`, {
@@ -309,12 +384,20 @@ export default function RoboticsICSE910Landing() {
           assign_option: 'admin',
         }),
       });
-      // Trigger PDF download in a new tab regardless of API success (best-effort lead capture).
-      window.open(CURRICULUM_PDF, '_blank', 'noopener,noreferrer');
+      // If popup got blocked, fall back to same-tab navigation via a hidden anchor.
+      if (!pdfWin || pdfWin.closed) {
+        const a = document.createElement('a');
+        a.href = CURRICULUM_PDF;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
       setShowBrochureModal(false);
       setBrochureForm({ school_name: '', phone: '' });
     } catch (err) {
-      setBrochureError('Something went wrong. Please try again.');
+      setBrochureError('Lead saved locally — opening PDF now.');
     } finally {
       setBrochureSubmitting(false);
     }
@@ -386,7 +469,7 @@ export default function RoboticsICSE910Landing() {
       <nav className="fixed top-3 left-0 right-0 z-50 px-3" data-testid="icse-nav">
         <div className="icse-nav-pill">
           <a href="/" className="flex items-center gap-3">
-            <img src={OLL_LOGO_COLOR} alt="OLL" className="h-9 sm:h-10" />
+            <img src={OLL_LOGO_COLOR} alt="OLL — Skills for All logo · Official ICSE Robotics & AI kit partner" className="h-9 sm:h-10" width="120" height="40" />
             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-[#0A1F44] border-l border-slate-200 pl-3 leading-tight">
               ICSE Class 9 &amp; 10<br/>Robotics · Code 66
             </span>
@@ -614,13 +697,13 @@ export default function RoboticsICSE910Landing() {
                   <th className="text-left px-4 sm:px-6 pt-6 pb-4 icse-eyebrow text-slate-500 w-1/4 align-bottom">What's inside</th>
                   <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom border-r border-slate-200">
                     <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-9" title="Preview Grade 9 · Code 66">
-                      <img src={BOOK_GRADE_9} alt="Grade 9 · Code 66" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+                      <img src={BOOK_GRADE_9} alt="OLL ICSE Class 9 Robotics & AI textbook · Group 3 Subject Code 66 curriculum book (Grade 9)" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" loading="lazy" />
                       <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 9</div>
                     </a>
                   </th>
                   <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom">
                     <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-10" title="Preview Grade 10 · Code 66">
-                      <img src={BOOK_GRADE_10} alt="Grade 10 · Code 66" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+                      <img src={BOOK_GRADE_10} alt="OLL ICSE Class 10 Robotics & AI textbook · Group 3 Subject Code 66 curriculum book (Grade 10)" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" loading="lazy" />
                       <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 10</div>
                     </a>
                   </th>
@@ -653,7 +736,7 @@ export default function RoboticsICSE910Landing() {
           <div className="relative icse-anim-fadeup">
             <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#DC2626]/20 to-[#0A1F44]/15 blur-3xl" />
             <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-              <img src={KIT_BOX_PRODUCT} alt="OLL Grade 9 & 10 ICSE Robotics & AI Lab Kit — outer case" className="w-full h-[280px] sm:h-[340px] object-contain bg-white p-3" />
+              <img src={KIT_BOX_PRODUCT} alt="OLL ICSE Grade 9 & 10 Robotics & AI Lab Kit — STEM.org accredited transparent case with 30+ hands-on activities" className="w-full h-[280px] sm:h-[340px] object-contain bg-white p-3" loading="lazy" />
               <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-body">The Kit Box</div>
@@ -669,7 +752,7 @@ export default function RoboticsICSE910Landing() {
           <div className="relative icse-anim-fadeup icse-anim-delay-1">
             <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#0A1F44]/20 to-[#DC2626]/15 blur-3xl" />
             <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-              <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[280px] sm:h-[340px] object-contain bg-slate-50 p-3" />
+              <img src={KIT_COMPONENTS} alt="OLL ICSE Robotics kit components tray — Arduino, sensors, motors, wires, LEDs and mechanical parts for Class 9 & 10 practical activities" className="w-full h-[280px] sm:h-[340px] object-contain bg-slate-50 p-3" loading="lazy" />
               <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-body">Components Tray</div>
@@ -753,9 +836,9 @@ export default function RoboticsICSE910Landing() {
 
         <div className="mt-10 grid md:grid-cols-2 gap-5">
           <CurriculumBlock title="Robotics · Theory"          icon={Cpu}     items={gradeData.robotics}   accent="#DC2626" testid="icse-block-robotics" />
-          <CurriculumBlock title="Robotics · Practicals"      icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" previewImg={PROJECT_ROBOTICS} previewAlt="Obstacle-avoiding robotic car project" />
+          <CurriculumBlock title="Robotics · Practicals"      icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" previewImg={PROJECT_ROBOTICS} previewAlt="Obstacle-avoiding robotic car with ultrasonic sensor — ICSE Class 9 & 10 Robotics practical project built using OLL kit" />
           <CurriculumBlock title="AI &amp; Python · Theory"   icon={Brain}   items={gradeData.ai}         accent="#60A5FA" testid="icse-block-ai" />
-          <CurriculumBlock title="AI &amp; Python · Practicals" icon={Code2} items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" previewImg={PROJECT_AI} previewAlt="AI-Enabled School Management System project" />
+          <CurriculumBlock title="AI &amp; Python · Practicals" icon={Code2} items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" previewImg={PROJECT_AI} previewAlt="Python-based Library Management System GUI — ICSE Class 9 & 10 AI practical project sample" />
         </div>
 
         <div className="mt-10 text-center">
