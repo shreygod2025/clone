@@ -492,10 +492,10 @@ export default function RoboticsICSE910Landing() {
         <div className="relative bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="icse-book-compare-table">
-              <thead className="bg-gradient-to-r from-[#FEE2E2] via-[#FECACA] to-[#FEE2E2]">
+              <thead className="bg-gradient-to-r from-[#DC2626]/10 via-white to-[#0A1F44]/10">
                 <tr>
-                  <th className="text-left px-4 sm:px-6 pt-6 pb-4 icse-eyebrow text-[#7f1d1d] w-1/4 align-bottom">What's inside</th>
-                  <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom">
+                  <th className="text-left px-4 sm:px-6 pt-6 pb-4 icse-eyebrow text-slate-500 w-1/4 align-bottom">What's inside</th>
+                  <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom border-r border-slate-200">
                     <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-9" title="Preview Grade 9 · Code 66">
                       <img src={BOOK_GRADE_9} alt="Grade 9 · Code 66" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
                       <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 9</div>
@@ -513,7 +513,7 @@ export default function RoboticsICSE910Landing() {
                 {BOOK_COMPARISON.map((row, i) => (
                   <tr key={row.label} className={i % 2 ? 'bg-slate-50/60' : 'bg-white'} data-testid={`icse-book-compare-row-${i}`}>
                     <td className="align-top px-4 sm:px-6 py-4 font-bold text-[#0A1F44] icse-body">{row.label}</td>
-                    <td className="align-top px-4 sm:px-6 py-4 icse-light text-slate-700">{row.g9}</td>
+                    <td className="align-top px-4 sm:px-6 py-4 icse-light text-slate-700 border-r border-slate-200">{row.g9}</td>
                     <td className="align-top px-4 sm:px-6 py-4 icse-light text-slate-700">{row.g10}</td>
                   </tr>
                 ))}
