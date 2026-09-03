@@ -118,61 +118,137 @@ const KIT_HIGHLIGHTS = [
   { i: BookOpen,  t: 'ICSE Group 3 · Code 66 Aligned', s: 'Chapter-by-chapter mapping to the official ICSE Robotics syllabus for Classes 9 & 10.' },
 ];
 
+// Curriculum for Grade 9 & 10 — verbatim from OLL ICSE Group 3 Code 66 Brochure.
+// Sentence-cased for readability; grouped by unit so each card reads as a
+// syllabus map rather than a flat list of unrelated topics.
 const GRADE_9 = {
   robotics: [
-    'Introduction to Robotics · Laws & Classification',
-    'Robot as a System · Building Blocks',
-    'Motion, Joints, Links & Degrees of Freedom',
+    { unit: 'Unit 1 · Introduction to Robotics', chapters: [
+      'Understanding of Robotics',
+      'Evolution of Robots & Laws of Robot',
+      'Classification of Robots',
+      'Real-World Robots',
+    ]},
+    { unit: 'Unit 2 · Robot as a System', chapters: [
+      'Building Blocks of Robots',
+      'Identification of Robots',
+    ]},
+    { unit: 'Unit 3 · Concepts in Robotics', chapters: [
+      'Motion, Joints and Links in Robotics',
+      'Using Links and Joints to Create Specific Motion',
+      'Degree of Freedom in Robots',
+    ]},
   ],
   practical: [
-    'Blinking LED · Traffic Light System',
-    'LDR Night Lamp · Ultrasonic Distance',
-    'Automatic Dustbin · Fire Alarm',
-    'Servo Sweep · Smart Parking Sensor',
-    'Hand Sanitizer Dispenser · Fan Control',
-    'Smart Security Alarm · Robotic Waste Bin',
+    'Blinking LED (Hello World of Robotics)',
+    'Traffic Light System',
+    'Push Button Controlled LED',
+    'Automatic Night Lamp (LDR)',
+    'Distance Measurement using Ultrasonic Sensor',
+    'Automatic Dustbin',
+    'Fire Alarm System',
+    'Temperature Monitoring System',
+    'Servo Motor Sweep',
+    'Smart Parking Sensor System',
+    'Automatic Hand Sanitizer Dispenser',
+    'Obstacle Detection Alarm',
+    'Temperature Controlled Fan',
+    'Smart Security Alarm System',
+    'Intelligent Robotic Waste Bin',
   ],
   ai: [
-    'Intro to AI · Evolution, Ethics',
-    'Python: Data Types, Variables, Operators',
-    'Conditionals · Loops · Functions',
-    'AI Project Framework',
+    { unit: 'Unit 1 · Introduction to Artificial Intelligence', chapters: [
+      'The Evolution of AI',
+      'Applications and Benefits of AI',
+      'Ethical Considerations in AI',
+    ]},
+    { unit: 'Unit 2 · Role of Data & Information, Evolution of Computing', chapters: [
+      'Data and Information',
+      'Evolution of Computing',
+    ]},
+    { unit: 'Unit 3 · Introduction to Data and Programming with Python', chapters: [
+      'Familiarisation with Python',
+      'Introduction to Data Types and Variables',
+      'Introduction to Operators',
+      'Conditional Statements',
+      'Control Statements',
+      'Functions',
+    ]},
+    { unit: 'Unit 4 · AI Concepts and AI Project Framework', chapters: [
+      'AI Concepts',
+      'AI Project Framework',
+    ]},
   ],
   aiProjects: [
     'Smart Transport Management System',
-    'AI-Enabled Query Management',
+    'AI-Enabled Query Management System',
     'AI-Enabled Smart School',
   ],
 };
 
 const GRADE_10 = {
   robotics: [
-    'New Age Robotic Systems · Cobots',
-    'Gears · Sensors · Actuators · Controllers',
-    'Visualisation, Design & Motion of Components',
-    'Single Board Computer Coding',
-    'Decision Making in Machines · ML basics',
+    { unit: 'Unit 1 · New Age Robotic Systems', chapters: [
+      'Types of Robots',
+      'Machines vs Robots',
+      'Cobots',
+    ]},
+    { unit: 'Unit 2 · Components of Robots as a System', chapters: [
+      'Introduction to Gears',
+      'Sensors in Robotics',
+      'Actuators',
+      'Controller for a Robotic System',
+      'Integrating Sensors, Actuators and Controller in a Robotic System',
+    ]},
+    { unit: 'Unit 3 · Visualisation, Design & Creation of Components', chapters: [
+      'Application of Mechanical Blocks',
+      'Visualisation of Motion',
+      'Integrating Robots as a System',
+    ]},
+    { unit: 'Unit 4 · Decision Making in Machines / Computers', chapters: [
+      'Automated versus Autonomous Systems',
+      'Decision Making',
+      'Machine Learning',
+    ]},
   ],
   practical: [
-    'Arduino LED + Push Button Control',
-    'Ultrasonic Distance + IR Object Counting',
-    'Servo Position + DC Motor Direction',
+    'LED Control using Arduino',
+    'Push Button Controlled LED',
+    'Ultrasonic Distance Measurement',
+    'IR Sensor Object Detection and Counting',
+    'Servo Motor Position Control',
     'Smart Automatic Door',
-    'Basic Robotic Car · Hand-to-Go/Stop',
-    'Obstacle-Avoiding · Edge-Avoiding',
-    'Line Following · Multi-Sensor Autonomous Robot',
+    'Smart Parking Distance Indicator',
+    'DC Motor Direction Control',
+    'Basic Robotic Car: Path Movement',
+    'Hand-to-Go Robot',
+    'Hand-to-Stop Robot',
+    'Obstacle Avoiding Robot',
+    'Edge Avoiding Robot',
+    'Line Following Robot',
+    'Multi-Sensor Autonomous Robot',
   ],
   ai: [
-    'Machine Learning + Cybersecurity concepts',
-    'AI Project Framework end-to-end',
-    'Python: Modules, Lists, Tuples, Strings',
-    'NumPy · Pandas · Matplotlib',
-    'Linear Regression · Data Analysis',
+    { unit: 'Unit 1 · Machine Learning and Cybersecurity in Computing', chapters: [
+      'Machine Intelligence',
+      'Cybersecurity',
+    ]},
+    { unit: 'Unit 2 · Components of AI Project Framework', chapters: [
+      'Problem Scoping',
+      'Data Acquisition',
+      'Data Exploration',
+      'Modelling and Evaluation',
+    ]},
+    { unit: 'Unit 3 · Introduction to Data & Programming with Python', chapters: [
+      'Modules and Packages',
+      'Lists and Tuples in Python',
+      'Strings',
+    ]},
   ],
   aiProjects: [
-    'Smart Transport Management for a School',
-    'AI-Enabled Query Management for a School',
-    'Smart School using AI & Python',
+    'Smart Transport Management System for a School',
+    'AI-Enabled Query Management System for a School',
+    'Smart School using AI and Python',
   ],
 };
 
@@ -520,18 +596,6 @@ export default function RoboticsICSE910Landing() {
               </tbody>
             </table>
           </div>
-          {/* Footer CTA row */}
-          <div className="border-t border-slate-100 px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#FEF2F2] via-white to-[#FEF2F2]">
-            <div className="icse-light text-sm text-slate-600">Want to see the actual pages before deciding? Grab a free sample chapter of each book.</div>
-            <div className="flex flex-wrap gap-2">
-              <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="icse-btn outline" data-testid="icse-book-compare-samples">
-                <BookOpen className="w-4 h-4" /> View Book Samples
-              </a>
-              <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-book-compare-demo">
-                Book a Demo <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -626,10 +690,10 @@ export default function RoboticsICSE910Landing() {
       {/* ── Curriculum Highlights (Grade 9 / Grade 10 tabs) ───────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-curriculum">
         <div className="text-center">
-          <div className="icse-script text-[#DC2626] text-3xl">the curriculum</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">From Blinking LED to Autonomous Robot.</h2>
+          <div className="icse-script text-[#DC2626] text-3xl">structured curriculum</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Follow a Structured Curriculum Mapped as per ICSE</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
-            Every chapter mapped to the ICSE board syllabus. Every project deliverable Board-Exam-ready.
+            Every chapter and every lab activity is lifted verbatim from the ICSE Group 3 Code 66 syllabus for Classes 9 &amp; 10.
           </p>
         </div>
 
@@ -647,10 +711,10 @@ export default function RoboticsICSE910Landing() {
         </div>
 
         <div className="mt-10 grid md:grid-cols-2 gap-5">
-          <CurriculumBlock title="Robotics Theory"        icon={Cpu}     items={gradeData.robotics}   accent="#DC2626" testid="icse-block-robotics" />
-          <CurriculumBlock title="Robotics Practicals"    icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" />
-          <CurriculumBlock title="AI &amp; Python Theory" icon={Brain}   items={gradeData.ai}         accent="#60A5FA" testid="icse-block-ai" />
-          <CurriculumBlock title="AI Project Framework"   icon={Code2}   items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" />
+          <CurriculumBlock title="Robotics · Theory"          icon={Cpu}     items={gradeData.robotics}   accent="#DC2626" testid="icse-block-robotics" />
+          <CurriculumBlock title="Robotics · Practicals"      icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" />
+          <CurriculumBlock title="AI &amp; Python · Theory"   icon={Brain}   items={gradeData.ai}         accent="#60A5FA" testid="icse-block-ai" />
+          <CurriculumBlock title="AI &amp; Python · Practicals" icon={Code2} items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" />
         </div>
 
         <div className="mt-10 text-center">
@@ -723,6 +787,7 @@ export default function RoboticsICSE910Landing() {
 }
 
 function CurriculumBlock({ title, icon: Icon, items, accent, testid }) {
+  const isGrouped = items.length > 0 && typeof items[0] === 'object';
   return (
     <div className="icse-card p-6 sm:p-7" data-testid={testid}>
       <div className="flex items-center gap-3 mb-4">
@@ -731,14 +796,32 @@ function CurriculumBlock({ title, icon: Icon, items, accent, testid }) {
         </div>
         <div className="icse-display text-[#0A1F44] text-xl" dangerouslySetInnerHTML={{ __html: title }} />
       </div>
-      <ul className="space-y-2.5">
-        {items.map((t) => (
-          <li key={t} className="flex gap-2 icse-light text-slate-700 text-sm">
-            <span className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: accent }} />
-            <span>{t}</span>
-          </li>
-        ))}
-      </ul>
+      {isGrouped ? (
+        <div className="space-y-4">
+          {items.map((group) => (
+            <div key={group.unit}>
+              <div className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: accent }}>{group.unit}</div>
+              <ul className="space-y-1.5 pl-1">
+                {group.chapters.map((c) => (
+                  <li key={c} className="flex gap-2 icse-light text-slate-700 text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: accent }} />
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ul className="space-y-2 grid grid-cols-1 sm:grid-cols-2 sm:gap-x-6">
+          {items.map((t, i) => (
+            <li key={t} className="flex gap-2 icse-light text-slate-700 text-sm">
+              <span className="tabular-nums text-[11px] font-bold mt-0.5 w-5 flex-shrink-0" style={{ color: accent }}>{String(i + 1).padStart(2, '0')}</span>
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
