@@ -2,9 +2,57 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy, Flag, Zap, Cpu, Users, MapPin, ShieldCheck,
-  ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown,
+  ArrowRight, Sparkles, Target, CircleDot, Layers, ChevronDown, Play,
 } from 'lucide-react';
 import Footer from '../components/Footer';
+
+/**
+ * Click-to-play YouTube embed. Renders a thumbnail with a red play button until
+ * the user clicks, then swaps in the actual iframe (keeps the initial page-load
+ * lightweight and avoids showing the ugly "Video unavailable" state before interaction).
+ */
+function TfVideoEmbed({ videoId, title, testid, className = '', aspect = '56.25%' }) {
+  const [playing, setPlaying] = useState(false);
+  if (!videoId) return null;
+  return (
+    <div
+      className={`relative w-full rounded-2xl overflow-hidden bg-black border border-white/10 shadow-xl ${className}`}
+      style={{ paddingTop: aspect }}
+      data-testid={testid}
+    >
+      {playing ? (
+        <iframe
+          className="absolute inset-0 w-full h-full"
+          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+          title={title || 'IIT Bombay Techfest video'}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPlaying(true)}
+          className="absolute inset-0 group cursor-pointer"
+          aria-label={`Play ${title || 'video'}`}
+        >
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`}
+            onError={(e) => { e.currentTarget.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`; }}
+            alt={title || 'Video preview'}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/95 flex items-center justify-center shadow-2xl transition-transform duration-300 group-hover:scale-110">
+              <Play className="w-7 h-7 sm:w-9 sm:h-9 text-[#DC2626] ml-1" fill="#DC2626" />
+            </div>
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
 
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 const TECHFEST_LOGO = '/techfest/techfest-iitb-logo.webp';
@@ -18,6 +66,7 @@ const TRACKS = [
   {
     key: 'sumo', label: 'RoboSumo', tag: 'Battle · 1v1', icon: CircleDot, color: '#DC2626',
     tagline: 'Push. Grip. Dominate.',
+    videoId: 'D5ngdbvLMC4',
     long: 'RoboSumo turns mechanical design and control programming into a head-to-head duel. Teams build a fully autonomous, wireless bot and send it into the arena to push the opponent clean over the edge. No weapons, no flipping — just raw traction, weight distribution, and sharp control strategy going toe-to-toe.',
     hero: SUMO_HERO,
     stats: [
@@ -39,6 +88,7 @@ const TRACKS = [
   {
     key: 'racer', label: 'RoboRacer', tag: 'Race · 1v1', icon: Zap, color: '#1E3A5F',
     tagline: 'Build. Code. Race. Win.',
+    videoId: '5Egq4njczf4',
     long: 'RoboRacer puts drivetrain design and nerve to the test. Teams build RC bots and race them head-to-head down a shared track, from a standing start to the finish line. Whether built for raw top speed or tight control, every bot lives or dies by its traction, steering, and the driver\u2019s reflexes.',
     hero: RACER_HERO,
     stats: [
@@ -60,6 +110,7 @@ const TRACKS = [
   {
     key: 'ric', label: 'Robotics Innovation Challenge', tag: 'Ideate · Prototype · Pitch', icon: Sparkles, color: '#DC2626',
     tagline: 'Spot a real problem. Build a real solution.',
+    videoId: 'Px1kNkio0oY',
     long: 'This track steps away from head-to-head combat. Students spot a real-world problem and design an original robotic prototype, automation system, or STEM concept to solve it, then defend it before a judging panel. Two rounds: online submission → direct Grand Finale at IIT Bombay (no regional qualifier).',
     hero: null,
     stats: [
@@ -524,6 +575,16 @@ export default function TechfestPage() {
             <div className="tf-section-title text-lg md:text-xl text-slate-500 mt-1">{track.tagline}</div>
             <p className="tf-body text-slate-700 mt-5 leading-relaxed">{track.long}</p>
 
+            {track.videoId && (
+              <div className="mt-6">
+                <TfVideoEmbed
+                  videoId={track.videoId}
+                  title={`${track.label} — IIT Bombay Techfest highlight video`}
+                  testid={`techfest-track-video-${track.key}`}
+                />
+              </div>
+            )}
+
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
               {track.stats.map((s) => (
                 <div key={s.k} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
@@ -606,6 +667,15 @@ export default function TechfestPage() {
             <p className="tf-body text-white/75 mt-4 max-w-2xl mx-auto text-base md:text-lg">
               Every team earns their spot on the Grand Finale stage at IIT Bombay, 16–18 December 2026. Follow the path for your track below.
             </p>
+          </div>
+
+          {/* Full-width intro video showing what the finale looks like */}
+          <div className="max-w-3xl mx-auto mb-12">
+            <TfVideoEmbed
+              videoId="M1Ids29kHRs"
+              title="OLL Robotics Championship · IIT Bombay Techfest — Competition Rounds highlight"
+              testid="techfest-rounds-video"
+            />
           </div>
 
           <div className="space-y-10">
