@@ -34,6 +34,25 @@ const CURRICULUM_PDF =
 const KIT_HERO = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
 const KIT_COMPONENTS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rywcpwtg_Screenshot%202026-09-01%20at%208.25.18%E2%80%AFPM.png';
 const KIT_TEXTBOOKS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/077t24kw_ChatGPT%20Image%20Aug%2028%2C%202026%2C%2005_28_09%20PM.png';
+const KIT_BOX_PRODUCT = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/b2vh4jmj_image.webp';
+
+// Grade 9 vs Grade 10 book comparison (from the OLL curriculum brochure).
+const BOOK_COMPARISON = [
+  { label: 'Total Pages',                 g9: '223',                                                                                                    g10: '233' },
+  { label: 'Number of Chapters',          g9: '3 (Robotics) & 4 (AI)',                                                                                  g10: '5 (Robotics) & 4 (AI)' },
+  { label: 'Number of Activities',        g9: '30',                                                                                                     g10: '40' },
+  { label: 'Subject Covered',             g9: 'Robotics & AI for Class 9 (ICSE Subject Code 66)',                                                       g10: 'Robotics & AI for Class 10 (ICSE Subject Code 66)' },
+  { label: 'Software & Hardware',         g9: 'Windows 10, PictoBlox Python, PictoBlox AI, PictoBlox ML, Python Libraries, Quarky, Arduino',            g10: 'Windows 10, PictoBlox Python, PictoBlox AI, PictoBlox ML, Python Libraries, Quarky, Arduino' },
+  { label: 'Competition',                 g9: 'Yes — OLL × Techfest IIT Bombay',                                                                        g10: 'Yes — OLL × Techfest IIT Bombay' },
+  { label: 'Technologies Covered',        g9: 'Robotics, AI, Data Science, Machine Learning',                                                           g10: 'Robotics, AI, Data Science, Machine Learning' },
+  { label: 'Sessions Required',           g9: '80 total — 40 Lab + 40 Classroom',                                                                       g10: '80 total — 40 Lab + 40 Classroom' },
+  { label: 'Resources for Teachers',      g9: 'Lesson Plan, Lecture Slides (text, images, video)',                                                       g10: 'Lesson Plan, Lecture Slides (text, images, video)' },
+  { label: 'Certification',               g9: 'Yes — submit 15 lab activities online for a digital certificate',                                        g10: 'Yes — submit 10 lab activities online for a digital certificate' },
+  { label: 'Book Sections',               g9: 'Part A: Robotics · Part B: AI · Part C: Lab Activities · Part D: Project / Field Visit / Portfolio',      g10: 'Part A: Robotics · Part B: AI · Part C: Lab Activities · Part D: Project / Field Visit / Portfolio' },
+  { label: 'Robotics — Table of Contents',g9: 'Unit 1: Intro to Robotics · Unit 2: Robot as a System · Unit 3: Concepts in Robotics',                    g10: 'Unit 1: New Age Robotic Systems · Unit 2: From Robots to Cobots · Unit 3: Components · Unit 4: Design & Motion · Unit 5: Integrating Robots as a System' },
+  { label: 'AI — Table of Contents',      g9: 'Unit 1: Intro to AI · Unit 2: Data & Evolution of Computing · Unit 3: Python · Unit 4: AI Framework',    g10: 'Unit 1: Decision Making in Machines · Unit 2: Machine Intelligence & Cybersecurity · Unit 3: AI Project Framework · Unit 4: Python' },
+  { label: 'Lab Activities Detail',       g9: 'Python Basics (12) · Robotics with Quarky (7) · AI with PictoBlox (6) · ML with PictoBlox (5)',           g10: 'Advance Python (17) · Robotics with Quarky (10) · AI with PictoBlox (2) · ML with PictoBlox (10) · AI + Robotics (1)' },
+];
 
 // Spotlight — top-scoring student pinned before the marquee. Placeholder
 // initials until a real photo is uploaded.
@@ -214,8 +233,10 @@ export default function RoboticsICSE910Landing() {
       <div className="icse-orb-blue" style={{ top: '20%',    right: '-140px' }} />
       <div className="icse-orb-gold" style={{ bottom: '30%', left: '-100px' }} />
 
-      {/* ── Sticky Nav ─────────────────────────────────────────────────── */}
-      <nav className="sticky top-3 z-50 px-3 pt-3" data-testid="icse-nav">
+      {/* ── Sticky Nav (uses fixed positioning — sticky is broken here because
+          the app-wide `overflow-x: hidden` on html/body creates a scroll container
+          which cancels `position: sticky` from working on children). ─────── */}
+      <nav className="fixed top-3 left-0 right-0 z-50 px-3" data-testid="icse-nav">
         <div className="icse-nav-pill">
           <a href="/" className="flex items-center gap-3">
             <img src={OLL_LOGO_COLOR} alt="OLL" className="h-9 sm:h-10" />
@@ -237,7 +258,7 @@ export default function RoboticsICSE910Landing() {
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-10" data-testid="icse-hero">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-10" data-testid="icse-hero">
         <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-white/90 border border-emerald-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
@@ -367,7 +388,7 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-schools">
         <div className="text-center">
           <div className="icse-script text-[#60A5FA] text-3xl">our partner schools</div>
-          <h2 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Already live at these ICSE schools.</h2>
+          <h2 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Schools already giving Robotics &amp; AI Board Exams.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Real classrooms using OLL Kit + Curriculum for ICSE Group 3 Robotics.</p>
         </div>
         <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -384,11 +405,28 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-kit-deep">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           <div className="space-y-5">
-            {/* Kit components tray */}
+            {/* Kit box — branded product shot */}
             <div className="relative icse-anim-fadeup">
+              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#DC2626]/25 to-[#F59E0B]/20 blur-3xl" />
+              <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
+                <img src={KIT_BOX_PRODUCT} alt="OLL Grade 9 & 10 ICSE Robotics & AI Lab Kit" className="w-full h-[240px] sm:h-[300px] object-contain bg-slate-900 p-2" />
+                <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">The Kit Box</div>
+                    <div className="text-sm font-bold text-[#0A1F44]">STEM.org Accredited · Ships Nationwide</div>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 bg-[#F59E0B] px-3 py-1.5 rounded-full">
+                    <Award className="w-3.5 h-3.5 text-white" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">Certified</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Kit components tray */}
+            <div className="relative icse-anim-fadeup icse-anim-delay-1">
               <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#F59E0B]/20 to-[#DC2626]/15 blur-3xl" />
               <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-                <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[260px] sm:h-[320px] object-contain bg-slate-50 p-2" />
+                <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[240px] sm:h-[300px] object-contain bg-slate-50 p-2" />
                 <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
                   <div>
                     <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">The Practical Kit</div>
@@ -402,10 +440,10 @@ export default function RoboticsICSE910Landing() {
               </div>
             </div>
             {/* Textbook covers */}
-            <div className="relative icse-anim-fadeup icse-anim-delay-1">
+            <div className="relative icse-anim-fadeup icse-anim-delay-2">
               <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#60A5FA]/25 to-[#DC2626]/15 blur-3xl" />
               <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-                <img src={KIT_TEXTBOOKS} alt="OLL ICSE Robotics & AI Textbooks — Grade 9 & Grade 10" className="w-full h-[260px] sm:h-[320px] object-contain bg-white p-2" />
+                <img src={KIT_TEXTBOOKS} alt="OLL ICSE Robotics & AI Textbooks — Grade 9 & Grade 10" className="w-full h-[240px] sm:h-[300px] object-contain bg-white p-2" />
                 <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
                   <div>
                     <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">Board-Aligned Textbooks</div>
@@ -439,6 +477,72 @@ export default function RoboticsICSE910Landing() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Book Comparison — Grade 9 vs Grade 10 ─────────────────────── */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-book-compare">
+        <div className="text-center mb-10">
+          <div className="icse-script text-[#F59E0B] text-3xl">a closer look at the books</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Grade 9 vs Grade 10 — side by side.</h2>
+          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Every page, chapter and activity for both classes, laid out so you know exactly what your students will build.</p>
+        </div>
+
+        {/* Book covers */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto mb-8">
+          {[
+            { grade: '9',  color: '#38BDF8', label: 'Grade 9 · Code 66' },
+            { grade: '10', color: '#A78BFA', label: 'Grade 10 · Code 66' },
+          ].map((b) => (
+            <div key={b.grade} className="relative icse-anim-fadeup">
+              <div className="absolute -inset-4 rounded-[28px] blur-3xl" style={{ background: `${b.color}33` }} />
+              <div className="relative bg-white rounded-3xl border border-slate-100 shadow-xl p-4 text-center">
+                <div className="relative overflow-hidden rounded-2xl" style={{ background: b.color }}>
+                  <img src={KIT_TEXTBOOKS} alt={b.label}
+                    className="w-full h-[220px] sm:h-[280px] object-cover"
+                    style={{ objectPosition: b.grade === '9' ? '25% center' : '75% center' }} />
+                </div>
+                <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade {b.grade}</div>
+                <div className="icse-light text-xs text-slate-500 mt-0.5">Robotics &amp; AI · Code 66</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Comparison table */}
+        <div className="relative bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="icse-book-compare-table">
+              <thead className="bg-gradient-to-r from-[#EFF6FF] via-white to-[#FEF3C7]">
+                <tr>
+                  <th className="text-left px-4 sm:px-6 py-4 icse-eyebrow text-slate-500 w-1/4">What's inside</th>
+                  <th className="text-left px-4 sm:px-6 py-4 icse-display text-[#0A1F44] text-xl">Grade 9</th>
+                  <th className="text-left px-4 sm:px-6 py-4 icse-display text-[#0A1F44] text-xl">Grade 10</th>
+                </tr>
+              </thead>
+              <tbody>
+                {BOOK_COMPARISON.map((row, i) => (
+                  <tr key={row.label} className={i % 2 ? 'bg-slate-50/60' : 'bg-white'} data-testid={`icse-book-compare-row-${i}`}>
+                    <td className="align-top px-4 sm:px-6 py-4 font-bold text-[#0A1F44] icse-body">{row.label}</td>
+                    <td className="align-top px-4 sm:px-6 py-4 icse-light text-slate-700">{row.g9}</td>
+                    <td className="align-top px-4 sm:px-6 py-4 icse-light text-slate-700">{row.g10}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Footer CTA row */}
+          <div className="border-t border-slate-100 px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#FFFBEB] via-white to-[#FEF2F2]">
+            <div className="icse-light text-sm text-slate-600">Want to see the actual pages before deciding? Grab a free sample chapter of each book.</div>
+            <div className="flex flex-wrap gap-2">
+              <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="icse-btn outline" data-testid="icse-book-compare-samples">
+                <BookOpen className="w-4 h-4" /> View Book Samples
+              </a>
+              <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-book-compare-demo">
+                Book a Demo <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
