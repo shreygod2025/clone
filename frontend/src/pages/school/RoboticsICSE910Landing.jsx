@@ -434,7 +434,7 @@ export default function RoboticsICSE910Landing() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{
+    <div className="min-h-screen relative icse-page" style={{
       background: 'linear-gradient(180deg, #FFFBF7 0%, #FFFFFF 40%, #FFF7F5 100%)',
       fontFamily: "'Proxima Nova','Montserrat',system-ui,sans-serif",
       color: '#0A1F44',
@@ -486,6 +486,42 @@ export default function RoboticsICSE910Landing() {
         .icse-orb-red  { position:absolute; width:400px; height:400px; border-radius:50%; background:rgba(220,38,38,0.16); filter:blur(90px); pointer-events:none; }
         .icse-orb-blue { position:absolute; width:400px; height:400px; border-radius:50%; background:rgba(96,165,250,0.20); filter:blur(90px); pointer-events:none; }
         .icse-orb-gold { position:absolute; width:340px; height:340px; border-radius:50%; background:rgba(245,158,11,0.16); filter:blur(90px); pointer-events:none; }
+        /* ── Mobile fine-tuning ────────────────────────────────────── */
+        @media (max-width: 640px) {
+          /* Compact nav pill */
+          .icse-nav-pill { padding: 6px 10px 6px 12px; }
+          .icse-nav-pill img { height: 34px !important; }
+          /* Reserve room for sticky mobile CTA bar so nothing gets covered */
+          .icse-page { padding-bottom: 84px; }
+          /* Tighter hero heading + section h2s */
+          .icse-hero-h { line-height: 1.02 !important; letter-spacing: -0.01em; }
+          .icse-display { line-height: 1.08 !important; }
+          /* Tap targets — comfortable buttons */
+          .icse-btn { padding: 12px 18px !important; font-size: 0.78rem !important; }
+          .icse-btn.primary, .icse-btn.outline, .icse-btn.ghost { min-height: 46px; }
+          /* Book covers shrink so the comparison table stays scannable */
+          [data-testid="icse-book-compare-table"] img { height: 130px !important; }
+          /* Kit box + components tray images fit nicely on small screens */
+          [data-testid="icse-practical-kits"] img { height: 200px !important; }
+          /* Formula pillar cards — stack icon on top so text isn't cramped */
+          [data-testid^="icse-formula-pillar"] { flex-direction: column; gap: 12px !important; }
+          [data-testid^="icse-formula-pillar"] > div:first-child { width: 44px !important; height: 44px !important; }
+          /* About Us team — larger avatars on mobile */
+          [data-testid="icse-team"] img { width: 96px; height: 96px; }
+        }
+        /* ── Mobile sticky bottom CTA bar ─────────────────────────── */
+        .icse-mobile-cta {
+          position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+          padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0));
+          display: none;
+          gap: 8px;
+          background: rgba(255,255,255,0.96);
+          backdrop-filter: saturate(180%) blur(14px);
+          border-top: 1px solid rgba(10,31,68,0.08);
+          box-shadow: 0 -12px 32px rgba(10,31,68,0.10);
+        }
+        .icse-mobile-cta .icse-btn { flex: 1; justify-content: center; padding: 12px 14px !important; font-size: 0.75rem !important; }
+        @media (max-width: 640px) { .icse-mobile-cta { display: flex; } }
       `}</style>
 
       {/* Background orbs (soft blushes, not walls of navy) */}
@@ -525,7 +561,7 @@ export default function RoboticsICSE910Landing() {
               <Trophy className="w-3.5 h-3.5 text-amber-600" />
               <span className="icse-eyebrow text-amber-700">ICSE Topper Recommends</span>
             </div>
-            <h1 className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(2.2rem, 4.8vw, 4.2rem)' }}>
+            <h1 className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(1.85rem, 6.4vw, 4.2rem)' }}>
               Your 9<span className="lowercase">th</span> &amp; 10<span className="lowercase">th</span> Grade students can{' '}
               <span style={{ color: '#DC2626' }}>TOP</span>{' '}
               in the ICSE <span style={{ color: '#DC2626' }}>Robotics &amp; AI</span> Board Exams
@@ -594,7 +630,7 @@ export default function RoboticsICSE910Landing() {
               <div className="mt-5 pt-5 border-t border-amber-100 flex items-center justify-between gap-4">
                 <div>
                   <div className="icse-eyebrow text-[#0A1F44]">{FEATURED_WINNER.subject}</div>
-                  <div className="icse-hero-h text-4xl sm:text-5xl mt-1" style={{
+                  <div className="icse-hero-h text-[1.75rem] sm:text-5xl mt-1" style={{
                     background: 'linear-gradient(135deg,#0A1F44,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
                   }}>
                     {FEATURED_WINNER.score}
@@ -623,7 +659,7 @@ export default function RoboticsICSE910Landing() {
           {/* Heading */}
           <div className="relative text-center px-6 sm:px-12">
             <div className="icse-script text-[#DC2626] text-3xl">Results speak loudest</div>
-            <h2 className="icse-display text-white text-4xl sm:text-5xl mt-1">OLL students top the board</h2>
+            <h2 className="icse-display text-white text-[1.75rem] sm:text-5xl mt-1">OLL students top the board</h2>
             <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
           </div>
 
@@ -676,7 +712,7 @@ export default function RoboticsICSE910Landing() {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <div className="icse-script text-[#F59E0B] text-3xl">the winning method</div>
-            <h2 className="icse-display text-white text-4xl sm:text-5xl mt-1">What's OLL's formula for creating Toppers?</h2>
+            <h2 className="icse-display text-white text-[1.75rem] sm:text-5xl mt-1">What's OLL's formula for creating Toppers?</h2>
             <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">
               Four non-negotiables baked into every OLL classroom — the reason our students keep
               landing on the ICSE Group 3 topper list, year after year.
@@ -714,7 +750,7 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-book-compare">
         <div className="text-center mb-10">
           <div className="icse-script text-[#DC2626] text-3xl">a closer look at the books</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">ICSE Robotics and Artificial Intelligence Books for Class 9th and 10th.</h2>
+          <h2 className="icse-display text-[#0A1F44] text-[1.75rem] sm:text-5xl mt-1">ICSE Robotics and Artificial Intelligence Books for Class 9th and 10th.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Every page, chapter and activity for both classes, laid out so you know exactly what your students will build.</p>
         </div>
 
@@ -757,7 +793,7 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-practical-kits">
         <div className="text-center mb-10">
           <div className="icse-script text-[#DC2626] text-3xl">what's in the box</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Practical hands-on Kits for Robotics Lab Activities.</h2>
+          <h2 className="icse-display text-[#0A1F44] text-[1.75rem] sm:text-5xl mt-1">Practical hands-on Kits for Robotics Lab Activities.</h2>
           <p className="icse-body text-slate-600 max-w-2xl mx-auto mt-2">Everything a Grade 9 or Grade 10 ICSE classroom needs — an organised STEM.org accredited kit with 36 curated components and a curriculum that unlocks 30+ projects.</p>
         </div>
 
@@ -845,7 +881,7 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-curriculum">
         <div className="text-center">
           <div className="icse-script text-[#DC2626] text-3xl">structured curriculum</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Follow a Structured Curriculum Mapped as per ICSE guidelines</h2>
+          <h2 className="icse-display text-[#0A1F44] text-[1.75rem] sm:text-5xl mt-1">Follow a Structured Curriculum Mapped as per ICSE guidelines</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
             Every chapter and every lab activity is lifted verbatim from the ICSE Group 3 Code 66 syllabus for Classes 9 &amp; 10.
           </p>
@@ -939,7 +975,7 @@ export default function RoboticsICSE910Landing() {
         <div className="relative max-w-6xl mx-auto text-center">
           <div className="icse-script text-[#FCA5A5] text-3xl">about us</div>
           <img src={OLL_LOGO_WHITE} alt="OLL — Skills for All" className="h-20 mx-auto my-5" loading="lazy" />
-          <h2 className="icse-display text-white text-4xl sm:text-5xl">
+          <h2 className="icse-display text-white text-[1.75rem] sm:text-5xl">
             Trusted by schools <span style={{ color: '#FCA5A5' }}>across India.</span>
           </h2>
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
@@ -1004,7 +1040,7 @@ export default function RoboticsICSE910Landing() {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10">
             <div className="icse-script text-[#DC2626] text-3xl">proof, not promises</div>
-            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">
+            <h2 className="icse-display text-[#0A1F44] text-[1.75rem] sm:text-5xl mt-1">
               Schools we <span style={{ color: '#DC2626' }}>work with.</span>
             </h2>
             <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
@@ -1057,6 +1093,16 @@ export default function RoboticsICSE910Landing() {
       </section>
 
       <Footer />
+
+      {/* ── Mobile-only sticky bottom CTA (thumb-reachable) ─────────── */}
+      <div className="icse-mobile-cta" data-testid="icse-mobile-cta">
+        <button type="button" onClick={openBrochureModal} className="icse-btn outline" data-testid="icse-mobile-cta-brochure">
+          <Download className="w-3.5 h-3.5" /> Brochure
+        </button>
+        <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-mobile-cta-demo">
+          Book a Demo <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       {/* ── Brochure Lead-Capture Modal ─────────────────────────────── */}
       {showBrochureModal && (
