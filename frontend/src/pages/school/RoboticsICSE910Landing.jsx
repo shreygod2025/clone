@@ -34,7 +34,8 @@ const CURRICULUM_PDF =
 const KIT_HERO = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
 const KIT_COMPONENTS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rywcpwtg_Screenshot%202026-09-01%20at%208.25.18%E2%80%AFPM.png';
 const KIT_TEXTBOOKS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/077t24kw_ChatGPT%20Image%20Aug%2028%2C%202026%2C%2005_28_09%20PM.png';
-const KIT_BOX_PRODUCT = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/b2vh4jmj_image.webp';
+const BOOK_GRADE_9  = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kla2pir4_1.png';
+const BOOK_GRADE_10 = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4847emq3_2.png';
 
 // Grade 9 vs Grade 10 book comparison (from the OLL curriculum brochure).
 const BOOK_COMPARISON = [
@@ -76,7 +77,7 @@ const ICSE_SCHOOLS = [
 const BOARD_TOPPERS = [
   { name: 'Aarav Mehta',   school: 'Sanjeevani World School',   score: '98/100', grade: 'ICSE X · 2026', color: '#DC2626' },
   { name: 'Ishita Kapoor', school: 'N. L. Dalmia High School',  score: '97/100', grade: 'ICSE X · 2026', color: '#0EA5E9' },
-  { name: 'Vihaan Rao',    school: '7 Square Academy',           score: '96/100', grade: 'ICSE X · 2026', color: '#F59E0B' },
+  { name: 'Vihaan Rao',    school: '7 Square Academy',           score: '96/100', grade: 'ICSE X · 2026', color: '#0A1F44' },
   { name: 'Ananya Iyer',   school: 'Fravashi International',    score: '95/100', grade: 'ICSE X · 2026', color: '#10B981' },
   { name: 'Kabir Shah',    school: 'Maria Regina Angel Opus',   score: '99/100', grade: 'ICSE X · 2026', color: '#7C3AED' },
 ];
@@ -189,7 +190,7 @@ export default function RoboticsICSE910Landing() {
         .icse-display { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 300; letter-spacing: -0.01em; line-height: 1.05; }
         .icse-hero-h  { font-family: 'Zing Rust','Bebas Neue',serif; font-weight: 400; letter-spacing: 0.005em; line-height: 0.95; text-transform: uppercase; }
         .icse-script  { font-family: 'Caveat', cursive; font-weight: 700; letter-spacing: 0; text-transform: none; }
-        .icse-light   { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 300; }
+        .icse-light   { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 400; }
         .icse-body    { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 400; }
         .icse-eyebrow { font-weight: 700; font-size: 0.7rem; letter-spacing: 0.28em; text-transform: uppercase; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
@@ -268,7 +269,7 @@ export default function RoboticsICSE910Landing() {
             <h1 className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(2.6rem, 5.5vw, 4.8rem)' }}>
               ICSE Grade 9 &amp; 10<br/>
               <span style={{ color: '#DC2626' }}>Robotics + AI</span><br/>
-              <span style={{ color: '#F59E0B' }}>Board-Exam Ready.</span>
+              <span style={{ color: '#0A1F44' }}>Board-Exam Ready.</span>
             </h1>
             <p className="icse-light mt-6 text-slate-700 text-base sm:text-lg max-w-xl icse-anim-fadeup icse-anim-delay-2">
               The complete <strong className="text-[#0A1F44] font-bold">ICSE Group 3 · Code 66</strong> Robotics program.
@@ -298,10 +299,10 @@ export default function RoboticsICSE910Landing() {
           {/* Hero visual — Featured Board Topper (replaces the kit GIF).
               Bigger and more emotionally resonant than a product photo. */}
           <div className="relative icse-anim-fadeup icse-anim-delay-2" data-testid="icse-hero-featured-winner">
-            <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-br from-[#F59E0B]/25 via-transparent to-[#DC2626]/25 blur-3xl icse-anim-spin" />
+            <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-br from-[#0A1F44]/25 via-transparent to-[#DC2626]/25 blur-3xl icse-anim-spin" />
             <div className="relative bg-white rounded-[32px] p-5 sm:p-6 border border-amber-100 shadow-2xl icse-anim-float">
               <div className="flex items-center gap-2 mb-3">
-                <div className="inline-flex items-center gap-1.5 bg-[#F59E0B] px-3 py-1 rounded-full">
+                <div className="inline-flex items-center gap-1.5 bg-[#0A1F44] px-3 py-1 rounded-full">
                   <Trophy className="w-3.5 h-3.5 text-white" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white">Board Topper · ICSE 2026</span>
                 </div>
@@ -309,12 +310,12 @@ export default function RoboticsICSE910Landing() {
               <div className="flex items-center gap-5">
                 {/* Portrait */}
                 <div className="relative flex-shrink-0">
-                  <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#DC2626] blur-md opacity-60 icse-anim-pulse" />
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-[#0A1F44] to-[#DC2626] blur-md opacity-60 icse-anim-pulse" />
                   {FEATURED_WINNER.photo ? (
                     <img src={FEATURED_WINNER.photo} alt={FEATURED_WINNER.name} className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-xl" />
                   ) : (
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg,#F59E0B,#DC2626)' }}>
+                      style={{ background: 'linear-gradient(135deg,#0A1F44,#DC2626)' }}>
                       <span className="icse-hero-h text-white text-4xl">
                         {FEATURED_WINNER.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                       </span>
@@ -333,9 +334,9 @@ export default function RoboticsICSE910Landing() {
               {/* Score */}
               <div className="mt-5 pt-5 border-t border-amber-100 flex items-center justify-between gap-4">
                 <div>
-                  <div className="icse-eyebrow text-[#F59E0B]">{FEATURED_WINNER.subject}</div>
+                  <div className="icse-eyebrow text-[#0A1F44]">{FEATURED_WINNER.subject}</div>
                   <div className="icse-hero-h text-4xl sm:text-5xl mt-1" style={{
-                    background: 'linear-gradient(135deg,#F59E0B,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+                    background: 'linear-gradient(135deg,#0A1F44,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
                   }}>
                     {FEATURED_WINNER.score}
                   </div>
@@ -387,7 +388,7 @@ export default function RoboticsICSE910Landing() {
       {/* ── ICSE schools using OLL Kit + Curriculum ───────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-schools">
         <div className="text-center">
-          <div className="icse-script text-[#60A5FA] text-3xl">our partner schools</div>
+          <div className="icse-script text-[#DC2626] text-3xl">our partner schools</div>
           <h2 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Schools already giving Robotics &amp; AI Board Exams.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Real classrooms using OLL Kit + Curriculum for ICSE Group 3 Robotics.</p>
         </div>
@@ -405,26 +406,9 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-kit-deep">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           <div className="space-y-5">
-            {/* Kit box — branded product shot */}
-            <div className="relative icse-anim-fadeup">
-              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#DC2626]/25 to-[#F59E0B]/20 blur-3xl" />
-              <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
-                <img src={KIT_BOX_PRODUCT} alt="OLL Grade 9 & 10 ICSE Robotics & AI Lab Kit" className="w-full h-[240px] sm:h-[300px] object-contain bg-slate-900 p-2" />
-                <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">The Kit Box</div>
-                    <div className="text-sm font-bold text-[#0A1F44]">STEM.org Accredited · Ships Nationwide</div>
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 bg-[#F59E0B] px-3 py-1.5 rounded-full">
-                    <Award className="w-3.5 h-3.5 text-white" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">Certified</span>
-                  </div>
-                </div>
-              </div>
-            </div>
             {/* Kit components tray */}
-            <div className="relative icse-anim-fadeup icse-anim-delay-1">
-              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#F59E0B]/20 to-[#DC2626]/15 blur-3xl" />
+            <div className="relative icse-anim-fadeup">
+              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#0A1F44]/20 to-[#DC2626]/15 blur-3xl" />
               <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
                 <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[240px] sm:h-[300px] object-contain bg-slate-50 p-2" />
                 <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
@@ -440,7 +424,7 @@ export default function RoboticsICSE910Landing() {
               </div>
             </div>
             {/* Textbook covers */}
-            <div className="relative icse-anim-fadeup icse-anim-delay-2">
+            <div className="relative icse-anim-fadeup icse-anim-delay-1">
               <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#60A5FA]/25 to-[#DC2626]/15 blur-3xl" />
               <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
                 <img src={KIT_TEXTBOOKS} alt="OLL ICSE Robotics & AI Textbooks — Grade 9 & Grade 10" className="w-full h-[240px] sm:h-[300px] object-contain bg-white p-2" />
@@ -458,7 +442,7 @@ export default function RoboticsICSE910Landing() {
             </div>
           </div>
           <div>
-            <div className="icse-script text-[#F59E0B] text-3xl">the lab kit</div>
+            <div className="icse-script text-[#DC2626] text-3xl">the lab kit</div>
             <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Build. Code. Innovate.</h2>
             <p className="icse-light text-slate-600 mt-4">
               Every kit ships in an organised transparent case so classrooms stay clean and inventory
@@ -485,24 +469,23 @@ export default function RoboticsICSE910Landing() {
       {/* ── Book Comparison — Grade 9 vs Grade 10 ─────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-book-compare">
         <div className="text-center mb-10">
-          <div className="icse-script text-[#F59E0B] text-3xl">a closer look at the books</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Grade 9 vs Grade 10 — side by side.</h2>
+          <div className="icse-script text-[#DC2626] text-3xl">a closer look at the books</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">ICSE Robotics and Artificial Intelligence Books for Class 9th and 10th.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Every page, chapter and activity for both classes, laid out so you know exactly what your students will build.</p>
         </div>
 
         {/* Book covers */}
         <div className="grid grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto mb-8">
           {[
-            { grade: '9',  color: '#38BDF8', label: 'Grade 9 · Code 66' },
-            { grade: '10', color: '#A78BFA', label: 'Grade 10 · Code 66' },
+            { grade: '9',  src: BOOK_GRADE_9,  color: '#DC2626', label: 'Grade 9 · Code 66' },
+            { grade: '10', src: BOOK_GRADE_10, color: '#0A1F44', label: 'Grade 10 · Code 66' },
           ].map((b) => (
             <div key={b.grade} className="relative icse-anim-fadeup">
-              <div className="absolute -inset-4 rounded-[28px] blur-3xl" style={{ background: `${b.color}33` }} />
+              <div className="absolute -inset-4 rounded-[28px] blur-3xl" style={{ background: `${b.color}22` }} />
               <div className="relative bg-white rounded-3xl border border-slate-100 shadow-xl p-4 text-center">
-                <div className="relative overflow-hidden rounded-2xl" style={{ background: b.color }}>
-                  <img src={KIT_TEXTBOOKS} alt={b.label}
-                    className="w-full h-[220px] sm:h-[280px] object-cover"
-                    style={{ objectPosition: b.grade === '9' ? '25% center' : '75% center' }} />
+                <div className="relative overflow-hidden rounded-2xl bg-white flex items-center justify-center">
+                  <img src={b.src} alt={b.label}
+                    className="w-full h-[240px] sm:h-[320px] object-contain" />
                 </div>
                 <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade {b.grade}</div>
                 <div className="icse-light text-xs text-slate-500 mt-0.5">Robotics &amp; AI · Code 66</div>
@@ -551,7 +534,7 @@ export default function RoboticsICSE910Landing() {
       {/* ── Curriculum Highlights (Grade 9 / Grade 10 tabs) ───────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-curriculum">
         <div className="text-center">
-          <div className="icse-script text-[#60A5FA] text-3xl">the curriculum</div>
+          <div className="icse-script text-[#DC2626] text-3xl">the curriculum</div>
           <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">From Blinking LED to Autonomous Robot.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
             Every chapter mapped to the ICSE board syllabus. Every project deliverable Board-Exam-ready.
@@ -573,7 +556,7 @@ export default function RoboticsICSE910Landing() {
 
         <div className="mt-10 grid md:grid-cols-2 gap-5">
           <CurriculumBlock title="Robotics Theory"        icon={Cpu}     items={gradeData.robotics}   accent="#DC2626" testid="icse-block-robotics" />
-          <CurriculumBlock title="Robotics Practicals"    icon={Package} items={gradeData.practical}  accent="#F59E0B" testid="icse-block-practical" />
+          <CurriculumBlock title="Robotics Practicals"    icon={Package} items={gradeData.practical}  accent="#0A1F44" testid="icse-block-practical" />
           <CurriculumBlock title="AI &amp; Python Theory" icon={Brain}   items={gradeData.ai}         accent="#60A5FA" testid="icse-block-ai" />
           <CurriculumBlock title="AI Project Framework"   icon={Code2}   items={gradeData.aiProjects} accent="#10B981" testid="icse-block-aiprojects" />
         </div>
@@ -596,7 +579,7 @@ export default function RoboticsICSE910Landing() {
             { i: Users,       t: '400+ Partner Schools',   s: 'From Mumbai to Guwahati, 1.47L+ students already learn Robotics with OLL every week.' },
           ].map(({ i: Icon, t, s }) => (
             <div key={t} className="relative">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg,#F59E0B,#B45309)' }}>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg,#0A1F44,#B45309)' }}>
                 <Icon className="w-6 h-6 text-white" />
               </div>
               <div className="icse-display text-[#0A1F44] text-2xl" dangerouslySetInnerHTML={{ __html: t }} />
@@ -612,13 +595,13 @@ export default function RoboticsICSE910Landing() {
           background: 'linear-gradient(135deg,#0A1F44 0%, #1E3A5F 100%)',
         }}>
           <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#DC2626]/40 blur-3xl" />
-          <div className="absolute -bottom-14 -left-16 w-64 h-64 rounded-full bg-[#F59E0B]/25 blur-3xl" />
+          <div className="absolute -bottom-14 -left-16 w-64 h-64 rounded-full bg-[#0A1F44]/25 blur-3xl" />
           <div className="relative">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-full px-3 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#FDBA74]" />
+              <Sparkles className="w-3.5 h-3.5 text-[#DC2626]" />
               <span className="icse-eyebrow text-white/90">Book a 30-min demo · Kit + Curriculum walkthrough</span>
             </div>
-            <div className="icse-script text-[#FDBA74] text-3xl mt-4">let's talk</div>
+            <div className="icse-script text-[#DC2626] text-3xl mt-4">let's talk</div>
             <h2 className="icse-display text-white text-4xl sm:text-6xl mt-1">Bring ICSE Robotics to your school.</h2>
             <p className="icse-light text-white/80 mt-4 max-w-2xl mx-auto">
               Our schools team will walk you through the kit, the syllabus mapping, teacher training
