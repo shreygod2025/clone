@@ -384,35 +384,37 @@ export default function RoboticsICSE910Landing() {
 
       {/* ── Board Exam Toppers marquee ────────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-toppers">
-        <div className="relative rounded-[36px] overflow-hidden p-8 sm:p-12 text-center mb-10" style={{
+        <div className="relative rounded-[36px] overflow-hidden pt-10 pb-10 sm:pt-14 sm:pb-14" style={{
           background: 'linear-gradient(135deg,#0A1F44 0%, #1E3A5F 100%)',
         }}>
           <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#DC2626]/40 blur-3xl" />
           <div className="absolute -bottom-14 -left-16 w-64 h-64 rounded-full bg-[#0A1F44]/25 blur-3xl" />
-          <div className="relative">
+
+          {/* Heading */}
+          <div className="relative text-center px-6 sm:px-12">
             <div className="icse-script text-[#DC2626] text-3xl">Results speak loudest</div>
             <h2 className="icse-display text-white text-4xl sm:text-5xl mt-1">OLL students top the board</h2>
             <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
           </div>
-        </div>
 
-        {/* Marquee of the rest of the toppers */}
-        <div className="relative overflow-hidden py-2">
-          <div className="flex gap-4 icse-marquee w-max">
-            {[...BOARD_TOPPERS, ...BOARD_TOPPERS].map((w, i) => (
-              <div key={i} className="icse-card p-5 min-w-[300px] flex items-center gap-4" data-testid={`icse-topper-${i}`}>
-                <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${w.color}, ${w.color}CC)` }}>
-                  <span className="icse-display text-white text-xl">{w.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>
-                </div>
-                <div className="min-w-0">
-                  <div className="font-bold text-[#0A1F44] leading-tight">{w.name}</div>
-                  <div className="text-[11px] text-slate-500 leading-snug mt-0.5 icse-light">{w.school}</div>
-                  <div className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-emerald-600">
-                    <Trophy className="w-3 h-3" /> {w.score} · {w.grade}
+          {/* Marquee of the rest of the toppers */}
+          <div className="relative overflow-hidden py-4 mt-10">
+            <div className="flex gap-4 icse-marquee w-max">
+              {[...BOARD_TOPPERS, ...BOARD_TOPPERS].map((w, i) => (
+                <div key={i} className="bg-white/95 backdrop-blur border border-white/20 rounded-3xl shadow-xl p-5 min-w-[300px] flex items-center gap-4" data-testid={`icse-topper-${i}`}>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${w.color}, ${w.color}CC)` }}>
+                    <span className="icse-display text-white text-xl">{w.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-[#0A1F44] leading-tight">{w.name}</div>
+                    <div className="text-[11px] text-slate-500 leading-snug mt-0.5 icse-light">{w.school}</div>
+                    <div className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-emerald-600">
+                      <Trophy className="w-3 h-3" /> {w.score} · {w.grade}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
