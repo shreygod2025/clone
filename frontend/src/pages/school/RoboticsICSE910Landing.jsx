@@ -36,6 +36,27 @@ const KIT_COMPONENTS = 'https://customer-assets-v7afamib.emergentagent.net/job_f
 const KIT_TEXTBOOKS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/077t24kw_ChatGPT%20Image%20Aug%2028%2C%202026%2C%2005_28_09%20PM.png';
 const BOOK_GRADE_9  = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kla2pir4_1.png';
 const BOOK_GRADE_10 = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4847emq3_2.png';
+const KIT_BOX_PRODUCT = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/x3a4ci2d_Screenshot%202026-09-03%20at%2012.16.04%E2%80%AFPM.png';
+
+// 36-item kit components list (from OLL brochure). Split into 2 columns.
+const KIT_COMPONENTS_LIST = [
+  'Arduino Uno DIP', 'USB Cable for Arduino UNO', 'IR Sensor Module (×2)', 'Flame Sensor Module',
+  'DHT11 Sensor Module', 'Ultrasonic Sensor Module', 'L293D Motor Driver Module', '2WD Robot Chassis',
+  'BO Motor with Wire & Sleeve (×2)', 'Wheels for BO Motor (×2)', 'Caster Wheel', 'M3 30mm Screw (×6)',
+  'M3 15mm Screw (×12)', 'M3 Hex Nut (×20)', '40mm Threaded Spacers (×6)', 'M2.5 10mm Self-Tap Screw (×12)',
+  'Screw Driver', 'M-M Jumper Wires (×20)', 'M-F Jumper Wires (×20)', 'F-F Jumper Wires (×20)',
+  'Breadboard', 'Double-sided Tape', 'Vibration Motor', '3V Coin Cell',
+  'Toothbrush Head (for Bristlebot)', 'Servo Motor (×2)', '5mm Red LED (×5)', '5mm Green LED (×5)',
+  '5mm Yellow LED (×5)', '5mm White LED (×5)', '5V Buzzer', '9V Alkaline Battery',
+  'Snap', 'Stickers (×2)', 'Labor', 'Packaging (box + labeled pouches)',
+];
+
+const KIT_HIGHLIGHTS_2 = [
+  { i: Sparkles,    t: '30+ Hands-on Activities', s: 'Build exciting projects step by step — from LED circuits to autonomous bots.' },
+  { i: ShieldCheck, t: 'High-Quality Components', s: 'Reliable, school-grade parts sourced and tested for years of classroom use.' },
+  { i: Package,     t: 'Organised Storage Box',    s: 'Labeled compartments make it easy to carry and keep components safe.' },
+  { i: Award,       t: 'STEM.org Certified',       s: 'Independently accredited for safety, pedagogy and learning outcomes.' },
+];
 
 // Grade 9 vs Grade 10 book comparison (from the OLL curriculum brochure).
 const BOOK_COMPARISON = [
@@ -475,22 +496,35 @@ export default function RoboticsICSE910Landing() {
         </div>
 
         {/* Book covers */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto mb-10">
           {[
             { grade: '9',  src: BOOK_GRADE_9,  color: '#DC2626', label: 'Grade 9 · Code 66' },
             { grade: '10', src: BOOK_GRADE_10, color: '#0A1F44', label: 'Grade 10 · Code 66' },
           ].map((b) => (
-            <div key={b.grade} className="relative icse-anim-fadeup">
-              <div className="absolute -inset-4 rounded-[28px] blur-3xl" style={{ background: `${b.color}22` }} />
-              <div className="relative bg-white rounded-3xl border border-slate-100 shadow-xl p-4 text-center">
-                <div className="relative overflow-hidden rounded-2xl bg-white flex items-center justify-center">
-                  <img src={b.src} alt={b.label}
-                    className="w-full h-[240px] sm:h-[320px] object-contain" />
+            <a
+              key={b.grade}
+              href={CURRICULUM_PDF}
+              target="_blank"
+              rel="noreferrer"
+              className="group relative icse-anim-fadeup block"
+              data-testid={`icse-book-cover-${b.grade}`}
+              title={`Preview ${b.label}`}
+            >
+              <div className="absolute -inset-4 rounded-[28px] blur-3xl transition-all group-hover:blur-2xl" style={{ background: `${b.color}22` }} />
+              <div className="relative bg-white rounded-3xl border border-slate-100 shadow-xl p-5 text-center transition-transform duration-300 group-hover:-translate-y-1 group-hover:shadow-2xl">
+                <div className="relative overflow-hidden rounded-2xl bg-white h-[340px] sm:h-[400px] flex items-center justify-center">
+                  <img src={b.src} alt={b.label} className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-[#0A1F44]/70 via-[#0A1F44]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="inline-flex items-center gap-2 bg-white text-[#0A1F44] px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg">
+                      <BookOpen className="w-4 h-4" /> Click to Preview
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade {b.grade}</div>
+                <div className="mt-4 icse-display text-[#0A1F44] text-2xl">Grade {b.grade}</div>
                 <div className="icse-light text-xs text-slate-500 mt-0.5">Robotics &amp; AI · Code 66</div>
               </div>
-            </div>
+            </a>
           ))}
         </div>
 
@@ -525,6 +559,94 @@ export default function RoboticsICSE910Landing() {
               </a>
               <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-book-compare-demo">
                 Book a Demo <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Practical Hands-on Kits ───────────────────────────────────── */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-practical-kits">
+        <div className="text-center mb-10">
+          <div className="icse-script text-[#DC2626] text-3xl">what's in the box</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Practical hands-on Kits for Robotics Lab Activities.</h2>
+          <p className="icse-body text-slate-600 max-w-2xl mx-auto mt-2">Everything a Grade 9 or Grade 10 ICSE classroom needs — an organised STEM.org accredited kit with 36 curated components and a curriculum that unlocks 30+ projects.</p>
+        </div>
+
+        {/* Two product photos side-by-side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className="relative icse-anim-fadeup">
+            <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#DC2626]/20 to-[#0A1F44]/15 blur-3xl" />
+            <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
+              <img src={KIT_BOX_PRODUCT} alt="OLL Grade 9 & 10 ICSE Robotics & AI Lab Kit — outer case" className="w-full h-[280px] sm:h-[340px] object-contain bg-white p-3" />
+              <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-body">The Kit Box</div>
+                  <div className="text-sm font-bold text-[#0A1F44]">STEM.org Accredited · 30+ Activities</div>
+                </div>
+                <div className="inline-flex items-center gap-1.5 bg-[#DC2626] px-3 py-1.5 rounded-full">
+                  <Award className="w-3.5 h-3.5 text-white" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Certified</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="relative icse-anim-fadeup icse-anim-delay-1">
+            <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#0A1F44]/20 to-[#DC2626]/15 blur-3xl" />
+            <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
+              <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[280px] sm:h-[340px] object-contain bg-slate-50 p-3" />
+              <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-body">Components Tray</div>
+                  <div className="text-sm font-bold text-[#0A1F44]">36 Curated Items · Labeled Slots</div>
+                </div>
+                <div className="inline-flex items-center gap-1.5 bg-[#0A1F44] px-3 py-1.5 rounded-full">
+                  <Package className="w-3.5 h-3.5 text-white" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Included</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Components list + Highlights side-by-side */}
+        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
+          {/* Kit Components table */}
+          <div className="bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden" data-testid="icse-kit-components-list">
+            <div className="px-5 py-4 bg-gradient-to-r from-[#DC2626] to-[#7f1d1d]">
+              <div className="icse-display text-white text-2xl">Kit Components</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-white/80 mt-0.5">36 items · every activity covered</div>
+            </div>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+              {KIT_COMPONENTS_LIST.map((c, i) => (
+                <div key={c} className="flex items-start gap-2 icse-body text-sm text-slate-700">
+                  <span className="tabular-nums text-[11px] font-bold text-slate-400 mt-0.5 w-6 flex-shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                  <span>{c}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Kit Highlights */}
+          <div className="bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden">
+            <div className="px-5 py-4 bg-gradient-to-r from-[#0A1F44] to-[#1E3A5F]">
+              <div className="icse-display text-white text-2xl">Why Choose Ours</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-white/80 mt-0.5">Kit highlights</div>
+            </div>
+            <div className="p-5 space-y-4">
+              {KIT_HIGHLIGHTS_2.map(({ i: Icon, t, s }) => (
+                <div key={t} className="flex gap-3">
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-[#0A1F44]">{t}</div>
+                    <div className="icse-body text-sm text-slate-600 mt-0.5">{s}</div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={goBookDemo} className="icse-btn primary w-full justify-center mt-4" data-testid="icse-practical-kits-cta">
+                Book a School Demo <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
