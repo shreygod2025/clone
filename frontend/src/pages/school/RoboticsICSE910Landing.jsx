@@ -26,6 +26,7 @@ import {
   School, GraduationCap, MapPin, PlayCircle, Play,
 } from 'lucide-react';
 import Footer from '../../components/Footer';
+import LMSSection from '../../components/school/LMSSection';
 
 const OLL_LOGO_WHITE =
   'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
@@ -964,6 +965,15 @@ export default function RoboticsICSE910Landing() {
           </button>
         </div>
       </section>
+
+      {/* ── LMS · Learning Management System showcase ─────────────────── */}
+      <LMSSection
+        scriptClass="icse-script"
+        displayClass="icse-display"
+        lightClass="icse-light"
+        eyebrowText="live analytics & resources"
+        testid="icse-lms"
+      />
 
       {/* ── Why OLL / Trust ───────────────────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-why-oll">

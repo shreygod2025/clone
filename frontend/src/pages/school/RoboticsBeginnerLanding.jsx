@@ -20,6 +20,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import Footer from '../../components/Footer';
+import LMSSection from '../../components/school/LMSSection';
 import {
   ArrowRight, Phone, Download, ChevronLeft, ChevronRight, Trophy,
   School, GraduationCap, MapPin, Cpu, Code2, Brain, Boxes, Lightbulb,
@@ -1333,6 +1334,15 @@ export default function RoboticsBeginnerLanding() {
           </div>
         </div>
       </section>
+
+      {/* ═══════════ 07.75 — LMS · Learning Management System ═══════════ */}
+      <LMSSection
+        scriptClass="rb-hand"
+        displayClass="rb-h2"
+        lightClass="rb-serif"
+        eyebrowText="live analytics & resources"
+        testid="rb-lms"
+      />
 
       {/* ═══════════ 08 — ABOUT OLL (Shark Tank / KBC + Trust Stats) ═══════════ */}
       <section data-testid="rb-about-oll" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', color: '#fff', overflow: 'hidden' }}>
