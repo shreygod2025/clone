@@ -437,39 +437,46 @@ export default function RoboticsICSE910Landing() {
       </section>
 
       {/* ── OLL's Formula for Creating Toppers ────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-formula">
-        <div className="text-center mb-12">
-          <div className="icse-script text-[#DC2626] text-3xl">the winning method</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">What's OLL's formula for creating Toppers?</h2>
-          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
-            Four non-negotiables baked into every OLL classroom — the reason our students keep
-            landing on the ICSE Group 3 topper list, year after year.
-          </p>
-        </div>
+      <section className="relative py-16 overflow-hidden" data-testid="icse-formula" style={{
+        background: 'linear-gradient(135deg,#0A1F44 0%, #1E3A5F 50%, #0A1F44 100%)',
+      }}>
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[#DC2626]/30 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-[#60A5FA]/20 blur-3xl pointer-events-none" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl mx-auto">
-          {FORMULA_PILLARS.map(({ i: Icon, t, s }, idx) => (
-            <div
-              key={t}
-              className="icse-card p-6 sm:p-7 flex gap-4 icse-anim-fadeup"
-              style={{ animationDelay: `${idx * 0.12}s` }}
-              data-testid={`icse-formula-pillar-${idx + 1}`}
-            >
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
-                <Icon className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <div className="icse-display text-[#0A1F44] text-xl">{t}</div>
-                <div className="icse-light text-sm text-slate-600 mt-1.5 leading-relaxed">{s}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <div className="icse-script text-[#F59E0B] text-3xl">the winning method</div>
+            <h2 className="icse-display text-white text-4xl sm:text-5xl mt-1">What's OLL's formula for creating Toppers?</h2>
+            <p className="icse-light text-white/80 max-w-2xl mx-auto mt-3">
+              Four non-negotiables baked into every OLL classroom — the reason our students keep
+              landing on the ICSE Group 3 topper list, year after year.
+            </p>
+          </div>
 
-        <div className="mt-10 text-center">
-          <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-formula-cta">
-            See it in action — Book a Demo <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl mx-auto">
+            {FORMULA_PILLARS.map(({ i: Icon, t, s }, idx) => (
+              <div
+                key={t}
+                className="bg-white/95 backdrop-blur border border-white/20 rounded-3xl shadow-xl p-6 sm:p-7 flex gap-4 icse-anim-fadeup transition-transform duration-300 hover:-translate-y-1"
+                style={{ animationDelay: `${idx * 0.12}s` }}
+                data-testid={`icse-formula-pillar-${idx + 1}`}
+              >
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg" style={{ background: 'linear-gradient(135deg,#DC2626,#7f1d1d)' }}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <div className="icse-display text-[#0A1F44] text-xl">{t}</div>
+                  <div className="icse-light text-sm text-slate-600 mt-1.5 leading-relaxed">{s}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 text-center">
+            <button onClick={goBookDemo} className="icse-btn primary" data-testid="icse-formula-cta">
+              See it in action — Book a Demo <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </section>
 
@@ -481,48 +488,25 @@ export default function RoboticsICSE910Landing() {
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Every page, chapter and activity for both classes, laid out so you know exactly what your students will build.</p>
         </div>
 
-        {/* Book covers */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto mb-10">
-          {[
-            { grade: '9',  src: BOOK_GRADE_9,  color: '#DC2626', label: 'Grade 9 · Code 66' },
-            { grade: '10', src: BOOK_GRADE_10, color: '#0A1F44', label: 'Grade 10 · Code 66' },
-          ].map((b) => (
-            <a
-              key={b.grade}
-              href={CURRICULUM_PDF}
-              target="_blank"
-              rel="noreferrer"
-              className="group relative icse-anim-fadeup block"
-              data-testid={`icse-book-cover-${b.grade}`}
-              title={`Preview ${b.label}`}
-            >
-              <div className="absolute -inset-4 rounded-[28px] blur-3xl transition-all group-hover:blur-2xl" style={{ background: `${b.color}22` }} />
-              <div className="relative bg-white rounded-3xl border border-slate-100 shadow-xl p-5 text-center transition-transform duration-300 group-hover:-translate-y-1 group-hover:shadow-2xl">
-                <div className="relative overflow-hidden rounded-2xl bg-white h-[340px] sm:h-[400px] flex items-center justify-center">
-                  <img src={b.src} alt={b.label} className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105" />
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-[#0A1F44]/70 via-[#0A1F44]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="inline-flex items-center gap-2 bg-white text-[#0A1F44] px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest shadow-lg">
-                      <BookOpen className="w-4 h-4" /> Click to Preview
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 icse-display text-[#0A1F44] text-2xl">Grade {b.grade}</div>
-                <div className="icse-light text-xs text-slate-500 mt-0.5">Robotics &amp; AI · Code 66</div>
-              </div>
-            </a>
-          ))}
-        </div>
-
         {/* Comparison table */}
         <div className="relative bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="icse-book-compare-table">
-              <thead className="bg-gradient-to-r from-[#EFF6FF] via-white to-[#FEF3C7]">
+              <thead className="bg-gradient-to-r from-[#FEE2E2] via-[#FECACA] to-[#FEE2E2]">
                 <tr>
-                  <th className="text-left px-4 sm:px-6 py-4 icse-eyebrow text-slate-500 w-1/4">What's inside</th>
-                  <th className="text-left px-4 sm:px-6 py-4 icse-display text-[#0A1F44] text-xl">Grade 9</th>
-                  <th className="text-left px-4 sm:px-6 py-4 icse-display text-[#0A1F44] text-xl">Grade 10</th>
+                  <th className="text-left px-4 sm:px-6 pt-6 pb-4 icse-eyebrow text-[#7f1d1d] w-1/4 align-bottom">What's inside</th>
+                  <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom">
+                    <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-9" title="Preview Grade 9 · Code 66">
+                      <img src={BOOK_GRADE_9} alt="Grade 9 · Code 66" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+                      <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 9</div>
+                    </a>
+                  </th>
+                  <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom">
+                    <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-10" title="Preview Grade 10 · Code 66">
+                      <img src={BOOK_GRADE_10} alt="Grade 10 · Code 66" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+                      <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 10</div>
+                    </a>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -537,7 +521,7 @@ export default function RoboticsICSE910Landing() {
             </table>
           </div>
           {/* Footer CTA row */}
-          <div className="border-t border-slate-100 px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#FFFBEB] via-white to-[#FEF2F2]">
+          <div className="border-t border-slate-100 px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#FEF2F2] via-white to-[#FEF2F2]">
             <div className="icse-light text-sm text-slate-600">Want to see the actual pages before deciding? Grab a free sample chapter of each book.</div>
             <div className="flex flex-wrap gap-2">
               <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="icse-btn outline" data-testid="icse-book-compare-samples">
