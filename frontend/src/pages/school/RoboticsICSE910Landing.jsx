@@ -32,7 +32,8 @@ const CURRICULUM_PDF =
   'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/m5rar4q3_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%289th%20-%2010th%20%202026%20%281%29.pdf';
 
 const KIT_HERO = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
-const KIT_COMPONENTS = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&q=80&auto=format&fit=crop';
+const KIT_COMPONENTS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rywcpwtg_Screenshot%202026-09-01%20at%208.25.18%E2%80%AFPM.png';
+const KIT_TEXTBOOKS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/077t24kw_ChatGPT%20Image%20Aug%2028%2C%202026%2C%2005_28_09%20PM.png';
 
 // Spotlight — top-scoring student pinned before the marquee. Placeholder
 // initials until a real photo is uploaded.
@@ -271,26 +272,56 @@ export default function RoboticsICSE910Landing() {
             </div>
           </div>
 
-          {/* Kit visual — floats gently, gold ring pulses. */}
-          <div className="relative icse-anim-fadeup icse-anim-delay-2">
-            <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-br from-[#DC2626]/20 via-transparent to-[#F59E0B]/20 blur-3xl" />
-            <div className="relative bg-white rounded-[32px] p-3 sm:p-4 border border-slate-100 shadow-xl icse-anim-float">
-              <div className="rounded-2xl overflow-hidden bg-slate-50">
-                <img src={KIT_HERO} alt="OLL ICSE 9-10 Robotics Kit" className="w-full h-[300px] sm:h-[360px] object-cover object-center" />
-              </div>
-              <div className="mt-3 flex items-center justify-between px-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-full bg-[#F59E0B] flex items-center justify-center icse-anim-pulse">
-                    <Flame className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">Ships with</div>
-                    <div className="text-sm font-bold text-[#0A1F44]">30+ Components</div>
-                  </div>
-                </div>
-                <div className="inline-flex items-center gap-1.5 bg-[#DC2626] px-3 py-1.5 rounded-full">
+          {/* Hero visual — Featured Board Topper (replaces the kit GIF).
+              Bigger and more emotionally resonant than a product photo. */}
+          <div className="relative icse-anim-fadeup icse-anim-delay-2" data-testid="icse-hero-featured-winner">
+            <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-br from-[#F59E0B]/25 via-transparent to-[#DC2626]/25 blur-3xl icse-anim-spin" />
+            <div className="relative bg-white rounded-[32px] p-5 sm:p-6 border border-amber-100 shadow-2xl icse-anim-float">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="inline-flex items-center gap-1.5 bg-[#F59E0B] px-3 py-1 rounded-full">
                   <Trophy className="w-3.5 h-3.5 text-white" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Board Exam Ready</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">Board Topper · ICSE 2026</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-5">
+                {/* Portrait */}
+                <div className="relative flex-shrink-0">
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#DC2626] blur-md opacity-60 icse-anim-pulse" />
+                  {FEATURED_WINNER.photo ? (
+                    <img src={FEATURED_WINNER.photo} alt={FEATURED_WINNER.name} className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-xl" />
+                  ) : (
+                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg,#F59E0B,#DC2626)' }}>
+                      <span className="icse-display text-white text-4xl">
+                        {FEATURED_WINNER.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Name + school */}
+                <div className="min-w-0">
+                  <div className="icse-display text-[#0A1F44] text-2xl sm:text-3xl leading-tight">{FEATURED_WINNER.name}</div>
+                  <div className="icse-light text-sm text-slate-600 mt-1 leading-snug">
+                    {FEATURED_WINNER.school}
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">{FEATURED_WINNER.grade}</div>
+                </div>
+              </div>
+              {/* Score */}
+              <div className="mt-5 pt-5 border-t border-amber-100 flex items-center justify-between gap-4">
+                <div>
+                  <div className="icse-eyebrow text-[#F59E0B]">{FEATURED_WINNER.subject}</div>
+                  <div className="icse-display text-4xl sm:text-5xl mt-1" style={{
+                    background: 'linear-gradient(135deg,#F59E0B,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+                  }}>
+                    {FEATURED_WINNER.score}
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mt-0.5">Perfect Score</div>
+                </div>
+                <div className="text-right">
+                  <div className="icse-light text-xs text-slate-500 max-w-[160px]">
+                    "Every OLL project felt like magic I could code."
+                  </div>
                 </div>
               </div>
             </div>
@@ -303,69 +334,13 @@ export default function RoboticsICSE910Landing() {
         <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
           <div>
             <div className="icse-eyebrow text-[#DC2626]">ICSE Grade X · 2026 Board Results</div>
-            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-2">Our students scored the board.</h2>
-            <p className="icse-light text-slate-600 max-w-2xl mt-2">Real OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
+            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-2">More students scoring the board.</h2>
+            <p className="icse-light text-slate-600 max-w-2xl mt-2">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
           </div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">More photos coming soon</div>
         </div>
 
-        {/* Featured winner — full-width spotlight card */}
-        <div className="relative rounded-[36px] overflow-hidden mb-8 icse-anim-fadeup" data-testid="icse-featured-winner" style={{
-          background: 'linear-gradient(120deg, #FFFBEB 0%, #FFFFFF 40%, #FEF2F2 100%)',
-          border: '1px solid rgba(245,158,11,0.35)',
-          boxShadow: '0 24px 60px rgba(245,158,11,0.16)',
-        }}>
-          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#F59E0B]/25 blur-3xl icse-anim-spin" />
-          <div className="absolute -bottom-10 -left-10 w-52 h-52 rounded-full bg-[#DC2626]/20 blur-3xl" />
-          <div className="relative grid md:grid-cols-[auto_1fr_auto] items-center gap-6 sm:gap-10 p-6 sm:p-10">
-            {/* Portrait */}
-            <div className="relative mx-auto md:mx-0">
-              <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#DC2626] blur-md opacity-60 icse-anim-pulse" />
-              {FEATURED_WINNER.photo ? (
-                <img src={FEATURED_WINNER.photo} alt={FEATURED_WINNER.name} className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover border-4 border-white shadow-xl" />
-              ) : (
-                <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-white shadow-xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg,#F59E0B,#DC2626)' }}>
-                  <span className="icse-display text-white text-5xl sm:text-6xl">
-                    {FEATURED_WINNER.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                  </span>
-                </div>
-              )}
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-[#F59E0B] px-3 py-1 rounded-full shadow-lg">
-                <Trophy className="w-3.5 h-3.5 text-white" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white">Board Topper</span>
-              </div>
-            </div>
-
-            {/* Copy */}
-            <div className="text-center md:text-left">
-              <div className="icse-eyebrow text-[#DC2626]">Featured Student · Class of 2026</div>
-              <div className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-2">{FEATURED_WINNER.name}</div>
-              <div className="icse-light text-slate-700 mt-2">
-                <strong className="font-bold text-[#0A1F44]">{FEATURED_WINNER.school}</strong>
-                <span className="mx-2 text-slate-300">·</span>
-                {FEATURED_WINNER.grade}
-              </div>
-              <blockquote className="mt-4 italic text-slate-600 icse-light max-w-lg mx-auto md:mx-0">
-                "The OLL kit didn't just help me score — it made me want to keep building.
-                From LED circuits to a line-following bot, every project felt like magic I could code."
-              </blockquote>
-            </div>
-
-            {/* Score badge */}
-            <div className="relative text-center bg-white rounded-3xl border border-amber-200 shadow-lg px-6 py-5 mx-auto">
-              <div className="icse-eyebrow text-[#F59E0B]">{FEATURED_WINNER.subject}</div>
-              <div className="icse-display text-6xl sm:text-7xl mt-1" style={{
-                background: 'linear-gradient(135deg,#F59E0B,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
-              }}>
-                {FEATURED_WINNER.score}
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mt-1">Perfect Score</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Rest of the toppers */}
+        {/* Marquee of the rest of the toppers */}
         <div className="relative overflow-hidden py-2">
           <div className="flex gap-4 icse-marquee w-max">
             {[...BOARD_TOPPERS, ...BOARD_TOPPERS].map((w, i) => (
@@ -406,10 +381,40 @@ export default function RoboticsICSE910Landing() {
       {/* ── What's Inside the Kit ─────────────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-kit-deep">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#F59E0B]/20 to-[#DC2626]/15 blur-3xl" />
-            <div className="relative bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-xl">
-              <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components" className="w-full h-[300px] sm:h-[440px] object-cover" />
+          <div className="space-y-5">
+            {/* Kit components tray */}
+            <div className="relative icse-anim-fadeup">
+              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#F59E0B]/20 to-[#DC2626]/15 blur-3xl" />
+              <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
+                <img src={KIT_COMPONENTS} alt="OLL Robotics Kit components tray" className="w-full h-[260px] sm:h-[320px] object-contain bg-slate-50 p-2" />
+                <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">The Practical Kit</div>
+                    <div className="text-sm font-bold text-[#0A1F44]">30+ Components · Organised Tray</div>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 bg-[#DC2626] px-3 py-1.5 rounded-full">
+                    <Package className="w-3.5 h-3.5 text-white" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">Included</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Textbook covers */}
+            <div className="relative icse-anim-fadeup icse-anim-delay-1">
+              <div className="absolute -inset-4 rounded-[28px] bg-gradient-to-tr from-[#60A5FA]/25 to-[#DC2626]/15 blur-3xl" />
+              <div className="relative bg-white rounded-[28px] overflow-hidden border border-slate-100 shadow-xl">
+                <img src={KIT_TEXTBOOKS} alt="OLL ICSE Robotics & AI Textbooks — Grade 9 & Grade 10" className="w-full h-[260px] sm:h-[320px] object-contain bg-white p-2" />
+                <div className="px-5 py-3 flex items-center justify-between border-t border-slate-100">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 icse-light">Board-Aligned Textbooks</div>
+                    <div className="text-sm font-bold text-[#0A1F44]">Grade 9 &amp; Grade 10 · Code 66</div>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 bg-[#0A1F44] px-3 py-1.5 rounded-full">
+                    <BookOpen className="w-3.5 h-3.5 text-white" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">2-Book Set</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div>
@@ -417,7 +422,8 @@ export default function RoboticsICSE910Landing() {
             <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-3">Build. Code. Innovate.</h2>
             <p className="icse-light text-slate-600 mt-4">
               Every kit ships in an organised transparent case so classrooms stay clean and inventory
-              is one glance away. All components are STEM.org tested for school-grade safety.
+              is one glance away. All components are STEM.org tested for school-grade safety — paired
+              with two beautifully designed, board-aligned textbooks for Grades 9 &amp; 10.
             </p>
             <div className="mt-6 space-y-3">
               {KIT_HIGHLIGHTS.map(({ i: Icon, t, s }) => (
