@@ -51,7 +51,7 @@ const ICSE_SCHOOLS = [
   { name: 'N. L. Dalmia High School',       src: '/school/icse-logos/2.png' },
   { name: '7 Square Academy',                src: '/school/icse-logos/3.png' },
   { name: 'Fravashi International Academy', src: '/school/icse-logos/4.png' },
-  { name: 'Maria Regina Angel Opus',        src: '/school/icse-logos/5.png' },
+  { name: 'Loretto Convent School, Lucknow', src: '/school/icse-logos/5.png' },
 ];
 
 const BOARD_TOPPERS = [
@@ -167,7 +167,9 @@ export default function RoboticsICSE910Landing() {
           src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
           font-weight: 400; font-style: normal; font-display: swap;
         }
-        .icse-display { font-family: 'Zing Rust','Bebas Neue',serif; font-weight: 400; letter-spacing: 0.005em; line-height: 0.95; text-transform: uppercase; }
+        .icse-display { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 300; letter-spacing: -0.01em; line-height: 1.05; }
+        .icse-hero-h  { font-family: 'Zing Rust','Bebas Neue',serif; font-weight: 400; letter-spacing: 0.005em; line-height: 0.95; text-transform: uppercase; }
+        .icse-script  { font-family: 'Caveat', cursive; font-weight: 700; letter-spacing: 0; text-transform: none; }
         .icse-light   { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 300; }
         .icse-body    { font-family: 'Proxima Nova','Montserrat',system-ui,sans-serif; font-weight: 400; }
         .icse-eyebrow { font-weight: 700; font-size: 0.7rem; letter-spacing: 0.28em; text-transform: uppercase; }
@@ -242,9 +244,9 @@ export default function RoboticsICSE910Landing() {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               <span className="icse-eyebrow text-emerald-700">STEM.org Accredited · NEP 2020 aligned</span>
             </div>
-            <h1 className="icse-display mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(2.6rem, 5.5vw, 4.8rem)' }}>
+            <h1 className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(2.6rem, 5.5vw, 4.8rem)' }}>
               ICSE Grade 9 &amp; 10<br/>
-              <span style={{ color: '#DC2626' }}>Robotics + AI</span> Lab Kit<br/>
+              <span style={{ color: '#DC2626' }}>Robotics + AI</span><br/>
               <span style={{ color: '#F59E0B' }}>Board-Exam Ready.</span>
             </h1>
             <p className="icse-light mt-6 text-slate-700 text-base sm:text-lg max-w-xl icse-anim-fadeup icse-anim-delay-2">
@@ -265,7 +267,7 @@ export default function RoboticsICSE910Landing() {
                 <div key={s.v}
                   className={`bg-white/80 border border-slate-100 rounded-3xl px-3 py-4 text-center shadow-sm icse-anim-fadeup icse-anim-delay-${i + 1}`}
                 >
-                  <div className="icse-display text-3xl text-[#0A1F44]">{s.k}</div>
+                  <div className="icse-hero-h text-3xl text-[#0A1F44]">{s.k}</div>
                   <div className="text-[10px] uppercase tracking-widest text-slate-500 mt-1 icse-light">{s.v}</div>
                 </div>
               ))}
@@ -292,7 +294,7 @@ export default function RoboticsICSE910Landing() {
                   ) : (
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl flex items-center justify-center"
                       style={{ background: 'linear-gradient(135deg,#F59E0B,#DC2626)' }}>
-                      <span className="icse-display text-white text-4xl">
+                      <span className="icse-hero-h text-white text-4xl">
                         {FEATURED_WINNER.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                       </span>
                     </div>
@@ -300,7 +302,7 @@ export default function RoboticsICSE910Landing() {
                 </div>
                 {/* Name + school */}
                 <div className="min-w-0">
-                  <div className="icse-display text-[#0A1F44] text-2xl sm:text-3xl leading-tight">{FEATURED_WINNER.name}</div>
+                  <div className="icse-hero-h text-[#0A1F44] text-2xl sm:text-3xl leading-tight">{FEATURED_WINNER.name}</div>
                   <div className="icse-light text-sm text-slate-600 mt-1 leading-snug">
                     {FEATURED_WINNER.school}
                   </div>
@@ -311,7 +313,7 @@ export default function RoboticsICSE910Landing() {
               <div className="mt-5 pt-5 border-t border-amber-100 flex items-center justify-between gap-4">
                 <div>
                   <div className="icse-eyebrow text-[#F59E0B]">{FEATURED_WINNER.subject}</div>
-                  <div className="icse-display text-4xl sm:text-5xl mt-1" style={{
+                  <div className="icse-hero-h text-4xl sm:text-5xl mt-1" style={{
                     background: 'linear-gradient(135deg,#F59E0B,#DC2626)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
                   }}>
                     {FEATURED_WINNER.score}
@@ -333,8 +335,8 @@ export default function RoboticsICSE910Landing() {
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-toppers">
         <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
           <div>
-            <div className="icse-eyebrow text-[#DC2626]">ICSE Grade X · 2026 Board Results</div>
-            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-2">More students scoring the board.</h2>
+            <div className="icse-script text-[#DC2626] text-3xl">the class of 2026</div>
+            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">More students scoring the board.</h2>
             <p className="icse-light text-slate-600 max-w-2xl mt-2">Krishang isn't alone — here are other OLL-trained ICSE students who topped the Group 3 Robotics paper this year.</p>
           </div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">More photos coming soon</div>
@@ -364,8 +366,8 @@ export default function RoboticsICSE910Landing() {
       {/* ── ICSE schools using OLL Kit + Curriculum ───────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14" data-testid="icse-schools">
         <div className="text-center">
-          <div className="icse-eyebrow text-[#60A5FA]">Trusted by ICSE schools nationwide</div>
-          <h2 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-2">Already live at these ICSE schools.</h2>
+          <div className="icse-script text-[#60A5FA] text-3xl">our partner schools</div>
+          <h2 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Already live at these ICSE schools.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2">Real classrooms using OLL Kit + Curriculum for ICSE Group 3 Robotics.</p>
         </div>
         <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -418,8 +420,8 @@ export default function RoboticsICSE910Landing() {
             </div>
           </div>
           <div>
-            <div className="icse-eyebrow text-[#F59E0B]">The Lab Kit</div>
-            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-3">Build. Code. Innovate.</h2>
+            <div className="icse-script text-[#F59E0B] text-3xl">the lab kit</div>
+            <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">Build. Code. Innovate.</h2>
             <p className="icse-light text-slate-600 mt-4">
               Every kit ships in an organised transparent case so classrooms stay clean and inventory
               is one glance away. All components are STEM.org tested for school-grade safety — paired
@@ -445,8 +447,8 @@ export default function RoboticsICSE910Landing() {
       {/* ── Curriculum Highlights (Grade 9 / Grade 10 tabs) ───────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="icse-curriculum">
         <div className="text-center">
-          <div className="icse-eyebrow text-[#60A5FA]">Curriculum · ICSE Group 3 · Code 66</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-2">From Blinking LED to Autonomous Robot.</h2>
+          <div className="icse-script text-[#60A5FA] text-3xl">the curriculum</div>
+          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">From Blinking LED to Autonomous Robot.</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
             Every chapter mapped to the ICSE board syllabus. Every project deliverable Board-Exam-ready.
           </p>
@@ -512,7 +514,8 @@ export default function RoboticsICSE910Landing() {
               <Sparkles className="w-3.5 h-3.5 text-[#FDBA74]" />
               <span className="icse-eyebrow text-white/90">Book a 30-min demo · Kit + Curriculum walkthrough</span>
             </div>
-            <h2 className="icse-display text-white text-4xl sm:text-6xl mt-5">Bring ICSE Robotics to your school.</h2>
+            <div className="icse-script text-[#FDBA74] text-3xl mt-4">let's talk</div>
+            <h2 className="icse-display text-white text-4xl sm:text-6xl mt-1">Bring ICSE Robotics to your school.</h2>
             <p className="icse-light text-white/80 mt-4 max-w-2xl mx-auto">
               Our schools team will walk you through the kit, the syllabus mapping, teacher training
               and exam-day preparedness — in a single 30-minute session.
