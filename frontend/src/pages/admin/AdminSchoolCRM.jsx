@@ -3395,8 +3395,16 @@ ${FOOTER}</div></body></html>`
     try {
       const res = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
       setCheckinEducators(res.data.educators || []);
-    } catch {
-      toast.error('Could not load educators from checkin system');
+    } catch (err) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      if (status === 401 || status === 403) {
+        toast.error('Session expired — please sign in again to load educators');
+      } else if (status === 502) {
+        toast.error(`Checkin API unreachable${detail ? ` (${detail})` : ''}`);
+      } else {
+        toast.error(detail || 'Could not load educators from checkin system');
+      }
     } finally {
       setCheckinEducatorsLoading(false);
     }
