@@ -48,6 +48,16 @@ async def verify_external_api_key(api_key: str = Header(None, alias="X-API-Key")
     )
     return key_doc
 
+
+def require_permission(api_key_data: dict, required: str):
+    """Enforce that the API key doc has the given permission scope."""
+    perms = api_key_data.get("permissions") or []
+    if required not in perms:
+        raise HTTPException(
+            status_code=403,
+            detail=f"API key missing '{required}' permission. Contact your admin to add it."
+        )
+
 router = APIRouter()
 
 @router.post("/admin/api-keys/generate")
@@ -555,6 +565,173 @@ async def external_get_school_by_id(
         "created_at": school.get("created_at"),
         "updated_at": school.get("updated_at"),
         "converted_at": school.get("converted_at"),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# EXTERNAL TICKET ENDPOINTS — for partners/integrations (X-API-Key auth)
+# ═══════════════════════════════════════════════════════════════════════
+# Permissions required (settable per key from Admin → Settings → API):
+#   • tickets:write — POST /external/tickets
+#   • tickets:read  — GET  /external/tickets, GET /external/tickets/{id}
+# Tickets land in the same `support_queries` collection the Support Center reads,
+# so partner-raised tickets are indistinguishable from admin-raised tickets in the UI.
+
+def _ticket_public_view(t: dict) -> dict:
+    """Sanitize a support_queries doc for external clients — hides internal fields."""
+    if not t:
+        return {}
+    comments = t.get("comments") or []
+    return {
+        "ticket_id": t.get("id"),
+        "subject": t.get("subject") or t.get("query_type"),
+        "status": t.get("status", "open"),
+        "priority": t.get("priority", "medium"),
+        "query_type": t.get("query_type"),
+        "related_to": t.get("related_to"),
+        "description": t.get("query_details") or t.get("message"),
+        "school": {
+            "id": t.get("school_id"),
+            "name": t.get("school_name"),
+        } if t.get("school_id") else None,
+        "raised_by": {
+            "name": t.get("name"),
+            "email": t.get("email"),
+            "phone": t.get("phone"),
+        },
+        "assigned_to_name": t.get("assigned_to_name"),
+        "response_count": len([c for c in comments if not c.get("is_internal")]),
+        "last_reply_at": (comments[-1].get("created_at") if comments else None),
+        "created_at": t.get("created_at"),
+        "updated_at": t.get("updated_at"),
+    }
+
+
+@router.post("/external/tickets")
+async def external_raise_ticket(
+    data: dict,
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """
+    Raise a new support ticket via API key.
+    Requires `tickets:write` permission on the API key.
+
+    Body (JSON):
+      subject         (required) — short title
+      description     (required) — full message body
+      contact_name    (required) — who is raising it
+      contact_email   (required)
+      contact_phone   (optional)
+      priority        (optional) — low | medium | high | urgent   (default: medium)
+      query_type      (optional) — general | billing | technical | onboarding | support   (default: general)
+      related_to      (optional) — free-text sub-category
+      school_id       (optional) — attach to an existing school if known
+      attachments     (optional) — list of {name, url, type}
+    """
+    require_permission(api_key_data, "tickets:write")
+
+    # Validate required fields
+    subject = (data.get("subject") or "").strip()
+    description = (data.get("description") or data.get("message") or "").strip()
+    contact_name = (data.get("contact_name") or "").strip()
+    contact_email = (data.get("contact_email") or "").strip()
+    if not subject or not description or not contact_name or not contact_email:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required fields: subject, description, contact_name, contact_email"
+        )
+
+    query_id = str(uuid.uuid4())
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Attach to school if a valid school_id is provided
+    school_doc = None
+    school_id = data.get("school_id")
+    if school_id:
+        school_doc = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+
+    query_doc = {
+        "id": query_id,
+        "name": contact_name,
+        "email": contact_email,
+        "phone": (data.get("contact_phone") or "").strip(),
+        "subject": subject,
+        "query_type": data.get("query_type", "general"),
+        "related_to": data.get("related_to", ""),
+        "inquiry_type": "school" if school_doc else "external",
+        "message": description,
+        "query_details": description,
+        "priority": data.get("priority", "medium"),
+        "status": "open",
+        "source": f"external_api:{api_key_data.get('name', 'unknown')}",
+        "attachments": data.get("attachments", []),
+        "created_by": f"api_key:{api_key_data.get('id')}",
+        "created_by_name": f"API · {api_key_data.get('name', 'External Client')}",
+        "viewers": [],
+        "created_at": now_iso,
+        "updated_at": now_iso,
+        "comments": [],
+        "assigned_to": (school_doc or {}).get("assigned_to"),
+        "assigned_to_name": (school_doc or {}).get("relationship_manager_name"),
+        "school_id": school_id if school_doc else None,
+        "school_name": (school_doc or {}).get("school_name"),
+        "user_type": data.get("user_type", "external"),
+    }
+    await db.support_queries.insert_one(query_doc)
+
+    return {
+        "message": "Ticket raised successfully",
+        "ticket_id": query_id,
+        "status": "open",
+        "created_at": now_iso,
+    }
+
+
+@router.get("/external/tickets/{ticket_id}")
+async def external_get_ticket(
+    ticket_id: str,
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """Get status + details of a ticket by its ID. Requires `tickets:read` permission."""
+    require_permission(api_key_data, "tickets:read")
+    ticket = await db.support_queries.find_one({"id": ticket_id}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return _ticket_public_view(ticket)
+
+
+@router.get("/external/tickets")
+async def external_list_tickets(
+    api_key_data: dict = Depends(verify_external_api_key),
+    status: Optional[str] = Query(None, description="Filter by status (open | in_progress | resolved | closed)"),
+    priority: Optional[str] = Query(None, description="Filter by priority (low | medium | high | urgent)"),
+    school_id: Optional[str] = Query(None, description="Filter by school ID"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """
+    List tickets raised via this API key (or across all sources for the key).
+    Requires `tickets:read` permission.
+    Query params: status, priority, school_id, page, per_page.
+    """
+    require_permission(api_key_data, "tickets:read")
+    q: dict = {}
+    if status:
+        q["status"] = status
+    if priority:
+        q["priority"] = priority
+    if school_id:
+        q["school_id"] = school_id
+
+    total = await db.support_queries.count_documents(q)
+    skip = (page - 1) * per_page
+    cursor = db.support_queries.find(q, {"_id": 0}).sort("created_at", -1).skip(skip).limit(per_page)
+    docs = await cursor.to_list(per_page)
+    return {
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "tickets": [_ticket_public_view(t) for t in docs],
     }
 
 

@@ -37,6 +37,12 @@ const AdminSettings = () => {
   const [caseStudies, setCaseStudies] = useState([]);
   const [apiKeys, setApiKeys] = useState([]);
   const [newApiKeyName, setNewApiKeyName] = useState('');
+  const [newApiKeyPermissions, setNewApiKeyPermissions] = useState(['schools:read']);
+  const AVAILABLE_API_PERMISSIONS = [
+    { key: 'schools:read',  label: 'Schools · Read',    desc: 'List & fetch schools, active schools, stats' },
+    { key: 'tickets:write', label: 'Tickets · Raise',   desc: 'Create new support tickets on behalf of a partner/school' },
+    { key: 'tickets:read',  label: 'Tickets · View',    desc: 'List raised tickets and check their status' },
+  ];
   const [generatedKey, setGeneratedKey] = useState(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [generatingKey, setGeneratingKey] = useState(false);
@@ -260,9 +266,17 @@ const AdminSettings = () => {
       toast.error('Please enter a name for the API key');
       return;
     }
+    if (newApiKeyPermissions.length === 0) {
+      toast.error('Please select at least one permission');
+      return;
+    }
     setGeneratingKey(true);
     try {
-      const res = await axios.post(`${API}/admin/api-keys/generate`, { name: newApiKeyName }, { headers: getAuthHeaders() });
+      const res = await axios.post(
+        `${API}/admin/api-keys/generate`,
+        { name: newApiKeyName, permissions: newApiKeyPermissions },
+        { headers: getAuthHeaders() }
+      );
       setGeneratedKey(res.data.api_key); // Backend returns 'api_key' field
       toast.success('API Key generated successfully');
       fetchData();
@@ -2263,6 +2277,38 @@ const AdminSettings = () => {
                   />
                   <p className="text-xs text-slate-500 mt-1">
                     Give your key a descriptive name to identify its purpose.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Permissions *</label>
+                  <div className="space-y-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
+                    {AVAILABLE_API_PERMISSIONS.map((p) => {
+                      const checked = newApiKeyPermissions.includes(p.key);
+                      return (
+                        <label
+                          key={p.key}
+                          className={`flex items-start gap-3 p-2 rounded-md cursor-pointer transition ${checked ? 'bg-white shadow-sm border border-[#D63031]/30' : 'hover:bg-white'}`}
+                          data-testid={`api-key-perm-${p.key}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setNewApiKeyPermissions((prev) => (
+                              prev.includes(p.key) ? prev.filter((x) => x !== p.key) : [...prev, p.key]
+                            ))}
+                            className="mt-1 w-4 h-4 accent-[#D63031]"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-800">{p.label}</div>
+                            <div className="text-xs text-slate-500 leading-snug">{p.desc}</div>
+                            <div className="text-[10px] font-mono text-slate-400 mt-0.5">{p.key}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Grant only what this integration needs — you can revoke or regenerate the key anytime.
                   </p>
                 </div>
                 <div className="flex gap-3 pt-2">
