@@ -66,7 +66,15 @@ export const AuthProvider = ({ children }) => {
   // (or permission change) made by an admin becomes visible to the user
   // without them having to log out and back in. Cheap: a single /auth/me
   // call debounced by the browser's visibility change event.
+  //
+  // IMPORTANT: only call `setUser` when the payload actually DIFFERS from the
+  // current user. Otherwise every tab-switch would spawn a new user object
+  // reference → cascade re-render → any downstream form / modal / editor
+  // (e.g. TaskCreateModal, Support Ticket reply, Bulk Task Adder) would lose
+  // its half-typed text because parents receiving derived-from-user state
+  // remount their children.
   useEffect(() => {
+    let vizHandler; // keep reference so we can cleanly detach
     const onFocus = async () => {
       const token = localStorage.getItem('oll_token');
       if (!token) return;
@@ -75,18 +83,23 @@ export const AuthProvider = ({ children }) => {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
         });
-        setUser(r.data);
-        localStorage.setItem('oll_user', JSON.stringify(r.data));
+        const fresh = r.data;
+        setUser((prev) => {
+          // Stable-stringify skipping the always-changing `updated_at` field
+          const stable = (o) => JSON.stringify(o, Object.keys(o || {}).filter(k => k !== 'updated_at').sort());
+          if (prev && stable(prev) === stable(fresh)) return prev; // no-op re-render
+          localStorage.setItem('oll_user', JSON.stringify(fresh));
+          return fresh;
+        });
         setIsAuthenticated(true);
       } catch { /* keep old session on transient errors */ }
     };
+    vizHandler = () => { if (document.visibilityState === 'visible') onFocus(); };
     window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') onFocus();
-    });
+    document.addEventListener('visibilitychange', vizHandler);
     return () => {
       window.removeEventListener('focus', onFocus);
-      // (visibilitychange listener persists but is idempotent)
+      document.removeEventListener('visibilitychange', vizHandler);
     };
   }, []);
 

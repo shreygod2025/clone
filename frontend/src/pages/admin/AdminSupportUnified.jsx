@@ -1984,7 +1984,7 @@ const AdminSupportUnified = () => {
       </Dialog>
 
       <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); setReplyAttachment(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0" preventClose>
+        <DialogContent className="max-w-2xl h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col p-0" preventClose>
           <DialogHeader className="flex-shrink-0 p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-[#D63031]" />
@@ -1997,9 +1997,10 @@ const AdminSupportUnified = () => {
             </DialogTitle>
           </DialogHeader>
           {showReplyModal && (
-            <div className="flex flex-col flex-1 min-h-0 p-6 pt-4">
-              {/* Query Info Header */}
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 mb-4 flex-shrink-0">
+            <div className="flex flex-col flex-1 min-h-0 p-4 sm:p-6 pt-4">
+              {/* Query Info Header — cap height on mobile so long original messages
+                  don't push the reply box off the visible area. */}
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 mb-3 sm:mb-4 flex-shrink-0 max-h-[38vh] sm:max-h-none overflow-y-auto">
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-medium text-slate-800">{showReplyModal.name}</p>
@@ -2090,8 +2091,9 @@ const AdminSupportUnified = () => {
                 )}
               </div>
               
-              {/* Chat Messages Area */}
-              <div className="flex-1 overflow-y-auto mb-4 space-y-3 min-h-[100px] max-h-[200px] pr-2">
+              {/* Chat Messages Area — grows freely, no artificial 200px cap that
+                  pinned messages to a tiny window on mobile. */}
+              <div className="flex-1 overflow-y-auto mb-3 sm:mb-4 space-y-3 min-h-[120px] pr-2">
                 {loadingHistory ? (
                   <div className="flex items-center justify-center py-8">
                     <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />

@@ -1044,8 +1044,8 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
   const S = STATUS_META[task.status] || STATUS_META.pending;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()} data-testid="task-detail-modal">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-2 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto overscroll-contain shadow-2xl" onClick={e => e.stopPropagation()} data-testid="task-detail-modal">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
             <h2 className="text-xl font-bold text-slate-900">{task.title}</h2>
@@ -1131,7 +1131,7 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
           <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-1.5">
             <MessageSquare className="w-4 h-4" /> Comments ({comments.length})
           </h3>
-          <div className="space-y-2 mb-3 max-h-56 overflow-y-auto">
+          <div className="space-y-2 mb-3 sm:max-h-56 sm:overflow-y-auto">
             {comments.length === 0 && <p className="text-xs text-slate-400 italic">No comments yet.</p>}
             {comments.map(c => (
               <div key={c.id} className="p-2.5 bg-slate-50 rounded-lg" data-testid={`comment-${c.id}`}>
