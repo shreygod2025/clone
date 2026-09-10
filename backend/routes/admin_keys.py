@@ -710,9 +710,10 @@ async def external_list_tickets(
     per_page: int = Query(50, ge=1, le=200),
 ):
     """
-    List tickets raised via this API key (or across all sources for the key).
-    Requires `tickets:read` permission.
-    Query params: status, priority, school_id, page, per_page.
+    View previous tickets — returns every ticket in the system, filterable by
+    status, priority and school. Any key with `tickets:read` gets full visibility.
+
+    Query params: status, priority, school_id, page, per_page (max 200).
     """
     require_permission(api_key_data, "tickets:read")
     q: dict = {}

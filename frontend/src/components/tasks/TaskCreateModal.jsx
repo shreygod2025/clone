@@ -324,9 +324,18 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  // Reset form state ONLY when the modal transitions from closed → open.
+  // Previously depended on [open, currentUser, parentTask, …] which caused a full
+  // form + bulk-rows reset every time the parent re-rendered (e.g., a browser tab
+  // switch that refreshed AuthContext gave `currentUser` a new object reference and
+  // nuked the bulk-added rows).
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    // Reset bulk state on every open
+    if (!open) { wasOpenRef.current = false; return; }
+    if (wasOpenRef.current) return; // already initialised for this open cycle
+    wasOpenRef.current = true;
+
+    // Reset bulk state on every FRESH open
     setBulkMode(false);
     setRows([newRow()]);
     if (isEdit) {
@@ -364,7 +373,12 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       });
     }
     setOpenPanel(null);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Load team-users + projects once when the modal opens — independent of the
+  // reset effect, and NOT wired to `currentUser` reference changes.
+  useEffect(() => {
+    if (!open) return;
     axios.get(`${API}/team-users`, { headers: getAuthHeaders() })
       .then(r => {
         const list = r.data || [];
@@ -378,7 +392,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
     axios.get(`${API}/projects`, { headers: getAuthHeaders() })
       .then(r => setProjects(r.data || []))
       .catch(() => {});
-  }, [open, currentUser, parentTask, defaultProjectId, existingTask, isEdit]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) return;
