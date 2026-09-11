@@ -74,6 +74,7 @@ const AdminTasks = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(isAdmin ? 'team' : 'all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('default'); // default | latest_completed | oldest_completed
   const [query, setQuery] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -154,7 +155,22 @@ const AdminTasks = ({ embedded = false }) => {
         t.assigned_to_name?.toLowerCase().includes(s)
       );
     }
-    // Sort: earliest due_date first (nulls last), then priority DESC
+    // Completion-time based sorts — when the user wants to review what got
+    // finished recently (or the earliest wins in a range). Tasks without a
+    // completed_at fall to the bottom in both directions so incomplete work
+    // never crowds out the completed list.
+    if (sortBy === 'latest_completed' || sortBy === 'oldest_completed') {
+      const dir = sortBy === 'latest_completed' ? -1 : 1;
+      return [...list].sort((a, b) => {
+        const at = a.completed_at ? new Date(a.completed_at).getTime() : null;
+        const bt = b.completed_at ? new Date(b.completed_at).getTime() : null;
+        if (at === null && bt === null) return 0;
+        if (at === null) return 1;      // a has no completion → push down
+        if (bt === null) return -1;     // b has no completion → push down
+        return (at - bt) * dir;
+      });
+    }
+    // Default sort: earliest due_date first (nulls last), then priority DESC
     const sorted = [...list].sort((a, b) => {
       const aDue = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
       const bDue = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
@@ -165,7 +181,7 @@ const AdminTasks = ({ embedded = false }) => {
     });
     return sorted;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, statusFilter, query]);
+  }, [tasks, statusFilter, query, sortBy]);
 
   const counts = useMemo(() => {
     const c = { all: tasks.length };
@@ -255,14 +271,30 @@ const AdminTasks = ({ embedded = false }) => {
               />
             ))}
             <div className="flex-1" />
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Search tasks…"
-                className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm w-full outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
-                data-testid="tasks-search-input"
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 appearance-none cursor-pointer transition-all font-medium text-slate-700"
+                  data-testid="tasks-sort-select"
+                  title="Sort tasks"
+                >
+                  <option value="default">Sort: Default (Due date)</option>
+                  <option value="latest_completed">Sort: Latest Completed</option>
+                  <option value="oldest_completed">Sort: Oldest Completed</option>
+                </select>
+                <ChevronDown className="w-4 h-4 absolute right-2 top-2.5 text-slate-400 pointer-events-none" />
+              </div>
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  value={query} onChange={e => setQuery(e.target.value)}
+                  placeholder="Search tasks…"
+                  className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm w-full outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
+                  data-testid="tasks-search-input"
+                />
+              </div>
             </div>
           </div>
 
@@ -290,7 +322,7 @@ const AdminTasks = ({ embedded = false }) => {
                 Create your first task
               </button>
             </div>
-          ) : groupByStatus ? (
+          ) : (groupByStatus && sortBy === 'default') ? (
             <div className="space-y-4">
               {grouped.map(({ key, tasks: gTasks }) => (
                 <StatusSection key={key} statusKey={key} tasks={gTasks}
