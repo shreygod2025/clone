@@ -1076,8 +1076,8 @@ const TaskDetailModal = ({ task, currentUserId, isAdmin, onClose, onStatus, getA
   const S = STATUS_META[task.status] || STATUS_META.pending;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-2 sm:p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto overscroll-contain shadow-2xl" onClick={e => e.stopPropagation()} data-testid="task-detail-modal">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-2xl w-full p-4 sm:p-6 h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto overscroll-contain shadow-2xl pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={e => e.stopPropagation()} data-testid="task-detail-modal">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
             <h2 className="text-xl font-bold text-slate-900">{task.title}</h2>

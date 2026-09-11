@@ -24,6 +24,19 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — Mobile scroll bug on Admin My Space Task Detail modal fixed
+  (`AdminTasks.jsx` line ~1079). Root cause: modal used `h-[95vh]` inside a
+  `fixed inset-0` overlay; on mobile browsers `vh` includes the URL bar area,
+  so the top of the modal (title, status pills, Mark Complete button) sat
+  behind the browser chrome and the internal scroll region was clipped by
+  the visible viewport. Fix: switched to `h-[100dvh]` (dynamic viewport
+  height), dropped mobile backdrop padding (`p-2` → `p-0`), rounded only the
+  top corners on mobile (`rounded-t-2xl sm:rounded-2xl`) so it feels like a
+  proper full-screen bottom sheet, and added iOS safe-area bottom padding
+  (`pb-[max(1rem,env(safe-area-inset-bottom))]`). Verified on 390×780 mobile
+  viewport — modal now fills exactly the visible viewport (clientHeight ==
+  window.innerHeight, top offset 0) with all task actions reachable.
+
 - **Feb 2026** — ICSE 9/10 Landing Kit Box image fix: `RoboticsICSE910Landing.jsx`
   now points `KIT_BOX_PRODUCT` to the correct transparent-case product photo
   (asset `n2zt8acf_...`, showing OLL Grade 9 & 10 ICSE Robotics & AI Lab Kit with
