@@ -24,6 +24,32 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — Support Center now has a dedicated **Techfest** category,
+  and every entry point that classifies a ticket has been taught about it.
+  - Admin (`AdminSupportUnified.jsx`): added `techfest` to `QUERY_TYPES`
+    (rose pill, Trophy icon) and 10 sub-categories to `RELATED_TO_OPTIONS`:
+    `registration_query`, `tracks_rounds`, `kits`, `regionals`, `prizes_fees`,
+    `confirmation`, `sponsorship`, `media`, `feedback`, `other`. Shows up in
+    the top-bar Query Type filter, list badges, Create Ticket modal and
+    Edit Ticket modal.
+  - Need Help button (`RaiseQueryButton.jsx`): submissions from `/techfest*`
+    pages now collapse the two-level Need Help selection into
+    `query_type = "techfest"` + one of the 10 admin slugs. The human
+    "Category → Sub-question" is prefixed to the message body so agents keep
+    the full context (`[Registration & Eligibility → How do I register?]…`).
+  - Gmail bot (`gmail_bot.py`): added `techfest` to `VALID_QUERY_TYPES`,
+    the full slug set to `VALID_RELATED_TO`, and updated `CLASSIFIER_PROMPT`
+    with a rule that inbound customer emails about the OLL × Techfest IIT
+    Bombay championship route to `query_type=techfest` (not to be confused
+    with the existing "outside college sponsorship pitch = is_query false"
+    rule). Added 5 few-shot examples covering registration, kits, regionals,
+    prizes and confirmation-not-received.
+  - Verified end-to-end: submitted a real inquiry through
+    `/api/inquiry/query` → ticket #0329 lands in Support Center with
+    Techfest rose pill + Registration & Eligibility sub-category. Cascading
+    Related-To dropdown returns all 10 sub-categories when Query Type is
+    switched to Techfest.
+
 - **Feb 2026** — Robotics Shop admin now has Cashfree Verify + Refund actions,
   matching the pattern used on Student Online Payments.
   - Backend: two new admin-only endpoints in `/app/backend/routes/shop.py`:

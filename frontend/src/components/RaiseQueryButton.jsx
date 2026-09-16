@@ -927,15 +927,49 @@ const RaiseQueryButton = () => {
       const queryTypeLabel = selectedQueryType?.label || 'General Query';
       const subCategoryLabel = selectedQueryType?.subCategories?.find(s => s.value === formData.related_to)?.label || '';
 
+      // Techfest routing — collapse the two-level Need Help selection into the
+      // admin Support Center's `techfest` category + one of its slugs so the
+      // ticket lands cleanly under the Techfest filter. Keep the human labels
+      // in the message body so context isn't lost.
+      const TECHFEST_TOPLEVEL_TO_SLUG = {
+        registration:  'registration_query',
+        tracks_rounds: 'tracks_rounds',
+        kits:          'kits',
+        regionals:     'regionals',
+        prizes_fees:   'prizes_fees',
+      };
+      const isTechfest = currentPath.includes('/techfest');
+      let payloadQueryType = queryTypeLabel;
+      let payloadRelatedTo = subCategoryLabel;
+      let messageBody = formData.message;
+      if (isTechfest) {
+        // Map "other" branch's sub-values to sponsorship/media/feedback so
+        // partnership + press queries flow to the right sub-category.
+        let mapped = TECHFEST_TOPLEVEL_TO_SLUG[formData.query_type];
+        if (!mapped && formData.query_type === 'other') {
+          const sub = formData.related_to;
+          if (sub === 'partnership')      mapped = 'sponsorship';
+          else if (sub === 'media')       mapped = 'media';
+          else if (sub === 'feedback')    mapped = 'feedback';
+          else if (sub === 'confirmation')mapped = 'confirmation';
+          else                            mapped = 'other';
+        }
+        payloadQueryType = 'techfest';
+        payloadRelatedTo = mapped || 'other';
+        // Prepend the two-level Need Help context so agents see what the user
+        // actually selected even though we normalised the tags.
+        messageBody = `[${queryTypeLabel}${subCategoryLabel ? ' → ' + subCategoryLabel : ''}]\n${formData.message}`;
+      }
+
       await axios.post(`${API}/inquiry/query`, {
         inquiry_type: getInquiryTypeForPage(currentPath),
         action_type: 'query',
         name: formData.name || userData?.name || 'Anonymous',
         phone: formData.phone || userData?.phone || '',
         email: formData.email || userData?.email || '',
-        query_type: queryTypeLabel,
-        related_to: subCategoryLabel,
-        query_details: formData.message,
+        query_type: payloadQueryType,
+        related_to: payloadRelatedTo,
+        query_details: messageBody,
         priority: 'normal',
         source: `quick_help${currentPath.replace(/\//g, '_').substring(0, 40)}`,
         page_context: pageConfig.label,

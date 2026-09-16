@@ -648,7 +648,7 @@ Return ONLY valid JSON (no prose, no markdown fences):
 {
   "is_query": true|false,
   "inquiry_type": "student" | "school" | "educator" | "growth_partner" | "general",
-  "query_type": "demo_related" | "payment" | "course_info" | "ongoing_classes" | "technical" | "kit_related" | "lms" | "partnership" | "feedback" | "educator_query" | "admission" | "scheduling" | "other",
+  "query_type": "demo_related" | "payment" | "course_info" | "ongoing_classes" | "technical" | "kit_related" | "lms" | "partnership" | "feedback" | "educator_query" | "admission" | "scheduling" | "techfest" | "other",
   "related_to": "<sub-category slug>",
   "priority": "high" | "normal" | "low",
   "subject_summary": "≤80-char distilled subject"
@@ -704,6 +704,7 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
   - educator_query     → teacher application status, training, payment, scheduling
   - admission          → "how do I enrol my child", document submission, seats
   - scheduling         → batch timing, slot availability, preferred timing
+  - techfest           → OLL × Techfest IIT Bombay Robotics Championship — parents/students/schools writing IN to us about registration, tracks (RoboSumo, RoboRacer, Robotics Innovation Challenge), rounds, kits, regionals, Grand Finale at IIT Bombay, prizes/fees/certificates, or confirmation-not-received. NOTE: this is OUR championship — inbound queries about it ARE real customer queries. Do NOT confuse with outside-college fest sponsorship pitches (those stay is_query=false under the cold-outreach rule above).
   - other              → genuine queries that fit none of the above
 
 # related_to slug — one of these MUST match the chosen query_type:
@@ -719,6 +720,7 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
   admission:       new_admission | admission_process | document_submission | seat_availability | other
   scheduling:      slot_availability | preferred_timing | teacher_preference | batch_inquiry | other
   feedback:        other
+  techfest:        registration_query | tracks_rounds | kits | regionals | prizes_fees | confirmation | sponsorship | media | feedback | other
   other:           general_inquiry | career_inquiry | media_inquiry | other
 
 # priority
@@ -735,6 +737,11 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
   - "Forgot LMS password" → query_type=lms, related_to=forgot_password, inquiry_type=student
   - "LMS not working / bug on lms.oll.co" → query_type=lms, related_to=lms_bug, inquiry_type=student
   - "Apply to teach" → query_type=educator_query, related_to=application_status, inquiry_type=educator
+  - "How do I register my child for the OLL Techfest championship?" → query_type=techfest, related_to=registration_query, inquiry_type=student
+  - "Is the RoboSumo kit mandatory for Techfest?" → query_type=techfest, related_to=kits, inquiry_type=student
+  - "Which city is our Techfest regional qualifier?" → query_type=techfest, related_to=regionals, inquiry_type=student
+  - "Prize money for OLL x IIT Bombay championship" → query_type=techfest, related_to=prizes_fees, inquiry_type=student
+  - "We registered our school for Techfest but got no confirmation" → query_type=techfest, related_to=confirmation, inquiry_type=school
 """
 
 
@@ -742,7 +749,7 @@ paid relationship with OLL. Cold-outreach pitches do NOT qualify.
 VALID_QUERY_TYPES = {
     "demo_related", "payment", "course_info", "ongoing_classes", "technical",
     "kit_related", "lms", "partnership", "feedback", "educator_query", "admission",
-    "scheduling", "other",
+    "scheduling", "techfest", "other",
 }
 VALID_INQUIRY_TYPES = {"student", "school", "educator", "growth_partner", "general", "teacher", "team"}
 VALID_RELATED_TO = {
@@ -758,6 +765,7 @@ VALID_RELATED_TO = {
     "admission":       {"new_admission","admission_process","document_submission","seat_availability","other"},
     "scheduling":      {"slot_availability","preferred_timing","teacher_preference","batch_inquiry","other"},
     "feedback":        {"other"},
+    "techfest":        {"registration_query","tracks_rounds","kits","regionals","prizes_fees","confirmation","sponsorship","media","feedback","other"},
     "other":           {"general_inquiry","career_inquiry","media_inquiry","other"},
 }
 

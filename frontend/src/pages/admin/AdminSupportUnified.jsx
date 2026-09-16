@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2, ChevronDown, ChevronUp, ExternalLink, Inbox, Copy, KeyRound, Shield } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2, ChevronDown, ChevronUp, ExternalLink, Inbox, Copy, KeyRound, Shield, Trophy } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
@@ -40,6 +40,7 @@ const QUERY_TYPES = [
   { value: 'educator_query', label: 'Educator Query', icon: UserPlus, color: 'bg-red-100 text-red-700' },
   { value: 'admission', label: 'Admission', icon: GraduationCap, color: 'bg-teal-100 text-teal-700' },
   { value: 'scheduling', label: 'Scheduling', icon: Clock, color: 'bg-pink-100 text-pink-700' },
+  { value: 'techfest', label: 'Techfest', icon: Trophy, color: 'bg-rose-100 text-rose-700' },
   { value: 'other', label: 'Other', icon: AlertCircle, color: 'bg-slate-100 text-slate-700' },
 ];
 
@@ -140,6 +141,18 @@ const RELATED_TO_OPTIONS = {
     { value: 'teacher_preference', label: 'Teacher Preference' },
     { value: 'batch_inquiry', label: 'Batch Inquiry' },
     { value: 'other', label: 'Other' },
+  ],
+  techfest: [
+    { value: 'registration_query',  label: 'Registration & Eligibility' },
+    { value: 'tracks_rounds',       label: 'Tracks & Rounds' },
+    { value: 'kits',                label: 'RoboSumo / RoboRacer Kits' },
+    { value: 'regionals',           label: 'Regional Qualifier & Grand Finale' },
+    { value: 'prizes_fees',         label: 'Prizes, Fees & Certificates' },
+    { value: 'confirmation',        label: 'Confirmation Not Received' },
+    { value: 'sponsorship',         label: 'Partnership / Sponsorship' },
+    { value: 'media',               label: 'Media / Press' },
+    { value: 'feedback',            label: 'Feedback / Suggestion' },
+    { value: 'other',               label: 'Other' },
   ],
   other: [
     { value: 'general_inquiry', label: 'General Inquiry' },
