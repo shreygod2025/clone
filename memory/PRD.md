@@ -24,6 +24,24 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — Robotics Shop admin now has Cashfree Verify + Refund actions,
+  matching the pattern used on Student Online Payments.
+  - Backend: two new admin-only endpoints in `/app/backend/routes/shop.py`:
+    - `POST /api/admin/shop/orders/{order_id}/verify` — calls
+      `PGFetchOrder` and, when Cashfree reports PAID, calls the existing
+      `_finalize_paid_order` (which is idempotent) so vendor POs are
+      submitted and the confirmation email is sent.
+    - `POST /api/admin/shop/orders/{order_id}/refund` — validates the order
+      is PAID + has a `cashfree_order_id`, calls `PGOrderCreateRefund` and
+      marks the order `payment_status="refunded"` with refund_id/amount/note/at/by.
+  - Frontend (`AdminShopPanel.jsx`): new "Verify" button on non-paid rows,
+    new "Refund" button on paid rows, purple REFUNDED badge, "Refunded"
+    filter option, and a `RefundModal` with pre-filled amount, reason
+    textarea and safety warning. Order detail modal now shows the refund
+    receipt block (refund id, amount, note, at, by) when applicable.
+  - Verified end-to-end with curl (verify with & without cf id, refund on
+    non-paid = 400, order-not-found = 404) and via UI screenshot.
+
 - **Feb 2026** — Mobile scroll bug on Admin My Space Task Detail modal fixed
   (`AdminTasks.jsx` line ~1079). Root cause: modal used `h-[95vh]` inside a
   `fixed inset-0` overlay; on mobile browsers `vh` includes the URL bar area,

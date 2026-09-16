@@ -894,6 +894,166 @@ async def admin_list_products(user: dict = Depends(get_current_user)):
     return {"products": merged, "count": len(merged)}
 
 
+@router.post("/admin/shop/orders/{order_id}/verify")
+async def admin_verify_shop_payment(order_id: str, user: dict = Depends(get_current_user)):
+    """Admin: re-check a shop order's payment status against Cashfree and
+    finalize it (mark paid + submit POs + send email) if Cashfree says PAID.
+    Mirrors the behaviour of /api/payments/sync-single/{order_id} used on the
+    Student Online Payments tab."""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+
+    order = await db.shop_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    old_status = order.get("payment_status") or "pending"
+    cf_order_id = order.get("cashfree_order_id")
+    if not cf_order_id:
+        return {
+            "order_id": order_id,
+            "old_status": old_status,
+            "new_status": old_status,
+            "synced": False,
+            "message": "No Cashfree order created yet — customer never initiated payment.",
+        }
+
+    try:
+        cf = _get_cf_client()
+        resp = await asyncio.to_thread(cf.PGFetchOrder, CASHFREE_API_VERSION, cf_order_id, None)
+        if not resp.data:
+            return {
+                "order_id": order_id,
+                "old_status": old_status,
+                "new_status": old_status,
+                "synced": False,
+                "message": "No data returned from Cashfree",
+            }
+        cf_status = resp.data.order_status  # PAID / ACTIVE / EXPIRED / TERMINATED
+        # Try to grab the actual cf_payment_id / method for the record
+        cf_payment_id = None
+        payment_method = "Cashfree"
+        try:
+            pay_resp = await asyncio.to_thread(
+                cf.PGOrderFetchPayments, CASHFREE_API_VERSION, cf_order_id, None
+            )
+            if pay_resp.data and len(pay_resp.data) > 0:
+                cf_payment_id = str(pay_resp.data[0].cf_payment_id)
+                payment_method = f"Cashfree - {pay_resp.data[0].payment_group or 'unknown'}"
+        except Exception as exc:
+            logging.warning(f"[shop verify] could not fetch payment details: {exc}")
+
+        update: dict = {
+            "cashfree_status": cf_status,
+            "synced_at": datetime.now(timezone.utc).isoformat(),
+            "sync_source": "manual",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if cf_payment_id:
+            update["cf_payment_id"] = cf_payment_id
+            update["payment_method"] = payment_method
+
+        if cf_status == "PAID":
+            # Idempotently finalize (submits vendor POs, sends email once)
+            order = await _finalize_paid_order({**order, **update})
+            await db.shop_orders.update_one({"id": order_id}, {"$set": update})
+            new_status = "paid"
+        else:
+            await db.shop_orders.update_one({"id": order_id}, {"$set": update})
+            new_status = old_status
+
+        return {
+            "order_id": order_id,
+            "cashfree_order_id": cf_order_id,
+            "old_status": old_status,
+            "new_status": new_status,
+            "cashfree_status": cf_status,
+            "transaction_id": cf_payment_id,
+            "synced": True,
+            "status_changed": old_status != new_status,
+        }
+    except Exception as exc:
+        logging.error(f"[shop verify] error for {order_id}: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Verify failed: {exc}")
+
+
+@router.post("/admin/shop/orders/{order_id}/refund")
+async def admin_refund_shop_order(
+    order_id: str,
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    """Admin: initiate a Cashfree refund for a PAID shop order. Mirrors the
+    /api/school-payment/refund/{payment_id} flow used elsewhere in admin."""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+
+    order = await db.shop_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("payment_status") != "paid":
+        raise HTTPException(status_code=400, detail="Refunds can only be initiated for PAID orders")
+    cf_order_id = order.get("cashfree_order_id")
+    if not cf_order_id:
+        raise HTTPException(status_code=400, detail="No Cashfree order id on this order")
+
+    order_total = float(order.get("total") or 0)
+    try:
+        refund_amount = float(body.get("refund_amount") or order_total)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid refund_amount")
+    if refund_amount <= 0:
+        raise HTTPException(status_code=400, detail="Refund amount must be greater than zero")
+    if refund_amount > order_total:
+        raise HTTPException(status_code=400, detail="Refund cannot exceed original order total")
+
+    refund_note = body.get("refund_note") or "Admin initiated refund"
+    refund_id = f"REF_{order_id[:20]}_{int(datetime.now(timezone.utc).timestamp())}"
+
+    try:
+        from cashfree_pg.models.order_create_refund_request import OrderCreateRefundRequest
+        refund_request = OrderCreateRefundRequest(
+            refund_amount=refund_amount,
+            refund_id=refund_id,
+            refund_note=refund_note,
+            refund_speed="STANDARD",
+        )
+        cf = _get_cf_client()
+        api_response = await asyncio.to_thread(
+            cf.PGOrderCreateRefund, CASHFREE_API_VERSION, cf_order_id, refund_request, None
+        )
+        refund_data = api_response.to_dict() if hasattr(api_response, "to_dict") else {}
+
+        await db.shop_orders.update_one(
+            {"id": order_id},
+            {"$set": {
+                "payment_status": "refunded",
+                "refund_id": refund_id,
+                "refund_amount": refund_amount,
+                "refund_note": refund_note,
+                "refunded_at": datetime.now(timezone.utc).isoformat(),
+                "refunded_by": user.get("email", "admin"),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return {
+            "message": "Refund initiated successfully",
+            "refund_id": refund_id,
+            "refund_amount": refund_amount,
+            "cashfree_order_id": cf_order_id,
+            "data": refund_data,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.error(f"[shop refund] failed for {order_id}: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Refund failed: {exc}")
+
+
 @router.put("/admin/shop/products/{vendor_product_id}")
 async def admin_update_product_override(
     vendor_product_id: str,

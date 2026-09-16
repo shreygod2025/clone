@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
-import { Loader2, Search, Package, Truck, CheckCircle2, ExternalLink, Eye, RefreshCw, Copy } from 'lucide-react';
+import { Loader2, Search, Package, Truck, CheckCircle2, ExternalLink, Eye, RefreshCw, Copy, ShieldCheck, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -44,6 +44,8 @@ const OrdersTab = ({ embedded = false }) => {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState(null);
+  const [verifyingId, setVerifyingId] = useState(null);
+  const [refundOrder, setRefundOrder] = useState(null);
   // Map of orderId -> array of POs (with tracking_url) so the table row can
   // render an inline tracking link without having to expand the modal.
   const [posByOrderId, setPosByOrderId] = useState({});
@@ -144,6 +146,36 @@ const OrdersTab = ({ embedded = false }) => {
     }
   };
 
+  // Re-check payment status with Cashfree for a specific order.
+  const verifyWithCashfree = async (order) => {
+    setVerifyingId(order.id);
+    try {
+      const r = await axios.post(
+        `${API}/admin/shop/orders/${order.id}/verify`,
+        {},
+        { headers: getAuthHeaders() }
+      );
+      const { old_status, new_status, cashfree_status, status_changed, message } = r.data || {};
+      if (status_changed) {
+        toast.success(`Status updated: ${old_status} → ${new_status}`);
+        await load();
+      } else if (message) {
+        toast.info(message);
+      } else {
+        toast.info(`Cashfree says: ${cashfree_status || new_status}`);
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Verify failed');
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const onRefundDone = async () => {
+    setRefundOrder(null);
+    await load();
+  };
+
   return (
     <div className={embedded ? '' : ''}>
       {/* Shop-specific stats — total orders + revenue (paid + pending). */}
@@ -197,6 +229,7 @@ const OrdersTab = ({ embedded = false }) => {
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="paid">Paid</option>
+          <option value="refunded">Refunded</option>
         </select>
         <button
           onClick={sync}
@@ -254,7 +287,10 @@ const OrdersTab = ({ embedded = false }) => {
                       ₹{o.total?.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Badge label={o.payment_status} color={o.payment_status === 'paid' ? 'green' : 'amber'} />
+                      <Badge
+                        label={o.payment_status}
+                        color={o.payment_status === 'paid' ? 'green' : o.payment_status === 'refunded' ? 'purple' : 'amber'}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       {trackable.length === 0 ? (
@@ -289,13 +325,39 @@ const OrdersTab = ({ embedded = false }) => {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => setDetail(o)}
-                        className="text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 text-xs font-semibold"
-                        data-testid={`shop-order-view-${o.id}`}
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
+                      <div className="inline-flex flex-wrap items-center justify-end gap-3">
+                        {o.payment_status !== 'paid' && o.payment_status !== 'refunded' && (
+                          <button
+                            onClick={() => verifyWithCashfree(o)}
+                            disabled={verifyingId === o.id}
+                            className="text-indigo-600 hover:text-indigo-800 disabled:text-slate-300 inline-flex items-center gap-1 text-xs font-semibold"
+                            title="Re-check this order's payment status with Cashfree"
+                            data-testid={`shop-order-verify-${o.id}`}
+                          >
+                            {verifyingId === o.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <ShieldCheck className="w-3.5 h-3.5" />}
+                            {verifyingId === o.id ? 'Verifying…' : 'Verify'}
+                          </button>
+                        )}
+                        {o.payment_status === 'paid' && (
+                          <button
+                            onClick={() => setRefundOrder(o)}
+                            className="text-purple-600 hover:text-purple-800 inline-flex items-center gap-1 text-xs font-semibold"
+                            title="Initiate a Cashfree refund"
+                            data-testid={`shop-order-refund-${o.id}`}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Refund
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDetail(o)}
+                          className="text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 text-xs font-semibold"
+                          data-testid={`shop-order-view-${o.id}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -306,6 +368,129 @@ const OrdersTab = ({ embedded = false }) => {
       )}
 
       {detail && <OrderDetailModal order={detail} onClose={() => setDetail(null)} />}
+      {refundOrder && (
+        <RefundModal
+          order={refundOrder}
+          onClose={() => setRefundOrder(null)}
+          onDone={onRefundDone}
+          getAuthHeaders={getAuthHeaders}
+        />
+      )}
+    </div>
+  );
+};
+
+
+const RefundModal = ({ order, onClose, onDone, getAuthHeaders }) => {
+  const orderTotal = Number(order.total) || 0;
+  const [amount, setAmount] = useState(String(orderTotal));
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    const value = parseFloat(amount);
+    if (!value || value <= 0) {
+      toast.error('Please enter a valid refund amount');
+      return;
+    }
+    if (value > orderTotal) {
+      toast.error('Refund amount cannot exceed the order total');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const r = await axios.post(
+        `${API}/admin/shop/orders/${order.id}/refund`,
+        { refund_amount: value, refund_note: note || 'Admin initiated refund' },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(`Refund of ₹${value.toLocaleString('en-IN')} initiated. ID: ${r.data.refund_id}`);
+      onDone();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Refund failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+      data-testid="shop-order-refund-modal"
+    >
+      <div
+        className="bg-white rounded-2xl max-w-md w-full overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 border-b">
+          <div>
+            <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-purple-600" /> Refund via Cashfree
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Order {order.order_no} · Paid ₹{orderTotal.toLocaleString('en-IN')}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-900" data-testid="shop-refund-close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">
+              Refund amount (INR)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max={orderTotal}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"
+              data-testid="shop-refund-amount"
+            />
+            <p className="text-[11px] text-slate-500 mt-1">Cannot exceed ₹{orderTotal.toLocaleString('en-IN')} (order total).</p>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 block">
+              Reason / Note
+            </label>
+            <textarea
+              rows={3}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Reason shared internally on the Cashfree refund record"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              data-testid="shop-refund-note"
+            />
+          </div>
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+            This will call Cashfree PGOrderCreateRefund on <strong>{order.cashfree_order_id}</strong>
+            {' '}and mark the order as <strong>REFUNDED</strong>. Vendor purchase orders (if any) will NOT be recalled automatically.
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              onClick={onClose}
+              disabled={submitting}
+              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 font-semibold"
+              data-testid="shop-refund-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={submitting}
+              className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-400 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg"
+              data-testid="shop-refund-submit"
+            >
+              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+              {submitting ? 'Refunding…' : 'Initiate Refund'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -374,6 +559,17 @@ const OrderDetailModal = ({ order, onClose }) => {
             </div>
           </div>
 
+          {order.payment_status === 'refunded' && (
+            <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-xs text-purple-800">
+              <p className="font-bold uppercase tracking-wider mb-1">Refunded</p>
+              <p>Refund ID: <strong>{order.refund_id || '—'}</strong></p>
+              <p>Amount: <strong>₹{Number(order.refund_amount || 0).toLocaleString('en-IN')}</strong></p>
+              {order.refund_note && <p>Note: {order.refund_note}</p>}
+              {order.refunded_at && <p>At: {new Date(order.refunded_at).toLocaleString('en-IN')}</p>}
+              {order.refunded_by && <p>By: {order.refunded_by}</p>}
+            </div>
+          )}
+
           {loading ? null : trackable.length > 0 && (
             <div>
               <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-2">Tracking</p>
@@ -399,6 +595,7 @@ const Badge = ({ label, color }) => {
     amber: 'bg-amber-100 text-amber-700',
     red: 'bg-red-100 text-red-700',
     blue: 'bg-blue-100 text-blue-700',
+    purple: 'bg-purple-100 text-purple-700',
     gray: 'bg-slate-200 text-slate-600',
   }[color] || 'bg-slate-100 text-slate-700';
   return (
