@@ -12,12 +12,12 @@
  *   Zing Rust display, Proxima Nova body, Caveat script,
  *   red primary CTA, deep navy accents, cream/white background.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Download, ShieldCheck, Trophy, Cpu, Brain, Sparkles,
   CheckCircle2, BookOpen, Users, Gamepad2, PlayCircle, Play,
-  Lightbulb, Puzzle, Binary, GraduationCap, School, MapPin, FileText, Rocket,
+  Lightbulb, Puzzle, Binary, GraduationCap, School, MapPin, FileText, Rocket, Lock,
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
@@ -195,8 +195,46 @@ export default function CBSECTAILanding() {
   const [brochureSubmitting, setBrochureSubmitting] = useState(false);
   const [brochureError, setBrochureError] = useState('');
   const [activeBook, setActiveBook] = useState(null);
+  const [vlabInView, setVlabInView] = useState(false);
+  const vlabRef = useRef(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  // Autoplay the Virtual Lab video when its section scrolls into view. Muted
+  // autoplay is used since browsers block un-muted auto-start; the user can
+  // then unmute directly from the YouTube player. Only fires once per visit.
+  useEffect(() => {
+    const el = vlabRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setVlabInView(true);
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Global scroll-reveal for any [data-reveal] element on this page.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
   useEffect(() => {
     const canonicalUrl = `${window.location.origin}${CANONICAL_PATH}`;
     // Core SEO
@@ -345,6 +383,109 @@ export default function CBSECTAILanding() {
         .icse-btn.ghost:hover { background:rgba(255,255,255,0.10); }
         .icse-card { background:#fff; border:1px solid #F1E9E1; border-radius:28px; box-shadow: 0 8px 24px rgba(10,31,68,0.06); transition:transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
         .icse-card:hover { transform:translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.10); border-color:#DC2626; }
+
+        /* ── Alternating navy tint band — wraps entire sections so we get a
+           rhythm of white → tinted-blue → white across the page without
+           having to invert every child's text color. Left/right radial
+           glows sit inside these bands for extra depth. */
+        .cbse-band-blue {
+          position: relative;
+          background:
+            radial-gradient(1200px 300px at 15% 0%, rgba(37,99,235,0.10), transparent 60%),
+            radial-gradient(1000px 240px at 90% 100%, rgba(59,130,246,0.08), transparent 60%),
+            linear-gradient(180deg, #EEF3FB 0%, #F5F8FD 100%);
+          overflow: hidden;
+        }
+        .cbse-band-blue::before {
+          content: ''; position: absolute; inset: 0;
+          background:
+            repeating-linear-gradient(45deg, rgba(30,58,138,0.04) 0 1px, transparent 1px 22px);
+          pointer-events: none;
+        }
+        /* Section divider curve — a subtle wave that separates a blue band
+           from a white band above/below. */
+        .cbse-band-blue .cbse-band-curve {
+          position: absolute; left: 0; right: 0; height: 40px; pointer-events: none;
+        }
+        .cbse-band-blue .cbse-band-curve.top {
+          top: -1px;
+          background:
+            radial-gradient(ellipse 60% 100% at 50% 100%, #fff 49%, transparent 50%);
+        }
+        .cbse-band-blue .cbse-band-curve.bottom {
+          bottom: -1px;
+          background:
+            radial-gradient(ellipse 60% 100% at 50% 0%, #fff 49%, transparent 50%);
+        }
+
+        /* ── Scroll-reveal — sections slide up + fade in the first time they
+           enter the viewport. Coordinated by an IntersectionObserver that
+           adds .is-visible to any [data-reveal] element. */
+        [data-reveal] {
+          opacity: 0; transform: translateY(28px);
+          transition: opacity 0.85s cubic-bezier(.22,.9,.34,1), transform 0.85s cubic-bezier(.22,.9,.34,1);
+          transition-delay: var(--reveal-delay, 0s);
+          will-change: opacity, transform;
+        }
+        [data-reveal].is-visible { opacity: 1; transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+          [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+        }
+
+        /* ── Browser-tab chrome wrapping the Virtual Lab video ─────────── */
+        .cbse-tab-frame {
+          position: relative;
+          border-radius: 18px 18px 22px 22px;
+          background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+          box-shadow:
+            0 30px 60px -20px rgba(10,31,68,0.45),
+            0 12px 24px -10px rgba(10,31,68,0.25),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+          overflow: hidden;
+        }
+        /* Tab strip at the top */
+        .cbse-tab-strip {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 14px; background: linear-gradient(180deg, #334155 0%, #1E293B 100%);
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .cbse-tab-dots { display: inline-flex; gap: 6px; }
+        .cbse-tab-dots span { width: 11px; height: 11px; border-radius: 999px; display: inline-block; }
+        .cbse-tab-dots .r { background: #EF4444; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+        .cbse-tab-dots .y { background: #F59E0B; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+        .cbse-tab-dots .g { background: #10B981; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+        .cbse-tab-active {
+          display: inline-flex; align-items: center; gap: 8px;
+          margin-left: 6px; padding: 6px 14px 6px 10px;
+          background: #0F172A; color: #E2E8F0; border-radius: 8px 8px 0 0;
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+          border: 1px solid rgba(255,255,255,0.06); border-bottom: none;
+          max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cbse-tab-active .fav {
+          width: 14px; height: 14px; border-radius: 3px;
+          background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+          display: inline-flex; align-items: center; justify-content: center;
+          color: #fff; font-size: 8px; font-weight: 900; flex-shrink: 0;
+        }
+        .cbse-tab-url {
+          flex: 1; margin-left: auto; padding: 6px 14px;
+          background: rgba(255,255,255,0.06); color: #94A3B8;
+          border-radius: 999px; font-size: 0.7rem; font-family: 'Proxima Nova', system-ui, sans-serif;
+          border: 1px solid rgba(255,255,255,0.05);
+          display: inline-flex; align-items: center; gap: 8px;
+          max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cbse-tab-url .lock { color: #10B981; flex-shrink: 0; }
+        .cbse-tab-frame-body {
+          position: relative; aspect-ratio: 16 / 9; background: #000;
+        }
+        @media (max-width: 640px) {
+          .cbse-tab-url { display: none; }
+          .cbse-tab-active { max-width: 180px; font-size: 0.66rem; }
+          .cbse-tab-strip { padding: 8px 10px; }
+        }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         .icse-anim-fadeup   { animation: fadeUp .8s cubic-bezier(.22,.9,.34,1) both; }
@@ -598,6 +739,8 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ══════════ SECTION 2 · WHAT IS CT & AI ══════════ */}
+      <div className="cbse-band-blue" data-reveal>
+        <span className="cbse-band-curve top" aria-hidden="true" />
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-what" aria-labelledby="cbse-what-heading">
         <div className="text-center">
           <div className="icse-script text-[#DC2626] text-3xl">the basics, decoded</div>
@@ -658,10 +801,12 @@ export default function CBSECTAILanding() {
           </div>
         </div>
       </section>
+        <span className="cbse-band-curve bottom" aria-hidden="true" />
+      </div>
 
       {/* ══════════ SECTION 3 · OLL'S SPECIALITY ══════════ */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-speciality" aria-labelledby="cbse-speciality-heading">
-        <div className="text-center">
+        <div className="text-center" data-reveal>
           <div className="icse-script text-[#DC2626] text-3xl">why oll</div>
           <h2 id="cbse-speciality-heading" className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">OLL's Speciality</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-4">
@@ -689,7 +834,7 @@ export default function CBSECTAILanding() {
 
       {/* ── 3a · Interactive Books Grades 3-8 ─────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-books" aria-labelledby="cbse-books-heading">
-        <div className="mb-10 text-center sm:text-left">
+        <div className="mb-10 text-center sm:text-left" data-reveal>
           <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
           <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
           <h3 id="cbse-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books · Grades 3 to 8</h3>
@@ -755,9 +900,11 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ── 3b · Virtual Lab for CT & AI ──────────────────────────── */}
+      <div className="cbse-band-blue" data-reveal>
+        <span className="cbse-band-curve top" aria-hidden="true" />
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-virtual-lab" aria-labelledby="cbse-vlab-heading">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
-          <div>
+          <div data-reveal>
             <div className="icse-eyebrow text-rose-600">Speciality · 02</div>
             <div className="icse-script text-[#DC2626] text-3xl">play → practise → master</div>
             <h3 id="cbse-vlab-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Virtual Lab for CT &amp; AI</h3>
@@ -782,26 +929,40 @@ export default function CBSECTAILanding() {
             </div>
           </div>
 
-          {/* Real YouTube walkthrough of the CT & AI Virtual Lab */}
-          <div className="relative">
-            <div
-              className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-black"
-              style={{ aspectRatio: '16 / 9' }}
-              data-testid="cbse-vlab-video"
-            >
-              <iframe
-                src="https://www.youtube-nocookie.com/embed/10Jjn613V14?rel=0&modestbranding=1"
-                title="OLL CT & AI Virtual Lab — sample game walkthrough"
-                loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full border-0"
-                data-testid="cbse-vlab-iframe"
-              />
+          {/* Real YouTube walkthrough in a browser-tab chrome. Autoplay
+              (muted) kicks in the moment the section scrolls into view. */}
+          <div className="relative" ref={vlabRef}>
+            <div className="cbse-tab-frame" data-testid="cbse-vlab-video">
+              <div className="cbse-tab-strip">
+                <span className="cbse-tab-dots" aria-hidden="true">
+                  <span className="r" /><span className="y" /><span className="g" />
+                </span>
+                <span className="cbse-tab-active">
+                  <span className="fav" aria-hidden="true">CT</span>
+                  OLL · CT &amp; AI Virtual Lab
+                </span>
+                <span className="cbse-tab-url">
+                  <Lock size={11} className="lock" />
+                  oll.co/virtual-lab/ct-ai
+                </span>
+              </div>
+              <div className="cbse-tab-frame-body">
+                <iframe
+                  src={`https://www.youtube.com/embed/10Jjn613V14?rel=0&modestbranding=1&playsinline=1${vlabInView ? '&autoplay=1&mute=1' : ''}`}
+                  title="OLL CT & AI Virtual Lab — sample game walkthrough"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full border-0"
+                  data-testid="cbse-vlab-iframe"
+                />
+              </div>
             </div>
           </div>
         </div>
       </section>
+        <span className="cbse-band-curve bottom" aria-hidden="true" />
+      </div>
 
       {/* ── 3c · Teacher Lesson Plans / PPTs / Videos via LMS ─────── */}
       <section data-testid="cbse-lms-wrapper" aria-labelledby="cbse-lms-heading">
