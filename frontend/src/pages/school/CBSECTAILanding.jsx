@@ -782,21 +782,22 @@ export default function CBSECTAILanding() {
             </div>
           </div>
 
-          {/* Placeholder video window — swap to <iframe> when YouTube ID is provided */}
+          {/* Real YouTube walkthrough of the CT & AI Virtual Lab */}
           <div className="relative">
-            <div className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-gradient-to-br from-[#0A1F44] to-[#1E3A5F]" style={{ aspectRatio: '16 / 9' }} data-testid="cbse-vlab-video">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-                <div className="w-16 h-16 rounded-full bg-white/15 backdrop-blur flex items-center justify-center mb-3">
-                  <Play className="w-6 h-6 text-white translate-x-[2px]" />
-                </div>
-                <div className="icse-eyebrow text-white/70">Coming soon</div>
-                <div className="icse-display text-white text-2xl mt-1">Sample Game Walkthrough</div>
-                <div className="icse-light text-white/70 text-xs mt-2">YouTube demo will drop in here — 90-second run of a Pattern Detective mini-game.</div>
-              </div>
-              <div className="absolute inset-x-6 bottom-4 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/80">
-                <span>OLL · Virtual Lab</span>
-                <span>CT &amp; AI · Live</span>
-              </div>
+            <div
+              className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-black"
+              style={{ aspectRatio: '16 / 9' }}
+              data-testid="cbse-vlab-video"
+            >
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/10Jjn613V14?rel=0&modestbranding=1"
+                title="OLL CT & AI Virtual Lab — sample game walkthrough"
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full border-0"
+                data-testid="cbse-vlab-iframe"
+              />
             </div>
           </div>
         </div>
