@@ -172,6 +172,8 @@ export default function RoboticsBeginnerLanding() {
   const [chartKey, setChartKey] = useState(0);
   const [growthCount, setGrowthCount] = useState(0);
   const [activeKit, setActiveKit] = useState(null);
+  // Currently-open book for the sample-flipbook lightbox (holds the BOOKS row).
+  const [activeBook, setActiveBook] = useState(null);
   const chartRef = useRef(null);
   const certRef = useRef(null);
   const bookDemo = () => navigate('/school');
@@ -473,6 +475,12 @@ export default function RoboticsBeginnerLanding() {
         }
         .rb-book-pad:hover .rb-book-cta { opacity: 1; transform: translateY(0); }
         .rb-book-link { display: block; text-decoration: none; color: inherit; cursor: pointer; }
+
+        /* Sample-book modal header — hide "Open in new tab" pill on tight phones,
+           keep the "Book a Demo" CTA + close button always visible. */
+        @media (max-width: 520px) {
+          .rb-sample-open-new { display: none !important; }
+        }
 
         /* 8-book row */
         .rb-books-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.85rem; align-items: end; }
@@ -1209,7 +1217,15 @@ export default function RoboticsBeginnerLanding() {
 
           <div className="rb-books-grid">
             {BOOKS.map((b) => (
-              <a key={b.grade} href={b.flip} target="_blank" rel="noreferrer" className="rb-book-link rb-book-pad" data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}>
+              <button
+                key={b.grade}
+                type="button"
+                onClick={() => setActiveBook(b)}
+                aria-label={`Open ${b.grade} · ${b.theme} sample book`}
+                className="rb-book-link rb-book-pad"
+                style={{ background: 'transparent', border: 'none', padding: 0, width: '100%', textAlign: 'inherit', font: 'inherit' }}
+                data-testid={`rb-book-${b.grade.replace(/\s+/g, '').toLowerCase()}`}
+              >
                 <div className="rb-book">
                   <div className="rb-book-inner" style={{ '--spine': b.spine }}>
                     <img src={b.src} alt={`Robotics ${b.grade}`} className="rb-book-cover" />
@@ -1222,7 +1238,7 @@ export default function RoboticsBeginnerLanding() {
                 <div className="rb-book-cta">
                   <BookOpen size={11} /> Click to open sample
                 </div>
-              </a>
+              </button>
             ))}
           </div>
 
@@ -1650,6 +1666,120 @@ export default function RoboticsBeginnerLanding() {
         </div>
       )}
       <SchoolRelatedPrograms current="robotics-beginner" theme="light" testid="rb-related-programs" />
+
+      {/* ── Sample Book flipbook lightbox — embeds the Heyzine flipbook per grade ── */}
+      {activeBook && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${activeBook.grade} sample book`}
+          data-testid="rb-sample-modal"
+          onClick={() => setActiveBook(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0.75rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', maxWidth: 1200,
+              height: 'min(92vh, 900px)',
+              display: 'flex', flexDirection: 'column',
+              background: '#fff', borderRadius: 20, overflow: 'hidden',
+              boxShadow: '0 40px 80px rgba(0,0,0,0.45)',
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '0.85rem 1.1rem',
+              background: `linear-gradient(135deg, ${activeBook.spine} 0%, #0A1F44 100%)`,
+              color: '#fff',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  fontFamily: "'Caveat', cursive", fontWeight: 700, color: '#FCA5A5',
+                  fontSize: '1.15rem', lineHeight: 1,
+                }}>
+                  sample book
+                </div>
+                <div style={{
+                  fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 700,
+                  fontSize: 'clamp(0.95rem, 2.2vw, 1.4rem)', marginTop: 4,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {activeBook.grade} · {activeBook.theme}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <a
+                  href={activeBook.flip}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="rb-sample-open-new"
+                  className="rb-sample-open-new"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Proxima Nova', 'Montserrat', sans-serif",
+                    fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)',
+                    padding: '0.5rem 0.85rem', borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.25)', textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Open in new tab
+                </a>
+                <button
+                  onClick={() => { setActiveBook(null); bookDemo(); }}
+                  data-testid="rb-sample-demo"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Proxima Nova', 'Montserrat', sans-serif",
+                    fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: '#fff', background: '#DC2626',
+                    padding: '0.5rem 0.85rem', borderRadius: 999, border: 'none', cursor: 'pointer',
+                    transition: 'background 0.2s ease',
+                  }}
+                >
+                  Book a Demo <ArrowRight size={12} />
+                </button>
+                <button
+                  onClick={() => setActiveBook(null)}
+                  aria-label="Close sample book"
+                  data-testid="rb-sample-close"
+                  style={{
+                    width: 38, height: 38, borderRadius: 999,
+                    background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', cursor: 'pointer',
+                    fontSize: '1.35rem', fontWeight: 700, lineHeight: 1,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.22)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            {/* Flipbook iframe */}
+            <div style={{ position: 'relative', flex: 1, background: '#F1F5F9', minHeight: 0 }}>
+              <iframe
+                key={activeBook.flip}
+                src={activeBook.flip}
+                title={`${activeBook.grade} · ${activeBook.theme} sample book`}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+                allow="fullscreen; autoplay; clipboard-write"
+                allowFullScreen
+                loading="lazy"
+                data-testid="rb-sample-frame"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
