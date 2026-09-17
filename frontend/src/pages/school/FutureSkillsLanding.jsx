@@ -567,49 +567,52 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         }
         .fs-lab-grid {
           position: relative; z-index: 1;
-          display: flex; flex-wrap: wrap; justify-content: center; gap: 22px;
+          display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
         }
         .fs-lab-tile {
           background: rgba(255,255,255,0.06);
           border: 1px solid rgba(255,255,255,0.10);
-          border-radius: 26px;
-          padding: 22px 16px 18px;
+          border-radius: 18px;
+          padding: 14px 10px 12px;
           text-align: center;
           backdrop-filter: blur(10px);
           transition: transform 0.35s cubic-bezier(.22,.9,.34,1), background 0.25s ease, border-color 0.25s ease, box-shadow 0.35s ease;
-          flex: 0 0 calc((100% - 22px * 3) / 4);
+          flex: 0 0 calc((100% - 14px * 5) / 6);
           min-width: 0;
-          display: flex; flex-direction: column; align-items: center; gap: 14px;
+          display: flex; flex-direction: column; align-items: center; gap: 8px;
           animation: fadeUp .8s cubic-bezier(.22,.9,.34,1) both;
         }
         .fs-lab-tile:hover {
-          transform: translateY(-6px);
+          transform: translateY(-4px);
           background: rgba(255,255,255,0.10);
           border-color: rgba(255,255,255,0.22);
-          box-shadow: 0 28px 60px rgba(0,0,0,0.35);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.35);
         }
         .fs-lab-icon {
-          width: 92px; height: 92px; border-radius: 22px;
+          width: 52px; height: 52px; border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
           transition: transform 0.35s ease;
+          box-shadow: 0 6px 14px rgba(0,0,0,0.25), inset 0 -3px 6px rgba(0,0,0,0.15);
         }
-        .fs-lab-tile:hover .fs-lab-icon { transform: translateY(-2px) scale(1.05); }
-        .fs-lab-icon img { width: 60%; height: 60%; object-fit: contain; }
+        .fs-lab-tile:hover .fs-lab-icon { transform: translateY(-2px) scale(1.08); }
+        .fs-lab-icon img { width: 62%; height: 62%; object-fit: contain; }
         .fs-lab-label {
           font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
-          font-weight: 700; color: #fff; font-size: 1.02rem; line-height: 1.2;
+          font-weight: 700; color: #fff; font-size: 0.78rem; line-height: 1.15;
           letter-spacing: 0.005em;
         }
-        @media (max-width: 900px) {
-          .fs-lab-grid { gap: 18px; }
-          .fs-lab-tile { flex: 0 0 calc((100% - 18px * 2) / 3); }
+        @media (max-width: 1024px) {
+          .fs-lab-tile { flex: 0 0 calc((100% - 14px * 4) / 5); }
+        }
+        @media (max-width: 760px) {
+          .fs-lab-tile { flex: 0 0 calc((100% - 14px * 3) / 4); }
         }
         @media (max-width: 560px) {
           .fs-lab-panel { padding: 28px 18px 32px; border-radius: 32px; }
-          .fs-lab-grid { gap: 14px; }
-          .fs-lab-tile { flex: 0 0 calc((100% - 14px) / 2); padding: 18px 12px 14px; border-radius: 22px; }
-          .fs-lab-icon { width: 78px; height: 78px; }
-          .fs-lab-label { font-size: 0.88rem; }
+          .fs-lab-grid { gap: 10px; }
+          .fs-lab-tile { flex: 0 0 calc((100% - 10px * 2) / 3); padding: 12px 8px 10px; border-radius: 16px; gap: 6px; }
+          .fs-lab-icon { width: 44px; height: 44px; border-radius: 12px; }
+          .fs-lab-label { font-size: 0.68rem; }
         }
 
         /* 4-pillar animated tiles (replaces the flat hero image) */
@@ -1333,32 +1336,48 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
       </section>
 
       {/* ══════════ SECTION 3 · OLL SPECIALITY ══════════ */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-speciality" aria-labelledby="fs-speciality-heading">
-        <div className="text-center">
-          <div className="icse-script text-[#DC2626] text-3xl">why oll</div>
-          <h2 id="fs-speciality-heading" className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">OLL's Speciality</h2>
-          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-4">
-            Everything a {board}-affiliated school needs to run all 4 subjects — books, virtual labs, and teacher-ready lesson plans — under one login.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5 mt-10">
-          {[
-            { icon: BookOpen,      title: 'Hardcopy Interactive Books', body: 'One workbook per grade (3-8) — ICT + Coding + AI + Robotics activities, coding challenges and reflection prompts under one cover.' },
-            { icon: Gamepad2,      title: 'Virtual Labs',                body: 'Browser-first playground: Scratch, Python, HTML/CSS/JS, SQL, C, Excel — no separate login, no app download.' },
-            { icon: GraduationCap, title: 'LMS Access',                  body: 'Ready-to-teach lesson plans, PPTs, videos and unit tests for every teacher. Live student analytics for the school head.' },
-          ].map(({ icon: Icon, title, body }) => (
-            <div key={title} className="icse-card p-6 sm:p-7 text-center">
-              <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0A1F44,#DC2626)' }}>
-                <Icon className="w-6 h-6 text-white" />
+      {/* ── 4a · Interactive Books (navy gradient — alternating rhythm) ── */}
+      <section className="relative overflow-hidden" data-testid="fs-books-wrap"
+        style={{ background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', padding: '5rem 1.25rem', color: '#fff' }}>
+        <div className="icse-orb-red"  style={{ width: 380, height: 380, top: -140, left: '-8%', opacity: 0.4 }} />
+        <div className="icse-orb-blue" style={{ width: 380, height: 380, bottom: -140, right: '-8%', opacity: 0.4 }} />
+        <div className="relative max-w-6xl mx-auto" data-testid="fs-books" aria-labelledby="fs-books-heading">
+          <div className="mb-10 text-center">
+            <div className="icse-eyebrow" style={{ color: '#FCA5A5' }}>Speciality · 01</div>
+            <div className="icse-script text-[#FCA5A5] text-3xl">learn by doing</div>
+            <h3 id="fs-books-heading" className="icse-display text-white text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 1 to 8</h3>
+            <p className="icse-light mt-3 max-w-2xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
+              A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
+              real-world AI stories and reflection prompts. Sample chapters open in-page.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5">
+            {BOOK_GRADES.map(({ grade, tint }) => (
+              <div key={grade} className="group" data-testid={`fs-book-grade-${grade}`}>
+                <div className="fs-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
+                  <span className="tape">Future Skills</span>
+                  <div className="mt-8">
+                    <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
+                    <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '1.7rem' }}>Grade {grade}</div>
+                  </div>
+                  <div><div className="icse-light text-[10px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
+                </div>
+                <button onClick={() => setActiveBook(grade)}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest hover:text-white transition"
+                  style={{ color: '#FCA5A5' }}
+                  data-testid={`fs-book-sample-${grade}`}>
+                  <PlayCircle className="w-3.5 h-3.5" /> View Sample
+                </button>
               </div>
-              <div className="icse-display text-[#0A1F44] text-xl mt-4">{title}</div>
-              <div className="icse-light text-sm text-slate-600 mt-2">{body}</div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <p className="text-center text-[11px] icse-light mt-6 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            Book covers · Placeholders — final artwork by the OLL creative team
+          </p>
         </div>
       </section>
 
-      {/* ── 4· · Grade-wise Curriculum Index ─────────────────────── */}
+      {/* ── 4· · Grade-wise Curriculum Index (moved below Interactive Books) ── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-curriculum-index" aria-labelledby="fs-index-heading">
         <div className="text-center mb-8">
           <div className="icse-eyebrow text-rose-600">What's inside</div>
@@ -1432,47 +1451,6 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               <Download className="w-3.5 h-3.5" /> Download Full Curriculum
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* ── 4a · Interactive Books (navy gradient — alternating rhythm) ── */}
-      <section className="relative overflow-hidden" data-testid="fs-books-wrap"
-        style={{ background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', padding: '5rem 1.25rem', color: '#fff' }}>
-        <div className="icse-orb-red"  style={{ width: 380, height: 380, top: -140, left: '-8%', opacity: 0.4 }} />
-        <div className="icse-orb-blue" style={{ width: 380, height: 380, bottom: -140, right: '-8%', opacity: 0.4 }} />
-        <div className="relative max-w-6xl mx-auto" data-testid="fs-books" aria-labelledby="fs-books-heading">
-          <div className="mb-10 text-center">
-            <div className="icse-eyebrow" style={{ color: '#FCA5A5' }}>Speciality · 01</div>
-            <div className="icse-script text-[#FCA5A5] text-3xl">learn by doing</div>
-            <h3 id="fs-books-heading" className="icse-display text-white text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 1 to 8</h3>
-            <p className="icse-light mt-3 max-w-2xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
-              real-world AI stories and reflection prompts. Sample chapters open in-page.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5">
-            {BOOK_GRADES.map(({ grade, tint }) => (
-              <div key={grade} className="group" data-testid={`fs-book-grade-${grade}`}>
-                <div className="fs-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
-                  <span className="tape">Future Skills</span>
-                  <div className="mt-8">
-                    <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
-                    <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '1.7rem' }}>Grade {grade}</div>
-                  </div>
-                  <div><div className="icse-light text-[10px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
-                </div>
-                <button onClick={() => setActiveBook(grade)}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest hover:text-white transition"
-                  style={{ color: '#FCA5A5' }}
-                  data-testid={`fs-book-sample-${grade}`}>
-                  <PlayCircle className="w-3.5 h-3.5" /> View Sample
-                </button>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[11px] icse-light mt-6 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Book covers · Placeholders — final artwork by the OLL creative team
-          </p>
         </div>
       </section>
 
