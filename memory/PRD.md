@@ -24,6 +24,18 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Admin Organisation Chart interactions wired end-to-end**
+  (`/admin/org-chart` → `OrgChartView.jsx`, `AdminOrgChart.jsx`).
+  - Fixed empty tree caused by wrong roles endpoint (`/api/team-roles` →
+    `/api/roles`) and mismatched user field names (`full_name` → `name`,
+    `role` → `role_id`).
+  - Clicking any node opens a right-side drawer with the selected member's
+    Monthly Salary (net_paid) plus Base / Incentive / Deduction breakdown,
+    role-linked KPI count, and a "View Performance" CTA that routes to
+    `/admin/users/:id/performance`.
+  - Salary fetched from `GET /api/salaries?user_id=<id>&limit=1` with
+    role-based visibility (admin sees all, manager sees direct reports).
+
 - **Feb 2026** — **SEO + mobile hardening for all 4 school landing pages**
   (CBSE CT & AI, ICSE Future Skills, CBSE Future Skills, ICSE Robotics 9-10,
   Beginner Robotics). Tested via testing_agent iteration_116 — all PASS.

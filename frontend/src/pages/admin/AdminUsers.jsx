@@ -3,7 +3,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Plus, User, Mail, Key, Shield, CheckCircle, XCircle, 
-  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3, FileSpreadsheet
+  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3, FileSpreadsheet, Network
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
@@ -16,6 +16,7 @@ import axios from 'axios';
 import CitySearch from '../../components/CitySearch';
 import BulkEmailModal from '../../components/BulkEmailModal';
 import ImportSalariesModal from '../../components/ImportSalariesModal';
+import OrgChartView from './OrgChartView';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -81,6 +82,9 @@ const DEFAULT_ROLES = [
     is_system: false
   }
 ];
+
+// Extracted so its JSX doesn't add to AdminUsers' already-deep JSX depth
+// (babel-loader's traversal blows the stack on very large single-file JSX).
 
 const AdminUsers = () => {
   const { getAuthHeaders } = useAuth();
@@ -472,6 +476,15 @@ const AdminUsers = () => {
           >
             <Plus className="w-4 h-4 mr-2" />
             Add {activeTab === 'users' ? 'User' : 'Role'}
+          </Button>
+          <Button
+            onClick={() => navigate('/admin/org-chart')}
+            variant="outline"
+            className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/5"
+            data-testid="open-org-chart-btn"
+          >
+            <Network className="w-4 h-4 mr-2" />
+            Org Chart
           </Button>
           {activeTab === 'users' && (
             <>
