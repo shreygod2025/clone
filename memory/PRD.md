@@ -24,6 +24,41 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — New landing funnel: **CBSE Computational Thinking & AI
+  (Classes 3–8)** at `/school/cs/cbse-ct-ai` (aliases: `/school/cs/cbse`,
+  `/school/cs/computational-thinking-and-ai-classes-3-to-8`).
+  - File: `/app/frontend/src/pages/school/CBSECTAILanding.jsx`
+    - Anchored to real CBSE Circular Acad-15/2026 (01.04.2026) — links to
+      the official circular PDF from the hero card.
+    - Sticky pill nav (OLL logo + subject tag + Download Brochure + Book a
+      Demo) plus mobile sticky bottom CTA — same pattern as the ICSE 9/10
+      landing.
+    - Section 1 hero: "CBSE has mandated a New Subject. Still confused about
+      CT & AI? *let us guide you.*" — Zing Rust display + Caveat script
+      subtitle + circular-highlights card.
+    - Section 2: "What is CT & AI?" with 4 CT pillars (Decomposition,
+      Pattern Recognition, Abstraction, Algorithms) and 4 AI pillars
+      (How AI Learns, Ethics & Bias, Everyday AI, Creative AI).
+    - Section 3: OLL's Speciality — 3 cards summary, then deep-dives:
+      * Interactive Books · Grades 3–8 — 6 tinted book placeholders with
+        spiral binding + "View Sample" that opens a lead-friendly placeholder
+        modal (real book covers to be swapped in later).
+      * Virtual Lab for CT & AI — placeholder video window (16:9) ready to
+        accept the YouTube ID once the demo game clip is ready.
+      * Teacher Lesson Plans, PPTs & Videos — reuses the shared
+        `LMSSection` component so the Student/Teacher/School role columns
+        stay in sync with the other landings.
+    - Final navy CTA banner, short About block, shared Footer, and full
+      brochure lead-capture modal (POSTs to `/api/schools/register` and
+      triggers PDF blob download).
+    - SEO: title, meta description/keywords, canonical, Open Graph,
+      Twitter card and JSON-LD Course + BreadcrumbList.
+  - `App.js` routes updated: `/school/cs/cbse`, `/school/cs/cbse-ct-ai`
+    and long-tail slug now point to the new component (were previously
+    aliased to the Beginner landing as a placeholder).
+  - Verified on desktop (1920) and mobile (390) viewports — all 9 sections
+    render, sample modal opens, sticky bottom CTA is pinned correctly.
+
 - **Feb 2026** — Support Center now has a dedicated **Techfest** category,
   and every entry point that classifies a ticket has been taught about it.
   - Admin (`AdminSupportUnified.jsx`): added `techfest` to `QUERY_TYPES`
