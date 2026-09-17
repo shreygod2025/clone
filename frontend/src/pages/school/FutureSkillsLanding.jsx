@@ -231,6 +231,25 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
   const BROCHURE_PDF_NAME = `OLL-${board}-Future-Skills-Brochure.pdf`;
 
   useEffect(() => { window.scrollTo(0, 0); }, [board]);
+
+  // Trigger the "Introducing Future Skills" stage-curtain reveal only when
+  // that section scrolls into view, so returning visitors see the animation
+  // play again and page-load timing doesn't waste the effect above the fold.
+  useEffect(() => {
+    const el = document.querySelector(`[data-testid="fs-${boardLower}-landing"] [data-testid="fs-stage"]`);
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') { el.classList.add('fs-stage-in-view'); return; }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          el.classList.add('fs-stage-in-view');
+          io.disconnect(); // play once per page load
+        }
+      });
+    }, { threshold: 0.25, rootMargin: '0px 0px -10% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [board, boardLower]);
   useEffect(() => {
     const canonicalUrl = `${window.location.origin}${CANONICAL_PATH}`;
     document.title = SEO_TITLE;
@@ -407,7 +426,8 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 40px 80px rgba(0,0,0,0.4);
         }
         .fs-stage-content { position: relative; z-index: 3; }
-        /* Curtain panels */
+        /* Curtain panels — closed by default; open only once the stage
+           scrolls into view (see IntersectionObserver in the component). */
         .fs-curtain {
           position: absolute; top: 0; bottom: 0; width: 52%;
           background:
@@ -417,7 +437,6 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           box-shadow: inset -30px 0 60px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.4);
           z-index: 2;
           transform-origin: top center;
-          animation: fs-curtain-open 2.2s cubic-bezier(.7,.05,.35,1) 0.35s both;
         }
         .fs-curtain-left  { left: 0;  border-right: 4px solid #4C0616; }
         .fs-curtain-right { right: 0; border-left:  4px solid #4C0616;
@@ -426,7 +445,13 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               #8B0F1E 0px, #B91C1C 12px, #7F1123 24px, #B91C1C 36px, #8B0F1E 48px),
             linear-gradient(180deg, #9B1B22 0%, #6E0F1B 100%);
           box-shadow: inset 30px 0 60px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.4);
-          animation-name: fs-curtain-open-right;
+        }
+        /* Only animate curtains open once the stage is scrolled into view */
+        .fs-stage.fs-stage-in-view .fs-curtain-left  {
+          animation: fs-curtain-open       2.2s cubic-bezier(.7,.05,.35,1) 0.35s both;
+        }
+        .fs-stage.fs-stage-in-view .fs-curtain-right {
+          animation: fs-curtain-open-right 2.2s cubic-bezier(.7,.05,.35,1) 0.35s both;
         }
         /* Curtain rope decoration on top */
         .fs-curtain::before {
@@ -443,7 +468,9 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           100% { transform: translateX(100%) scaleX(0.75); }
         }
         /* Spotlights */
-        .fs-spotlights { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; animation: fs-spotlights-in 1.6s ease-out 2s both; }
+        /* Spotlights — hidden until stage is in view */
+        .fs-spotlights { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; }
+        .fs-stage.fs-stage-in-view .fs-spotlights { animation: fs-spotlights-in 1.6s ease-out 2s both; }
         .fs-spotlights span { position: absolute; top: -60px; width: 220px; height: 320px;
           background: radial-gradient(ellipse at top, rgba(252,165,165,0.42) 0%, rgba(252,165,165,0) 65%);
           filter: blur(6px); transform-origin: top center; }
@@ -464,8 +491,9 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           animation: fs-star-twinkle 4s ease-in-out infinite alternate;
         }
         @keyframes fs-star-twinkle { 0% { opacity: 0.35; } 100% { opacity: 0.75; } }
-        /* Reveal steps for headline / copy / pills / CTAs */
-        .fs-reveal { opacity: 0; transform: translateY(18px) scale(0.98); animation: fs-reveal-in 0.9s cubic-bezier(.22,.9,.34,1) both; }
+        /* Reveal steps — hidden by default, animate only when stage is in view */
+        .fs-reveal { opacity: 0; transform: translateY(18px) scale(0.98); }
+        .fs-stage.fs-stage-in-view .fs-reveal { animation: fs-reveal-in 0.9s cubic-bezier(.22,.9,.34,1) both; }
         .fs-reveal-1 { animation-delay: 1.9s; }
         .fs-reveal-2 { animation-delay: 2.1s; }
         .fs-reveal-3 { animation-delay: 2.35s; }
