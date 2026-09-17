@@ -5,7 +5,8 @@ import {
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
   DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
   Upload, Paperclip, ChevronRight, TrendingDown, BookOpen,
-  Package, Truck, Award, Users, BarChart2, Briefcase, Handshake
+  Package, Truck, Award, Users, BarChart2, Briefcase, Handshake,
+  IndianRupee, Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -15,6 +16,9 @@ import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { format } from 'date-fns';
+import MonthlyFixedExpensesTab from './expenses/MonthlyFixedExpensesTab';
+import B2CPnLTab from './expenses/B2CPnLTab';
+import ProjectsPnLTab from './expenses/ProjectsPnLTab';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -476,7 +480,7 @@ const AdminExpenses = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl w-fit">
           {canSeeExpensesList && <button
             onClick={() => setActiveTab('expenses')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'expenses' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -491,9 +495,36 @@ const AdminExpenses = () => {
           >
             <span className="flex items-center gap-2"><BarChart2 className="w-4 h-4" />School P&amp;L Sheet</span>
           </button>}
+          {fullExpensesAccess && <button
+            onClick={() => setActiveTab('monthly-fixed')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'monthly-fixed' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-monthly-fixed"
+          >
+            <span className="flex items-center gap-2"><IndianRupee className="w-4 h-4" />Monthly Fixed Expenses</span>
+          </button>}
+          {fullExpensesAccess && <button
+            onClick={() => setActiveTab('b2c-pnl')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'b2c-pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-b2c-pnl"
+          >
+            <span className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />B2C P&amp;L</span>
+          </button>}
+          {fullExpensesAccess && <button
+            onClick={() => setActiveTab('projects-pnl')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'projects-pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-projects-pnl"
+          >
+            <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Projects P&amp;L</span>
+          </button>}
         </div>
 
-        {activeTab === 'pnl' ? (
+        {activeTab === 'monthly-fixed' ? (
+          <MonthlyFixedExpensesTab />
+        ) : activeTab === 'b2c-pnl' ? (
+          <B2CPnLTab />
+        ) : activeTab === 'projects-pnl' ? (
+          <ProjectsPnLTab />
+        ) : activeTab === 'pnl' ? (
           <PnLSheet data={pnlData} loading={pnlLoading} />
         ) : (<>
 
