@@ -85,10 +85,38 @@ const upsertJsonLd = (id, obj) => {
   el.textContent = JSON.stringify(obj);
 };
 
-const SEO_TITLE = 'CBSE Computational Thinking & AI (Classes 3–8) · Books + Virtual Lab + LMS · OLL';
-const SEO_DESCRIPTION = 'CBSE has mandated a new Computational Thinking & AI curriculum for Classes 3-8 from 2026-27 (Circular Acad-15/2026). OLL is your turnkey partner: interactive books, virtual CT&AI lab, teacher lesson plans, PPTs and LMS.';
-const SEO_KEYWORDS = 'CBSE CT AI, CBSE Computational Thinking, CBSE Artificial Intelligence Classes 3 to 8, CBSE Acad-15/2026, NEP 2020 CT AI, CBSE 2026-27 CT AI curriculum, OLL CT AI books, virtual AI lab school, CBSE AI teacher lesson plans';
+const SEO_TITLE = 'CBSE Computational Thinking & AI Curriculum · Classes 3–8 · Books + Virtual Lab + LMS | OLL';
+const SEO_DESCRIPTION = 'CBSE has mandated a new Computational Thinking & Artificial Intelligence curriculum for Classes 3–8 from 2026-27 (Circular Acad-15/2026). OLL is your turnkey partner: interactive workbooks Grades 3–8, browser-based virtual CT & AI lab, teacher lesson plans, PPTs, videos and LMS. NEP 2020 aligned. Book a 30-minute school demo.';
+const SEO_KEYWORDS = 'CBSE CT AI curriculum, CBSE Computational Thinking Classes 3 to 8, CBSE Artificial Intelligence school program, CBSE Acad-15/2026, NEP 2020 CT AI, CBSE 2026-27 CT AI curriculum, OLL CT AI books, virtual AI lab school, CBSE AI teacher lesson plans, CBSE AI PPT, CT AI framework CBSE primary middle';
+const SEO_IMAGE = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png';
 const CANONICAL_PATH = '/school/cs/cbse-ct-ai';
+
+const FAQ_ITEMS = [
+  {
+    q: 'What does the CBSE Circular Acad-15/2026 say about Computational Thinking and AI?',
+    a: 'CBSE Circular Acad-15/2026 (dated 01 April 2026) launches the Curriculum Framework for Computational Thinking (CT) and Artificial Intelligence (AI) for Classes III–VIII, effective from the 2026-27 academic session, in alignment with NEP 2020.',
+  },
+  {
+    q: 'Which classes does the CBSE CT & AI curriculum apply to?',
+    a: 'It applies to Classes 3 to 8 in every CBSE-affiliated school, starting session 2026-27.',
+  },
+  {
+    q: 'Does OLL provide books for the new CBSE CT & AI framework?',
+    a: 'Yes — OLL provides age-appropriate interactive workbooks for Grades 3, 4, 5, 6, 7 and 8, mapped to the CBSE CT & AI curriculum framework, with activities, coding challenges, everyday-AI stories and reflection prompts.',
+  },
+  {
+    q: 'Is there a virtual lab for CT and AI?',
+    a: 'Yes — OLL runs a browser-based virtual lab with decomposition puzzles, pattern detectors, algorithm racers, tiny neural networks and everyday-AI role plays. It works on any school computer with no downloads and adapts difficulty across Grades 3–8.',
+  },
+  {
+    q: 'What support do teachers get?',
+    a: 'Teachers get ready-to-teach lesson plans, PPT slide decks, explainer videos, assessments and upskilling paths through the OLL LMS — plus class analytics and live reporting.',
+  },
+  {
+    q: 'How can a school book a demo?',
+    a: 'Click "Book a Demo" on this page or download the brochure. Our schools team will run a 30-minute walkthrough covering the framework mapping, books, virtual lab and teacher training.',
+  },
+];
 
 export default function CBSECTAILanding() {
   const navigate = useNavigate();
@@ -101,28 +129,45 @@ export default function CBSECTAILanding() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   useEffect(() => {
     const canonicalUrl = `${window.location.origin}${CANONICAL_PATH}`;
+    // Core SEO
     document.title = SEO_TITLE;
+    document.documentElement.setAttribute('lang', 'en-IN');
     upsertMeta('description', SEO_DESCRIPTION);
     upsertMeta('keywords', SEO_KEYWORDS);
     upsertMeta('robots', 'index, follow, max-image-preview:large, max-snippet:-1');
     upsertMeta('author', 'OLL — Skills for All');
+    upsertMeta('theme-color', '#0A1F44');
+    upsertMeta('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+    // Canonical + hreflang
     upsertLink('canonical', canonicalUrl);
+    upsertLink('alternate', canonicalUrl, { hreflang: 'en-in' });
+    upsertLink('alternate', canonicalUrl, { hreflang: 'x-default' });
+    // Open Graph
     upsertMeta('og:type', 'website', 'property');
     upsertMeta('og:site_name', 'OLL — Skills for All', 'property');
     upsertMeta('og:title', SEO_TITLE, 'property');
     upsertMeta('og:description', SEO_DESCRIPTION, 'property');
     upsertMeta('og:url', canonicalUrl, 'property');
+    upsertMeta('og:image', SEO_IMAGE, 'property');
+    upsertMeta('og:image:alt', 'OLL CBSE Computational Thinking & AI curriculum — books, virtual lab, teacher LMS for Classes 3-8', 'property');
+    upsertMeta('og:image:width', '1200', 'property');
+    upsertMeta('og:image:height', '630', 'property');
     upsertMeta('og:locale', 'en_IN', 'property');
+    // Twitter card
     upsertMeta('twitter:card', 'summary_large_image');
     upsertMeta('twitter:title', SEO_TITLE);
     upsertMeta('twitter:description', SEO_DESCRIPTION);
+    upsertMeta('twitter:image', SEO_IMAGE);
+    upsertMeta('twitter:image:alt', 'OLL CBSE Computational Thinking & AI curriculum preview');
+    // JSON-LD · Course + Breadcrumbs + FAQ + Organization
     upsertJsonLd('ld-course-cbse-ctai', {
       '@context': 'https://schema.org', '@type': 'Course',
-      name: 'CBSE Computational Thinking & AI (Classes 3–8)',
+      name: 'CBSE Computational Thinking & AI Curriculum for Classes 3 to 8',
       description: SEO_DESCRIPTION,
       provider: { '@type': 'Organization', name: 'OLL — Skills for All', sameAs: 'https://oll.co' },
       educationalLevel: 'Classes 3 to 8',
       inLanguage: 'en-IN',
+      hasCourseInstance: [{ '@type': 'CourseInstance', courseMode: 'blended', location: 'India' }],
     });
     upsertJsonLd('ld-breadcrumbs-cbse-ctai', {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
@@ -131,6 +176,21 @@ export default function CBSECTAILanding() {
         { '@type': 'ListItem', position: 2, name: 'Schools', item: `${window.location.origin}/school` },
         { '@type': 'ListItem', position: 3, name: 'CBSE CT & AI', item: canonicalUrl },
       ],
+    });
+    upsertJsonLd('ld-faq-cbse-ctai', {
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: FAQ_ITEMS.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    });
+    upsertJsonLd('ld-org-cbse-ctai', {
+      '@context': 'https://schema.org', '@type': 'Organization',
+      name: 'OLL — Skills for All',
+      url: 'https://oll.co',
+      logo: 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png',
+      sameAs: ['https://www.instagram.com/oll.co', 'https://www.linkedin.com/company/oll-co'],
     });
   }, []);
 
@@ -244,6 +304,8 @@ export default function CBSECTAILanding() {
           box-shadow: 0 -12px 32px rgba(10,31,68,0.10);
         }
         .icse-mobile-cta .icse-btn { flex: 1; justify-content: center; padding: 12px 14px !important; font-size: 0.75rem !important; }
+
+        /* ── Mobile-dynamic tuning (≤640px) ─────────────────────── */
         @media (max-width: 640px) {
           .icse-nav-pill { padding: 6px 10px 6px 12px; }
           .icse-nav-pill img { height: 34px !important; }
@@ -252,6 +314,37 @@ export default function CBSECTAILanding() {
           .icse-btn.primary, .icse-btn.outline, .icse-btn.ghost { min-height: 46px; }
           .icse-hero-h { line-height: 1.02 !important; letter-spacing: -0.01em; }
           .icse-mobile-cta { display: flex; }
+
+          /* Tighter section vertical rhythm on small screens */
+          section { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+          /* Hero eyebrow chip wraps cleanly */
+          [data-testid="cbse-hero"] .icse-eyebrow { font-size: 0.6rem !important; letter-spacing: 0.22em !important; }
+          /* Circular highlight card sits BELOW the hero copy — no cramped side-by-side */
+          [data-testid="cbse-hero"] > div { gap: 1.5rem !important; }
+          /* CT / AI pillar grids never squish */
+          [data-testid="cbse-what-ct"] .grid,
+          [data-testid="cbse-what-ai"] .grid { grid-template-columns: 1fr !important; }
+          /* Speciality summary trio → single column, left-aligned */
+          [data-testid="cbse-speciality"] .grid { grid-template-columns: 1fr !important; }
+          [data-testid="cbse-speciality"] .icse-card { text-align: left !important; }
+          [data-testid="cbse-speciality"] .icse-card > div:first-child { margin-left: 0 !important; }
+          /* Books grid — 2 per row (up from cramped 3) */
+          [data-testid="cbse-books"] .grid { grid-template-columns: 1fr 1fr !important; }
+          /* Book cover: slightly taller aspect + smaller grade text */
+          .cbse-book { padding: 14px !important; }
+          .cbse-book .icse-hero-h { font-size: 1.5rem !important; }
+          /* Virtual Lab side-by-side stacks; text card first, then video */
+          [data-testid="cbse-virtual-lab"] .grid { grid-template-columns: 1fr !important; }
+          [data-testid="cbse-vlab-video"] { aspect-ratio: 16 / 10 !important; }
+          /* Trust stats: 2 columns feels better than 4 tiny ones */
+          [data-testid="cbse-hero"] .grid-cols-2.sm\\:grid-cols-4 { grid-template-columns: 1fr 1fr !important; }
+          /* FAQ card summary is tap-friendly */
+          [data-testid="cbse-faq"] summary { min-height: 44px; align-items: center; }
+          /* Final CTA display heading shrinks so it doesn't clip on small screens */
+          [data-testid="cbse-final-cta"] h2 { font-size: 2rem !important; line-height: 1.1 !important; }
+        }
+        @media (min-width: 641px) and (max-width: 768px) {
+          [data-testid="cbse-books"] .grid { grid-template-columns: repeat(3, 1fr) !important; }
         }
       `}</style>
 
@@ -260,12 +353,12 @@ export default function CBSECTAILanding() {
       <div className="icse-orb-gold" style={{ bottom: '30%', left: '-100px' }} />
 
       {/* ── Sticky pill nav ─────────────────────────────────────────── */}
-      <nav className="fixed top-3 left-0 right-0 z-50 px-3 hidden sm:block" data-testid="cbse-nav">
+      <nav className="fixed top-3 left-0 right-0 z-50 px-3 hidden sm:block" data-testid="cbse-nav" aria-label="Primary">
         <div className="icse-nav-pill">
-          <a href="/" className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3" aria-label="OLL home">
             <img src={OLL_LOGO_COLOR} alt="OLL — Skills for All logo · CBSE CT & AI curriculum partner" className="h-9 sm:h-10 w-auto" />
             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-[#0A1F44] border-l border-slate-200 pl-3 leading-tight">
-              CBSE · Classes 3–8<br/>CT &amp; AI · Acad-15/2026
+              CBSE · Classes 3–8<br/>CT &amp; AI Curriculum
             </span>
           </a>
           <div className="flex items-center gap-2">
@@ -352,10 +445,10 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ══════════ SECTION 2 · WHAT IS CT & AI ══════════ */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-what">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-what" aria-labelledby="cbse-what-heading">
         <div className="text-center">
           <div className="icse-script text-[#DC2626] text-3xl">the basics, decoded</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">What is CT &amp; AI?</h2>
+          <h2 id="cbse-what-heading" className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">What is CT &amp; AI?</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-4">
             Computational Thinking is <em>how</em> a mind solves problems the way a computer scientist would.
             Artificial Intelligence is <em>what</em> happens when we teach machines to think along with us.
@@ -414,10 +507,10 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ══════════ SECTION 3 · OLL'S SPECIALITY ══════════ */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-speciality">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-speciality" aria-labelledby="cbse-speciality-heading">
         <div className="text-center">
           <div className="icse-script text-[#DC2626] text-3xl">why oll</div>
-          <h2 className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">OLL's Speciality</h2>
+          <h2 id="cbse-speciality-heading" className="icse-display text-[#0A1F44] text-4xl sm:text-5xl mt-1">OLL's Speciality</h2>
           <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-4">
             Everything a CBSE-affiliated school needs to roll out the new CT &amp; AI framework — books,
             virtual games, and teacher-ready lesson plans — under one login.
@@ -442,20 +535,15 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ── 3a · Interactive Books Grades 3-8 ─────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-books">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-          <div>
-            <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
-            <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
-            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books · Grades 3 to 8</h3>
-            <p className="icse-light text-slate-600 mt-3 max-w-2xl">
-              A grade-by-grade learning arc — every book packed with age-appropriate activities, coding challenges,
-              real-world AI stories and reflection prompts. Sample chapters open in-page.
-            </p>
-          </div>
-          <button onClick={goBookDemo} className="icse-btn outline flex-shrink-0" data-testid="cbse-books-cta">
-            See a Book Walkthrough <ArrowRight className="w-4 h-4" />
-          </button>
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-books" aria-labelledby="cbse-books-heading">
+        <div className="mb-10 text-center sm:text-left">
+          <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
+          <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
+          <h3 id="cbse-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books · Grades 3 to 8</h3>
+          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto sm:mx-0">
+            A grade-by-grade learning arc — every book packed with age-appropriate activities, coding challenges,
+            real-world AI stories and reflection prompts. Sample chapters open in-page.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
@@ -487,12 +575,12 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ── 3b · Virtual Lab for CT & AI ──────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-virtual-lab">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-virtual-lab" aria-labelledby="cbse-vlab-heading">
         <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
           <div>
             <div className="icse-eyebrow text-rose-600">Speciality · 02</div>
             <div className="icse-script text-[#DC2626] text-3xl">play → practise → master</div>
-            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Virtual Lab for CT &amp; AI</h3>
+            <h3 id="cbse-vlab-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Virtual Lab for CT &amp; AI</h3>
             <p className="icse-light text-slate-600 mt-4">
               A browser-first playground of games and simulations that sharpen your child's cognitive thinking.
               Every activity maps to a CT / AI concept from the CBSE framework — decomposition puzzles, pattern
@@ -535,26 +623,43 @@ export default function CBSECTAILanding() {
       </section>
 
       {/* ── 3c · Teacher Lesson Plans / PPTs / Videos via LMS ─────── */}
-      <div data-testid="cbse-lms-wrapper">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 -mb-10 relative z-[1]">
-          <div className="text-center">
-            <div className="icse-eyebrow text-rose-600">Speciality · 03</div>
-            <div className="icse-script text-[#DC2626] text-3xl">everything a teacher needs</div>
-            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Teacher Lesson Plans, PPTs &amp; Videos</h3>
-            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
-              Ready-to-teach modules — every lesson comes with slide decks, videos, activities,
-              assessments and upskilling paths. All powered by OLL's LMS.
-            </p>
-          </div>
+      <section data-testid="cbse-lms-wrapper" aria-labelledby="cbse-lms-heading">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 -mb-6 sm:-mb-10 relative z-[1] text-center">
+          <div className="icse-eyebrow text-rose-600">Speciality · 03</div>
+          <div className="icse-script text-[#DC2626] text-3xl">everything a teacher needs</div>
+          <h3 id="cbse-lms-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Teacher Lesson Plans, PPTs &amp; Videos</h3>
+          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+            Ready-to-teach modules — every lesson comes with slide decks, videos, activities,
+            assessments and upskilling paths. All powered by OLL's LMS.
+          </p>
         </div>
         <LMSSection
           scriptClass="icse-script"
           displayClass="icse-display"
           lightClass="icse-light"
-          eyebrowText="powered by OLL LMS"
           testid="cbse-lms"
+          hideHeading
         />
-      </div>
+      </section>
+
+      {/* ══════════ FAQ (schema-backed) ══════════ */}
+      <section className="relative max-w-4xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-faq" aria-labelledby="cbse-faq-heading">
+        <div className="text-center">
+          <div className="icse-script text-[#DC2626] text-3xl">good to know</div>
+          <h2 id="cbse-faq-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Frequently asked questions</h2>
+        </div>
+        <div className="mt-8 space-y-3">
+          {FAQ_ITEMS.map((f, i) => (
+            <details key={f.q} className="icse-card p-5 sm:p-6 group cursor-pointer" data-testid={`cbse-faq-item-${i}`}>
+              <summary className="flex items-start justify-between gap-4 list-none cursor-pointer">
+                <span className="icse-display text-[#0A1F44] text-base sm:text-lg pr-2">{f.q}</span>
+                <span className="mt-1 flex-shrink-0 w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-[#DC2626] font-bold group-open:rotate-45 transition-transform" aria-hidden="true">+</span>
+              </summary>
+              <p className="icse-light text-sm text-slate-600 mt-3 leading-relaxed">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
 
       {/* ══════════ FINAL CTA ══════════ */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="cbse-final-cta">

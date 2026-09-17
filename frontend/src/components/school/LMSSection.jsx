@@ -58,9 +58,11 @@ const COLUMNS = [
 ];
 
 /**
- * @param {{ scriptClass?: string, displayClass?: string, lightClass?: string, eyebrowText?: string }} props
+ * @param {{ scriptClass?: string, displayClass?: string, lightClass?: string, eyebrowText?: string, hideHeading?: boolean }} props
  * Optional class overrides let the parent page match its typographic system
  * (ICSE uses `icse-script/display/light`, Beginner uses `rb-script/display/light`).
+ * `hideHeading` lets a parent (e.g. CBSE CT & AI) supply its own heading and
+ * skip the built-in "OLL's Learning Management System" title block.
  */
 export default function LMSSection({
   scriptClass = 'icse-script',
@@ -68,6 +70,7 @@ export default function LMSSection({
   lightClass = 'icse-light',
   eyebrowText = 'live analytics & resources',
   testid = 'lms-section',
+  hideHeading = false,
 }) {
   const [videoPlaying, setVideoPlaying] = useState(false);
   return (
@@ -125,16 +128,18 @@ export default function LMSSection({
       `}</style>
 
       {/* Heading */}
-      <div className="text-center max-w-3xl mx-auto">
-        <div className={`${scriptClass} text-[#DC2626] text-3xl`}>{eyebrowText}</div>
-        <h2 className={`${displayClass} text-[#0A1F44] text-[1.75rem] sm:text-5xl mt-1`}>
-          OLL's Learning Management System
-        </h2>
-        <p className={`${lightClass} text-slate-600 mt-3 text-sm sm:text-base`}>
-          One dashboard for students, teachers and school admins — from lesson plans and virtual labs to
-          live reporting and communication, everything happens in one place.
-        </p>
-      </div>
+      {!hideHeading && (
+        <div className="text-center max-w-3xl mx-auto">
+          <div className={`${scriptClass} text-[#DC2626] text-3xl`}>{eyebrowText}</div>
+          <h2 className={`${displayClass} text-[#0A1F44] text-[1.75rem] sm:text-5xl mt-1`}>
+            OLL's Learning Management System
+          </h2>
+          <p className={`${lightClass} text-slate-600 mt-3 text-sm sm:text-base`}>
+            One dashboard for students, teachers and school admins — from lesson plans and virtual labs to
+            live reporting and communication, everything happens in one place.
+          </p>
+        </div>
+      )}
 
       {/* Laptop mockup with embedded demo video */}
       <div className="mt-10 lms-laptop" data-testid="lms-laptop">
