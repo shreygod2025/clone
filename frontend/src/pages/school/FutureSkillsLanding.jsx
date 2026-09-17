@@ -20,7 +20,7 @@ import {
   ArrowRight, Download, ShieldCheck, Sparkles, CheckCircle2, BookOpen,
   Gamepad2, PlayCircle, Play, GraduationCap, School, MapPin, FileText,
   Monitor, Bot, Brain, Code2, X, Clock, Wallet, Users, AlertTriangle,
-  Layers, Zap, Globe2, Smartphone, Wifi, Network, BarChart3, BrainCircuit,
+  Layers, Zap, Globe2, Smartphone, Wifi, Network, BarChart3, BrainCircuit, Rocket,
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
@@ -621,6 +621,314 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         .fs-pillar-glow { position: absolute; inset: 0; opacity: 0; transition: opacity 0.35s ease; pointer-events: none; }
         .fs-pillar-card:hover .fs-pillar-glow { opacity: 1; }
 
+        /* ══════════════════════════════════════════════════════════════════════
+           4-IN-1 · IMAGE 1 EMULATION — pastel-tinted pillar cards with
+           circular icons on top, colored bullet lists, ribbon flows to a
+           bottom pedestal reading "OLL FUTURE SKILLS Grades 1-8".
+           ══════════════════════════════════════════════════════════════════════ */
+        .fs-4in1-v2 { position: relative; padding: 30px 0 200px; }
+        .fs-4in1-cards {
+          position: relative; z-index: 3;
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+        }
+        @media (max-width: 900px) { .fs-4in1-cards { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
+        @media (max-width: 480px) { .fs-4in1-cards { grid-template-columns: 1fr; } }
+        .fs-4in1-card {
+          position: relative; padding: 32px 22px 26px;
+          border-radius: 22px;
+          transition: transform .35s cubic-bezier(.22,.9,.34,1), box-shadow .35s ease;
+          box-shadow: 0 10px 24px rgba(10,31,68,0.06);
+        }
+        .fs-4in1-card:hover { transform: translateY(-8px); box-shadow: 0 22px 40px rgba(10,31,68,0.14); }
+        .fs-4in1-card::before {
+          content: ''; position: absolute; inset: 0; border-radius: 22px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 100%);
+          pointer-events: none;
+        }
+        /* Pastel tints per subject */
+        .fs-4in1-card.fs-tint-blue   { background: linear-gradient(180deg, #EEF4FF 0%, #E0EAFB 100%); }
+        .fs-4in1-card.fs-tint-red    { background: linear-gradient(180deg, #FEEEEE 0%, #FBDDDD 100%); }
+        .fs-4in1-card.fs-tint-purple { background: linear-gradient(180deg, #F3EEFB 0%, #E4D9F5 100%); }
+        .fs-4in1-card.fs-tint-red2   { background: linear-gradient(180deg, #FEEEEE 0%, #FBDDDD 100%); }
+
+        /* Circular icon on top — floats above the card */
+        .fs-4in1-icon-bubble {
+          position: relative; width: 72px; height: 72px; margin: 0 auto 16px;
+          border-radius: 999px;
+          display: flex; align-items: center; justify-content: center; color: #fff;
+          box-shadow: 0 14px 28px -4px currentColor, inset 0 -6px 12px rgba(0,0,0,0.12);
+          transition: transform .4s cubic-bezier(.22,.9,.34,1);
+        }
+        .fs-4in1-card:hover .fs-4in1-icon-bubble { transform: rotate(-8deg) scale(1.06); }
+        .fs-4in1-icon-bubble.blue   { background: linear-gradient(135deg, #1E3A8A, #2563EB); color: #2563EB; }
+        .fs-4in1-icon-bubble.red    { background: linear-gradient(135deg, #B91C1C, #DC2626); color: #DC2626; }
+        .fs-4in1-icon-bubble.purple { background: linear-gradient(135deg, #6B21A8, #7C3AED); color: #7C3AED; }
+        .fs-4in1-icon-bubble.red2   { background: linear-gradient(135deg, #B91C1C, #DC2626); color: #DC2626; }
+
+        .fs-4in1-title {
+          text-align: center; font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 900; font-size: 1.35rem; letter-spacing: 0.02em;
+          color: #0A1F44; line-height: 1.05;
+        }
+        .fs-4in1-title.purple { color: #6B21A8; }
+        .fs-4in1-title.blue { color: #1E3A8A; }
+        .fs-4in1-title.red { color: #B91C1C; }
+
+        .fs-4in1-bullets { list-style: none; margin: 16px 0 0; padding: 0; }
+        .fs-4in1-bullets li {
+          position: relative; padding-left: 20px; margin-top: 8px;
+          font-family: 'Proxima Nova', system-ui, sans-serif; font-size: 0.9rem;
+          color: #334155; line-height: 1.4;
+        }
+        .fs-4in1-bullets li::before {
+          content: ''; position: absolute; left: 4px; top: 8px; width: 7px; height: 7px;
+          border-radius: 999px; background: currentColor;
+        }
+        .fs-4in1-bullets.blue li   { color: #1E40AF; }
+        .fs-4in1-bullets.red li    { color: #B91C1C; }
+        .fs-4in1-bullets.purple li { color: #6B21A8; }
+        .fs-4in1-bullets li span { color: #334155; margin-left: 2px; }
+
+        /* Ribbon flows — 4 curved paths converging at the pedestal below */
+        .fs-4in1-ribbons {
+          position: absolute; left: 0; right: 0; bottom: 60px; height: 160px; z-index: 1;
+          pointer-events: none;
+        }
+        .fs-4in1-ribbons svg { width: 100%; height: 100%; display: block; }
+        .fs-4in1-ribbons path {
+          fill: none; stroke-linecap: round; stroke-width: 20;
+          stroke-dasharray: 800; stroke-dashoffset: 800;
+          animation: fs-ribbon-draw 2.6s cubic-bezier(.22,.9,.34,1) forwards;
+          filter: drop-shadow(0 4px 8px rgba(10,31,68,0.15));
+          opacity: 0.9;
+        }
+        .fs-4in1-ribbons path:nth-child(2) { animation-delay: .15s; }
+        .fs-4in1-ribbons path:nth-child(3) { animation-delay: .30s; }
+        .fs-4in1-ribbons path:nth-child(4) { animation-delay: .45s; }
+        @keyframes fs-ribbon-draw { to { stroke-dashoffset: 0; } }
+
+        /* Bottom pedestal — the "OLL FUTURE SKILLS" trophy that all ribbons meet at */
+        .fs-4in1-pedestal {
+          position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+          z-index: 4;
+          padding: 22px 40px;
+          background: linear-gradient(180deg, #ffffff 0%, #F1F5F9 100%);
+          border-radius: 140px 140px 24px 24px;
+          box-shadow:
+            0 22px 48px -12px rgba(10,31,68,0.24),
+            0 10px 22px rgba(10,31,68,0.10),
+            inset 0 2px 0 rgba(255,255,255,0.95),
+            inset 0 -1px 0 rgba(10,31,68,0.06);
+          text-align: center;
+          min-width: 320px;
+          transform: translate(-50%, 0);
+          transition: transform .35s ease;
+        }
+        .fs-4in1-pedestal:hover { transform: translate(-50%, -4px); }
+        .fs-4in1-pedestal img { height: 34px; display: inline-block; }
+        .fs-4in1-pedestal-title {
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 900; font-size: 1.35rem; color: #0A1F44;
+          margin-top: 4px; letter-spacing: 0.02em;
+        }
+        .fs-4in1-pedestal-badge {
+          display: inline-block; margin-top: 8px;
+          padding: 5px 18px; background: #DC2626; color: #fff;
+          border-radius: 999px; font-size: 0.72rem; font-weight: 800;
+          letter-spacing: 0.06em; text-transform: uppercase;
+        }
+        @media (max-width: 640px) {
+          .fs-4in1-pedestal { padding: 16px 24px; min-width: 260px; }
+          .fs-4in1-pedestal-title { font-size: 1.1rem; }
+          .fs-4in1-v2 { padding-bottom: 220px; }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           WHEEL · IMAGE 3 EMULATION — 4-quadrant pie chart with 4 corner
+           content cards linked by dotted connector lines.
+           ══════════════════════════════════════════════════════════════════════ */
+        .fs-wheel-wrap {
+          position: relative; padding: 40px 0; max-width: 1100px; margin: 0 auto;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          grid-template-areas: 'tl pie tr' 'bl pie br';
+          gap: 20px 30px;
+        }
+        @media (max-width: 900px) {
+          .fs-wheel-wrap {
+            grid-template-columns: 1fr; grid-template-areas: 'pie' 'tl' 'tr' 'bl' 'br';
+            gap: 18px;
+          }
+        }
+        .fs-wheel-pie {
+          grid-area: pie; position: relative;
+          width: 360px; height: 360px;
+          margin: auto;
+          border-radius: 999px;
+          background: conic-gradient(
+            from -45deg,
+            #1E3A8A 0deg 90deg,
+            #DC2626 90deg 180deg,
+            #DC2626 180deg 270deg,
+            #6B21A8 270deg 360deg
+          );
+          box-shadow: 0 30px 60px -20px rgba(10,31,68,0.35), inset 0 0 0 6px rgba(255,255,255,0.15);
+        }
+        @media (max-width: 640px) { .fs-wheel-pie { width: 280px; height: 280px; } }
+        .fs-wheel-pie::before {
+          content: ''; position: absolute; inset: 12px;
+          border-radius: 999px;
+          background:
+            conic-gradient(
+              from -45deg,
+              #1E3A8A 0deg 90deg,
+              #DC2626 90deg 180deg,
+              #DC2626 180deg 270deg,
+              #6B21A8 270deg 360deg
+            );
+        }
+        .fs-wheel-hub {
+          position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+          width: 44%; height: 44%; border-radius: 999px;
+          background: #fff;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 14px; text-align: center; z-index: 2;
+          box-shadow: 0 8px 24px rgba(10,31,68,0.20), inset 0 0 0 5px #F1F5F9;
+        }
+        .fs-wheel-hub img { height: 36px; margin-bottom: 6px; }
+        .fs-wheel-hub-title {
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 900; color: #0A1F44; font-size: 0.9rem; line-height: 1;
+          letter-spacing: 0.03em;
+        }
+        .fs-wheel-hub-grades {
+          margin-top: 4px; font-size: 0.65rem; font-weight: 700; color: #64748B;
+          letter-spacing: 0.15em; text-transform: uppercase;
+        }
+        /* Quadrant label pills — floating over each slice */
+        .fs-wheel-label {
+          position: absolute; z-index: 3;
+          display: flex; flex-direction: column; align-items: center;
+          color: #fff; font-family: 'Proxima Nova', system-ui, sans-serif;
+          font-weight: 800; font-size: 0.85rem; letter-spacing: 0.04em; text-align: center;
+          text-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+        .fs-wheel-label svg { margin-bottom: 4px; }
+        .fs-wheel-label.tl { top: 22%; left: 22%; }
+        .fs-wheel-label.tr { top: 22%; right: 22%; }
+        .fs-wheel-label.bl { bottom: 22%; left: 22%; }
+        .fs-wheel-label.br { bottom: 22%; right: 22%; }
+
+        .fs-wheel-card {
+          padding: 22px 20px; border-radius: 18px;
+          background: #fff; border: 1px solid #E2E8F0;
+          box-shadow: 0 10px 24px rgba(10,31,68,0.06);
+          transition: transform .3s ease, box-shadow .3s ease;
+        }
+        .fs-wheel-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.14); }
+        .fs-wheel-card.tl { grid-area: tl; background: linear-gradient(180deg, #EEF4FF, #ffffff); }
+        .fs-wheel-card.tr { grid-area: tr; background: linear-gradient(180deg, #FEEEEE, #ffffff); }
+        .fs-wheel-card.bl { grid-area: bl; background: linear-gradient(180deg, #F3EEFB, #ffffff); }
+        .fs-wheel-card.br { grid-area: br; background: linear-gradient(180deg, #FEEEEE, #ffffff); }
+        .fs-wheel-card-title {
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 900; font-size: 1.15rem; letter-spacing: 0.02em; line-height: 1.05;
+        }
+        .fs-wheel-card.tl .fs-wheel-card-title { color: #1E3A8A; }
+        .fs-wheel-card.tr .fs-wheel-card-title { color: #B91C1C; }
+        .fs-wheel-card.bl .fs-wheel-card-title { color: #6B21A8; }
+        .fs-wheel-card.br .fs-wheel-card-title { color: #B91C1C; }
+        .fs-wheel-card-list { list-style: none; margin: 10px 0 0; padding: 0; }
+        .fs-wheel-card-list li {
+          position: relative; padding-left: 18px; margin-top: 6px;
+          font-size: 0.88rem; color: #334155; line-height: 1.35;
+        }
+        .fs-wheel-card-list li::before {
+          content: ''; position: absolute; left: 3px; top: 8px; width: 7px; height: 7px;
+          border-radius: 999px; background: currentColor;
+        }
+        .fs-wheel-card.tl .fs-wheel-card-list li::before { background: #1E40AF; }
+        .fs-wheel-card.tr .fs-wheel-card-list li::before { background: #B91C1C; }
+        .fs-wheel-card.bl .fs-wheel-card-list li::before { background: #6B21A8; }
+        .fs-wheel-card.br .fs-wheel-card-list li::before { background: #B91C1C; }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           ECOSYSTEM · IMAGE 2 EMULATION — 4 outer cards around a puzzle
+           center reading "Complete Learning Ecosystem".
+           ══════════════════════════════════════════════════════════════════════ */
+        .fs-eco-wrap {
+          position: relative; max-width: 1200px; margin: 0 auto; padding: 30px 0 40px;
+          display: grid; grid-template-columns: 1fr auto 1fr;
+          grid-template-areas: 'tl hub tr' 'bl hub br';
+          gap: 20px 40px;
+        }
+        @media (max-width: 900px) {
+          .fs-eco-wrap {
+            grid-template-columns: 1fr; grid-template-areas: 'hub' 'tl' 'tr' 'bl' 'br';
+            gap: 16px;
+          }
+        }
+        .fs-eco-hub {
+          grid-area: hub; position: relative;
+          width: 260px; height: 260px; margin: auto;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center; padding: 18px;
+          background: radial-gradient(circle at 50% 50%, #FFFFFF 0%, #F1F5F9 100%);
+          border-radius: 999px;
+          box-shadow: 0 20px 48px rgba(10,31,68,0.14), inset 0 0 0 4px #E2E8F0;
+        }
+        .fs-eco-hub::before, .fs-eco-hub::after {
+          content: ''; position: absolute; width: 40px; height: 40px;
+          background: linear-gradient(135deg, #DC2626, #B91C1C);
+          border-radius: 12px;
+        }
+        .fs-eco-hub::before { top: -12px; left: -12px; transform: rotate(-30deg); }
+        .fs-eco-hub::after  { bottom: -12px; right: -12px; transform: rotate(150deg); background: linear-gradient(135deg, #1E3A8A, #2563EB); }
+        .fs-eco-hub img { height: 40px; margin-bottom: 6px; }
+        .fs-eco-hub-title {
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 900; color: #0A1F44; font-size: 0.98rem; line-height: 1.1;
+          letter-spacing: 0.02em; text-transform: uppercase;
+        }
+        .fs-eco-card {
+          padding: 22px 20px; border-radius: 20px;
+          transition: transform .3s ease, box-shadow .3s ease;
+          box-shadow: 0 10px 24px rgba(10,31,68,0.06);
+          position: relative;
+        }
+        .fs-eco-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,31,68,0.14); }
+        .fs-eco-card.tl { grid-area: tl; background: linear-gradient(180deg, #FEEEEE, #ffffff); }
+        .fs-eco-card.tr { grid-area: tr; background: linear-gradient(180deg, #EEF4FF, #ffffff); }
+        .fs-eco-card.bl { grid-area: bl; background: linear-gradient(180deg, #F3EEFB, #ffffff); }
+        .fs-eco-card.br { grid-area: br; background: linear-gradient(180deg, #FEEEEE, #ffffff); }
+        .fs-eco-icon {
+          width: 52px; height: 52px; border-radius: 14px;
+          display: inline-flex; align-items: center; justify-content: center;
+          color: #fff; flex-shrink: 0;
+        }
+        .fs-eco-icon.red    { background: linear-gradient(135deg, #DC2626, #B91C1C); }
+        .fs-eco-icon.blue   { background: linear-gradient(135deg, #2563EB, #1E3A8A); }
+        .fs-eco-icon.purple { background: linear-gradient(135deg, #7C3AED, #6B21A8); }
+        .fs-eco-header { display: flex; align-items: flex-start; gap: 14px; }
+        .fs-eco-title {
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 900; font-size: 1.15rem; line-height: 1.1; color: #0A1F44;
+        }
+        .fs-eco-desc {
+          margin-top: 4px; font-size: 0.85rem; color: #475569; line-height: 1.45;
+        }
+        .fs-eco-list { list-style: none; margin: 14px 0 0; padding: 0; }
+        .fs-eco-list li {
+          position: relative; padding-left: 26px; margin-top: 8px;
+          font-size: 0.88rem; color: #334155; line-height: 1.35;
+        }
+        .fs-eco-list li::before {
+          content: '✓'; position: absolute; left: 0; top: 0; width: 18px; height: 18px;
+          border-radius: 999px; background: #10B981; color: #fff;
+          font-size: 0.75rem; font-weight: 900; display: inline-flex;
+          align-items: center; justify-content: center;
+        }
+
         .icse-mobile-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0)); display: none; gap: 8px; background: rgba(255,255,255,0.96); backdrop-filter: saturate(180%) blur(14px); border-top: 1px solid rgba(10,31,68,0.08); box-shadow: 0 -12px 32px rgba(10,31,68,0.10); }
         .icse-mobile-cta .icse-btn { flex: 1; justify-content: center; padding: 12px 14px !important; font-size: 0.75rem !important; }
 
@@ -857,65 +1165,244 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
       </section>
 
       {/* ══════════ SECTION 2b · 4-IN-1 (white bg, alternating rhythm) ══════════ */}
-      <section className="relative overflow-hidden" style={{ background: '#FFFFFF', padding: '5rem 1.25rem' }} data-testid="fs-4in1-section">
+      {/* ══════════ SECTION 2 · THE 4-IN-1 (Image 1 emulation — pastel
+              pillar cards flowing into a "OLL Future Skills" pedestal) ══════════ */}
+      <section className="relative overflow-hidden" style={{ background: '#FFFFFF', padding: '5rem 1.25rem 3rem' }} data-testid="fs-4in1-section">
         <div className="max-w-6xl mx-auto" data-testid="fs-4in1">
           <div className="text-center">
             <div className="icse-eyebrow text-rose-600">The 4-in-1</div>
             <div className="icse-script text-[#DC2626] text-3xl mt-1">the merge, visualised</div>
-            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">One curriculum, four superpowers</h3>
-            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">Every {board} student in Grades 1-8 learns four future-ready disciplines under one integrated program.</p>
+            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Bring ICT + Coding + AI + Robotics together</h3>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+              One structured learning journey for <strong className="text-[#DC2626] font-black">Grades 1-8</strong>.
+            </p>
           </div>
 
-          {/* Convergence diagram — 4 pillars flow into 1 book */}
-          <div className="fs-converge mt-10" data-testid="fs-converge">
-            <div className="fs-converge-lines" aria-hidden="true">
-              <svg viewBox="0 0 1200 340" preserveAspectRatio="none" width="100%" height="340">
-                <defs>
-                  <linearGradient id="fs-line-1" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#3B82F6" stopOpacity="0"/><stop offset="1" stopColor="#3B82F6" stopOpacity="0.85"/></linearGradient>
-                  <linearGradient id="fs-line-2" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#10B981" stopOpacity="0"/><stop offset="1" stopColor="#10B981" stopOpacity="0.85"/></linearGradient>
-                  <linearGradient id="fs-line-3" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#8B5CF6" stopOpacity="0"/><stop offset="1" stopColor="#8B5CF6" stopOpacity="0.85"/></linearGradient>
-                  <linearGradient id="fs-line-4" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#DC2626" stopOpacity="0"/><stop offset="1" stopColor="#DC2626" stopOpacity="0.85"/></linearGradient>
-                </defs>
-                <path className="fs-line" d="M 150 40 Q 400 170 600 300"  stroke="url(#fs-line-1)" strokeWidth="3" fill="none" strokeLinecap="round" />
-                <path className="fs-line" d="M 450 40 Q 525 170 600 300"  stroke="url(#fs-line-2)" strokeWidth="3" fill="none" strokeLinecap="round" />
-                <path className="fs-line" d="M 750 40 Q 675 170 600 300"  stroke="url(#fs-line-3)" strokeWidth="3" fill="none" strokeLinecap="round" />
-                <path className="fs-line" d="M 1050 40 Q 800 170 600 300" stroke="url(#fs-line-4)" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <div className="fs-4in1-v2 mt-10" data-testid="fs-4in1-v2">
+            <div className="fs-4in1-cards">
+              {/* ICT */}
+              <div className="fs-4in1-card fs-tint-blue" data-testid="fs-4in1-ict">
+                <div className="fs-4in1-icon-bubble blue"><Monitor size={30} color="#fff" /></div>
+                <div className="fs-4in1-title blue">ICT</div>
+                <ul className="fs-4in1-bullets blue">
+                  <li><span>Digital literacy</span></li>
+                  <li><span>Productivity tools</span></li>
+                  <li><span>Online safety</span></li>
+                  <li><span>Digital citizenship</span></li>
+                </ul>
+              </div>
+              {/* CODING */}
+              <div className="fs-4in1-card fs-tint-red" data-testid="fs-4in1-coding">
+                <div className="fs-4in1-icon-bubble red"><Code2 size={30} color="#fff" /></div>
+                <div className="fs-4in1-title red">CODING</div>
+                <ul className="fs-4in1-bullets red">
+                  <li><span>Blockly · Scratch</span></li>
+                  <li><span>HTML · CSS</span></li>
+                  <li><span>JavaScript · Python</span></li>
+                  <li><span>Grade-appropriate</span></li>
+                </ul>
+              </div>
+              {/* AI */}
+              <div className="fs-4in1-card fs-tint-purple" data-testid="fs-4in1-ai">
+                <div className="fs-4in1-icon-bubble purple"><Brain size={30} color="#fff" /></div>
+                <div className="fs-4in1-title purple">ARTIFICIAL<br/>INTELLIGENCE</div>
+                <ul className="fs-4in1-bullets purple">
+                  <li><span>How AI learns</span></li>
+                  <li><span>Everyday AI</span></li>
+                  <li><span>Ethics</span></li>
+                  <li><span>Simple ML projects</span></li>
+                </ul>
+              </div>
+              {/* ROBOTICS */}
+              <div className="fs-4in1-card fs-tint-red2" data-testid="fs-4in1-robotics">
+                <div className="fs-4in1-icon-bubble red2"><Bot size={30} color="#fff" /></div>
+                <div className="fs-4in1-title red">ROBOTICS</div>
+                <ul className="fs-4in1-bullets red">
+                  <li><span>Circuits · Sensors</span></li>
+                  <li><span>Actuators</span></li>
+                  <li><span>Build-your-own bots</span></li>
+                  <li><span>Hands-on projects</span></li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Ribbon flows converging into the pedestal below */}
+            <div className="fs-4in1-ribbons" aria-hidden="true">
+              <svg viewBox="0 0 1200 160" preserveAspectRatio="none">
+                <path d="M 150 0 C 150 60, 400 100, 600 140" stroke="#2563EB" />
+                <path d="M 450 0 C 480 60, 550 100, 600 140" stroke="#DC2626" />
+                <path d="M 750 0 C 720 60, 650 100, 600 140" stroke="#7C3AED" />
+                <path d="M 1050 0 C 1050 60, 800 100, 600 140" stroke="#DC2626" />
               </svg>
             </div>
 
-            <div className="fs-converge-pillars">
-              {[
-                { icon: Monitor, title: 'Digital & Cyber Literacy', body: 'Google Suite · Digital citizenship · Online safety · MS Office ready.',       color: '#3B82F6', chips: ['Word', 'Excel', 'PPT', 'Docs', 'Sheets'] },
-                { icon: Code2,   title: 'Coding & Computational',   body: 'Blockly · Scratch · HTML · CSS · JavaScript · Python — grade-appropriate.',  color: '#10B981', chips: ['Blockly', 'Scratch', 'HTML', 'CSS', 'JS', 'Python'] },
-                { icon: Brain,   title: 'Artificial Intelligence',  body: 'How AI learns · Ethics · Everyday AI · Simple ML projects.',                 color: '#8B5CF6', chips: ['ML for Kids', 'Vision', 'GenAI', 'Ethics'] },
-                { icon: Bot,     title: 'Robotics',                 body: 'Circuits · Sensors · Actuators · Build-your-own bots (starter kit).',        color: '#DC2626', chips: ['Kit', 'Sensors', 'Actuators', 'Bots'] },
-              ].map(({ icon: Icon, title, body, color, chips }, i) => (
-                <div key={title} className="fs-pillar-card icse-card p-5 text-center overflow-hidden relative" style={{ animationDelay: `${i * 0.14}s` }} data-testid={`fs-pillar-${i}`}>
-                  <div className="fs-pillar-glow" style={{ background: `radial-gradient(circle at 50% 0%, ${color}30 0%, transparent 60%)` }} />
-                  <div className="fs-pillar-icon w-16 h-16 rounded-2xl mx-auto flex items-center justify-center relative" style={{ background: `linear-gradient(135deg, ${color}, ${color}CC)`, boxShadow: `0 14px 30px ${color}44` }}>
-                    <Icon className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="icse-display text-[#0A1F44] text-base mt-4 font-semibold">{title}</div>
-                  <div className="icse-light text-xs text-slate-600 mt-1.5 leading-relaxed">{body}</div>
-                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                    {chips.map((c) => (
-                      <span key={c} style={{ background: `${color}14`, color, border: `1px solid ${color}33`, padding: '3px 9px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{c}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            {/* Pedestal — where the 4 ribbons meet */}
+            <div className="fs-4in1-pedestal" data-testid="fs-4in1-pedestal">
+              <img src={OLL_LOGO_COLOR} alt="OLL" />
+              <div className="fs-4in1-pedestal-title">FUTURE SKILLS</div>
+              <span className="fs-4in1-pedestal-badge">Grades 1 – 8</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ SECTION 2B · WHEEL (Image 3 emulation — pie chart with
+              4 corner content cards) ══════════ */}
+      <section className="relative overflow-hidden" style={{
+        background: 'linear-gradient(180deg, #F8FAFC 0%, #EEF3FB 100%)',
+        padding: '5rem 1.25rem',
+      }} data-testid="fs-wheel-section">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center">
+            <div className="icse-script text-[#DC2626] text-3xl">at a glance</div>
+            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">The Future Skills Wheel</h3>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+              Four subjects. One unified circle of learning. Every {board} student in Grades 1-8 rotates through all four.
+            </p>
+          </div>
+
+          <div className="fs-wheel-wrap mt-12" data-testid="fs-wheel">
+            {/* Top-left card — ICT */}
+            <div className="fs-wheel-card tl" data-testid="fs-wheel-tl">
+              <div className="fs-wheel-card-title">ICT</div>
+              <ul className="fs-wheel-card-list">
+                <li>Digital literacy</li>
+                <li>Productivity tools</li>
+                <li>Online safety</li>
+                <li>Digital citizenship</li>
+              </ul>
             </div>
 
-            {/* The single book at the bottom — where the 4 merge */}
-            <div className="fs-converge-merged" data-testid="fs-converge-merged">
-              <div className="fs-converge-badge">
-                <span className="fs-converge-pulse" />
-                <BookOpen className="w-6 h-6" />
+            {/* Pie */}
+            <div className="fs-wheel-pie" role="img" aria-label="4-quadrant future skills wheel">
+              <div className="fs-wheel-label tl"><Monitor size={26} color="#fff" />ICT</div>
+              <div className="fs-wheel-label tr"><Code2 size={26} color="#fff" />CODING</div>
+              <div className="fs-wheel-label bl"><Brain size={26} color="#fff" />ARTIFICIAL<br/>INTELLIGENCE</div>
+              <div className="fs-wheel-label br"><Bot size={26} color="#fff" />ROBOTICS</div>
+              <div className="fs-wheel-hub">
+                <img src={OLL_LOGO_COLOR} alt="OLL" />
+                <div className="fs-wheel-hub-title">FUTURE SKILLS</div>
+                <div className="fs-wheel-hub-grades">Grades 1 – 8</div>
+              </div>
+            </div>
+
+            {/* Top-right card — CODING */}
+            <div className="fs-wheel-card tr" data-testid="fs-wheel-tr">
+              <div className="fs-wheel-card-title">CODING</div>
+              <ul className="fs-wheel-card-list">
+                <li>Blockly · Scratch</li>
+                <li>HTML · CSS</li>
+                <li>JavaScript · Python</li>
+                <li>Grade-appropriate</li>
+              </ul>
+            </div>
+
+            {/* Bottom-left card — AI */}
+            <div className="fs-wheel-card bl" data-testid="fs-wheel-bl">
+              <div className="fs-wheel-card-title">ARTIFICIAL INTELLIGENCE</div>
+              <ul className="fs-wheel-card-list">
+                <li>How AI learns</li>
+                <li>Everyday AI</li>
+                <li>Ethics</li>
+                <li>Simple ML projects</li>
+              </ul>
+            </div>
+
+            {/* Bottom-right card — ROBOTICS */}
+            <div className="fs-wheel-card br" data-testid="fs-wheel-br">
+              <div className="fs-wheel-card-title">ROBOTICS</div>
+              <ul className="fs-wheel-card-list">
+                <li>Circuits · Sensors</li>
+                <li>Actuators</li>
+                <li>Build-your-own bots</li>
+                <li>Hands-on projects</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ SECTION 2C · ECOSYSTEM (Image 2 emulation — 4 cards
+              radiating from a central "Complete Learning Ecosystem" hub) ══════════ */}
+      <section className="relative overflow-hidden" style={{ background: '#FFFFFF', padding: '5rem 1.25rem' }} data-testid="fs-eco-section">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center">
+            <div className="icse-script text-[#DC2626] text-3xl">everything you need</div>
+            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Complete Learning Ecosystem</h3>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+              Books · Virtual Labs · Teacher LMS · Hands-on projects — one integrated system so every teacher and every student has what they need.
+            </p>
+          </div>
+
+          <div className="fs-eco-wrap mt-12" data-testid="fs-eco">
+            <div className="fs-eco-card tl" data-testid="fs-eco-books">
+              <div className="fs-eco-header">
+                <div className="fs-eco-icon red"><BookOpen size={26} /></div>
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">One</div>
-                  <div className="icse-display text-lg">Future Skills Workbook</div>
+                  <div className="fs-eco-title">Interactive Books</div>
+                  <div className="fs-eco-desc">Structured, grade-wise learning with activities and challenges.</div>
                 </div>
               </div>
+              <ul className="fs-eco-list">
+                <li>Concepts made simple</li>
+                <li>Engaging activities</li>
+                <li>Real-world examples</li>
+                <li>Grade-specific content</li>
+              </ul>
+            </div>
+
+            <div className="fs-eco-card tr" data-testid="fs-eco-labs">
+              <div className="fs-eco-header">
+                <div className="fs-eco-icon blue"><Monitor size={26} /></div>
+                <div>
+                  <div className="fs-eco-title">Virtual Labs</div>
+                  <div className="fs-eco-desc">Browser-based practical learning across coding, AI and emerging technologies.</div>
+                </div>
+              </div>
+              <ul className="fs-eco-list">
+                <li>Coding labs</li>
+                <li>AI experiments</li>
+                <li>Robotics simulations</li>
+                <li>Creative projects</li>
+              </ul>
+            </div>
+
+            <div className="fs-eco-hub" data-testid="fs-eco-hub">
+              <img src={OLL_LOGO_COLOR} alt="OLL Skills for AI" />
+              <div className="fs-eco-hub-title">Complete<br/>Learning<br/>Ecosystem</div>
+            </div>
+
+            <div className="fs-eco-card bl" data-testid="fs-eco-lms">
+              <div className="fs-eco-header">
+                <div className="fs-eco-icon purple"><Users size={26} /></div>
+                <div>
+                  <div className="fs-eco-title">Teacher-Ready LMS</div>
+                  <div className="fs-eco-desc">Lesson plans, PPTs, videos, assessments and teaching resources.</div>
+                </div>
+              </div>
+              <ul className="fs-eco-list">
+                <li>Ready-to-teach lesson plans</li>
+                <li>PPTs and videos</li>
+                <li>Worksheets and assessments</li>
+                <li>Student progress tracking</li>
+                <li>One login for everything</li>
+              </ul>
+            </div>
+
+            <div className="fs-eco-card br" data-testid="fs-eco-handson">
+              <div className="fs-eco-header">
+                <div className="fs-eco-icon red"><Rocket size={26} /></div>
+                <div>
+                  <div className="fs-eco-title">Hands-on Learning</div>
+                  <div className="fs-eco-desc">Projects that move students from understanding concepts to applying them.</div>
+                </div>
+              </div>
+              <ul className="fs-eco-list">
+                <li>Real-world projects</li>
+                <li>Build and experiment</li>
+                <li>Develop problem-solving skills</li>
+                <li>Learn by doing</li>
+              </ul>
             </div>
           </div>
         </div>
