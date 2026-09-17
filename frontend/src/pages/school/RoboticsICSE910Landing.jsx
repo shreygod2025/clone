@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
+import SchoolBreadcrumbs from '../../components/school/SchoolBreadcrumbs';
+import SchoolRelatedPrograms from '../../components/school/SchoolRelatedPrograms';
 
 const OLL_LOGO_WHITE =
   'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
@@ -351,8 +353,8 @@ const upsertJsonLd = (id, obj) => {
 };
 // Canonical SEO-friendly URL for this landing page (also aliased in App.js routing).
 const CANONICAL_PATH = '/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th';
-const SEO_TITLE = 'ICSE - Robotics and AI Books with Practical Kit for Class 9th and 10th';
-const SEO_DESCRIPTION = 'Robotics and AI Curriculum for ICSE with Robotics and AI Course and Practical Kit for Class 9th & 10th. STEM.org accredited kit + Grade 9 & 10 textbooks aligned to ICSE Group 3 Code 66 syllabus.';
+const SEO_TITLE = 'ICSE Robotics & AI Kit · Class 9 & 10 · Books + Lab | OLL';
+const SEO_DESCRIPTION = 'ICSE Group 3 Code 66 Robotics & AI Curriculum. STEM.org-accredited practical kit + Grade 9 & 10 textbooks + 30+ activities. Trusted by 400+ schools. Book a demo.';
 const SEO_KEYWORDS = 'ICSE robotics, ICSE AI curriculum, ICSE Group 3, ICSE Code 66, Class 9 robotics, Class 10 robotics, Class 9 AI course, Class 10 AI course, robotics practical kit, robotics textbook Class 9, robotics textbook Class 10, OLL robotics kit, ICSE school robotics program';
 const SEO_IMAGE = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png';
 
@@ -640,8 +642,22 @@ export default function RoboticsICSE910Landing() {
         </div>
       </nav>
 
+      {/* ── Visible breadcrumb trail (also emits BreadcrumbList JSON-LD) ── */}
+      <div style={{ paddingTop: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
+        <SchoolBreadcrumbs
+          testid="icse-breadcrumbs"
+          schemaId="ld-breadcrumbs-icse910"
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'For Schools', href: '/school' },
+            { label: 'Robotics', href: '/school#robotics' },
+            { label: 'ICSE · Class 9 & 10 (Group 3 · Code 66)' },
+          ]}
+        />
+      </div>
+
       {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-32 pb-10" data-testid="icse-hero">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 pb-10" data-testid="icse-hero">
         <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-white/90 border border-emerald-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
@@ -1220,6 +1236,8 @@ export default function RoboticsICSE910Landing() {
           </div>
         </div>
       </section>
+
+      <SchoolRelatedPrograms current="robotics-icse-9-10" theme="light" testid="icse-related-programs" />
 
       <Footer />
 

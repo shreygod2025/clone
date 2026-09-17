@@ -21,6 +21,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
+import SchoolBreadcrumbs from '../../components/school/SchoolBreadcrumbs';
+import SchoolRelatedPrograms from '../../components/school/SchoolRelatedPrograms';
 import {
   ArrowRight, Phone, Download, ChevronLeft, ChevronRight, Trophy,
   School, GraduationCap, MapPin, Cpu, Code2, Brain, Boxes, Lightbulb,
@@ -243,8 +245,8 @@ export default function RoboticsBeginnerLanding() {
   // ── SEO: imperative <head> injection (react-helmet-async unreliable) ──
   useEffect(() => {
     const CANONICAL = 'https://oll.co/school/robotics/beginner';
-    const TITLE = 'Robotics for Schools (Grade 1–4) | OLL — Turn Your School Into a Future-Skills Powerhouse';
-    const DESC = "OLL's Beginner Robotics program equips CBSE, ICSE & State Board schools with an end-to-end curriculum, lab kits, teacher training and STEM.org-accredited outcomes for Grades 1–4. Book a school demo.";
+    const TITLE = 'Beginner Robotics for Schools · Grades 1-4 | OLL';
+    const DESC = "End-to-end Beginner Robotics program for CBSE, ICSE & State Board schools (Grades 1-4): curriculum, lab kits, teacher training & STEM.org-accredited outcomes.";
     const KEYWORDS = "robotics for schools, school robotics program, robotics curriculum India, STEM lab setup, ICSE robotics, CBSE robotics, robotics grade 1, robotics grade 2, robotics grade 3, robotics grade 4, STEM.org accredited, school robotics lab, OLL robotics beginner, primary school robotics, K-12 robotics";
     const OG_IMG = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
     document.title = TITLE;
@@ -696,8 +698,23 @@ export default function RoboticsBeginnerLanding() {
         </div>
       </div>
 
+      {/* ── Visible breadcrumb trail (also emits BreadcrumbList JSON-LD) ── */}
+      <div style={{ background: '#0A1F44', paddingTop: 'clamp(4.5rem, 9vw, 7rem)', paddingBottom: '0.5rem' }}>
+        <SchoolBreadcrumbs
+          testid="rb-breadcrumbs"
+          theme="dark"
+          schemaId="rb-jsonld-1"
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'For Schools', href: '/school' },
+            { label: 'Robotics', href: '/school#robotics' },
+            { label: 'Beginner · Grades 1-4' },
+          ]}
+        />
+      </div>
+
       {/* ═══════════ 01 — HERO ═══════════ */}
-      <section data-testid="rb-hero" style={{ position: 'relative', background: '#0A1F44', color: '#fff', paddingTop: '7rem', paddingBottom: '4rem', overflow: 'hidden' }}>
+      <section data-testid="rb-hero" style={{ position: 'relative', background: '#0A1F44', color: '#fff', paddingTop: '2rem', paddingBottom: '4rem', overflow: 'hidden' }}>
         <div className="rb-orb rb-orb-red"   style={{ width: 460, height: 460, top: -140, left: -120 }} />
         <div className="rb-orb rb-orb-blue"  style={{ width: 520, height: 520, bottom: -180, right: -140 }} />
         <div className="rb-orb rb-orb-light" style={{ width: 380, height: 380, top: '35%', right: '30%' }} />
@@ -1632,6 +1649,8 @@ export default function RoboticsBeginnerLanding() {
           </div>
         </div>
       )}
+      <SchoolRelatedPrograms current="robotics-beginner" theme="light" testid="rb-related-programs" />
+
       <Footer />
     </div>
   );

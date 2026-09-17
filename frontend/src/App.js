@@ -377,6 +377,9 @@ function App() {
               <Route path="/school/cs/cbse-ct-ai"         element={<CBSECTAILanding />} />
               <Route path="/school/cs/future-skills-icse" element={<FutureSkillsLanding board="ICSE" />} />
               <Route path="/school/cs/future-skills-cbse" element={<FutureSkillsLanding board="CBSE" />} />
+              {/* SEO-friendly keyword-rich canonicals for Future Skills funnels */}
+              <Route path="/school/cs/icse-future-skills-classes-1-to-8" element={<FutureSkillsLanding board="ICSE" />} />
+              <Route path="/school/cs/cbse-future-skills-classes-1-to-8" element={<FutureSkillsLanding board="CBSE" />} />
               <Route path="/school/cs/computational-thinking-and-ai-classes-3-to-8" element={<CBSECTAILanding />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute permission="schools"><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />

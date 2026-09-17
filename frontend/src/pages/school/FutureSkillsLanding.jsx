@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
+import SchoolBreadcrumbs from '../../components/school/SchoolBreadcrumbs';
+import SchoolRelatedPrograms from '../../components/school/SchoolRelatedPrograms';
 
 // ── shared assets ──────────────────────────────────────────────────────────
 const OLL_LOGO_COLOR = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -219,10 +221,13 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
   const [activeIndexGrade, setActiveIndexGrade] = useState(1);
 
   const boardLower = board.toLowerCase();
-  const CANONICAL_PATH = `/school/cs/future-skills-${boardLower}`;
-  const SEO_TITLE = `${board} Future Skills · ICT + Coding + AI + Robotics (Grades 1-8) · One 4-in-1 Curriculum | OLL`;
-  const SEO_DESCRIPTION = `Stop juggling 4 subjects. OLL Future Skills is a single 4-in-1 program combining ICT, Coding, AI and Robotics for ${board} schools, Grades 1-8. One period, one book, one teacher, one curriculum — with interactive books, virtual labs and teacher LMS. Book a demo.`;
-  const SEO_KEYWORDS = `${board} Future Skills, ${board} ICT coding AI robotics, 4 in 1 curriculum ${board}, ${board} computer science grades 1 to 8, OLL Future Skills program, school AI robotics curriculum, ICT alternative curriculum ${board}`;
+  // Keyword-rich canonical slug — the short `/school/cs/future-skills-{board}` route
+  // continues to render this same component (see App.js) but Google is told this
+  // longer keyword URL is the ranking canonical.
+  const CANONICAL_PATH = `/school/cs/${boardLower}-future-skills-classes-1-to-8`;
+  const SEO_TITLE = `${board} Future Skills · ICT + Coding + AI + Robotics (Classes 1-8) | OLL`;
+  const SEO_DESCRIPTION = `${board} Future Skills — one integrated ICT + Coding + AI + Robotics curriculum for Classes 1-8. One book, one period, one teacher. Books + Virtual Labs + LMS. Book a demo.`;
+  const SEO_KEYWORDS = `${board} Future Skills, ${board} ICT coding AI robotics, 4 in 1 curriculum ${board}, ${board} computer science grades 1 to 8, OLL Future Skills program, school AI robotics curriculum, ICT alternative curriculum ${board}, ${board} class 1 to 8 coding, ${board} class 1 to 8 AI, ${board} class 1 to 8 robotics`;
   const BROCHURE_PDF_NAME = `OLL-${board}-Future-Skills-Brochure.pdf`;
 
   useEffect(() => { window.scrollTo(0, 0); }, [board]);
@@ -640,8 +645,22 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         </div>
       </nav>
 
+      {/* ── Visible breadcrumb trail (also emits BreadcrumbList JSON-LD) ── */}
+      <div style={{ paddingTop: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
+        <SchoolBreadcrumbs
+          testid={`fs-${boardLower}-breadcrumbs`}
+          schemaId={`ld-breadcrumb-fs-${boardLower}`}
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'For Schools', href: '/school' },
+            { label: 'Computer Science', href: '/school#computer-science' },
+            { label: `${board} · Future Skills (Classes 1-8)` },
+          ]}
+        />
+      </div>
+
       {/* ══════════ SECTION 1 · THE 4-SUBJECT NIGHTMARE ══════════ */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-32 pb-14" data-testid="fs-pain" aria-labelledby="fs-pain-heading">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 pb-14" data-testid="fs-pain" aria-labelledby="fs-pain-heading">
         <div className="text-center">
           <div className="inline-flex items-center gap-2 bg-white/90 border border-rose-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
@@ -1318,6 +1337,8 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           </div>
         </div>
       </section>
+
+      <SchoolRelatedPrograms current={`future-skills-${boardLower}`} theme="light" testid={`fs-${boardLower}-related-programs`} />
 
       <Footer />
 

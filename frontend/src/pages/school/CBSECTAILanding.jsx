@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
+import SchoolBreadcrumbs from '../../components/school/SchoolBreadcrumbs';
+import SchoolRelatedPrograms from '../../components/school/SchoolRelatedPrograms';
 
 const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -126,11 +128,14 @@ const upsertJsonLd = (id, obj) => {
   el.textContent = JSON.stringify(obj);
 };
 
-const SEO_TITLE = 'CBSE Computational Thinking & AI Curriculum · Classes 3–8 · Books + Virtual Lab + LMS | OLL';
-const SEO_DESCRIPTION = 'CBSE has mandated a new Computational Thinking & Artificial Intelligence curriculum for Classes 3–8 from 2026-27 (Circular Acad-15/2026). OLL is your turnkey partner: interactive workbooks Grades 3–8, browser-based virtual CT & AI lab, teacher lesson plans, PPTs, videos and LMS. NEP 2020 aligned. Book a 30-minute school demo.';
+const SEO_TITLE = 'CBSE CT & AI Curriculum · Classes 3-8 · Books + Lab + LMS | OLL';
+const SEO_DESCRIPTION = 'CBSE-mandated Computational Thinking & AI curriculum for Classes 3-8 (Acad-15/2026). OLL delivers workbooks, a virtual CT & AI lab and teacher LMS. Book a demo.';
 const SEO_KEYWORDS = 'CBSE CT AI curriculum, CBSE Computational Thinking Classes 3 to 8, CBSE Artificial Intelligence school program, CBSE Acad-15/2026, NEP 2020 CT AI, CBSE 2026-27 CT AI curriculum, OLL CT AI books, virtual AI lab school, CBSE AI teacher lesson plans, CBSE AI PPT, CT AI framework CBSE primary middle';
 const SEO_IMAGE = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png';
-const CANONICAL_PATH = '/school/cs/cbse-ct-ai';
+// Keyword-rich canonical slug. The short `/school/cs/cbse-ct-ai` and `/school/cs/cbse`
+// routes still render the same page (see App.js) so any inbound backlinks keep working,
+// but Google is told the canonical URL is the long descriptive one for ranking equity.
+const CANONICAL_PATH = '/school/cs/computational-thinking-and-ai-classes-3-to-8';
 
 const FAQ_ITEMS = [
   {
@@ -415,8 +420,22 @@ export default function CBSECTAILanding() {
         </div>
       </nav>
 
+      {/* ── Visible breadcrumb trail (also emits BreadcrumbList JSON-LD) ── */}
+      <div style={{ paddingTop: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
+        <SchoolBreadcrumbs
+          testid="cbse-breadcrumbs"
+          schemaId="ld-breadcrumbs-cbse-ctai"
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'For Schools', href: '/school' },
+            { label: 'Computer Science', href: '/school#computer-science' },
+            { label: 'CBSE · CT & AI (Classes 3-8)' },
+          ]}
+        />
+      </div>
+
       {/* ══════════ SECTION 1 · HERO ══════════ */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-32 pb-10" data-testid="cbse-hero">
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 pb-10" data-testid="cbse-hero">
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-white/90 border border-rose-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
@@ -909,6 +928,8 @@ export default function CBSECTAILanding() {
           </div>
         </div>
       </section>
+
+      <SchoolRelatedPrograms current="cbse-ct-ai" theme="light" testid="cbse-related-programs" />
 
       <Footer />
 

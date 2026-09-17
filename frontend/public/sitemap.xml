@@ -161,6 +161,43 @@
   <url><loc>https://oll.co/school-offerings/financial-literacy/entrepreneurship-workshop</loc><lastmod>2026-04-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://oll.co/school-offerings/financial-literacy/financial-bootcamp</loc><lastmod>2026-04-29</lastmod><changefreq>monthly</changefreq><priority>0.75</priority></url>
 
+  <!-- ═══════ TIER 5b: School Product Landing Pages (SEO canonicals) ════ -->
+  <!-- CBSE Computational Thinking & AI · Circular Acad-15/2026 · Classes 3-8 -->
+  <url>
+    <loc>https://oll.co/school/cs/computational-thinking-and-ai-classes-3-to-8</loc>
+    <lastmod>2026-05-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <!-- ICSE Future Skills · ICT + Coding + AI + Robotics · Classes 1-8 -->
+  <url>
+    <loc>https://oll.co/school/cs/icse-future-skills-classes-1-to-8</loc>
+    <lastmod>2026-05-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.93</priority>
+  </url>
+  <!-- CBSE Future Skills · ICT + Coding + AI + Robotics · Classes 1-8 -->
+  <url>
+    <loc>https://oll.co/school/cs/cbse-future-skills-classes-1-to-8</loc>
+    <lastmod>2026-05-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.93</priority>
+  </url>
+  <!-- ICSE Robotics & AI Kits · Group 3 · Code 66 · Class 9 & 10 -->
+  <url>
+    <loc>https://oll.co/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th</loc>
+    <lastmod>2026-05-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <!-- Beginner Robotics · Grades 1-4 · CBSE / ICSE / State -->
+  <url>
+    <loc>https://oll.co/school/robotics/beginner</loc>
+    <lastmod>2026-05-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
   <!-- ═══════ TIER 6: Summer Camp SEO Subroutes ═════════════════════════ -->
   <url><loc>https://oll.co/summer-camp/location/andheri-west</loc><lastmod>2026-04-29</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
   <url><loc>https://oll.co/summer-camp/location/mira-road</loc><lastmod>2026-04-29</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
