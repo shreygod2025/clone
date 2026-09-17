@@ -320,3 +320,100 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 .no-scrollbar::-webkit-scrollbar {
   display: none;                 /* Chrome / Safari */
 }
+
+/* ─── Org Chart tree connectors (top-down) ──────────────────────────────
+   Classic pure-CSS reporting tree. `.org-tree` is the root container;
+   each `.org-node` has an `.org-card` (member) and an optional `.org-children`
+   flex row. Connector segments are drawn with borders on ::before/::after. */
+.org-tree {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  min-width: max-content;
+}
+.org-tree > .org-root-wrap {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  list-style: none;
+}
+.org-tree > .org-root-wrap > .org-node > .org-card::before { display: none; }
+.org-tree > .org-root-wrap > .org-node::before,
+.org-tree > .org-root-wrap > .org-node::after { display: none; }
+.org-tree > .org-root-wrap > .org-node { padding-top: 0; }
+.org-children {
+  position: relative;
+  padding-top: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+/* Vertical stub coming down from parent to horizontal connector line */
+.org-children::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #CBD5E1;
+  height: 14px;
+}
+.org-node {
+  position: relative;
+  padding-top: 14px;             /* room for vertical stub up to horizontal line */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  list-style: none;
+}
+/* Horizontal line halves for each child (skipped for a single child) */
+.org-node::before,
+.org-node::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 14px;
+  border-top: 2px solid #CBD5E1;
+  width: 50%;
+}
+.org-node::before { right: 50%; }
+.org-node::after  { left: 50%; }
+/* Only-child: skip the horizontal segment entirely — the vertical stubs
+   already line up. */
+.org-children > .org-node:only-child::before,
+.org-children > .org-node:only-child::after { display: none; }
+/* First / last children get a corner instead of a full line */
+.org-children > .org-node:first-child::before { border: none; }
+.org-children > .org-node:last-child::after   { border: none; }
+/* Vertical stub going up from each child card to the horizontal line */
+.org-node > .org-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #CBD5E1;
+  height: 14px;
+  transform: translateX(-1px);
+}
+/* Root cards sit at the very top with no incoming line — handled by
+   the .org-root-wrap rules above. */
+
+.org-card {
+  position: relative;
+  min-width: 200px;
+  max-width: 260px;
+  background: #FFFFFF;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px -6px rgba(15, 23, 42, 0.08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.org-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08), 0 12px 24px -12px rgba(15, 23, 42, 0.18);
+}
+.org-card--selected {
+  width: 300px;
+  max-width: 320px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12), 0 24px 48px -20px rgba(15, 23, 42, 0.24);
+  transform: translateY(-1px);
+}
