@@ -20,7 +20,7 @@ import {
   ArrowRight, Download, ShieldCheck, Sparkles, CheckCircle2, BookOpen,
   Gamepad2, PlayCircle, Play, GraduationCap, School, MapPin, FileText,
   Monitor, Bot, Brain, Code2, X, Clock, Wallet, Users, AlertTriangle,
-  Layers, Zap,
+  Layers, Zap, Globe2, Smartphone, Wifi, Network, BarChart3, BrainCircuit,
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 import LMSSection from '../../components/school/LMSSection';
@@ -91,22 +91,22 @@ const ROBOTICS_PROJECTS = {
   8: ['Contactless Door', 'Ball Dribbling Companion', 'Smart Vault System', 'Sliding Door Mechanism'],
 };
 
-// Virtual Lab tools — mirrors the middle column of the marketing brochure.
-const VIRTUAL_LAB_TOOLS = [
-  { name: 'Scratch',    color: '#F5A623', letter: 'S' },
-  { name: 'HTML5',      color: '#E44D26', letter: 'H' },
-  { name: 'CSS3',       color: '#2965F1', letter: 'C' },
-  { name: 'JavaScript', color: '#F7DF1E', letter: 'JS', dark: true },
-  { name: 'Python',     color: '#3776AB', letter: 'Py' },
-  { name: 'TypeScript', color: '#3178C6', letter: 'TS' },
-  { name: 'Java',       color: '#EA2D2E', letter: 'J' },
-  { name: 'C',          color: '#00599C', letter: 'C' },
-  { name: 'SQL',        color: '#00758F', letter: 'SQL' },
-  { name: 'Excel',      color: '#217346', letter: 'X' },
+// Virtual Lab domains — 11 tiles rendered on a navy card grid.
+// Mix of official language logos (devicon) + lucide icons for abstract domains.
+const LAB_DOMAINS = [
+  { key: 'web',      title: 'Web Development',        type: 'lucide', icon: 'Globe2',        color: '#F472B6' },
+  { key: 'cpp',      title: 'C++',                    type: 'img',    src: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg', color: '#3B82F6' },
+  { key: 'app',      title: 'App Development',        type: 'lucide', icon: 'Smartphone',    color: '#F97316' },
+  { key: 'iot',      title: 'Internet of Things',     type: 'lucide', icon: 'Wifi',          color: '#0EA5E9' },
+  { key: 'net',      title: 'Networking',             type: 'lucide', icon: 'Network',       color: '#A78BFA' },
+  { key: 'ds',       title: 'Data Science',           type: 'lucide', icon: 'BarChart3',     color: '#EC4899' },
+  { key: 'py',       title: 'Python Programming',     type: 'img',    src: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg', color: '#FBBF24' },
+  { key: 'game',     title: 'Game Development',       type: 'lucide', icon: 'Gamepad2',      color: '#FCD34D' },
+  { key: 'cyber',    title: 'Cyber Security',         type: 'lucide', icon: 'ShieldCheck',   color: '#EF4444' },
+  { key: 'robot',    title: 'Robotics',               type: 'lucide', icon: 'Bot',           color: '#22C55E' },
+  { key: 'ai',       title: 'Artificial Intelligence',type: 'lucide', icon: 'BrainCircuit',  color: '#8B5CF6' },
 ];
-const VIRTUAL_LAB_FEATURES = [
-  'No Separate Login', 'No App Download', 'No Subscription', 'All Files in 1 Place',
-];
+const LUCIDE_MAP = { Globe2, Smartphone, Wifi, Network, BarChart3, Gamepad2, ShieldCheck, Bot, BrainCircuit };
 
 // Grade-wise curriculum index extracted from the official
 // "OLL Future skills — CBSE Grade 1-8" brochure PDF, grouped by the 4 pillars.
@@ -396,6 +396,69 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         .fs-book::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:6px; background: repeating-linear-gradient(180deg, rgba(10,31,68,0.15) 0 6px, transparent 6px 14px); }
         .fs-book .tape { position:absolute; top:14px; right:14px; background:#DC2626; color:#fff; font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px; border-radius: 999px; text-transform:uppercase; }
 
+        /* ── Virtual Lab domain grid (navy panel, 4×2 + 3-centered) ── */
+        .fs-lab-panel {
+          position: relative;
+          background: linear-gradient(155deg, #26379D 0%, #1E2A80 60%, #1B2266 100%);
+          border-radius: 40px;
+          padding: 40px 32px 48px;
+          box-shadow: 0 40px 80px rgba(30, 42, 128, 0.35);
+          overflow: hidden;
+        }
+        .fs-lab-panel::before {
+          content: ''; position: absolute; inset: 0;
+          background:
+            radial-gradient(circle at 15% 10%, rgba(147,197,253,0.10) 0%, transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(236,72,153,0.10) 0%, transparent 40%);
+          pointer-events: none;
+        }
+        .fs-lab-grid {
+          position: relative; z-index: 1;
+          display: flex; flex-wrap: wrap; justify-content: center; gap: 22px;
+        }
+        .fs-lab-tile {
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 26px;
+          padding: 22px 16px 18px;
+          text-align: center;
+          backdrop-filter: blur(10px);
+          transition: transform 0.35s cubic-bezier(.22,.9,.34,1), background 0.25s ease, border-color 0.25s ease, box-shadow 0.35s ease;
+          flex: 0 0 calc((100% - 22px * 3) / 4);
+          min-width: 0;
+          display: flex; flex-direction: column; align-items: center; gap: 14px;
+          animation: fadeUp .8s cubic-bezier(.22,.9,.34,1) both;
+        }
+        .fs-lab-tile:hover {
+          transform: translateY(-6px);
+          background: rgba(255,255,255,0.10);
+          border-color: rgba(255,255,255,0.22);
+          box-shadow: 0 28px 60px rgba(0,0,0,0.35);
+        }
+        .fs-lab-icon {
+          width: 92px; height: 92px; border-radius: 22px;
+          display: flex; align-items: center; justify-content: center;
+          transition: transform 0.35s ease;
+        }
+        .fs-lab-tile:hover .fs-lab-icon { transform: translateY(-2px) scale(1.05); }
+        .fs-lab-icon img { width: 60%; height: 60%; object-fit: contain; }
+        .fs-lab-label {
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-weight: 700; color: #fff; font-size: 1.02rem; line-height: 1.2;
+          letter-spacing: 0.005em;
+        }
+        @media (max-width: 900px) {
+          .fs-lab-grid { gap: 18px; }
+          .fs-lab-tile { flex: 0 0 calc((100% - 18px * 2) / 3); }
+        }
+        @media (max-width: 560px) {
+          .fs-lab-panel { padding: 28px 18px 32px; border-radius: 32px; }
+          .fs-lab-grid { gap: 14px; }
+          .fs-lab-tile { flex: 0 0 calc((100% - 14px) / 2); padding: 18px 12px 14px; border-radius: 22px; }
+          .fs-lab-icon { width: 78px; height: 78px; }
+          .fs-lab-label { font-size: 0.88rem; }
+        }
+
         /* 4-pillar animated tiles (replaces the flat hero image) */
         @keyframes fs-pillar-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fs-icon-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
@@ -634,50 +697,6 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
             ))}
           </div>
         </div>
-
-        {/* Virtual Lab tools chart — mirrors the middle column of the brochure */}
-        <div className="max-w-5xl mx-auto mt-14" data-testid="fs-tools-chart">
-          <div className="text-center">
-            <div className="icse-eyebrow text-rose-600">Virtual Labs</div>
-            <h3 className="icse-display text-[#0A1F44] text-2xl sm:text-3xl mt-1">Every tool your students need — in one browser tab</h3>
-          </div>
-          <div className="mt-8 rounded-[28px] border border-slate-200 bg-white shadow-xl p-6 sm:p-8 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
-            {/* Left — tool logo grid */}
-            <div className="grid grid-cols-5 gap-3">
-              {VIRTUAL_LAB_TOOLS.map((t) => (
-                <div key={t.name} className="group text-center" data-testid={`fs-tool-${t.name.toLowerCase()}`}>
-                  <div style={{
-                    width: '100%', aspectRatio: '1 / 1', borderRadius: 14, background: t.color,
-                    color: t.dark ? '#0A1F44' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.02em', boxShadow: `0 8px 20px ${t.color}44`,
-                    transition: 'transform 0.25s ease',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}>
-                    {t.letter}
-                  </div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1.5">{t.name}</div>
-                </div>
-              ))}
-            </div>
-            {/* Right — feature bullets */}
-            <div className="border-l border-slate-100 pl-6 sm:pl-8">
-              <ul className="space-y-3">
-                {VIRTUAL_LAB_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#10B98115' }}>
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <span className="icse-display text-[#0A1F44] text-base font-semibold">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="icse-light text-xs text-slate-500 mt-4 pt-4 border-t border-slate-100">
-                One login carries every child from Scratch in Grade 3 to Python + SQL in Grade 8 — no separate accounts, no extra fees.
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* ══════════ SECTION 3 · OLL SPECIALITY ══════════ */}
@@ -859,6 +878,44 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               <div className="absolute inset-x-6 bottom-4 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/80">
                 <span>OLL · Virtual Labs</span><span>Future Skills · Live</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4b-ii · Virtual Lab domains grid (navy card) ─────────── */}
+      <section className="relative py-16 px-4 sm:px-6" data-testid="fs-lab-domains" aria-labelledby="fs-lab-domains-heading">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="icse-eyebrow text-rose-600">Virtual Labs</div>
+            <div className="icse-script text-[#DC2626] text-3xl">every tool your students need</div>
+            <h3 id="fs-lab-domains-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Domains you'll explore — in one browser tab</h3>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+              11 real-world tech domains — from Web &amp; App Development to AI, IoT and Cyber Security — every one running in-browser on the OLL Virtual Lab.
+              No separate login. No app download. No subscription.
+            </p>
+          </div>
+
+          <div className="fs-lab-panel">
+            <div className="fs-lab-grid">
+              {LAB_DOMAINS.map((d) => (
+                <div key={d.key} className="fs-lab-tile" data-testid={`fs-lab-domain-${d.key}`}>
+                  <div className="fs-lab-icon" style={{
+                    background: `linear-gradient(155deg, ${d.color}30 0%, ${d.color}12 100%)`,
+                    boxShadow: `0 14px 28px ${d.color}22, inset 0 1px 0 rgba(255,255,255,0.12)`,
+                    border: `1px solid ${d.color}44`,
+                  }}>
+                    {d.type === 'img'
+                      ? <img src={d.src} alt={`${d.title} logo`} loading="lazy" />
+                      : (() => {
+                          const Icon = LUCIDE_MAP[d.icon];
+                          return Icon ? <Icon size={44} strokeWidth={1.6} style={{ color: d.color, filter: `drop-shadow(0 6px 12px ${d.color}66)` }} /> : null;
+                        })()
+                    }
+                  </div>
+                  <div className="fs-lab-label">{d.title}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
