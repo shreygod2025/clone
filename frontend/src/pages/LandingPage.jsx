@@ -641,13 +641,13 @@ const LandingPage = () => {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {[
-                  { label: 'ICSE',                                 route: '/school/cs/icse',      sub: 'Full board-aligned curriculum' },
-                  { label: 'CBSE',                                 route: '/school/cs/cbse',      sub: 'Full board-aligned curriculum' },
-                  { label: 'CBSE — Computational Thinking & AI',   route: '/school/cs/cbse-ct-ai', sub: 'New CBSE elective 2024+' },
+                  { label: 'ICSE — Future Skills',                 route: '/school/cs/future-skills-icse', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', testid: 'school-cs-icse-future-skills' },
+                  { label: 'CBSE — Future Skills',                 route: '/school/cs/future-skills-cbse', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', testid: 'school-cs-cbse-future-skills' },
+                  { label: 'CBSE — Computational Thinking & AI',   route: '/school/cs/cbse-ct-ai',         sub: 'CBSE Acad-15/2026 elective · Grades 3-8',            testid: 'school-cs-cbse-ct-ai' },
                 ].map(t => (
                   <button key={t.label}
                     onClick={() => navigate(t.route)}
-                    data-testid={`school-cs-${t.label.split(' ')[0].toLowerCase()}`}
+                    data-testid={t.testid}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       background: '#F8FAFC', color: '#0F1E33', border: '1px solid #E2E8F0',
