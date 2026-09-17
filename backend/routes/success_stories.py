@@ -8,6 +8,7 @@ Levels:
   4 — Impact           (measurable value — downloads, revenue, users, adoption)
   5 — Transformation   (life-changing outcome — scholarship, funding, admission)
 """
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -30,6 +31,29 @@ LEVEL_NAMES = {
 }
 
 
+def _slugify(text: str) -> str:
+    """URL-safe slug for a success story. Keeps only [a-z0-9-]."""
+    text = (text or "story").lower().strip()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    text = re.sub(r"-+", "-", text).strip("-")
+    return text or "story"
+
+
+async def _ensure_unique_slug(base: str, exclude_id: Optional[str] = None) -> str:
+    """Return a slug that doesn't clash with any existing success story."""
+    candidate = base
+    n = 1
+    while True:
+        q: dict = {"slug": candidate}
+        if exclude_id:
+            q["id"] = {"$ne": exclude_id}
+        existing = await db.success_stories.find_one(q)
+        if not existing:
+            return candidate
+        n += 1
+        candidate = f"{base}-{n}"
+
+
 class Attachment(BaseModel):
     url: str
     name: Optional[str] = None
@@ -47,6 +71,11 @@ class SuccessStoryIn(BaseModel):
     tags: List[str] = []
     attachments: List[Attachment] = []
     evidence_links: List[str] = []
+    # Video embeds — accept a primary URL plus an optional list of extras.
+    # YouTube / Vimeo / direct-mp4 URLs are all fine; the frontend detects the
+    # host and renders an <iframe> when it recognizes YouTube.
+    video_url: Optional[str] = None
+    video_urls: List[str] = []
     verification_notes: Optional[str] = None
     is_published: bool = True
 
@@ -62,6 +91,8 @@ class SuccessStoryUpdate(BaseModel):
     tags: Optional[List[str]] = None
     attachments: Optional[List[Attachment]] = None
     evidence_links: Optional[List[str]] = None
+    video_url: Optional[str] = None
+    video_urls: Optional[List[str]] = None
     verification_notes: Optional[str] = None
     is_published: Optional[bool] = None
 
@@ -83,13 +114,14 @@ def _serialize(doc: dict) -> dict:
 
 @router.post("/success-stories")
 async def create_success_story(payload: SuccessStoryIn, user: dict = Depends(get_current_user)):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    # Any authenticated team member can add a Success Story — no admin gate.
     now = datetime.now(timezone.utc).isoformat()
     doc = payload.model_dump()
+    story_id = str(uuid.uuid4())
+    slug = await _ensure_unique_slug(_slugify(payload.student_name))
     doc.update({
-        "id": str(uuid.uuid4()),
+        "id": story_id,
+        "slug": slug,
         "level_name": LEVEL_NAMES.get(payload.level, "Unknown"),
         "is_flagship": payload.level == 5,
         "created_by": user.get("id"),
@@ -159,6 +191,10 @@ async def update_success_story(story_id: str, payload: SuccessStoryUpdate, user:
     if "level" in update:
         update["level_name"] = LEVEL_NAMES.get(update["level"], "Unknown")
         update["is_flagship"] = update["level"] == 5
+    # If the student name changes and the story didn't already have a slug,
+    # or someone explicitly wants a fresh slug, regenerate it now.
+    if "student_name" in update and not doc.get("slug"):
+        update["slug"] = await _ensure_unique_slug(_slugify(update["student_name"]), exclude_id=story_id)
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     await db.success_stories.update_one({"id": story_id}, {"$set": update})
@@ -196,6 +232,30 @@ async def list_public_success_stories(
         },
     ).sort([("is_flagship", -1), ("level", -1), ("created_at", -1)]).to_list(limit)
     return [_serialize(i) for i in items]
+
+
+@router.get("/public/success-stories/by-slug/{slug}")
+async def get_public_success_story_by_slug(slug: str):
+    """Public detail endpoint used by /success-stories/<slug> pages."""
+    doc = await db.success_stories.find_one(
+        {"slug": slug, "is_published": True},
+        {"_id": 0, "verification_notes": 0, "created_by": 0},
+    )
+    if not doc:
+        # Fallback — some legacy stories were created before slugs existed.
+        # Try to look up by id so old links keep working.
+        doc = await db.success_stories.find_one(
+            {"id": slug, "is_published": True},
+            {"_id": 0, "verification_notes": 0, "created_by": 0},
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Story not found")
+        # Lazily assign a slug so the next visit is SEO-friendly.
+        if not doc.get("slug"):
+            new_slug = await _ensure_unique_slug(_slugify(doc.get("student_name", "story")))
+            await db.success_stories.update_one({"id": doc["id"]}, {"$set": {"slug": new_slug}})
+            doc["slug"] = new_slug
+    return _serialize(doc)
 
 
 @router.get("/public/success-stories/{story_id}")

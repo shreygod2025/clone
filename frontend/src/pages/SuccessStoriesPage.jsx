@@ -120,7 +120,7 @@ const SuccessStoriesPage = () => {
             <span className="text-xs bg-fuchsia-100 text-fuchsia-700 px-2 py-0.5 rounded-full">Level 5 — Transformation</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {flagship.map(s => <PublicStoryCard key={s.id} s={s} onOpen={() => setSelected(s)} featured />)}
+            {flagship.map(s => <PublicStoryCard key={s.id} s={s} featured />)}
           </div>
         </section>
       )}
@@ -138,7 +138,7 @@ const SuccessStoriesPage = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rest.map(s => <PublicStoryCard key={s.id} s={s} onOpen={() => setSelected(s)} />)}
+            {rest.map(s => <PublicStoryCard key={s.id} s={s} />)}
           </div>
         )}
       </section>
@@ -161,12 +161,13 @@ const SuccessStoriesPage = () => {
   );
 };
 
-const PublicStoryCard = ({ s, onOpen, featured = false }) => {
+const PublicStoryCard = ({ s, featured = false }) => {
   const lvl = LEVELS.find(l => l.n === s.level) || LEVELS[0];
+  const href = `/success-stories/${s.slug || s.id}`;
   return (
-    <button
-      onClick={onOpen}
-      className={`text-left bg-white rounded-2xl overflow-hidden border border-slate-200 hover:shadow-xl transition-all ${featured ? 'md:col-span-1' : ''}`}
+    <Link
+      to={href}
+      className={`block text-left bg-white rounded-2xl overflow-hidden border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all ${featured ? 'md:col-span-1' : ''}`}
       data-testid={`public-story-card-${s.id}`}
     >
       <div className={`relative bg-slate-100 ${featured ? 'aspect-[16/9]' : 'aspect-[16/10]'}`}>
@@ -206,7 +207,7 @@ const PublicStoryCard = ({ s, onOpen, featured = false }) => {
           Read story <ArrowRight className="w-3 h-3" />
         </div>
       </div>
-    </button>
+    </Link>
   );
 };
 

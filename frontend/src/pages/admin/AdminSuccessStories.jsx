@@ -36,6 +36,8 @@ const emptyForm = {
   tags: [],
   attachments: [],
   evidence_links: [],
+  video_url: '',
+  video_urls: [],
   verification_notes: '',
   is_published: true,
 };
@@ -487,6 +489,26 @@ const StoryModal = ({ initial, isEdit, onClose, onSaved, getAuthHeaders }) => {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Video URLs — YouTube links render as inline iframes on the story page */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Video URLs (YouTube or direct link)</label>
+            <div className="text-[10px] text-slate-500 mb-1">
+              Paste one URL per line. YouTube URLs auto-embed as playable iframes; other links become "Watch video" buttons.
+            </div>
+            <textarea
+              value={[form.video_url, ...(form.video_urls || [])].filter(Boolean).join('\n')}
+              onChange={(e) => {
+                const lines = e.target.value.split('\n').map(l => l.trim()).filter(Boolean);
+                upd('video_url', lines[0] || '');
+                upd('video_urls', lines.slice(1));
+              }}
+              rows={3}
+              placeholder="https://youtu.be/abc123&#10;https://www.youtube.com/watch?v=xyz456"
+              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#DC2626]/40 focus:border-[#DC2626]"
+              data-testid="story-videos-input"
+            />
           </div>
 
           {/* Evidence links */}
