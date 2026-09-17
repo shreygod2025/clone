@@ -334,9 +334,36 @@ export default function CBSECTAILanding() {
         .icse-orb-gold { position:absolute; width:340px; height:340px; border-radius:50%; background:rgba(245,158,11,0.16); filter:blur(90px); pointer-events:none; }
 
         /* Book cover placeholder — spiral binding + tape effect */
-        .cbse-book { position: relative; aspect-ratio: 3/4; border-radius: 12px 18px 18px 12px; box-shadow: 0 18px 32px rgba(10,31,68,0.16), inset 12px 0 0 rgba(255,255,255,0.35); overflow: hidden; display:flex; flex-direction:column; justify-content:space-between; padding: 18px; color:#0A1F44; }
+        .cbse-book { position: relative; aspect-ratio: 3/4; border-radius: 12px 18px 18px 12px; box-shadow: 0 18px 32px rgba(10,31,68,0.16), inset 12px 0 0 rgba(255,255,255,0.35); overflow: hidden; display:flex; flex-direction:column; justify-content:space-between; padding: 18px; color:#0A1F44; cursor: pointer; transition: transform 0.35s cubic-bezier(.22,.9,.34,1), box-shadow 0.35s ease; }
         .cbse-book::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:6px; background: repeating-linear-gradient(180deg, rgba(10,31,68,0.15) 0 6px, transparent 6px 14px); }
         .cbse-book .tape { position:absolute; top:14px; right:14px; background:#DC2626; color:#fff; font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px; border-radius: 999px; text-transform:uppercase; }
+        /* Dim overlay on hover — draws attention to the reveal pill */
+        .cbse-book::after {
+          content:''; position:absolute; inset:0; background: linear-gradient(180deg, rgba(10,31,68,0.42) 0%, rgba(10,31,68,0.62) 100%);
+          opacity: 0; transition: opacity 0.3s ease; pointer-events:none; z-index: 3;
+        }
+        .cbse-book:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 26px 48px rgba(10,31,68,0.24), inset 12px 0 0 rgba(255,255,255,0.35); }
+        .cbse-book:hover::after { opacity: 1; }
+        /* Reveal pill floating over the book on hover — click on card also opens sample */
+        .cbse-book-reveal {
+          position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 14px));
+          z-index: 4; opacity: 0; transition: opacity 0.28s ease, transform 0.35s cubic-bezier(.22,.9,.34,1);
+          display: inline-flex; align-items: center; gap: 8px;
+          background: #DC2626; color: #fff; padding: 10px 16px; border-radius: 999px;
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-size: 11px; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase;
+          box-shadow: 0 12px 28px rgba(220,38,38,0.45); pointer-events: none; white-space: nowrap;
+        }
+        .cbse-book:hover .cbse-book-reveal { opacity: 1; transform: translate(-50%, -50%); }
+        /* Focus-visible parity for keyboard users */
+        .cbse-book:focus-visible { outline: 3px solid #DC2626; outline-offset: 3px; }
+        .cbse-book:focus-visible::after { opacity: 1; }
+        .cbse-book:focus-visible .cbse-book-reveal { opacity: 1; transform: translate(-50%, -50%); }
+        /* On touch devices there's no hover — always keep pill dimly visible so users see the affordance */
+        @media (hover: none) {
+          .cbse-book::after { opacity: 0.35; }
+          .cbse-book-reveal { opacity: 0.95; transform: translate(-50%, -50%); box-shadow: 0 8px 18px rgba(220,38,38,0.4); }
+        }
 
         /* Sticky mobile CTA bar */
         .icse-mobile-cta {
@@ -609,7 +636,14 @@ export default function CBSECTAILanding() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
           {BOOK_GRADES.map(({ grade, tint }) => (
             <div key={grade} className="group" data-testid={`cbse-book-grade-${grade}`}>
-              <div className="cbse-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
+              <button
+                type="button"
+                onClick={() => setActiveBook(grade)}
+                aria-label={`Open Grade ${grade} CT & AI sample book`}
+                className="cbse-book w-full text-left"
+                style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)`, border: 'none' }}
+                data-testid={`cbse-book-card-${grade}`}
+              >
                 <span className="tape">CBSE · CT+AI</span>
                 <div className="mt-8">
                   <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
@@ -618,7 +652,11 @@ export default function CBSECTAILanding() {
                 <div>
                   <div className="icse-light text-[11px] text-[#0A1F44]/80 leading-snug">Computational Thinking + AI · Aligned to CBSE Acad-15/2026</div>
                 </div>
-              </div>
+                {/* Hover / touch reveal pill — floats over the book */}
+                <span className="cbse-book-reveal" aria-hidden="true">
+                  <PlayCircle className="w-3.5 h-3.5" /> View Sample
+                </span>
+              </button>
               <button
                 onClick={() => setActiveBook(grade)}
                 className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#DC2626] hover:text-[#B91C1C]"
