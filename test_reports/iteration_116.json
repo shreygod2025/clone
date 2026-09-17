@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only SEO/mobile testing for 5 school landing pages. All primary acceptance criteria PASS: pages render, breadcrumbs visible with correct data-testids, related-programs modules render 4 cards each, canonical URLs correct, both alias & canonical routes serve same page, sitemap.xml returns 200 with all 5 URLs, mobile 390x844 has no horizontal scroll on any page, cross-page navigation from CBSE CT&AI → ICSE Future Skills works (URL updates to SEO slug, target breadcrumb renders), no JS console/pageerror events.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Future Skills (both CBSE & ICSE)", "issues": ["Page title is 69 chars (exceeds spec target of <65). Actual: 'CBSE Future Skills · ICT + Coding + AI + Robotics (Classes 1-8) | OLL'. May cause Google SERP truncation.", "Meta description is 168 chars (spec target ~160/<165). Slightly over recommended SERP display length."]},
+      {"screen": "Beginner Robotics", "issues": ["Canonical URL uses production domain 'https://oll.co/school/robotics/beginner' while the other 4 pages use the preview/current-host domain in canonical. Inconsistent — recommend all canonicals point to the same production origin (oll.co) for SEO consistency."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Trim Future Skills (both CBSE & ICSE) page title from 69 to <=65 chars (e.g., 'CBSE Future Skills · ICT+Coding+AI+Robotics (1-8) | OLL' = 55 chars).",
+    "Trim Future Skills meta description from 168 to <=165 chars.",
+    "Make canonical origin consistent across all 5 pages — either all use production oll.co domain, or all use current host. Currently only Beginner Robotics hardcodes oll.co."
+  ],
+  "critical_code_review_comments": [
+    "Canonical URL construction is inconsistent across the 4 landing components — Beginner Robotics hardcodes 'https://oll.co/...', others derive from window.location.origin. Centralize in a helper.",
+    "Related-programs cards use anchor tags with href — good for SEO (crawlable); confirmed 4 cards on each of the 5 pages."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested per request)", "frontend": "100% on required flows; 3 minor SEO polish issues"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "5 school landing pages verified: /school/cs/cbse-ct-ai (+canonical /school/cs/computational-thinking-and-ai-classes-3-to-8), /school/cs/future-skills-cbse (+canonical /school/cs/cbse-future-skills-classes-1-to-8), /school/cs/future-skills-icse (+canonical /school/cs/icse-future-skills-classes-1-to-8), /school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th, /school/robotics/beginner. All breadcrumb data-testids (cbse-breadcrumbs, fs-cbse-breadcrumbs, fs-icse-breadcrumbs, icse-breadcrumbs, rb-breadcrumbs) and related-programs testids working desktop+mobile. Sitemap OK. No console errors. Backend not tested (not requested).",
+  "rca of the issue": "N/A — no critical bugs. Only 3 cosmetic SEO polish deviations (2 title/desc length overflow on Future Skills pages, 1 canonical origin inconsistency on Beginner Robotics)."
+}

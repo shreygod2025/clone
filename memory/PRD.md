@@ -24,6 +24,31 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **SEO + mobile hardening for all 4 school landing pages**
+  (CBSE CT & AI, ICSE Future Skills, CBSE Future Skills, ICSE Robotics 9-10,
+  Beginner Robotics). Tested via testing_agent iteration_116 — all PASS.
+  - Trimmed `<title>` to ≤63 chars and meta description to ≤160 chars on
+    every landing page (SERP-safe).
+  - Switched canonical URLs to keyword-rich slugs (short original routes are
+    kept as aliases so any inbound backlinks continue to work):
+    - CBSE CT&AI  → `/school/cs/computational-thinking-and-ai-classes-3-to-8`
+    - ICSE Future Skills → `/school/cs/icse-future-skills-classes-1-to-8`
+    - CBSE Future Skills → `/school/cs/cbse-future-skills-classes-1-to-8`
+  - Added a shared **`SchoolBreadcrumbs`** component
+    (`/app/frontend/src/components/school/SchoolBreadcrumbs.jsx`) that
+    renders a visible breadcrumb trail AND overwrites the page's JSON-LD
+    `BreadcrumbList` schema (via matching `schemaId`) so the visible trail
+    and structured data stay in sync.
+  - Added a shared **`SchoolRelatedPrograms`** component
+    (`/app/frontend/src/components/school/SchoolRelatedPrograms.jsx`) —
+    renders 4 keyword-rich cross-links to the other landing pages just
+    before the footer. Builds topical authority + gives principals a
+    next-step without bouncing back to the homepage. Supports dark theme
+    (used on Beginner Robotics page).
+  - Appended all 5 school landing URLs to `/app/frontend/public/sitemap.xml`
+    under a new "Tier 5b" block with `priority=0.9-0.95` and weekly
+    changefreq.
+
 - **Feb 2026** — New landing funnel: **CBSE Computational Thinking & AI
   (Classes 3–8)** at `/school/cs/cbse-ct-ai` (aliases: `/school/cs/cbse`,
   `/school/cs/computational-thinking-and-ai-classes-3-to-8`).
