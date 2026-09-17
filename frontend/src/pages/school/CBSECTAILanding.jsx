@@ -107,11 +107,9 @@ const BOOK_GRADES = [
     cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2ak773b5_WhatsApp%20Image%202026-09-17%20at%2012.48.42.jpeg',
   },
   {
-    // Grade 8 cover still pending from the OLL creative team — falls back to
-    // the tint-and-label placeholder card below.
     grade: 8, tint: '#FDBA74',
     flipbook: 'https://heyzine.com/flip-book/d2604cddf5.html',
-    cover: null,
+    cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ebsfr0fv_WhatsApp%20Image%202026-09-17%20at%2012.48.43.jpeg',
   },
 ];
 
@@ -360,15 +358,45 @@ export default function CBSECTAILanding() {
         .icse-orb-gold { position:absolute; width:340px; height:340px; border-radius:50%; background:rgba(245,158,11,0.16); filter:blur(90px); pointer-events:none; }
 
         /* Book cover placeholder — spiral binding + tape effect */
-        .cbse-book { position: relative; aspect-ratio: 3/4; border-radius: 12px 18px 18px 12px; box-shadow: 0 18px 32px rgba(10,31,68,0.16), inset 12px 0 0 rgba(255,255,255,0.35); overflow: hidden; display:flex; flex-direction:column; justify-content:space-between; padding: 18px; color:#0A1F44; cursor: pointer; transition: transform 0.35s cubic-bezier(.22,.9,.34,1), box-shadow 0.35s ease; }
-        .cbse-book::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:6px; background: repeating-linear-gradient(180deg, rgba(10,31,68,0.15) 0 6px, transparent 6px 14px); }
+        /* Book card — styled to look like a real hardback: sharp corners on
+           the right (page edge), a subtle spine notch on the left, and a
+           two-layer directional shadow that reads as a physical volume
+           standing on a shelf. */
+        .cbse-book {
+          position: relative; aspect-ratio: 3/4; border-radius: 0; overflow: hidden;
+          display:flex; flex-direction:column; justify-content:space-between;
+          padding: 18px; color:#0A1F44; cursor: pointer;
+          transition: transform 0.35s cubic-bezier(.22,.9,.34,1), box-shadow 0.35s ease;
+          /* physical-book shadow: soft ambient + tight bottom-right lift + inner
+             page-block highlight along the top edge */
+          box-shadow:
+            0 22px 34px -12px rgba(10,31,68,0.28),
+            0 10px 18px -6px rgba(10,31,68,0.16),
+            inset 0 1px 0 rgba(255,255,255,0.6);
+        }
+        /* Spine — a darker vertical bar hugging the left edge of the cover,
+           plus a lighter "page block" strip that peeks out just to its right
+           to hint at the printed page edges. */
+        .cbse-book::before {
+          content:''; position:absolute; left:0; top:0; bottom:0; width:10px;
+          background:
+            linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.12) 55%, rgba(0,0,0,0) 100%),
+            linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0) 40%);
+          z-index: 5; pointer-events:none;
+        }
         .cbse-book .tape { position:absolute; top:14px; right:14px; background:#DC2626; color:#fff; font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px; border-radius: 999px; text-transform:uppercase; }
         /* Dim overlay on hover — draws attention to the reveal pill */
         .cbse-book::after {
           content:''; position:absolute; inset:0; background: linear-gradient(180deg, rgba(10,31,68,0.42) 0%, rgba(10,31,68,0.62) 100%);
           opacity: 0; transition: opacity 0.3s ease; pointer-events:none; z-index: 3;
         }
-        .cbse-book:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 26px 48px rgba(10,31,68,0.24), inset 12px 0 0 rgba(255,255,255,0.35); }
+        .cbse-book:hover {
+          transform: translateY(-6px) scale(1.015);
+          box-shadow:
+            0 32px 44px -14px rgba(10,31,68,0.4),
+            0 14px 22px -8px rgba(10,31,68,0.24),
+            inset 0 1px 0 rgba(255,255,255,0.7);
+        }
         .cbse-book:hover::after { opacity: 1; }
         /* Reveal pill floating over the book on hover — click on card also opens sample */
         .cbse-book-reveal {
@@ -389,6 +417,13 @@ export default function CBSECTAILanding() {
         @media (hover: none) {
           .cbse-book::after { opacity: 0.35; }
           .cbse-book-reveal { opacity: 0.95; transform: translate(-50%, -50%); box-shadow: 0 8px 18px rgba(220,38,38,0.4); }
+        }
+        /* Page-edge sliver on the RIGHT — thin cream line that reads as the
+           closed page-block opposite the spine. Kept behind hover overlay. */
+        .cbse-book-page-edge {
+          position: absolute; top: 3px; bottom: 3px; right: 0; width: 4px;
+          background: linear-gradient(90deg, rgba(0,0,0,0.14) 0%, rgba(255,252,243,0.9) 40%, rgba(255,252,243,1) 100%);
+          z-index: 2; pointer-events: none;
         }
 
         /* Sticky mobile CTA bar */
@@ -696,6 +731,8 @@ export default function CBSECTAILanding() {
                 <span className="cbse-book-reveal" aria-hidden="true">
                   <PlayCircle className="w-3.5 h-3.5" /> View Sample
                 </span>
+                {/* Page-edge sliver on the right — sells the "physical book" look */}
+                <span className="cbse-book-page-edge" aria-hidden="true" />
               </button>
               <button
                 onClick={() => setActiveBook(grade)}
