@@ -81,12 +81,38 @@ const CBSE_CIRCULAR_URL =
 
 // Book grades — placeholders until real cover art lands.
 const BOOK_GRADES = [
-  { grade: 3, tint: '#FDE68A', flipbook: 'https://heyzine.com/flip-book/0cac3d9b13.html' },
-  { grade: 4, tint: '#FCA5A5', flipbook: 'https://heyzine.com/flip-book/9917b67b4c.html' },
-  { grade: 5, tint: '#A5F3FC', flipbook: 'https://heyzine.com/flip-book/2550968eb2.html' },
-  { grade: 6, tint: '#C4B5FD', flipbook: 'https://heyzine.com/flip-book/9611e996e4.html' },
-  { grade: 7, tint: '#86EFAC', flipbook: 'https://heyzine.com/flip-book/18f57cfdcc.html' },
-  { grade: 8, tint: '#FDBA74', flipbook: 'https://heyzine.com/flip-book/d2604cddf5.html' },
+  {
+    grade: 3, tint: '#FDE68A',
+    flipbook: 'https://heyzine.com/flip-book/0cac3d9b13.html',
+    cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/v94lyklh_WhatsApp%20Image%202026-09-17%20at%2012.42.49.jpeg',
+  },
+  {
+    grade: 4, tint: '#FCA5A5',
+    flipbook: 'https://heyzine.com/flip-book/9917b67b4c.html',
+    cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/vhakayng_WhatsApp%20Image%202026-09-17%20at%2012.42.48.jpeg',
+  },
+  {
+    grade: 5, tint: '#A5F3FC',
+    flipbook: 'https://heyzine.com/flip-book/2550968eb2.html',
+    cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/p1p3y0gd_WhatsApp%20Image%202026-09-17%20at%2012.47.22.jpeg',
+  },
+  {
+    grade: 6, tint: '#C4B5FD',
+    flipbook: 'https://heyzine.com/flip-book/9611e996e4.html',
+    cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ewifqlkn_WhatsApp%20Image%202026-09-17%20at%2012.47.22%20%281%29.jpeg',
+  },
+  {
+    grade: 7, tint: '#86EFAC',
+    flipbook: 'https://heyzine.com/flip-book/18f57cfdcc.html',
+    cover: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/2ak773b5_WhatsApp%20Image%202026-09-17%20at%2012.48.42.jpeg',
+  },
+  {
+    // Grade 8 cover still pending from the OLL creative team — falls back to
+    // the tint-and-label placeholder card below.
+    grade: 8, tint: '#FDBA74',
+    flipbook: 'https://heyzine.com/flip-book/d2604cddf5.html',
+    cover: null,
+  },
 ];
 
 const CT_PILLARS = [
@@ -634,24 +660,38 @@ export default function CBSECTAILanding() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
-          {BOOK_GRADES.map(({ grade, tint }) => (
+          {BOOK_GRADES.map(({ grade, tint, cover }) => (
             <div key={grade} className="group" data-testid={`cbse-book-grade-${grade}`}>
               <button
                 type="button"
                 onClick={() => setActiveBook(grade)}
                 aria-label={`Open Grade ${grade} CT & AI sample book`}
                 className="cbse-book w-full text-left"
-                style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)`, border: 'none' }}
+                style={cover
+                  ? { background: '#ffffff', border: 'none', padding: 0 }
+                  : { background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)`, border: 'none' }}
                 data-testid={`cbse-book-card-${grade}`}
               >
-                <span className="tape">CBSE · CT+AI</span>
-                <div className="mt-8">
-                  <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
-                  <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '2rem' }}>Grade {grade}</div>
-                </div>
-                <div>
-                  <div className="icse-light text-[11px] text-[#0A1F44]/80 leading-snug">Computational Thinking + AI · Aligned to CBSE Acad-15/2026</div>
-                </div>
+                {cover ? (
+                  <img
+                    src={cover}
+                    alt={`OLL CBSE Grade ${grade} Computational Thinking & AI workbook cover`}
+                    loading="lazy"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 1 }}
+                    data-testid={`cbse-book-cover-${grade}`}
+                  />
+                ) : (
+                  <>
+                    <span className="tape">CBSE · CT+AI</span>
+                    <div className="mt-8">
+                      <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
+                      <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '2rem' }}>Grade {grade}</div>
+                    </div>
+                    <div>
+                      <div className="icse-light text-[11px] text-[#0A1F44]/80 leading-snug">Computational Thinking + AI · Aligned to CBSE Acad-15/2026</div>
+                    </div>
+                  </>
+                )}
                 {/* Hover / touch reveal pill — floats over the book */}
                 <span className="cbse-book-reveal" aria-hidden="true">
                   <PlayCircle className="w-3.5 h-3.5" /> View Sample
