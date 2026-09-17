@@ -73,9 +73,39 @@ const SCHOOL_VIDEOS = [
 ];
 
 const BOOK_GRADES = [
+  { grade: 1, tint: '#FEE2E2' }, { grade: 2, tint: '#DBEAFE' },
   { grade: 3, tint: '#FDE68A' }, { grade: 4, tint: '#FCA5A5' },
   { grade: 5, tint: '#A5F3FC' }, { grade: 6, tint: '#C4B5FD' },
   { grade: 7, tint: '#86EFAC' }, { grade: 8, tint: '#FDBA74' },
+];
+
+// Grade-wise Robotics "Innovative Projects" — actual project names from the book.
+const ROBOTICS_PROJECTS = {
+  1: ['Funny Spectacles', 'Fidget Spinner', 'See-Saw', 'Ball Shooter'],
+  2: ['Scissor Gripper', 'Railway Barrier', 'Simple Torch', 'Shadow Projector'],
+  3: ['Motorcycle', 'Motorised Seesaw', 'Windshield Wiper', 'Turtle Robot'],
+  4: ['Retractable Single Bridge', 'Dark to Go Robot', 'Chameleon', 'Lifting Crane'],
+  5: ['Table Fan', 'Edge-Avoiding Robot', '4-Legged Monster', 'Show Hand to Seek'],
+  6: ['Bi-directional Elevator', 'Contactless Water Fetcher', 'Show Hand to Go', 'Racing Car'],
+  7: ['Roller Blinds', 'Bi-ped Rickshaw', 'Overhauling Crane Mechanism', 'The Car Lift'],
+  8: ['Contactless Door', 'Ball Dribbling Companion', 'Smart Vault System', 'Sliding Door Mechanism'],
+};
+
+// Virtual Lab tools — mirrors the middle column of the marketing brochure.
+const VIRTUAL_LAB_TOOLS = [
+  { name: 'Scratch',    color: '#F5A623', letter: 'S' },
+  { name: 'HTML5',      color: '#E44D26', letter: 'H' },
+  { name: 'CSS3',       color: '#2965F1', letter: 'C' },
+  { name: 'JavaScript', color: '#F7DF1E', letter: 'JS', dark: true },
+  { name: 'Python',     color: '#3776AB', letter: 'Py' },
+  { name: 'TypeScript', color: '#3178C6', letter: 'TS' },
+  { name: 'Java',       color: '#EA2D2E', letter: 'J' },
+  { name: 'C',          color: '#00599C', letter: 'C' },
+  { name: 'SQL',        color: '#00758F', letter: 'SQL' },
+  { name: 'Excel',      color: '#217346', letter: 'X' },
+];
+const VIRTUAL_LAB_FEATURES = [
+  'No Separate Login', 'No App Download', 'No Subscription', 'All Files in 1 Place',
 ];
 
 // Grade-wise curriculum index extracted from the official
@@ -366,6 +396,15 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         .fs-book::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:6px; background: repeating-linear-gradient(180deg, rgba(10,31,68,0.15) 0 6px, transparent 6px 14px); }
         .fs-book .tape { position:absolute; top:14px; right:14px; background:#DC2626; color:#fff; font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px; border-radius: 999px; text-transform:uppercase; }
 
+        /* 4-pillar animated tiles (replaces the flat hero image) */
+        @keyframes fs-pillar-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fs-icon-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .fs-pillar-card { animation: fs-pillar-in .8s cubic-bezier(.22,.9,.34,1) both; transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
+        .fs-pillar-card .fs-pillar-icon { animation: fs-icon-float 4s ease-in-out infinite; }
+        .fs-pillar-card:hover { transform: translateY(-6px); }
+        .fs-pillar-glow { position: absolute; inset: 0; opacity: 0; transition: opacity 0.35s ease; pointer-events: none; }
+        .fs-pillar-card:hover .fs-pillar-glow { opacity: 1; }
+
         .icse-mobile-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0)); display: none; gap: 8px; background: rgba(255,255,255,0.96); backdrop-filter: saturate(180%) blur(14px); border-top: 1px solid rgba(10,31,68,0.08); box-shadow: 0 -12px 32px rgba(10,31,68,0.10); }
         .icse-mobile-cta .icse-btn { flex: 1; justify-content: center; padding: 12px 14px !important; font-size: 0.75rem !important; }
 
@@ -524,81 +563,119 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
       {/* ══════════ SECTION 2 · INTRODUCING FUTURE SKILLS ══════════ */}
       <section className="relative overflow-hidden" data-testid="fs-intro" aria-labelledby="fs-intro-heading"
         style={{ background: 'linear-gradient(180deg, #F5F8FF 0%, #FFFFFF 100%)', padding: '4rem 1.25rem' }}>
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.1fr] gap-10 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="icse-eyebrow text-emerald-700">The OLL solution</span>
-            </div>
-            <div className="icse-script text-[#DC2626] text-3xl mt-4">introducing</div>
-            <h2 id="fs-intro-heading" className="icse-hero-h text-[#0A1F44] mt-1" style={{ fontSize: 'clamp(2rem, 5.5vw, 3.6rem)' }}>
-              Future Skills.<br/><span style={{ color: '#DC2626' }}>4 subjects, 1 curriculum.</span>
-            </h2>
-            <p className="icse-light text-slate-700 mt-4 text-base sm:text-lg">
-              One integrated program for <strong className="font-bold text-[#0A1F44]">Grades 1-8</strong> that combines <strong>ICT · Coding · AI · Robotics</strong> —
-              taught in a single weekly period, with a single book per grade, by a single teacher, using a single curriculum.
-              Trusted by 500+ schools across India for both <strong>ICSE</strong> and <strong>CBSE</strong> boards.
-            </p>
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="icse-eyebrow text-emerald-700">The OLL solution</span>
+          </div>
+          <div className="icse-script text-[#DC2626] text-3xl mt-4">introducing</div>
+          <h2 id="fs-intro-heading" className="icse-hero-h text-[#0A1F44] mt-1" style={{ fontSize: 'clamp(2rem, 5.5vw, 3.6rem)' }}>
+            Future Skills.<br/><span style={{ color: '#DC2626' }}>4 subjects, 1 curriculum.</span>
+          </h2>
+          <p className="icse-light text-slate-700 mt-4 text-base sm:text-lg max-w-2xl mx-auto">
+            One integrated program for <strong className="font-bold text-[#0A1F44]">Grades 1-8</strong> that combines <strong>ICT · Coding · AI · Robotics</strong> —
+            taught in a single weekly period, with a single book per grade, by a single teacher, using a single curriculum.
+            Trusted by 500+ schools across India for both <strong>ICSE</strong> and <strong>CBSE</strong> boards.
+          </p>
 
-            {/* Value pills */}
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="fs-value-pills">
-              {[
-                { i: Layers, k: '4 in 1', v: 'Curriculum' },
-                { i: Clock,  k: '1',      v: 'Period/week' },
-                { i: BookOpen, k: '1',    v: 'Book/grade' },
-                { i: Zap,    k: '80%',    v: 'Less overhead' },
-              ].map((s) => (
-                <div key={s.v} className="bg-white/80 border border-slate-100 rounded-2xl px-3 py-3 text-center">
-                  <s.i className="w-4 h-4 text-[#DC2626] mx-auto" />
-                  <div className="icse-display text-xl text-[#0A1F44] mt-1">{s.k}</div>
-                  <div className="icse-eyebrow text-slate-500 mt-0.5" style={{ fontSize: '0.55rem' }}>{s.v}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-7 flex flex-wrap gap-3">
-              <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-intro-cta">
-                Book a School Demo <ArrowRight className="w-4 h-4" />
-              </button>
-              <button type="button" onClick={openBrochureModal} className="icse-btn outline" data-testid="fs-intro-download">
-                <Download className="w-4 h-4" /> Download Brochure
-              </button>
-            </div>
+          {/* Value pills */}
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto" data-testid="fs-value-pills">
+            {[
+              { i: Layers,   k: '4 in 1', v: 'Curriculum' },
+              { i: Clock,    k: '1',      v: 'Period/week' },
+              { i: BookOpen, k: '1',      v: 'Book/grade' },
+              { i: Zap,      k: '80%',    v: 'Less overhead' },
+            ].map((s) => (
+              <div key={s.v} className="bg-white/80 border border-slate-100 rounded-2xl px-3 py-3 text-center">
+                <s.i className="w-4 h-4 text-[#DC2626] mx-auto" />
+                <div className="icse-display text-xl text-[#0A1F44] mt-1">{s.k}</div>
+                <div className="icse-eyebrow text-slate-500 mt-0.5" style={{ fontSize: '0.55rem' }}>{s.v}</div>
+              </div>
+            ))}
           </div>
 
-          {/* Product hero — the marketing image the user shared */}
-          <div className="relative">
-            <div className="relative bg-white rounded-[32px] border border-slate-100 shadow-2xl p-4 sm:p-6 icse-anim-float">
-              <div className="absolute -top-3 -right-3 bg-[#DC2626] text-white rounded-full text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-lg">
-                {board} · Grades 1-8
-              </div>
-              <img src={FS_HERO_IMG} alt="OLL Future Skills 4-in-1 book, virtual labs and curriculum flow — ICT, Coding, AI, Robotics"
-                loading="lazy" className="w-full h-auto rounded-2xl" data-testid="fs-hero-image" />
-            </div>
+          <div className="mt-7 flex flex-wrap gap-3 justify-center">
+            <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-intro-cta">
+              Book a School Demo <ArrowRight className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={openBrochureModal} className="icse-btn outline" data-testid="fs-intro-download">
+              <Download className="w-4 h-4" /> Download Brochure
+            </button>
           </div>
         </div>
 
-        {/* 4-in-1 breakdown grid */}
+        {/* 4-pillar animated showcase (replaces the flat marketing image) */}
         <div className="max-w-6xl mx-auto mt-14" data-testid="fs-4in1">
           <div className="text-center">
             <div className="icse-eyebrow text-rose-600">The 4-in-1</div>
             <h3 className="icse-display text-[#0A1F44] text-2xl sm:text-3xl mt-1">One curriculum, four superpowers</h3>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2 text-sm">Every {board} student in Grades 1-8 learns four future-ready disciplines under one integrated program.</p>
           </div>
-          <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="fs-pillars-animated">
             {[
-              { icon: Monitor, title: 'Digital & Cyber Literacy', body: 'Google Suite · Digital citizenship · Online safety · MS Office ready.',       color: '#3B82F6' },
-              { icon: Code2,   title: 'Coding & Computational',   body: 'Blockly · Scratch · HTML · CSS · JavaScript · Python — grade-appropriate.',  color: '#10B981' },
-              { icon: Brain,   title: 'Artificial Intelligence',  body: 'How AI learns · Ethics · Everyday AI · Simple ML projects.',                 color: '#8B5CF6' },
-              { icon: Bot,     title: 'Robotics',                 body: 'Circuits · Sensors · Actuators · Build-your-own bots (starter kit).',        color: '#DC2626' },
-            ].map(({ icon: Icon, title, body, color }) => (
-              <div key={title} className="icse-card p-5 text-center">
-                <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center" style={{ background: color }}>
-                  <Icon className="w-6 h-6 text-white" />
+              { icon: Monitor, title: 'Digital & Cyber Literacy', body: 'Google Suite · Digital citizenship · Online safety · MS Office ready.',       color: '#3B82F6', chips: ['Word', 'Excel', 'PPT', 'Docs', 'Sheets'] },
+              { icon: Code2,   title: 'Coding & Computational',   body: 'Blockly · Scratch · HTML · CSS · JavaScript · Python — grade-appropriate.',  color: '#10B981', chips: ['Blockly', 'Scratch', 'HTML', 'CSS', 'JS', 'Python'] },
+              { icon: Brain,   title: 'Artificial Intelligence',  body: 'How AI learns · Ethics · Everyday AI · Simple ML projects.',                 color: '#8B5CF6', chips: ['ML for Kids', 'Vision', 'GenAI', 'Ethics'] },
+              { icon: Bot,     title: 'Robotics',                 body: 'Circuits · Sensors · Actuators · Build-your-own bots (starter kit).',        color: '#DC2626', chips: ['Kit', 'Sensors', 'Actuators', 'Bots'] },
+            ].map(({ icon: Icon, title, body, color, chips }, i) => (
+              <div key={title} className="fs-pillar-card icse-card p-5 text-center overflow-hidden relative" style={{ animationDelay: `${i * 0.14}s` }}>
+                <div className="fs-pillar-glow" style={{ background: `radial-gradient(circle at 50% 0%, ${color}25 0%, transparent 60%)` }} />
+                <div className="fs-pillar-icon w-16 h-16 rounded-2xl mx-auto flex items-center justify-center relative" style={{ background: `linear-gradient(135deg, ${color}, ${color}CC)`, boxShadow: `0 14px 30px ${color}44` }}>
+                  <Icon className="w-8 h-8 text-white" />
                 </div>
-                <div className="icse-display text-[#0A1F44] text-base mt-3">{title}</div>
-                <div className="icse-light text-xs text-slate-600 mt-1.5">{body}</div>
+                <div className="icse-display text-[#0A1F44] text-base mt-4 font-semibold">{title}</div>
+                <div className="icse-light text-xs text-slate-600 mt-1.5 leading-relaxed">{body}</div>
+                <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                  {chips.map((c) => (
+                    <span key={c} style={{ background: `${color}14`, color, border: `1px solid ${color}33`, padding: '3px 9px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{c}</span>
+                  ))}
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Virtual Lab tools chart — mirrors the middle column of the brochure */}
+        <div className="max-w-5xl mx-auto mt-14" data-testid="fs-tools-chart">
+          <div className="text-center">
+            <div className="icse-eyebrow text-rose-600">Virtual Labs</div>
+            <h3 className="icse-display text-[#0A1F44] text-2xl sm:text-3xl mt-1">Every tool your students need — in one browser tab</h3>
+          </div>
+          <div className="mt-8 rounded-[28px] border border-slate-200 bg-white shadow-xl p-6 sm:p-8 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+            {/* Left — tool logo grid */}
+            <div className="grid grid-cols-5 gap-3">
+              {VIRTUAL_LAB_TOOLS.map((t) => (
+                <div key={t.name} className="group text-center" data-testid={`fs-tool-${t.name.toLowerCase()}`}>
+                  <div style={{
+                    width: '100%', aspectRatio: '1 / 1', borderRadius: 14, background: t.color,
+                    color: t.dark ? '#0A1F44' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.02em', boxShadow: `0 8px 20px ${t.color}44`,
+                    transition: 'transform 0.25s ease',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}>
+                    {t.letter}
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1.5">{t.name}</div>
+                </div>
+              ))}
+            </div>
+            {/* Right — feature bullets */}
+            <div className="border-l border-slate-100 pl-6 sm:pl-8">
+              <ul className="space-y-3">
+                {VIRTUAL_LAB_FEATURES.map((f) => (
+                  <li key={f} className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#10B98115' }}>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <span className="icse-display text-[#0A1F44] text-base font-semibold">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="icse-light text-xs text-slate-500 mt-4 pt-4 border-t border-slate-100">
+                One login carries every child from Scratch in Grade 3 to Python + SQL in Grade 8 — no separate accounts, no extra fees.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -667,7 +744,10 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         <div className="icse-card p-4 sm:p-6" data-testid={`fs-index-content-${activeIndexGrade}`}>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {PILLAR_META.map(({ key, icon: Icon, color, label }) => {
-              const chapters = CURRICULUM_INDEX[activeIndexGrade]?.[key] || [];
+              const chapters = key === 'Robotics'
+                ? (ROBOTICS_PROJECTS[activeIndexGrade] || [])
+                : (CURRICULUM_INDEX[activeIndexGrade]?.[key] || []);
+              const heading = key === 'Robotics' ? `${label} · Innovative Projects` : label;
               return (
                 <div key={key} className="rounded-2xl p-4 h-full flex flex-col"
                   style={{ background: `${color}0d`, border: `1px solid ${color}33` }}>
@@ -675,7 +755,7 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: color }}>
                       <Icon className="w-4 h-4 text-white" />
                     </div>
-                    <div className="icse-display text-[#0A1F44] text-sm font-semibold" style={{ letterSpacing: '0.01em' }}>{label}</div>
+                    <div className="icse-display text-[#0A1F44] text-sm font-semibold" style={{ letterSpacing: '0.01em' }}>{heading}</div>
                   </div>
                   <ol className="space-y-2 icse-light text-sm text-slate-700 list-none">
                     {chapters.length ? chapters.map((ch, i) => (
@@ -691,7 +771,10 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
             <div className="icse-light text-xs text-slate-500">
-              Grade {activeIndexGrade} · {Object.values(CURRICULUM_INDEX[activeIndexGrade] || {}).reduce((a,b)=>a+b.length,0)} chapters across 4 pillars
+              Grade {activeIndexGrade} · {
+                ['ICT','Coding','AI'].reduce((a,k) => a + (CURRICULUM_INDEX[activeIndexGrade]?.[k]?.length || 0), 0)
+                + (ROBOTICS_PROJECTS[activeIndexGrade]?.length || 0)
+              } chapters &amp; projects across 4 pillars
             </div>
             <button type="button" onClick={openBrochureModal} className="icse-btn primary" style={{ padding: '10px 18px', fontSize: '0.72rem' }} data-testid="fs-index-brochure">
               <Download className="w-3.5 h-3.5" /> Download Full Curriculum
@@ -702,25 +785,25 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
 
       {/* ── 4a · Interactive Books ─────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-books" aria-labelledby="fs-books-heading">
-        <div className="mb-10 text-center sm:text-left">
+        <div className="mb-10 text-center">
           <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
           <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
-          <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 3 to 8</h3>
-          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto sm:mx-0">
+          <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 1 to 8</h3>
+          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto">
             A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
             real-world AI stories and reflection prompts. Sample chapters open in-page.
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5">
           {BOOK_GRADES.map(({ grade, tint }) => (
             <div key={grade} className="group" data-testid={`fs-book-grade-${grade}`}>
               <div className="fs-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
                 <span className="tape">Future Skills</span>
                 <div className="mt-8">
                   <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
-                  <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '2rem' }}>Grade {grade}</div>
+                  <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '1.7rem' }}>Grade {grade}</div>
                 </div>
-                <div><div className="icse-light text-[11px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
+                <div><div className="icse-light text-[10px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
               </div>
               <button onClick={() => setActiveBook(grade)}
                 className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#DC2626] hover:text-[#B91C1C]"
@@ -737,16 +820,17 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
 
       {/* ── 4b · Virtual Lab ───────────────────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-virtual-lab" aria-labelledby="fs-vlab-heading">
+        <div className="text-center mb-10">
+          <div className="icse-eyebrow text-rose-600">Speciality · 02</div>
+          <div className="icse-script text-[#DC2626] text-3xl">play → practise → master</div>
+          <h3 id="fs-vlab-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Virtual Labs for Future Skills</h3>
+          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto">
+            A browser-first playground with all the languages and tools your students need — Scratch, Python, HTML/CSS/JS, C, SQL, Excel — plus AI game simulations and mini robots. Every activity maps to a chapter from the book.
+          </p>
+        </div>
         <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
           <div>
-            <div className="icse-eyebrow text-rose-600">Speciality · 02</div>
-            <div className="icse-script text-[#DC2626] text-3xl">play → practise → master</div>
-            <h3 id="fs-vlab-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Virtual Labs for Future Skills</h3>
-            <p className="icse-light text-slate-600 mt-4">
-              A browser-first playground with all the languages and tools your students need — Scratch, Python, HTML/CSS/JS, C, SQL, Excel — plus AI game simulations
-              and mini robots. Every activity maps to a chapter from the book.
-            </p>
-            <ul className="mt-5 space-y-2.5 icse-light text-sm text-slate-700">
+            <ul className="space-y-2.5 icse-light text-sm text-slate-700">
               {[
                 'No separate login. No app to download. No subscription.',
                 'Runs in-browser, on any school computer — Chromebook, Windows, Mac.',
@@ -755,7 +839,7 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
                 <li key={t} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" /><span>{t}</span></li>
               ))}
             </ul>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
               <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-vlab-cta">
                 See the Lab Live <ArrowRight className="w-4 h-4" />
               </button>
