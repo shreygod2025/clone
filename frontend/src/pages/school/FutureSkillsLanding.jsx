@@ -391,6 +391,126 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         }
         .fs-drip { animation: fs-drip .7s ease-out both; }
 
+        /* ── STAGE CURTAIN REVEAL (Section 2 · Introducing) ── */
+        .fs-stage {
+          position: relative;
+          padding: 60px 24px 48px;
+          border-radius: 32px;
+          overflow: hidden;
+          background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 40px 80px rgba(0,0,0,0.4);
+        }
+        .fs-stage-content { position: relative; z-index: 3; }
+        /* Curtain panels */
+        .fs-curtain {
+          position: absolute; top: 0; bottom: 0; width: 52%;
+          background:
+            repeating-linear-gradient(90deg,
+              #8B0F1E 0px, #B91C1C 12px, #7F1123 24px, #B91C1C 36px, #8B0F1E 48px),
+            linear-gradient(180deg, #9B1B22 0%, #6E0F1B 100%);
+          box-shadow: inset -30px 0 60px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.4);
+          z-index: 2;
+          transform-origin: top center;
+          animation: fs-curtain-open 2.2s cubic-bezier(.7,.05,.35,1) 0.35s both;
+        }
+        .fs-curtain-left  { left: 0;  border-right: 4px solid #4C0616; }
+        .fs-curtain-right { right: 0; border-left:  4px solid #4C0616;
+          background:
+            repeating-linear-gradient(90deg,
+              #8B0F1E 0px, #B91C1C 12px, #7F1123 24px, #B91C1C 36px, #8B0F1E 48px),
+            linear-gradient(180deg, #9B1B22 0%, #6E0F1B 100%);
+          box-shadow: inset 30px 0 60px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.4);
+          animation-name: fs-curtain-open-right;
+        }
+        /* Curtain rope decoration on top */
+        .fs-curtain::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 22px;
+          background: linear-gradient(180deg, #4C0616 0%, #8B0F1E 100%);
+          border-bottom: 2px solid #2A040D;
+        }
+        @keyframes fs-curtain-open {
+          0%   { transform: translateX(0) scaleX(1); }
+          100% { transform: translateX(-100%) scaleX(0.75); }
+        }
+        @keyframes fs-curtain-open-right {
+          0%   { transform: translateX(0) scaleX(1); }
+          100% { transform: translateX(100%) scaleX(0.75); }
+        }
+        /* Spotlights */
+        .fs-spotlights { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; animation: fs-spotlights-in 1.6s ease-out 2s both; }
+        .fs-spotlights span { position: absolute; top: -60px; width: 220px; height: 320px;
+          background: radial-gradient(ellipse at top, rgba(252,165,165,0.42) 0%, rgba(252,165,165,0) 65%);
+          filter: blur(6px); transform-origin: top center; }
+        .fs-spotlights span:nth-child(1) { left: 12%; transform: rotate(18deg); }
+        .fs-spotlights span:nth-child(2) { left: 42%; transform: rotate(-4deg); }
+        .fs-spotlights span:nth-child(3) { right: 12%; transform: rotate(-18deg); }
+        @keyframes fs-spotlights-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+        /* Star field */
+        .fs-stage-stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+          background-image:
+            radial-gradient(1px 1px at 12% 22%, #fff 100%, transparent),
+            radial-gradient(1px 1px at 85% 35%, #fff 100%, transparent),
+            radial-gradient(1.5px 1.5px at 48% 68%, #fff 100%, transparent),
+            radial-gradient(1px 1px at 25% 78%, #fff 100%, transparent),
+            radial-gradient(1px 1px at 70% 15%, #fff 100%, transparent),
+            radial-gradient(1.5px 1.5px at 90% 82%, #fff 100%, transparent),
+            radial-gradient(1px 1px at 62% 45%, #fff 100%, transparent);
+          animation: fs-star-twinkle 4s ease-in-out infinite alternate;
+        }
+        @keyframes fs-star-twinkle { 0% { opacity: 0.35; } 100% { opacity: 0.75; } }
+        /* Reveal steps for headline / copy / pills / CTAs */
+        .fs-reveal { opacity: 0; transform: translateY(18px) scale(0.98); animation: fs-reveal-in 0.9s cubic-bezier(.22,.9,.34,1) both; }
+        .fs-reveal-1 { animation-delay: 1.9s; }
+        .fs-reveal-2 { animation-delay: 2.1s; }
+        .fs-reveal-3 { animation-delay: 2.35s; }
+        .fs-reveal-4 { animation-delay: 2.55s; }
+        .fs-reveal-5 { animation-delay: 2.75s; }
+        @keyframes fs-reveal-in { 0% { opacity: 0; transform: translateY(18px) scale(0.98); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* ── 4-IN-1 CONVERGE DIAGRAM ── */
+        .fs-converge { position: relative; padding-top: 20px; padding-bottom: 130px; }
+        .fs-converge-lines {
+          position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.7;
+          display: none;
+        }
+        @media (min-width: 900px) {
+          .fs-converge-lines { display: block; }
+        }
+        .fs-converge-lines .fs-line {
+          stroke-dasharray: 1600;
+          stroke-dashoffset: 1600;
+          animation: fs-line-draw 2.4s ease-in-out forwards;
+        }
+        .fs-converge-lines .fs-line:nth-child(2) { animation-delay: 0.15s; }
+        .fs-converge-lines .fs-line:nth-child(3) { animation-delay: 0.30s; }
+        .fs-converge-lines .fs-line:nth-child(4) { animation-delay: 0.45s; }
+        @keyframes fs-line-draw { to { stroke-dashoffset: 0; } }
+        .fs-converge-pillars {
+          position: relative; z-index: 1;
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+        }
+        @media (max-width: 900px) { .fs-converge-pillars { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .fs-converge-pillars { grid-template-columns: 1fr; } }
+        .fs-converge-merged { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 2; }
+        .fs-converge-badge {
+          display: inline-flex; align-items: center; gap: 12px;
+          padding: 14px 22px; border-radius: 999px;
+          background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+          color: #fff; box-shadow: 0 20px 40px rgba(220,38,38,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
+          position: relative;
+        }
+        .fs-converge-pulse {
+          position: absolute; inset: -6px; border-radius: 999px;
+          border: 2px solid rgba(220,38,38,0.55);
+          animation: fs-pulse-ring 2.4s cubic-bezier(.4,0,.2,1) infinite;
+        }
+        @keyframes fs-pulse-ring {
+          0%   { transform: scale(0.95); opacity: 0.9; }
+          75%  { transform: scale(1.35); opacity: 0; }
+          100% { transform: scale(1.35); opacity: 0; }
+        }
+
         /* Book cover placeholder — spiral binding + tape effect */
         .fs-book { position: relative; aspect-ratio: 3/4; border-radius: 12px 18px 18px 12px; box-shadow: 0 18px 32px rgba(10,31,68,0.16), inset 12px 0 0 rgba(255,255,255,0.35); overflow: hidden; display:flex; flex-direction:column; justify-content:space-between; padding: 18px; color:#0A1F44; }
         .fs-book::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:6px; background: repeating-linear-gradient(180deg, rgba(10,31,68,0.15) 0 6px, transparent 6px 14px); }
@@ -623,78 +743,133 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         </p>
       </section>
 
-      {/* ══════════ SECTION 2 · INTRODUCING FUTURE SKILLS ══════════ */}
+      {/* ══════════ SECTION 2 · INTRODUCING FUTURE SKILLS (curtain reveal) ══════════ */}
       <section className="relative overflow-hidden" data-testid="fs-intro" aria-labelledby="fs-intro-heading"
-        style={{ background: 'linear-gradient(180deg, #F5F8FF 0%, #FFFFFF 100%)', padding: '4rem 1.25rem' }}>
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="icse-eyebrow text-emerald-700">The OLL solution</span>
-          </div>
-          <div className="icse-script text-[#DC2626] text-3xl mt-4">introducing</div>
-          <h2 id="fs-intro-heading" className="icse-hero-h text-[#0A1F44] mt-1" style={{ fontSize: 'clamp(2rem, 5.5vw, 3.6rem)' }}>
-            Future Skills.<br/><span style={{ color: '#DC2626' }}>4 subjects, 1 curriculum.</span>
-          </h2>
-          <p className="icse-light text-slate-700 mt-4 text-base sm:text-lg max-w-2xl mx-auto">
-            One integrated program for <strong className="font-bold text-[#0A1F44]">Grades 1-8</strong> that combines <strong>ICT · Coding · AI · Robotics</strong> —
-            taught in a single weekly period, with a single book per grade, by a single teacher, using a single curriculum.
-            Trusted by 500+ schools across India for both <strong>ICSE</strong> and <strong>CBSE</strong> boards.
-          </p>
+        style={{
+          background: 'radial-gradient(ellipse at top, #1E3A8A 0%, #0A1F44 50%, #060F2A 100%)',
+          color: '#fff', padding: '5rem 1.25rem 6rem',
+        }}>
+        {/* Animated starfield / gradient blobs */}
+        <div className="fs-stage-stars" aria-hidden="true" />
+        <div className="icse-orb-red"  style={{ width: 500, height: 500, top: -180, left: '5%', opacity: 0.35 }} />
+        <div className="icse-orb-blue" style={{ width: 500, height: 500, bottom: -180, right: '5%', opacity: 0.35 }} />
 
-          {/* Value pills */}
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto" data-testid="fs-value-pills">
-            {[
-              { i: Layers,   k: '4 in 1', v: 'Curriculum' },
-              { i: Clock,    k: '1',      v: 'Period/week' },
-              { i: BookOpen, k: '1',      v: 'Book/grade' },
-              { i: Zap,      k: '80%',    v: 'Less overhead' },
-            ].map((s) => (
-              <div key={s.v} className="bg-white/80 border border-slate-100 rounded-2xl px-3 py-3 text-center">
-                <s.i className="w-4 h-4 text-[#DC2626] mx-auto" />
-                <div className="icse-display text-xl text-[#0A1F44] mt-1">{s.k}</div>
-                <div className="icse-eyebrow text-slate-500 mt-0.5" style={{ fontSize: '0.55rem' }}>{s.v}</div>
+        <div className="max-w-5xl mx-auto text-center relative z-10">
+          {/* Curtain reveal — 2 velvet panels sliding open */}
+          <div className="fs-stage" data-testid="fs-stage">
+            <div className="fs-curtain fs-curtain-left" aria-hidden="true" />
+            <div className="fs-curtain fs-curtain-right" aria-hidden="true" />
+
+            {/* Stage lights */}
+            <div className="fs-spotlights" aria-hidden="true">
+              <span /><span /><span />
+            </div>
+
+            <div className="fs-stage-content">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-3 py-1.5 backdrop-blur">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="icse-eyebrow text-emerald-200">The OLL solution</span>
               </div>
-            ))}
-          </div>
+              <div className="icse-script text-[#FCA5A5] text-4xl mt-5 fs-reveal fs-reveal-1">introducing</div>
+              <h2 id="fs-intro-heading" className="icse-hero-h text-white mt-1 fs-reveal fs-reveal-2" style={{ fontSize: 'clamp(2rem, 5.5vw, 3.8rem)', textShadow: '0 6px 24px rgba(0,0,0,0.35)' }}>
+                Future Skills.<br/><span style={{ color: '#FCA5A5' }}>4 subjects, 1 curriculum.</span>
+              </h2>
+              <p className="icse-light text-white/80 mt-4 text-base sm:text-lg max-w-2xl mx-auto fs-reveal fs-reveal-3">
+                One integrated program for <strong className="font-bold text-white">Grades 1-8</strong> that combines <strong className="text-white">ICT · Coding · AI · Robotics</strong> —
+                taught in a single weekly period, with a single book per grade, by a single teacher, using a single curriculum.
+                Trusted by 500+ schools across India for both <strong className="text-white">ICSE</strong> and <strong className="text-white">CBSE</strong> boards.
+              </p>
 
-          <div className="mt-7 flex flex-wrap gap-3 justify-center">
-            <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-intro-cta">
-              Book a School Demo <ArrowRight className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={openBrochureModal} className="icse-btn outline" data-testid="fs-intro-download">
-              <Download className="w-4 h-4" /> Download Brochure
-            </button>
+              {/* Value pills */}
+              <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto fs-reveal fs-reveal-4" data-testid="fs-value-pills">
+                {[
+                  { i: Layers,   k: '4 in 1', v: 'Curriculum' },
+                  { i: Clock,    k: '1',      v: 'Period/week' },
+                  { i: BookOpen, k: '1',      v: 'Book/grade' },
+                  { i: Zap,      k: '80%',    v: 'Less overhead' },
+                ].map((s) => (
+                  <div key={s.v} className="bg-white/10 border border-white/20 rounded-2xl px-3 py-3 text-center backdrop-blur-sm">
+                    <s.i className="w-4 h-4 text-[#FCA5A5] mx-auto" />
+                    <div className="icse-display text-xl text-white mt-1">{s.k}</div>
+                    <div className="icse-eyebrow text-white/70 mt-0.5" style={{ fontSize: '0.55rem' }}>{s.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3 justify-center fs-reveal fs-reveal-5">
+                <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-intro-cta">
+                  Book a School Demo <ArrowRight className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={openBrochureModal} className="icse-btn ghost" data-testid="fs-intro-download">
+                  <Download className="w-4 h-4" /> Download Brochure
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* 4-pillar animated showcase (replaces the flat marketing image) */}
-        <div className="max-w-6xl mx-auto mt-14" data-testid="fs-4in1">
+      {/* ══════════ SECTION 2b · 4-IN-1 (white bg, alternating rhythm) ══════════ */}
+      <section className="relative overflow-hidden" style={{ background: '#FFFFFF', padding: '5rem 1.25rem' }} data-testid="fs-4in1-section">
+        <div className="max-w-6xl mx-auto" data-testid="fs-4in1">
           <div className="text-center">
             <div className="icse-eyebrow text-rose-600">The 4-in-1</div>
-            <h3 className="icse-display text-[#0A1F44] text-2xl sm:text-3xl mt-1">One curriculum, four superpowers</h3>
-            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-2 text-sm">Every {board} student in Grades 1-8 learns four future-ready disciplines under one integrated program.</p>
+            <div className="icse-script text-[#DC2626] text-3xl mt-1">the merge, visualised</div>
+            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">One curriculum, four superpowers</h3>
+            <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">Every {board} student in Grades 1-8 learns four future-ready disciplines under one integrated program.</p>
           </div>
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="fs-pillars-animated">
-            {[
-              { icon: Monitor, title: 'Digital & Cyber Literacy', body: 'Google Suite · Digital citizenship · Online safety · MS Office ready.',       color: '#3B82F6', chips: ['Word', 'Excel', 'PPT', 'Docs', 'Sheets'] },
-              { icon: Code2,   title: 'Coding & Computational',   body: 'Blockly · Scratch · HTML · CSS · JavaScript · Python — grade-appropriate.',  color: '#10B981', chips: ['Blockly', 'Scratch', 'HTML', 'CSS', 'JS', 'Python'] },
-              { icon: Brain,   title: 'Artificial Intelligence',  body: 'How AI learns · Ethics · Everyday AI · Simple ML projects.',                 color: '#8B5CF6', chips: ['ML for Kids', 'Vision', 'GenAI', 'Ethics'] },
-              { icon: Bot,     title: 'Robotics',                 body: 'Circuits · Sensors · Actuators · Build-your-own bots (starter kit).',        color: '#DC2626', chips: ['Kit', 'Sensors', 'Actuators', 'Bots'] },
-            ].map(({ icon: Icon, title, body, color, chips }, i) => (
-              <div key={title} className="fs-pillar-card icse-card p-5 text-center overflow-hidden relative" style={{ animationDelay: `${i * 0.14}s` }}>
-                <div className="fs-pillar-glow" style={{ background: `radial-gradient(circle at 50% 0%, ${color}25 0%, transparent 60%)` }} />
-                <div className="fs-pillar-icon w-16 h-16 rounded-2xl mx-auto flex items-center justify-center relative" style={{ background: `linear-gradient(135deg, ${color}, ${color}CC)`, boxShadow: `0 14px 30px ${color}44` }}>
-                  <Icon className="w-8 h-8 text-white" />
+
+          {/* Convergence diagram — 4 pillars flow into 1 book */}
+          <div className="fs-converge mt-10" data-testid="fs-converge">
+            <div className="fs-converge-lines" aria-hidden="true">
+              <svg viewBox="0 0 1200 340" preserveAspectRatio="none" width="100%" height="340">
+                <defs>
+                  <linearGradient id="fs-line-1" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#3B82F6" stopOpacity="0"/><stop offset="1" stopColor="#3B82F6" stopOpacity="0.85"/></linearGradient>
+                  <linearGradient id="fs-line-2" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#10B981" stopOpacity="0"/><stop offset="1" stopColor="#10B981" stopOpacity="0.85"/></linearGradient>
+                  <linearGradient id="fs-line-3" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#8B5CF6" stopOpacity="0"/><stop offset="1" stopColor="#8B5CF6" stopOpacity="0.85"/></linearGradient>
+                  <linearGradient id="fs-line-4" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#DC2626" stopOpacity="0"/><stop offset="1" stopColor="#DC2626" stopOpacity="0.85"/></linearGradient>
+                </defs>
+                <path className="fs-line" d="M 150 40 Q 400 170 600 300"  stroke="url(#fs-line-1)" strokeWidth="3" fill="none" strokeLinecap="round" />
+                <path className="fs-line" d="M 450 40 Q 525 170 600 300"  stroke="url(#fs-line-2)" strokeWidth="3" fill="none" strokeLinecap="round" />
+                <path className="fs-line" d="M 750 40 Q 675 170 600 300"  stroke="url(#fs-line-3)" strokeWidth="3" fill="none" strokeLinecap="round" />
+                <path className="fs-line" d="M 1050 40 Q 800 170 600 300" stroke="url(#fs-line-4)" strokeWidth="3" fill="none" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <div className="fs-converge-pillars">
+              {[
+                { icon: Monitor, title: 'Digital & Cyber Literacy', body: 'Google Suite · Digital citizenship · Online safety · MS Office ready.',       color: '#3B82F6', chips: ['Word', 'Excel', 'PPT', 'Docs', 'Sheets'] },
+                { icon: Code2,   title: 'Coding & Computational',   body: 'Blockly · Scratch · HTML · CSS · JavaScript · Python — grade-appropriate.',  color: '#10B981', chips: ['Blockly', 'Scratch', 'HTML', 'CSS', 'JS', 'Python'] },
+                { icon: Brain,   title: 'Artificial Intelligence',  body: 'How AI learns · Ethics · Everyday AI · Simple ML projects.',                 color: '#8B5CF6', chips: ['ML for Kids', 'Vision', 'GenAI', 'Ethics'] },
+                { icon: Bot,     title: 'Robotics',                 body: 'Circuits · Sensors · Actuators · Build-your-own bots (starter kit).',        color: '#DC2626', chips: ['Kit', 'Sensors', 'Actuators', 'Bots'] },
+              ].map(({ icon: Icon, title, body, color, chips }, i) => (
+                <div key={title} className="fs-pillar-card icse-card p-5 text-center overflow-hidden relative" style={{ animationDelay: `${i * 0.14}s` }} data-testid={`fs-pillar-${i}`}>
+                  <div className="fs-pillar-glow" style={{ background: `radial-gradient(circle at 50% 0%, ${color}30 0%, transparent 60%)` }} />
+                  <div className="fs-pillar-icon w-16 h-16 rounded-2xl mx-auto flex items-center justify-center relative" style={{ background: `linear-gradient(135deg, ${color}, ${color}CC)`, boxShadow: `0 14px 30px ${color}44` }}>
+                    <Icon className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="icse-display text-[#0A1F44] text-base mt-4 font-semibold">{title}</div>
+                  <div className="icse-light text-xs text-slate-600 mt-1.5 leading-relaxed">{body}</div>
+                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                    {chips.map((c) => (
+                      <span key={c} style={{ background: `${color}14`, color, border: `1px solid ${color}33`, padding: '3px 9px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{c}</span>
+                    ))}
+                  </div>
                 </div>
-                <div className="icse-display text-[#0A1F44] text-base mt-4 font-semibold">{title}</div>
-                <div className="icse-light text-xs text-slate-600 mt-1.5 leading-relaxed">{body}</div>
-                <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                  {chips.map((c) => (
-                    <span key={c} style={{ background: `${color}14`, color, border: `1px solid ${color}33`, padding: '3px 9px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{c}</span>
-                  ))}
+              ))}
+            </div>
+
+            {/* The single book at the bottom — where the 4 merge */}
+            <div className="fs-converge-merged" data-testid="fs-converge-merged">
+              <div className="fs-converge-badge">
+                <span className="fs-converge-pulse" />
+                <BookOpen className="w-6 h-6" />
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">One</div>
+                  <div className="icse-display text-lg">Future Skills Workbook</div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
@@ -802,39 +977,45 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         </div>
       </section>
 
-      {/* ── 4a · Interactive Books ─────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-books" aria-labelledby="fs-books-heading">
-        <div className="mb-10 text-center">
-          <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
-          <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
-          <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 1 to 8</h3>
-          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto">
-            A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
-            real-world AI stories and reflection prompts. Sample chapters open in-page.
+      {/* ── 4a · Interactive Books (navy gradient — alternating rhythm) ── */}
+      <section className="relative overflow-hidden" data-testid="fs-books-wrap"
+        style={{ background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', padding: '5rem 1.25rem', color: '#fff' }}>
+        <div className="icse-orb-red"  style={{ width: 380, height: 380, top: -140, left: '-8%', opacity: 0.4 }} />
+        <div className="icse-orb-blue" style={{ width: 380, height: 380, bottom: -140, right: '-8%', opacity: 0.4 }} />
+        <div className="relative max-w-6xl mx-auto" data-testid="fs-books" aria-labelledby="fs-books-heading">
+          <div className="mb-10 text-center">
+            <div className="icse-eyebrow" style={{ color: '#FCA5A5' }}>Speciality · 01</div>
+            <div className="icse-script text-[#FCA5A5] text-3xl">learn by doing</div>
+            <h3 id="fs-books-heading" className="icse-display text-white text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 1 to 8</h3>
+            <p className="icse-light mt-3 max-w-2xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
+              A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
+              real-world AI stories and reflection prompts. Sample chapters open in-page.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5">
+            {BOOK_GRADES.map(({ grade, tint }) => (
+              <div key={grade} className="group" data-testid={`fs-book-grade-${grade}`}>
+                <div className="fs-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
+                  <span className="tape">Future Skills</span>
+                  <div className="mt-8">
+                    <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
+                    <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '1.7rem' }}>Grade {grade}</div>
+                  </div>
+                  <div><div className="icse-light text-[10px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
+                </div>
+                <button onClick={() => setActiveBook(grade)}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest hover:text-white transition"
+                  style={{ color: '#FCA5A5' }}
+                  data-testid={`fs-book-sample-${grade}`}>
+                  <PlayCircle className="w-3.5 h-3.5" /> View Sample
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-[11px] icse-light mt-6 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            Book covers · Placeholders — final artwork by the OLL creative team
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5">
-          {BOOK_GRADES.map(({ grade, tint }) => (
-            <div key={grade} className="group" data-testid={`fs-book-grade-${grade}`}>
-              <div className="fs-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
-                <span className="tape">Future Skills</span>
-                <div className="mt-8">
-                  <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
-                  <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '1.7rem' }}>Grade {grade}</div>
-                </div>
-                <div><div className="icse-light text-[10px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
-              </div>
-              <button onClick={() => setActiveBook(grade)}
-                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#DC2626] hover:text-[#B91C1C]"
-                data-testid={`fs-book-sample-${grade}`}>
-                <PlayCircle className="w-3.5 h-3.5" /> View Sample
-              </button>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-[11px] icse-light text-slate-400 mt-6 uppercase tracking-widest">
-          Book covers · Placeholders — final artwork by the OLL creative team
-        </p>
       </section>
 
       {/* ── 4b · Virtual Lab ───────────────────────────────────── */}
@@ -935,21 +1116,24 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
       </section>
 
       {/* ══════════ FAQ ══════════ */}
-      <section className="relative max-w-4xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-faq" aria-labelledby="fs-faq-heading">
-        <div className="text-center">
-          <div className="icse-script text-[#DC2626] text-3xl">good to know</div>
-          <h2 id="fs-faq-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Frequently asked questions</h2>
-        </div>
-        <div className="mt-8 space-y-3">
-          {FAQ_ITEMS.map((f, i) => (
-            <details key={f.q} className="icse-card p-5 sm:p-6 group cursor-pointer" data-testid={`fs-faq-item-${i}`}>
-              <summary className="flex items-start justify-between gap-4 list-none cursor-pointer">
-                <span className="icse-display text-[#0A1F44] text-base sm:text-lg pr-2">{f.q}</span>
-                <span className="mt-1 flex-shrink-0 w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-[#DC2626] font-bold group-open:rotate-45 transition-transform" aria-hidden="true">+</span>
-              </summary>
-              <p className="icse-light text-sm text-slate-600 mt-3 leading-relaxed">{f.a}</p>
-            </details>
-          ))}
+      <section className="relative overflow-hidden" data-testid="fs-faq-wrap"
+        style={{ background: 'linear-gradient(180deg, #EEF2FF 0%, #FFFFFF 100%)', padding: '4rem 1.25rem' }}>
+        <div className="max-w-4xl mx-auto" data-testid="fs-faq" aria-labelledby="fs-faq-heading">
+          <div className="text-center">
+            <div className="icse-script text-[#DC2626] text-3xl">good to know</div>
+            <h2 id="fs-faq-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Frequently asked questions</h2>
+          </div>
+          <div className="mt-8 space-y-3">
+            {FAQ_ITEMS.map((f, i) => (
+              <details key={f.q} className="icse-card p-5 sm:p-6 group cursor-pointer" data-testid={`fs-faq-item-${i}`}>
+                <summary className="flex items-start justify-between gap-4 list-none cursor-pointer">
+                  <span className="icse-display text-[#0A1F44] text-base sm:text-lg pr-2">{f.q}</span>
+                  <span className="mt-1 flex-shrink-0 w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-[#DC2626] font-bold group-open:rotate-45 transition-transform" aria-hidden="true">+</span>
+                </summary>
+                <p className="icse-light text-sm text-slate-600 mt-3 leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
