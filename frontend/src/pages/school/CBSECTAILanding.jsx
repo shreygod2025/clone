@@ -358,47 +358,60 @@ export default function CBSECTAILanding() {
         .icse-orb-gold { position:absolute; width:340px; height:340px; border-radius:50%; background:rgba(245,158,11,0.16); filter:blur(90px); pointer-events:none; }
 
         /* Book cover placeholder — spiral binding + tape effect */
-        /* Book card — styled to look like a real hardback: sharp corners on
-           the right (page edge), a subtle spine notch on the left, and a
-           two-layer directional shadow that reads as a physical volume
-           standing on a shelf. */
+        /* Book card — natural-height image (no aspect-ratio cropping so the
+           top of the cover is never clipped), with Robotics-Beginner-style
+           3D perspective wrapper, layered stacked-book shadow, and a subtle
+           rotateY flip on hover. Sharp corners on the right, tiny softening
+           on the top-right / bottom-right to sell the paper edge. */
         .cbse-book {
-          position: relative; aspect-ratio: 3/4; border-radius: 0; overflow: hidden;
-          display:flex; flex-direction:column; justify-content:space-between;
-          padding: 18px; color:#0A1F44; cursor: pointer;
-          transition: transform 0.35s cubic-bezier(.22,.9,.34,1), box-shadow 0.35s ease;
-          /* physical-book shadow: soft ambient + tight bottom-right lift + inner
-             page-block highlight along the top edge */
+          position: relative; display: block; width: 100%;
+          background: transparent; border: 0; padding: 0; cursor: pointer;
+          perspective: 1400px;
+        }
+        .cbse-book-inner {
+          position: relative;
+          transform-style: preserve-3d;
+          transform-origin: left center;
+          transition: transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease;
+          border-radius: 3px 5px 5px 3px;
+          overflow: hidden;
+          /* Stacked-book shadow: solid back-cover offsets + ambient + deep drop */
           box-shadow:
-            0 22px 34px -12px rgba(10,31,68,0.28),
-            0 10px 18px -6px rgba(10,31,68,0.16),
-            inset 0 1px 0 rgba(255,255,255,0.6);
+            2px 3px 0 rgba(30, 20, 60, 0.18),
+            5px 7px 0 rgba(30, 20, 60, 0.10),
+            8px 12px 22px rgba(30, 20, 60, 0.18),
+            0 30px 48px -14px rgba(30, 20, 60, 0.30);
         }
-        /* Spine — a darker vertical bar hugging the left edge of the cover,
-           plus a lighter "page block" strip that peeks out just to its right
-           to hint at the printed page edges. */
-        .cbse-book::before {
-          content:''; position:absolute; left:0; top:0; bottom:0; width:10px;
-          background:
-            linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.12) 55%, rgba(0,0,0,0) 100%),
-            linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0) 40%);
-          z-index: 5; pointer-events:none;
-        }
-        .cbse-book .tape { position:absolute; top:14px; right:14px; background:#DC2626; color:#fff; font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px; border-radius: 999px; text-transform:uppercase; }
-        /* Dim overlay on hover — draws attention to the reveal pill */
-        .cbse-book::after {
-          content:''; position:absolute; inset:0; background: linear-gradient(180deg, rgba(10,31,68,0.42) 0%, rgba(10,31,68,0.62) 100%);
-          opacity: 0; transition: opacity 0.3s ease; pointer-events:none; z-index: 3;
-        }
-        .cbse-book:hover {
-          transform: translateY(-6px) scale(1.015);
+        .cbse-book:hover .cbse-book-inner {
+          transform: rotateY(-22deg) translateZ(14px);
           box-shadow:
-            0 32px 44px -14px rgba(10,31,68,0.4),
-            0 14px 22px -8px rgba(10,31,68,0.24),
-            inset 0 1px 0 rgba(255,255,255,0.7);
+            3px 4px 0 rgba(30, 20, 60, 0.22),
+            7px 9px 0 rgba(30, 20, 60, 0.12),
+            14px 18px 30px rgba(30, 20, 60, 0.24),
+            0 36px 60px -14px rgba(220, 38, 38, 0.28);
         }
-        .cbse-book:hover::after { opacity: 1; }
-        /* Reveal pill floating over the book on hover — click on card also opens sample */
+        .cbse-book-cover-img {
+          display: block; width: 100%; height: auto;
+          border-radius: 3px 5px 5px 3px;
+          backface-visibility: hidden;
+        }
+        /* Top page-edge glimmer — sells the "physical book" look */
+        .cbse-book-inner::after {
+          content: ''; position: absolute; top: -2px; left: 2px; right: -1px; height: 2px;
+          background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
+          border-radius: 2px 2px 0 0;
+        }
+        /* Fallback (no cover yet) — grade tag + text label rendered on a tinted card */
+        .cbse-book-fallback {
+          position: relative; aspect-ratio: 3/4; padding: 18px; color: #0A1F44;
+          display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .cbse-book-fallback .tape {
+          position:absolute; top:14px; right:14px; background:#DC2626; color:#fff;
+          font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px;
+          border-radius: 999px; text-transform:uppercase;
+        }
+        /* Hover / touch reveal pill — floats over the book */
         .cbse-book-reveal {
           position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 14px));
           z-index: 4; opacity: 0; transition: opacity 0.28s ease, transform 0.35s cubic-bezier(.22,.9,.34,1);
@@ -409,21 +422,13 @@ export default function CBSECTAILanding() {
           box-shadow: 0 12px 28px rgba(220,38,38,0.45); pointer-events: none; white-space: nowrap;
         }
         .cbse-book:hover .cbse-book-reveal { opacity: 1; transform: translate(-50%, -50%); }
-        /* Focus-visible parity for keyboard users */
         .cbse-book:focus-visible { outline: 3px solid #DC2626; outline-offset: 3px; }
-        .cbse-book:focus-visible::after { opacity: 1; }
         .cbse-book:focus-visible .cbse-book-reveal { opacity: 1; transform: translate(-50%, -50%); }
-        /* On touch devices there's no hover — always keep pill dimly visible so users see the affordance */
         @media (hover: none) {
-          .cbse-book::after { opacity: 0.35; }
-          .cbse-book-reveal { opacity: 0.95; transform: translate(-50%, -50%); box-shadow: 0 8px 18px rgba(220,38,38,0.4); }
-        }
-        /* Page-edge sliver on the RIGHT — thin cream line that reads as the
-           closed page-block opposite the spine. Kept behind hover overlay. */
-        .cbse-book-page-edge {
-          position: absolute; top: 3px; bottom: 3px; right: 0; width: 4px;
-          background: linear-gradient(90deg, rgba(0,0,0,0.14) 0%, rgba(255,252,243,0.9) 40%, rgba(255,252,243,1) 100%);
-          z-index: 2; pointer-events: none;
+          .cbse-book-reveal {
+            opacity: 0.95; transform: translate(-50%, -50%);
+            box-shadow: 0 8px 18px rgba(220,38,38,0.4);
+          }
         }
 
         /* Sticky mobile CTA bar */
@@ -464,9 +469,9 @@ export default function CBSECTAILanding() {
           [data-testid="cbse-speciality"] .icse-card > div:first-child { margin-left: 0 !important; }
           /* Books grid — 2 per row (up from cramped 3) */
           [data-testid="cbse-books"] .grid { grid-template-columns: 1fr 1fr !important; }
-          /* Book cover: slightly taller aspect + smaller grade text */
-          .cbse-book { padding: 14px !important; }
-          .cbse-book .icse-hero-h { font-size: 1.5rem !important; }
+          /* Book fallback cover (grade tint) — smaller inner text on phones */
+          .cbse-book-fallback { padding: 14px !important; }
+          .cbse-book-fallback .icse-hero-h { font-size: 1.5rem !important; }
           /* Virtual Lab side-by-side stacks; text card first, then video */
           [data-testid="cbse-virtual-lab"] .grid { grid-template-columns: 1fr !important; }
           [data-testid="cbse-vlab-video"] { aspect-ratio: 16 / 10 !important; }
@@ -701,38 +706,38 @@ export default function CBSECTAILanding() {
                 type="button"
                 onClick={() => setActiveBook(grade)}
                 aria-label={`Open Grade ${grade} CT & AI sample book`}
-                className="cbse-book w-full text-left"
-                style={cover
-                  ? { background: '#ffffff', border: 'none', padding: 0 }
-                  : { background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)`, border: 'none' }}
+                className="cbse-book"
                 data-testid={`cbse-book-card-${grade}`}
               >
-                {cover ? (
-                  <img
-                    src={cover}
-                    alt={`OLL CBSE Grade ${grade} Computational Thinking & AI workbook cover`}
-                    loading="lazy"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 1 }}
-                    data-testid={`cbse-book-cover-${grade}`}
-                  />
-                ) : (
-                  <>
-                    <span className="tape">CBSE · CT+AI</span>
-                    <div className="mt-8">
-                      <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
-                      <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '2rem' }}>Grade {grade}</div>
+                <div className="cbse-book-inner">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={`OLL CBSE Grade ${grade} Computational Thinking & AI workbook cover`}
+                      loading="lazy"
+                      className="cbse-book-cover-img"
+                      data-testid={`cbse-book-cover-${grade}`}
+                    />
+                  ) : (
+                    <div
+                      className="cbse-book-fallback"
+                      style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}
+                    >
+                      <span className="tape">CBSE · CT+AI</span>
+                      <div className="mt-8">
+                        <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
+                        <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '2rem' }}>Grade {grade}</div>
+                      </div>
+                      <div>
+                        <div className="icse-light text-[11px] text-[#0A1F44]/80 leading-snug">Computational Thinking + AI · Aligned to CBSE Acad-15/2026</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="icse-light text-[11px] text-[#0A1F44]/80 leading-snug">Computational Thinking + AI · Aligned to CBSE Acad-15/2026</div>
-                    </div>
-                  </>
-                )}
+                  )}
+                </div>
                 {/* Hover / touch reveal pill — floats over the book */}
                 <span className="cbse-book-reveal" aria-hidden="true">
                   <PlayCircle className="w-3.5 h-3.5" /> View Sample
                 </span>
-                {/* Page-edge sliver on the right — sells the "physical book" look */}
-                <span className="cbse-book-page-edge" aria-hidden="true" />
               </button>
               <button
                 onClick={() => setActiveBook(grade)}
