@@ -111,6 +111,7 @@ const FriendshipDaySuccess = lazy(() => import("./pages/FriendshipDaySuccess"));
 const RoboticsBeginnerLanding = lazy(() => import("./pages/school/RoboticsBeginnerLanding"));
 const RoboticsICSE910Landing = lazy(() => import("./pages/school/RoboticsICSE910Landing"));
 const CBSECTAILanding = lazy(() => import("./pages/school/CBSECTAILanding"));
+const FutureSkillsLanding = lazy(() => import("./pages/school/FutureSkillsLanding"));
 const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingTracker"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
@@ -374,6 +375,8 @@ function App() {
               <Route path="/school/cs/icse"               element={<RoboticsBeginnerLanding />} />
               <Route path="/school/cs/cbse"               element={<CBSECTAILanding />} />
               <Route path="/school/cs/cbse-ct-ai"         element={<CBSECTAILanding />} />
+              <Route path="/school/cs/future-skills-icse" element={<FutureSkillsLanding board="ICSE" />} />
+              <Route path="/school/cs/future-skills-cbse" element={<FutureSkillsLanding board="CBSE" />} />
               <Route path="/school/cs/computational-thinking-and-ai-classes-3-to-8" element={<CBSECTAILanding />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute permission="schools"><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
