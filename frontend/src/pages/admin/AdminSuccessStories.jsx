@@ -299,10 +299,14 @@ const StoryModal = ({ initial, isEdit, onClose, onSaved, getAuthHeaders }) => {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('type', 'images');
-      const res = await axios.post(`${API}/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // NOTE: do NOT set Content-Type manually — axios needs to auto-add the
+      // multipart boundary. /api/upload requires auth, so pass auth headers.
+      const res = await axios.post(`${API}/upload`, fd, { headers: getAuthHeaders() });
       upd('image_url', res.data.url);
       toast.success('Image uploaded');
-    } catch { toast.error('Image upload failed'); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Image upload failed');
+    }
     finally { setUploadingImage(false); e.target.value = ''; }
   };
 
@@ -316,9 +320,11 @@ const StoryModal = ({ initial, isEdit, onClose, onSaved, getAuthHeaders }) => {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('type', 'documents');
-        const res = await axios.post(`${API}/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const res = await axios.post(`${API}/upload`, fd, { headers: getAuthHeaders() });
         setForm(prev => ({ ...prev, attachments: [...prev.attachments, { name: file.name, url: res.data.url, type: file.type }] }));
-      } catch { toast.error(`Failed: ${file.name}`); }
+      } catch (err) {
+        toast.error(err?.response?.data?.detail || `Failed: ${file.name}`);
+      }
     }
     setUploadingFile(false);
     e.target.value = '';

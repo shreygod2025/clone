@@ -24,6 +24,14 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Fixed Admin Success Story image upload (401)**
+  (`AdminSuccessStories.jsx` `uploadImage` / `uploadAttachment`).
+  - `/api/upload` requires auth; the modal was posting without headers →
+    `403 Not authenticated`.
+  - Fix: pass `getAuthHeaders()` and stop manually setting `Content-Type`
+    so axios adds the correct multipart boundary. Error toasts surface
+    the backend's `detail` message.
+  - Verified with curl (no-auth → 403, with-auth → 200 + Cloudinary URL).
 - **Feb 2026** — **Admin Organisation Chart interactions wired end-to-end**
   (`/admin/org-chart` → `OrgChartView.jsx`, `AdminOrgChart.jsx`).
   - Fixed empty tree caused by wrong roles endpoint (`/api/team-roles` →
