@@ -13,6 +13,8 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
 import GPActivePartnerCard from './growth-partners/GPActivePartnerCard';
+import SimplePartnersSection from './growth-partners/SimplePartnersSection';
+import CenterPartnersSection from './growth-partners/CenterPartnersSection';
 import { format } from 'date-fns';
 import axios from 'axios';
 
@@ -617,8 +619,37 @@ const AdminGrowthPartners = () => {
     );
   };
 
+  const [partnerType, setPartnerType] = useState('business'); // business | referral | influencer | center
+
   return (
     <AdminLayout title="Growth Partners">
+      {/* Top-level partner type selector */}
+      <div className="flex flex-wrap gap-2 mb-4 bg-slate-100 p-1 rounded-xl w-fit" data-testid="partner-type-tabs">
+        {[
+          { value: 'business',   label: 'Business Partner',   color: 'bg-white shadow-sm text-[#0A1F44]' },
+          { value: 'referral',   label: 'Referral Partner',   color: 'bg-white shadow-sm text-[#0A1F44]' },
+          { value: 'influencer', label: 'Influencer Partner', color: 'bg-white shadow-sm text-[#0A1F44]' },
+          { value: 'center',     label: 'Center Partner',     color: 'bg-white shadow-sm text-[#0A1F44]' },
+        ].map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setPartnerType(t.value)}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition ${partnerType === t.value ? t.color : 'text-slate-600 hover:text-slate-900'}`}
+            data-testid={`partner-type-${t.value}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {partnerType === 'referral' ? (
+        <SimplePartnersSection type="referral" />
+      ) : partnerType === 'influencer' ? (
+        <SimplePartnersSection type="influencer" />
+      ) : partnerType === 'center' ? (
+        <CenterPartnersSection />
+      ) : (
+      <>
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -2206,6 +2237,8 @@ const AdminGrowthPartners = () => {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+      </>
       )}
     </AdminLayout>
   );
