@@ -26,7 +26,13 @@ def _checkin_headers():
     return {"X-API-Key": CHECKIN_API_KEY, "Content-Type": "application/json"}
 
 def _upstream_error(status_code: int, body_text: str, method: str, path: str) -> HTTPException:
-    """Return a sanitized HTTPException while preserving the raw body only in logs."""
+    """Return a sanitized HTTPException while preserving the raw body only in logs.
+
+    NOTE: Cloudflare will rewrite ANY origin 5xx response into its own generic
+    "Bad gateway" page and eat our JSON payload. To make sure the frontend
+    receives the actionable error message, upstream failures we've classified
+    are returned as 4xx (400 / 401 / 404) instead of 502.
+    """
     logger.warning("CheckIn API %s %s → %s: %s", method, path, status_code, body_text[:500])
     # Try to pull the upstream `detail` string so the admin sees exactly what's wrong.
     upstream_detail = ""
@@ -39,20 +45,19 @@ def _upstream_error(status_code: int, body_text: str, method: str, path: str) ->
         pass
 
     if status_code == 401:
-        return HTTPException(status_code=502, detail="CheckIn API rejected our credentials")
+        return HTTPException(status_code=401, detail="CheckIn API rejected our credentials")
     if status_code == 403:
-        # Surface the exact upstream reason (e.g. "API key does not have admin or rm scope")
         return HTTPException(
-            status_code=502,
+            status_code=400,
             detail=f"CheckIn API refused the request: {upstream_detail or 'insufficient API key scope'}. "
                    f"Ask the check-in system admin to upgrade the OLL API key to admin/rm scope.",
         )
     if status_code == 404:
         return HTTPException(status_code=404, detail="Resource not found in CheckIn API")
     if status_code >= 500:
-        return HTTPException(status_code=502, detail="CheckIn API is currently unavailable")
+        return HTTPException(status_code=400, detail="CheckIn API is currently unavailable — please retry in a moment")
     return HTTPException(
-        status_code=502,
+        status_code=400,
         detail=f"CheckIn API error ({status_code}): {upstream_detail or 'unexpected response'}",
     )
 
@@ -65,7 +70,7 @@ async def _checkin_get(path: str, params: dict = None, client: Optional[httpx.As
                 r = await c.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
     except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
         logger.exception("CheckIn API GET %s network error", path)
-        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
+        raise HTTPException(status_code=400, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400:
         raise _upstream_error(r.status_code, r.text, "GET", path)
     return r.json()
@@ -76,7 +81,7 @@ async def _checkin_post(path: str, body: dict):
             r = await client.post(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
     except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
         logger.exception("CheckIn API POST %s network error", path)
-        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
+        raise HTTPException(status_code=400, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400:
         raise _upstream_error(r.status_code, r.text, "POST", path)
     return r.json()
@@ -87,7 +92,7 @@ async def _checkin_put(path: str, body: dict):
             r = await client.put(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
     except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
         logger.exception("CheckIn API PUT %s network error", path)
-        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
+        raise HTTPException(status_code=400, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400:
         raise _upstream_error(r.status_code, r.text, "PUT", path)
     return r.json()
@@ -98,7 +103,7 @@ async def _checkin_delete(path: str):
             r = await client.delete(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers())
     except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
         logger.exception("CheckIn API DELETE %s network error", path)
-        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
+        raise HTTPException(status_code=400, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400 and r.status_code != 204:
         raise _upstream_error(r.status_code, r.text, "DELETE", path)
     return {"success": True}
