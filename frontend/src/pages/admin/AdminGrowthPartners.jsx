@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
+import GPActivePartnerCard from './growth-partners/GPActivePartnerCard';
 import { format } from 'date-fns';
 import axios from 'axios';
 
@@ -693,9 +694,24 @@ const AdminGrowthPartners = () => {
               </div>
             );
           }
-          const roleName = (u) => (roles.find((r) => r.id === u.role_id)?.name) || 'Growth Partner';
+          const findRole = (u) => roles.find((r) => r.id === u.role_id) || { name: 'Growth Partner' };
+          if (activeSection === 'active') {
+            return (
+              <div className="space-y-4" data-testid="gp-users-active">
+                {visible.map((u) => (
+                  <GPActivePartnerCard
+                    key={u.id}
+                    user={u}
+                    role={findRole(u)}
+                    onMarkInactive={(target) => toggleGpActive(target, false)}
+                  />
+                ))}
+              </div>
+            );
+          }
+          // Inactive → keep the compact table (with Reactivate action)
           return (
-            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" data-testid={`gp-users-${activeSection}`}>
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" data-testid="gp-users-inactive">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
@@ -713,7 +729,7 @@ const AdminGrowthPartners = () => {
                       <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50" data-testid={`gp-user-row-${u.id}`}>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full ${activeSection === 'active' ? 'bg-emerald-500' : 'bg-slate-400'} text-white flex items-center justify-center font-bold text-[11px]`}>
+                            <div className="w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold text-[11px]">
                               {(u.name || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
                             </div>
                             <div className="min-w-0">
@@ -729,38 +745,22 @@ const AdminGrowthPartners = () => {
                         <td className="px-4 py-2.5 text-xs text-slate-700">{u.city || '—'}</td>
                         <td className="px-4 py-2.5">
                           <span className="inline-block px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-[11px] font-bold">
-                            {roleName(u)}
+                            {findRole(u).name}
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
-                          {activeSection === 'active' ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Can log in
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Login blocked
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Login blocked
+                          </span>
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          {activeSection === 'active' ? (
-                            <button
-                              onClick={() => toggleGpActive(u, false)}
-                              className="text-xs font-bold px-3 py-1.5 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200"
-                              data-testid={`gp-mark-inactive-${u.id}`}
-                            >
-                              Mark Inactive
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => toggleGpActive(u, true)}
-                              className="text-xs font-bold px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                              data-testid={`gp-reactivate-${u.id}`}
-                            >
-                              Reactivate
-                            </button>
-                          )}
+                          <button
+                            onClick={() => toggleGpActive(u, true)}
+                            className="text-xs font-bold px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                            data-testid={`gp-reactivate-${u.id}`}
+                          >
+                            Reactivate
+                          </button>
                         </td>
                       </tr>
                     ))}

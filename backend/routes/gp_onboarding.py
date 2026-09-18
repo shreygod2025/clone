@@ -1109,3 +1109,76 @@ async def complete_gp_onboarding(
 # EXPENSE ENDPOINTS
 # ========================
 
+
+
+# ────────────────────────────────────────────────────────────────────
+# Growth Partner performance KPIs
+# ────────────────────────────────────────────────────────────────────
+# School-status buckets used across the KPI aggregation. Kept module-level
+# so the frontend can also read the same source of truth if we ever expose it.
+_LEAD_STATUSES       = ["new", "follow_up", "followup", "meeting_done"]
+_CONVERTED_STATUSES  = ["converted", "active", "renewed", "ONBOARDED", "onboarded"]
+_RENEWED_STATUSES    = ["renewed"]
+_LOST_STATUSES       = ["archived", "lost"]
+
+
+@router.get("/growth-partners/{team_user_id}/kpis")
+async def growth_partner_kpis(team_user_id: str, user: dict = Depends(get_current_user)):
+    """Compute a growth partner's performance rollup based on the schools
+    they own (`school_inquiries.assigned_to == team_user_id`)."""
+    # Ensure the target user exists & is a GP account for a clean 404 path.
+    tu = await db.team_users.find_one({"id": team_user_id}, {"_id": 0, "id": 1, "name": 1, "is_growth_partner": 1})
+    if not tu:
+        raise HTTPException(status_code=404, detail="Growth partner not found")
+
+    projection = {
+        "_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1,
+        "email": 1, "location": 1, "board": 1, "status": 1, "onboarding_status": 1,
+        "total_students": 1, "conversion_amount": 1, "fee_range": 1,
+        "meeting_date": 1, "created_at": 1, "updated_at": 1,
+        "assigned_to_name": 1, "programs_interested": 1, "school_size": 1,
+    }
+    schools = await db.school_inquiries.find(
+        {"assigned_to": team_user_id}, projection,
+    ).to_list(2000)
+
+    leads_bucket, conv_bucket, lost_bucket = [], [], []
+    total_students = 0
+    revenue = 0.0
+    renewed_count = 0
+    for s in schools:
+        st = (s.get("status") or "").strip()
+        st_lower = st.lower()
+        total_students += int(s.get("total_students") or 0)
+
+        if st in _CONVERTED_STATUSES or st_lower in ("converted", "active", "renewed", "onboarded"):
+            conv_bucket.append(s)
+            revenue += float(s.get("conversion_amount") or 0)
+            if st in _RENEWED_STATUSES or st_lower == "renewed":
+                renewed_count += 1
+        elif st in _LOST_STATUSES or st_lower in ("archived", "lost"):
+            lost_bucket.append(s)
+        else:
+            leads_bucket.append(s)
+
+    conversions = len(conv_bucket)
+    aov = round(revenue / conversions, 2) if conversions else 0.0
+    retention_rate = round((renewed_count / conversions) * 100, 1) if conversions else 0.0
+
+    return {
+        "partner_id": team_user_id,
+        "partner_name": tu.get("name"),
+        "leads": len(leads_bucket),
+        "conversions": conversions,
+        "revenue": round(revenue, 2),
+        "aov": aov,
+        "total_students": total_students,
+        "retention_rate": retention_rate,
+        "renewed": renewed_count,
+        "lost": len(lost_bucket),
+        "schools_by_stage": {
+            "leads": leads_bucket,
+            "conversions": conv_bucket,
+            "lost": lost_bucket,
+        },
+    }
