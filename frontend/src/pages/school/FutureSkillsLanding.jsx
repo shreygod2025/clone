@@ -548,31 +548,27 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           100% { transform: scale(1.35); opacity: 0; }
         }
 
-        /* Book pedestal cards — 3D hover with layered shadow (matches Robotics Beginner) */
-        .fs-book-pad {
-          background: linear-gradient(180deg, #FFFFFF 0%, #F5F3FF 100%);
-          border-radius: 18px;
-          padding: 22px 12px 16px 14px;
-          box-shadow: 0 8px 20px rgba(15,30,80,0.06), 0 1px 2px rgba(15,30,80,0.05);
-          transition: box-shadow .4s ease, transform .4s ease;
-          position: relative;
-          cursor: pointer;
+        /* Book card — CT&AI-style clean image with 3D perspective, no
+           pedestal background, hover reveal pill floating over the book */
+        .fs-book {
+          position: relative; display: block; width: 100%;
+          background: transparent; border: 0; padding: 0; cursor: pointer;
+          perspective: 1400px;
         }
-        .fs-book-pad:hover { box-shadow: 0 20px 44px rgba(124,58,237,0.18), 0 4px 10px rgba(15,30,80,0.08); transform: translateY(-3px); }
-        .fs-book-wrap { perspective: 1400px; position: relative; }
         .fs-book-inner {
           position: relative;
           transform-style: preserve-3d;
           transform-origin: left center;
           transition: transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease;
           border-radius: 3px 5px 5px 3px;
+          overflow: hidden;
           box-shadow:
             2px 3px 0 rgba(30, 20, 60, 0.18),
             5px 7px 0 rgba(30, 20, 60, 0.10),
             8px 12px 22px rgba(30, 20, 60, 0.18),
             0 30px 48px -14px rgba(30, 20, 60, 0.30);
         }
-        .fs-book-pad:hover .fs-book-inner {
+        .fs-book:hover .fs-book-inner {
           transform: rotateY(-22deg) translateZ(14px);
           box-shadow:
             3px 4px 0 rgba(30, 20, 60, 0.22),
@@ -580,27 +576,35 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
             14px 18px 30px rgba(30, 20, 60, 0.24),
             0 36px 60px -14px rgba(220, 38, 38, 0.28);
         }
-        .fs-book-cover { display: block; width: 100%; border-radius: 3px 5px 5px 3px; backface-visibility: hidden; }
+        .fs-book-cover-img {
+          display: block; width: 100%; height: auto;
+          border-radius: 3px 5px 5px 3px;
+          backface-visibility: hidden;
+        }
         .fs-book-inner::after {
           content: ''; position: absolute; top: -2px; left: 2px; right: -1px; height: 2px;
           background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
           border-radius: 2px 2px 0 0;
         }
-        .fs-book-cta {
-          margin-top: 0.7rem;
-          text-align: center;
-          font-family: 'Proxima Nova', 'Montserrat', sans-serif;
-          font-size: 0.7rem;
-          font-weight: 800;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: #FCA5A5;
-          opacity: 0;
-          transform: translateY(-4px);
-          transition: opacity .25s ease, transform .25s ease;
-          display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+        /* Hover / touch reveal pill — floats over the book (matches CT&AI) */
+        .fs-book-reveal {
+          position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 14px));
+          z-index: 4; opacity: 0; transition: opacity 0.28s ease, transform 0.35s cubic-bezier(.22,.9,.34,1);
+          display: inline-flex; align-items: center; gap: 8px;
+          background: #DC2626; color: #fff; padding: 10px 16px; border-radius: 999px;
+          font-family: 'Proxima Nova', 'Montserrat', system-ui, sans-serif;
+          font-size: 11px; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase;
+          box-shadow: 0 12px 28px rgba(220,38,38,0.45); pointer-events: none; white-space: nowrap;
         }
-        .fs-book-pad:hover .fs-book-cta { opacity: 1; transform: translateY(0); color: #fff; }
+        .fs-book:hover .fs-book-reveal { opacity: 1; transform: translate(-50%, -50%); }
+        .fs-book:focus-visible { outline: 3px solid #DC2626; outline-offset: 3px; }
+        .fs-book:focus-visible .fs-book-reveal { opacity: 1; transform: translate(-50%, -50%); }
+        @media (hover: none) {
+          .fs-book-reveal {
+            opacity: 0.95; transform: translate(-50%, -50%);
+            box-shadow: 0 8px 18px rgba(220,38,38,0.4);
+          }
+        }
         @media (max-width: 520px) { .fs-sample-open-new { display: none !important; } }
 
         /* ── Virtual Lab domain grid (navy panel, 4×2 + 3-centered) ── */
@@ -1388,55 +1392,53 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
       </section>
 
       {/* ══════════ SECTION 3 · OLL SPECIALITY ══════════ */}
-      {/* ── 4a · Interactive Books (navy gradient — alternating rhythm) ── */}
-      <section className="relative overflow-hidden" data-testid="fs-books-wrap"
-        style={{ background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', padding: '5rem 1.25rem', color: '#fff' }}>
-        <div className="icse-orb-red"  style={{ width: 380, height: 380, top: -140, left: '-8%', opacity: 0.4 }} />
-        <div className="icse-orb-blue" style={{ width: 380, height: 380, bottom: -140, right: '-8%', opacity: 0.4 }} />
-        <div className="relative max-w-6xl mx-auto" data-testid="fs-books" aria-labelledby="fs-books-heading">
-          <div className="mb-10 text-center">
-            <div className="icse-eyebrow" style={{ color: '#FCA5A5' }}>Speciality · 01</div>
-            <div className="icse-script text-[#FCA5A5] text-3xl">learn by doing</div>
-            <h3 id="fs-books-heading" className="icse-display text-white text-3xl sm:text-4xl mt-1">Hardcopy Interactive Books · Grades 1 to 8</h3>
-            <p className="icse-light mt-3 max-w-2xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
+      {/* ── 4a · Interactive Books (light section — CT&AI-style) ── */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-books-wrap" aria-labelledby="fs-books-heading">
+        <div className="relative" data-testid="fs-books">
+          <div className="mb-10 text-center sm:text-left">
+            <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
+            <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
+            <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books · Grades 1 to 8</h3>
+            <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto sm:mx-0">
               A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
-              real-world AI stories and reflection prompts. Sample chapters open in-page.
+              real-world AI stories and reflection prompts. Tap any grade to flip through the actual sample book right here.
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5 items-end">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-7">
             {BOOK_GRADES.map((b) => (
-              <button
-                key={b.grade}
-                type="button"
-                onClick={() => setActiveBook(b)}
-                aria-label={`Open Grade ${b.grade} sample book`}
-                className="fs-book-pad text-left"
-                style={{ border: 'none', width: '100%' }}
-                data-testid={`fs-book-grade-${b.grade}`}
-              >
-                <div className="fs-book-wrap">
+              <div key={b.grade} className="group" data-testid={`fs-book-grade-${b.grade}`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveBook(b)}
+                  aria-label={`Open Grade ${b.grade} Future Skills sample book`}
+                  className="fs-book"
+                  data-testid={`fs-book-card-${b.grade}`}
+                >
                   <div className="fs-book-inner">
                     <img
                       src={b.cover}
-                      alt={`Future Skills — Grade ${b.grade} book cover`}
-                      className="fs-book-cover"
+                      alt={`OLL ${board} Grade ${b.grade} Future Skills workbook — ICT, Coding, AI, Robotics`}
                       loading="lazy"
+                      className="fs-book-cover-img"
                       data-testid={`fs-book-cover-${b.grade}`}
                     />
                   </div>
-                </div>
-                <div className="mt-3 text-center" style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
-                  <div className="text-[13px] font-bold text-[#0A1F44]">Grade {b.grade}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{board} · ICT · Coding · AI · Robotics</div>
-                </div>
-                <div className="fs-book-cta" data-testid={`fs-book-sample-${b.grade}`}>
-                  <PlayCircle className="w-3 h-3" /> Click to open sample
-                </div>
-              </button>
+                  <span className="fs-book-reveal" aria-hidden="true">
+                    <PlayCircle className="w-3.5 h-3.5" /> View Sample
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveBook(b)}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#DC2626] hover:text-[#B91C1C]"
+                  data-testid={`fs-book-sample-${b.grade}`}
+                >
+                  <PlayCircle className="w-3.5 h-3.5" /> View Sample
+                </button>
+              </div>
             ))}
           </div>
-          <p className="text-center text-[11px] icse-light mt-6 uppercase tracking-widest flex items-center justify-center gap-1.5" style={{ color: '#FCA5A5' }}>
-            <PlayCircle className="w-3.5 h-3.5" /> Click any book to open a sample
+          <p className="text-center text-[11px] icse-light text-slate-400 mt-8 uppercase tracking-widest">
+            Live sample flipbooks · Powered by OLL · Grades 1-8
           </p>
         </div>
       </section>
