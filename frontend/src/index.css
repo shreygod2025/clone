@@ -417,3 +417,40 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12), 0 24px 48px -20px rgba(15, 23, 42, 0.24);
   transform: translateY(-1px);
 }
+
+/* Vertical stack for same-role siblings under a shared parent connector.
+   Keeps horizontal space tight (one column instead of N) while preserving
+   visual continuity between the stacked cards. */
+.org-role-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+.org-role-stack-item {
+  position: relative;
+}
+/* Vertical connector between consecutive cards in the stack. */
+.org-role-stack-item + .org-role-stack-item::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  height: 12px;
+  border-left: 2px solid #CBD5E1;
+  transform: translateX(-1px);
+}
+/* When rendered inline (asBareContent path) we skip the inner <li>'s own
+   children spacing — the outer group <li> already carries the connectors. */
+.org-role-stack-item > .org-node {
+  padding-top: 0;
+  list-style: none;
+}
+.org-role-stack-item > .org-node::before,
+.org-role-stack-item > .org-node::after {
+  display: none;
+}
+.org-role-stack-item > .org-node > .org-card::before {
+  display: none;
+}

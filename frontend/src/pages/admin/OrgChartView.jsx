@@ -225,13 +225,53 @@ const OrgNode = ({ node, depth, roles, selectedId, onSelect, salaryFor, onPerfor
         )}
       </div>
 
-      {hasChildren && (
-        <ul className="org-children">
-          {node.children.map((child) => (
-            renderOrgNode({ node: child, depth: depth + 1, roles, selectedId, onSelect, salaryFor, onPerformance })
-          ))}
-        </ul>
-      )}
+      {hasChildren && (() => {
+        // Group children by role_id — same-role siblings render as a vertical
+        // stack so a manager with 6 relationship-managers takes one column
+        // instead of six. Different-role groups still branch horizontally.
+        const groups = [];
+        const seenByRole = new Map();
+        node.children.forEach((child) => {
+          const roleKey = child.role_id || `__no_role__::${child.role || 'x'}`;
+          if (seenByRole.has(roleKey)) {
+            groups[seenByRole.get(roleKey)].push(child);
+          } else {
+            seenByRole.set(roleKey, groups.length);
+            groups.push([child]);
+          }
+        });
+
+        return (
+          <ul className="org-children">
+            {groups.map((group, gi) => {
+              if (group.length === 1) {
+                // Single child in this group — render as an ordinary tree node,
+                // which itself carries the incoming connector via its <li>.
+                return renderOrgNode({
+                  node: group[0], depth: depth + 1, roles, selectedId, onSelect,
+                  salaryFor, onPerformance,
+                });
+              }
+              // Stack: outer <li.org-node> carries the connector from the parent,
+              // inner nodes stack vertically with intra-stack connectors.
+              return (
+                <li className="org-node" data-depth={depth + 1} key={`group-${gi}-${group[0].id}`}>
+                  <div className="org-role-stack" data-testid={`org-role-stack-${gi}`}>
+                    {group.map((member) => (
+                      <div key={member.id} className="org-role-stack-item">
+                        {renderOrgNode({
+                          node: member, depth: depth + 1, roles, selectedId, onSelect,
+                          salaryFor, onPerformance,
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        );
+      })()}
     </li>
   );
 };
