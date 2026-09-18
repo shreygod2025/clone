@@ -528,6 +528,10 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
         "expense_date": data.get("expense_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
         "invoice_number": data.get("invoice_number", ""),
         "vendor_name": data.get("vendor_name", ""),
+        # Teacher-cost specific fields — set only when the admin logs an
+        # educator payment. Kept on every doc for a uniform shape.
+        "educator_id": data.get("educator_id", ""),
+        "educator_name": data.get("educator_name", ""),
         "payment_status": data.get("payment_status", "pending"),
         "payment_mode": data.get("payment_mode", ""),
         "notes": data.get("notes", ""),
@@ -706,6 +710,133 @@ async def bulk_delete_expenses(data: dict, user: dict = Depends(get_current_user
         raise HTTPException(status_code=400, detail="No IDs provided")
     result = await db.school_expenses.delete_many({"id": {"$in": ids}})
     return {"deleted": result.deleted_count, "message": f"Deleted {result.deleted_count} expense(s)"}
+
+
+# ────────────────────────────────────────────────────────────────────
+# Educator payments — thin lens over school_expenses where category
+# == "teacher_cost". Values here flow directly into the School P&L
+# sheet's "Educator Cost" column since it aggregates the same records.
+# ────────────────────────────────────────────────────────────────────
+@router.get("/educator-payments")
+async def list_educator_payments(
+    educator_id: Optional[str] = None,
+    school_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Flat list of every teacher_cost expense record with school + educator context.
+    Filterable by educator, school and date range. Non-admins are scoped to
+    the records the general expenses endpoint would already show them."""
+    query: dict = {"category": "teacher_cost"}
+    if educator_id:
+        query["educator_id"] = educator_id
+    if school_id:
+        query["school_id"] = school_id
+    if start_date or end_date:
+        dr: dict = {}
+        if start_date:
+            dr["$gte"] = start_date
+        if end_date:
+            dr["$lte"] = end_date
+        query["expense_date"] = dr
+
+    rows = await db.school_expenses.find(
+        query,
+        {
+            "_id": 0, "id": 1, "school_id": 1, "school_name": 1,
+            "educator_id": 1, "educator_name": 1, "amount": 1,
+            "expense_date": 1, "description": 1, "payment_status": 1,
+            "payment_mode": 1, "invoice_number": 1, "attachments": 1,
+            "created_at": 1, "created_by": 1, "created_by_name": 1,
+        },
+    ).sort("expense_date", -1).to_list(5000)
+    return rows
+
+
+@router.get("/educator-payments/summary")
+async def educator_payments_summary(user: dict = Depends(get_current_user)):
+    """Group teacher_cost records by educator with per-school breakdown so the
+    Admin Educators → Payments tab can render a roll-up table + drill-down.
+    Records missing educator_id are grouped under a synthetic "unassigned"
+    bucket so no payment silently disappears from the tab."""
+
+    pipeline = [
+        {"$match": {"category": "teacher_cost"}},
+        {
+            "$group": {
+                "_id": {
+                    "educator_id": {"$ifNull": ["$educator_id", ""]},
+                    "school_id":   {"$ifNull": ["$school_id", ""]},
+                },
+                "educator_name": {"$first": "$educator_name"},
+                "school_name":   {"$first": "$school_name"},
+                "count":         {"$sum": 1},
+                "total_amount":  {"$sum": "$amount"},
+                "paid_amount": {
+                    "$sum": {
+                        "$cond": [{"$eq": ["$payment_status", "paid"]}, "$amount", 0],
+                    },
+                },
+                "last_date": {"$max": "$expense_date"},
+            }
+        },
+    ]
+    grouped = await db.school_expenses.aggregate(pipeline).to_list(5000)
+
+    # Roll into per-educator rows with a nested schools[] array.
+    by_educator: dict = {}
+    for g in grouped:
+        eid = g["_id"].get("educator_id") or "__unassigned__"
+        sid = g["_id"].get("school_id") or ""
+        slot = by_educator.setdefault(eid, {
+            "educator_id": eid if eid != "__unassigned__" else "",
+            "educator_name": g.get("educator_name") or ("Unassigned" if eid == "__unassigned__" else ""),
+            "total_amount": 0.0,
+            "paid_amount": 0.0,
+            "records": 0,
+            "schools": [],
+            "last_date": "",
+        })
+        slot["total_amount"] += float(g.get("total_amount") or 0)
+        slot["paid_amount"]  += float(g.get("paid_amount") or 0)
+        slot["records"]      += int(g.get("count") or 0)
+        slot["last_date"]     = max(slot["last_date"], g.get("last_date") or "")
+        slot["schools"].append({
+            "school_id":   sid,
+            "school_name": g.get("school_name") or "General",
+            "total_amount": round(float(g.get("total_amount") or 0), 2),
+            "paid_amount":  round(float(g.get("paid_amount")  or 0), 2),
+            "records":      int(g.get("count") or 0),
+            "last_date":    g.get("last_date") or "",
+        })
+        if not slot["educator_name"]:
+            slot["educator_name"] = g.get("educator_name") or "Educator"
+
+    # Backfill educator_name from applications collection if we only have the id.
+    missing_ids = [eid for eid, r in by_educator.items() if eid and eid != "__unassigned__" and not r["educator_name"]]
+    if missing_ids:
+        async for e in db.educator_applications.find({"id": {"$in": missing_ids}}, {"_id": 0, "id": 1, "name": 1}):
+            if e["id"] in by_educator:
+                by_educator[e["id"]]["educator_name"] = e.get("name") or by_educator[e["id"]]["educator_name"]
+
+    out = []
+    for r in by_educator.values():
+        r["total_amount"] = round(r["total_amount"], 2)
+        r["paid_amount"]  = round(r["paid_amount"], 2)
+        r["schools"].sort(key=lambda s: -s["total_amount"])
+        out.append(r)
+    out.sort(key=lambda r: -r["total_amount"])
+
+    totals = {
+        "total_amount": round(sum(r["total_amount"] for r in out), 2),
+        "paid_amount":  round(sum(r["paid_amount"]  for r in out), 2),
+        "records":      sum(r["records"] for r in out),
+        "educators":    len([r for r in out if r["educator_id"]]),
+        "schools":      len({s["school_id"] for r in out for s in r["schools"] if s["school_id"]}),
+    }
+    return {"educators": out, "totals": totals}
+
 
 
 @router.post("/expenses/cleanup-duplicates")

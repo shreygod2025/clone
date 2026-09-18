@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns';
 import axios from 'axios';
 import CitySearch from '../../components/CitySearch';
+import EducatorPaymentsTab from './educators/EducatorPaymentsTab';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -21,6 +22,7 @@ const MAIN_TABS = [
   { value: 'onboarded', label: 'Onboarding', color: 'bg-orange-500' },
   { value: 'active', label: 'Active Educators', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
+  { value: 'payments', label: 'Payments', color: 'bg-purple-500' },
 ];
 
 // Skills that match student selections
@@ -904,6 +906,10 @@ const AdminEducators = () => {
     if (status === 'archived') {
       return educators.filter(e => ['archived', 'auto_failed_anti_cheat', 'interview_failed', 'rejected'].includes(e.status)).length;
     }
+    if (status === 'payments') {
+      // Count shown separately inside the tab itself.
+      return '';
+    }
     return educators.filter(e => e.status === status).length;
   };
 
@@ -1267,6 +1273,11 @@ const AdminEducators = () => {
         ))}
       </div>
 
+      {/* Payments tab is fully self-contained — bypass the rest of the page */}
+      {activeTab === 'payments' && (
+        <EducatorPaymentsTab />
+      )}
+
       {/* Sub-filter for Applicants tab */}
       {activeTab === 'applicants' && (
         <div className="flex flex-wrap gap-2 mb-6 items-center">
@@ -1549,7 +1560,7 @@ const AdminEducators = () => {
       )}
 
       {/* Educator Cards - Show for applicants, onboarding, active, archived tabs */}
-      {activeTab !== 'requirements' && (
+      {activeTab !== 'requirements' && activeTab !== 'payments' && (
         <>
           {loading ? (
         <div className="text-center py-12">
