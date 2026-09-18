@@ -28,41 +28,77 @@ def _checkin_headers():
 def _upstream_error(status_code: int, body_text: str, method: str, path: str) -> HTTPException:
     """Return a sanitized HTTPException while preserving the raw body only in logs."""
     logger.warning("CheckIn API %s %s → %s: %s", method, path, status_code, body_text[:500])
+    # Try to pull the upstream `detail` string so the admin sees exactly what's wrong.
+    upstream_detail = ""
+    try:
+        import json as _json
+        parsed = _json.loads(body_text) if body_text else {}
+        if isinstance(parsed, dict):
+            upstream_detail = str(parsed.get("detail") or parsed.get("message") or "")
+    except Exception:
+        pass
+
     if status_code == 401:
         return HTTPException(status_code=502, detail="CheckIn API rejected our credentials")
+    if status_code == 403:
+        # Surface the exact upstream reason (e.g. "API key does not have admin or rm scope")
+        return HTTPException(
+            status_code=502,
+            detail=f"CheckIn API refused the request: {upstream_detail or 'insufficient API key scope'}. "
+                   f"Ask the check-in system admin to upgrade the OLL API key to admin/rm scope.",
+        )
     if status_code == 404:
         return HTTPException(status_code=404, detail="Resource not found in CheckIn API")
     if status_code >= 500:
         return HTTPException(status_code=502, detail="CheckIn API is currently unavailable")
-    return HTTPException(status_code=502, detail=f"CheckIn API error ({status_code})")
+    return HTTPException(
+        status_code=502,
+        detail=f"CheckIn API error ({status_code}): {upstream_detail or 'unexpected response'}",
+    )
 
 async def _checkin_get(path: str, params: dict = None, client: Optional[httpx.AsyncClient] = None):
-    if client is not None:
-        r = await client.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
-    else:
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
+    try:
+        if client is not None:
+            r = await client.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
+        else:
+            async with httpx.AsyncClient(timeout=30) as c:
+                r = await c.get(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), params=params)
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
+        logger.exception("CheckIn API GET %s network error", path)
+        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400:
         raise _upstream_error(r.status_code, r.text, "GET", path)
     return r.json()
 
 async def _checkin_post(path: str, body: dict):
-    async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.post(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
+        logger.exception("CheckIn API POST %s network error", path)
+        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400:
         raise _upstream_error(r.status_code, r.text, "POST", path)
     return r.json()
 
 async def _checkin_put(path: str, body: dict):
-    async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.put(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.put(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers(), json=body)
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
+        logger.exception("CheckIn API PUT %s network error", path)
+        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400:
         raise _upstream_error(r.status_code, r.text, "PUT", path)
     return r.json()
 
 async def _checkin_delete(path: str):
-    async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.delete(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers())
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.delete(f"{CHECKIN_BASE_URL}{path}", headers=_checkin_headers())
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
+        logger.exception("CheckIn API DELETE %s network error", path)
+        raise HTTPException(status_code=502, detail=f"Could not reach CheckIn API: {e.__class__.__name__}")
     if r.status_code >= 400 and r.status_code != 204:
         raise _upstream_error(r.status_code, r.text, "DELETE", path)
     return {"success": True}
