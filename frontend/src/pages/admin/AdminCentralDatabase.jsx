@@ -85,14 +85,48 @@ const RoleChip = ({ role, count, active, onClick }) => {
 // City detail drawer
 // ────────────────────────────────────────────────────────────────────
 const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
+  // Local filters inside the drawer — seeded from the page-level filters
+  // so the drawer opens already scoped to what the admin was looking at,
+  // but each control can be tuned without leaving the drawer.
+  const [localSearch, setLocalSearch] = useState('');
+  const [localRole, setLocalRole] = useState(roleFilter || 'all');
+  const [localStage, setLocalStage] = useState(stageFilter || '');
+
+  useEffect(() => {
+    // Re-seed whenever the drawer opens against a new city / different
+    // upstream filters.
+    setLocalSearch('');
+    setLocalRole(roleFilter || 'all');
+    setLocalStage(stageFilter || '');
+  }, [city?.city_key, roleFilter, stageFilter]);
+
   if (!city) return null;
 
   const entities = city.entities || {};
-  const visibleRoles = roleFilter === 'all' ? ROLE_KEYS : [roleFilter];
-  const q = (stageFilter || '').toLowerCase();
-  const filterStage = (items) => (q ? items.filter((e) => (e.stage || '').toLowerCase() === q) : items);
+  const visibleRoles = localRole === 'all' ? ROLE_KEYS : [localRole];
+  const stageQ = (localStage || '').toLowerCase();
+  const searchQ = localSearch.trim().toLowerCase();
 
-  const hasAny = visibleRoles.some((r) => filterStage(entities[r] || []).length > 0);
+  // Stage options — union of stages across whichever role(s) are visible.
+  const stageOptions = Array.from(new Set(
+    visibleRoles.flatMap((r) => (entities[r] || []).map((e) => e.stage).filter(Boolean)),
+  )).sort();
+
+  const filterList = (items) => items.filter((e) => {
+    if (stageQ && (e.stage || '').toLowerCase() !== stageQ) return false;
+    if (searchQ) {
+      const hay = `${e.name || ''} ${e.email || ''} ${e.phone || ''} ${e.contact_name || ''} ${e.meta || ''}`.toLowerCase();
+      if (!hay.includes(searchQ)) return false;
+    }
+    return true;
+  });
+
+  const filteredByRole = visibleRoles.reduce((acc, r) => {
+    acc[r] = filterList(entities[r] || []);
+    return acc;
+  }, {});
+  const filteredTotal = Object.values(filteredByRole).reduce((s, arr) => s + arr.length, 0);
+  const hasAny = filteredTotal > 0;
 
   return (
     <div
@@ -112,7 +146,9 @@ const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
                 <MapPin className="w-3.5 h-3.5" /> City
               </div>
               <div className="text-3xl font-black">{city.city}</div>
-              <div className="text-sm text-white/70 mt-1">{city.total} people · {Object.keys(city.counts || {}).length} categories</div>
+              <div className="text-sm text-white/70 mt-1">
+                {filteredTotal} of {city.total} people match · {Object.keys(city.counts || {}).length} categories
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -124,7 +160,7 @@ const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
             </button>
           </div>
 
-          {/* Per-role summary chips */}
+          {/* Per-role summary chips (unfiltered totals for context) */}
           <div className="mt-4 flex flex-wrap gap-1.5">
             {ROLE_META.map((r) => (
               <span
@@ -137,6 +173,56 @@ const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
           </div>
         </div>
 
+        {/* In-drawer filters */}
+        <div className="px-6 pt-4 pb-3 bg-slate-50 border-b border-slate-100 space-y-2 sticky top-[152px] z-[5]">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                placeholder="Search name, email or phone..."
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0A1F44]/30 focus:border-[#0A1F44] bg-white"
+                data-testid="drawer-search"
+              />
+            </div>
+            <select
+              value={localRole}
+              onChange={(e) => { setLocalRole(e.target.value); setLocalStage(''); }}
+              className="h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+              data-testid="drawer-role-filter"
+            >
+              <option value="all">All roles</option>
+              {ROLE_META.map((r) => (
+                <option key={r.key} value={r.key}>
+                  {r.label} ({(city.counts || {})[r.key] || 0})
+                </option>
+              ))}
+            </select>
+            <select
+              value={localStage}
+              onChange={(e) => setLocalStage(e.target.value)}
+              className="h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+              data-testid="drawer-stage-filter"
+            >
+              <option value="">All stages</option>
+              {stageOptions.map((s) => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+              ))}
+            </select>
+            {(localSearch || localRole !== 'all' || localStage) && (
+              <button
+                onClick={() => { setLocalSearch(''); setLocalRole('all'); setLocalStage(''); }}
+                className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 underline underline-offset-2"
+                data-testid="drawer-clear-filters"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Body */}
         <div className="p-6 space-y-8">
           {!hasAny && (
@@ -145,7 +231,7 @@ const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
             </div>
           )}
           {visibleRoles.map((rk) => {
-            const items = filterStage(entities[rk] || []);
+            const items = filteredByRole[rk] || [];
             if (items.length === 0) return null;
             const meta = ROLE_BY_KEY[rk];
             const Icon = meta.icon;
