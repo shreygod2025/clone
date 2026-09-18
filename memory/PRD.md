@@ -24,6 +24,23 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Future Skills book covers + flipbook popup (ICSE/CBSE)**
+  (`school/FutureSkillsLanding.jsx`, assets in `public/books/future-skills/`).
+  - Swapped the 8 placeholder pedestal cards for the real Grade 1–8 covers.
+  - New `.fs-book-pad` / `.fs-book-inner` styles ported from Robotics
+    Beginner — perspective + `rotateY(-22deg)` on hover with layered shadow.
+  - Replaced the "sample chapter coming soon" placeholder modal with a
+    real Heyzine / FlippingBook iframe lightbox (matches CT&AI). Each
+    grade has its own flipbook URL (user-supplied).
+- **Feb 2026** — **Success Story image upload fix, round 2**
+  (`AdminSuccessStories.jsx`, `routes/misc.py`).
+  - Root cause was `/api/upload` requiring auth; modal posted without
+    the `Authorization` header. Now sends `getAuthHeaders()` and lets
+    axios manage the multipart boundary.
+  - Backend now accepts `.webp .gif .heic .heif .ppt .pptx` (was
+    rejecting common phone-camera formats).
+  - Verified end-to-end via Playwright on the preview: modal → file
+    picked → `Replace` button visible (Cloudinary URL stored).
 - **Feb 2026** — **Fixed Admin Success Story image upload (401)**
   (`AdminSuccessStories.jsx` `uploadImage` / `uploadAttachment`).
   - `/api/upload` requires auth; the modal was posting without headers →

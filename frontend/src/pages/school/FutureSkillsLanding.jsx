@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Download, ShieldCheck, Sparkles, CheckCircle2, BookOpen,
-  Gamepad2, PlayCircle, Play, GraduationCap, School, MapPin, FileText,
+  Gamepad2, PlayCircle, Play, GraduationCap, School, MapPin,
   Monitor, Bot, Brain, Code2, X, Clock, Wallet, Users, AlertTriangle,
   Layers, Zap, Globe2, Smartphone, Wifi, Network, BarChart3, BrainCircuit, Rocket,
 } from 'lucide-react';
@@ -75,10 +75,14 @@ const SCHOOL_VIDEOS = [
 ];
 
 const BOOK_GRADES = [
-  { grade: 1, tint: '#FEE2E2' }, { grade: 2, tint: '#DBEAFE' },
-  { grade: 3, tint: '#FDE68A' }, { grade: 4, tint: '#FCA5A5' },
-  { grade: 5, tint: '#A5F3FC' }, { grade: 6, tint: '#C4B5FD' },
-  { grade: 7, tint: '#86EFAC' }, { grade: 8, tint: '#FDBA74' },
+  { grade: 1, tint: '#FEE2E2', spine: '#DC2626', cover: '/books/future-skills/grade-1.jpeg', flip: 'https://online.flippingbook.com/view/938028145/' },
+  { grade: 2, tint: '#DBEAFE', spine: '#2563EB', cover: '/books/future-skills/grade-2.jpeg', flip: 'https://online.flippingbook.com/view/938443226/' },
+  { grade: 3, tint: '#FDE68A', spine: '#D97706', cover: '/books/future-skills/grade-3.jpeg', flip: 'https://online.flippingbook.com/view/938126481/' },
+  { grade: 4, tint: '#FCA5A5', spine: '#DC2626', cover: '/books/future-skills/grade-4.jpeg', flip: 'https://online.flippingbook.com/view/938234158/' },
+  { grade: 5, tint: '#A5F3FC', spine: '#0891B2', cover: '/books/future-skills/grade-5.jpeg', flip: 'https://heyzine.com/flip-book/804ef5c90c.html' },
+  { grade: 6, tint: '#C4B5FD', spine: '#7C3AED', cover: '/books/future-skills/grade-6.jpeg', flip: 'https://heyzine.com/flip-book/804ef5c90c.html' },
+  { grade: 7, tint: '#86EFAC', spine: '#059669', cover: '/books/future-skills/grade-7.jpeg', flip: 'https://online.flippingbook.com/view/938233129/' },
+  { grade: 8, tint: '#FDBA74', spine: '#EA580C', cover: '/books/future-skills/grade-8.jpeg', flip: 'https://heyzine.com/flip-book/def088cd92.html' },
 ];
 
 // Grade-wise Robotics "Innovative Projects" — actual project names from the book.
@@ -544,10 +548,60 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           100% { transform: scale(1.35); opacity: 0; }
         }
 
-        /* Book cover placeholder — spiral binding + tape effect */
-        .fs-book { position: relative; aspect-ratio: 3/4; border-radius: 12px 18px 18px 12px; box-shadow: 0 18px 32px rgba(10,31,68,0.16), inset 12px 0 0 rgba(255,255,255,0.35); overflow: hidden; display:flex; flex-direction:column; justify-content:space-between; padding: 18px; color:#0A1F44; }
-        .fs-book::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:6px; background: repeating-linear-gradient(180deg, rgba(10,31,68,0.15) 0 6px, transparent 6px 14px); }
-        .fs-book .tape { position:absolute; top:14px; right:14px; background:#DC2626; color:#fff; font-size:9px; letter-spacing:0.22em; font-weight:900; padding:4px 8px; border-radius: 999px; text-transform:uppercase; }
+        /* Book pedestal cards — 3D hover with layered shadow (matches Robotics Beginner) */
+        .fs-book-pad {
+          background: linear-gradient(180deg, #FFFFFF 0%, #F5F3FF 100%);
+          border-radius: 18px;
+          padding: 22px 12px 16px 14px;
+          box-shadow: 0 8px 20px rgba(15,30,80,0.06), 0 1px 2px rgba(15,30,80,0.05);
+          transition: box-shadow .4s ease, transform .4s ease;
+          position: relative;
+          cursor: pointer;
+        }
+        .fs-book-pad:hover { box-shadow: 0 20px 44px rgba(124,58,237,0.18), 0 4px 10px rgba(15,30,80,0.08); transform: translateY(-3px); }
+        .fs-book-wrap { perspective: 1400px; position: relative; }
+        .fs-book-inner {
+          position: relative;
+          transform-style: preserve-3d;
+          transform-origin: left center;
+          transition: transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease;
+          border-radius: 3px 5px 5px 3px;
+          box-shadow:
+            2px 3px 0 rgba(30, 20, 60, 0.18),
+            5px 7px 0 rgba(30, 20, 60, 0.10),
+            8px 12px 22px rgba(30, 20, 60, 0.18),
+            0 30px 48px -14px rgba(30, 20, 60, 0.30);
+        }
+        .fs-book-pad:hover .fs-book-inner {
+          transform: rotateY(-22deg) translateZ(14px);
+          box-shadow:
+            3px 4px 0 rgba(30, 20, 60, 0.22),
+            7px 9px 0 rgba(30, 20, 60, 0.12),
+            14px 18px 30px rgba(30, 20, 60, 0.24),
+            0 36px 60px -14px rgba(220, 38, 38, 0.28);
+        }
+        .fs-book-cover { display: block; width: 100%; border-radius: 3px 5px 5px 3px; backface-visibility: hidden; }
+        .fs-book-inner::after {
+          content: ''; position: absolute; top: -2px; left: 2px; right: -1px; height: 2px;
+          background: linear-gradient(180deg, #FEFEFE 0%, #E2E8F0 100%);
+          border-radius: 2px 2px 0 0;
+        }
+        .fs-book-cta {
+          margin-top: 0.7rem;
+          text-align: center;
+          font-family: 'Proxima Nova', 'Montserrat', sans-serif;
+          font-size: 0.7rem;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #FCA5A5;
+          opacity: 0;
+          transform: translateY(-4px);
+          transition: opacity .25s ease, transform .25s ease;
+          display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+        }
+        .fs-book-pad:hover .fs-book-cta { opacity: 1; transform: translateY(0); color: #fff; }
+        @media (max-width: 520px) { .fs-sample-open-new { display: none !important; } }
 
         /* ── Virtual Lab domain grid (navy panel, 4×2 + 3-centered) ── */
         .fs-lab-panel {
@@ -949,8 +1003,6 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           [data-testid="fs-speciality"] .grid { grid-template-columns: 1fr !important; }
           [data-testid="fs-speciality"] .icse-card { text-align: left !important; }
           [data-testid="fs-books"] .grid { grid-template-columns: 1fr 1fr !important; }
-          .fs-book { padding: 14px !important; }
-          .fs-book .icse-hero-h { font-size: 1.5rem !important; }
           [data-testid="fs-virtual-lab"] .grid { grid-template-columns: 1fr !important; }
           [data-testid="fs-4in1"] .grid { grid-template-columns: 1fr 1fr !important; }
           [data-testid="fs-pain"] .fs-pain-grid { grid-template-columns: 1fr !important; }
@@ -1351,28 +1403,40 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               real-world AI stories and reflection prompts. Sample chapters open in-page.
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5">
-            {BOOK_GRADES.map(({ grade, tint }) => (
-              <div key={grade} className="group" data-testid={`fs-book-grade-${grade}`}>
-                <div className="fs-book" style={{ background: `linear-gradient(155deg, ${tint} 0%, #fff 100%)` }}>
-                  <span className="tape">Future Skills</span>
-                  <div className="mt-8">
-                    <div className="icse-eyebrow text-[#0A1F44]/80">OLL Workbook</div>
-                    <div className="icse-hero-h text-[#0A1F44] leading-none" style={{ fontSize: '1.7rem' }}>Grade {grade}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-5 items-end">
+            {BOOK_GRADES.map((b) => (
+              <button
+                key={b.grade}
+                type="button"
+                onClick={() => setActiveBook(b)}
+                aria-label={`Open Grade ${b.grade} sample book`}
+                className="fs-book-pad text-left"
+                style={{ border: 'none', width: '100%' }}
+                data-testid={`fs-book-grade-${b.grade}`}
+              >
+                <div className="fs-book-wrap">
+                  <div className="fs-book-inner">
+                    <img
+                      src={b.cover}
+                      alt={`Future Skills — Grade ${b.grade} book cover`}
+                      className="fs-book-cover"
+                      loading="lazy"
+                      data-testid={`fs-book-cover-${b.grade}`}
+                    />
                   </div>
-                  <div><div className="icse-light text-[10px] text-[#0A1F44]/80 leading-snug">ICT · Coding · AI · Robotics — aligned to {board}</div></div>
                 </div>
-                <button onClick={() => setActiveBook(grade)}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest hover:text-white transition"
-                  style={{ color: '#FCA5A5' }}
-                  data-testid={`fs-book-sample-${grade}`}>
-                  <PlayCircle className="w-3.5 h-3.5" /> View Sample
-                </button>
-              </div>
+                <div className="mt-3 text-center" style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
+                  <div className="text-[13px] font-bold text-[#0A1F44]">Grade {b.grade}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{board} · ICT · Coding · AI · Robotics</div>
+                </div>
+                <div className="fs-book-cta" data-testid={`fs-book-sample-${b.grade}`}>
+                  <PlayCircle className="w-3 h-3" /> Click to open sample
+                </div>
+              </button>
             ))}
           </div>
-          <p className="text-center text-[11px] icse-light mt-6 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Book covers · Placeholders — final artwork by the OLL creative team
+          <p className="text-center text-[11px] icse-light mt-6 uppercase tracking-widest flex items-center justify-center gap-1.5" style={{ color: '#FCA5A5' }}>
+            <PlayCircle className="w-3.5 h-3.5" /> Click any book to open a sample
           </p>
         </div>
       </section>
@@ -1775,28 +1839,107 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         </button>
       </div>
 
-      {/* Sample book placeholder modal */}
-      {activeBook !== null && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" data-testid="fs-sample-modal" onClick={() => setActiveBook(null)}>
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 sm:p-8" style={{ background: 'linear-gradient(135deg,#0A1F44 0%, #1E3A5F 100%)' }}>
-              <div className="icse-script text-[#DC2626] text-2xl">sample chapter</div>
-              <h3 className="icse-display text-white text-2xl sm:text-3xl mt-1">Grade {activeBook} · Future Skills Workbook</h3>
-              <p className="icse-light text-white/70 text-sm mt-2">Sample pages will drop in here once the OLL creative team ships them. Meanwhile, our schools team can walk you through the full book — live.</p>
-            </div>
-            <div className="p-6 sm:p-8 space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-start gap-3">
-                <FileText className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-slate-600 icse-light leading-relaxed">
-                  <strong>Placeholder:</strong> a 4-8 page PDF preview will render here — ICT chapter, coding challenge, AI story and end-of-chapter reflection.
+      {/* Sample book flipbook lightbox — embeds the FlippingBook / Heyzine flipbook per grade */}
+      {activeBook && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Grade ${activeBook.grade} sample book`}
+          data-testid="fs-sample-modal"
+          onClick={() => setActiveBook(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0.75rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', maxWidth: 1200,
+              height: 'min(92vh, 900px)',
+              display: 'flex', flexDirection: 'column',
+              background: '#fff', borderRadius: 20, overflow: 'hidden',
+              boxShadow: '0 40px 80px rgba(0,0,0,0.45)',
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '0.85rem 1.1rem',
+              background: `linear-gradient(135deg, ${activeBook.spine} 0%, #0A1F44 100%)`,
+              color: '#fff',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: "'Caveat', cursive", fontWeight: 700, color: '#FCA5A5', fontSize: '1.15rem', lineHeight: 1 }}>
+                  sample book
+                </div>
+                <div style={{
+                  fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 700,
+                  fontSize: 'clamp(0.95rem, 2.2vw, 1.4rem)', marginTop: 4,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  Grade {activeBook.grade} · Future Skills · {board}
                 </div>
               </div>
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setActiveBook(null)} className="icse-btn outline flex-1 justify-center" data-testid="fs-sample-close">Close</button>
-                <button onClick={() => { setActiveBook(null); goBookDemo(); }} className="icse-btn primary flex-1 justify-center" data-testid="fs-sample-demo">
-                  Book a Demo <ArrowRight className="w-4 h-4" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <a
+                  href={activeBook.flip}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="fs-sample-open-new"
+                  className="fs-sample-open-new"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Proxima Nova', 'Montserrat', sans-serif",
+                    fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)',
+                    padding: '0.5rem 0.85rem', borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.25)', textDecoration: 'none',
+                  }}
+                >
+                  Open in new tab
+                </a>
+                <button
+                  onClick={() => { setActiveBook(null); goBookDemo(); }}
+                  data-testid="fs-sample-demo"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Proxima Nova', 'Montserrat', sans-serif",
+                    fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: '#fff', background: '#DC2626',
+                    padding: '0.5rem 0.85rem', borderRadius: 999, border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  Book a Demo <ArrowRight size={12} />
+                </button>
+                <button
+                  onClick={() => setActiveBook(null)}
+                  aria-label="Close sample book"
+                  data-testid="fs-sample-close"
+                  style={{
+                    width: 38, height: 38, borderRadius: 999,
+                    background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', cursor: 'pointer',
+                    fontSize: '1.35rem', fontWeight: 700, lineHeight: 1,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  ×
                 </button>
               </div>
+            </div>
+            {/* Flipbook iframe */}
+            <div style={{ position: 'relative', flex: 1, background: '#F1F5F9', minHeight: 0 }}>
+              <iframe
+                key={activeBook.flip}
+                src={activeBook.flip}
+                title={`Grade ${activeBook.grade} · Future Skills sample book`}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+                allow="fullscreen; autoplay; clipboard-write"
+                allowFullScreen
+                loading="lazy"
+                data-testid="fs-sample-frame"
+              />
             </div>
           </div>
         </div>

@@ -1774,7 +1774,7 @@ async def upload_file(
     if type not in ALLOWED_TYPES:
         type = "general"
 
-    allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.xlsx', '.xls', '.csv'}
+    allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif', '.xlsx', '.xls', '.csv', '.ppt', '.pptx'}
     file_ext = Path(file.filename).suffix.lower()
 
     if file_ext not in allowed_extensions:
@@ -1790,7 +1790,7 @@ async def upload_file(
     folder = f"oll_{type}"
     
     # Determine resource type for Cloudinary
-    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.heif'}
     resource_type = "image" if file_ext in image_extensions else "raw"
     
     try:
