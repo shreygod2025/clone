@@ -112,12 +112,10 @@ const AdminSuccessStories = () => {
               A measurable, externally validated achievement that demonstrates a child has applied their skills to create real-world value.
             </p>
           </div>
-          {isAdmin && (
-            <Button onClick={openCreate} className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="add-success-story-btn">
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add Story
-            </Button>
-          )}
+          <Button onClick={openCreate} className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="add-success-story-btn">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Add Story
+          </Button>
         </div>
 
         {/* Level cards row */}
