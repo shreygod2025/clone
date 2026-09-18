@@ -4199,6 +4199,9 @@ api_router.include_router(public_receipts_router)
 from routes.techfest import router as techfest_router
 api_router.include_router(techfest_router)
 
+from routes.central_database import router as central_database_router
+api_router.include_router(central_database_router)
+
 app.include_router(api_router)
 
 # SEO routes mount at the root (NOT under /api/) — Google requests
