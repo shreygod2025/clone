@@ -260,18 +260,26 @@ async def get_school_inquiries(
     
     user_role = user.get("role", "")
     user_id = user.get("user_id", user.get("id", ""))
-    
+    user_email = (user.get("email") or "").strip()
+    user_name  = (user.get("name")  or "").strip()
+
     # Check if user is admin - admins see all leads
     is_admin = user_role == "admin" or user.get("email") == "admin@oll.co"
     
     # Non-admin users only see leads assigned to them
     # Unless view_all is explicitly True (for managers with special permission)
     if not is_admin and not view_all:
-        # Show leads where user is assigned OR added by them
+        # Match by user_id (canonical) OR legacy email/name strings, on
+        # any of the ownership fields: assigned_to, added_by,
+        # relationship_manager_id / _name. RMs must see every school
+        # they've been assigned to across ALL stages.
+        candidates = [v for v in (user_id, user_email, user_name) if v]
         query["$or"] = [
-            {"assigned_to": user_id},
-            {"added_by": user_id},
-            {"relationship_manager_id": user_id}
+            {"assigned_to":               {"$in": candidates}},
+            {"assigned_to_name":          {"$in": candidates}},
+            {"added_by":                  {"$in": candidates}},
+            {"relationship_manager_id":   {"$in": candidates}},
+            {"relationship_manager_name": {"$in": candidates}},
         ]
     
     inquiries = await db.school_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
@@ -283,9 +291,15 @@ async def get_school_inquiries(
         if isinstance(inq.get('updated_at'), str):
             inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
         
-        # Add flags to indicate ownership
-        inq['is_owner'] = inq.get('assigned_to') == user_id or inq.get('added_by') == user_id
-        inq['is_viewer'] = not inq['is_owner']
+        # Ownership = user-id/email/name match on any owning field.
+        owner_candidates = {c for c in (user_id, user_email, user_name) if c}
+        is_owner = bool(owner_candidates.intersection({
+            inq.get('assigned_to'), inq.get('assigned_to_name'),
+            inq.get('added_by'),
+            inq.get('relationship_manager_id'), inq.get('relationship_manager_name'),
+        }))
+        inq['is_owner']  = is_owner
+        inq['is_viewer'] = not is_owner
         
         # Transform any stale preview tracking URLs in po_requests
         for po_req in inq.get('po_requests', []):

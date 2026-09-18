@@ -24,6 +24,20 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **School CRM: Assign RM in Renewed stage + broader RM data scoping**
+  (`AdminSchoolCRM.jsx`, `routes/schools.py`).
+  - Added the missing **Assign RM / Change RM** action button to the
+    Renewed pipeline stage (matches Converted / Active).
+  - Backend `/schools/inquiries` now scopes non-admin users by matching
+    their `user_id`, `email` OR `name` against `assigned_to`,
+    `assigned_to_name`, `added_by`, `relationship_manager_id` and
+    `relationship_manager_name` — so RMs see every school they own
+    across **all** stages, even for legacy records where the RM was
+    stored as an email or a name string.
+  - `is_owner` flag now uses the same broadened check.
+  - Verified end-to-end with a temp RM token: only their 2 schools
+    (Cathedral · renewed as RM + VVhs · renewed as assignee) came back;
+    admin token still sees all 176.
 - **Feb 2026** — **Users & Roles: HR fields + Transfer & Deactivate flow**
   (`routes/users.py`, `admin/AdminUsers.jsx`, `admin/AdminGrowthPartners.jsx`).
   - Extended `TeamUser` model with `date_of_birth`, `marital_status`,

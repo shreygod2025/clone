@@ -5221,6 +5221,14 @@ ${FOOTER}</div></body></html>`
               <Edit className="w-3 h-3" />
               Edit
             </button>
+            <button
+              onClick={() => setShowAssignRMModal(inquiry)}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+              data-testid={`assign-rm-${inquiry.id}`}
+            >
+              <UserPlus className="w-3 h-3" />
+              {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
+            </button>
             {changeStageButton}
             {raiseTicketButton}
             <button
