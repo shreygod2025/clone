@@ -44,6 +44,7 @@ const ALL_SECTIONS = [
   { value: 'blogs', label: 'Blogs', description: 'Create and manage blog posts' },
   { value: 'reports', label: 'Reports', description: 'View analytics and reports' },
   { value: 'data_center', label: 'Data Center', description: 'Manage platform data and exports' },
+  { value: 'central_database', label: 'Central Database', description: 'City-wise consolidated view of every team member, growth partner, teacher, school, student and centre — includes contact details' },
   { value: 'settings', label: 'Settings', description: 'Manage cities, centers, blogs, team openings' },
   { value: 'requirements', label: 'Requirements', description: 'Manage educator requirements' },
   { value: 'users', label: 'Users & Roles', description: 'Manage users and role permissions' },

@@ -168,7 +168,9 @@ async def central_database_by_city(user: dict = Depends(get_current_user)):
     ```
     """
     if user.get("role") not in ("admin", "super_admin"):
-        raise HTTPException(status_code=403, detail="Admin only")
+        perms = user.get("permissions") or []
+        if "central_database" not in perms:
+            raise HTTPException(status_code=403, detail="You do not have Central Database access")
 
     cities: Dict[str, dict] = {}
 

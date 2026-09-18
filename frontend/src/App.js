@@ -409,7 +409,7 @@ function App() {
               <Route path="/admin/requirements" element={<ProtectedRoute permission="requirements"><AdminRequirements /></ProtectedRoute>} />
               <Route path="/admin/reports" element={<ProtectedRoute permission="reports"><AdminReports /></ProtectedRoute>} />
               <Route path="/admin/data-center" element={<ProtectedRoute permission="data_center"><AdminDataCenter /></ProtectedRoute>} />
-              <Route path="/admin/central-database" element={<ProtectedRoute permission="users"><AdminCentralDatabase /></ProtectedRoute>} />
+              <Route path="/admin/central-database" element={<ProtectedRoute permission="central_database"><AdminCentralDatabase /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute permission="blogs"><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute permission="settings"><AdminSettings /></ProtectedRoute>} />
               <Route path="/admin/data-export" element={<ProtectedRoute permission="data_center"><AdminDataExport /></ProtectedRoute>} />

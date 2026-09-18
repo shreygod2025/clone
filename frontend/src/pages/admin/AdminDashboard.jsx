@@ -40,7 +40,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/success-stories', icon: Trophy, label: 'Success Stories', permission: null },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
-    { path: '/admin/central-database', icon: Database, label: 'Central Database', permission: 'users' },
+    { path: '/admin/central-database', icon: Database, label: 'Central Database', permission: 'central_database' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
     // ── Moved into Settings tabs (not shown in sidebar):
     //   Future Skills      → lives under Student CRM

@@ -1481,18 +1481,24 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               </button>
             </div>
           </div>
-          {/* Placeholder video — YouTube ID drop-in later */}
+          {/* Autoplaying YouTube demo of the Virtual Lab */}
           <div className="relative">
-            <div className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-gradient-to-br from-[#0A1F44] to-[#1E3A5F]" style={{ aspectRatio: '16 / 9' }} data-testid="fs-vlab-video">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-                <div className="w-16 h-16 rounded-full bg-white/15 backdrop-blur flex items-center justify-center mb-3">
-                  <Play className="w-6 h-6 text-white translate-x-[2px]" />
-                </div>
-                <div className="icse-eyebrow text-white/70">Coming soon</div>
-                <div className="icse-display text-white text-2xl mt-1">Sample Game Walkthrough</div>
-                <div className="icse-light text-white/70 text-xs mt-2">YouTube demo will drop in here — 90-second run of a virtual-lab activity.</div>
-              </div>
-              <div className="absolute inset-x-6 bottom-4 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/80">
+            <div
+              className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-black"
+              style={{ aspectRatio: '16 / 9' }}
+              data-testid="fs-vlab-video"
+            >
+              <iframe
+                src="https://www.youtube.com/embed/-AmMm-B76L4?autoplay=1&mute=1&loop=1&playlist=-AmMm-B76L4&controls=1&modestbranding=1&rel=0&playsinline=1"
+                title="OLL Future Skills — Virtual Lab walkthrough"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 w-full h-full"
+                style={{ border: 0 }}
+              />
+              <div className="pointer-events-none absolute inset-x-6 bottom-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/85 drop-shadow">
                 <span>OLL · Virtual Labs</span><span>Future Skills · Live</span>
               </div>
             </div>
