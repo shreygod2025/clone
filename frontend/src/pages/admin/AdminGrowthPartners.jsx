@@ -371,13 +371,23 @@ const AdminGrowthPartners = () => {
     return teamUser?.name || null;
   };
 
-  // ── GP team-users (linked accounts) ─────────────────────────────
-  // Users flagged is_growth_partner=true were created on activation and
-  // hold the actual login credentials. We surface them here so the admin
-  // can toggle their access without leaving the Growth Partners page.
+  // ── GP team-users (system-role holders) ────────────────────────────
+  // Anyone whose linked role is "Growth Partner" in the Users & Roles
+  // system is considered an active GP for this dashboard — regardless
+  // of whether they were provisioned via the gp_onboarding funnel
+  // (`is_growth_partner=true`) or added manually from Users & Roles.
+  const growthPartnerRoleIds = useMemo(() => {
+    return roles
+      .filter((r) => {
+        const n = (r.name || '').toLowerCase().trim();
+        return n === 'growth partner' || n === 'growth partners';
+      })
+      .map((r) => r.id);
+  }, [roles]);
+
   const gpTeamUsers = useMemo(
-    () => teamUsers.filter((u) => u.is_growth_partner === true),
-    [teamUsers],
+    () => teamUsers.filter((u) => u.role_id && growthPartnerRoleIds.includes(u.role_id)),
+    [teamUsers, growthPartnerRoleIds],
   );
   const activeGpUsers   = useMemo(() => gpTeamUsers.filter((u) => u.is_active !== false), [gpTeamUsers]);
   const inactiveGpUsers = useMemo(() => gpTeamUsers.filter((u) => u.is_active === false), [gpTeamUsers]);

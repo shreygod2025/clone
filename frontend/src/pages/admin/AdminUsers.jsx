@@ -3,7 +3,8 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Plus, User, Mail, Key, Shield, CheckCircle, XCircle, 
-  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3, FileSpreadsheet, Network
+  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone, BarChart3, FileSpreadsheet, Network,
+  Cake, Heart, Calendar, Home, Building2, UserMinus, Undo2, ArrowRightLeft, AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
@@ -112,6 +113,13 @@ const AdminUsers = () => {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  // Transfer & Deactivate flow
+  const [transferUser, setTransferUser] = useState(null);         // source
+  const [transferTargetId, setTransferTargetId] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [pastUsers, setPastUsers] = useState([]);
+  const [pastLoading, setPastLoading] = useState(false);
   
   // Role modals
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
@@ -129,7 +137,12 @@ const AdminUsers = () => {
     city: '',
     reports_to: '',
     permissions: [],
-    is_active: true
+    is_active: true,
+    date_of_birth: '',
+    marital_status: '',
+    anniversary_date: '',
+    joining_date: '',
+    work_mode: '',
   });
   
   // Role form
@@ -274,8 +287,71 @@ const AdminUsers = () => {
       city: '',
       reports_to: '',
       permissions: [],
-      is_active: true
+      is_active: true,
+      date_of_birth: '',
+      marital_status: '',
+      anniversary_date: '',
+      joining_date: '',
+      work_mode: '',
     });
+  };
+
+  // ── Transfer & Deactivate ────────────────────────────────────────
+  const openTransfer = (u) => {
+    setTransferUser(u);
+    setTransferTargetId('');
+    setTransferReason('');
+  };
+  const closeTransfer = () => {
+    setTransferUser(null);
+    setTransferTargetId('');
+    setTransferReason('');
+  };
+  const confirmTransfer = async () => {
+    if (!transferUser || !transferTargetId) {
+      toast.error('Please select a team member to transfer to');
+      return;
+    }
+    setTransferBusy(true);
+    try {
+      const res = await axios.post(
+        `${API}/team-users/${transferUser.id}/transfer-deactivate`,
+        { target_user_id: transferTargetId, reason: transferReason },
+        { headers: getAuthHeaders() },
+      );
+      toast.success(res.data?.message || 'Transferred & deactivated');
+      closeTransfer();
+      fetchData();
+      if (activeTab === 'past-team') loadPastUsers();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Transfer failed');
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
+  const loadPastUsers = async () => {
+    setPastLoading(true);
+    try {
+      const res = await axios.get(`${API}/team-users/past/list`, { headers: getAuthHeaders() });
+      setPastUsers(res.data || []);
+    } catch (e) {
+      toast.error('Failed to load past team members');
+    } finally {
+      setPastLoading(false);
+    }
+  };
+
+  const undoTransfer = async (u) => {
+    if (!window.confirm(`Undo transfer for ${u.name}? Their schools & queries will move back, and login will be re-enabled.`)) return;
+    try {
+      const res = await axios.post(`${API}/team-users/${u.id}/undo-transfer`, {}, { headers: getAuthHeaders() });
+      toast.success(res.data?.message || 'Transfer undone');
+      loadPastUsers();
+      fetchData();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Undo failed');
+    }
   };
 
   // Role handlers
@@ -412,6 +488,23 @@ const AdminUsers = () => {
               {roles.length}
             </span>
           </button>
+          <button
+            onClick={() => { setActiveTab('past-team'); loadPastUsers(); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              activeTab === 'past-team'
+                ? 'bg-[#1E3A5F] text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+            data-testid="past-team-tab"
+          >
+            <UserMinus className="w-4 h-4" />
+            Past Team Members
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              activeTab === 'past-team' ? 'bg-white/20' : 'bg-slate-200'
+            }`}>
+              {pastUsers.length}
+            </span>
+          </button>
         </div>
 
         {/* Search & Filters */}
@@ -461,23 +554,25 @@ const AdminUsers = () => {
             </>
           )}
           
-          <Button
-            onClick={() => {
-              if (activeTab === 'users') {
-                setEditUser(null);
-                resetUserForm();
-                setShowAddUserModal(true);
-              } else {
-                setEditRole(null);
-                resetRoleForm();
-                setShowAddRoleModal(true);
-              }
-            }}
-            className="bg-[#D63031] hover:bg-[#c0392b]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add {activeTab === 'users' ? 'User' : 'Role'}
-          </Button>
+          {activeTab !== 'past-team' && (
+            <Button
+              onClick={() => {
+                if (activeTab === 'users') {
+                  setEditUser(null);
+                  resetUserForm();
+                  setShowAddUserModal(true);
+                } else {
+                  setEditRole(null);
+                  resetRoleForm();
+                  setShowAddRoleModal(true);
+                }
+              }}
+              className="bg-[#D63031] hover:bg-[#c0392b]"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add {activeTab === 'users' ? 'User' : 'Role'}
+            </Button>
+          )}
           <Button
             onClick={() => navigate('/admin/org-chart')}
             variant="outline"
@@ -640,7 +735,12 @@ const AdminUsers = () => {
                             city: user.city || '',
                             reports_to: user.reports_to || '',
                             permissions: user.permissions || [],
-                            is_active: user.is_active !== false
+                            is_active: user.is_active !== false,
+                            date_of_birth: user.date_of_birth || '',
+                            marital_status: user.marital_status || '',
+                            anniversary_date: user.anniversary_date || '',
+                            joining_date: user.joining_date || '',
+                            work_mode: user.work_mode || '',
                           });
                           setShowAddUserModal(true);
                         }}
@@ -648,6 +748,16 @@ const AdminUsers = () => {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
+                      {user.is_active !== false && (
+                        <button
+                          onClick={() => openTransfer(user)}
+                          className="p-1.5 hover:bg-orange-50 rounded-lg text-orange-600 ml-1"
+                          title="Transfer & Deactivate"
+                          data-testid={`transfer-deactivate-btn-${user.id}`}
+                        >
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowDeleteConfirm(user)}
                         className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 ml-1"
@@ -666,6 +776,71 @@ const AdminUsers = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Past Team Members Tab */}
+        {activeTab === 'past-team' && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden" data-testid="past-team-panel">
+            {pastLoading ? (
+              <div className="p-12 text-center text-slate-500">Loading…</div>
+            ) : pastUsers.length === 0 ? (
+              <div className="p-12 text-center">
+                <UserMinus className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <div className="font-semibold text-slate-700">No past team members yet</div>
+                <p className="text-sm text-slate-500 mt-1">
+                  Users off-boarded via Transfer &amp; Deactivate will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Person</th>
+                      <th className="px-4 py-2 text-left">Role</th>
+                      <th className="px-4 py-2 text-left">Exit Date</th>
+                      <th className="px-4 py-2 text-left">Transferred To</th>
+                      <th className="px-4 py-2 text-left">Reason</th>
+                      <th className="px-4 py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pastUsers.map((u) => (
+                      <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50" data-testid={`past-user-row-${u.id}`}>
+                        <td className="px-4 py-2.5">
+                          <div className="font-bold text-slate-800">{u.name || '—'}</div>
+                          <div className="text-[11px] text-slate-500">{u.email}</div>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-700">{getRoleName(u.role_id) || '—'}</td>
+                        <td className="px-4 py-2.5 text-slate-700">
+                          {u.deactivated_at ? format(new Date(u.deactivated_at), 'dd MMM yyyy') : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-700">
+                          {u.transferred_to_name || '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-600 text-xs max-w-[220px] truncate">
+                          {u.transfer_reason || '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          {u.can_undo ? (
+                            <button
+                              onClick={() => undoTransfer(u)}
+                              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"
+                              data-testid={`undo-transfer-${u.id}`}
+                            >
+                              <Undo2 className="w-3 h-3" /> Undo transfer
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">Undo window expired</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -755,7 +930,7 @@ const AdminUsers = () => {
 
       {/* Add/Edit User Modal */}
       <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editUser ? 'Edit User' : 'Add Team User'}</DialogTitle>
           </DialogHeader>
@@ -874,6 +1049,98 @@ const AdminUsers = () => {
                   ))}
               </select>
               <p className="text-xs text-slate-500 mt-1">Select the team member this user reports to</p>
+            </div>
+
+            {/* People / HR data */}
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">People &amp; HR</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    <Cake className="w-3.5 h-3.5 inline mr-1 text-rose-500" /> Date of Birth
+                  </label>
+                  <Input
+                    type="date"
+                    value={userForm.date_of_birth}
+                    onChange={(e) => setUserForm({ ...userForm, date_of_birth: e.target.value })}
+                    data-testid="user-dob-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    <Calendar className="w-3.5 h-3.5 inline mr-1 text-blue-500" /> Joining Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={userForm.joining_date}
+                    onChange={(e) => setUserForm({ ...userForm, joining_date: e.target.value })}
+                    data-testid="user-joining-input"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    <Heart className="w-3.5 h-3.5 inline mr-1 text-pink-500" /> Marital Status
+                  </label>
+                  <select
+                    value={userForm.marital_status}
+                    onChange={(e) => setUserForm({
+                      ...userForm,
+                      marital_status: e.target.value,
+                      // clear anniversary if not married
+                      anniversary_date: e.target.value === 'married' ? userForm.anniversary_date : '',
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    data-testid="user-marital-select"
+                  >
+                    <option value="">— Not specified —</option>
+                    <option value="single">Single</option>
+                    <option value="married">Married</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                {userForm.marital_status === 'married' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      <Heart className="w-3.5 h-3.5 inline mr-1 text-fuchsia-500" /> Anniversary
+                    </label>
+                    <Input
+                      type="date"
+                      value={userForm.anniversary_date}
+                      onChange={(e) => setUserForm({ ...userForm, anniversary_date: e.target.value })}
+                      data-testid="user-anniversary-input"
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Work Mode</label>
+                <div className="flex gap-2 flex-wrap" data-testid="user-workmode-group">
+                  {[
+                    { v: 'in_office', label: 'In Office', Icon: Building2 },
+                    { v: 'wfh',       label: 'Work From Home', Icon: Home },
+                    { v: 'hybrid',    label: 'Hybrid', Icon: ArrowRightLeft },
+                  ].map(({ v, label, Icon }) => {
+                    const active = userForm.work_mode === v;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setUserForm({ ...userForm, work_mode: active ? '' : v })}
+                        className={`text-xs px-3 py-1.5 rounded-full border font-medium flex items-center gap-1.5 transition ${
+                          active
+                            ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        }`}
+                        data-testid={`workmode-${v}`}
+                      >
+                        <Icon className="w-3 h-3" /> {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Show permissions for selected role */}
@@ -1078,6 +1345,75 @@ const AdminUsers = () => {
               Delete
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer & Deactivate modal */}
+      <Dialog open={!!transferUser} onOpenChange={(o) => { if (!o) closeTransfer(); }}>
+        <DialogContent className="max-w-lg" data-testid="transfer-deactivate-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5 text-orange-500" />
+              Transfer &amp; Deactivate
+            </DialogTitle>
+          </DialogHeader>
+          {transferUser && (
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-900 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  You're off-boarding <strong>{transferUser.name}</strong>. Their
+                  open support queries and all schools where they're currently
+                  the RM / Sales owner will be reassigned. Login will be blocked
+                  and their name is retained on historical (resolved) queries.
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Transfer everything to *</label>
+                <select
+                  value={transferTargetId}
+                  onChange={(e) => setTransferTargetId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  data-testid="transfer-target-select"
+                >
+                  <option value="">— Select a team member —</option>
+                  {users
+                    .filter((u) => u.id !== transferUser.id && u.is_active !== false)
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} · {getRoleName(u.role_id) || 'Team member'}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Reason (optional)</label>
+                <Input
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  placeholder="e.g., Resigned · Moved to different team · Long leave"
+                  data-testid="transfer-reason-input"
+                />
+              </div>
+              <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                <strong>Undo window:</strong> you have 30 days to reverse this
+                from the <em>Past Team Members</em> tab.
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" onClick={closeTransfer} className="flex-1" data-testid="transfer-cancel-btn">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmTransfer}
+                  disabled={transferBusy || !transferTargetId}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                  data-testid="transfer-confirm-btn"
+                >
+                  {transferBusy ? 'Transferring…' : 'Transfer & Deactivate'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

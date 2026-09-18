@@ -60,6 +60,17 @@ class TeamUser(BaseModel):
     reports_to: str = ""  # id of another team_user this user reports to (manager)
     is_active: bool = True
     permissions: List[str] = []  # ['students', 'schools', 'educators', 'growth_partners']
+    # HR / people data
+    date_of_birth: Optional[str] = None       # ISO date "YYYY-MM-DD"
+    marital_status: Optional[str] = None      # single | married | other
+    anniversary_date: Optional[str] = None    # ISO date, shown only when married
+    joining_date: Optional[str] = None        # ISO date
+    work_mode: Optional[str] = None           # in_office | wfh | hybrid
+    # Transfer / off-boarding trail — populated by the transfer-deactivate flow
+    deactivated_at: Optional[str] = None
+    deactivated_by: Optional[str] = None
+    transferred_to: Optional[str] = None      # target team_user id
+    transfer_snapshot: Optional[dict] = None  # { schools:[ids], support_queries:[ids], done_at }
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class TeamUserCreate(BaseModel):
@@ -72,6 +83,11 @@ class TeamUserCreate(BaseModel):
     city: str = ""
     reports_to: str = ""  # id of manager (another team_user)
     permissions: List[str] = []
+    date_of_birth: Optional[str] = None
+    marital_status: Optional[str] = None
+    anniversary_date: Optional[str] = None
+    joining_date: Optional[str] = None
+    work_mode: Optional[str] = None
 
 class TeamUserUpdate(BaseModel):
     name: Optional[str] = None
@@ -83,6 +99,11 @@ class TeamUserUpdate(BaseModel):
     city: Optional[str] = None
     reports_to: Optional[str] = None  # id of manager (another team_user); pass "" to clear
     permissions: Optional[List[str]] = None
+    date_of_birth: Optional[str] = None
+    marital_status: Optional[str] = None
+    anniversary_date: Optional[str] = None
+    joining_date: Optional[str] = None
+    work_mode: Optional[str] = None
 
 # Center User Models
 class CenterUser(BaseModel):
@@ -273,7 +294,12 @@ async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_curren
         role_id=data.role_id,
         city=data.city,
         reports_to=data.reports_to,
-        permissions=data.permissions
+        permissions=data.permissions,
+        date_of_birth=data.date_of_birth,
+        marital_status=data.marital_status,
+        anniversary_date=data.anniversary_date,
+        joining_date=data.joining_date,
+        work_mode=data.work_mode,
     )
     doc = team_user.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -323,6 +349,189 @@ async def delete_team_user(user_id: str, user: dict = Depends(get_current_user))
     
     await db.team_users.delete_one({"id": user_id})
     return {"message": "User deleted"}
+
+
+# ── Transfer & Deactivate ─────────────────────────────────────────────
+# Off-boards a team user by reassigning all their live work to a target
+# team user, then blocking their login. The move is reversible for
+# `UNDO_WINDOW_DAYS` via `/team-users/{id}/undo-transfer`.
+UNDO_WINDOW_DAYS = 30
+
+
+class TransferDeactivateRequest(BaseModel):
+    target_user_id: str
+    reason: Optional[str] = None
+
+
+@router.post("/team-users/{user_id}/transfer-deactivate")
+async def transfer_and_deactivate_user(
+    user_id: str,
+    payload: TransferDeactivateRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Reassign a team user's live schools + open support queries to a
+    target team user, then block the source user's login. All moved doc
+    ids are snapshotted so the operation can be undone."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can transfer users")
+    if user_id == payload.target_user_id:
+        raise HTTPException(status_code=400, detail="Cannot transfer a user to themselves")
+
+    source = await db.team_users.find_one({"id": user_id})
+    if not source:
+        raise HTTPException(status_code=404, detail="Source user not found")
+    target = await db.team_users.find_one({"id": payload.target_user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Target user not found")
+    if target.get("is_active") is False:
+        raise HTTPException(status_code=400, detail="Target user is inactive")
+
+    now = datetime.now(timezone.utc).isoformat()
+    target_id = payload.target_user_id
+    target_name = target.get("name") or target.get("email")
+
+    # 1. Reassign school_inquiries (assigned_to)
+    school_ids = [
+        s["id"] async for s in db.school_inquiries.find(
+            {"assigned_to": user_id}, {"id": 1, "_id": 0},
+        )
+    ]
+    if school_ids:
+        await db.school_inquiries.update_many(
+            {"id": {"$in": school_ids}},
+            {"$set": {"assigned_to": target_id, "assigned_to_name": target_name}},
+        )
+
+    # 2. Reassign OPEN support queries (leave resolved/closed ones on the
+    # original owner so history is preserved)
+    open_query_ids = [
+        q["id"] async for q in db.support_queries.find(
+            {"assigned_to": user_id, "status": {"$nin": ["resolved", "closed"]}},
+            {"id": 1, "_id": 0},
+        )
+    ]
+    if open_query_ids:
+        await db.support_queries.update_many(
+            {"id": {"$in": open_query_ids}},
+            {"$set": {"assigned_to": target_id, "assigned_to_name": target_name}},
+        )
+
+    # 3. Deactivate & stamp
+    snapshot = {
+        "target_user_id": target_id,
+        "school_ids": school_ids,
+        "support_query_ids": open_query_ids,
+        "moved_at": now,
+    }
+    await db.team_users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_active": False,
+            "deactivated_at": now,
+            "deactivated_by": user.get("id"),
+            "transferred_to": target_id,
+            "transfer_reason": payload.reason or "",
+            "transfer_snapshot": snapshot,
+        }},
+    )
+
+    return {
+        "message": f"Transferred {len(school_ids)} school(s) and {len(open_query_ids)} open queries to {target_name}",
+        "schools_transferred": len(school_ids),
+        "queries_transferred": len(open_query_ids),
+        "target_name": target_name,
+        "undo_deadline_days": UNDO_WINDOW_DAYS,
+    }
+
+
+@router.post("/team-users/{user_id}/undo-transfer")
+async def undo_transfer(user_id: str, user: dict = Depends(get_current_user)):
+    """Reverse a previous transfer if still within the undo window."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can undo transfers")
+
+    source = await db.team_users.find_one({"id": user_id})
+    if not source:
+        raise HTTPException(status_code=404, detail="User not found")
+    snapshot = source.get("transfer_snapshot") or None
+    if not snapshot:
+        raise HTTPException(status_code=400, detail="No transfer to undo for this user")
+
+    moved_at = snapshot.get("moved_at")
+    try:
+        moved_dt = datetime.fromisoformat(moved_at.replace("Z", "+00:00")) if moved_at else None
+    except Exception:
+        moved_dt = None
+    if not moved_dt:
+        raise HTTPException(status_code=400, detail="Snapshot is missing a valid timestamp")
+    age_days = (datetime.now(timezone.utc) - moved_dt).days
+    if age_days > UNDO_WINDOW_DAYS:
+        raise HTTPException(status_code=400, detail=f"Undo window expired ({age_days} days > {UNDO_WINDOW_DAYS})")
+
+    source_name = source.get("name") or source.get("email")
+    school_ids = snapshot.get("school_ids") or []
+    query_ids = snapshot.get("support_query_ids") or []
+
+    if school_ids:
+        await db.school_inquiries.update_many(
+            {"id": {"$in": school_ids}},
+            {"$set": {"assigned_to": user_id, "assigned_to_name": source_name}},
+        )
+    if query_ids:
+        await db.support_queries.update_many(
+            {"id": {"$in": query_ids}},
+            {"$set": {"assigned_to": user_id, "assigned_to_name": source_name}},
+        )
+
+    await db.team_users.update_one(
+        {"id": user_id},
+        {"$set": {"is_active": True},
+         "$unset": {
+             "deactivated_at": "",
+             "deactivated_by": "",
+             "transferred_to": "",
+             "transfer_reason": "",
+             "transfer_snapshot": "",
+         }},
+    )
+
+    return {
+        "message": f"Undid transfer — {len(school_ids)} school(s) and {len(query_ids)} queries restored to {source_name}",
+        "schools_restored": len(school_ids),
+        "queries_restored": len(query_ids),
+    }
+
+
+@router.get("/team-users/past/list")
+async def list_past_team_users(user: dict = Depends(get_current_user)):
+    """Deactivated team users, most recently off-boarded first, with the
+    target user's display name resolved for the UI."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    docs = await db.team_users.find(
+        {"is_active": False, "deactivated_at": {"$exists": True}},
+        {"_id": 0, "password_hash": 0},
+    ).sort("deactivated_at", -1).to_list(500)
+
+    # Resolve transferred_to → name in one round-trip
+    target_ids = list({d.get("transferred_to") for d in docs if d.get("transferred_to")})
+    lookup = {}
+    if target_ids:
+        async for t in db.team_users.find({"id": {"$in": target_ids}}, {"_id": 0, "id": 1, "name": 1}):
+            lookup[t["id"]] = t.get("name")
+    for d in docs:
+        d["transferred_to_name"] = lookup.get(d.get("transferred_to"))
+        moved = (d.get("transfer_snapshot") or {}).get("moved_at") or d.get("deactivated_at")
+        d["can_undo"] = False
+        if moved:
+            try:
+                moved_dt = datetime.fromisoformat(moved.replace("Z", "+00:00"))
+                d["can_undo"] = (datetime.now(timezone.utc) - moved_dt).days <= UNDO_WINDOW_DAYS
+            except Exception:
+                pass
+    return docs
+
 
 @router.post("/team-users/login")
 async def team_user_login(data: AdminLogin):

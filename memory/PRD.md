@@ -24,6 +24,29 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Users & Roles: HR fields + Transfer & Deactivate flow**
+  (`routes/users.py`, `admin/AdminUsers.jsx`, `admin/AdminGrowthPartners.jsx`).
+  - Extended `TeamUser` model with `date_of_birth`, `marital_status`,
+    `anniversary_date` (shown only when Married), `joining_date` and
+    `work_mode` (In Office / WFH / Hybrid).
+  - New "Transfer & Deactivate" row action that: reassigns every
+    `school_inquiries.assigned_to` and every **open** support query
+    (`support_queries.status ∉ {resolved, closed}`) to a target team
+    user, stamps `deactivated_at/by`, `transferred_to`, and stores a
+    `transfer_snapshot` for a 30-day undo window.
+  - New tab **Past Team Members** on `/admin/users` listing off-boarded
+    users with target-user and one-tap **Undo Transfer** (`POST
+    /team-users/{id}/undo-transfer`).
+  - Historical (resolved/closed) queries keep the original owner's name.
+- **Feb 2026** — **Growth Partners → Active Partners tab fixed**
+  (`AdminGrowthPartners.jsx`).
+  - Previously filtered by the legacy `is_growth_partner=true` flag,
+    which mis-listed users whose role in Users & Roles was actually
+    something else (e.g. B2C Sales). Now the source of truth is the
+    role assignment: `team_users.role_id → roles.name = "Growth Partner"`.
+  - Existing KPI accordion (leads, conversions, revenue, AOV, students,
+    retention, lost + schools-by-stage) works unchanged for any team
+    user via `GET /growth-partners/{team_user_id}/kpis`.
 - **Feb 2026** — **Future Skills book covers + flipbook popup (ICSE/CBSE)**
   (`school/FutureSkillsLanding.jsx`, assets in `public/books/future-skills/`).
   - Swapped the 8 placeholder pedestal cards for the real Grade 1–8 covers.
