@@ -288,7 +288,24 @@ export default function OrgChartView({ users, roles }) {
   // { [userId]: { salary, loading } }
   const [salaryCache, setSalaryCache] = useState({});
 
-  const roots = useMemo(() => buildTree(users), [users]);
+  // Hide external-facing system roles (Growth Partner / Center Partner) —
+  // the org chart is meant for the *internal* reporting structure only.
+  const EXCLUDED_ROLE_NAMES = ['growth partner', 'center partner'];
+  const excludedRoleIds = useMemo(
+    () => new Set(
+      (roles || [])
+        .filter((r) => EXCLUDED_ROLE_NAMES.includes((r.name || '').trim().toLowerCase()))
+        .map((r) => r.id),
+    ),
+    [roles],
+  );
+  const visibleUsers = useMemo(
+    () => users.filter((u) => !excludedRoleIds.has(u.role_id) &&
+      !EXCLUDED_ROLE_NAMES.includes((u.role || '').trim().toLowerCase())),
+    [users, excludedRoleIds],
+  );
+
+  const roots = useMemo(() => buildTree(visibleUsers), [visibleUsers]);
 
   const salaryFor = (userId) => salaryCache[userId] || { salary: null, loading: false };
 
@@ -316,14 +333,14 @@ export default function OrgChartView({ users, roles }) {
   const matchIds = useMemo(() => {
     if (!q) return null;
     return new Set(
-      users
+      visibleUsers
         .filter((u) => (u.name || u.full_name || '').toLowerCase().includes(q) ||
           (u.email || '').toLowerCase().includes(q) ||
           (u.role || '').toLowerCase().includes(q) ||
           (u.city || '').toLowerCase().includes(q))
         .map((u) => u.id),
     );
-  }, [users, q]);
+  }, [visibleUsers, q]);
 
   useEffect(() => {
     if (matchIds && matchIds.size === 0) toast.message('No team member matches your search');

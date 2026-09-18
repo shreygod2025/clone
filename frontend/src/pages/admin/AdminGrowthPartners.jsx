@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -22,6 +22,7 @@ const STATUS_SECTIONS = [
   { value: 'in_discussion', label: 'In Discussion', color: 'bg-purple-500' },
   { value: 'onboarding', label: 'Onboarding', color: 'bg-orange-500' },
   { value: 'active', label: 'Active Partners', color: 'bg-emerald-500' },
+  { value: 'inactive', label: 'Inactive', color: 'bg-slate-500' },
   { value: 'discontinued', label: 'Discontinued', color: 'bg-red-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
@@ -367,6 +368,39 @@ const AdminGrowthPartners = () => {
     return teamUser?.name || null;
   };
 
+  // ── GP team-users (linked accounts) ─────────────────────────────
+  // Users flagged is_growth_partner=true were created on activation and
+  // hold the actual login credentials. We surface them here so the admin
+  // can toggle their access without leaving the Growth Partners page.
+  const gpTeamUsers = useMemo(
+    () => teamUsers.filter((u) => u.is_growth_partner === true),
+    [teamUsers],
+  );
+  const activeGpUsers   = useMemo(() => gpTeamUsers.filter((u) => u.is_active !== false), [gpTeamUsers]);
+  const inactiveGpUsers = useMemo(() => gpTeamUsers.filter((u) => u.is_active === false), [gpTeamUsers]);
+
+  const toggleGpActive = async (u, active) => {
+    const action = active ? 'reactivate' : 'mark inactive';
+    if (!window.confirm(`${active ? 'Re-enable' : 'Disable login for'} ${u.name}?`)) return;
+    try {
+      await axios.patch(
+        `${API}/team-users/${u.id}`,
+        { is_active: active },
+        { headers: getAuthHeaders() },
+      );
+      toast.success(active ? `${u.name} reactivated — they can log in again` : `${u.name} marked inactive — login blocked`);
+      fetchTeamUsers();
+      // Keep the linked onboarding row in sync so the Discontinued/Active
+      // section counts don't fall out of step.
+      const onboarding = gpOnboardings.find((o) => o.team_user_id === u.id);
+      if (onboarding) fetchGpOnboardings();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || `Failed to ${action}`);
+    }
+  };
+
+
+
   // GP Onboarding Functions
   const getOnboardingForPartner = (partnerId) => {
     return gpOnboardings.find(o => o.growth_partner_id === partnerId);
@@ -520,13 +554,14 @@ const AdminGrowthPartners = () => {
       o.email?.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (activeSection === 'onboarding') return matchesSearch && o.status === 'onboarding';
-    if (activeSection === 'active') return matchesSearch && o.status === 'active';
     if (activeSection === 'discontinued') return matchesSearch && o.status === 'discontinued';
     return false;
   });
 
   const getCount = (status) => {
-    if (['onboarding', 'active', 'discontinued'].includes(status)) {
+    if (status === 'active')   return activeGpUsers.length;
+    if (status === 'inactive') return inactiveGpUsers.length;
+    if (['onboarding', 'discontinued'].includes(status)) {
       return gpOnboardings.filter(o => o.status === status).length;
     }
     return partners.filter(p => p.status === status).length;
@@ -634,14 +669,115 @@ const AdminGrowthPartners = () => {
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
         </div>
-      ) : ['onboarding', 'active', 'discontinued'].includes(activeSection) ? (
+      ) : ['active', 'inactive'].includes(activeSection) ? (
+        /* Team-user based partner list (login accounts) */
+        (() => {
+          const rows = activeSection === 'active' ? activeGpUsers : inactiveGpUsers;
+          const q = searchQuery.trim().toLowerCase();
+          const visible = q
+            ? rows.filter((u) =>
+                (u.name || '').toLowerCase().includes(q) ||
+                (u.email || '').toLowerCase().includes(q) ||
+                (u.username || '').toLowerCase().includes(q) ||
+                (u.city || '').toLowerCase().includes(q))
+            : rows;
+          if (visible.length === 0) {
+            return (
+              <div className="text-center py-12 bg-white rounded-2xl border border-slate-100" data-testid="gp-users-empty">
+                <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500">
+                  {activeSection === 'active'
+                    ? 'No active growth-partner accounts yet. Activate a partner from Onboarding to create one.'
+                    : 'No inactive growth-partner accounts. Mark an active partner as inactive to block their login.'}
+                </p>
+              </div>
+            );
+          }
+          const roleName = (u) => (roles.find((r) => r.id === u.role_id)?.name) || 'Growth Partner';
+          return (
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" data-testid={`gp-users-${activeSection}`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Partner</th>
+                      <th className="px-4 py-2 text-left">Contact</th>
+                      <th className="px-4 py-2 text-left">City</th>
+                      <th className="px-4 py-2 text-left">Role</th>
+                      <th className="px-4 py-2 text-left">Login</th>
+                      <th className="px-4 py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((u) => (
+                      <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50" data-testid={`gp-user-row-${u.id}`}>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-full ${activeSection === 'active' ? 'bg-emerald-500' : 'bg-slate-400'} text-white flex items-center justify-center font-bold text-[11px]`}>
+                              {(u.name || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-[#0F1E33] truncate">{u.name || '—'}</div>
+                              <div className="text-[11px] text-slate-500 truncate">{u.username ? `@${u.username}` : ''}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="text-xs text-slate-700">{u.email || '—'}</div>
+                          <div className="text-xs text-slate-500">{u.phone || ''}</div>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-slate-700">{u.city || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="inline-block px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-[11px] font-bold">
+                            {roleName(u)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {activeSection === 'active' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Can log in
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Login blocked
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          {activeSection === 'active' ? (
+                            <button
+                              onClick={() => toggleGpActive(u, false)}
+                              className="text-xs font-bold px-3 py-1.5 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200"
+                              data-testid={`gp-mark-inactive-${u.id}`}
+                            >
+                              Mark Inactive
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => toggleGpActive(u, true)}
+                              className="text-xs font-bold px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                              data-testid={`gp-reactivate-${u.id}`}
+                            >
+                              Reactivate
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()
+      ) : ['onboarding', 'discontinued'].includes(activeSection) ? (
         /* GP Onboarding Content */
         filteredOnboardings.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
             <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-500">
               {activeSection === 'onboarding' ? 'No partners in onboarding. Convert partners to start onboarding.' :
-               activeSection === 'active' ? 'No active partners yet.' : 'No discontinued partners.'}
+               'No discontinued partners.'}
             </p>
           </div>
         ) : (
