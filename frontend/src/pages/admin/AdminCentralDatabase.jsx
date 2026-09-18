@@ -130,7 +130,8 @@ const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
 
   return (
     <div
-      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm flex justify-end"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-end"
+      style={{ zIndex: 1200 }}
       onClick={onClose}
       data-testid="city-drawer"
     >
@@ -174,7 +175,7 @@ const CityDrawer = ({ city, onClose, roleFilter, stageFilter }) => {
         </div>
 
         {/* In-drawer filters */}
-        <div className="px-6 pt-4 pb-3 bg-slate-50 border-b border-slate-100 space-y-2 sticky top-[152px] z-[5]">
+        <div className="px-6 pt-4 pb-3 bg-slate-50 border-b border-slate-100 space-y-2 sticky top-[152px]" style={{ zIndex: 5 }}>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[180px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
