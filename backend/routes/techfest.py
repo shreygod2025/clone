@@ -107,6 +107,12 @@ class TechfestRegisterIn(BaseModel):
     teaches_robotics: Optional[str] = Field(None, max_length=8)  # 'Yes' | 'No'
     robotics_format: Optional[str] = Field(None, max_length=80)
     robotics_external_company: Optional[str] = Field(None, max_length=120)
+    # Competition selection & regional zone (school + educator)
+    # Allowed competition slugs: robo_sumo | robo_race | robo_innovation
+    selected_competitions: Optional[List[str]] = None
+    # Only meaningful when robo_sumo or robo_race is picked:
+    # north (Delhi) | south (Bangalore) | east (Kanpur) | west (Mumbai) | central (Indore)
+    zone: Optional[str] = Field(None, max_length=20)
     # How-did-you-find-out-about-us
     source: Optional[str] = Field(None, max_length=40)  # social_media | google | iit_techfest | through_someone | referral | other
     source_details: Optional[str] = Field(None, max_length=120)  # name of person for "through_someone"
@@ -151,10 +157,23 @@ async def register_techfest(payload: TechfestRegisterIn, background_tasks: Backg
     # Shared additions
     for k in ("school_address", "school_email", "school_phone",
               "teaches_robotics", "robotics_format", "robotics_external_company",
-              "source", "source_details", "referrer_slug"):
+              "source", "source_details", "referrer_slug", "zone"):
         val = (getattr(payload, k) or "").strip() or None
         if val:
             doc[k] = val
+    # Competition slugs — validate against the fixed set. Zone only makes
+    # sense with robo_sumo / robo_race, otherwise it's dropped.
+    ALLOWED_COMPS = {"robo_sumo", "robo_race", "robo_innovation"}
+    ALLOWED_ZONES = {"north", "south", "east", "west", "central"}
+    if payload.selected_competitions:
+        comps = [c for c in payload.selected_competitions if c in ALLOWED_COMPS]
+        if comps:
+            doc["selected_competitions"] = comps
+    if doc.get("zone") not in ALLOWED_ZONES:
+        doc.pop("zone", None)
+    # Drop zone if it's not applicable to any chosen competition
+    if doc.get("zone") and not any(c in ("robo_sumo", "robo_race") for c in doc.get("selected_competitions", [])):
+        doc.pop("zone", None)
     # Normalise referrer_slug
     if doc.get("referrer_slug"):
         doc["referrer_slug"] = re.sub(r"[^a-z0-9-]", "", doc["referrer_slug"].lower())[:60] or None
@@ -177,6 +196,86 @@ async def register_techfest(payload: TechfestRegisterIn, background_tasks: Backg
     background_tasks.add_task(_send_techfest_confirmation, doc["email"], doc["name"], doc["type"])
 
     return {"ok": True, "duplicate": False, "id": str(result.inserted_id)}
+
+
+# ── Participants (students + team competition id) ────────────────────
+# Public endpoint — accepts the Mongo ObjectId returned by /register as
+# the authorization token. Sent to the registrant over email so they can
+# come back and add / edit their students at any time before the event.
+
+class ParticipantIn(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    competition_id: Optional[str] = Field(None, max_length=60)
+    grade: Optional[str] = Field(None, max_length=40)
+
+
+class ParticipantsPayload(BaseModel):
+    team_competition_id: Optional[str] = Field(None, max_length=60)
+    students: List[ParticipantIn] = []
+
+
+def _oid(id_str: str):
+    from bson import ObjectId
+    try:
+        return ObjectId(id_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid registration id")
+
+
+@router.get("/techfest/registrations/{reg_id}")
+async def get_techfest_registration_public(reg_id: str):
+    """Public read-by-id — used by the "add students later" email link.
+    Returns a limited view so email leakage doesn't reveal PII beyond
+    what the registrant already knows about their own row."""
+    doc = await db.techfest_registrations.find_one({"_id": _oid(reg_id)})
+    if not doc or doc.get("deleted_at"):
+        raise HTTPException(status_code=404, detail="Registration not found")
+    # Return the minimum needed by the participants form UI.
+    return {
+        "id": str(doc["_id"]),
+        "type": doc.get("type"),
+        "name": doc.get("name"),
+        "email": doc.get("email"),
+        "school_name": doc.get("school_name") or doc.get("school_or_institute"),
+        "selected_competitions": doc.get("selected_competitions") or [],
+        "zone": doc.get("zone"),
+        "team_competition_id": doc.get("team_competition_id"),
+        "students": doc.get("students") or [],
+    }
+
+
+@router.post("/techfest/registrations/{reg_id}/participants")
+async def upsert_techfest_participants(reg_id: str, payload: ParticipantsPayload):
+    """Public update: replaces the students list and (optionally) the team
+    competition id on a registration. No auth — the registration id acts
+    as the shared secret (24-hex Mongo ObjectId)."""
+    doc = await db.techfest_registrations.find_one({"_id": _oid(reg_id)})
+    if not doc or doc.get("deleted_at"):
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    students = [
+        {
+            "name": s.name.strip(),
+            "competition_id": (s.competition_id or "").strip() or None,
+            "grade": (s.grade or "").strip() or None,
+        }
+        for s in payload.students
+        if s.name and s.name.strip()
+    ]
+    update = {
+        "students": students,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    team_id = (payload.team_competition_id or "").strip() or None
+    if team_id:
+        update["team_competition_id"] = team_id
+    else:
+        # Explicitly clear it if the client blanked the field.
+        update.setdefault("$unset", {})
+
+    await db.techfest_registrations.update_one({"_id": doc["_id"]}, {"$set": update})
+    return {"ok": True, "students_count": len(students), "team_competition_id": team_id}
+
 
 
 async def _admin(user: dict = Depends(get_current_user)) -> dict:
@@ -255,8 +354,14 @@ async def list_techfest_registrations(
     if type:
         query["type"] = type
     if not _is_admin(user):
+        # Non-admin team users see rows attributed to their referral slug
+        # OR rows where they're explicitly assigned as the coordinator.
         slugs = await _user_scope_slugs(user)
-        query["referrer_slug"] = {"$in": slugs}
+        uid = user.get("id") or user.get("user_id")
+        or_clauses: list[dict] = [{"referrer_slug": {"$in": slugs}}]
+        if uid:
+            or_clauses.append({"coordinator_user_id": uid})
+        query["$or"] = or_clauses
     cursor = db.techfest_registrations.find(query).sort("created_at", -1).limit(1000)
     out = []
     async for doc in cursor:
@@ -286,6 +391,12 @@ class TechfestRegistrationPatch(BaseModel):
     source_details: Optional[str] = None
     referrer_slug: Optional[str] = None
     status: Optional[str] = None
+    # Competition + zone + coordinator (admin fields)
+    selected_competitions: Optional[List[str]] = None
+    zone: Optional[str] = None
+    coordinator_user_id: Optional[str] = None
+    coordinator_name: Optional[str] = None
+    team_competition_id: Optional[str] = None
 
 
 @router.patch("/admin/techfest/registrations/{reg_id}")
@@ -304,13 +415,19 @@ async def update_techfest_registration(
         raise HTTPException(status_code=404, detail="Registration not found")
     if not _is_admin(user):
         slugs = await _user_scope_slugs(user)
-        if existing.get("referrer_slug") not in slugs:
+        uid = user.get("id") or user.get("user_id")
+        allowed = (existing.get("referrer_slug") in slugs) or (uid and existing.get("coordinator_user_id") == uid)
+        if not allowed:
             raise HTTPException(status_code=403, detail="Not allowed to edit this registration")
     updates = {}
     for k, v in payload.model_dump(exclude_none=True).items():
         if isinstance(v, str):
             v = v.strip()
-        updates[k] = v or None
+        # Preserve list fields as-is; other empty strings become None (unset-ish)
+        if isinstance(v, list):
+            updates[k] = v
+        else:
+            updates[k] = v or None
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()

@@ -2,12 +2,26 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight, ArrowLeft, User, GraduationCap, Building2, CheckCircle2, Loader2,
-  FileText, FileDown, MessageCircle,
+  FileText, FileDown, MessageCircle, Trophy, Plus, Trash2, MapPin, Save,
 } from 'lucide-react';
 
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 const TECHFEST_LOGO = '/techfest/techfest-iitb-logo.webp';
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
+
+// Competition catalog — the 3 tracks + zonal metadata for sumo/race.
+const COMPETITIONS = [
+  { slug: 'robo_sumo',        label: 'Robo Sumo',                zonal: true  },
+  { slug: 'robo_race',        label: 'Robo Race',                zonal: true  },
+  { slug: 'robo_innovation',  label: 'Robo Innovation Challenge', zonal: false },
+];
+const ZONES = [
+  { slug: 'north',   label: 'North · Delhi'      },
+  { slug: 'south',   label: 'South · Bangalore'  },
+  { slug: 'east',    label: 'East · Kanpur'      },
+  { slug: 'west',    label: 'West · Mumbai'      },
+  { slug: 'central', label: 'Central · Indore'   },
+];
 
 const upsertMeta = (key, value, attr = 'name') => {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
@@ -25,6 +39,14 @@ export default function TechfestRegisterPage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState({});
   const [refName, setRefName] = useState('');  // display name of the referrer, if slug resolves
+  // Participants sub-flow — set after the registration succeeds. The
+  // registration id doubles as the shared-secret token for the "edit
+  // later" email link.
+  const [regId, setRegId] = useState('');
+  const [teamCompId, setTeamCompId] = useState('');
+  const [students, setStudents] = useState([{ name: '', competition_id: '', grade: '' }]);
+  const [savingParticipants, setSavingParticipants] = useState(false);
+  const [participantsSaved, setParticipantsSaved] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, [flow, done]);
 
@@ -52,6 +74,64 @@ export default function TechfestRegisterPage() {
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // ── Competitions & zone helpers ──────────────────────────────────
+  const selectedComps = form.selected_competitions || [];
+  const toggleCompetition = (slug) => {
+    setForm((f) => {
+      const cur = f.selected_competitions || [];
+      const next = cur.includes(slug) ? cur.filter((s) => s !== slug) : [...cur, slug];
+      // Drop zone if no zonal comp is left
+      const stillNeedsZone = next.some((s) => COMPETITIONS.find((c) => c.slug === s)?.zonal);
+      return { ...f, selected_competitions: next, zone: stillNeedsZone ? f.zone : '' };
+    });
+  };
+  const needsZone = selectedComps.some((s) => COMPETITIONS.find((c) => c.slug === s)?.zonal);
+
+  // ── Load a prior registration when opened via /techfest/register?edit=<id>
+  const editId = searchParams.get('edit') || '';
+  useEffect(() => {
+    if (!editId) return;
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/techfest/registrations/${encodeURIComponent(editId)}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        setRegId(d.id);
+        setDone(true);
+        setTeamCompId(d.team_competition_id || '');
+        const list = (d.students || []).length ? d.students : [{ name: '', competition_id: '', grade: '' }];
+        setStudents(list.map((s) => ({ name: s.name || '', competition_id: s.competition_id || '', grade: s.grade || '' })));
+      } catch {}
+    })();
+  }, [editId]);
+
+  // ── Students editor helpers ─────────────────────────────────────
+  const addStudent  = () => setStudents((s) => [...s, { name: '', competition_id: '', grade: '' }]);
+  const updateStudent = (i, k, v) => setStudents((s) => s.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
+  const removeStudent = (i) => setStudents((s) => (s.length > 1 ? s.filter((_, idx) => idx !== i) : s));
+
+  const saveParticipants = async () => {
+    if (!regId) return;
+    setSavingParticipants(true);
+    try {
+      const cleaned = students
+        .map((s) => ({ name: (s.name || '').trim(), competition_id: (s.competition_id || '').trim(), grade: (s.grade || '').trim() }))
+        .filter((s) => s.name);
+      const res = await fetch(`${API_BASE}/api/techfest/registrations/${encodeURIComponent(regId)}/participants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_competition_id: teamCompId || undefined, students: cleaned }),
+      });
+      if (!res.ok) throw new Error((await res.json())?.detail || 'Failed to save participants');
+      setParticipantsSaved(true);
+      setTimeout(() => setParticipantsSaved(false), 3500);
+    } catch (err) {
+      setError(err.message || 'Failed to save participants');
+    } finally {
+      setSavingParticipants(false);
+    }
+  };
+
   const pickFlow = (f) => {
     setError(''); setDone(false); setForm({});
     const next = { as: f };
@@ -75,6 +155,8 @@ export default function TechfestRegisterPage() {
       const payload = {
         type: flow,
         ...form,
+        selected_competitions: (form.selected_competitions || []).length ? form.selected_competitions : undefined,
+        zone: needsZone && form.zone ? form.zone : undefined,
         source: autoSource || undefined,
         // If the user picks "Through Someone", the name goes into source_details.
         // For "Referral", we keep source_details as the friendly referrer name if resolved.
@@ -90,6 +172,7 @@ export default function TechfestRegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Something went wrong. Please try again.');
+      if (data?.id) setRegId(data.id);
       setDone(true);
     } catch (err) {
       setError(err.message || 'Something went wrong.');
@@ -165,8 +248,120 @@ export default function TechfestRegisterPage() {
                   Thanks for registering. The OLL team will reach out on your phone and email within 24 hours with next steps for {flow === 'school' ? 'your school' : 'your team'}.
                 </p>
 
+                {/* ── Participants (students + team competition id) ────
+                   Public — the registration id in the URL is the token.
+                   The registrant can revisit later via /techfest/register?edit=<id>. */}
+                {regId && (
+                  <div className="mt-8 text-left rounded-2xl border-2 border-[#0A1F44]/10 bg-slate-50/70 p-5" data-testid="techfest-participants-block">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-[#DC2626]" />
+                      <div className="trp-eyebrow text-[#DC2626]">Add your team</div>
+                    </div>
+                    <h3 className="trp-h1 text-xl text-[#0A1F44] mt-1.5">Submit competition IDs</h3>
+                    <p className="text-xs text-slate-500 font-light mt-1">
+                      Optional now — you can revisit this page any time to update. Add every student who's competing.
+                    </p>
+
+                    <div className="mt-4">
+                      <label className="trp-label">Team Competition ID</label>
+                      <input
+                        className="trp-input"
+                        placeholder="e.g. TEAM-A-42 (from techfest.org)"
+                        value={teamCompId}
+                        onChange={(e) => setTeamCompId(e.target.value)}
+                        data-testid="techfest-team-competition-id"
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="trp-label mb-0">Students</label>
+                        <button
+                          type="button"
+                          onClick={addStudent}
+                          className="text-[11px] font-bold text-[#DC2626] uppercase tracking-widest inline-flex items-center gap-1"
+                          data-testid="techfest-add-student-btn"
+                        >
+                          <Plus className="w-3 h-3" /> Add student
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {students.map((s, i) => (
+                          <div key={i} className="grid grid-cols-12 gap-2" data-testid={`techfest-student-row-${i}`}>
+                            <input
+                              className="trp-input col-span-5"
+                              placeholder="Student name"
+                              value={s.name}
+                              onChange={(e) => updateStudent(i, 'name', e.target.value)}
+                              data-testid={`techfest-student-name-${i}`}
+                            />
+                            <input
+                              className="trp-input col-span-3"
+                              placeholder="Grade"
+                              value={s.grade}
+                              onChange={(e) => updateStudent(i, 'grade', e.target.value)}
+                              data-testid={`techfest-student-grade-${i}`}
+                            />
+                            <input
+                              className="trp-input col-span-3"
+                              placeholder="Competition ID"
+                              value={s.competition_id}
+                              onChange={(e) => updateStudent(i, 'competition_id', e.target.value)}
+                              data-testid={`techfest-student-compid-${i}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeStudent(i)}
+                              className="col-span-1 rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-red-500 hover:border-red-200 flex items-center justify-center"
+                              aria-label="Remove student"
+                              data-testid={`techfest-student-remove-${i}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={saveParticipants}
+                        disabled={savingParticipants}
+                        className="trp-btn primary disabled:opacity-70"
+                        data-testid="techfest-save-participants-btn"
+                      >
+                        {savingParticipants ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save participants</>}
+                      </button>
+                      {participantsSaved && (
+                        <span className="text-xs font-bold text-emerald-700 inline-flex items-center gap-1" data-testid="techfest-participants-saved">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+                        </span>
+                      )}
+                      <span className="text-[11px] text-slate-500 font-light">
+                        Revisit link: <code className="text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5">{`${window.location.origin}/techfest/register?edit=${regId}`}</code>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Downloads + WhatsApp — shown for school & educator flows */}
                 <div className="mt-8 grid gap-3 max-w-lg mx-auto text-left" data-testid="techfest-register-resources">
+                  <a
+                    href="/techfest/school-permission-letter.docx"
+                    download
+                    className="group flex items-center gap-3 p-4 rounded-2xl border-2 border-slate-200 hover:border-[#DC2626] hover:bg-red-50/40 transition-colors"
+                    data-testid="techfest-download-school-permission"
+                  >
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#0A1F44,#1E3A5F)' }}>
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[#0A1F44] leading-tight">School Permission Letter</div>
+                      <div className="text-xs text-slate-600 font-light mt-0.5">Signable template on school letterhead · .docx</div>
+                    </div>
+                    <FileDown className="w-4 h-4 text-slate-400 group-hover:text-[#DC2626]" />
+                  </a>
                   <a
                     href="/techfest/parent-circular.docx"
                     download
@@ -377,6 +572,66 @@ export default function TechfestRegisterPage() {
                       </div>
                     </>
                   )}
+
+                  {/* Competition selection — shared across school & educator flows */}
+                  <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+                    <label className="trp-label flex items-center gap-1.5">
+                      <Trophy className="w-3 h-3" style={{ color: '#DC2626' }} /> Select Competitions*
+                    </label>
+                    <div className="grid sm:grid-cols-3 gap-2" data-testid="techfest-reg-field-competitions">
+                      {COMPETITIONS.map((c) => {
+                        const active = selectedComps.includes(c.slug);
+                        return (
+                          <button
+                            key={c.slug}
+                            type="button"
+                            onClick={() => toggleCompetition(c.slug)}
+                            className="text-left px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-colors"
+                            style={{
+                              borderColor: active ? '#DC2626' : '#e2e8f0',
+                              background: active ? 'rgba(220,38,38,0.08)' : '#fff',
+                              color: active ? '#DC2626' : '#0A1F44',
+                            }}
+                            data-testid={`techfest-reg-competition-${c.slug}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-4 h-4 rounded-md border-2 flex items-center justify-center ${active ? 'bg-[#DC2626] border-[#DC2626]' : 'border-slate-300'}`}>
+                                {active && <CheckCircle2 className="w-3 h-3 text-white" />}
+                              </span>
+                              {c.label}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Force at least one competition to be picked */}
+                    <input
+                      type="hidden"
+                      required
+                      value={selectedComps.length ? 'ok' : ''}
+                      readOnly
+                    />
+                    {needsZone && (
+                      <div className="mt-3">
+                        <label className="trp-label flex items-center gap-1.5">
+                          <MapPin className="w-3 h-3" style={{ color: '#DC2626' }} /> Regional Round Zone*
+                        </label>
+                        <select
+                          required
+                          className="trp-input"
+                          value={form.zone || ''}
+                          onChange={setField('zone')}
+                          data-testid="techfest-reg-field-zone"
+                        >
+                          <option value="">Select your zonal round</option>
+                          {ZONES.map((z) => (
+                            <option key={z.slug} value={z.slug}>{z.label}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[11px] text-slate-500 font-light">Applies to Robo Sumo &amp; Robo Race. Pick the round closest to you.</p>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Shared block — does your school already teach robotics? */}
                   <div className="sm:col-span-2 pt-2 border-t border-slate-100">

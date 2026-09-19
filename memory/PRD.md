@@ -24,6 +24,34 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Techfest competitions + zones + coordinator workflow**
+  (`routes/techfest.py`, `TechfestRegisterPage.jsx`, `AdminCompetitions.jsx`,
+  `public/techfest/school-permission-letter.docx`).
+  - **Registration form (school + educator)**: added *Select Competitions*
+    multi-picker (Robo Sumo, Robo Race, Robo Innovation Challenge). When
+    Sumo or Race is picked a *Regional Round Zone* dropdown appears —
+    North · Delhi / South · Bangalore / East · Kanpur / West · Mumbai /
+    Central · Indore. Zone is auto-cleared if the user un-picks every
+    zonal competition.
+  - **Success screen**: inline participants editor to add multiple
+    students (name / grade / competition ID) and a team competition ID.
+    A revisit link `/techfest/register?edit=<id>` is shown so the
+    registrant can email themselves and update later — the endpoint
+    `GET/POST /api/techfest/registrations/{id}` treats the Mongo id as
+    the shared secret.
+  - **School Permission Letter** download button added to the success
+    resources (points to `/techfest/school-permission-letter.docx`).
+  - **Admin Competitions edit modal**: 3-way competition picker, zone
+    dropdown (revealed only when a zonal comp is chosen), Team
+    Competition ID field, and a searchable **Assign Coordinator** panel
+    (team-user autocomplete). Coordinator stamp = `coordinator_user_id`
+    + `coordinator_name`.
+  - **Coordinator visibility**: `GET /admin/techfest/registrations` now
+    ORs the referrer-slug scope with `coordinator_user_id == user.id` so
+    the assigned team member sees the row under their existing tab. The
+    PATCH endpoint applies the same broadened check.
+  - Verified end-to-end with curl (register → PATCH by admin → refetch)
+    and Playwright (full form fill + participants save flow).
 - **Feb 2026** — **School CRM: Assign RM in Renewed stage + broader RM data scoping**
   (`AdminSchoolCRM.jsx`, `routes/schools.py`).
   - Added the missing **Assign RM / Change RM** action button to the

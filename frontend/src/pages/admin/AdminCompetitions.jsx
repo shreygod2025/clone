@@ -40,6 +40,20 @@ const SOURCE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
+const COMPETITION_OPTIONS = [
+  { slug: 'robo_sumo',       label: 'Robo Sumo',                 zonal: true  },
+  { slug: 'robo_race',       label: 'Robo Race',                 zonal: true  },
+  { slug: 'robo_innovation', label: 'Robo Innovation Challenge', zonal: false },
+];
+const ZONE_OPTIONS = [
+  { slug: 'north',   label: 'North · Delhi'     },
+  { slug: 'south',   label: 'South · Bangalore' },
+  { slug: 'east',    label: 'East · Kanpur'     },
+  { slug: 'west',    label: 'West · Mumbai'     },
+  { slug: 'central', label: 'Central · Indore'  },
+];
+const COMPETITION_LABEL = Object.fromEntries(COMPETITION_OPTIONS.map((c) => [c.slug, c.label]));
+
 const fmtDateTime = (iso) => {
   if (!iso) return '—';
   try {
@@ -92,6 +106,9 @@ export default function AdminCompetitions() {
   const [editReg, setEditReg] = useState(null); // registration row being edited
   const [editForm, setEditForm] = useState({});
   const [savingReg, setSavingReg] = useState(false);
+  // Team users for the coordinator picker (admin only can assign)
+  const [teamUsers, setTeamUsers] = useState([]);
+  const [coordQuery, setCoordQuery] = useState('');
 
   const visibleTabs = isAdmin ? TABS : TABS.filter((t) => t.key !== 'referrers');
   const isRegistrationTab = tab === 'school' || tab === 'educator' || tab === 'student';
@@ -129,6 +146,19 @@ export default function AdminCompetitions() {
     else load();
      
   }, [tab]);
+
+  // Team users are only needed for the coordinator picker in the edit
+  // modal — admin-only, fetch once.
+  useEffect(() => {
+    if (!isAdmin) return;
+    (async () => {
+      try {
+        const res = await axios.get(`${API}/team-users`, { headers: getAuthHeaders() });
+        setTeamUsers((res.data || []).filter((u) => u.is_active !== false));
+      } catch { /* silent — the picker just shows no options */ }
+    })();
+     
+  }, [isAdmin]);
 
   // Fetch the current user's own referral link + counts on mount.
   // Admin sees this as a helper card; team members see it as their primary tool.
@@ -192,6 +222,7 @@ export default function AdminCompetitions() {
 
   const openEdit = (row) => {
     setEditReg(row);
+    setCoordQuery('');
     setEditForm({
       name: row.name || '',
       email: row.email || '',
@@ -211,6 +242,11 @@ export default function AdminCompetitions() {
       source: row.source || '',
       source_details: row.source_details || '',
       status: row.status || 'new',
+      selected_competitions: row.selected_competitions || [],
+      zone: row.zone || '',
+      coordinator_user_id: row.coordinator_user_id || '',
+      coordinator_name: row.coordinator_name || '',
+      team_competition_id: row.team_competition_id || '',
     });
   };
 
@@ -691,6 +727,130 @@ export default function AdminCompetitions() {
                   <option value="rejected">Rejected</option>
                 </select>
               </Field>
+
+              {/* Competition selection + zonal round (admin can add/change) */}
+              <div className="sm:col-span-2 pt-3 border-t border-slate-100">
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Selected Competitions</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" data-testid="admin-competitions-comp-picker">
+                  {COMPETITION_OPTIONS.map((c) => {
+                    const active = (editForm.selected_competitions || []).includes(c.slug);
+                    return (
+                      <button
+                        key={c.slug}
+                        type="button"
+                        onClick={() => {
+                          const cur = editForm.selected_competitions || [];
+                          const next = active ? cur.filter((s) => s !== c.slug) : [...cur, c.slug];
+                          const stillZonal = next.some((s) => COMPETITION_OPTIONS.find((cc) => cc.slug === s)?.zonal);
+                          setEditForm({ ...editForm, selected_competitions: next, zone: stillZonal ? editForm.zone : '' });
+                        }}
+                        className="text-left px-3 py-2 rounded-lg border-2 text-sm font-semibold transition"
+                        style={{
+                          borderColor: active ? '#DC2626' : '#e2e8f0',
+                          background: active ? 'rgba(220,38,38,0.08)' : '#fff',
+                          color: active ? '#DC2626' : '#0A1F44',
+                        }}
+                        data-testid={`admin-competitions-comp-${c.slug}`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {(editForm.selected_competitions || []).some((s) => COMPETITION_OPTIONS.find((c) => c.slug === s)?.zonal) && (
+                <Field label="Regional Zone">
+                  <select
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                    value={editForm.zone || ''}
+                    onChange={(e) => setEditForm({ ...editForm, zone: e.target.value })}
+                    data-testid="admin-competitions-zone"
+                  >
+                    <option value="">— Select zone —</option>
+                    {ZONE_OPTIONS.map((z) => <option key={z.slug} value={z.slug}>{z.label}</option>)}
+                  </select>
+                </Field>
+              )}
+
+              <Field label="Team Competition ID">
+                <Input
+                  value={editForm.team_competition_id || ''}
+                  onChange={(e) => setEditForm({ ...editForm, team_competition_id: e.target.value })}
+                  placeholder="e.g. TEAM-A-42"
+                  data-testid="admin-competitions-team-id"
+                />
+              </Field>
+
+              {/* Coordinator picker — admin-only, searchable */}
+              {isAdmin && (
+                <div className="sm:col-span-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Assign Coordinator</label>
+                  {editForm.coordinator_user_id ? (
+                    <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2" data-testid="admin-competitions-coord-selected">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{editForm.coordinator_name || 'Assigned'}</div>
+                        <div className="text-[11px] text-slate-500">Coordinator can now see this registration in their Competitions.</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, coordinator_user_id: '', coordinator_name: '' })}
+                        className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-semibold"
+                        data-testid="admin-competitions-coord-clear"
+                      >
+                        <X className="w-3 h-3 inline" /> Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          value={coordQuery}
+                          onChange={(e) => setCoordQuery(e.target.value)}
+                          placeholder="Search team member by name or email"
+                          className="pl-9"
+                          data-testid="admin-competitions-coord-search"
+                        />
+                      </div>
+                      {coordQuery.trim() && (
+                        <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white divide-y divide-slate-100" data-testid="admin-competitions-coord-results">
+                          {teamUsers
+                            .filter((u) => {
+                              const q = coordQuery.trim().toLowerCase();
+                              return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                            })
+                            .slice(0, 8)
+                            .map((u) => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => {
+                                  setEditForm({ ...editForm, coordinator_user_id: u.id, coordinator_name: u.name });
+                                  setCoordQuery('');
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-red-50 flex items-center justify-between"
+                                data-testid={`admin-competitions-coord-option-${u.id}`}
+                              >
+                                <span>
+                                  <span className="font-semibold text-slate-800">{u.name}</span>
+                                  <span className="text-slate-400 text-xs ml-2">{u.email}</span>
+                                </span>
+                                <Plus className="w-3.5 h-3.5 text-slate-400" />
+                              </button>
+                            ))}
+                          {teamUsers.filter((u) => {
+                            const q = coordQuery.trim().toLowerCase();
+                            return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                          }).length === 0 && (
+                            <div className="px-3 py-3 text-xs text-slate-400 text-center">No matches</div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">School Address</label>
