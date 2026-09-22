@@ -50,6 +50,7 @@ const SchoolDetailsModal = ({ school, onClose }) => {
     ['Onboarding',     school.onboarding_status],
     ['Total Students', school.total_students],
     ['Conversion Amount', school.conversion_amount ? fmtINR(school.conversion_amount) : null],
+    ['GP Share',        school.gp_share_amount ? fmtINR(school.gp_share_amount) : null],
     ['Fee Range',      school.fee_range],
     ['School Size',    school.school_size],
     ['Programs',       Array.isArray(school.programs_interested) ? school.programs_interested.join(', ') : school.programs_interested],
@@ -197,6 +198,7 @@ export default function GPActivePartnerCard({ user, role, onMarkInactive }) {
             <KpiPill icon={Users}          label="Leads"       value={kpis.leads}          tone="border-blue-100 bg-blue-50 text-blue-900" />
             <KpiPill icon={TrendingUp}     label="Conversions" value={kpis.conversions}    tone="border-emerald-100 bg-emerald-50 text-emerald-900" />
             <KpiPill icon={IndianRupee}    label="Revenue"     value={fmtINR(kpis.revenue)} tone="border-indigo-100 bg-indigo-50 text-indigo-900" />
+            <KpiPill icon={IndianRupee}    label="GP Earnings" value={fmtINR(kpis.gp_earnings)} tone="border-fuchsia-100 bg-fuchsia-50 text-fuchsia-900" data-testid="gp-earnings-chip" />
             <KpiPill icon={IndianRupee}    label="AOV"         value={fmtINR(kpis.aov)}    tone="border-purple-100 bg-purple-50 text-purple-900" />
             <KpiPill icon={GraduationCap}  label="Students"    value={kpis.total_students} tone="border-amber-100 bg-amber-50 text-amber-900" />
             <KpiPill icon={Repeat}         label="Retention"   value={`${kpis.retention_rate}%`} tone="border-teal-100 bg-teal-50 text-teal-900" />

@@ -24,6 +24,26 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Field Reports module (Admin)**
+  (`routes/field_reports.py`, `AdminFieldReports.jsx`, sidebar + route).
+  - New `/admin/field-reports` gated by the new `field_reports`
+    permission (grant to Manager via Users & Roles). Sits between
+    Central Database and Settings in the sidebar.
+  - **My Field Day** tab: geolocation-tagged **Check In** (photo/selfie
+    upload), one live session at a time, **Add School Visit** for every
+    stop (school name / city / board / student bucket / fees bucket /
+    has-robotics + provider + repeatable contact rows aligned with the
+    school-CRM lead schema), **Add meeting note** per visit (report /
+    product problems faced / next step), and **Check Out** to close.
+  - **Reports** tab: read-only accordion. Regular users see their own
+    days; admin (and anyone with `field_reports_admin` permission) sees
+    the whole team.
+  - Backend auto-creates a matching `school_inquiries` row (source
+    `field_visit`, status `new`) for every visit and stamps
+    `field_report_id` / `field_visit_id` so the record flows straight
+    into School CRM. Verified end-to-end via curl (checkin → visit →
+    meeting → checkout → list + school_inquiry created).
+- **Feb 2026** — **Growth Partners: GP Earnings + author edit/delete stories + Educator location save fix**
 - **Feb 2026** — **Techfest competitions + zones + coordinator workflow**
   (`routes/techfest.py`, `TechfestRegisterPage.jsx`, `AdminCompetitions.jsx`,
   `public/techfest/school-permission-letter.docx`).

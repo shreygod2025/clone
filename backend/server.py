@@ -4205,6 +4205,9 @@ api_router.include_router(central_database_router)
 from routes.simple_partners import router as simple_partners_router
 api_router.include_router(simple_partners_router)
 
+from routes.field_reports import router as field_reports_router
+api_router.include_router(field_reports_router)
+
 app.include_router(api_router)
 
 # SEO routes mount at the root (NOT under /api/) — Google requests

@@ -177,6 +177,7 @@ const AdminSuccessStories = () => {
                 key={s.id}
                 s={s}
                 isAdmin={isAdmin}
+                currentUserId={user?.id}
                 onView={() => setViewing(s)}
                 onEdit={() => openEdit(s)}
                 onDelete={() => handleDelete(s)}
@@ -202,8 +203,9 @@ const AdminSuccessStories = () => {
   );
 };
 
-const StoryCard = ({ s, isAdmin, onView, onEdit, onDelete }) => {
+const StoryCard = ({ s, isAdmin, currentUserId, onView, onEdit, onDelete }) => {
   const lvl = LEVEL_MAP[s.level] || LEVELS[0];
+  const canManage = isAdmin || (currentUserId && s.created_by === currentUserId);
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow" data-testid={`story-card-${s.id}`}>
       <div className="relative aspect-[16/9] bg-slate-100">
@@ -252,7 +254,7 @@ const StoryCard = ({ s, isAdmin, onView, onEdit, onDelete }) => {
             <Eye className="w-3 h-3" />
             View
           </button>
-          {isAdmin && (
+          {canManage && (
             <>
               <button
                 onClick={onEdit}

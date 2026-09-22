@@ -253,6 +253,23 @@ class EducatorApplicationUpdate(BaseModel):
     tech_demo_time: Optional[str] = None
     onboarding_date: Optional[str] = None
     assigned_to: Optional[str] = None
+    # Profile fields — surfaced by the "Edit educator" modal on the
+    # active-educators tab. Previously missing here, which caused Pydantic
+    # to silently drop the edit → the DB kept the old value.
+    city: Optional[str] = None
+    area: Optional[str] = None
+    skills: Optional[List[str]] = None
+    experience: Optional[str] = None
+    teaching_mode: Optional[str] = None
+    bio: Optional[str] = None
+    grades_comfortable: Optional[List[str]] = None
+    linkedin_url: Optional[str] = None
+    resume_url: Optional[str] = None
+    profile_photo: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
 
 # Educator Onboarding Models
 class EducatorOnboarding(BaseModel):

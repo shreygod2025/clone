@@ -180,12 +180,12 @@ async def get_success_story(story_id: str, user: dict = Depends(get_current_user
 
 @router.patch("/success-stories/{story_id}")
 async def update_success_story(story_id: str, payload: SuccessStoryUpdate, user: dict = Depends(get_current_user)):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     doc = await db.success_stories.find_one({"id": story_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Story not found")
+    # Admin can edit any story; other users can only edit stories they created.
+    if not _is_admin(user) and doc.get("created_by") != user.get("id"):
+        raise HTTPException(status_code=403, detail="You can only edit stories you added")
 
     update = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if "level" in update:
@@ -204,11 +204,12 @@ async def update_success_story(story_id: str, payload: SuccessStoryUpdate, user:
 
 @router.delete("/success-stories/{story_id}")
 async def delete_success_story(story_id: str, user: dict = Depends(get_current_user)):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin only")
-    res = await db.success_stories.delete_one({"id": story_id})
-    if res.deleted_count == 0:
+    doc = await db.success_stories.find_one({"id": story_id}, {"id": 1, "created_by": 1})
+    if not doc:
         raise HTTPException(status_code=404, detail="Story not found")
+    if not _is_admin(user) and doc.get("created_by") != user.get("id"):
+        raise HTTPException(status_code=403, detail="You can only delete stories you added")
+    await db.success_stories.delete_one({"id": story_id})
     return {"success": True}
 
 

@@ -46,6 +46,7 @@ const ALL_SECTIONS = [
   { value: 'reports', label: 'Reports', description: 'View analytics and reports' },
   { value: 'data_center', label: 'Data Center', description: 'Manage platform data and exports' },
   { value: 'central_database', label: 'Central Database', description: 'City-wise consolidated view of every team member, growth partner, teacher, school, student and centre — includes contact details' },
+  { value: 'field_reports', label: 'Field Reports', description: 'Log check-ins, school visits and meeting notes from the field. Reports view is scoped: users see their own; grant to managers to see the whole team.' },
   { value: 'settings', label: 'Settings', description: 'Manage cities, centers, blogs, team openings' },
   { value: 'requirements', label: 'Requirements', description: 'Manage educator requirements' },
   { value: 'users', label: 'Users & Roles', description: 'Manage users and role permissions' },

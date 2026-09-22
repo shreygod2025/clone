@@ -1137,6 +1137,10 @@ async def growth_partner_kpis(team_user_id: str, user: dict = Depends(get_curren
         "total_students": 1, "conversion_amount": 1, "fee_range": 1,
         "meeting_date": 1, "created_at": 1, "updated_at": 1,
         "assigned_to_name": 1, "programs_interested": 1, "school_size": 1,
+        # onboarding_data holds the negotiated Growth Partner share
+        "onboarding_data.gp_share_amount": 1,
+        "onboarding_data.gp_share_type": 1,
+        "onboarding_data.gp_share_value": 1,
     }
     schools = await db.school_inquiries.find(
         {"assigned_to": team_user_id}, projection,
@@ -1145,11 +1149,23 @@ async def growth_partner_kpis(team_user_id: str, user: dict = Depends(get_curren
     leads_bucket, conv_bucket, lost_bucket = [], [], []
     total_students = 0
     revenue = 0.0
+    gp_earnings = 0.0
     renewed_count = 0
     for s in schools:
         st = (s.get("status") or "").strip()
         st_lower = st.lower()
         total_students += int(s.get("total_students") or 0)
+        # Roll up gp_share across every school assigned to this GP so
+        # the /admin/growth-partners UI can show a "GP Earnings" figure.
+        # We inline it on the school record too so the per-school
+        # accordion can display it without a second round-trip.
+        onb = s.get("onboarding_data") or {}
+        try:
+            share = float(onb.get("gp_share_amount") or 0)
+        except Exception:
+            share = 0.0
+        s["gp_share_amount"] = share
+        gp_earnings += share
 
         if st in _CONVERTED_STATUSES or st_lower in ("converted", "active", "renewed", "onboarded"):
             conv_bucket.append(s)
@@ -1171,6 +1187,7 @@ async def growth_partner_kpis(team_user_id: str, user: dict = Depends(get_curren
         "leads": len(leads_bucket),
         "conversions": conversions,
         "revenue": round(revenue, 2),
+        "gp_earnings": round(gp_earnings, 2),
         "aov": aov,
         "total_students": total_students,
         "retention_rate": retention_rate,
