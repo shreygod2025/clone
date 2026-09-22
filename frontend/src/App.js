@@ -161,6 +161,7 @@ const AdminShopPanel = lazy(() => import("./pages/admin/AdminShopPanel"));
 const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
 const TechfestPage = lazy(() => import("./pages/TechfestPage"));
 const TechfestRegisterPage = lazy(() => import("./pages/TechfestRegisterPage"));
+const TechfestSubmitPage = lazy(() => import("./pages/TechfestSubmitPage"));
 const AccessDenied = lazy(() => import("./pages/admin/AccessDenied"));
 
 const ProtectedRoute = ({ children, permission = null }) => {
@@ -355,6 +356,7 @@ function App() {
               <Route path="/pricing" element={<ProtectedRoute permission="pricing"><AdminPricing /></ProtectedRoute>} />
               <Route path="/techfest" element={<TechfestPage />} />
               <Route path="/techfest/register" element={<TechfestRegisterPage />} />
+              <Route path="/techfest/submit" element={<TechfestSubmitPage />} />
               <Route path="/school-offerings/robotics/iit-bombay-competitions" element={<Navigate to="/techfest" replace />} />
               <Route path="/school-offerings/robotics/icse-group3-kits" element={<Navigate to="/school/robotics/icse-9-10" replace />} />
               <Route path="/admin/success-stories" element={<ProtectedRoute><AdminSuccessStories /></ProtectedRoute>} />

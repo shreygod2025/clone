@@ -277,6 +277,71 @@ async def upsert_techfest_participants(reg_id: str, payload: ParticipantsPayload
     return {"ok": True, "students_count": len(students), "team_competition_id": team_id}
 
 
+# ── Project submissions ─────────────────────────────────────────────
+# Final project uploads from participants — separate collection so the
+# submissions dashboard doesn't fight for space with the registrations
+# funnel.
+class TechfestSubmissionIn(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=120)
+    date_of_birth: Optional[str] = Field(None, max_length=20)   # ISO YYYY-MM-DD
+    age: Optional[int] = Field(None, ge=3, le=120)
+    email: EmailStr
+    phone: str = Field(..., min_length=6, max_length=20)
+    country: Optional[str] = Field(None, max_length=80)
+    pincode: Optional[str] = Field(None, max_length=20)
+    state: Optional[str] = Field(None, max_length=80)
+    city: Optional[str] = Field(None, max_length=80)
+    school_or_college: Optional[str] = Field(None, max_length=200)
+    # Zone: north (Delhi), south (Bangalore), east (Kanpur), west (Mumbai), central (Indore)
+    zone: str = Field(..., max_length=20)
+    # Competition: robo_sumo | robo_race | robo_innovation
+    competition: str = Field(..., max_length=40)
+    # Only meaningful when competition == robo_innovation
+    project_category: Optional[str] = Field(None, max_length=120)
+    project_theme:    Optional[str] = Field(None, max_length=120)
+    # Track ids from techfest.org
+    team_id:        Optional[str] = Field(None, max_length=60)
+    competition_id: Optional[str] = Field(None, max_length=60)
+    drive_link:     str = Field(..., min_length=8, max_length=500)
+
+
+@router.post("/techfest/submissions")
+async def create_techfest_submission(payload: TechfestSubmissionIn):
+    """Public submission endpoint — no auth required."""
+    ALLOWED_ZONES = {"north", "south", "east", "west", "central"}
+    ALLOWED_COMPS = {"robo_sumo", "robo_race", "robo_innovation"}
+    if payload.zone not in ALLOWED_ZONES:
+        raise HTTPException(status_code=400, detail="Invalid zone")
+    if payload.competition not in ALLOWED_COMPS:
+        raise HTTPException(status_code=400, detail="Invalid competition")
+
+    doc = payload.model_dump()
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    doc["status"] = "submitted"
+    result = await db.techfest_submissions.insert_one(doc)
+    return {"ok": True, "id": str(result.inserted_id)}
+
+
+@router.get("/admin/techfest/submissions")
+async def list_techfest_submissions(
+    zone: Optional[str] = None,
+    competition: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    # Same "admin or team member with email" gate used elsewhere.
+    if user.get("role") not in ("admin", "super_admin") and not user.get("email"):
+        raise HTTPException(status_code=403, detail="Access denied")
+    query: dict = {}
+    if zone: query["zone"] = zone
+    if competition: query["competition"] = competition
+    cursor = db.techfest_submissions.find(query).sort("created_at", -1).limit(1000)
+    out = []
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        out.append(doc)
+    return {"items": out, "count": len(out)}
+
+
 
 async def _admin(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") not in ("admin", "super_admin"):

@@ -24,6 +24,25 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Techfest project Submission Portal**
+  (`routes/techfest.py`, `TechfestSubmitPage.jsx`, `TechfestPage.jsx`,
+  `App.js`).
+  - New public route `/techfest/submit` with a full-fledged submission
+    form: name, DOB (age auto-computed), email, phone, country,
+    pincode, state, city, school/college, zone (5 options),
+    competition (3 options), Team ID, Competition ID, and a required
+    Google Drive link. When *Robo Innovation Challenge* is picked, the
+    form reveals Project Category (8 preset options) + Project Theme.
+  - Backend `POST /api/techfest/submissions` (public, no auth) + admin
+    `GET /api/admin/techfest/submissions` with `zone` + `competition`
+    filters. Data lives in a new `techfest_submissions` collection —
+    kept separate from registrations so the submissions dashboard doesn't
+    fight for space with the funnel.
+  - **Submit Project** buttons now appear next to Register in both the
+    Techfest landing top nav and hero CTA row.
+  - Verified end-to-end with curl (public POST → admin GET returns it)
+    and Playwright (form renders, DOB→Age auto-fill, Innovation
+    conditional fields appear).
 - **Feb 2026** — **Field Reports module (Admin)**
   (`routes/field_reports.py`, `AdminFieldReports.jsx`, sidebar + route).
   - New `/admin/field-reports` gated by the new `field_reports`
