@@ -108,6 +108,7 @@ export default function TechfestSubmitPage() {
     return data.url;
   };
   const [uploadingKey, setUploadingKey] = useState('');
+  const [downloadingLetter, setDownloadingLetter] = useState(false);
   const pickAndUpload = async (key, onDone) => {
     setUploadingKey(key);
     try {
@@ -124,6 +125,43 @@ export default function TechfestSubmitPage() {
       onDone(url);
     } catch (err) { setError(err.message || 'Upload failed'); }
     finally { setUploadingKey(''); }
+  };
+
+  // ── Pre-filled permission letter download ────────────────
+  const downloadPermissionLetter = async () => {
+    setError('');
+    setDownloadingLetter(true);
+    try {
+      const payload = {
+        full_name: form.full_name || '',
+        date_of_birth: form.date_of_birth || '',
+        email: form.email || '',
+        phone: form.phone || '',
+        school_or_college: form.school_or_college || '',
+        competition: form.competition || '',
+        zone: form.zone || '',
+        age_category: form.age_category || '',
+        team_members: (form.team_members || []).filter((m) => m.name?.trim()),
+      };
+      const res = await fetch(`${API_BASE}/api/techfest/permission-letter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Could not build the letter');
+      const blob = await res.blob();
+      // Extract filename from content-disposition header if present.
+      const cd = res.headers.get('content-disposition') || '';
+      const match = cd.match(/filename="?([^";]+)"?/i);
+      const filename = match ? match[1] : 'OLL-Techfest-Permission-Letter.docx';
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message || 'Could not download the letter');
+    } finally { setDownloadingLetter(false); }
   };
 
   const submit = async (e) => {
@@ -392,16 +430,18 @@ export default function TechfestSubmitPage() {
               {/* ─── School permission letter ─── */}
               <section className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4" data-testid="sub-permission-block">
                 <h2 className="trp-eyebrow text-slate-500 mb-2 flex items-center gap-1.5"><FileText className="w-3 h-3" /> School Permission Letter</h2>
-                <p className="text-[11px] text-slate-600 font-light mb-3">Download the sample template, print on your school letterhead, get it signed by the principal, then upload the scan/PDF here.</p>
+                <p className="text-[11px] text-slate-600 font-light mb-3">We&rsquo;ll pre-fill this letter with your team &amp; competition details — just print it on your school letterhead, get it signed by the principal, then upload the scan/PDF here.</p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <a
-                    href="/techfest/school-permission-letter.docx"
-                    download
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-700 hover:border-slate-400"
+                  <button
+                    type="button"
+                    onClick={downloadPermissionLetter}
+                    disabled={downloadingLetter}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-700 hover:border-slate-400 disabled:opacity-60"
                     data-testid="sub-permission-download"
                   >
-                    <FileDown className="w-3.5 h-3.5" /> Download sample template
-                  </a>
+                    {downloadingLetter ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                    Download pre-filled letter
+                  </button>
                   <button
                     type="button"
                     onClick={() => pickAndUpload('permission', (url) => setForm((f) => ({ ...f, school_permission_url: url })))}

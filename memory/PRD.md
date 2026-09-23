@@ -24,6 +24,25 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Sep 2026** — **Techfest Auto-fill Permission Letter + Submission Notifications**
+  (`routes/techfest_permission_letter.py`, `routes/techfest_emails.py`,
+   `routes/techfest.py`, `TechfestSubmitPage.jsx`).
+  - `POST /api/techfest/permission-letter` — accepts submission form
+    state and streams back a `.docx` filled with team lead, up to 5
+    team members, competition/zone/age category, coordinator and
+    signatory fields (falls back to blank placeholders).
+  - Frontend "Download pre-filled letter" button replaces the static
+    template link; POSTs current state and triggers browser download.
+  - Submission endpoint fires background email (Gmail→Resend) +
+    WhatsApp (AiSensy campaign `techfest_submission_confirmed`) to team
+    lead AND every team member with contact info.
+  - Emails carry reference ID, competition, zone, age category, drive
+    link and full team roster.
+  - **⚠️ Pending user action:** create the AiSensy campaign
+    `techfest_submission_confirmed` with params `[name, competition,
+    zone, reference_id]` — until then WhatsApp gracefully 400s and
+    only email fires.
+
 - **Feb 2026** — **Techfest Submission Portal · v2 (multi-member, permission letter, admin submissions tab)**
   (`routes/techfest.py`, `TechfestSubmitPage.jsx`, `AdminCompetitions.jsx`).
   - Competition-first order — zone field only appears when Robo Sumo /

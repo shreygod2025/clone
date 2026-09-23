@@ -17,7 +17,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, EmailStr, Field
 
 from .shared import db, get_current_user
-from .techfest_emails import registration_confirmed_html, school_invite_html
+from .techfest_emails import registration_confirmed_html, school_invite_html, submission_confirmed_html
+from .techfest_permission_letter import (
+    build_permission_letter_docx,
+    COMPETITION_LABELS,
+    ZONE_LABELS,
+    AGE_CAT_LABELS,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -324,7 +330,7 @@ class TechfestSubmissionIn(BaseModel):
 
 
 @router.post("/techfest/submissions")
-async def create_techfest_submission(payload: TechfestSubmissionIn):
+async def create_techfest_submission(payload: TechfestSubmissionIn, background_tasks: BackgroundTasks):
     """Public submission endpoint — no auth required."""
     ALLOWED_ZONES = {"north", "south", "east", "west", "central"}
     ALLOWED_COMPS = {"robo_sumo", "robo_race", "robo_innovation"}
@@ -346,7 +352,144 @@ async def create_techfest_submission(payload: TechfestSubmissionIn):
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     doc["status"] = "submitted"
     result = await db.techfest_submissions.insert_one(doc)
-    return {"ok": True, "id": str(result.inserted_id)}
+    reference_id = str(result.inserted_id)
+
+    # Fire confirmation email + WhatsApp to team lead and every team
+    # member whose contact info we have. Non-blocking so a slow SMTP
+    # server can't 500 the submission.
+    background_tasks.add_task(
+        _send_submission_confirmations,
+        submission=doc,
+        reference_id=reference_id,
+    )
+
+    return {"ok": True, "id": reference_id}
+
+
+async def _send_submission_confirmations(*, submission: dict, reference_id: str) -> None:
+    """Fan-out submission confirmation email + WhatsApp to team lead and
+    every team member with contact info. Swallows individual failures."""
+    try:
+        comp_label = COMPETITION_LABELS.get(submission.get("competition") or "", submission.get("competition") or "")
+        zone_label = ZONE_LABELS.get(submission.get("zone") or "", "") or None
+        age_label  = AGE_CAT_LABELS.get(submission.get("age_category") or "", "") or None
+        lead_name  = (submission.get("full_name") or "Team lead").strip()
+        school     = (submission.get("school_or_college") or "").strip() or None
+        drive_link = submission.get("drive_link") or None
+        team_members = submission.get("team_members") or []
+
+        html = submission_confirmed_html(
+            lead_name=lead_name,
+            competition_label=comp_label,
+            zone_label=zone_label,
+            age_category_label=age_label,
+            school_name=school,
+            reference_id=reference_id,
+            team_members=team_members,
+            drive_link=drive_link,
+        )
+        subject = "Project submitted — OLL Robotics Championship @ Techfest IIT Bombay"
+
+        # Collect unique (email, name) pairs to dispatch to.
+        recipients: list[tuple[str, str]] = []
+        seen_emails: set[str] = set()
+        lead_email = (submission.get("email") or "").strip().lower()
+        if lead_email:
+            recipients.append((lead_email, lead_name))
+            seen_emails.add(lead_email)
+        for m in team_members:
+            em = (m.get("email") or "").strip().lower()
+            if em and em not in seen_emails:
+                recipients.append((em, (m.get("name") or "Team member").strip()))
+                seen_emails.add(em)
+
+        for to_email, _to_name in recipients:
+            try:
+                await _dispatch_email(to_email, subject, html)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("techfest submission email failed for %s: %s", to_email, exc)
+
+        # WhatsApp — best-effort via AiSensy. Silently skipped if
+        # AISENSY_API_KEY or the campaign isn't configured yet.
+        try:
+            from server import send_whatsapp_notification  # type: ignore
+        except Exception:  # noqa: BLE001
+            send_whatsapp_notification = None
+
+        if send_whatsapp_notification:
+            phones: list[tuple[str, str]] = []
+            seen_phones: set[str] = set()
+            lead_phone = _sanitise_phone(submission.get("phone") or "")
+            if lead_phone:
+                phones.append((lead_phone, lead_name))
+                seen_phones.add(lead_phone)
+            for m in team_members:
+                ph = _sanitise_phone(m.get("phone") or "")
+                if ph and ph not in seen_phones:
+                    phones.append((ph, (m.get("name") or "Team member").strip()))
+                    seen_phones.add(ph)
+            zone_line = (
+                f"{ZONE_LABELS.get(submission.get('zone') or '', '')}"
+                if submission.get("zone") else ""
+            )
+            for phone, name in phones:
+                try:
+                    await send_whatsapp_notification(
+                        phone=phone,
+                        template_key="techfest_submission_confirmed",
+                        params=[name, comp_label, zone_line or "—", reference_id],
+                        user_name=name,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("techfest submission whatsapp failed for %s: %s", phone, exc)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("techfest submission confirmation dispatch failed: %s", exc)
+
+
+# ── Auto-filled School Permission Letter (.docx) ────────────────────
+# Public endpoint used by the "Download sample template" button on the
+# submission page. Falls back to blank placeholders if the caller
+# hasn't filled in the form yet, so it works both as a naked template
+# and as a fully pre-filled letter.
+class PermissionLetterIn(BaseModel):
+    full_name:        Optional[str] = Field(None, max_length=120)
+    date_of_birth:    Optional[str] = Field(None, max_length=20)
+    email:            Optional[str] = Field(None, max_length=120)
+    phone:            Optional[str] = Field(None, max_length=20)
+    school_or_college: Optional[str] = Field(None, max_length=200)
+    competition:      Optional[str] = Field(None, max_length=40)
+    zone:             Optional[str] = Field(None, max_length=20)
+    age_category:     Optional[str] = Field(None, max_length=20)
+    coordinator_name: Optional[str] = Field(None, max_length=120)
+    signatory_name:   Optional[str] = Field(None, max_length=120)
+    signatory_designation: Optional[str] = Field(None, max_length=120)
+    team_members:     List[TeamMemberIn] = Field(default_factory=list, max_length=5)
+
+
+@router.post("/techfest/permission-letter")
+async def download_permission_letter(payload: PermissionLetterIn):
+    data = {
+        "team_lead_name":  payload.full_name,
+        "team_lead_dob":   payload.date_of_birth,
+        "team_lead_email": payload.email,
+        "team_lead_phone": payload.phone,
+        "school_name":     payload.school_or_college,
+        "competition":     payload.competition,
+        "zone":            payload.zone,
+        "age_category":    payload.age_category,
+        "coordinator_name": payload.coordinator_name,
+        "signatory_name":  payload.signatory_name,
+        "signatory_designation": payload.signatory_designation,
+        "team_members": [m.model_dump() for m in (payload.team_members or [])],
+    }
+    docx_bytes = build_permission_letter_docx(data)
+    school_slug = re.sub(r"[^a-z0-9]+", "-", (payload.school_or_college or "school").lower()).strip("-") or "school"
+    filename = f"OLL-Techfest-Permission-Letter-{school_slug[:40]}.docx"
+    return StreamingResponse(
+        iter([docx_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/admin/techfest/submissions")

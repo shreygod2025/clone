@@ -230,6 +230,9 @@ WHATSAPP_TEMPLATES = {
     "task_assigned": "New Task",
     "task_reassigned": "support_ticket_added",
     "task_due_date_updated": "support_ticket_added",
+
+    # Techfest project submission confirmation (participants)
+    "techfest_submission_confirmed": "techfest_submission_confirmed",
 }
 
 async def send_whatsapp_notification(

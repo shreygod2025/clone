@@ -220,3 +220,95 @@ def registration_confirmed_html(*, name: str, reg_type: str, tracks: Optional[li
         preheader="You're in. Read the Problem Statement, get your kit, join the WhatsApp community.",
         body_html=body,
     )
+
+
+def submission_confirmed_html(
+    *,
+    lead_name: str,
+    competition_label: str,
+    zone_label: Optional[str] = None,
+    age_category_label: Optional[str] = None,
+    school_name: Optional[str] = None,
+    reference_id: Optional[str] = None,
+    team_members: Optional[list] = None,
+    drive_link: Optional[str] = None,
+) -> str:
+    """Project-submission confirmation email — fired the moment a team
+    lead completes the /techfest/submit form."""
+    meta_rows = []
+    meta_rows.append(("Competition", competition_label or "—"))
+    if zone_label:
+        meta_rows.append(("Zone", zone_label))
+    if age_category_label:
+        meta_rows.append(("Age Category", age_category_label))
+    if school_name:
+        meta_rows.append(("School", school_name))
+    if reference_id:
+        meta_rows.append(("Reference ID", reference_id))
+    meta_html = "".join([
+        f'<tr><td style="padding:4px 0;color:#64748b;width:140px;">{k}</td>'
+        f'<td style="padding:4px 0;"><strong>{v}</strong></td></tr>'
+        for k, v in meta_rows
+    ])
+
+    team_list_html = ""
+    if team_members:
+        rows = "".join([
+            f'<li style="margin:2px 0;">{ (m.get("name") or "").strip() or "—" }'
+            + (f' &nbsp;·&nbsp; <span style="color:#64748b;">{m.get("email","")}</span>' if m.get("email") else "")
+            + "</li>"
+            for m in team_members
+        ])
+        team_list_html = f"""
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin-top:22px;">Your Team</div>
+      <ul style="margin:8px 0 20px 0;padding:0 0 0 18px;color:#0A1F44;font-size:14px;line-height:1.7;">{rows}</ul>
+    """
+
+    drive_html = (
+        f'<div style="margin:16px 0 8px 0;font-size:13px;color:#0A1F44;">'
+        f'<strong>Your submitted link:</strong> '
+        f'<a href="{drive_link}" style="color:#DC2626;text-decoration:underline;word-break:break-all;">{drive_link}</a>'
+        "</div>"
+        if drive_link else ""
+    )
+
+    body = f"""
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#16a34a;">Project Submitted</div>
+      <h1 style="font-size:26px;line-height:1.2;margin:6px 0 8px 0;color:#0A1F44;">Your bot is officially in, {lead_name}.</h1>
+      <p style="font-size:15px;color:#334155;margin:0 0 16px 0;">
+        We&rsquo;ve received your project submission for the <strong>OLL Robotics Championship</strong> at
+        <strong>Techfest, IIT Bombay 2026</strong>. Our team will review the submission and reach out with
+        the next steps within 48 hours. Keep an eye on your inbox and WhatsApp.
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin:8px 0 20px 0;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#0A1F44;">Submission Details</div>
+        <table role="presentation" width="100%" style="font-size:13px;color:#0A1F44;margin-top:8px;">
+          {meta_html}
+        </table>
+        {drive_html}
+      </div>
+
+      {team_list_html}
+
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin-top:6px;">What happens next</div>
+      <ol style="margin:8px 0 20px 0;padding:0 0 0 18px;color:#0A1F44;font-size:14px;line-height:1.7;">
+        <li>Our review team screens every submission for eligibility &amp; category fit.</li>
+        <li>Shortlisted teams get an email invite to the on-ground rounds.</li>
+        <li>If you qualify, an OLL coordinator will call you to help you prep the bot &amp; travel.</li>
+      </ol>
+
+      <div style="text-align:center;margin:22px 0 6px 0;">
+        <a href="{WHATSAPP_URL}" style="display:inline-block;background:#25D366;color:#ffffff;padding:12px 22px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">Join the WhatsApp community →</a>
+      </div>
+
+      <p style="font-size:14px;color:#334155;margin:28px 0 0 0;">
+        Rooting for you,<br/>
+        <strong style="color:#0A1F44;">Team OLL</strong>
+      </p>
+    """
+    return _shell(
+        title="Project submitted — OLL Robotics Championship @ Techfest IIT Bombay",
+        preheader="Your bot is officially in. Here's what happens next.",
+        body_html=body,
+    )

@@ -1,5 +1,23 @@
 # OLL Backend Changelog
 
+## 2026-09-23 — Techfest: Auto-fill Permission Letter + Submission Confirmations 📩
+
+### ✨ Auto-filled School Permission Letter
+- New backend module `routes/techfest_permission_letter.py` builds a `.docx` via `python-docx` matching the sample template wording.
+- New public endpoint `POST /api/techfest/permission-letter` accepts current submission form data and streams back a filled `.docx` (headed "OLL-Techfest-Permission-Letter-<school>.docx").
+- Auto-fills: date, school name, competition, zone, age category, team lead + up to 5 team members (name, DOB, contact), and OLL coordinator.
+- Frontend `TechfestSubmitPage.jsx`: "Download sample template" static link replaced with a **"Download pre-filled letter"** button that POSTs current form state and downloads the generated file (with graceful fallback to blank placeholders if the form is empty).
+
+### 📤 Submission Confirmation Email + WhatsApp
+- `POST /api/techfest/submissions` now fires a background fan-out to team lead **plus every team member** that supplied contact info.
+- **Email:** new `submission_confirmed_html()` template in `techfest_emails.py` — includes reference ID, competition, zone, age category, drive link, and team roster. Dispatched via existing `_dispatch_email` (Gmail → Resend fallback).
+- **WhatsApp:** new campaign key `techfest_submission_confirmed` in `WHATSAPP_TEMPLATES`. Fires with params `[name, competition, zone, reference_id]`. Gracefully no-ops when AiSensy campaign isn't configured (verified — AiSensy returns 400 "Campaign does not exist" until the user creates the template on the AiSensy dashboard, at which point it starts sending).
+
+### Dependency
+- Added `python-docx==1.2.0` (+ `lxml==6.1.3`) to `backend/requirements.txt`.
+
+
+
 ## 2026-02-07 (part 5) — Unified toolbar + payment reconciliation + inline row controls 💳
 
 ### 🐛 Bug fix — "customer paid but not moved to Active Customers"
