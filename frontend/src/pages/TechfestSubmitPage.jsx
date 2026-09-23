@@ -15,11 +15,11 @@ const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 const ZONES = [
-  { slug: 'west',    label: 'West · Mumbai'    },
-  { slug: 'east',    label: 'East · Kanpur'    },
-  { slug: 'north',   label: 'North · Delhi'    },
-  { slug: 'south',   label: 'South · Bangalore'},
-  { slug: 'central', label: 'Central · Indore' },
+  { slug: 'west',    label: 'West · IIT Bombay · 17 Dec 2026'              },
+  { slug: 'east',    label: 'East · IIT Kanpur · 24 Oct 2026'              },
+  { slug: 'north',   label: 'North · Delhi (Date TBA)'                     },
+  { slug: 'south',   label: 'South · RVU College, Bangalore · 26 Nov 2026' },
+  { slug: 'central', label: 'Central · Indore (Date TBA)'                  },
 ];
 const COMPETITIONS = [
   { slug: 'robo_sumo',       label: 'Robo Sumo',                 zonal: true  },

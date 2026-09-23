@@ -161,12 +161,12 @@ const ROUND_PATHS = [
           'Multi-city qualifiers — Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, Pune, Chennai, Ahmedabad and more.',
           'Live 1v1 knockout brackets on the OLL arena stage — top teams get the golden ticket.',
           'Certificate of Regional Qualifier awarded to every participating team.',
-          'Winners advance directly to the Grand Finale at IIT Bombay · 16–18 Dec 2026.',
+          'Winners advance directly to the Grand Finale at IIT Bombay · 17 Dec 2026.',
         ],
       },
       {
         n: 3, tag: 'Grand Finale · IIT Bombay', dot: '#10B981', icon: Trophy,
-        title: 'Grand Finale · IIT Bombay · 16–18 Dec 2026',
+        title: 'Grand Finale · IIT Bombay · 17 Dec 2026',
         lead: 'Three days on the iconic IIT Bombay campus. Battles. Races. Winners crowned live on the Techfest arena.',
         bullets: [
           'RoboSumo and RoboRacer knockout brackets on Techfest\u2019s live arena stage.',
@@ -196,7 +196,7 @@ const ROUND_PATHS = [
       {
         n: 2, tag: 'Direct Grand Finale', dot: '#10B981', icon: Trophy,
         title: 'Direct Grand Finale · IIT Bombay',
-        lead: 'No regionals for this track — shortlisted teams head straight to the flagship stage at IIT Bombay, 16–18 Dec 2026.',
+        lead: 'No regionals for this track — shortlisted teams head straight to the flagship stage at IIT Bombay, 17 Dec 2026.',
         bullets: [
           '10-min live prototype demo + 5-min judge Q&A on the Techfest stage.',
           'Category winners (Junior & Senior) crowned live at IIT Bombay.',
@@ -213,23 +213,23 @@ const FAQS = [
   { q: 'Is there a registration fee?', a: 'No. The OLL Robotics Championship is completely FREE across all rounds — Online submission, Regional Qualifier and the Grand Finale at IIT Bombay. Only the official OLL kits (for RoboSumo & RoboRacer) are sold separately and are strongly recommended for those tracks.' },
   { q: 'Can I participate in more than one competition/track?', a: 'No. A student can pick only one competition from RoboSumo, RoboRacer or the Robotics Innovation Challenge. Choose the track that best matches your interest and register for that one only.' },
   { q: 'Do I need to buy the OLL kit?', a: 'The OLL Robo Sumo and Robo Racer kits are officially designed for the competition. They give you the exact metal body, motors, wheels, controller and arena/track needed to compete. Innovation Challenge teams may build with any hardware.' },
-  { q: 'What are the rounds for each track?', a: 'RoboSumo and RoboRacer follow a 3-round path — R1 online submission, R2 live Regional Qualifier in your city, R3 Grand Finale at IIT Bombay (16–18 Dec 2026). The Robotics Innovation Challenge follows a 2-round path — R1 online prototype submission, R2 Direct Grand Finale at IIT Bombay (no regional qualifier).' },
-  { q: 'Which cities host the Regional Qualifiers?', a: 'Regional Qualifiers run across 5 zones with one host city each — West: Mumbai · East: Kanpur · North: Delhi · South: Bangalore · Central: Indore. Exact venue dates go live on this page as they open.' },
+  { q: 'What are the rounds for each track?', a: 'RoboSumo and RoboRacer follow a 3-round path — R1 online submission, R2 live Regional Qualifier in your city (East · IIT Kanpur · 24 Oct · South · RVU College Bangalore · 26 Nov · West · IIT Bombay · 17 Dec · North & Central dates TBA), R3 Grand Finale at IIT Bombay (17 Dec 2026). The Robotics Innovation Challenge follows a 2-round path — R1 online prototype submission, R2 Direct Grand Finale at IIT Bombay (no regional qualifier).' },
+  { q: 'Which cities host the Regional Qualifiers?', a: 'Regional Qualifiers run across 5 zones — West: IIT Bombay (17 Dec) · East: IIT Kanpur (24 Oct) · South: RVU College, Bangalore (26 Nov) · North: Delhi (dates TBA) · Central: Indore (dates TBA).' },
   { q: 'Can I participate as an individual or do I need a team?', a: 'RoboSumo and RoboRacer must be entered as a team of 3–5 students. The Robotics Innovation Challenge accepts teams of 1–5 (a solo entry is allowed).' },
   { q: 'How is the Innovation Challenge judged?', a: 'A weighted rubric — Originality & Idea Quality (20%), Technical Design & Engineering (25%), Working Prototype & Demonstration (25%), Real-World Impact & Feasibility (15%), Presentation & Q&A (15%). See the full rubric in the Pick your Battle section above.' },
   { q: 'What are the prizes?', a: 'A prize pool of upto ₹1,50,000 is awarded across the top three teams of each track. Payouts are made via NEFT after winners submit their bank details in the on-site form, with final payment by May 2027.' },
   { q: 'What do participants receive?', a: 'Every participant with an accepted entry gets a Certificate of Participation. Grand Finale competitors additionally receive a Certificate of Finalist Recognition.' },
-  { q: 'Where is the Grand Finale?', a: 'IIT Bombay, 16–18 December 2026 — the flagship Techfest campus edition.' },
+  { q: 'Where is the Grand Finale?', a: 'IIT Bombay, 17 December 2026 — the flagship Techfest campus edition.' },
   { q: 'What if my school wants to send multiple teams?', a: 'Use the "Register as a School" option and we\u2019ll onboard your institution with a dedicated coordinator, bulk kit pricing and a school-level dashboard to manage all your teams.' },
   { q: 'Are there travel & stay arrangements for the Grand Finale?', a: 'Travel and accommodation are the responsibility of the participating team/school. Techfest publishes on-campus and partner-hotel options closer to the event; OLL will circulate a curated list once available.' },
 ];
 
 const ZONES = [
-  { name: 'West Zone',    accent: '#DC2626', cities: ['Mumbai'] },
-  { name: 'East Zone',    accent: '#8B5CF6', cities: ['Kanpur'] },
-  { name: 'North Zone',   accent: '#F59E0B', cities: ['Delhi'] },
-  { name: 'South Zone',   accent: '#10B981', cities: ['Bangalore'] },
-  { name: 'Central Zone', accent: '#0EA5E9', cities: ['Indore'] },
+  { name: 'West Zone',    accent: '#DC2626', cities: ['Mumbai'],    venue: 'IIT Bombay',            date: '17 Dec 2026' },
+  { name: 'East Zone',    accent: '#8B5CF6', cities: ['Kanpur'],    venue: 'IIT Kanpur',            date: '24 Oct 2026' },
+  { name: 'North Zone',   accent: '#F59E0B', cities: ['Delhi'],     venue: 'Venue TBA',             date: 'Date TBA'    },
+  { name: 'South Zone',   accent: '#10B981', cities: ['Bangalore'], venue: 'RVU College, Bangalore', date: '26 Nov 2026' },
+  { name: 'Central Zone', accent: '#0EA5E9', cities: ['Indore'],    venue: 'Venue TBA',             date: 'Date TBA'    },
 ];
 
 const HERO_VIDEO = '/techfest/hero-video.mp4';
@@ -266,7 +266,7 @@ export default function TechfestPage() {
   useEffect(() => {
     const CANONICAL = 'https://oll.co/techfest';
     const TITLE = 'OLL Robotics Championship · Techfest IIT Bombay 2026 | India\u2019s Biggest School Tech Fest';
-    const DESC = 'Compete in RoboSumo, RoboRacer and the Robotics Innovation Challenge at the OLL Robotics Championship, powered by Techfest IIT Bombay 2026. Regional qualifiers across India, Grand Finale at IIT Bombay 16–18 December 2026. Prize money for top 3 teams of each track.';
+    const DESC = 'Compete in RoboSumo, RoboRacer and the Robotics Innovation Challenge at the OLL Robotics Championship, powered by Techfest IIT Bombay 2026. Regional qualifiers across India, Grand Finale at IIT Bombay 17 December 2026. Prize money for top 3 teams of each track.';
     document.title = TITLE;
     upsertMeta('description', DESC);
     upsertMeta('keywords', 'OLL Robotics Championship, techfest, IIT Bombay, robotics competition, RoboSumo, RoboRacer, robotics innovation challenge, school robotics competition India, robotics championship India');
@@ -292,7 +292,7 @@ export default function TechfestPage() {
         "@context": "https://schema.org", "@type": "Event",
         "name": "OLL Robotics Championship · Techfest IIT Bombay 2026",
         "description": DESC,
-        "startDate": "2026-12-16", "endDate": "2026-12-18",
+        "startDate": "2026-12-17", "endDate": "2026-12-17",
         "eventStatus": "https://schema.org/EventScheduled",
         "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
         "location": { "@type": "Place", "name": "IIT Bombay", "address": "Powai, Mumbai, Maharashtra 400076" },
@@ -464,7 +464,7 @@ export default function TechfestPage() {
                 OLL <span className="text-[#FCA5A5]">Robotics</span> Championship
               </h1>
               <p className="tf-body text-base md:text-lg text-white/85 mt-6 max-w-xl leading-relaxed">
-                India&apos;s biggest school tech fest. Compete across three flagship robotics tracks at Techfest 2026-27, powered by OLL. Regional qualifiers across India. Grand Finale live at IIT Bombay <strong style={{ fontWeight: 700, color: '#fff' }}>16–18 December 2026</strong>.
+                India&apos;s biggest school tech fest. Compete across three flagship robotics tracks at Techfest 2026-27, powered by OLL. Regional qualifiers across India. Grand Finale live at IIT Bombay <strong style={{ fontWeight: 700, color: '#fff' }}>17 December 2026</strong>.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <button onClick={openRegister} className="tf-btn primary" data-testid="techfest-register-btn">
@@ -679,7 +679,7 @@ export default function TechfestPage() {
             <div className="tf-eyebrow text-[#FCA5A5]">the road to iit bombay</div>
             <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">Competition Rounds.</h2>
             <p className="tf-body text-white/75 mt-4 max-w-2xl mx-auto text-base md:text-lg">
-              Every team earns their spot on the Grand Finale stage at IIT Bombay, 16–18 December 2026. Follow the path for your track below.
+              Every team earns their spot on the Grand Finale stage at IIT Bombay, 17 December 2026. Follow the path for your track below.
             </p>
           </div>
 
@@ -734,20 +734,22 @@ export default function TechfestPage() {
                             </ul>
                             {path.key === 'sumo-racer' && r.n === 2 && (
                               <div className="mt-5 rounded-2xl border border-white/15 overflow-hidden" data-testid="techfest-r2-zone-table">
-                                <div className="grid grid-cols-[110px,1fr] text-[11px] uppercase tracking-widest text-white/60 bg-white/[0.04] px-4 py-2 font-bold">
+                                <div className="grid grid-cols-[90px,1fr,1fr] text-[11px] uppercase tracking-widest text-white/60 bg-white/[0.04] px-4 py-2 font-bold">
                                   <div>Zone</div>
-                                  <div>Host City</div>
+                                  <div>Venue</div>
+                                  <div className="text-right">Date</div>
                                 </div>
                                 {ZONES.map((z, i) => (
                                   <div
                                     key={z.name}
-                                    className={`grid grid-cols-[110px,1fr] items-center px-4 py-2.5 tf-body text-sm ${i > 0 ? 'border-t border-white/10' : ''}`}
+                                    className={`grid grid-cols-[90px,1fr,1fr] items-center px-4 py-2.5 tf-body text-sm ${i > 0 ? 'border-t border-white/10' : ''}`}
                                   >
                                     <div className="flex items-center gap-2 text-white font-bold" style={{ fontWeight: 700 }}>
                                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: z.accent }} />
                                       {z.name.replace(' Zone', '')}
                                     </div>
-                                    <div className="text-white/90">{z.cities[0]}</div>
+                                    <div className="text-white/90">{z.venue}</div>
+                                    <div className="text-white/90 text-right font-semibold">{z.date}</div>
                                   </div>
                                 ))}
                               </div>

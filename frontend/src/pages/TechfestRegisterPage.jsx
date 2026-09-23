@@ -16,11 +16,11 @@ const COMPETITIONS = [
   { slug: 'robo_innovation',  label: 'Robo Innovation Challenge', zonal: false },
 ];
 const ZONES = [
-  { slug: 'north',   label: 'North · Delhi'      },
-  { slug: 'south',   label: 'South · Bangalore'  },
-  { slug: 'east',    label: 'East · Kanpur'      },
-  { slug: 'west',    label: 'West · Mumbai'      },
-  { slug: 'central', label: 'Central · Indore'   },
+  { slug: 'north',   label: 'North · Delhi (Date TBA)'                     },
+  { slug: 'south',   label: 'South · RVU College, Bangalore · 26 Nov 2026' },
+  { slug: 'east',    label: 'East · IIT Kanpur · 24 Oct 2026'              },
+  { slug: 'west',    label: 'West · IIT Bombay · 17 Dec 2026'              },
+  { slug: 'central', label: 'Central · Indore (Date TBA)'                  },
 ];
 
 const upsertMeta = (key, value, attr = 'name') => {
@@ -232,7 +232,7 @@ export default function TechfestRegisterPage() {
           <div className="trp-eyebrow text-[#FCA5A5]">OLL × Techfest IIT Bombay 2026</div>
           <h1 className="trp-h1 text-5xl sm:text-6xl text-white mt-3">Register for the Championship.</h1>
           <p className="mt-4 text-white/75 text-base sm:text-lg max-w-xl mx-auto font-light">
-            Grand Finale live at IIT Bombay <strong style={{ fontWeight: 700, color: '#fff' }}>16–18 December 2026</strong>. Pick the option that fits you.
+            Grand Finale live at IIT Bombay <strong style={{ fontWeight: 700, color: '#fff' }}>17 December 2026</strong>. Pick the option that fits you.
           </p>
         </div>
 

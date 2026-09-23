@@ -61,7 +61,7 @@ def _shell(title: str, preheader: str, body_html: str) -> str:
       <tr>
         <td style="background:#0A1F44;color:#cbd5e1;padding:22px 28px;font-size:12px;line-height:1.6;">
           <div><strong style="color:#fff;">OLL × Techfest IIT Bombay 2026</strong></div>
-          <div style="margin-top:4px;">Grand Finale · 16–18 December 2026 · IIT Bombay Campus</div>
+          <div style="margin-top:4px;">Grand Finale · 17 December 2026 · IIT Bombay Campus</div>
           <div style="margin-top:12px;">
             <a href="{CAMPAIGN_URL}" style="color:#FCA5A5;text-decoration:none;">Campaign page</a> &nbsp;·&nbsp;
             <a href="{PROBLEM_STATEMENT_URL}" style="color:#FCA5A5;text-decoration:none;">Problem Statement (PDF)</a> &nbsp;·&nbsp;
@@ -126,8 +126,8 @@ def school_invite_html(school_name: Optional[str] = None) -> str:
       <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;">Why participate</div>
       <ul style="margin:6px 0 20px 0;padding:0 0 0 18px;color:#334155;font-size:14px;line-height:1.7;">
         <li>Nationally-recognised platform for your school and students</li>
-        <li>Live regional qualifiers in <strong>Mumbai, Kanpur, Delhi, Bangalore &amp; Indore</strong></li>
-        <li>Grand Finale on the iconic IIT Bombay campus, 16–18 December 2026</li>
+        <li>Live regional qualifiers · East: IIT Kanpur (24 Oct) · South: RVU College, Bangalore (26 Nov) · West: IIT Bombay (17 Dec) · North &amp; Central: dates TBA</li>
+        <li>Grand Finale on the iconic IIT Bombay campus, 17 December 2026</li>
         <li>Certificate of Participation for every student · Finalist Recognition for grand-finale competitors</li>
         <li>Optional OLL Robo Sumo &amp; Robo Racer kits available for schools that want the official gear</li>
       </ul>
@@ -205,8 +205,8 @@ def registration_confirmed_html(*, name: str, reg_type: str, tracks: Optional[li
         <table role="presentation" width="100%" style="font-size:13px;color:#0A1F44;margin-top:8px;">
           <tr><td style="padding:4px 0;width:120px;color:#64748b;">Prize Pool</td><td style="padding:4px 0;"><strong>Upto ₹1,50,000</strong> across top 3 teams / track</td></tr>
           <tr><td style="padding:4px 0;color:#64748b;">Registration</td><td style="padding:4px 0;"><strong>Completely FREE</strong> across all rounds</td></tr>
-          <tr><td style="padding:4px 0;color:#64748b;">Regional Qualifier</td><td style="padding:4px 0;">Mumbai · Kanpur · Delhi · Bangalore · Indore</td></tr>
-          <tr><td style="padding:4px 0;color:#64748b;">Grand Finale</td><td style="padding:4px 0;">IIT Bombay · 16–18 Dec 2026</td></tr>
+          <tr><td style="padding:4px 0;color:#64748b;">Regional Qualifier</td><td style="padding:4px 0;">East · IIT Kanpur · 24 Oct &nbsp;·&nbsp; South · RVU College, Bangalore · 26 Nov &nbsp;·&nbsp; West · IIT Bombay · 17 Dec &nbsp;·&nbsp; North &amp; Central · dates TBA</td></tr>
+          <tr><td style="padding:4px 0;color:#64748b;">Grand Finale</td><td style="padding:4px 0;">IIT Bombay · 17 Dec 2026</td></tr>
         </table>
       </div>
 

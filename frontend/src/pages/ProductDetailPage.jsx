@@ -613,7 +613,7 @@ const TechfestBadge = ({ slug }) => {
             Techfest IIT Bombay 2026 · {copy.track}
           </div>
           <div className="text-[13px] text-white/80 mt-1 font-light">
-            {copy.tagline} · Grand Finale <strong className="font-semibold text-white">16–18 Dec 2026</strong> at IIT Bombay.
+            {copy.tagline} · Grand Finale <strong className="font-semibold text-white">17 Dec 2026</strong> at IIT Bombay.
           </div>
         </div>
         <Link

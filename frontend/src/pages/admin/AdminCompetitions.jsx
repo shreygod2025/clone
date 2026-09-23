@@ -406,7 +406,7 @@ export default function AdminCompetitions() {
             <div className="relative">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-red-200"><Trophy className="w-3.5 h-3.5" /> Live</div>
               <div className="text-2xl font-bold mt-2 leading-tight">OLL × Techfest IIT Bombay 2026</div>
-              <div className="text-xs text-white/70 mt-1">Grand Finale · 16–18 Dec 2026</div>
+              <div className="text-xs text-white/70 mt-1">Grand Finale · 17 Dec 2026</div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href={TECHFEST_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider bg-white text-[#0A1F44] px-3 py-1.5 rounded-full">
                   Open Campaign <ExternalLink className="w-3 h-3" />

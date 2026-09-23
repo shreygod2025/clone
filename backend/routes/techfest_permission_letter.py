@@ -21,11 +21,11 @@ COMPETITION_LABELS = {
     "robo_innovation": "Robo Innovation Challenge",
 }
 ZONE_LABELS = {
-    "north":   "North Zone · Delhi",
-    "south":   "South Zone · Bangalore",
-    "east":    "East Zone · Kanpur",
-    "west":    "West Zone · Mumbai",
-    "central": "Central Zone · Indore",
+    "north":   "North Zone · Delhi (Date TBA)",
+    "south":   "South Zone · RVU College, Bangalore · 26 Nov 2026",
+    "east":    "East Zone · IIT Kanpur · 24 Oct 2026",
+    "west":    "West Zone · IIT Bombay · 17 Dec 2026",
+    "central": "Central Zone · Indore (Date TBA)",
 }
 AGE_CAT_LABELS = {
     "junior": "Junior · Grade 4-7",
