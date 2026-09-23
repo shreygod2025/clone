@@ -24,6 +24,23 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **STEM Preschool (Jr KG & Sr KG) landing page**
+  (`school/StemPreschoolLanding.jsx`, `App.js`).
+  - New public page at `/school/stem-preschool` (alias
+    `/school/preschool/stem-jr-sr-kg`) built to mirror the "Little
+    Innovators, Big Tomorrows" poster: hero with headline "Want Your
+    Preschool to Have STEAM & Future-Ready Skills?", corner ribbon,
+    handwritten cursive callout, "Grades Jr KG & Sr KG" pill and
+    "Partner with OLL" CTA.
+  - Sections: **Build Strong Foundations Early** (4 cards) → **The 5
+    Pillars of STEAM** (Science · Technology · Engineering · Art ·
+    Maths) → **What Your Preschool Gets** (8 offerings) → **Our STEAM
+    Learning Modules** (Science Experiments · Paper Circuits · Lego
+    Construction · Coding Bot).
+  - **Video slots**: each module card renders an image + "Video
+    coming soon" ribbon by default. Drop a YouTube URL into the
+    module's `videoUrl` field and the card auto-swaps to a
+    click-to-play embed — no other code changes needed.
 - **Feb 2026** — **Techfest project Submission Portal**
   (`routes/techfest.py`, `TechfestSubmitPage.jsx`, `TechfestPage.jsx`,
   `App.js`).

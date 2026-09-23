@@ -114,6 +114,7 @@ const RoboticsBeginnerLanding = lazy(() => import("./pages/school/RoboticsBeginn
 const RoboticsICSE910Landing = lazy(() => import("./pages/school/RoboticsICSE910Landing"));
 const CBSECTAILanding = lazy(() => import("./pages/school/CBSECTAILanding"));
 const FutureSkillsLanding = lazy(() => import("./pages/school/FutureSkillsLanding"));
+const StemPreschoolLanding = lazy(() => import("./pages/school/StemPreschoolLanding"));
 const AdminOnboardingTracker = lazy(() => import("./pages/admin/AdminOnboardingTracker"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
@@ -387,6 +388,8 @@ function App() {
               {/* SEO-friendly keyword-rich canonicals for Future Skills funnels */}
               <Route path="/school/cs/icse-future-skills-classes-1-to-8" element={<FutureSkillsLanding board="ICSE" />} />
               <Route path="/school/cs/cbse-future-skills-classes-1-to-8" element={<FutureSkillsLanding board="CBSE" />} />
+              <Route path="/school/stem-preschool" element={<StemPreschoolLanding />} />
+              <Route path="/school/preschool/stem-jr-sr-kg" element={<StemPreschoolLanding />} />
               <Route path="/school/cs/computational-thinking-and-ai-classes-3-to-8" element={<CBSECTAILanding />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute permission="schools"><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
