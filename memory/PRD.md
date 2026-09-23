@@ -24,6 +24,22 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **STEM Preschool landing v2: navbar + LMS + About + Schools**
+  (`school/StemPreschoolLanding.jsx`, `App.js`).
+  - `/school/robotics/pre-school` now serves the STEM landing (was the
+    old Robotics Beginner page) — the homepage "Pre-School" tile lands
+    users straight on this page.
+  - Swapped the generic global Navbar for a sticky **pill nav** matching
+    Future Skills / Robotics landings: logo · "Preschool STEAM · Jr KG ·
+    Sr KG" label · anchor links (Modules · LMS · About OLL · Our
+    Schools) · red "Partner with OLL" CTA.
+  - New **LMS & Parent App** section — 4 feature cards (Teacher app,
+    Principal dashboard, Parent WhatsApp, Two-way messaging).
+  - New **About OLL** section — "Big-school skills, tiny-school heart"
+    headline + 4-stat strip (500+ schools, 50k+ kids, 95% teacher
+    retention, 4.9★ parent rating) + NEP / ISO / Techfest badges.
+  - New **Schools we work with** section — 8 partner preschools with
+    city tags (placeholder logos ready to swap for real marks).
 - **Feb 2026** — **STEM Preschool (Jr KG & Sr KG) landing page**
   (`school/StemPreschoolLanding.jsx`, `App.js`).
   - New public page at `/school/stem-preschool` (alias

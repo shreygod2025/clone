@@ -376,7 +376,7 @@ function App() {
               <Route path="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" element={<RoboticsICSE910Landing />} />
               <Route path="/school/robotics/icse-9" element={<Navigate to="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" replace />} />
               <Route path="/school/robotics/icse-10" element={<Navigate to="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" replace />} />
-              <Route path="/school/robotics/pre-school"    element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics/pre-school"    element={<StemPreschoolLanding />} />
               <Route path="/school/robotics/intermediate" element={<RoboticsBeginnerLanding />} />
               <Route path="/school/robotics/advanced"     element={<RoboticsBeginnerLanding />} />
               <Route path="/school/robotics/icse"         element={<RoboticsBeginnerLanding />} />
