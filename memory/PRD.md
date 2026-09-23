@@ -24,6 +24,27 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Feb 2026** — **Techfest Submission Portal · v2 (multi-member, permission letter, admin submissions tab)**
+  (`routes/techfest.py`, `TechfestSubmitPage.jsx`, `AdminCompetitions.jsx`).
+  - Competition-first order — zone field only appears when Robo Sumo /
+    Robo Race is selected (Innovation hides zone). Backend enforces
+    the same rule with a 400 on mismatch.
+  - New **Age Category** dropdown — Junior (Grade 4-7) / Senior
+    (Grade 8-12).
+  - **Team Members** — repeatable rows, up to 5 additional members
+    (lead + 5 = 6 max). Each captures name / DOB / email / phone /
+    school + ID-proof upload (Aadhar · PAN · Other).
+  - **School Permission Letter** — sample template download + upload
+    of the signed scan (PDF / image).
+  - **Google Drive checklist** now spells out the Technical Abstract
+    (500-800 words + 5 sub-points), design diagram / CAD sketch and
+    video demo, plus the "Anyone with the link · Viewer" reminder.
+  - New public `POST /api/techfest/upload` endpoint (Cloudinary +
+    per-IP rate limit) — participants aren't logged in.
+  - **Admin → Competitions → Submissions tab** with a competition
+    filter shows every submission incl. Drive & permission-letter
+    view links.
+## Implemented (latest first)
 - **Feb 2026** — **STEM Preschool landing v2: navbar + LMS + About + Schools**
   (`school/StemPreschoolLanding.jsx`, `App.js`).
   - `/school/robotics/pre-school` now serves the STEM landing (was the

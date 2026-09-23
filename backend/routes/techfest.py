@@ -281,7 +281,18 @@ async def upsert_techfest_participants(reg_id: str, payload: ParticipantsPayload
 # Final project uploads from participants — separate collection so the
 # submissions dashboard doesn't fight for space with the registrations
 # funnel.
+class TeamMemberIn(BaseModel):
+    name:          str = Field(..., min_length=2, max_length=120)
+    date_of_birth: Optional[str] = Field(None, max_length=20)   # YYYY-MM-DD
+    email:         Optional[EmailStr] = None
+    phone:         Optional[str] = Field(None, max_length=20)
+    school:        Optional[str] = Field(None, max_length=200)
+    id_proof_url:  Optional[str] = Field(None, max_length=500)  # uploaded Aadhar/PAN scan
+    id_proof_type: Optional[str] = Field(None, max_length=20)   # 'aadhar' | 'pan' | 'other'
+
+
 class TechfestSubmissionIn(BaseModel):
+    # ── Team lead / primary contact ──
     full_name: str = Field(..., min_length=2, max_length=120)
     date_of_birth: Optional[str] = Field(None, max_length=20)   # ISO YYYY-MM-DD
     age: Optional[int] = Field(None, ge=3, le=120)
@@ -292,10 +303,14 @@ class TechfestSubmissionIn(BaseModel):
     state: Optional[str] = Field(None, max_length=80)
     city: Optional[str] = Field(None, max_length=80)
     school_or_college: Optional[str] = Field(None, max_length=200)
-    # Zone: north (Delhi), south (Bangalore), east (Kanpur), west (Mumbai), central (Indore)
-    zone: str = Field(..., max_length=20)
+    # Age category — Junior (Grade 4-7) | Senior (Grade 8-12)
+    age_category: Optional[str] = Field(None, max_length=20)
     # Competition: robo_sumo | robo_race | robo_innovation
     competition: str = Field(..., max_length=40)
+    # Zone: north (Delhi), south (Bangalore), east (Kanpur), west (Mumbai),
+    # central (Indore). REQUIRED for robo_sumo / robo_race, must be empty
+    # for robo_innovation.
+    zone: Optional[str] = Field(None, max_length=20)
     # Only meaningful when competition == robo_innovation
     project_category: Optional[str] = Field(None, max_length=120)
     project_theme:    Optional[str] = Field(None, max_length=120)
@@ -303,6 +318,9 @@ class TechfestSubmissionIn(BaseModel):
     team_id:        Optional[str] = Field(None, max_length=60)
     competition_id: Optional[str] = Field(None, max_length=60)
     drive_link:     str = Field(..., min_length=8, max_length=500)
+    # NEW — team members (excluding lead) and school-permission letter
+    team_members: List[TeamMemberIn] = Field(default_factory=list, max_length=5)
+    school_permission_url: Optional[str] = Field(None, max_length=500)
 
 
 @router.post("/techfest/submissions")
@@ -310,12 +328,21 @@ async def create_techfest_submission(payload: TechfestSubmissionIn):
     """Public submission endpoint — no auth required."""
     ALLOWED_ZONES = {"north", "south", "east", "west", "central"}
     ALLOWED_COMPS = {"robo_sumo", "robo_race", "robo_innovation"}
-    if payload.zone not in ALLOWED_ZONES:
-        raise HTTPException(status_code=400, detail="Invalid zone")
+    ALLOWED_AGE_CATS = {"junior", "senior"}
     if payload.competition not in ALLOWED_COMPS:
         raise HTTPException(status_code=400, detail="Invalid competition")
+    # Zone only applies to Robo Sumo / Robo Race. For Innovation we drop it.
+    zone_val = payload.zone
+    if payload.competition in ("robo_sumo", "robo_race"):
+        if not zone_val or zone_val not in ALLOWED_ZONES:
+            raise HTTPException(status_code=400, detail="Zone is required for Robo Sumo / Robo Race")
+    else:
+        zone_val = None
+    if payload.age_category and payload.age_category not in ALLOWED_AGE_CATS:
+        raise HTTPException(status_code=400, detail="Invalid age category")
 
     doc = payload.model_dump()
+    doc["zone"] = zone_val
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     doc["status"] = "submitted"
     result = await db.techfest_submissions.insert_one(doc)
@@ -340,6 +367,49 @@ async def list_techfest_submissions(
         doc["_id"] = str(doc["_id"])
         out.append(doc)
     return {"items": out, "count": len(out)}
+
+
+# ── Public upload for Techfest submitters ──────────────────────────
+# Regular /api/upload requires auth, but Techfest participants aren't
+# logged in. We reuse the same Cloudinary flow as /api/upload but
+# without the auth dependency, gated by an in-memory rate-limit (IP +
+# minute bucket) to slow abuse.
+from fastapi import Request
+import time as _time
+_TECHFEST_UPLOAD_BUCKETS: dict[tuple[str, int], int] = {}
+
+@router.post("/techfest/upload")
+async def techfest_upload(request: Request, file: UploadFile = File(...), type: str = "documents"):
+    ip = request.client.host if request.client else "unknown"
+    bucket = (ip, int(_time.time()) // 60)
+    _TECHFEST_UPLOAD_BUCKETS[bucket] = _TECHFEST_UPLOAD_BUCKETS.get(bucket, 0) + 1
+    if _TECHFEST_UPLOAD_BUCKETS[bucket] > 20:
+        raise HTTPException(status_code=429, detail="Too many uploads — try again in a minute")
+
+    import os
+    file_ext = os.path.splitext(file.filename or "")[1].lower()
+    allowed = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif"}
+    if file_ext not in allowed:
+        raise HTTPException(status_code=400, detail="Only PDF / image files are allowed")
+    body = await file.read()
+    if len(body) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+
+    # Reuse cloudinary_service from misc.py — same pattern used elsewhere.
+    try:
+        import cloudinary.uploader
+        image_ext = {".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif"}
+        resource_type = "image" if file_ext in image_ext else "raw"
+        result = cloudinary.uploader.upload(
+            body,
+            resource_type=resource_type,
+            folder="techfest_submissions",
+            use_filename=True,
+            unique_filename=True,
+        )
+        return {"url": result["secure_url"], "public_id": result.get("public_id")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload service error: {str(e)[:120]}")
 
 
 

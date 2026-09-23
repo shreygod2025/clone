@@ -15,10 +15,11 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TECHFEST_URL = '/techfest';
 
 const TABS = [
-  { key: 'school',    label: 'Schools',           icon: Building2,      color: 'bg-blue-500' },
-  { key: 'educator',  label: 'Educators/Mentors', icon: GraduationCap,  color: 'bg-red-500' },
-  { key: 'student',   label: 'Students',          icon: User,           color: 'bg-amber-500' },
-  { key: 'referrers', label: 'Referrers',         icon: Link2,          color: 'bg-emerald-500' },
+  { key: 'school',      label: 'Schools',           icon: Building2,      color: 'bg-blue-500' },
+  { key: 'educator',    label: 'Educators/Mentors', icon: GraduationCap,  color: 'bg-red-500' },
+  { key: 'student',     label: 'Students',          icon: User,           color: 'bg-amber-500' },
+  { key: 'submissions', label: 'Submissions',       icon: Upload,         color: 'bg-fuchsia-500' },
+  { key: 'referrers',   label: 'Referrers',         icon: Link2,          color: 'bg-emerald-500' },
 ];
 
 const SOURCE_LABELS = {
@@ -102,6 +103,11 @@ export default function AdminCompetitions() {
   const [refForm, setRefForm] = useState({ name: '', slug: '', notes: '' });
   const [savingRef, setSavingRef] = useState(false);
 
+  // Submissions state
+  const [submissions, setSubmissions] = useState([]);
+  const [subLoading, setSubLoading] = useState(false);
+  const [subCompFilter, setSubCompFilter] = useState('');
+
   // Edit registration state
   const [editReg, setEditReg] = useState(null); // registration row being edited
   const [editForm, setEditForm] = useState({});
@@ -141,11 +147,25 @@ export default function AdminCompetitions() {
     } finally { setRefLoading(false); }
   };
 
+  const loadSubmissions = async () => {
+    setSubLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/techfest/submissions`, {
+        headers: getAuthHeaders(),
+        params: subCompFilter ? { competition: subCompFilter } : {},
+      });
+      setSubmissions(res.data?.items || []);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to load submissions');
+    } finally { setSubLoading(false); }
+  };
+
   useEffect(() => {
     if (tab === 'referrers') loadReferrers();
+    else if (tab === 'submissions') loadSubmissions();
     else load();
      
-  }, [tab]);
+  }, [tab, subCompFilter]);
 
   // Team users are only needed for the coordinator picker in the edit
   // modal — admin-only, fetch once.
@@ -580,6 +600,85 @@ export default function AdminCompetitions() {
                     ))}
                   </tbody>
                 </table>
+              )
+            )}
+
+            {tab === 'submissions' && (
+              subLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…</div>
+              ) : submissions.length === 0 ? (
+                <div className="p-10 text-center">
+                  <Upload className="w-10 h-10 mx-auto text-slate-300" />
+                  <div className="mt-3 font-bold text-slate-800">No project submissions yet</div>
+                  <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">Once teams submit their bots via <code>/techfest/submit</code>, they'll appear here for the jury.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="px-3 py-2 flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Filter by competition:</span>
+                    <select
+                      className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white"
+                      value={subCompFilter}
+                      onChange={(e) => setSubCompFilter(e.target.value)}
+                      data-testid="admin-submissions-filter"
+                    >
+                      <option value="">All</option>
+                      <option value="robo_sumo">Robo Sumo</option>
+                      <option value="robo_race">Robo Race</option>
+                      <option value="robo_innovation">Robo Innovation Challenge</option>
+                    </select>
+                    <div className="flex-1" />
+                    <span className="text-[11px] text-slate-500">{submissions.length} submissions</span>
+                  </div>
+                  <table className="w-full text-sm" data-testid="admin-competitions-submissions-table">
+                    <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="text-left px-3 py-3 font-bold">Sr.</th>
+                        <th className="text-left px-3 py-3 font-bold">Team Lead</th>
+                        <th className="text-left px-3 py-3 font-bold">School</th>
+                        <th className="text-left px-3 py-3 font-bold">Competition</th>
+                        <th className="text-left px-3 py-3 font-bold">Zone</th>
+                        <th className="text-left px-3 py-3 font-bold">Age Cat</th>
+                        <th className="text-right px-3 py-3 font-bold">Members</th>
+                        <th className="text-left px-3 py-3 font-bold">Drive</th>
+                        <th className="text-left px-3 py-3 font-bold">Permission</th>
+                        <th className="text-left px-3 py-3 font-bold">Submitted</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissions.map((s, i) => (
+                        <tr key={s._id} className="border-b border-slate-100 hover:bg-slate-50/70" data-testid={`admin-submission-row-${s._id}`}>
+                          <td className="px-3 py-3 text-slate-500 tabular-nums">{i + 1}</td>
+                          <td className="px-3 py-3">
+                            <div className="font-semibold text-slate-900">{s.full_name}</div>
+                            <div className="text-[11px] text-slate-500">{s.email} · {s.phone}</div>
+                          </td>
+                          <td className="px-3 py-3 text-slate-700">{s.school_or_college || '—'}</td>
+                          <td className="px-3 py-3">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2 py-0.5 bg-fuchsia-100 text-fuchsia-800 uppercase tracking-widest">
+                              {s.competition?.replace('_', ' ')}
+                            </span>
+                            {s.project_theme && <div className="text-[11px] text-slate-500 mt-1">{s.project_category} · {s.project_theme}</div>}
+                          </td>
+                          <td className="px-3 py-3 text-slate-700 uppercase text-xs">{s.zone || '—'}</td>
+                          <td className="px-3 py-3 text-slate-700 uppercase text-xs">{s.age_category || '—'}</td>
+                          <td className="px-3 py-3 text-right tabular-nums font-semibold text-slate-800">{1 + (s.team_members?.length || 0)}</td>
+                          <td className="px-3 py-3">
+                            {s.drive_link ? (
+                              <a href={s.drive_link} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline text-[11px] font-bold uppercase">Open</a>
+                            ) : '—'}
+                          </td>
+                          <td className="px-3 py-3">
+                            {s.school_permission_url ? (
+                              <a href={s.school_permission_url} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline text-[11px] font-bold uppercase">View</a>
+                            ) : <span className="text-slate-400 text-[11px]">—</span>}
+                          </td>
+                          <td className="px-3 py-3 text-slate-600 text-[11px]">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
               )
             )}
 
