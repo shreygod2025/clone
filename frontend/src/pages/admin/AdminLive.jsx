@@ -20,7 +20,7 @@ import 'leaflet/dist/leaflet.css';
 import {
   Activity, Trophy, Ticket, School as SchoolIcon, Users, Rocket,
   Clock, MapPin, Zap, ListChecks, FolderKanban, Instagram, Youtube,
-  UserPlus, GraduationCap, Briefcase, TrendingUp,
+  UserPlus, GraduationCap, Briefcase, TrendingUp, Maximize2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -136,6 +136,8 @@ export default function AdminLive() {
   const [error, setError] = useState('');
   const [nowIST, setNowIST] = useState(new Date());
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [needsFsPrompt, setNeedsFsPrompt] = useState(true);
   const timerRef = useRef(null);
 
   // Live clock (ticks every second)
@@ -143,6 +145,61 @@ export default function AdminLive() {
     const id = setInterval(() => setNowIST(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // ── Fullscreen handling ─────────────────────────────────────────────
+  // Browsers block programmatic `requestFullscreen()` on page load — a user
+  // gesture is required.  So we:
+  //   1) Try once on mount (will silently fail in most browsers).
+  //   2) Show a friendly overlay button that flips the page into fullscreen
+  //      on the first click / key press.
+  //   3) Listen to the browser's `fullscreenchange` event so pressing ESC
+  //      cleanly returns to normal view AND re-shows the "Enter fullscreen"
+  //      prompt for the next time.
+  useEffect(() => {
+    const enterFs = () => {
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if (!req) return Promise.reject(new Error('Fullscreen API not supported'));
+      return req.call(el);
+    };
+
+    // Try optimistically — some browsers allow it if the user just clicked
+    // a link/nav to reach this page (counts as a user gesture).
+    enterFs().catch(() => { /* silently ignore — prompt overlay will handle it */ });
+
+    const onFsChange = () => {
+      const active = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      setIsFullscreen(active);
+      setNeedsFsPrompt(!active);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+
+    // Also allow pressing "F" as a hotkey.
+    const onKey = (e) => {
+      if (e.key && e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const active = !!document.fullscreenElement;
+        if (!active) enterFs().catch(() => {});
+      }
+    };
+    window.addEventListener('keydown', onKey);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  const handleEnterFullscreen = () => {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (req) {
+      req.call(el).then(() => setNeedsFsPrompt(false)).catch((err) => {
+        console.warn('[live] fullscreen refused:', err);
+      });
+    }
+  };
 
   // Poll snapshot every POLL_MS
   useEffect(() => {
@@ -220,6 +277,29 @@ export default function AdminLive() {
           'radial-gradient(ellipse at bottom, rgba(139,92,246,0.09) 0%, transparent 55%)',
       }}
     >
+      {/* Fullscreen prompt overlay — appears when the browser is not currently
+          in fullscreen mode.  Auto-attempted on mount but browsers require
+          a user gesture, so this overlay is the one-click activator. */}
+      {needsFsPrompt && !isFullscreen ? (
+        <button
+          type="button"
+          onClick={handleEnterFullscreen}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-slate-950/85 backdrop-blur-sm text-slate-100 group"
+          data-testid="fullscreen-prompt"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-violet-500 grid place-items-center shadow-[0_0_40px_-8px_rgba(6,182,212,0.7)] group-hover:scale-110 transition-transform">
+            <Maximize2 className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-3xl font-black tracking-tight">Enter Fullscreen</div>
+          <div className="text-sm text-slate-400 tracking-widest uppercase">
+            Click anywhere · or press <kbd className="px-2 py-0.5 mx-1 rounded bg-slate-800 border border-slate-700 text-cyan-300 font-mono text-xs">F</kbd>
+          </div>
+          <div className="text-[11px] text-slate-500 tracking-widest uppercase mt-1">
+            Press <kbd className="px-1.5 py-0.5 mx-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">ESC</kbd> anytime to exit
+          </div>
+        </button>
+      ) : null}
+
       {/* Subtle grid overlay */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -269,6 +349,15 @@ export default function AdminLive() {
               Live
             </span>
           </div>
+          <button
+            type="button"
+            onClick={handleEnterFullscreen}
+            title={isFullscreen ? 'You are in fullscreen — press ESC to exit' : 'Enter fullscreen (F)'}
+            className={`p-1.5 rounded-lg border transition ${isFullscreen ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+            data-testid="live-fullscreen-btn"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
