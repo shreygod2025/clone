@@ -388,6 +388,9 @@ function App() {
               {/* SEO-friendly keyword-rich canonicals for Future Skills funnels */}
               <Route path="/school/cs/icse-future-skills-classes-1-to-8" element={<FutureSkillsLanding board="ICSE" />} />
               <Route path="/school/cs/cbse-future-skills-classes-1-to-8" element={<FutureSkillsLanding board="CBSE" />} />
+              {/* NEW long-tail SEO canonical URLs (2026-09-26) */}
+              <Route path="/school/cbse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8" element={<FutureSkillsLanding board="CBSE" />} />
+              <Route path="/school/icse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8" element={<FutureSkillsLanding board="ICSE" />} />
               <Route path="/school/stem-preschool" element={<StemPreschoolLanding />} />
               <Route path="/school/preschool/stem-jr-sr-kg" element={<StemPreschoolLanding />} />
               <Route path="/school/cs/computational-thinking-and-ai-classes-3-to-8" element={<CBSECTAILanding />} />

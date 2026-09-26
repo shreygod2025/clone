@@ -225,13 +225,15 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
   const [activeIndexGrade, setActiveIndexGrade] = useState(1);
 
   const boardLower = board.toLowerCase();
-  // Keyword-rich canonical slug — the short `/school/cs/future-skills-{board}` route
-  // continues to render this same component (see App.js) but Google is told this
-  // longer keyword URL is the ranking canonical.
-  const CANONICAL_PATH = `/school/cs/${boardLower}-future-skills-classes-1-to-8`;
-  const SEO_TITLE = `${board} Future Skills · ICT + Coding + AI + Robotics (Classes 1-8) | OLL`;
-  const SEO_DESCRIPTION = `${board} Future Skills — one integrated ICT + Coding + AI + Robotics curriculum for Classes 1-8. One book, one period, one teacher. Books + Virtual Labs + LMS. Book a demo.`;
-  const SEO_KEYWORDS = `${board} Future Skills, ${board} ICT coding AI robotics, 4 in 1 curriculum ${board}, ${board} computer science grades 1 to 8, OLL Future Skills program, school AI robotics curriculum, ICT alternative curriculum ${board}, ${board} class 1 to 8 coding, ${board} class 1 to 8 AI, ${board} class 1 to 8 robotics`;
+  // Keyword-rich canonical slug — matches the long-form SEO URL we ship on
+  // production (`/school/{cbse|icse}-ict-robotics-ai-and-coding-curriculum...`).
+  // The short `/school/cs/future-skills-{board}` route continues to render
+  // this same component (see App.js) but Google is told this longer keyword
+  // URL is the ranking canonical.
+  const CANONICAL_PATH = `/school/${boardLower}-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8`;
+  const SEO_TITLE = `${board} All in 1 - ICT, AI, Coding & Robotics Curriculum with Practical Activity Books & Virtual Labs for Classes 1 to 8 - OLL`;
+  const SEO_DESCRIPTION = `Transform your school with OLL's ICT, Coding, Robotics and AI Curriculum for ${board}, created by experts to teach kids future skills with Textbooks, Virtual Labs, and LMS with Teaching Resources. AI and Coding Curriculum for ${board === 'CBSE' ? 'CBSE Subject Code 417 and 843' : 'ICSE'} with AI Course and Practical Activity Books and Teachers Training on AI and Python.`;
+  const SEO_KEYWORDS = `${board} ICT curriculum, ${board} AI curriculum for schools, ${board} Coding and Robotics curriculum, ${board} activity books classes 1 to 8, ${board} All in 1 curriculum, ${board === 'CBSE' ? 'CBSE Subject Code 417, CBSE Subject Code 843,' : 'ICSE ICT alternative,'} school AI activity workbook, ICT AI coding robotics 4-in-1, Virtual Labs for schools, LMS with teaching resources, OLL Future Skills program`;
   const BROCHURE_PDF_NAME = `OLL-${board}-Future-Skills-Brochure.pdf`;
 
   useEffect(() => { window.scrollTo(0, 0); }, [board]);
@@ -1056,17 +1058,36 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
 
       {/* ══════════ SECTION 1 · THE 4-SUBJECT NIGHTMARE ══════════ */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 pb-14" data-testid="fs-pain" aria-labelledby="fs-pain-heading">
+        {/* ── SEO-first H1 + intro copy (indexable, keyword-rich) ── */}
+        <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
+          <h1 className="icse-display text-[#0A1F44] text-3xl sm:text-4xl md:text-5xl leading-[1.1] tracking-tight" data-testid="fs-h1">
+            ICT, AI, Robotics and Coding Curriculum Labs for {board}
+          </h1>
+          <p className="mt-4 sm:mt-5 text-slate-600 text-[15px] sm:text-base leading-relaxed font-light">
+            {board === 'CBSE'
+              ? 'OLL brings you India’s most comprehensive All-in-1 CBSE ICT + Coding + AI + Robotics curriculum for Classes 1 to 8 — aligned with CBSE Subject Codes 417 and 843, delivered as printed Practical Activity Books, browser-based Virtual Labs, a school LMS with Teaching Resources, and hands-on Teacher Training on AI and Python. Replace 4 fragmented subjects with 1 integrated future-skills program that fits a single weekly period and one lightweight workbook per grade.'
+              : 'OLL brings you India’s most comprehensive All-in-1 ICSE ICT + Coding + AI + Robotics curriculum for Classes 1 to 8 — designed by IIT Alumni and delivered as printed Practical Activity Books, browser-based Virtual Labs, a school LMS with Teaching Resources, and hands-on Teacher Training on AI and Python. Replace 4 fragmented subjects with 1 integrated future-skills program that fits a single weekly period and one lightweight workbook per grade.'}
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700">Classes 1 – 8</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700">Practical Activity Books</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700">Virtual Labs</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700">LMS + Teacher Training</span>
+            {board === 'CBSE' && <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700">Subject Code 417 &amp; 843</span>}
+          </div>
+        </div>
+
         <div className="text-center">
           <div className="inline-flex items-center gap-2 bg-white/90 border border-rose-200 rounded-full px-3 py-1.5 shadow-sm icse-anim-fadeup">
             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
             <span className="icse-eyebrow text-rose-700">The school leader’s nightmare</span>
           </div>
-          <h1 id="fs-pain-heading" className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(1.85rem, 6.2vw, 4rem)' }}>
+          <h2 id="fs-pain-heading" className="icse-hero-h mt-5 text-[#0A1F44] icse-anim-fadeup icse-anim-delay-1" style={{ fontSize: 'clamp(1.85rem, 6.2vw, 4rem)' }}>
             4 subjects. <span style={{ color: '#DC2626' }}>4 headaches.</span><br/>
             <span className="icse-script text-[#0A1F44]" style={{ fontSize: 'clamp(1.4rem, 4.5vw, 2.6rem)', textTransform: 'none' }}>
               ICT, Coding, AI, Robotics — all at once?
             </span>
-          </h1>
+          </h2>
         </div>
 
         {/* Animated 4-chip row */}
@@ -1440,6 +1461,141 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           <p className="text-center text-[11px] icse-light text-slate-400 mt-8 uppercase tracking-widest">
             Live sample flipbooks · Powered by OLL · Grades 1-8
           </p>
+        </div>
+      </section>
+
+      {/* ── 4b · Grade-band deep dive (STEMpedia-style, SEO-heavy) ─────── */}
+      <section className="relative bg-slate-50 border-y border-slate-200" data-testid="fs-book-bands" aria-labelledby="fs-book-bands-heading">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16">
+          <div className="text-center mb-12">
+            <div className="icse-eyebrow text-rose-600">Speciality · 01a</div>
+            <h2 id="fs-book-bands-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">
+              {board === 'CBSE' ? 'Artificial Intelligence Activity Books for CBSE' : 'ICT, Coding &amp; AI Activity Books for ICSE'}
+            </h2>
+            <p className="icse-light text-slate-600 mt-4 max-w-3xl mx-auto">
+              {board === 'CBSE'
+                ? 'OLL has launched the CBSE AI, Coding and Robotics handbook series for teaching Artificial Intelligence included in the CBSE curriculum for Classes 1st to 10th — aligned with the CBSE All-in-1 Curriculum covering ICT, Coding, AI and Robotics to provide real-life practical activity-based learning (ABL). These AI, Coding and Robotics books are the core of our AI and Robotics Lab offerings.'
+                : 'OLL has launched the ICSE-aligned ICT, Coding, AI and Robotics handbook series for teaching Artificial Intelligence and Robotics across Classes 1st to 10th — an All-in-1 curriculum that replaces four fragmented subjects with real-life practical activity-based learning (ABL). These activity books are the core of our AI and Robotics Lab offerings for ICSE schools.'}
+            </p>
+          </div>
+
+          {/* Band 1 · Classes 1-5 (cover LEFT · text RIGHT) */}
+          <div className="grid md:grid-cols-2 gap-8 md:gap-14 items-center mb-16" data-testid="fs-band-1-5">
+            <div className="order-1 md:order-1">
+              <button
+                type="button"
+                onClick={() => setActiveBook(BOOK_GRADES.find((b) => b.grade === 3))}
+                className="fs-book w-full mx-auto max-w-[300px] block"
+                data-testid="fs-band-1-5-cover"
+                aria-label={`Preview OLL ${board} AI, Coding and Robotics sample book for Classes 1 to 5`}
+              >
+                <div className="fs-book-inner">
+                  <img
+                    src={BOOK_GRADES.find((b) => b.grade === 3)?.cover}
+                    alt={`OLL ${board} AI, Coding and Robotics practical activity book · Class 3 sample cover (primary band)`}
+                    loading="lazy"
+                    className="fs-book-cover-img"
+                  />
+                </div>
+                <span className="fs-book-reveal" aria-hidden><PlayCircle className="w-3.5 h-3.5" /> Flip through Class 3</span>
+              </button>
+            </div>
+            <div className="order-2 md:order-2">
+              <h3 className="icse-display text-[#0A1F44] text-2xl sm:text-3xl">
+                <a href="#fs-books-wrap" className="hover:text-[#DC2626] transition-colors" data-testid="fs-band-1-5-link">AI Books for Classes 1st – 5th</a>
+              </h3>
+              <div className="h-1 w-16 bg-yellow-400 mt-2 mb-4" aria-hidden />
+              <p className="icse-light text-slate-600 leading-relaxed">
+                OLL has created a preparatory curriculum of ICT, AI, Coding and Robotics for Classes 1 to 5 that introduces Artificial Intelligence for primary-school kids in a playful, story-led manner. The curriculum teaches AI readiness concepts, block-based coding, game design, digital drawing tools and elementary robotics — building the foundation of AI thinking, algorithmic literacy and creative problem-solving. Each book is aligned to {board === 'CBSE' ? 'NEP 2020 and CBSE learning outcomes' : 'ICSE learning outcomes and NEP 2020'} and is written by OLL&rsquo;s IIT-alumni curriculum team.
+              </p>
+              <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
+                {[
+                  'Computer Fundamentals &amp; Digital Literacy',
+                  'Algorithmic Literacy &amp; Block-based Coding',
+                  'Introduction to AI, Robotics &amp; ML Activities',
+                  'Creative Drawing Tools &amp; Game Design',
+                ].map((li) => (
+                  <li key={li} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" /><span dangerouslySetInnerHTML={{ __html: li }} /></li>
+                ))}
+              </ul>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map((g) => {
+                  const b = BOOK_GRADES.find((x) => x.grade === g);
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setActiveBook(b)}
+                      className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] transition-colors"
+                      data-testid={`fs-band-1-5-grade-${g}`}
+                    >
+                      Class {g} →
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Band 2 · Classes 6-8 (text LEFT · cover RIGHT) */}
+          <div className="grid md:grid-cols-2 gap-8 md:gap-14 items-center" data-testid="fs-band-6-8">
+            <div className="order-2 md:order-1">
+              <h3 className="icse-display text-[#0A1F44] text-2xl sm:text-3xl">
+                <a href="#fs-books-wrap" className="hover:text-[#DC2626] transition-colors" data-testid="fs-band-6-8-link">AI Books for Classes 6th – 8th</a>
+              </h3>
+              <div className="h-1 w-16 bg-yellow-400 mt-2 mb-4" aria-hidden />
+              <p className="icse-light text-slate-600 leading-relaxed">
+                {board === 'CBSE'
+                  ? 'The CBSE AI, Coding and Robotics book series for Classes 6 to 8 provides in-depth knowledge of Artificial Intelligence basics and its purpose with interactive games and quizzes. It focuses on the sub-units of the syllabus like — Excite, Relate, Purpose, Possibilities and AI Ethics. It covers topics like Human-Machine Interactions, AI in daily life, AI on Sustainable Development Goals, AI Ethics, AI Bias and AI Access — mapped to CBSE Subject Codes 417 and 843.'
+                  : 'The ICSE AI, Coding and Robotics book series for Classes 6 to 8 provides in-depth knowledge of Artificial Intelligence basics and its purpose with interactive games and quizzes. It focuses on Human-Machine Interactions, AI in daily life, AI on Sustainable Development Goals, AI Ethics, AI Bias and AI Access — while strengthening algorithmic thinking through Scratch, Python-lite blocks and browser-based robotics simulations.'}
+              </p>
+              <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
+                {[
+                  'Introduction to Artificial Intelligence &amp; Its Purpose',
+                  'AI Games, Quizzes &amp; Story Creation with AI',
+                  'Research on Current AI Trends &amp; Poster-Making using AI',
+                  'AI Ethics, AI Bias &amp; Responsible AI Access',
+                ].map((li) => (
+                  <li key={li} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" /><span dangerouslySetInnerHTML={{ __html: li }} /></li>
+                ))}
+              </ul>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[6, 7, 8].map((g) => {
+                  const b = BOOK_GRADES.find((x) => x.grade === g);
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setActiveBook(b)}
+                      className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] transition-colors"
+                      data-testid={`fs-band-6-8-grade-${g}`}
+                    >
+                      Class {g} →
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="order-1 md:order-2">
+              <button
+                type="button"
+                onClick={() => setActiveBook(BOOK_GRADES.find((b) => b.grade === 6))}
+                className="fs-book w-full mx-auto max-w-[300px] block"
+                data-testid="fs-band-6-8-cover"
+                aria-label={`Preview OLL ${board} AI, Coding and Robotics sample book for Classes 6 to 8`}
+              >
+                <div className="fs-book-inner">
+                  <img
+                    src={BOOK_GRADES.find((b) => b.grade === 6)?.cover}
+                    alt={`OLL ${board} Interactive Coding, AI and Robotics Class 6 book cover — middle-school band`}
+                    loading="lazy"
+                    className="fs-book-cover-img"
+                  />
+                </div>
+                <span className="fs-book-reveal" aria-hidden><PlayCircle className="w-3.5 h-3.5" /> Flip through Class 6</span>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
