@@ -319,6 +319,44 @@ async def _sessions_block() -> Dict[str, Any]:
     }
 
 
+# ─── Today's Tasks & active Projects ────────────────────────────────────
+async def _tasks_projects_block() -> Dict[str, Any]:
+    today = _today_iso_date()
+    start_dt, end_dt = _today_utc_bounds()
+
+    # New tasks created today (UTC ISO or datetime)
+    new_today = await _count_by_date_field("tasks", "created_at")
+
+    # Completed today — completed_at in today's IST window
+    completed_today = await db.tasks.count_documents({
+        "status": "completed",
+        "completed_at": {
+            "$gte": start_dt.isoformat(),
+            "$lt": end_dt.isoformat(),
+        },
+    })
+
+    # Overdue — due_date < today AND status not completed/rejected
+    overdue = await db.tasks.count_documents({
+        "status": {"$nin": ["completed", "rejected"]},
+        "due_date": {"$lt": today, "$ne": None, "$exists": True},
+    })
+
+    # Active projects
+    active_projects = await db.projects.count_documents({"status": "active"})
+
+    # Bonus: tasks currently in-progress (nice small stat)
+    in_progress = await db.tasks.count_documents({"status": "in_progress"})
+
+    return {
+        "new_today": new_today,
+        "completed_today": completed_today,
+        "overdue": overdue,
+        "active_projects": active_projects,
+        "in_progress": in_progress,
+    }
+
+
 # ─── Central Database (map) ─────────────────────────────────────────────
 async def _map_block() -> Dict[str, Any]:
     """Reuse the same city aggregation the Central Database page uses."""
@@ -337,11 +375,24 @@ async def _map_block() -> Dict[str, Any]:
         logger.warning("[live-dashboard] central_database failed: %s", e)
         return {"cities": [], "totals": {}, "grand_total": 0}
 
-    # Strip the heavy "entities" arrays — TV only needs counts + coords.
+    # Strip the heavy "entities" arrays — TV only needs counts + coords, plus
+    # a small sample of names per role so tapping a pin can show a short list.
     slim: List[Dict[str, Any]] = []
     for c in data.get("cities", []) or []:
         if c.get("lat") is None:
             continue
+        # Keep only first 5 names per role — enough for a compact popup.
+        entities = c.get("entities") or {}
+        slim_entities: Dict[str, List[Dict[str, Any]]] = {}
+        for role, arr in entities.items():
+            picks = []
+            for e in (arr or [])[:5]:
+                picks.append({
+                    "name": e.get("name"),
+                    "meta": e.get("meta"),
+                    "stage": e.get("stage"),
+                })
+            slim_entities[role] = picks
         slim.append({
             "city": c.get("city"),
             "city_key": c.get("city_key"),
@@ -349,6 +400,7 @@ async def _map_block() -> Dict[str, Any]:
             "lng": c.get("lng"),
             "total": c.get("total", 0),
             "counts": c.get("counts", {}),
+            "entities": slim_entities,
         })
     return {
         "cities": slim,
@@ -447,7 +499,7 @@ async def live_snapshot(user: dict = Depends(get_current_user)):
     if role not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Live dashboard is admin-only")
 
-    stories, support, school_crm, student_fs, sessions, map_data, ticker = await asyncio.gather(
+    stories, support, school_crm, student_fs, sessions, map_data, ticker, tasks_projects = await asyncio.gather(
         _success_stories_block(),
         _support_block(),
         _school_crm_block(),
@@ -455,6 +507,7 @@ async def live_snapshot(user: dict = Depends(get_current_user)):
         _sessions_block(),
         _map_block(),
         _activity_feed(),
+        _tasks_projects_block(),
     )
 
     return {
@@ -467,4 +520,5 @@ async def live_snapshot(user: dict = Depends(get_current_user)):
         "sessions": sessions,
         "map": map_data,
         "activity": ticker,
+        "tasks_projects": tasks_projects,
     }
