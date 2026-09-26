@@ -766,8 +766,15 @@ async def send_otp(data: OTPRequest):
             }
         }
         
-        # For educators, send via BOTH email and WhatsApp in parallel (so they always get it)
-        send_email_too = data.user_type == "educator" and bool(data.email)
+        # For educators, dispatch via BOTH WhatsApp and email in parallel so
+        # they always get the code. For every OTHER user_type, we still fire
+        # the email in parallel as a defensive fallback whenever an email
+        # address is supplied — this saves the flow when the AiSensy "otp"
+        # campaign is exhausted, throttled or de-approved (which was the
+        # root cause of a "no OTP received" complaint on the educator apply
+        # form when a caller forgot to pass user_type="educator").
+        has_email = bool(data.email and "@" in (data.email or ""))
+        send_email_too = has_email  # was: data.user_type == "educator" and has_email
         email_task = asyncio.create_task(_send_otp_via_email(data.email, otp)) if send_email_too else None
 
         async with httpx.AsyncClient() as client:

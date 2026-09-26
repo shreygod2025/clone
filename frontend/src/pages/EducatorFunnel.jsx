@@ -358,11 +358,17 @@ const EducatorFunnel = () => {
       const fullPhone = reqFormData.countryCode === '+91' ? reqFormData.phone : `${reqFormData.countryCode}${reqFormData.phone}`;
       setOtpSending(true);
       try {
-        await sendOTP(fullPhone);
+        // Pass `educator` user_type + email so the backend can fall back
+        // to email delivery if the WhatsApp campaign is unavailable.
+        const result = await sendOTP(fullPhone, 'educator', reqFormData.email);
+        if (!result?.success) throw new Error(result?.message || 'Failed to send OTP');
         setReqStep('otp');
-        toast.success('OTP sent to your phone');
+        const channel = result?.channel;
+        if (channel === 'whatsapp+email') toast.success('OTP sent to your WhatsApp and email');
+        else if (channel === 'email')     toast.success('OTP sent to your email (check inbox / spam)');
+        else                              toast.success('OTP sent to your WhatsApp');
       } catch (error) {
-        toast.error('Failed to send OTP');
+        toast.error(error.message || 'Failed to send OTP');
       } finally {
         setOtpSending(false);
       }
