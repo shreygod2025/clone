@@ -1,5 +1,51 @@
 # OLL Backend Changelog
 
+## 2026-09-26 — Homepage: Techfest + WordPress Blogs · ICSE 9-10 Flipbook Popup 📚
+
+### ✨ ICSE Class 9 & 10 Landing (`RoboticsICSE910Landing.jsx`)
+- **New PDF** — `CURRICULUM_PDF` swapped to the freshly uploaded
+  `Curriculum Brochure - ICSE Group 3 Subject - Code 66...compressed.pdf`.
+- **Sample-book flipbooks** — Grade 9 & Grade 10 covers on the comparison
+  table now open the Heyzine flipbook (`efa1276f3a` / `815aa37f68`) in a
+  full-screen lightbox modal identical to the Beginner Robotics pattern.
+  Covers gain hover lift + drop-shadow glow + a "✨ Flip through sample →"
+  callout. Mobile covers reuse the same flipbook.
+
+### ✨ Homepage: Techfest IIT Bombay Section (`LandingPage.jsx`)
+- New dark, red-accent section between "Schools we work with" and the
+  Future Skills band.
+- Left column: eyebrow, SEO-rich H2 ("Techfest, IIT Bombay 2026. Where
+  student bots take centre stage."), a 3-line SEO copy block, 4 stat
+  chips and two CTAs — **Know More →** `/techfest` and **Register your
+  team →** `/techfest/register`.
+- Right column: auto-playing muted trailer clip that opens the full
+  `hero-video.mp4` in the existing homepage media lightbox on click.
+- Below: 3 competition cards (RoboSumo, RoboRacer, Robotics Innovation
+  Challenge) with track-tag + sub-copy.
+
+### ✨ WordPress Blogs — Hybrid SEO Integration
+- New `WordPressBlogsSection.jsx` component pulls the latest 6 posts
+  from `https://oll.co/blogs/wp-json/wp/v2/posts?_embed` and renders them
+  as teaser cards on the homepage (thumbnail, category chip, date, title,
+  excerpt).
+- Every card links OUT to the canonical WP-rendered post at
+  `oll.co/blogs/[slug]/` — Google indexes the SSR WP pages (best SEO)
+  and the React SPA never duplicates blog content.
+- Section fails silently when the WP endpoint is unreachable (no impact
+  on homepage rendering).
+- Navbar (all 3 variants — pill, About, mobile) gets a new **Blog** link
+  that opens `oll.co/blogs/` in a new tab.
+- No `/blogs` React route is added on purpose — that would produce a
+  thin-content duplicate and hurt SEO.
+
+### Notes
+- The AiSensy `techfest_submission_confirmed` campaign still needs to be
+  created in the AiSensy dashboard for WhatsApp confirmations.
+- WordPress: once your posts are live on `oll.co/blogs/`, they'll auto-
+  populate the homepage strip on next visit — no code changes needed.
+
+
+
 ## 2026-09-23 — Techfest: Auto-fill Permission Letter + Submission Confirmations 📩
 
 ### ✨ Auto-filled School Permission Letter

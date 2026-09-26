@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Quote as QuoteIcon, Video, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import WordPressBlogsSection from '../components/WordPressBlogsSection';
 import { useUserAuth } from '../context/UserAuthContext';
 
 // ── Shared assets from Robotics Beginner (theme parity) ────────────────────
@@ -741,6 +742,136 @@ const LandingPage = () => {
 
 
 
+      {/* ── Techfest · OLL Robotics Championship @ IIT Bombay 2026 ──── */}
+      <section
+        data-testid="homepage-techfest"
+        style={{
+          position: 'relative', overflow: 'hidden',
+          padding: '5rem 1.25rem',
+          background: 'radial-gradient(ellipse at 20% 0%, rgba(220,38,38,0.20), transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(139,92,246,0.18), transparent 55%), linear-gradient(180deg, #0A1F44 0%, #0f172a 100%)',
+          color: '#fff',
+        }}
+      >
+        <style>{`
+          .home-tf-grain { position:absolute; inset:0; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.35'/></svg>"); opacity:.09; mix-blend-mode:overlay; pointer-events:none; }
+          .home-tf-eyebrow { font-family:'Montserrat',sans-serif; font-size:0.72rem; font-weight:900; letter-spacing:0.28em; text-transform:uppercase; color:#FCA5A5; }
+          .home-tf-h2 { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:900; font-size:clamp(2.2rem, 5.2vw, 3.75rem); line-height:1.02; letter-spacing:-0.02em; color:#fff; }
+          .home-tf-h2 em { font-family:'Caveat', cursive; font-style:normal; font-weight:700; color:#FCA5A5; }
+          .home-tf-body { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:300; font-size:1.02rem; line-height:1.65; color:rgba(226,232,240,0.9); }
+          .home-tf-play-wrap { position:relative; border-radius:1.5rem; overflow:hidden; aspect-ratio:16/9; border:2px solid rgba(255,255,255,0.10); box-shadow:0 30px 60px rgba(0,0,0,0.5); background:#0A1F44; }
+          .home-tf-poster-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.55; pointer-events:none; }
+          .home-tf-play-btn { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(10,31,68,0.25), rgba(10,31,68,0.65)); color:#fff; cursor:pointer; border:0; transition:transform 0.35s ease, background 0.35s ease; }
+          .home-tf-play-btn:hover { background:linear-gradient(180deg, rgba(10,31,68,0.15), rgba(220,38,38,0.35)); }
+          .home-tf-play-glyph { width:82px; height:82px; border-radius:999px; background:#DC2626; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 20px 40px rgba(220,38,38,0.55), 0 0 0 8px rgba(255,255,255,0.06); transition:transform 0.25s ease; }
+          .home-tf-play-btn:hover .home-tf-play-glyph { transform:scale(1.07); }
+          .home-tf-play-caption { position:absolute; left:0; right:0; bottom:0; padding:1rem 1.2rem; background:linear-gradient(180deg, transparent, rgba(0,0,0,0.65)); font-family:'Proxima Nova','Montserrat',sans-serif; font-size:0.82rem; font-weight:700; letter-spacing:0.06em; }
+          .home-tf-comp-grid { display:grid; grid-template-columns:1fr; gap:0.9rem; margin-top:1.75rem; }
+          @media (min-width: 640px) { .home-tf-comp-grid { grid-template-columns:repeat(3, minmax(0,1fr)); gap:0.75rem; } }
+          .home-tf-comp-card { position:relative; padding:1rem 1.1rem; border-radius:1rem; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10); backdrop-filter:blur(12px); transition:transform 0.25s ease, background 0.25s ease, border 0.25s ease; }
+          .home-tf-comp-card:hover { transform:translateY(-3px); background:rgba(255,255,255,0.07); border-color:rgba(220,38,38,0.45); }
+          .home-tf-comp-tag { font-family:'Montserrat',sans-serif; font-size:0.62rem; font-weight:900; letter-spacing:0.22em; text-transform:uppercase; color:#FCA5A5; }
+          .home-tf-comp-title { font-family:'Proxima Nova','Montserrat',sans-serif; font-size:1.05rem; font-weight:800; color:#fff; margin-top:0.35rem; line-height:1.15; }
+          .home-tf-comp-sub { font-family:'Proxima Nova','Montserrat',sans-serif; font-size:0.82rem; font-weight:300; color:rgba(226,232,240,0.75); margin-top:0.4rem; line-height:1.45; }
+          .home-tf-chiprow { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:1.25rem; }
+          .home-tf-chip { display:inline-flex; align-items:center; gap:0.4rem; padding:0.4rem 0.75rem; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-family:'Montserrat',sans-serif; font-size:0.72rem; font-weight:700; color:rgba(226,232,240,0.9); letter-spacing:0.04em; }
+          .home-tf-cta { display:inline-flex; align-items:center; gap:0.55rem; padding:0.9rem 1.5rem; border-radius:999px; background:#DC2626; color:#fff; font-family:'Montserrat',sans-serif; font-size:0.78rem; font-weight:900; letter-spacing:0.14em; text-transform:uppercase; text-decoration:none; box-shadow:0 20px 40px rgba(220,38,38,0.35); transition:transform 0.2s ease, box-shadow 0.2s ease; border:0; cursor:pointer; }
+          .home-tf-cta:hover { transform:translateY(-2px); box-shadow:0 24px 46px rgba(220,38,38,0.55); }
+          .home-tf-cta-ghost { display:inline-flex; align-items:center; gap:0.55rem; padding:0.85rem 1.4rem; border-radius:999px; background:transparent; color:#fff; font-family:'Montserrat',sans-serif; font-size:0.78rem; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; text-decoration:none; border:1px solid rgba(255,255,255,0.25); transition:background 0.2s ease; }
+          .home-tf-cta-ghost:hover { background:rgba(255,255,255,0.08); }
+        `}</style>
+        <div className="home-tf-grain" aria-hidden />
+
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
+          {/* Header row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
+
+            {/* Left · text */}
+            <div>
+              <div className="home-tf-eyebrow">India's biggest school Tech Fest · Powered by OLL</div>
+              <h2 className="home-tf-h2" style={{ marginTop: 8 }}>
+                Techfest, <em>IIT Bombay</em> 2026.<br />
+                Where <span style={{ color: '#FCA5A5' }}>student bots</span> take centre stage.
+              </h2>
+              <p className="home-tf-body" style={{ marginTop: 14, maxWidth: 620 }}>
+                The <strong style={{ color: '#fff', fontWeight: 700 }}>OLL Robotics Championship</strong> lands at Asia's largest science and technology festival. Grades 4–12 across three flagship tracks — <strong style={{ color: '#fff', fontWeight: 700 }}>RoboSumo, RoboRacer &amp; the Robotics Innovation Challenge</strong> — compete through online submission rounds and live Regional Qualifiers, culminating at the Grand Finale on the iconic <strong style={{ color: '#fff', fontWeight: 700 }}>IIT Bombay campus, 17 December 2026</strong>. Cash prizes up to ₹1,50,000, industry mentors, national visibility.
+              </p>
+
+              <div className="home-tf-chiprow" data-testid="home-tf-chips">
+                <span className="home-tf-chip"><Star size={12} /> Grades 4–12</span>
+                <span className="home-tf-chip"><PlayCircle size={12} /> 5 Regional Zones</span>
+                <span className="home-tf-chip"><Sparkles size={12} /> Prizes ₹1.5L</span>
+                <span className="home-tf-chip">🏆 Grand Finale · 17 Dec 2026</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => navigate('/techfest')}
+                  className="home-tf-cta"
+                  data-testid="home-tf-know-more"
+                >
+                  Know more <ArrowRight size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/techfest/register')}
+                  className="home-tf-cta-ghost"
+                  data-testid="home-tf-register"
+                >
+                  Register your team →
+                </button>
+              </div>
+            </div>
+
+            {/* Right · Play-video poster */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setMediaOpen({ type: 'video', src: '/techfest/hero-video.mp4', label: 'OLL Robotics Championship · Techfest IIT Bombay 2026', caption: 'The highlight reel — Grades 4–12 · 5 Zones · Grand Finale at IIT Bombay' })}
+                aria-label="Play the OLL Robotics Championship at Techfest IIT Bombay trailer"
+                className="home-tf-play-wrap home-tf-play-btn"
+                data-testid="home-tf-video-play"
+                style={{ padding: 0, width: '100%' }}
+              >
+                <video
+                  className="home-tf-poster-video"
+                  src="/techfest/hero-video.mp4"
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  preload="metadata"
+                  aria-hidden
+                />
+                <span className="home-tf-play-glyph" aria-hidden>
+                  <Play size={34} fill="#fff" style={{ marginLeft: 4 }} />
+                </span>
+                <span className="home-tf-play-caption">▶ Watch the 45-sec trailer · IIT Bombay Grand Finale reveal</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Competition grid */}
+          <div className="home-tf-comp-grid" data-testid="home-tf-competitions">
+            <div className="home-tf-comp-card">
+              <div className="home-tf-comp-tag">Track 01 · Combat</div>
+              <div className="home-tf-comp-title">RoboSumo — Push. Pin. Win.</div>
+              <div className="home-tf-comp-sub">Build a self-balancing sumo-bot and shove opponents off the ring. Zonal Qualifiers → Grand Finale at IIT Bombay.</div>
+            </div>
+            <div className="home-tf-comp-card">
+              <div className="home-tf-comp-tag">Track 02 · Speed</div>
+              <div className="home-tf-comp-title">RoboRacer — Line-Follower Grand Prix</div>
+              <div className="home-tf-comp-sub">A sensor-driven speed circuit against the clock. Fastest lap through the zonal grid earns the finals ticket.</div>
+            </div>
+            <div className="home-tf-comp-card">
+              <div className="home-tf-comp-tag">Track 03 · Innovation</div>
+              <div className="home-tf-comp-title">Robotics Innovation Challenge</div>
+              <div className="home-tf-comp-sub">Design a bot that solves a real-world problem. No regionals — direct Grand Finale pitch at IIT Bombay.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Future Skills · Year-Round Continuous Program (Grades 1–10) ── */}
       <section style={{
         background: 'linear-gradient(180deg, #FFFFFF 0%, #F0F7FF 60%, #FFFFFF 100%)',
@@ -1102,6 +1233,9 @@ const LandingPage = () => {
           {CLASSROOM_MEDIA.length} moments · captured at our centres in May 2026
         </div>
       </section>
+
+      {/* ── OLL Journal · Latest blogs from WordPress ─────────────────── */}
+      <WordPressBlogsSection testid="homepage-blogs" />
 
       {/* ── Classroom media lightbox modal ────────────────────────────── */}
       {mediaOpen && (

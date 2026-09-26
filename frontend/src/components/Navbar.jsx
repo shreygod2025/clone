@@ -217,6 +217,10 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
     { path: '/about', label: 'About' },
     { path: '/centers', label: 'Centers' },
     { path: '/techfest', label: 'Techfest', highlight: true },
+    // Blog lives on WordPress (oll.co/blogs) — link out so Google indexes
+    // the canonical SSR-rendered posts and we don't fragment SEO with a
+    // React SPA duplicate.
+    { path: 'https://oll.co/blogs/', label: 'Blog', external: true },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -332,14 +336,27 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
           {/* Center nav links */}
           <div className="oll-pillnav-links">
             {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`${isActive(link.path) ? 'active' : ''} ${link.highlight ? 'oll-pill-hl' : ''}`.trim()}
-                data-testid={`pill-nav-link-${link.label.toLowerCase()}`}
-              >
-                {link.label}
-              </Link>
+              link.external ? (
+                <a
+                  key={link.path}
+                  href={link.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${link.highlight ? 'oll-pill-hl' : ''}`.trim()}
+                  data-testid={`pill-nav-link-${link.label.toLowerCase()}`}
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`${isActive(link.path) ? 'active' : ''} ${link.highlight ? 'oll-pill-hl' : ''}`.trim()}
+                  data-testid={`pill-nav-link-${link.label.toLowerCase()}`}
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </div>
 
@@ -403,17 +420,29 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map(link => (
-              <Link 
-                key={link.path}
-                to={link.path} 
-                className={`font-medium transition-colors ${
-                  isActive(link.path) 
-                    ? 'text-[#D63031]' 
-                    : 'text-slate-600 hover:text-[#1E3A5F]'
-                }`}
-              >
-                {link.label}
-              </Link>
+              link.external ? (
+                <a
+                  key={link.path}
+                  href={link.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium transition-colors text-slate-600 hover:text-[#1E3A5F]"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`font-medium transition-colors ${
+                    isActive(link.path)
+                      ? 'text-[#D63031]'
+                      : 'text-slate-600 hover:text-[#1E3A5F]'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
             
             {/* About page variant: Join Team & Partner With Us */}
@@ -556,18 +585,31 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-slate-200 py-4 px-4 space-y-1 animate-slide-up">
           {navLinks.map(link => (
-            <Link 
-              key={link.path}
-              to={link.path} 
-              className={`block py-2 px-2 rounded-lg ${
-                isActive(link.path) 
-                  ? 'text-[#D63031] bg-red-50' 
-                  : 'text-slate-600 hover:text-[#1E3A5F] hover:bg-slate-50'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {link.label}
-            </Link>
+            link.external ? (
+              <a
+                key={link.path}
+                href={link.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block py-2 px-2 rounded-lg text-slate-600 hover:text-[#1E3A5F] hover:bg-slate-50"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`block py-2 px-2 rounded-lg ${
+                  isActive(link.path)
+                    ? 'text-[#D63031] bg-red-50'
+                    : 'text-slate-600 hover:text-[#1E3A5F] hover:bg-slate-50'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            )
           ))}
           <div className="pt-2 border-t border-slate-200 mt-2">
             {isLoggedIn ? (

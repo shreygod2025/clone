@@ -62,8 +62,12 @@ const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
 const CURRICULUM_PDF =
-  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4cp6p9fa_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026%20%281%29_compressed.pdf';
+  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/8hneqp4y_Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026_compressed.pdf';
 const CURRICULUM_PDF_NAME = 'OLL-ICSE-9-10-Robotics-AI-Curriculum-Brochure.pdf';
+
+// Heyzine flipbook URLs for the sample-book lightbox — one per grade.
+const FLIPBOOK_GRADE_9  = 'https://heyzine.com/flip-book/efa1276f3a.html';
+const FLIPBOOK_GRADE_10 = 'https://heyzine.com/flip-book/815aa37f68.html';
 
 const KIT_HERO = 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif';
 const KIT_COMPONENTS = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rywcpwtg_Screenshot%202026-09-01%20at%208.25.18%E2%80%AFPM.png';
@@ -366,6 +370,8 @@ export default function RoboticsICSE910Landing() {
   const [brochureSubmitting, setBrochureSubmitting] = useState(false);
   const [brochureError, setBrochureError] = useState('');
   const [winnerIdx, setWinnerIdx] = useState(0);
+  // Sample-book flipbook lightbox — { grade, flip, cover }
+  const [activeBook, setActiveBook] = useState(null);
 
   // Auto-rotate the hero topper slider every 4s.
   useEffect(() => {
@@ -883,14 +889,28 @@ export default function RoboticsICSE910Landing() {
         <div className="relative bg-white rounded-[28px] border border-slate-100 shadow-xl overflow-hidden">
           {/* Mobile-only book cover header — table thead is hidden on <640px */}
           <div className="grid grid-cols-2 gap-3 p-4 bg-gradient-to-r from-[#DC2626]/10 via-white to-[#0A1F44]/10 sm:hidden" data-testid="icse-book-mobile-covers">
-            <a href="#" onClick={(e) => { e.preventDefault(); openBrochureModal(); }} className="text-center block" data-testid="icse-book-cover-9-m">
-              <img src={BOOK_GRADE_9} alt="OLL ICSE Class 9 Robotics & AI textbook" className="h-[160px] w-auto mx-auto object-contain drop-shadow-xl" loading="lazy" />
+            <button
+              type="button"
+              onClick={() => setActiveBook({ grade: 'Grade 9',  flip: FLIPBOOK_GRADE_9,  cover: BOOK_GRADE_9,  spine: '#DC2626' })}
+              className="text-center block w-full group focus:outline-none focus:ring-2 focus:ring-[#DC2626]/50 rounded-2xl"
+              data-testid="icse-book-cover-9-m"
+              aria-label="Preview OLL ICSE Class 9 Robotics & AI sample book"
+            >
+              <img src={BOOK_GRADE_9} alt="OLL ICSE Class 9 Robotics & AI textbook" className="h-[160px] w-auto mx-auto object-contain drop-shadow-xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-[1.04]" loading="lazy" />
               <div className="mt-2 icse-display text-[#0A1F44] text-lg">Grade 9</div>
-            </a>
-            <a href="#" onClick={(e) => { e.preventDefault(); openBrochureModal(); }} className="text-center block" data-testid="icse-book-cover-10-m">
-              <img src={BOOK_GRADE_10} alt="OLL ICSE Class 10 Robotics & AI textbook" className="h-[160px] w-auto mx-auto object-contain drop-shadow-xl" loading="lazy" />
+              <div className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#DC2626]">Tap to flip through →</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveBook({ grade: 'Grade 10', flip: FLIPBOOK_GRADE_10, cover: BOOK_GRADE_10, spine: '#0A1F44' })}
+              className="text-center block w-full group focus:outline-none focus:ring-2 focus:ring-[#0A1F44]/50 rounded-2xl"
+              data-testid="icse-book-cover-10-m"
+              aria-label="Preview OLL ICSE Class 10 Robotics & AI sample book"
+            >
+              <img src={BOOK_GRADE_10} alt="OLL ICSE Class 10 Robotics & AI textbook" className="h-[160px] w-auto mx-auto object-contain drop-shadow-xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-[1.04]" loading="lazy" />
               <div className="mt-2 icse-display text-[#0A1F44] text-lg">Grade 10</div>
-            </a>
+              <div className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#DC2626]">Tap to flip through →</div>
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="icse-book-compare-table">
@@ -898,16 +918,42 @@ export default function RoboticsICSE910Landing() {
                 <tr>
                   <th className="text-left px-4 sm:px-6 pt-6 pb-4 icse-eyebrow text-slate-500 w-1/4 align-bottom">What's inside</th>
                   <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom border-r border-slate-200">
-                    <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-9" title="Preview Grade 9 · Code 66">
-                      <img src={BOOK_GRADE_9} alt="OLL ICSE Class 9 Robotics & AI textbook · Group 3 Subject Code 66 curriculum book (Grade 9)" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" loading="lazy" />
+                    <button
+                      type="button"
+                      onClick={() => setActiveBook({ grade: 'Grade 9', flip: FLIPBOOK_GRADE_9, cover: BOOK_GRADE_9, spine: '#DC2626' })}
+                      className="group inline-block focus:outline-none focus:ring-2 focus:ring-[#DC2626]/50 rounded-2xl px-2 pt-1 pb-2 bg-transparent border-0 cursor-pointer"
+                      data-testid="icse-book-cover-9"
+                      aria-label="Preview OLL ICSE Class 9 Robotics & AI sample book — flipbook opens in a lightbox"
+                      title="Preview Grade 9 · Code 66 sample book"
+                    >
+                      <div className="relative">
+                        <img src={BOOK_GRADE_9} alt="OLL ICSE Class 9 Robotics & AI textbook · Group 3 Subject Code 66 curriculum book (Grade 9)" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.06] group-hover:drop-shadow-[0_25px_35px_rgba(220,38,38,0.35)]" loading="lazy" />
+                        <span className="pointer-events-none absolute inset-x-0 -bottom-1 mx-auto h-6 w-3/4 rounded-full bg-black/10 blur-xl opacity-60 group-hover:opacity-90 transition-opacity duration-300" aria-hidden />
+                      </div>
                       <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 9</div>
-                    </a>
+                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#DC2626]">
+                        <Sparkles className="w-3 h-3" /> Flip through sample →
+                      </div>
+                    </button>
                   </th>
                   <th className="text-center px-4 sm:px-6 pt-6 pb-4 align-bottom">
-                    <a href={CURRICULUM_PDF} target="_blank" rel="noreferrer" className="group inline-block" data-testid="icse-book-cover-10" title="Preview Grade 10 · Code 66">
-                      <img src={BOOK_GRADE_10} alt="OLL ICSE Class 10 Robotics & AI textbook · Group 3 Subject Code 66 curriculum book (Grade 10)" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-105" loading="lazy" />
+                    <button
+                      type="button"
+                      onClick={() => setActiveBook({ grade: 'Grade 10', flip: FLIPBOOK_GRADE_10, cover: BOOK_GRADE_10, spine: '#0A1F44' })}
+                      className="group inline-block focus:outline-none focus:ring-2 focus:ring-[#0A1F44]/50 rounded-2xl px-2 pt-1 pb-2 bg-transparent border-0 cursor-pointer"
+                      data-testid="icse-book-cover-10"
+                      aria-label="Preview OLL ICSE Class 10 Robotics & AI sample book — flipbook opens in a lightbox"
+                      title="Preview Grade 10 · Code 66 sample book"
+                    >
+                      <div className="relative">
+                        <img src={BOOK_GRADE_10} alt="OLL ICSE Class 10 Robotics & AI textbook · Group 3 Subject Code 66 curriculum book (Grade 10)" className="h-[220px] sm:h-[260px] w-auto mx-auto object-contain drop-shadow-2xl transition-all duration-300 group-hover:-translate-y-2 group-hover:scale-[1.06] group-hover:drop-shadow-[0_25px_35px_rgba(10,31,68,0.35)]" loading="lazy" />
+                        <span className="pointer-events-none absolute inset-x-0 -bottom-1 mx-auto h-6 w-3/4 rounded-full bg-black/10 blur-xl opacity-60 group-hover:opacity-90 transition-opacity duration-300" aria-hidden />
+                      </div>
                       <div className="mt-3 icse-display text-[#0A1F44] text-2xl">Grade 10</div>
-                    </a>
+                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#DC2626]">
+                        <Sparkles className="w-3 h-3" /> Flip through sample →
+                      </div>
+                    </button>
                   </th>
                 </tr>
               </thead>
@@ -1238,6 +1284,119 @@ export default function RoboticsICSE910Landing() {
       </section>
 
       <SchoolRelatedPrograms current="robotics-icse-9-10" theme="light" testid="icse-related-programs" />
+
+      {/* ── Sample Book flipbook lightbox — Grade 9 & 10 Heyzine ─────── */}
+      {activeBook && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${activeBook.grade} sample book`}
+          data-testid="icse-sample-modal"
+          onClick={() => setActiveBook(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0.75rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', maxWidth: 1200,
+              height: 'min(92vh, 900px)',
+              display: 'flex', flexDirection: 'column',
+              background: '#fff', borderRadius: 20, overflow: 'hidden',
+              boxShadow: '0 40px 80px rgba(0,0,0,0.45)',
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '0.85rem 1.1rem',
+              background: `linear-gradient(135deg, ${activeBook.spine} 0%, #0A1F44 100%)`,
+              color: '#fff',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  fontFamily: "'Caveat', cursive", fontWeight: 700, color: '#FCA5A5',
+                  fontSize: '1.15rem', lineHeight: 1,
+                }}>
+                  sample book
+                </div>
+                <div style={{
+                  fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 700,
+                  fontSize: 'clamp(0.95rem, 2.2vw, 1.4rem)', marginTop: 4,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {activeBook.grade} · ICSE Group 3 · Code 66
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <a
+                  href={activeBook.flip}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="icse-sample-open-new"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Proxima Nova', 'Montserrat', sans-serif",
+                    fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)',
+                    padding: '0.5rem 0.85rem', borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.25)', textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Open in new tab
+                </a>
+                <button
+                  onClick={() => { setActiveBook(null); goBookDemo(); }}
+                  data-testid="icse-sample-demo"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: "'Proxima Nova', 'Montserrat', sans-serif",
+                    fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: '#fff', background: '#DC2626',
+                    padding: '0.5rem 0.85rem', borderRadius: 999, border: 'none', cursor: 'pointer',
+                    transition: 'background 0.2s ease',
+                  }}
+                >
+                  Book a Demo <ArrowRight size={12} />
+                </button>
+                <button
+                  onClick={() => setActiveBook(null)}
+                  aria-label="Close sample book"
+                  data-testid="icse-sample-close"
+                  style={{
+                    width: 38, height: 38, borderRadius: 999,
+                    background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', cursor: 'pointer',
+                    fontSize: '1.35rem', fontWeight: 700, lineHeight: 1,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.22)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            {/* Flipbook iframe */}
+            <div style={{ position: 'relative', flex: 1, background: '#F1F5F9', minHeight: 0 }}>
+              <iframe
+                key={activeBook.flip}
+                src={activeBook.flip}
+                title={`${activeBook.grade} ICSE Robotics AI sample book`}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+                allow="fullscreen; autoplay; clipboard-write"
+                allowFullScreen
+                loading="lazy"
+                data-testid="icse-sample-frame"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
 
