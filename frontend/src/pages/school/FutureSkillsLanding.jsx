@@ -32,8 +32,10 @@ const OLL_LOGO_COLOR = 'https://customer-assets.emergentagent.com/job_51f7c152-e
 const OLL_LOGO_WHITE = 'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
 const FS_HERO_IMG    = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/mcvv1k20_Screenshot%202026-09-17%20at%208.13.35%E2%80%AFAM.png';
 const BROCHURE_PDFS  = {
-  CBSE: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/bb24ial1_OLL%20Future%20skills%20-%20CBSE%20Grade%201%20-%208.pdf',
-  ICSE: 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/bb24ial1_OLL%20Future%20skills%20-%20CBSE%20Grade%201%20-%208.pdf',
+  // 2026-09-26 · Updated to the new consolidated ICT/CS/AI CBSE Grade 1-8 brochure.
+  // Same PDF serves ICSE — the curriculum is board-agnostic 4-in-1.
+  CBSE: '/brochure-future-skills-cbse-icse.pdf',
+  ICSE: '/brochure-future-skills-cbse-icse.pdf',
 };
 
 const KBC_IMG        = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png';
@@ -1419,11 +1421,11 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
       {/* ── 4a · Interactive Books (light section — CT&AI-style) ── */}
       <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-books-wrap" aria-labelledby="fs-books-heading">
         <div className="relative" data-testid="fs-books">
-          <div className="mb-10 text-center sm:text-left">
+          <div className="mb-10 text-center">
             <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
             <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
             <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books for {board} ICT Subject · Grades 1 to 8</h3>
-            <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto sm:mx-0">
+            <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto">
               A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
               real-world AI stories and reflection prompts. Tap any grade to flip through the actual sample book right here.
             </p>
@@ -1616,10 +1618,10 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               testid: 'fs-band-1-2',
               range: '1 and 2',
               header: `${board} AI, Coding, Robotics, and ICT Textbooks for Classes 1 and 2`,
-              intro: `${board} AI curriculum with Coding and Robotics for the Foundational Stage follows NEP 2020 and ${board === 'CBSE' ? 'CBSE Curricular Framework (NCF 2023)' : 'ICSE Curricular Framework'} — and introduces students to technology through activity-based learning. The PictoBlox Junior Blocks in the ${board} coding curriculum for Classes 1-2 make it easy for the youngest learners to grasp simplified coding.`,
+              intro: `${board} AI curriculum with Coding and Robotics for the Foundational Stage follows NEP 2020 and ${board === 'CBSE' ? 'CBSE Curricular Framework (NCF 2023)' : 'ICSE Curricular Framework'} — and introduces students to technology through activity-based learning. Playful tools like Scratch Jr, Blockly Games and Code.org make it easy for the youngest ${board} learners to grasp simplified coding, digital literacy and AI Basics.`,
               books: [
-                { grade: 1, tint: '#D9F99D', spine: '#65A30D', pages: 68, chapters: 6, sessions: '36 (18 Lab + 18 Class)', tools: 'MS Paint, Notepad, PictoBlox Junior, Quarky' },
-                { grade: 2, tint: '#FDE68A', spine: '#D97706', pages: 68, chapters: 6, sessions: '36 (18 Lab + 18 Class)', tools: 'Tux Paint, WordPad, PictoBlox Junior, Quarky' },
+                { grade: 1, tint: '#D9F99D', spine: '#65A30D', chapters: 12, sessions: '36 (18 Lab + 18 Class)', tools: 'Paint, Scratch Jr, Blockly Games, Code.org, AI Basics, Robotics Basics' },
+                { grade: 2, tint: '#FDE68A', spine: '#D97706', chapters: 11, sessions: '36 (18 Lab + 18 Class)', tools: 'Paint, Scratch Jr, Scratch, Blockly Games, Code.org, AI Basics, Robotics Basics' },
               ],
             },
             {
@@ -1627,10 +1629,11 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               range: '3, 4 and 5',
               header: `${board} AI, Coding, Robotics, and ICT Textbooks for Classes 3rd – 5th`,
               intro: `${board} AI, Coding &amp; Robotics for the Preparatory Stage (Classes 3-5) introduces creative drawing tools, block-based game design, story building and elementary robotics — building strong algorithmic-literacy and problem-solving foundations for ${board} primary-school learners.`,
+              intro: `${board} AI, Coding &amp; Robotics for the Preparatory Stage (Classes 3-5) introduces creative drawing tools like Paint 3D, Google Workspace basics (Docs, Slides, Forms, Sheets, Gmail), block-based game design in Scratch, and hands-on AI &amp; block-based robotics — building strong algorithmic-literacy and problem-solving foundations for ${board} primary-school learners.`,
               books: [
-                { grade: 3, tint: '#FCD34D', spine: '#D97706', pages: 92, chapters: 8, sessions: '54 (27 Lab + 27 Class)', tools: 'PictoBlox, Scratch, Tinkercad, Quarky' },
-                { grade: 4, tint: '#FCA5A5', spine: '#DC2626', pages: 92, chapters: 8, sessions: '54 (27 Lab + 27 Class)', tools: 'PictoBlox, Scratch, Tinkercad, Quarky' },
-                { grade: 5, tint: '#A5F3FC', spine: '#0891B2', pages: 108, chapters: 9, sessions: '54 (27 Lab + 27 Class)', tools: 'PictoBlox, Scratch, Tinkercad, Quarky' },
+                { grade: 3, tint: '#FCD34D', spine: '#D97706', chapters: 11, sessions: '54 (27 Lab + 27 Class)', tools: 'Paint, Google Docs, Gmail, Scratch, Code.org, Blockly Games, AI Basics, Block-based Robotics' },
+                { grade: 4, tint: '#FCA5A5', spine: '#DC2626', chapters: 11, sessions: '54 (27 Lab + 27 Class)', tools: 'Paint 3D, Google Docs, Slides, Forms, Scratch, Code.org, Canva AI, Code.org AI Modules, Block-based Robotics, Electronics &amp; Sensors' },
+                { grade: 5, tint: '#A5F3FC', spine: '#0891B2', chapters: 14, sessions: '54 (27 Lab + 27 Class)', tools: 'Paint 3D, Google Workspace, Scratch, ChatGPT, Google Gemini, Canva AI, Code.org AI, Teachable Machine, Electronics &amp; Sensors' },
               ],
             },
             {
@@ -1638,12 +1641,12 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
               range: '6, 7 and 8',
               header: `${board} AI, Coding, Robotics, and ICT Textbooks for Classes 6th – 8th`,
               intro: board === 'CBSE'
-                ? 'The CBSE Middle-School curriculum (Classes 6-8) covers Excite, Relate, Purpose, Possibilities and AI Ethics — mapped to CBSE Subject Codes 417 and 843 — with in-depth AI, ML, Human-Machine Interaction, Natural Language Processing and Python programming modules.'
-                : 'The ICSE Middle-School curriculum (Classes 6-8) covers AI, ML, Human-Machine Interaction, Natural Language Processing and Python-lite programming — while strengthening algorithmic thinking through Scratch, PictoBlox and browser-based robotics simulations.',
+                ? 'The CBSE Middle-School curriculum (Classes 6-8) covers Excite, Relate, Purpose, Possibilities and AI Ethics — mapped to CBSE Subject Codes 417 and 843 — with in-depth AI, ML, Human-Machine Interaction, Natural Language Processing and Python programming modules using Google Gemini, Microsoft Copilot, ChatGPT, Canva AI, Teachable Machine and MIT App Inventor.'
+                : 'The ICSE Middle-School curriculum (Classes 6-8) covers AI, ML, Human-Machine Interaction, Natural Language Processing and Python programming — while strengthening algorithmic thinking through Scratch, MIT App Inventor, HTML/CSS web development and browser-based robotics simulations.',
               books: [
-                { grade: 6, tint: '#C4B5FD', spine: '#7C3AED', pages: 132, chapters: 10, sessions: '72 (36 Lab + 36 Class)', tools: 'PictoBlox, Python Basics, Machine Learning, Quarky' },
-                { grade: 7, tint: '#86EFAC', spine: '#059669', pages: 132, chapters: 10, sessions: '72 (36 Lab + 36 Class)', tools: 'PictoBlox, Python, ML, Data Analysis, Quarky' },
-                { grade: 8, tint: '#FDBA74', spine: '#EA580C', pages: 140, chapters: 11, sessions: '72 (36 Lab + 36 Class)', tools: 'Python, PictoBlox AI, NLP, Computer Vision, Quarky' },
+                { grade: 6, tint: '#C4B5FD', spine: '#7C3AED', chapters: 14, sessions: '72 (36 Lab + 36 Class)', tools: 'Google Workspace, ChatGPT, Google Gemini, Microsoft Copilot, Canva AI, Teachable Machine, MIT App Inventor, HTML, Python Basics, Electronics &amp; Sensors' },
+                { grade: 7, tint: '#86EFAC', spine: '#059669', chapters: 14, sessions: '72 (36 Lab + 36 Class)', tools: 'Google Sheets, Google Forms, ChatGPT, Google Gemini, Copilot, Canva AI, Teachable Machine, Python Programming, HTML, CSS, MIT App Inventor, Advanced Robotics Projects' },
+                { grade: 8, tint: '#FDBA74', spine: '#EA580C', chapters: 15, sessions: '72 (36 Lab + 36 Class)', tools: 'Google Workspace, ChatGPT, Google Gemini, Copilot, Canva AI, Teachable Machine, Python, HTML, CSS, MIT App Inventor, Advanced Robotics Projects' },
               ],
             },
           ].map((band) => (
@@ -1697,17 +1700,16 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
                   </thead>
                   <tbody className="text-slate-700">
                     {[
-                      { k: 'Coding (PictoBlox)',                v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
-                      { k: 'Introduction to AI',                v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
-                      { k: 'Basics of Robotics',                v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
-                      { k: 'Foundational Computer Education',   v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
-                      { k: 'Total Pages',                       v: (b) => <span className="font-bold">{b.pages}</span> },
-                      { k: 'Number of Chapters',                v: (b) => <span className="font-bold">{b.chapters}</span> },
-                      { k: 'Lab + Classroom Sessions',          v: (b) => <span className="font-semibold text-[12px]">{b.sessions}</span> },
-                      { k: 'Software &amp; Hardware Used',      v: (b) => <span className="text-[12px] leading-snug block">{b.tools}</span> },
-                      { k: 'Resources for Teachers',            v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
-                      { k: `${board}-aligned Certification`,    v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
-                      { k: 'Codeavour Competition Access',      v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: 'Coding &amp; Block-based Programming',      v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: 'Introduction to AI',                        v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: 'Basics of Robotics',                        v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: 'Foundational Computer Education',           v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: 'Number of Chapters',                        v: (b) => <span className="font-bold">{b.chapters}</span> },
+                      { k: 'Lab + Classroom Sessions',                  v: (b) => <span className="font-semibold text-[12px]">{b.sessions}</span> },
+                      { k: 'Tools &amp; Technologies Used',             v: (b) => <span className="text-[12px] leading-snug block" dangerouslySetInnerHTML={{ __html: b.tools }} /> },
+                      { k: 'Resources for Teachers',                    v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: `${board}-aligned Certification`,             v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
+                      { k: 'Codeavour Competition Access',              v: () => <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" /> },
                     ].map((row, ri) => (
                       <tr key={row.k} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                         <td className="px-4 py-3 font-semibold text-slate-800 text-[13px]" dangerouslySetInnerHTML={{ __html: row.k }} />

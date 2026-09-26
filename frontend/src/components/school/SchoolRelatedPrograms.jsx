@@ -20,14 +20,14 @@ const ALL_PROGRAMS = {
     color: '#0EA5E9',
   },
   'future-skills-icse': {
-    href: '/school/cs/icse-future-skills-classes-1-to-8',
+    href: '/school/icse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8',
     title: 'ICSE Future Skills (4-in-1)',
     tag: 'ICSE · Classes 1-8',
     body: 'ICT + Coding + AI + Robotics under one curriculum, one book, one weekly period.',
     color: '#8B5CF6',
   },
   'future-skills-cbse': {
-    href: '/school/cs/cbse-future-skills-classes-1-to-8',
+    href: '/school/cbse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8',
     title: 'CBSE Future Skills (4-in-1)',
     tag: 'CBSE · Classes 1-8',
     body: 'ICT + Coding + AI + Robotics under one curriculum, one book, one weekly period.',
