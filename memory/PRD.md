@@ -24,6 +24,17 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Sep 27, 2026** — **Live TV Dashboard (`/admin/live`)**
+  Office wall-mounted 1920×1080 command centre with auto-refresh (30s):
+  - India dark-map (ESRI tiles) with pulsing city dots — reuses `/central-database/by-city`.
+  - Success Stories with Level 1–5 bar chart, Today's Sessions (CheckIn API, on-time/late/absent),
+    Today's Support (new/overdue/resolved), School CRM & Student+FS CRM today counters,
+    Coverage-by-segment breakdown, scrolling live activity ticker.
+  - Backend: `routes/live_dashboard.py` with `GET /api/live-dashboard/snapshot` — six async
+    aggregations run in parallel, IST-aware "today" bucketing.
+  - Frontend: `pages/admin/AdminLive.jsx` (dark UI, live IST clock, scoped CSS pulse
+    animations). "Need Help?" widget hidden on this route.
+
 - **Sep 2026** — **Techfest Auto-fill Permission Letter + Submission Notifications**
   (`routes/techfest_permission_letter.py`, `routes/techfest_emails.py`,
    `routes/techfest.py`, `TechfestSubmitPage.jsx`).

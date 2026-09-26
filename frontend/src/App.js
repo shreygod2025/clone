@@ -139,6 +139,7 @@ const AdminDataExport = lazy(() => import("./pages/admin/AdminDataExport"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
 const AdminCentralDatabase = lazy(() => import("./pages/admin/AdminCentralDatabase"));
+const AdminLive = lazy(() => import("./pages/admin/AdminLive"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
 const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTracker"));
@@ -419,6 +420,7 @@ function App() {
               <Route path="/admin/reports" element={<ProtectedRoute permission="reports"><AdminReports /></ProtectedRoute>} />
               <Route path="/admin/data-center" element={<ProtectedRoute permission="data_center"><AdminDataCenter /></ProtectedRoute>} />
               <Route path="/admin/central-database" element={<ProtectedRoute permission="central_database"><AdminCentralDatabase /></ProtectedRoute>} />
+              <Route path="/admin/live" element={<ProtectedRoute><AdminLive /></ProtectedRoute>} />
               <Route path="/admin/field-reports" element={<ProtectedRoute permission="field_reports"><AdminFieldReports /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute permission="blogs"><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute permission="settings"><AdminSettings /></ProtectedRoute>} />

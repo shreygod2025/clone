@@ -764,6 +764,7 @@ const RaiseQueryButton = () => {
 
   // Hide on AI Chat page — prevents floating button from overlapping the chat send button
   if (currentPath === '/admin/ai-chat') return null;
+  if (currentPath === '/admin/live') return null;
   // Hide on Summer Camp page on mobile (handled via CSS injected by the page)
 
   // Check auth state

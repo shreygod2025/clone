@@ -1,5 +1,30 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — Live TV Dashboard (`/admin/live`)
+**Status: COMPLETE**
+
+### What was built
+- New **Command Center** dashboard designed for a wall-mounted office TV (1920×1080, 16:9, auto-refresh every 30s).
+- Full-screen dark UI with grid overlay, neon accent glows, live IST clock, "LIVE" pulse indicator, and a scrolling activity ticker at the bottom.
+- Dark India map (ESRI Dark Gray tiles, no API key) with pulsing city dots (double-ring CSS animation via `L.divIcon`) — cyan for cities with 50+ entities, violet otherwise. Reuses the existing `/central-database/by-city` aggregation so map data stays in sync.
+- KPI cards for **Success Stories** (Levels 1–5 bar chart), **Today's Sessions** (on-time / late / absent / upcoming — from CheckIn API), **Today's Support Queries** (new / overdue / resolved), **Today's School CRM** (new / meeting done / converted), **Today's Student & Future Skills CRM** (new / demo done / converted, with sub-breakdown).
+- Coverage segment chart (schools, students, FS leads, teachers, growth partners, centres).
+
+### Files Created
+- `/app/backend/routes/live_dashboard.py` — single admin-only endpoint `GET /api/live-dashboard/snapshot` that runs all six aggregations concurrently via `asyncio.gather` (success stories, support, school CRM, student+FS CRM, CheckIn sessions, central-DB map, activity feed). All bucketing is IST-aware.
+- `/app/frontend/src/pages/admin/AdminLive.jsx` — TV dashboard React page, gated to admin/super_admin.
+
+### Files Modified
+- `/app/backend/server.py` — mounted `live_dashboard_router`.
+- `/app/frontend/src/App.js` — added route `/admin/live` (Protected).
+- `/app/frontend/src/components/RaiseQueryButton.jsx` — hide "Need Help?" widget on `/admin/live` for a clean TV view.
+
+### Notes
+- CheckIn's `/sessions?session_date=` query param is silently ignored upstream, so `_sessions_block` fetches ~2000 recent sessions and filters `session_date == today (IST)` locally, classifying via `admin_status` (`punctual_*` → on-time, `late_*` → late, etc.).
+- Successfully tested with admin credentials (`admin@oll.co`) — grand total 454 humans across 13 mapped cities, 273 overdue tickets rendered, live clock ticking, map pulses animating.
+
+---
+
 ## 2026-09-26 — Homepage: Techfest + WordPress Blogs · ICSE 9-10 Flipbook Popup 📚
 
 ### ✨ ICSE Class 9 & 10 Landing (`RoboticsICSE910Landing.jsx`)
