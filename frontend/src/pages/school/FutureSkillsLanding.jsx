@@ -1335,7 +1335,7 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         <div className="max-w-6xl mx-auto">
           <div className="text-center">
             <div className="icse-script text-[#DC2626] text-3xl">everything you need</div>
-            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Complete Learning Ecosystem</h3>
+            <h3 className="icse-display text-[#0A1F44] text-3xl sm:text-5xl mt-1">Complete Learning Ecosystem for {board} Schools</h3>
             <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
               Books · Virtual Labs · Teacher LMS · Hands-on projects — one integrated system so every teacher and every student has what they need.
             </p>
@@ -1422,7 +1422,7 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           <div className="mb-10 text-center sm:text-left">
             <div className="icse-eyebrow text-rose-600">Speciality · 01</div>
             <div className="icse-script text-[#DC2626] text-3xl">learn by doing</div>
-            <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books · Grades 1 to 8</h3>
+            <h3 id="fs-books-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Interactive Books for {board} ICT Subject · Grades 1 to 8</h3>
             <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto sm:mx-0">
               A grade-by-grade learning arc — every book packed with age-appropriate activities across all 4 subjects, coding challenges,
               real-world AI stories and reflection prompts. Tap any grade to flip through the actual sample book right here.
@@ -1467,19 +1467,149 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
         </div>
       </section>
 
+      {/* ── 4b-i · Virtual Lab (moved above Curriculum Index per brief) ─ */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-virtual-lab" aria-labelledby="fs-vlab-heading">
+        <div className="text-center mb-10">
+          <div className="icse-eyebrow text-rose-600">Speciality · 02</div>
+          <div className="icse-script text-[#DC2626] text-3xl">play → practise → master</div>
+          <h3 id="fs-vlab-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">
+            Virtual Labs for Practical Learning without Hassle
+          </h3>
+          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto">
+            A browser-first playground with all the languages and tools your {board} students need — Scratch, Python, HTML/CSS/JS, C, SQL, Excel — plus AI game simulations and mini robots. Every activity maps to a chapter from the {board} Future Skills book.
+          </p>
+        </div>
+        <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
+          <div>
+            {/* Highlighted lead-in row */}
+            <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-5 py-4 shadow-sm mb-5" data-testid="fs-vlab-highlight">
+              <div className="text-[11px] font-black uppercase tracking-widest text-emerald-700 mb-1.5">Zero-friction rollout</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[#0A1F44] font-bold text-[15px] leading-snug">
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" /> No separate login.</span>
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" /> No app to download.</span>
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" /> No subscription.</span>
+              </div>
+            </div>
+            <ul className="space-y-2.5 icse-light text-sm text-slate-700">
+              {[
+                'Runs in-browser, on any school computer — Chromebook, Windows, Mac.',
+                'Progress and time-on-task flow to the teacher dashboard live.',
+                `Every simulation is chapter-mapped to the ${board} Future Skills workbook — students click a QR from the book to launch.`,
+              ].map((t) => (
+                <li key={t} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" /><span>{t}</span></li>
+              ))}
+            </ul>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-vlab-cta">
+                See the Lab Live <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          {/* Autoplaying YouTube demo of the Virtual Lab */}
+          <div className="relative">
+            <div
+              className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-black"
+              style={{ aspectRatio: '16 / 9' }}
+              data-testid="fs-vlab-video"
+            >
+              <iframe
+                src="https://www.youtube.com/embed/-AmMm-B76L4?autoplay=1&mute=1&loop=1&playlist=-AmMm-B76L4&controls=1&modestbranding=1&rel=0&playsinline=1"
+                title="OLL Future Skills — Virtual Lab walkthrough"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 w-full h-full"
+                style={{ border: 0 }}
+              />
+              <div className="pointer-events-none absolute inset-x-6 bottom-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/85 drop-shadow">
+                <span>OLL · Virtual Labs</span><span>Future Skills · Live</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4· · Grade-wise Curriculum Index (moved ABOVE Class-Wise Breakdown per brief) ── */}
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-curriculum-index" aria-labelledby="fs-index-heading">
+        <div className="text-center mb-8">
+          <div className="icse-eyebrow text-rose-600">What's inside</div>
+          <div className="icse-script text-[#DC2626] text-3xl">grade-wise curriculum</div>
+          <h3 id="fs-index-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Curriculum Index for ICT Books · {board} · Grades 1 to 8</h3>
+          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
+            Tap a grade to see every chapter of the {board} ICT, Coding, AI &amp; Robotics workbook — grouped by pillar — exactly as it appears in the OLL Future Skills book.
+          </p>
+        </div>
+
+        {/* Grade tabs */}
+        <div className="flex flex-wrap justify-center gap-2 mb-6" role="tablist" aria-label="Grade selector">
+          {[1,2,3,4,5,6,7,8].map((g) => {
+            const active = activeIndexGrade === g;
+            return (
+              <button key={g} onClick={() => setActiveIndexGrade(g)} role="tab" aria-selected={active}
+                data-testid={`fs-index-tab-${g}`}
+                className="transition"
+                style={{
+                  padding: '10px 18px', borderRadius: 999, fontFamily: "'Proxima Nova', system-ui, sans-serif",
+                  fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.05em', textTransform: 'uppercase',
+                  border: active ? '2px solid #DC2626' : '1.5px solid #E2E8F0',
+                  background: active ? '#DC2626' : '#fff',
+                  color: active ? '#fff' : '#0A1F44',
+                  boxShadow: active ? '0 12px 24px rgba(220,38,38,0.28)' : '0 2px 6px rgba(10,31,68,0.05)',
+                  cursor: 'pointer',
+                }}>
+                Grade {g}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 4-pillar chapter grid for the selected grade */}
+        <div className="icse-card p-4 sm:p-6" data-testid={`fs-index-content-${activeIndexGrade}`}>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {PILLAR_META.map(({ key, icon: Icon, color, label }) => {
+              const chapters = key === 'Robotics'
+                ? (ROBOTICS_PROJECTS[activeIndexGrade] || [])
+                : (CURRICULUM_INDEX[activeIndexGrade]?.[key] || []);
+              const heading = key === 'Robotics' ? `${label} · Innovative Projects` : label;
+              return (
+                <div key={key} className="rounded-2xl p-4 h-full flex flex-col"
+                  style={{ background: `${color}0d`, border: `1px solid ${color}33` }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: color }}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="icse-display text-[#0A1F44] text-sm font-semibold" style={{ letterSpacing: '0.01em' }}>{heading}</div>
+                  </div>
+                  <ol className="space-y-2 icse-light text-sm text-slate-700 list-none">
+                    {chapters.length ? chapters.map((ch, i) => (
+                      <li key={ch} className="flex gap-2">
+                        <span style={{ color, fontWeight: 800, minWidth: 22 }}>{String(i+1).padStart(2, '0')}</span>
+                        <span>{ch}</span>
+                      </li>
+                    )) : <li className="text-slate-400 italic">Coming soon</li>}
+                  </ol>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+            <div className="icse-light text-xs text-slate-500">
+              Grade {activeIndexGrade} · {
+                ['ICT','Coding','AI'].reduce((a,k) => a + (CURRICULUM_INDEX[activeIndexGrade]?.[k]?.length || 0), 0)
+                + (ROBOTICS_PROJECTS[activeIndexGrade]?.length || 0)
+              } chapters &amp; projects across 4 pillars
+            </div>
+            <button type="button" onClick={openBrochureModal} className="icse-btn primary" style={{ padding: '10px 18px', fontSize: '0.72rem' }} data-testid="fs-index-brochure">
+              <Download className="w-3.5 h-3.5" /> Download Full Curriculum
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* ── 4b · Grade-band deep dive with comparison tables (SEO-heavy) ─ */}
       <section className="relative bg-slate-50 border-y border-slate-200" data-testid="fs-book-bands" aria-labelledby="fs-book-bands-heading">
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16">
-          <div className="text-center mb-12">
-            <div className="icse-eyebrow text-rose-600">Speciality · 01a</div>
-            <h2 id="fs-book-bands-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">
-              {board} AI, Coding, Robotics &amp; ICT Textbooks — Class-Wise Breakdown
-            </h2>
-            <p className="icse-light text-slate-600 mt-4 max-w-3xl mx-auto">
-              Every {board} Future Skills workbook is grade-calibrated. Compare pages, chapters, lab sessions, software &amp; hardware used and coverage of ICT, Coding, AI and Robotics — side by side — before you order for your {board} school.
-            </p>
-          </div>
-
           {/* Reusable band renderer */}
           {[
             {
@@ -1616,135 +1746,6 @@ export default function FutureSkillsLanding({ board = 'ICSE' }) {
           <p className="mt-8 text-center text-slate-600 icse-light max-w-3xl mx-auto text-sm">
             Every OLL {board} textbook is aligned with <strong>{board === 'CBSE' ? 'CBSE Subject Codes 417 &amp; 843' : 'ICSE Subject Code 66'}</strong>, <strong>NEP 2020</strong> guidelines and the modern <strong>{board} Future Skills</strong> pathway — with printed practical activity workbooks, Virtual Labs, teacher training on AI &amp; Python, and a school LMS with lesson plans, activity sheets and assessments included.
           </p>
-        </div>
-      </section>
-
-      {/* ── 4· · Grade-wise Curriculum Index (moved below Interactive Books) ── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-curriculum-index" aria-labelledby="fs-index-heading">
-        <div className="text-center mb-8">
-          <div className="icse-eyebrow text-rose-600">What's inside</div>
-          <div className="icse-script text-[#DC2626] text-3xl">grade-wise curriculum</div>
-          <h3 id="fs-index-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Curriculum Index · Grades 1 to 8</h3>
-          <p className="icse-light text-slate-600 max-w-2xl mx-auto mt-3">
-            Tap a grade to see every chapter — grouped by ICT, Coding, AI and Robotics — exactly as it appears in the OLL Future Skills workbook.
-          </p>
-        </div>
-
-        {/* Grade tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mb-6" role="tablist" aria-label="Grade selector">
-          {[1,2,3,4,5,6,7,8].map((g) => {
-            const active = activeIndexGrade === g;
-            return (
-              <button key={g} onClick={() => setActiveIndexGrade(g)} role="tab" aria-selected={active}
-                data-testid={`fs-index-tab-${g}`}
-                className="transition"
-                style={{
-                  padding: '10px 18px', borderRadius: 999, fontFamily: "'Proxima Nova', system-ui, sans-serif",
-                  fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.05em', textTransform: 'uppercase',
-                  border: active ? '2px solid #DC2626' : '1.5px solid #E2E8F0',
-                  background: active ? '#DC2626' : '#fff',
-                  color: active ? '#fff' : '#0A1F44',
-                  boxShadow: active ? '0 12px 24px rgba(220,38,38,0.28)' : '0 2px 6px rgba(10,31,68,0.05)',
-                  cursor: 'pointer',
-                }}>
-                Grade {g}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 4-pillar chapter grid for the selected grade */}
-        <div className="icse-card p-4 sm:p-6" data-testid={`fs-index-content-${activeIndexGrade}`}>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {PILLAR_META.map(({ key, icon: Icon, color, label }) => {
-              const chapters = key === 'Robotics'
-                ? (ROBOTICS_PROJECTS[activeIndexGrade] || [])
-                : (CURRICULUM_INDEX[activeIndexGrade]?.[key] || []);
-              const heading = key === 'Robotics' ? `${label} · Innovative Projects` : label;
-              return (
-                <div key={key} className="rounded-2xl p-4 h-full flex flex-col"
-                  style={{ background: `${color}0d`, border: `1px solid ${color}33` }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: color }}>
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="icse-display text-[#0A1F44] text-sm font-semibold" style={{ letterSpacing: '0.01em' }}>{heading}</div>
-                  </div>
-                  <ol className="space-y-2 icse-light text-sm text-slate-700 list-none">
-                    {chapters.length ? chapters.map((ch, i) => (
-                      <li key={ch} className="flex gap-2">
-                        <span style={{ color, fontWeight: 800, minWidth: 22 }}>{String(i+1).padStart(2, '0')}</span>
-                        <span>{ch}</span>
-                      </li>
-                    )) : <li className="text-slate-400 italic">Coming soon</li>}
-                  </ol>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
-            <div className="icse-light text-xs text-slate-500">
-              Grade {activeIndexGrade} · {
-                ['ICT','Coding','AI'].reduce((a,k) => a + (CURRICULUM_INDEX[activeIndexGrade]?.[k]?.length || 0), 0)
-                + (ROBOTICS_PROJECTS[activeIndexGrade]?.length || 0)
-              } chapters &amp; projects across 4 pillars
-            </div>
-            <button type="button" onClick={openBrochureModal} className="icse-btn primary" style={{ padding: '10px 18px', fontSize: '0.72rem' }} data-testid="fs-index-brochure">
-              <Download className="w-3.5 h-3.5" /> Download Full Curriculum
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 4b · Virtual Lab ───────────────────────────────────── */}
-      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16" data-testid="fs-virtual-lab" aria-labelledby="fs-vlab-heading">
-        <div className="text-center mb-10">
-          <div className="icse-eyebrow text-rose-600">Speciality · 02</div>
-          <div className="icse-script text-[#DC2626] text-3xl">play → practise → master</div>
-          <h3 id="fs-vlab-heading" className="icse-display text-[#0A1F44] text-3xl sm:text-4xl mt-1">Virtual Labs for Future Skills</h3>
-          <p className="icse-light text-slate-600 mt-3 max-w-2xl mx-auto">
-            A browser-first playground with all the languages and tools your students need — Scratch, Python, HTML/CSS/JS, C, SQL, Excel — plus AI game simulations and mini robots. Every activity maps to a chapter from the book.
-          </p>
-        </div>
-        <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
-          <div>
-            <ul className="space-y-2.5 icse-light text-sm text-slate-700">
-              {[
-                'No separate login. No app to download. No subscription.',
-                'Runs in-browser, on any school computer — Chromebook, Windows, Mac.',
-                'Progress and time-on-task flow to the teacher dashboard live.',
-              ].map((t) => (
-                <li key={t} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" /><span>{t}</span></li>
-              ))}
-            </ul>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button onClick={goBookDemo} className="icse-btn primary" data-testid="fs-vlab-cta">
-                See the Lab Live <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          {/* Autoplaying YouTube demo of the Virtual Lab */}
-          <div className="relative">
-            <div
-              className="relative rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 bg-black"
-              style={{ aspectRatio: '16 / 9' }}
-              data-testid="fs-vlab-video"
-            >
-              <iframe
-                src="https://www.youtube.com/embed/-AmMm-B76L4?autoplay=1&mute=1&loop=1&playlist=-AmMm-B76L4&controls=1&modestbranding=1&rel=0&playsinline=1"
-                title="OLL Future Skills — Virtual Lab walkthrough"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="strict-origin-when-cross-origin"
-                className="absolute inset-0 w-full h-full"
-                style={{ border: 0 }}
-              />
-              <div className="pointer-events-none absolute inset-x-6 bottom-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/85 drop-shadow">
-                <span>OLL · Virtual Labs</span><span>Future Skills · Live</span>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
