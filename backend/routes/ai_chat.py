@@ -83,6 +83,38 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
   followup_date format → YYYY-MM-DD.
   IMPORTANT: Do NOT add change_status unless the user explicitly asks to change the status.
 
+## MY SPACE — TASKS & PROJECTS (admin-only actions)
+Tasks and Projects are shown at the bottom of the context (Team members / Projects / Open tasks lists) with real ids.
+When the user talks about "task", "todo", "assignment", "project", "board", "sprint", "reminder", "assign", "ping",
+"remind", "nudge", or refers to an item by title/code, use these actions:
+
+- create_task: { type, title, description?, assigned_to?, assigned_to_name?, priority?, due_date?, project_id?, project_name?, tags?, notify_whatsapp? }
+    priority → "low" | "medium" | "high"    (default "medium")
+    due_date → "YYYY-MM-DD"                 ("tomorrow", "next Friday" → resolve BEFORE emitting)
+    assigned_to → user id from the Team-members list. If user names someone ("assign to Priya"), pick the id from the Team-members list.
+      If no assignee given, assign to the current admin (leave assigned_to blank; backend will default to self).
+    project_id / project_name → optional. If user says "in the Website project", match project_name against the Projects list.
+    notify_whatsapp → default true (fires the AiSensy "New Task" campaign to the assignee automatically).
+- update_task: { type, task_id, task_title?, fields: {} }
+    fields may contain: title, description, status, priority, due_date, project_id, tags.
+    status values: pending | in_progress | in_review | done | rejected | cancelled
+- delete_task: { type, task_id, task_title? }
+- assign_task: { type, task_id, task_title?, assigned_to?, assigned_to_name? }
+    Use for reassignments. Backend fires the "task_reassigned" WhatsApp.
+- remind_task: { type, task_id, task_title?, reminder_text? }
+    Fires a WhatsApp nudge + in-app notification to the current assignee immediately.
+    reminder_text is optional freeform ("gentle reminder — this is due today").
+- create_project: { type, name, description?, color?, member_names?, member_ids?, end_date?, status? }
+- update_project: { type, project_id, project_name?, fields: {} }
+- delete_project: { type, project_id, project_name? }
+
+## TASK/PROJECT SHORT-CIRCUITS
+- "remind X to close their tasks" or "ping X" → for every open task where assigned_to matches X, emit one remind_task per task.
+- "give this task to X" / "reassign task Y to X" → emit assign_task with X's id.
+- "close task Y" / "mark task Y done" → emit update_task with fields.status = "done".
+- "delete all my done tasks" → emit multiple delete_task actions. Do it.
+- Use task IDs (id:...) from the Open-tasks list. Never invent an id. If the user's title doesn't match any open task, ask ONE clarifying question with the closest 2-3 titles.
+
 ## CHAINED ACTIONS (create + schedule in one message):
 - If user says "add school X and schedule meeting tomorrow at 2 PM", emit create_lead FIRST, then schedule_meeting with school_name matching exactly. The backend will automatically link the new school_id to subsequent actions in the same batch — do NOT worry about school_id for newly created leads.
 - For "create renewal meeting for X", emit change_status(renewal_meeting) + schedule_meeting together.
@@ -177,6 +209,78 @@ async def _crm_context() -> str:
     return header + "\n".join(f"- {l}" for l in lines)
 
 
+async def _tasks_projects_context() -> str:
+    """Compact snapshot of open tasks, projects and team members for the AI.
+
+    Injected alongside _crm_context so the assistant can add / edit /
+    delete / assign / remind on tasks & projects without asking who
+    someone is or which task they meant.
+    """
+    from datetime import timedelta
+    today = datetime.now(timezone.utc)
+    today_str = today.strftime('%Y-%m-%d')
+
+    # Team members (assignable) — team_users + admins with name + role + id.
+    team_users = await db.team_users.find(
+        {"is_active": {"$ne": False}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "department": 1}
+    ).limit(200).to_list(length=200)
+    admins = await db.admins.find(
+        {}, {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1}
+    ).limit(50).to_list(length=50)
+    people = [{"id": u["id"], "name": u.get("name") or u.get("email"),
+               "role": u.get("role") or u.get("department") or "team"} for u in team_users if u.get("id")]
+    people += [{"id": a["id"], "name": a.get("name") or a.get("email"),
+                "role": a.get("role") or "admin"} for a in admins if a.get("id")]
+
+    # Projects
+    projects = await db.projects.find(
+        {"status": {"$ne": "archived"}},
+        {"_id": 0, "id": 1, "name": 1, "status": 1, "lead_id": 1, "end_date": 1}
+    ).sort("created_at", -1).limit(80).to_list(length=80)
+
+    # Open + due-soon tasks
+    tasks = await db.tasks.find(
+        {"status": {"$nin": ["done", "cancelled", "rejected"]}},
+        {"_id": 0, "id": 1, "code": 1, "title": 1, "status": 1, "priority": 1,
+         "assigned_to": 1, "due_date": 1, "project_id": 1, "created_at": 1}
+    ).sort("due_date", 1).limit(120).to_list(length=120)
+
+    lines = []
+    lines.append(f"\n\n## Team members (assignable — use id when creating tasks)")
+    for p in people[:80]:
+        lines.append(f"- {p['name']} ({p['role']}) id:{p['id']}")
+    if len(people) > 80:
+        lines.append(f"- …and {len(people)-80} more")
+
+    lines.append(f"\n## Projects (My Space)")
+    if not projects:
+        lines.append("- (no projects)")
+    for p in projects:
+        end = p.get("end_date") or ""
+        lines.append(f"- \"{p.get('name','')}\" [{p.get('status','')}]{' due '+end if end else ''} id:{p.get('id','')}")
+
+    lines.append(f"\n## Open tasks (My Space) — sorted by due date")
+    if not tasks:
+        lines.append("- (no open tasks)")
+    for t in tasks:
+        due = t.get("due_date") or ""
+        overdue = " OVERDUE" if (due and due < today_str) else ""
+        assignee_name = next((p["name"] for p in people if p["id"] == t.get("assigned_to")), t.get("assigned_to","")[:8])
+        proj_name = next((pr.get("name","") for pr in projects if pr.get("id") == t.get("project_id")), "")
+        code = t.get("code") or ""
+        line_parts = [f"[{t.get('status','')}]", f"[{(t.get('priority') or 'medium').upper()}]",
+                      f"\"{t.get('title','')}\""]
+        if code: line_parts.append(f"code:{code}")
+        line_parts.append(f"id:{t.get('id','')}")
+        if assignee_name: line_parts.append(f"→ {assignee_name}")
+        if proj_name: line_parts.append(f"proj:{proj_name}")
+        if due: line_parts.append(f"due:{due}{overdue}")
+        lines.append("- " + " ".join(line_parts))
+
+    return "\n".join(lines)
+
+
 def _parse_response(raw: str) -> dict:
     """Extract JSON dict from LLM response, stripping any markdown fences."""
     text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.MULTILINE)
@@ -192,6 +296,271 @@ def _parse_response(raw: str) -> dict:
             except Exception:
                 pass
     return {"message": raw, "actions": []}
+
+
+async def _resolve_team_user_id(name_or_id: str) -> str | None:
+    """Given a fuzzy name (e.g. "Priya", "priya sharma") OR an id, return the
+    matching team_users.id or admins.id. None if no match."""
+    if not name_or_id:
+        return None
+    v = name_or_id.strip()
+    # id match first
+    for coll in (db.team_users, db.admins):
+        doc = await coll.find_one({"id": v}, {"_id": 0, "id": 1})
+        if doc:
+            return doc["id"]
+    # name / email fuzzy
+    esc = re.escape(v)
+    q = {"$or": [
+        {"name":  {"$regex": esc, "$options": "i"}},
+        {"email": {"$regex": esc, "$options": "i"}},
+    ]}
+    for coll in (db.team_users, db.admins):
+        doc = await coll.find_one(q, {"_id": 0, "id": 1})
+        if doc:
+            return doc["id"]
+    return None
+
+
+async def _resolve_project_id(project_id: str | None, project_name: str | None) -> str | None:
+    if project_id:
+        return project_id
+    if not project_name:
+        return None
+    doc = await db.projects.find_one(
+        {"name": {"$regex": re.escape(project_name.strip()), "$options": "i"}},
+        {"_id": 0, "id": 1},
+    )
+    return doc["id"] if doc else None
+
+
+async def _resolve_task_id(task_id: str | None, task_title: str | None) -> str | None:
+    if task_id:
+        return task_id
+    if not task_title:
+        return None
+    # try code match first (e.g. "TASK-000123")
+    if re.match(r"^TASK-\d+$", task_title.strip(), re.IGNORECASE):
+        doc = await db.tasks.find_one({"code": task_title.strip().upper()}, {"_id": 0, "id": 1})
+        if doc:
+            return doc["id"]
+    doc = await db.tasks.find_one(
+        {"title": {"$regex": re.escape(task_title.strip()), "$options": "i"}},
+        {"_id": 0, "id": 1},
+    )
+    return doc["id"] if doc else None
+
+
+async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
+    """Handle create/update/delete/assign/remind on Tasks and CRUD on Projects.
+
+    Returns a result dict, or None if the action type isn't a tasks/projects
+    action (so `_execute` falls back to its "Unknown action" branch)."""
+    t = action.get("type", "")
+    uid = user.get("id") or user.get("user_id") or ""
+
+    # ── CREATE TASK ──────────────────────────────────────────────
+    if t == "create_task":
+        assignee = await _resolve_team_user_id(action.get("assigned_to") or action.get("assigned_to_name") or "")
+        assignee = assignee or uid  # fallback: assign to self
+        project_id = await _resolve_project_id(action.get("project_id"), action.get("project_name"))
+
+        task_id = str(uuid.uuid4())
+        # Next code (matches routes/tasks.py _next_task_code convention)
+        last = await db.tasks.find_one({}, sort=[("created_at", -1)], projection={"_id": 0, "code": 1})
+        try:
+            last_num = int(re.sub(r"\D", "", (last or {}).get("code", "")) or "0")
+        except Exception:
+            last_num = 0
+        code = f"TASK-{last_num + 1:06d}"
+
+        doc = {
+            "id": task_id,
+            "code": code,
+            "title": action.get("title", "Untitled task").strip(),
+            "description": (action.get("description") or "").strip(),
+            "status": "pending",
+            "priority": (action.get("priority") or "medium").lower(),
+            "assigned_to": assignee,
+            "assigned_by": uid,
+            "created_by": uid,
+            "due_date": action.get("due_date") or None,
+            "project_id": project_id,
+            "parent_task_id": None,
+            "tags": action.get("tags") or [],
+            "attachments": [],
+            "gdrive_link": None,
+            "created_at": now,
+            "updated_at": now,
+            "activity_log": [log(f"Task created via AI Chat by {user.get('name','Admin')}")],
+        }
+        await db.tasks.insert_one(doc)
+
+        # Fire WhatsApp to assignee (background best-effort)
+        if action.get("notify_whatsapp", True) and assignee and assignee != uid:
+            try:
+                from routes.tasks import _notify_task_whatsapp
+                await _notify_task_whatsapp(doc, "task_assigned", uid)
+            except Exception as exc:
+                logging.warning("ai_chat create_task notify failed: %s", exc)
+
+        return {"status": "success", "task_id": task_id, "code": code,
+                "detail": f"Task \"{doc['title']}\" created (code {code})"}
+
+    # ── UPDATE TASK ──────────────────────────────────────────────
+    if t == "update_task":
+        tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
+        if not tid:
+            return {"status": "error", "detail": "Task not found"}
+        raw_fields = action.get("fields") or {}
+        allowed = {"title", "description", "status", "priority", "due_date", "project_id", "tags"}
+        set_fields = {k: v for k, v in raw_fields.items() if k in allowed and v is not None}
+        if "project_id" not in set_fields and raw_fields.get("project_name"):
+            resolved = await _resolve_project_id(None, raw_fields.get("project_name"))
+            if resolved:
+                set_fields["project_id"] = resolved
+        if not set_fields:
+            return {"status": "error", "detail": "No valid fields to update"}
+        set_fields["updated_at"] = now
+        old = await db.tasks.find_one({"id": tid}, {"_id": 0})
+        await db.tasks.update_one(
+            {"id": tid},
+            {"$set": set_fields,
+             "$push": {"activity_log": log(f"Updated via AI Chat: {', '.join(set_fields.keys())}")}}
+        )
+        # WhatsApp if due_date changed
+        if "due_date" in set_fields and old:
+            try:
+                from routes.tasks import _notify_task_whatsapp
+                updated = {**old, **set_fields}
+                await _notify_task_whatsapp(updated, "task_due_date_updated", uid)
+            except Exception as exc:
+                logging.warning("ai_chat update_task notify failed: %s", exc)
+        return {"status": "success", "task_id": tid, "detail": f"Task updated ({', '.join(set_fields.keys())})"}
+
+    # ── DELETE TASK ──────────────────────────────────────────────
+    if t == "delete_task":
+        tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
+        if not tid:
+            return {"status": "error", "detail": "Task not found"}
+        res = await db.tasks.delete_one({"id": tid})
+        if res.deleted_count == 0:
+            return {"status": "error", "detail": "Task not deleted"}
+        return {"status": "success", "task_id": tid, "detail": "Task deleted"}
+
+    # ── ASSIGN / REASSIGN TASK ──────────────────────────────────
+    if t == "assign_task":
+        tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
+        if not tid:
+            return {"status": "error", "detail": "Task not found"}
+        assignee = await _resolve_team_user_id(action.get("assigned_to") or action.get("assigned_to_name") or "")
+        if not assignee:
+            return {"status": "error", "detail": "Assignee not found"}
+        await db.tasks.update_one(
+            {"id": tid},
+            {"$set": {"assigned_to": assignee, "updated_at": now},
+             "$push": {"activity_log": log("Reassigned via AI Chat")}}
+        )
+        task = await db.tasks.find_one({"id": tid}, {"_id": 0})
+        if task:
+            try:
+                from routes.tasks import _notify_task_whatsapp
+                await _notify_task_whatsapp(task, "task_reassigned", uid)
+            except Exception as exc:
+                logging.warning("ai_chat assign_task notify failed: %s", exc)
+        return {"status": "success", "task_id": tid, "detail": "Task reassigned"}
+
+    # ── REMIND TASK (WhatsApp + in-app nudge to current assignee) ──
+    if t == "remind_task":
+        tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
+        if not tid:
+            return {"status": "error", "detail": "Task not found"}
+        task = await db.tasks.find_one({"id": tid}, {"_id": 0})
+        if not task:
+            return {"status": "error", "detail": "Task not found"}
+        # Push activity log entry
+        reminder_text = (action.get("reminder_text") or "Gentle reminder").strip()
+        await db.tasks.update_one(
+            {"id": tid},
+            {"$push": {"activity_log": log(f"Reminder sent: {reminder_text}")},
+             "$set":  {"updated_at": now}}
+        )
+        try:
+            from routes.tasks import _notify_task_whatsapp
+            await _notify_task_whatsapp(task, "task_due_date_updated", uid)
+        except Exception as exc:
+            logging.warning("ai_chat remind_task notify failed: %s", exc)
+        # In-app notification (best-effort)
+        try:
+            from routes.inapp_notifications import create_notification
+            await create_notification(
+                user_id=task.get("assigned_to"),
+                type_="task_reminder",
+                title=f"Reminder · {task.get('title','Task')}",
+                message=reminder_text,
+                task_id=tid,
+                actor_id=uid,
+                cta_path=f"/admin/tasks?open={tid}",
+            )
+        except Exception:
+            pass
+        return {"status": "success", "task_id": tid, "detail": "Reminder sent"}
+
+    # ── CREATE PROJECT ──────────────────────────────────────────
+    if t == "create_project":
+        pid = str(uuid.uuid4())
+        member_ids = []
+        for nm in action.get("member_names") or []:
+            mid = await _resolve_team_user_id(nm)
+            if mid:
+                member_ids.append(mid)
+        member_ids += action.get("member_ids") or []
+        member_ids = list(dict.fromkeys(member_ids))  # dedupe, preserve order
+        doc = {
+            "id": pid,
+            "name": (action.get("name") or "Untitled project").strip(),
+            "description": (action.get("description") or "").strip(),
+            "color": action.get("color") or "#3B82F6",
+            "status": (action.get("status") or "active").lower(),
+            "lead_id": uid,
+            "member_ids": member_ids,
+            "start_date": action.get("start_date"),
+            "end_date":   action.get("end_date"),
+            "created_by": uid,
+            "created_at": now,
+            "updated_at": now,
+        }
+        await db.projects.insert_one(doc)
+        return {"status": "success", "project_id": pid, "detail": f"Project \"{doc['name']}\" created"}
+
+    # ── UPDATE PROJECT ──────────────────────────────────────────
+    if t == "update_project":
+        pid = await _resolve_project_id(action.get("project_id"), action.get("project_name"))
+        if not pid:
+            return {"status": "error", "detail": "Project not found"}
+        allowed = {"name", "description", "color", "status", "lead_id",
+                   "member_ids", "start_date", "end_date"}
+        raw_fields = action.get("fields") or {}
+        set_fields = {k: v for k, v in raw_fields.items() if k in allowed and v is not None}
+        if not set_fields:
+            return {"status": "error", "detail": "No valid fields to update"}
+        set_fields["updated_at"] = now
+        await db.projects.update_one({"id": pid}, {"$set": set_fields})
+        return {"status": "success", "project_id": pid, "detail": f"Project updated ({', '.join(set_fields.keys())})"}
+
+    # ── DELETE PROJECT ──────────────────────────────────────────
+    if t == "delete_project":
+        pid = await _resolve_project_id(action.get("project_id"), action.get("project_name"))
+        if not pid:
+            return {"status": "error", "detail": "Project not found"}
+        # Detach open tasks (don't delete them — safety)
+        await db.tasks.update_many({"project_id": pid}, {"$set": {"project_id": None, "updated_at": now}})
+        res = await db.projects.delete_one({"id": pid})
+        if res.deleted_count == 0:
+            return {"status": "error", "detail": "Project not deleted"}
+        return {"status": "success", "project_id": pid, "detail": "Project deleted (tasks detached, not removed)"}
+
+    return None
 
 
 async def _execute(action: dict, user: dict) -> dict:
@@ -773,6 +1142,10 @@ async def _execute(action: dict, user: dict) -> dict:
             }
 
         else:
+            # ── TASKS & PROJECTS (My Space) ─────────────────────────
+            result = await _execute_tasks_projects(action, user, log, now)
+            if result is not None:
+                return result
             return {"status": "skipped", "detail": f"Unknown action: {t}"}
 
     except Exception as exc:
@@ -836,9 +1209,10 @@ async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
         if last_school:
             enriched_text = f'[Context: the user is referring to "{last_school}" based on conversation history]\n{user_text}'
 
-    # Build system prompt with live CRM data
+    # Build system prompt with live CRM data + tasks/projects/team snapshot
     crm_ctx = await _crm_context()
-    system = AI_SYSTEM_PROMPT + crm_ctx
+    tp_ctx  = await _tasks_projects_context()
+    system = AI_SYSTEM_PROMPT + crm_ctx + tp_ctx
 
     # LLM call
     llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
