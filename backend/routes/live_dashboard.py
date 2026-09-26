@@ -357,6 +357,114 @@ async def _tasks_projects_block() -> Dict[str, Any]:
     }
 
 
+# ─── Outreach (Instagram + YouTube snapshots) ───────────────────────────
+async def _outreach_block() -> Dict[str, Any]:
+    """Compute today vs yesterday delta for followers + engagement across
+    Instagram and YouTube.  Uses `social_media_snapshots` populated by
+    the nightly scraper.  Returns zeros when there's no snapshot for
+    today/yesterday.
+    """
+    result: Dict[str, Any] = {
+        "instagram": {"followers": 0, "followers_gained": 0, "engagement": 0, "engagement_gained": 0},
+        "youtube":   {"subscribers": 0, "subscribers_gained": 0, "engagement": 0, "engagement_gained": 0},
+    }
+    today = _ist_now().strftime("%Y-%m-%d")
+    yesterday = (_ist_now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    async def _latest_pair(provider: str):
+        # Fetch newest 2 snapshots — most recent + previous
+        cur = db.social_media_snapshots.find(
+            {"provider": provider}, {"_id": 0},
+        ).sort("date", -1).limit(2)
+        rows = await cur.to_list(2)
+        newest = rows[0] if rows else None
+        prev = rows[1] if len(rows) > 1 else None
+        return newest, prev
+
+    # Instagram
+    try:
+        ig_new, ig_prev = await _latest_pair("instagram")
+        if ig_new:
+            followers = int(ig_new.get("followers") or 0)
+            engagement = int((ig_new.get("latest_total_likes") or 0)
+                             + (ig_new.get("latest_total_comments") or 0))
+            prev_f = int((ig_prev or {}).get("followers") or 0)
+            prev_e = int(((ig_prev or {}).get("latest_total_likes") or 0)
+                         + ((ig_prev or {}).get("latest_total_comments") or 0))
+            result["instagram"] = {
+                "followers": followers,
+                "followers_gained": max(0, followers - prev_f) if ig_prev else 0,
+                "engagement": engagement,
+                "engagement_gained": max(0, engagement - prev_e) if ig_prev else 0,
+                "as_of": ig_new.get("date"),
+            }
+    except Exception as e:
+        logger.warning("[live-dashboard] instagram outreach failed: %s", e)
+
+    # YouTube
+    try:
+        yt_new, yt_prev = await _latest_pair("youtube")
+        if yt_new:
+            subs = int(yt_new.get("followers") or 0)
+            engagement = int((yt_new.get("latest_total_likes") or 0)
+                             + (yt_new.get("latest_total_comments") or 0)
+                             + (yt_new.get("latest_total_views") or 0))
+            prev_s = int((yt_prev or {}).get("followers") or 0)
+            prev_e = int(((yt_prev or {}).get("latest_total_likes") or 0)
+                         + ((yt_prev or {}).get("latest_total_comments") or 0)
+                         + ((yt_prev or {}).get("latest_total_views") or 0))
+            result["youtube"] = {
+                "subscribers": subs,
+                "subscribers_gained": max(0, subs - prev_s) if yt_prev else 0,
+                "engagement": engagement,
+                "engagement_gained": max(0, engagement - prev_e) if yt_prev else 0,
+                "as_of": yt_new.get("date"),
+            }
+    except Exception as e:
+        logger.warning("[live-dashboard] youtube outreach failed: %s", e)
+
+    return result
+
+
+# ─── Hiring pipeline (Educators / Growth Partners / Team) ───────────────
+async def _hiring_block() -> Dict[str, Any]:
+    """Roll up applicant counts for the three hiring pipelines."""
+
+    async def _counts(collection: str, buckets: Dict[str, List[str]]) -> Dict[str, int]:
+        out = {"new": 0, "interview": 0, "onboarded": 0, "inactive": 0}
+        for key, statuses in buckets.items():
+            out[key] = await db[collection].count_documents({"status": {"$in": statuses}})
+        out["total"] = await db[collection].count_documents({})
+        return out
+
+    educators = await _counts("educator_applications", {
+        "new":        ["new"],
+        "interview":  ["demo_scheduled", "hr_done", "tech_scheduled", "interview_scheduled"],
+        "onboarded":  ["onboarded", "active"],
+        "inactive":   ["archived", "interview_failed", "auto_failed_anti_cheat", "rejected", "inactive"],
+    })
+
+    team = await _counts("team_applications", {
+        "new":        ["new"],
+        "interview":  ["interviewed", "interview_scheduled"],
+        "onboarded":  ["hired", "onboarding", "active"],
+        "inactive":   ["archived", "rejected", "inactive"],
+    })
+
+    growth = await _counts("growth_partners", {
+        "new":        ["new"],
+        "interview":  ["onboarding", "interview"],
+        "onboarded":  ["active", "converted"],
+        "inactive":   ["archived", "rejected", "inactive"],
+    })
+
+    return {
+        "educators": educators,
+        "team": team,
+        "growth_partners": growth,
+    }
+
+
 # ─── Central Database (map) ─────────────────────────────────────────────
 async def _map_block() -> Dict[str, Any]:
     """Reuse the same city aggregation the Central Database page uses."""
@@ -499,7 +607,7 @@ async def live_snapshot(user: dict = Depends(get_current_user)):
     if role not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Live dashboard is admin-only")
 
-    stories, support, school_crm, student_fs, sessions, map_data, ticker, tasks_projects = await asyncio.gather(
+    stories, support, school_crm, student_fs, sessions, map_data, ticker, tasks_projects, outreach, hiring = await asyncio.gather(
         _success_stories_block(),
         _support_block(),
         _school_crm_block(),
@@ -508,6 +616,8 @@ async def live_snapshot(user: dict = Depends(get_current_user)):
         _map_block(),
         _activity_feed(),
         _tasks_projects_block(),
+        _outreach_block(),
+        _hiring_block(),
     )
 
     return {
@@ -521,4 +631,6 @@ async def live_snapshot(user: dict = Depends(get_current_user)):
         "map": map_data,
         "activity": ticker,
         "tasks_projects": tasks_projects,
+        "outreach": outreach,
+        "hiring": hiring,
     }

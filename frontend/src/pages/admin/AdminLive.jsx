@@ -19,15 +19,25 @@ import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup } from 'react-lea
 import 'leaflet/dist/leaflet.css';
 import {
   Activity, Trophy, Ticket, School as SchoolIcon, Users, Rocket,
-  Clock, MapPin, Zap, ListChecks, FolderKanban, Sparkles,
+  Clock, MapPin, Zap, ListChecks, FolderKanban, Instagram, Youtube,
+  UserPlus, GraduationCap, Briefcase, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const POLL_MS = 30_000; // 30-second refresh
-const INDIA_CENTER = [22.3511, 78.6677];
-const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+const INDIA_CENTER = [23.5, 80.5];
+const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
+
+// Format big numbers as 12.3k / 4.5M
+const compact = (n) => {
+  if (n == null) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return `${n}`;
+};
 
 // Role catalogue for the map popup (mirrors AdminCentralDatabase).
 const ROLE_META = {
@@ -195,6 +205,8 @@ export default function AdminLive() {
   const sessions = data?.sessions || {};
   const activity = data?.activity || [];
   const tp = data?.tasks_projects || {};
+  const outreach = data?.outreach || { instagram: {}, youtube: {} };
+  const hiring = data?.hiring || { educators: {}, team: {}, growth_partners: {} };
 
   const maxLevel = Math.max(1, ...(stories.by_level || []).map((l) => l.count));
 
@@ -225,10 +237,10 @@ export default function AdminLive() {
           <img
             src={OLL_LOGO}
             alt="OLL"
-            className="h-9 w-auto drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]"
+            className="h-8 w-auto"
             data-testid="live-oll-logo"
           />
-          <div className="h-8 w-px bg-slate-700/70" />
+          <div className="h-7 w-px bg-slate-700/70" />
           <div>
             <div className="text-[10px] tracking-[0.35em] uppercase text-cyan-300/80">
               Command Center
@@ -300,7 +312,7 @@ export default function AdminLive() {
           </Card>
 
           {/* Today's Sessions */}
-          <Card title="Today's Sessions" icon={Clock} accent="cyan" testId="card-sessions" className="flex-1 min-h-0">
+          <Card title="Today's Sessions" icon={Clock} accent="cyan" testId="card-sessions" className="flex-shrink-0">
             <div className="grid grid-cols-4 gap-1 mb-2">
               <Metric label="Total" value={sessions.total} tone="slate" testId="sessions-total" />
               <Metric label="On-time" value={sessions.on_time} tone="emerald" testId="sessions-on-time" />
@@ -320,6 +332,7 @@ export default function AdminLive() {
             </div>
           </Card>
 
+          {/* Sessions -- keep flex-1 removed, make normal so Outreach can also fit */}
           {/* Support Queries */}
           <Card title="Today's Support Queries" icon={Ticket} accent="amber" testId="card-support" className="flex-shrink-0">
             <div className="grid grid-cols-3 gap-2 mb-1.5">
@@ -330,6 +343,36 @@ export default function AdminLive() {
             <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex justify-between">
               <span>Open tickets</span>
               <span className="text-slate-200 font-bold tabular-nums">{support.open_total ?? 0}</span>
+            </div>
+          </Card>
+
+          {/* Today's Outreach */}
+          <Card title="Today's Outreach" icon={TrendingUp} accent="rose" testId="card-outreach" className="flex-1 min-h-0">
+            <div className="grid grid-cols-2 gap-2 h-full">
+              <OutreachTile
+                icon={Instagram}
+                label="Instagram"
+                total={outreach.instagram?.followers}
+                totalLabel="followers"
+                gained={outreach.instagram?.followers_gained}
+                engagement={outreach.instagram?.engagement}
+                engGained={outreach.instagram?.engagement_gained}
+                color="text-pink-300"
+                gradient="from-pink-500/20 to-transparent"
+                testId="outreach-instagram"
+              />
+              <OutreachTile
+                icon={Youtube}
+                label="YouTube"
+                total={outreach.youtube?.subscribers}
+                totalLabel="subs"
+                gained={outreach.youtube?.subscribers_gained}
+                engagement={outreach.youtube?.engagement}
+                engGained={outreach.youtube?.engagement_gained}
+                color="text-red-300"
+                gradient="from-red-500/20 to-transparent"
+                testId="outreach-youtube"
+              />
             </div>
           </Card>
         </section>
@@ -355,8 +398,8 @@ export default function AdminLive() {
             >
               <MapContainer
                 center={INDIA_CENTER}
-                zoom={5}
-                minZoom={4}
+                zoom={4}
+                minZoom={3}
                 maxZoom={7}
                 style={{ height: '100%', width: '100%', background: '#020617' }}
                 zoomControl={false}
@@ -433,31 +476,47 @@ export default function AdminLive() {
           </Card>
 
           {/* My Space — today's tasks + active projects */}
-          <Card title="Today · My Space Tasks" icon={ListChecks} accent="sky" testId="card-tasks-projects" className="flex-1 min-h-0">
+          <Card title="Today · My Space Tasks" icon={ListChecks} accent="sky" testId="card-tasks-projects" className="flex-shrink-0">
             <div className="grid grid-cols-3 gap-2 mb-2">
               <Metric label="New" value={tp.new_today} tone="cyan" testId="tasks-new" />
               <Metric label="Overdue" value={tp.overdue} tone="rose" testId="tasks-overdue" />
               <Metric label="Completed" value={tp.completed_today} tone="emerald" testId="tasks-completed" />
             </div>
-            <div className="pt-2 border-t border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <FolderKanban className="w-3 h-3 text-sky-300" />
-                  <span className="uppercase tracking-widest">Active Projects</span>
-                </span>
-                <span className="text-sky-300 font-bold tabular-nums text-base leading-none" data-testid="active-projects">
-                  {tp.active_projects ?? 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <Zap className="w-3 h-3 text-amber-300" />
-                  <span className="uppercase tracking-widest">In Progress</span>
-                </span>
-                <span className="text-amber-300 font-bold tabular-nums" data-testid="tasks-in-progress">
-                  {tp.in_progress ?? 0}
-                </span>
-              </div>
+            <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[10px]">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <FolderKanban className="w-3 h-3 text-sky-300" />
+                <span className="uppercase tracking-widest">Active Projects</span>
+              </span>
+              <span className="text-sky-300 font-bold tabular-nums text-base leading-none" data-testid="active-projects">
+                {tp.active_projects ?? 0}
+              </span>
+            </div>
+          </Card>
+
+          {/* Hiring pipeline */}
+          <Card title="Hiring Pipeline" icon={UserPlus} accent="emerald" testId="card-hiring" className="flex-1 min-h-0">
+            <div className="space-y-1.5">
+              <HiringRow
+                icon={GraduationCap}
+                label="Educators"
+                data={hiring.educators}
+                color="text-amber-300"
+                testId="hiring-educators"
+              />
+              <HiringRow
+                icon={TrendingUp}
+                label="Growth Partners"
+                data={hiring.growth_partners}
+                color="text-emerald-300"
+                testId="hiring-growth"
+              />
+              <HiringRow
+                icon={Briefcase}
+                label="Team Members"
+                data={hiring.team}
+                color="text-sky-300"
+                testId="hiring-team"
+              />
             </div>
           </Card>
         </section>
@@ -551,6 +610,72 @@ const CityPopup = ({ city }) => {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+};
+
+const OutreachTile = ({ icon: Icon, label, total, totalLabel, gained, engagement, engGained, color, gradient, testId }) => {
+  const positive = (gained || 0) > 0;
+  const posEng = (engGained || 0) > 0;
+  return (
+    <div
+      className={`rounded-lg bg-gradient-to-br ${gradient} bg-slate-900/60 border border-slate-800 p-2 flex flex-col`}
+      data-testid={testId}
+    >
+      <div className={`flex items-center gap-1.5 ${color} text-[10px] font-bold uppercase tracking-widest`}>
+        <Icon className="w-3.5 h-3.5" />
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-black text-white tabular-nums leading-none">
+        {compact(total)}
+      </div>
+      <div className={`text-[9px] uppercase tracking-widest ${positive ? 'text-emerald-300' : 'text-slate-500'} mt-0.5`}>
+        +{compact(gained || 0)} {totalLabel} today
+      </div>
+      <div className="mt-1.5 pt-1.5 border-t border-slate-800/70 flex items-center justify-between">
+        <span className="text-[9px] uppercase tracking-widest text-slate-400">Eng.</span>
+        <span className="text-slate-200 text-xs font-bold tabular-nums">
+          {compact(engagement || 0)}
+          <span className={`ml-1 text-[9px] ${posEng ? 'text-emerald-300' : 'text-slate-500'} font-normal`}>
+            +{compact(engGained || 0)}
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const HiringRow = ({ icon: Icon, label, data, color, testId }) => (
+  <div className="rounded-lg bg-slate-900/50 border border-slate-800 px-2 py-1.5" data-testid={testId}>
+    <div className={`flex items-center gap-1.5 ${color} text-[10px] font-bold uppercase tracking-widest mb-1`}>
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+      <span className="ml-auto text-slate-500 font-normal">{data?.total ?? 0} total</span>
+    </div>
+    <div className="grid grid-cols-4 gap-1">
+      <HiringCell label="New" value={data?.new} tone="cyan" />
+      <HiringCell label="Interview" value={data?.interview} tone="amber" />
+      <HiringCell label="Onboarded" value={data?.onboarded} tone="emerald" />
+      <HiringCell label="Inactive" value={data?.inactive} tone="rose" />
+    </div>
+  </div>
+);
+
+const HiringCell = ({ label, value, tone }) => {
+  const toneMap = {
+    cyan:    'text-cyan-300',
+    amber:   'text-amber-300',
+    emerald: 'text-emerald-300',
+    rose:    'text-rose-400',
+  };
+  return (
+    <div className="text-center">
+      <div className={`text-sm font-black leading-none ${toneMap[tone]} tabular-nums`}>
+        {value ?? 0}
+      </div>
+      <div className="mt-0.5 text-[8px] tracking-widest uppercase text-slate-400">
+        {label}
       </div>
     </div>
   );
