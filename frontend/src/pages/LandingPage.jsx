@@ -758,12 +758,12 @@ const LandingPage = () => {
           .home-tf-h2 { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:900; font-size:clamp(2.2rem, 5.2vw, 3.75rem); line-height:1.02; letter-spacing:-0.02em; color:#fff; }
           .home-tf-h2 em { font-family:'Caveat', cursive; font-style:normal; font-weight:700; color:#FCA5A5; }
           .home-tf-body { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:300; font-size:1.02rem; line-height:1.65; color:rgba(226,232,240,0.9); }
-          .home-tf-play-wrap { position:relative; border-radius:1.5rem; overflow:hidden; aspect-ratio:16/9; border:2px solid rgba(255,255,255,0.10); box-shadow:0 30px 60px rgba(0,0,0,0.5); background:#0A1F44; }
+          .home-tf-play-wrap { position:relative; display:block; width:100%; border-radius:1.5rem; overflow:hidden; aspect-ratio:16/9; border:2px solid rgba(255,255,255,0.10); box-shadow:0 30px 60px rgba(0,0,0,0.5); background:#0A1F44; padding:0; cursor:pointer; }
           .home-tf-poster-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.55; pointer-events:none; }
-          .home-tf-play-btn { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(10,31,68,0.25), rgba(10,31,68,0.65)); color:#fff; cursor:pointer; border:0; transition:transform 0.35s ease, background 0.35s ease; }
-          .home-tf-play-btn:hover { background:linear-gradient(180deg, rgba(10,31,68,0.15), rgba(220,38,38,0.35)); }
+          .home-tf-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(10,31,68,0.25), rgba(10,31,68,0.65)); color:#fff; transition:background 0.35s ease; }
+          .home-tf-play-wrap:hover .home-tf-play-overlay { background:linear-gradient(180deg, rgba(10,31,68,0.15), rgba(220,38,38,0.35)); }
           .home-tf-play-glyph { width:82px; height:82px; border-radius:999px; background:#DC2626; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 20px 40px rgba(220,38,38,0.55), 0 0 0 8px rgba(255,255,255,0.06); transition:transform 0.25s ease; }
-          .home-tf-play-btn:hover .home-tf-play-glyph { transform:scale(1.07); }
+          .home-tf-play-wrap:hover .home-tf-play-glyph { transform:scale(1.07); }
           .home-tf-play-caption { position:absolute; left:0; right:0; bottom:0; padding:1rem 1.2rem; background:linear-gradient(180deg, transparent, rgba(0,0,0,0.65)); font-family:'Proxima Nova','Montserrat',sans-serif; font-size:0.82rem; font-weight:700; letter-spacing:0.06em; }
           .home-tf-comp-grid { display:grid; grid-template-columns:1fr; gap:0.9rem; margin-top:1.75rem; }
           @media (min-width: 640px) { .home-tf-comp-grid { grid-template-columns:repeat(3, minmax(0,1fr)); gap:0.75rem; } }
@@ -829,9 +829,8 @@ const LandingPage = () => {
                 type="button"
                 onClick={() => setMediaOpen({ type: 'video', src: '/techfest/hero-video.mp4', label: 'OLL Robotics Championship · Techfest IIT Bombay 2026', caption: 'The highlight reel — Grades 4–12 · 5 Zones · Grand Finale at IIT Bombay' })}
                 aria-label="Play the OLL Robotics Championship at Techfest IIT Bombay trailer"
-                className="home-tf-play-wrap home-tf-play-btn"
+                className="home-tf-play-wrap"
                 data-testid="home-tf-video-play"
-                style={{ padding: 0, width: '100%' }}
               >
                 <video
                   className="home-tf-poster-video"
@@ -843,8 +842,10 @@ const LandingPage = () => {
                   preload="metadata"
                   aria-hidden
                 />
-                <span className="home-tf-play-glyph" aria-hidden>
-                  <Play size={34} fill="#fff" style={{ marginLeft: 4 }} />
+                <span className="home-tf-play-overlay">
+                  <span className="home-tf-play-glyph" aria-hidden>
+                    <Play size={34} fill="#fff" style={{ marginLeft: 4 }} />
+                  </span>
                 </span>
                 <span className="home-tf-play-caption">▶ Watch the 45-sec trailer · IIT Bombay Grand Finale reveal</span>
               </button>
