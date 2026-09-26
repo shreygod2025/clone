@@ -165,24 +165,50 @@ def _scope_bounds_iso(scope: str, ref_iso: Optional[str] = None) -> tuple[str, s
 
 
 async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
-    """Metrics from `support_queries` where assigned_to == user_id and created_at in range."""
-    coll = db.support_queries
-    base = {"assigned_to": user_id, "created_at": {"$gte": start_iso, "$lte": end_iso}}
+    """Metrics from `support_queries` where assigned_to == user_id.
 
-    assigned = await coll.count_documents(base)
+    - `assigned` counts tickets whose `created_at` falls inside the range
+      (i.e. tickets that landed on this user's plate during the period).
+    - `resolved` counts tickets whose `resolved_at` (fallback `updated_at`
+      when `resolved_at` is missing on older docs) falls inside the range
+      AND whose current status is resolved/closed. This is timezone-safe
+      because all timestamps are stored as ISO strings.
+    """
+    coll = db.support_queries
+    assigned_base = {"assigned_to": user_id, "created_at": {"$gte": start_iso, "$lte": end_iso}}
+    assigned = await coll.count_documents(assigned_base)
+
+    # Resolved-in-range: prefer `resolved_at`; fall back to `updated_at`
+    # for pre-`resolved_at` rows (matches daily_report.py convention).
+    resolved_query = {
+        "assigned_to": user_id,
+        "status": {"$in": ["resolved", "closed"]},
+        "$or": [
+            {"resolved_at": {"$gte": start_iso, "$lte": end_iso}},
+            {
+                "resolved_at": {"$in": [None, ""]},
+                "updated_at": {"$gte": start_iso, "$lte": end_iso},
+            },
+            {
+                "resolved_at": {"$exists": False},
+                "updated_at": {"$gte": start_iso, "$lte": end_iso},
+            },
+        ],
+    }
     resolved_docs = await coll.find(
-        {**base, "status": {"$in": ["resolved", "closed"]}},
-        {"_id": 0, "created_at": 1, "updated_at": 1, "replies": 1}
-    ).to_list(2000)
+        resolved_query,
+        {"_id": 0, "created_at": 1, "updated_at": 1, "resolved_at": 1, "replies": 1},
+    ).to_list(5000)
     resolved = len(resolved_docs)
 
-    # Avg resolution time (hours) — updated_at - created_at for resolved tickets
+    # Avg resolution time (hours) — resolved_at (or updated_at) − created_at
     total_hrs = 0.0
     counted = 0
     for d in resolved_docs:
         try:
             c = datetime.fromisoformat(d.get("created_at").replace("Z", "+00:00"))
-            u = datetime.fromisoformat(d.get("updated_at").replace("Z", "+00:00"))
+            end_ts = d.get("resolved_at") or d.get("updated_at")
+            u = datetime.fromisoformat(str(end_ts).replace("Z", "+00:00"))
             hrs = (u - c).total_seconds() / 3600.0
             if hrs >= 0:
                 total_hrs += hrs
@@ -191,10 +217,12 @@ async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -
             continue
     avg_resolution_hours = round(total_hrs / counted, 2) if counted else 0
 
-    # First response time (hours) — first reply timestamp - created_at
+    # First response time (hours) — first reply timestamp - created_at (over
+    # tickets assigned during the same period, so it stays comparable to
+    # `assigned` above).
     first_response_hours = 0.0
     fr_count = 0
-    fr_docs = await coll.find(base, {"_id": 0, "created_at": 1, "replies": 1}).to_list(2000)
+    fr_docs = await coll.find(assigned_base, {"_id": 0, "created_at": 1, "replies": 1}).to_list(2000)
     for d in fr_docs:
         replies = d.get("replies") or []
         if not replies:
