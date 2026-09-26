@@ -751,19 +751,76 @@ const LandingPage = () => {
           background: 'radial-gradient(ellipse at 20% 0%, rgba(220,38,38,0.20), transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(139,92,246,0.18), transparent 55%), linear-gradient(180deg, #0A1F44 0%, #0f172a 100%)',
           color: '#fff',
         }}
+        ref={(el) => {
+          if (!el || el.__tfObserved) return;
+          el.__tfObserved = true;
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                el.classList.add('tf-curtain-open');
+                io.disconnect();
+              }
+            });
+          }, { threshold: 0.15 });
+          io.observe(el);
+        }}
       >
         <style>{`
-          .home-tf-grain { position:absolute; inset:0; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.35'/></svg>"); opacity:.09; mix-blend-mode:overlay; pointer-events:none; }
+          .home-tf-grain { position:absolute; inset:0; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.35'/></svg>"); opacity:.09; mix-blend-mode:overlay; pointer-events:none; z-index:1; }
+
+          /* ── Curtain (theatre reveal) ─────────────────────────────── */
+          [data-testid="homepage-techfest"] .tf-curtain { position:absolute; top:0; bottom:0; width:52%; z-index:30; pointer-events:none; transition:transform 1.4s cubic-bezier(0.77, 0, 0.175, 1); will-change:transform; box-shadow:inset 0 0 120px rgba(0,0,0,0.55); }
+          [data-testid="homepage-techfest"] .tf-curtain::before { content:""; position:absolute; inset:0; background: repeating-linear-gradient(90deg, rgba(120,10,10,0.85) 0 22px, rgba(180,20,20,0.85) 22px 44px, rgba(90,5,5,0.85) 44px 66px); }
+          [data-testid="homepage-techfest"] .tf-curtain::after { content:""; position:absolute; inset:0; background: linear-gradient(180deg, rgba(255,255,255,0.10), transparent 30%, transparent 80%, rgba(0,0,0,0.45)); }
+          [data-testid="homepage-techfest"] .tf-curtain-left  { left:0;  transform:translateX(0); border-right:1px solid rgba(0,0,0,0.35); }
+          [data-testid="homepage-techfest"] .tf-curtain-right { right:0; transform:translateX(0); border-left:1px solid rgba(0,0,0,0.35); }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-curtain-left  { transform:translateX(-102%); }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-curtain-right { transform:translateX(102%); }
+          [data-testid="homepage-techfest"] .tf-curtain-tie { position:absolute; top:50%; height:70px; width:14px; margin-top:-35px; background:radial-gradient(ellipse at center, #fbbf24, #b45309); border-radius:999px; box-shadow:0 6px 14px rgba(0,0,0,0.4); z-index:31; opacity:0; transition:opacity 0.6s ease 1s; }
+          [data-testid="homepage-techfest"] .tf-curtain-tie-left  { left:calc(52% - 24px); }
+          [data-testid="homepage-techfest"] .tf-curtain-tie-right { right:calc(52% - 24px); }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-curtain-tie { opacity:0; }
+          @media (prefers-reduced-motion: reduce) {
+            [data-testid="homepage-techfest"] .tf-curtain-left,
+            [data-testid="homepage-techfest"] .tf-curtain-right { transform:translateX(-105%); }
+            [data-testid="homepage-techfest"] .tf-curtain-right { transform:translateX(105%); }
+          }
+
+          /* ── Content reveals staggered after curtains open ─────────── */
+          [data-testid="homepage-techfest"] .tf-reveal { opacity:0; transform:translateY(24px); transition:opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal { opacity:1; transform:translateY(0); }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-1 { transition-delay:0.7s; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-2 { transition-delay:0.85s; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-3 { transition-delay:1.0s; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-4 { transition-delay:1.15s; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-5 { transition-delay:1.3s; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-6 { transition-delay:1.45s; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-reveal-7 { transition-delay:1.6s; }
+
+          /* ── Spotlight sweep (subtle competition energy) ──────────── */
+          [data-testid="homepage-techfest"] .tf-spot { position:absolute; top:-15%; left:50%; width:80%; height:130%; transform:translateX(-50%) rotate(6deg); background:radial-gradient(ellipse at center, rgba(255,220,150,0.10), transparent 60%); pointer-events:none; z-index:2; opacity:0; }
+          [data-testid="homepage-techfest"].tf-curtain-open .tf-spot { animation: tf-spot-sweep 4s ease-in-out 1.4s infinite alternate; }
+          @keyframes tf-spot-sweep {
+            0%   { transform:translateX(-70%) rotate(6deg); opacity:0.25; }
+            100% { transform:translateX(-30%) rotate(6deg); opacity:0.55; }
+          }
+
+          /* ── Logo lockup ──────────────────────────────────────────── */
+          .home-tf-lockup { display:inline-flex; align-items:center; gap:0.85rem; padding:0.7rem 1.1rem; background:rgba(255,255,255,0.96); border-radius:999px; box-shadow:0 20px 45px rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.4); }
+          .home-tf-lockup img { height:38px; width:auto; display:block; }
+          @media (max-width: 640px) { .home-tf-lockup img { height:30px; } .home-tf-lockup { padding:0.55rem 0.85rem; gap:0.65rem; } }
+
           .home-tf-eyebrow { font-family:'Montserrat',sans-serif; font-size:0.72rem; font-weight:900; letter-spacing:0.28em; text-transform:uppercase; color:#FCA5A5; }
-          .home-tf-h2 { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:900; font-size:clamp(2.2rem, 5.2vw, 3.75rem); line-height:1.02; letter-spacing:-0.02em; color:#fff; }
+          .home-tf-h2 { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:900; font-size:clamp(2.1rem, 5vw, 3.75rem); line-height:1.04; letter-spacing:-0.02em; color:#fff; }
           .home-tf-h2 em { font-family:'Caveat', cursive; font-style:normal; font-weight:700; color:#FCA5A5; }
           .home-tf-body { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:300; font-size:1.02rem; line-height:1.65; color:rgba(226,232,240,0.9); }
           .home-tf-play-wrap { position:relative; display:block; width:100%; border-radius:1.5rem; overflow:hidden; aspect-ratio:16/9; border:2px solid rgba(255,255,255,0.10); box-shadow:0 30px 60px rgba(0,0,0,0.5); background:#0A1F44; padding:0; cursor:pointer; }
           .home-tf-poster-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.55; pointer-events:none; }
           .home-tf-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(10,31,68,0.25), rgba(10,31,68,0.65)); color:#fff; transition:background 0.35s ease; }
           .home-tf-play-wrap:hover .home-tf-play-overlay { background:linear-gradient(180deg, rgba(10,31,68,0.15), rgba(220,38,38,0.35)); }
-          .home-tf-play-glyph { width:82px; height:82px; border-radius:999px; background:#DC2626; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 20px 40px rgba(220,38,38,0.55), 0 0 0 8px rgba(255,255,255,0.06); transition:transform 0.25s ease; }
+          .home-tf-play-glyph { width:82px; height:82px; border-radius:999px; background:#DC2626; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 20px 40px rgba(220,38,38,0.55), 0 0 0 8px rgba(255,255,255,0.06); transition:transform 0.25s ease; animation:tf-pulse 2.4s ease-in-out infinite; }
           .home-tf-play-wrap:hover .home-tf-play-glyph { transform:scale(1.07); }
+          @keyframes tf-pulse { 0%,100%{ box-shadow:0 20px 40px rgba(220,38,38,0.55), 0 0 0 8px rgba(255,255,255,0.06);} 50%{ box-shadow:0 20px 40px rgba(220,38,38,0.55), 0 0 0 14px rgba(255,255,255,0.02);} }
           .home-tf-play-caption { position:absolute; left:0; right:0; bottom:0; padding:1rem 1.2rem; background:linear-gradient(180deg, transparent, rgba(0,0,0,0.65)); font-family:'Proxima Nova','Montserrat',sans-serif; font-size:0.82rem; font-weight:700; letter-spacing:0.06em; }
           .home-tf-comp-grid { display:grid; grid-template-columns:1fr; gap:0.9rem; margin-top:1.75rem; }
           @media (min-width: 640px) { .home-tf-comp-grid { grid-template-columns:repeat(3, minmax(0,1fr)); gap:0.75rem; } }
@@ -779,31 +836,42 @@ const LandingPage = () => {
           .home-tf-cta-ghost { display:inline-flex; align-items:center; gap:0.55rem; padding:0.85rem 1.4rem; border-radius:999px; background:transparent; color:#fff; font-family:'Montserrat',sans-serif; font-size:0.78rem; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; text-decoration:none; border:1px solid rgba(255,255,255,0.25); transition:background 0.2s ease; }
           .home-tf-cta-ghost:hover { background:rgba(255,255,255,0.08); }
         `}</style>
+
+        {/* Curtain reveal */}
+        <span className="tf-curtain tf-curtain-left"  aria-hidden />
+        <span className="tf-curtain tf-curtain-right" aria-hidden />
+        <span className="tf-curtain-tie tf-curtain-tie-left"  aria-hidden />
+        <span className="tf-curtain-tie tf-curtain-tie-right" aria-hidden />
+        <span className="tf-spot" aria-hidden />
         <div className="home-tf-grain" aria-hidden />
 
-        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto', zIndex: 3 }}>
           {/* Header row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
 
             {/* Left · text */}
             <div>
-              <div className="home-tf-eyebrow">India's biggest school Tech Fest · Powered by OLL</div>
-              <h2 className="home-tf-h2" style={{ marginTop: 8 }}>
-                Techfest, <em>IIT Bombay</em> 2026.<br />
-                Where <span style={{ color: '#FCA5A5' }}>student bots</span> take centre stage.
+              <div className="tf-reveal tf-reveal-1 home-tf-lockup" data-testid="home-tf-lockup">
+                <img src="/techfest/oll-x-techfest-lockup.png" alt="OLL × Techfest IIT Bombay 2026 official partnership lockup" />
+              </div>
+
+              <div className="tf-reveal tf-reveal-2 home-tf-eyebrow" style={{ marginTop: 22 }}>India's Biggest School Level Robotics Championship</div>
+              <h2 className="tf-reveal tf-reveal-3 home-tf-h2" style={{ marginTop: 8 }}>
+                India&rsquo;s Biggest <em>School Level</em><br />
+                Robotics Championship.
               </h2>
-              <p className="home-tf-body" style={{ marginTop: 14, maxWidth: 620 }}>
-                The <strong style={{ color: '#fff', fontWeight: 700 }}>OLL Robotics Championship</strong> lands at Asia's largest science and technology festival. Grades 4–12 across three flagship tracks — <strong style={{ color: '#fff', fontWeight: 700 }}>RoboSumo, RoboRacer &amp; the Robotics Innovation Challenge</strong> — compete through online submission rounds and live Regional Qualifiers, culminating at the Grand Finale on the iconic <strong style={{ color: '#fff', fontWeight: 700 }}>IIT Bombay campus, 17 December 2026</strong>. Cash prizes up to ₹1,50,000, industry mentors, national visibility.
+              <p className="tf-reveal tf-reveal-4 home-tf-body" style={{ marginTop: 14, maxWidth: 620 }}>
+                The <strong style={{ color: '#fff', fontWeight: 700 }}>OLL Robotics Championship</strong> — powered by <strong style={{ color: '#fff', fontWeight: 700 }}>Techfest, IIT Bombay 2026</strong>, Asia&rsquo;s largest science and technology festival. Grades 4–12 across three flagship tracks — <strong style={{ color: '#fff', fontWeight: 700 }}>RoboSumo, RoboRacer &amp; the Robotics Innovation Challenge</strong> — compete through online submission rounds and live Regional Qualifiers, culminating at the Grand Finale on the iconic <strong style={{ color: '#fff', fontWeight: 700 }}>IIT Bombay campus, 17 December 2026</strong>. Cash prizes up to ₹1,50,000, industry mentors, national visibility.
               </p>
 
-              <div className="home-tf-chiprow" data-testid="home-tf-chips">
+              <div className="tf-reveal tf-reveal-5 home-tf-chiprow" data-testid="home-tf-chips">
                 <span className="home-tf-chip"><Star size={12} /> Grades 4–12</span>
                 <span className="home-tf-chip"><PlayCircle size={12} /> 5 Regional Zones</span>
                 <span className="home-tf-chip"><Sparkles size={12} /> Prizes ₹1.5L</span>
                 <span className="home-tf-chip">🏆 Grand Finale · 17 Dec 2026</span>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.75rem' }}>
+              <div className="tf-reveal tf-reveal-6" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.75rem' }}>
                 <button
                   type="button"
                   onClick={() => navigate('/techfest')}
@@ -824,7 +892,7 @@ const LandingPage = () => {
             </div>
 
             {/* Right · Play-video poster */}
-            <div>
+            <div className="tf-reveal tf-reveal-4">
               <button
                 type="button"
                 onClick={() => setMediaOpen({ type: 'video', src: '/techfest/hero-video.mp4', label: 'OLL Robotics Championship · Techfest IIT Bombay 2026', caption: 'The highlight reel — Grades 4–12 · 5 Zones · Grand Finale at IIT Bombay' })}
@@ -853,7 +921,7 @@ const LandingPage = () => {
           </div>
 
           {/* Competition grid */}
-          <div className="home-tf-comp-grid" data-testid="home-tf-competitions">
+          <div className="tf-reveal tf-reveal-7 home-tf-comp-grid" data-testid="home-tf-competitions">
             <div className="home-tf-comp-card">
               <div className="home-tf-comp-tag">Track 01 · Combat</div>
               <div className="home-tf-comp-title">RoboSumo — Push. Pin. Win.</div>
