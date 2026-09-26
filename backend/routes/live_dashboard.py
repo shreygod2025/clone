@@ -130,11 +130,30 @@ async def _support_block() -> Dict[str, Any]:
         "status": {"$nin": ["resolved", "closed"]}
     })
 
+    # Open ticket count grouped by priority — used by the TV support card
+    priority_map: Dict[str, int] = {"urgent": 0, "high": 0, "normal": 0, "low": 0}
+    try:
+        pipe = [
+            {"$match": {"status": {"$nin": ["resolved", "closed"]}}},
+            {"$group": {"_id": "$priority", "n": {"$sum": 1}}},
+        ]
+        async for row in db.support_queries.aggregate(pipe):
+            key = (row.get("_id") or "normal").lower()
+            # Normalise a few variants → the 4 canonical buckets
+            if key in ("medium", "med"):
+                key = "normal"
+            if key in ("critical",):
+                key = "urgent"
+            priority_map[key] = priority_map.get(key, 0) + row["n"]
+    except Exception as e:
+        logger.warning("[live-dashboard] support priority breakdown failed: %s", e)
+
     return {
         "new_today": new_today,
         "overdue": overdue,
         "resolved_today": resolved_today,
         "open_total": open_total,
+        "priority": priority_map,
     }
 
 

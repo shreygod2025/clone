@@ -340,9 +340,16 @@ export default function AdminLive() {
               <Metric label="Overdue" value={support.overdue} tone="rose" testId="support-overdue" />
               <Metric label="Resolved" value={support.resolved_today} tone="emerald" testId="support-resolved" />
             </div>
-            <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex justify-between">
-              <span>Open tickets</span>
-              <span className="text-slate-200 font-bold tabular-nums">{support.open_total ?? 0}</span>
+            <div className="pt-2 border-t border-slate-800">
+              <div className="text-[9px] tracking-widest uppercase text-slate-500 mb-1">
+                Open by priority · {support.open_total ?? 0} total
+              </div>
+              <div className="grid grid-cols-4 gap-1" data-testid="support-priority">
+                <PriorityChip label="Urgent" value={support.priority?.urgent} tone="rose" />
+                <PriorityChip label="High" value={support.priority?.high} tone="amber" />
+                <PriorityChip label="Normal" value={support.priority?.normal} tone="cyan" />
+                <PriorityChip label="Low" value={support.priority?.low} tone="slate" />
+              </div>
             </div>
           </Card>
 
@@ -450,29 +457,13 @@ export default function AdminLive() {
             </div>
           </Card>
 
-          {/* Student & Future Skills CRM */}
-          <Card title="Today · Student & Future Skills" icon={Rocket} accent="rose" testId="card-student-fs-crm" className="flex-shrink-0">
-            <div className="grid grid-cols-3 gap-2 mb-1.5">
+          {/* Student CRM (Student + Future Skills combined) */}
+          <Card title="Today · Student CRM" icon={Rocket} accent="rose" testId="card-student-fs-crm" className="flex-shrink-0">
+            <div className="grid grid-cols-3 gap-2">
               <Metric label="New" value={studentFs.new_today} tone="cyan" testId="stufs-new" />
               <Metric label="Demo" value={studentFs.demo_done_today} tone="amber" testId="stufs-demo" />
               <Metric label="Converted" value={studentFs.converted_today} tone="emerald" testId="stufs-converted" />
             </div>
-            {studentFs.breakdown ? (
-              <div className="pt-2 border-t border-slate-800 space-y-1 text-[10px]">
-                <div className="flex justify-between">
-                  <span className="text-slate-400 uppercase tracking-widest">Student</span>
-                  <span className="text-slate-300 tabular-nums">
-                    {studentFs.breakdown.student.new}·{studentFs.breakdown.student.demo}·{studentFs.breakdown.student.converted}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 uppercase tracking-widest">Future Skills</span>
-                  <span className="text-slate-300 tabular-nums">
-                    {studentFs.breakdown.future_skills.new}·{studentFs.breakdown.future_skills.demo}·{studentFs.breakdown.future_skills.converted}
-                  </span>
-                </div>
-              </div>
-            ) : null}
           </Card>
 
           {/* My Space — today's tasks + active projects */}
@@ -627,19 +618,26 @@ const OutreachTile = ({ icon: Icon, label, total, totalLabel, gained, engagement
         <Icon className="w-3.5 h-3.5" />
         {label}
       </div>
-      <div className="mt-1 text-lg font-black text-white tabular-nums leading-none">
-        {compact(total)}
+      {/* Big number = TODAY's gain (what matters day-to-day) */}
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className={`text-2xl font-black tabular-nums leading-none ${positive ? 'text-emerald-300' : 'text-slate-400'}`}>
+          {positive ? '+' : ''}{compact(gained || 0)}
+        </span>
+        <span className="text-[9px] uppercase tracking-widest text-slate-400">
+          {totalLabel} today
+        </span>
       </div>
-      <div className={`text-[9px] uppercase tracking-widest ${positive ? 'text-emerald-300' : 'text-slate-500'} mt-0.5`}>
-        +{compact(gained || 0)} {totalLabel} today
+      {/* Total = small caption below */}
+      <div className="mt-0.5 text-[10px] text-slate-500">
+        Total <span className="text-slate-300 font-semibold tabular-nums">{compact(total)}</span>
       </div>
       <div className="mt-1.5 pt-1.5 border-t border-slate-800/70 flex items-center justify-between">
-        <span className="text-[9px] uppercase tracking-widest text-slate-400">Eng.</span>
+        <span className="text-[9px] uppercase tracking-widest text-slate-400">Engagement</span>
         <span className="text-slate-200 text-xs font-bold tabular-nums">
-          {compact(engagement || 0)}
-          <span className={`ml-1 text-[9px] ${posEng ? 'text-emerald-300' : 'text-slate-500'} font-normal`}>
+          <span className={`${posEng ? 'text-emerald-300' : 'text-slate-500'}`}>
             +{compact(engGained || 0)}
           </span>
+          <span className="ml-1 text-[9px] text-slate-500 font-normal">/ {compact(engagement || 0)}</span>
         </span>
       </div>
     </div>
@@ -672,6 +670,26 @@ const HiringCell = ({ label, value, tone }) => {
   return (
     <div className="text-center">
       <div className={`text-sm font-black leading-none ${toneMap[tone]} tabular-nums`}>
+        {value ?? 0}
+      </div>
+      <div className="mt-0.5 text-[8px] tracking-widest uppercase text-slate-400">
+        {label}
+      </div>
+    </div>
+  );
+};
+
+const PriorityChip = ({ label, value, tone }) => {
+  const toneMap = {
+    rose:  { bg: 'bg-rose-500/15 border-rose-500/40',   text: 'text-rose-300' },
+    amber: { bg: 'bg-amber-500/15 border-amber-500/40', text: 'text-amber-300' },
+    cyan:  { bg: 'bg-cyan-500/15 border-cyan-500/40',   text: 'text-cyan-300' },
+    slate: { bg: 'bg-slate-600/20 border-slate-500/30', text: 'text-slate-300' },
+  };
+  const t = toneMap[tone] || toneMap.slate;
+  return (
+    <div className={`${t.bg} border rounded px-1 py-1 text-center`}>
+      <div className={`${t.text} text-sm font-black leading-none tabular-nums`}>
         {value ?? 0}
       </div>
       <div className="mt-0.5 text-[8px] tracking-widest uppercase text-slate-400">
