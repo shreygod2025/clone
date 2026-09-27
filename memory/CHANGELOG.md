@@ -1,13 +1,31 @@
 # OLL Backend Changelog
 
-## 2026-09-27 — School Onboarding: Timetable for Teacher-Training + Calendar Event Editor
+## 2026-09-27 — Teacher Training step: embedded timetable + graceful CheckIn write fallback
 **Status: COMPLETE**
 
-### Timetable step for teacher-training-only schools
-Previously the `timetable_finalization` step in the school onboarding workflow only appeared when `training_type` was `student_training` or `both`. Teacher-training-only schools had no way to create a timetable, so their sessions never showed up in CheckIn / P&L.
+### Timetable UI merged into Teacher Training step
+Per user feedback the earlier change (adding a whole new `timetable_finalization` step for teacher-training schools) was too heavy. Reverted and instead embedded a compact **Training Timetable** panel inside the existing `teacher_training` step block. Adds an "Add Timetable" / "Manage Timetable" button that opens the same standalone CheckIn-synced builder we use elsewhere — so writes go straight through `POST /api/schools/{sid}/timetable`.
 
-- **Backend** (`schools.py::generate_dynamic_onboarding_steps`) — added `timetable_finalization` to the ordered_keys list whenever `needs_teacher_training` is true (unless student_training will already add it). Existing schools can pick up the new step by clicking "Sync Steps" (calls the existing `regenerate-workflow` endpoint, which preserves completed data).
-- The existing "Create Timetable" button inside that step already syncs to CheckIn via `POST /api/schools/{sid}/timetable` — no frontend change needed for that flow.
+### Fixed "Resource not found in CheckIn API"
+Root cause: the school had a stale `checkin_timetable_id` from an older CheckIn instance; PUT to that id returned 404, which the frontend surfaced as a raw error and discarded the admin's form data.
+
+Fix chain:
+- **`checkin_api.py::create_or_update_timetable`** — if PUT 404s, transparently fall through to POST (create-fresh) and drop the stale id from the school record.
+- If BOTH PUT and POST fail (e.g. preview CheckIn instance is read-only), no longer raise. Instead:
+  - Persist a `pending_checkin_timetable` snapshot on the school record.
+  - Return `{success: False, timetable_id: null, saved_locally: true, warning: "…"}` with 200 so the frontend keeps the form data.
+- **`AdminSchoolCRM.jsx::saveTimetableToCheckin`** — always writes to `onboarding_workflow.steps.timetable_finalization.data` so the admin's work is preserved. Shows a `toast.warning` with the actionable message when CheckIn didn't accept the write.
+
+### Files
+- Modified: `/app/backend/routes/schools.py` (reverted teacher_training → timetable_finalization coupling)
+- Modified: `/app/backend/routes/checkin_api.py` (stale-id fallback + write-failure "save-locally" flow + datetime import)
+- Modified: `/app/frontend/src/pages/admin/AdminSchoolCRM.jsx` (Training Timetable panel inside teacher_training step; warning-aware save handler)
+
+### Verification
+- `POST /schools/{sid}/timetable` now returns `{success:false, saved_locally:true, warning:"..."}` instead of 4xx when CheckIn is read-only ✓
+- Screenshot: Teacher Training step shows the new "Training Timetable" panel with Add Timetable button, opens the CheckIn-synced builder ✓
+
+
 
 ### Calendar Making step: structured event editor
 Replaced the free-text textarea with a proper multi-event editor:

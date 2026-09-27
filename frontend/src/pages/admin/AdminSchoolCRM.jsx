@@ -3427,13 +3427,24 @@ ${FOOTER}</div></body></html>`
       if (activeTimetableId) body.timetable_id = activeTimetableId;
       const res = await axios.post(`${API}/schools/${schoolId}/timetable`, body, { headers: getAuthHeaders() });
       const timetableId = res.data.timetable_id;
-      // Also save locally to onboarding step (only when called from onboarding workflow)
+      // Also save locally to onboarding step (only when called from onboarding workflow).
+      // Persist form data even if CheckIn didn't accept the write, so admin's
+      // work is preserved and will sync when a write-capable key is set.
       if (showOnboardingWorkflowModal) {
         await handleUpdateOnboardingStep(schoolId, 'timetable_finalization', {
-          data: { ...timetableFormLocal, timetable_created: true, checkin_timetable_id: timetableId }
+          data: {
+            ...timetableFormLocal,
+            timetable_created: !!timetableId,
+            checkin_timetable_id: timetableId || null,
+            sync_warning: res.data.warning || null,
+          }
         });
       }
-      toast.success(`Timetable ${timetableId ? (activeTimetableId ? 'updated' : 'created') : 'saved locally'}`);
+      if (res.data.warning) {
+        toast.warning(res.data.warning, { duration: 8000 });
+      } else {
+        toast.success(`Timetable ${timetableId ? (activeTimetableId ? 'updated' : 'created') : 'saved locally'}`);
+      }
       // Refresh the timetable list so newly-created ids show up as tabs
       try {
         const refresh = await axios.get(`${API}/schools/${schoolId}/timetable`, { headers: getAuthHeaders() });
@@ -13193,6 +13204,37 @@ ${FOOTER}</div></body></html>`
                               ))}
                             </div>
                           )}
+
+                          {/* Training Timetable — opens the standalone timetable
+                              editor which syncs directly to the CheckIn API.
+                              This is available for teacher-training schools
+                              too, so the trainer's sessions can be tracked. */}
+                          <div className="pt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div>
+                                <p className="text-xs font-semibold text-slate-700">Training Timetable</p>
+                                <p className="text-[11px] text-slate-500">Schedule training sessions and sync them to CheckIn</p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openStandaloneTimetableEditor(showOnboardingWorkflowModal)}
+                                className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                data-testid="teacher-training-timetable-btn"
+                              >
+                                <CalendarDays className="w-3.5 h-3.5 mr-1.5" />
+                                {(showOnboardingWorkflowModal.checkin_timetable_ids?.length || showOnboardingWorkflowModal.checkin_timetable_id) ? 'Manage Timetable' : 'Add Timetable'}
+                              </Button>
+                            </div>
+                            {(showOnboardingWorkflowModal.checkin_timetable_ids?.length || showOnboardingWorkflowModal.checkin_timetable_id) ? (
+                              <p className="text-[11px] text-emerald-700">
+                                ✓ Linked to CheckIn ({(showOnboardingWorkflowModal.checkin_timetable_ids?.length) || 1} timetable{(showOnboardingWorkflowModal.checkin_timetable_ids?.length || 0) > 1 ? 's' : ''})
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-slate-400">No timetable linked yet.</p>
+                            )}
+                          </div>
                         </div>
                       )}
                       

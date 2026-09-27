@@ -6,6 +6,7 @@ Auth: X-API-Key header
 import os
 import asyncio
 import logging
+from datetime import datetime, timezone
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
@@ -174,14 +175,64 @@ async def create_or_update_timetable(school_id: str, payload: dict, user: dict =
     }
 
     explicit_id = payload.get("timetable_id")
-    if explicit_id:
-        # Update the specified timetable
-        result = await _checkin_put(f"/timetables/{explicit_id}", api_body)
-        timetable_id = explicit_id
-    else:
-        # Create a new timetable
-        result = await _checkin_post("/timetables", api_body)
-        timetable_id = result.get("data", {}).get("id") or result.get("id")
+    warning: Optional[str] = None
+    result: dict = {}
+    timetable_id: Optional[str] = None
+    try:
+        if explicit_id:
+            # Update the specified timetable. If the id is stale (e.g. left
+            # over from a previous CheckIn instance) the PUT will 404 — in
+            # that case, transparently create a new timetable so the admin
+            # doesn't have to know.
+            try:
+                result = await _checkin_put(f"/timetables/{explicit_id}", api_body)
+                timetable_id = explicit_id
+            except HTTPException as e:
+                if e.status_code == 404:
+                    logger.info("timetable %s not found upstream — creating a fresh one", explicit_id)
+                    result = await _checkin_post("/timetables", api_body)
+                    timetable_id = result.get("data", {}).get("id") or result.get("id")
+                    # Drop the stale id from the school record.
+                    await db.school_inquiries.update_one(
+                        {"id": school_id},
+                        {"$pull": {"checkin_timetable_ids": explicit_id}},
+                    )
+                    if school.get("checkin_timetable_id") == explicit_id:
+                        await db.school_inquiries.update_one(
+                            {"id": school_id},
+                            {"$set": {"checkin_timetable_id": None}},
+                        )
+                else:
+                    raise
+        else:
+            # Create a new timetable
+            result = await _checkin_post("/timetables", api_body)
+            timetable_id = result.get("data", {}).get("id") or result.get("id")
+    except HTTPException as e:
+        # CheckIn write failure — persist the form locally on the school
+        # record and return a warning so the admin's work isn't lost. The
+        # preview / read-only CheckIn instance surfaces this as a 404, so we
+        # keep the message actionable.
+        warning = e.detail if isinstance(e.detail, str) else str(e.detail)
+        if e.status_code == 404:
+            warning = (
+                "CheckIn API did not accept the timetable write "
+                "(preview / read-only instance or write endpoints disabled). "
+                "The timetable has been saved locally — it will sync automatically "
+                "once a write-capable CheckIn key is configured."
+            )
+        # Save form snapshot on the school so re-opening the modal restores fields
+        await db.school_inquiries.update_one(
+            {"id": school_id},
+            {"$set": {
+                "pending_checkin_timetable": {
+                    "payload": api_body,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "error": warning,
+                }
+            }},
+        )
+        return {"success": False, "timetable_id": None, "warning": warning, "saved_locally": True}
 
     # Persist on the school record: maintain a list of ids + keep legacy single-id
     # field for backward compatibility with older code paths.
