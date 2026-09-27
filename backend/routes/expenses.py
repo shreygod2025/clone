@@ -226,10 +226,16 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         ("teacher_cost",           "Educator Cost"),
         ("school_share",           "School Share"),
         ("gp_share",               "GP Share"),
+        ("payment_gateway",        "Payment Gateway"),
     ]
     PNL_COST_IDS = {k for k, _ in PNL_COST_KEYS}
     PAID_STATUSES = {"paid", "completed", "cleared", "success", "PAID", "SUCCESS", "COMPLETED"}
     PARTIAL_STATUSES = {"partial", "partially_paid", "PARTIAL", "PARTIALLY_PAID"}
+    # Payment methods where the school pays via a student-facing online link
+    # (Cashfree) — used to switch the revenue/received/gateway-cost logic to
+    # rely on `school_student_payments` instead of the manual `payments` array.
+    ONLINE_LINK_METHODS = {"student", "online_link", "online", "cashfree", "student_online"}
+    ONLINE_GATEWAY_PCT = 2.0  # Cashfree gateway fee % of gross received
 
     # ── 1. Build revenue from school_inquiries ────────────────────────────────
     # Broadened from ["converted", "active", "renewed"] to also include
@@ -351,7 +357,105 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
             "received":          round(received, 2),
             "online_collected":  round(online_collected, 2),
             "payment_method":    payment_method,
+            "is_online_link":    False,
+            "gateway_cost":      0.0,
         }
+
+    # ── 1b. Overlay online-payment-link schools (payment_method='student') ──
+    # For these schools revenue *is* whatever students actually paid through
+    # the Cashfree link. We treat each PAID row as one student, sum the
+    # amounts, and derive the 2 % gateway cost. This runs after the tranche
+    # aggregation so it deterministically wins for online-link schools even
+    # if there's a stale/empty `payments` array on the inquiry.
+    online_pipeline = [
+        {"$match": {"school_id": {"$exists": True, "$nin": ["", None]}}},
+        {"$group": {
+            "_id": "$school_id",
+            "paid_amount":   {"$sum": {"$cond": [
+                {"$in": [{"$toUpper": {"$ifNull": ["$status", ""]}}, list(PAID_STATUSES)]},
+                {"$ifNull": ["$amount", 0]}, 0,
+            ]}},
+            "paid_count":    {"$sum": {"$cond": [
+                {"$in": [{"$toUpper": {"$ifNull": ["$status", ""]}}, list(PAID_STATUSES)]},
+                1, 0,
+            ]}},
+            "pending_count": {"$sum": {"$cond": [
+                {"$in": [{"$toUpper": {"$ifNull": ["$status", ""]}}, list(PAID_STATUSES)]},
+                0, 1,
+            ]}},
+            "total_count":   {"$sum": 1},
+        }},
+    ]
+    online_by_school: dict = {}
+    async for row in db.school_student_payments.aggregate(online_pipeline):
+        online_by_school[row["_id"]] = row
+
+    for sid, rev in school_rev.items():
+        pmethod = (rev.get("payment_method") or "").lower()
+        if pmethod not in ONLINE_LINK_METHODS:
+            continue
+        agg = online_by_school.get(sid)
+        if not agg:
+            # Marked as online-link but no payment link data yet — the tranche
+            # revenue we computed above is misleading (real revenue is only
+            # what students actually pay). Zero it out.
+            rev["is_online_link"]  = True
+            rev["online_students"] = 0
+            rev["pending_students"] = 0
+            rev["total_revenue"] = 0.0
+            rev["net_revenue"]   = 0.0
+            rev["gst"]           = 0.0
+            rev["received"]      = 0.0
+            rev["online_collected"] = 0.0
+            rev["gateway_cost"]  = 0.0
+            continue
+        paid_amt   = float(agg.get("paid_amount") or 0)
+        paid_count = int(agg.get("paid_count") or 0)
+        rev.update({
+            "is_online_link":    True,
+            "student_count":     paid_count,             # unique paying students
+            "online_students":   paid_count,
+            "pending_students":  int(agg.get("pending_count") or 0),
+            "total_revenue":     round(paid_amt, 2),
+            "net_revenue":       round(paid_amt, 2),     # GST already inclusive on the link
+            "gst":                0.0,
+            "received":          round(paid_amt, 2),
+            "online_collected":  round(paid_amt, 2),
+            "gateway_cost":      round(paid_amt * ONLINE_GATEWAY_PCT / 100.0, 2),
+        })
+
+    # ── 1c. Backfill any school that has *paid* online-link payments but is
+    # NOT already in school_rev (e.g. status='archived', 'lost', or the
+    # inquiry got deleted). Without this, real revenue collected via the
+    # student link would silently disappear from the P&L when the parent
+    # inquiry moves outside our status whitelist.
+    missing_online = [sid for sid, agg in online_by_school.items()
+                      if sid and sid not in school_rev and int(agg.get("paid_count") or 0) > 0]
+    if missing_online:
+        extra = await db.school_inquiries.find(
+            {"id": {"$in": missing_online}},
+            {"_id": 0, "id": 1, "school_name": 1, "onboarding_data": 1, "status": 1},
+        ).to_list(1000)
+        by_id = {s["id"]: s for s in extra}
+        for sid in missing_online:
+            agg = online_by_school[sid]
+            s = by_id.get(sid) or {}
+            paid_amt   = float(agg.get("paid_amount") or 0)
+            paid_count = int(agg.get("paid_count") or 0)
+            school_rev[sid] = {
+                "school_name":       s.get("school_name") or f"Unknown ({sid[:8]})",
+                "student_count":     paid_count,
+                "online_students":   paid_count,
+                "pending_students":  int(agg.get("pending_count") or 0),
+                "total_revenue":     round(paid_amt, 2),
+                "net_revenue":       round(paid_amt, 2),
+                "gst":               0.0,
+                "received":          round(paid_amt, 2),
+                "online_collected":  round(paid_amt, 2),
+                "payment_method":    (s.get("onboarding_data") or {}).get("payment_method") or "student",
+                "is_online_link":    True,
+                "gateway_cost":      round(paid_amt * ONLINE_GATEWAY_PCT / 100.0, 2),
+            }
 
     # ── 2. Aggregate expenses by school_id & category ─────────────────────────
     # `$toLower` on category guards against legacy/imported rows that may have
@@ -394,6 +498,8 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
                 "received":          0.0,
                 "online_collected":  0.0,
                 "payment_method":    od.get("payment_method") or od.get("payment_mode") or "",
+                "is_online_link":    False,
+                "gateway_cost":      0.0,
             }
 
     # ── 3. Build rows ─────────────────────────────────────────────────────────
@@ -422,6 +528,15 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
             pay_status = "Partially Paid"
 
         school_exp = exp_map.get(sid, {})
+        # For online-link schools the payment-gateway cost is 2 % of received
+        # (Cashfree fee). Injected here so it flows through the normal cost
+        # loop below AND rolls into total_costs / gross_profit / footer.
+        # Manual overrides in school_expenses (category='payment_gateway')
+        # take priority if they exceed the auto-calculated amount.
+        if rev.get("gateway_cost"):
+            existing_gw = float(school_exp.get("payment_gateway") or 0)
+            school_exp = dict(school_exp)
+            school_exp["payment_gateway"] = max(existing_gw, rev["gateway_cost"])
         costs = {}
         total_costs = 0.0
         misc_cost   = 0.0
@@ -459,6 +574,9 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
             "received":          received,
             "online_collected":  rev["online_collected"],
             "payment_method":    rev["payment_method"],
+            "is_online_link":    rev.get("is_online_link", False),
+            "online_students":   rev.get("online_students", 0) if rev.get("is_online_link") else 0,
+            "pending_students":  rev.get("pending_students", 0) if rev.get("is_online_link") else 0,
             "receivable":        round(receivable, 2),
             "costs":             costs,
             "misc_cost":         misc_cost,

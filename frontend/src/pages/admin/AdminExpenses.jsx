@@ -6,7 +6,7 @@ import {
   DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
   Upload, Paperclip, ChevronRight, TrendingDown, BookOpen,
   Package, Truck, Award, Users, BarChart2, Briefcase, Handshake,
-  IndianRupee, Layers,
+  IndianRupee, Layers, CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -368,6 +368,7 @@ const AdminExpenses = () => {
       gp_share: 'bg-teal-100 text-teal-700',
       school_share: 'bg-indigo-100 text-indigo-700',
       printing_certification: 'bg-pink-100 text-pink-700',
+      payment_gateway: 'bg-fuchsia-100 text-fuchsia-700',
       renewal_commission_team: 'bg-amber-100 text-amber-700',
       renewal_commission_teachers: 'bg-cyan-100 text-cyan-700',
       marketing_cost: 'bg-red-100 text-red-700',
@@ -1300,6 +1301,7 @@ const PnLSheet = ({ data, loading }) => {
     teacher_cost:           <Users className="w-3 h-3" />,
     school_share:           <Briefcase className="w-3 h-3" />,
     gp_share:               <Handshake className="w-3 h-3" />,
+    payment_gateway:        <CreditCard className="w-3 h-3" />,
   };
 
   const rowBg = (i) => i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
@@ -1383,9 +1385,27 @@ const PnLSheet = ({ data, loading }) => {
                   <tr key={row.school_id} className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors ${rowBg(i)}`}>
                     {/* Sticky school name — explicit solid bg prevents transparency overlap */}
                     <td className={`px-4 py-2.5 font-medium text-slate-800 sticky left-0 z-10 border-r border-slate-200 ${rowBg(i)}`}>
-                      {row.school_name}
+                      <div className="flex items-center gap-2">
+                        <span>{row.school_name}</span>
+                        {row.is_online_link && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 px-1.5 py-0.5 rounded"
+                            title="Students pay individually via online link (Cashfree)"
+                          >
+                            <CreditCard className="w-2.5 h-2.5" /> Online link
+                          </span>
+                        )}
+                      </div>
+                      {row.is_online_link && row.pending_students > 0 && (
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          {row.pending_students} pending
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-slate-600 border-l">{row.student_count || '—'}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-600 border-l">
+                      {row.student_count || '—'}
+                      {row.is_online_link && <div className="text-[9px] text-fuchsia-600 leading-none mt-0.5">paid via link</div>}
+                    </td>
                     <td className="px-3 py-2.5 text-right text-slate-600">{row.price_per_student ? fmt(row.price_per_student) : '—'}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-blue-800">{fmt(row.total_revenue)}</td>
                     <td className="px-3 py-2.5 text-right text-slate-500">{row.gst > 0 ? fmt(row.gst) : <span className="text-slate-300">—</span>}</td>
