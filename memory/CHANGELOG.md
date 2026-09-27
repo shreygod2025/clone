@@ -1,5 +1,32 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — CheckIn Educator Earnings → School P&L Teacher Cost Sync
+**Status: COMPLETE**
+
+### What was built
+- Rotated `CHECKIN_BASE_URL` to `https://repo-explorer-196.preview.emergentagent.com/api` and `CHECKIN_API_KEY` to the new working key (`oll_aQcehU...`). Verified 200 on `/invoices`, `/sessions`, `/attendance`, `/earnings`, `/schools`, `/timetables`, `/educators`.
+- New helper `_compute_checkin_teacher_costs()` in `expenses.py` pulls all timetables + earnings + educators once, splits each educator's monthly earning across schools (weighted by number of active timetables per school), and returns a `{sid: amount}` map plus an `unmatched` array with reason codes.
+- Matching precedence: `checkin_timetable_ids` on school → exact `school_name` (case-insensitive) → fuzzy prefix match (handles branch suffixes like "Green Lawns High School, Warden Road" vs "Green Lawns High School").
+- `GET /school-expenses/pnl-summary` now merges the CheckIn map into `teacher_cost` via `MAX(manual_entry, checkin_amount)` so admin overrides are never reduced.
+- Added `GET /school-expenses/checkin-teacher-costs` preview endpoint.
+- Backfill: schools that have CheckIn earnings but no revenue or manual expenses are still surfaced in the P&L (so unrecovered teacher salaries stay visible).
+- UI: pill in P&L header shows `CheckIn: ₹X · N schools · M unmatched`. Clicking opens a modal listing every unmatched earning with reason ("No timetable" / "School not in CRM") so admin can fix upstream.
+
+### Live numbers (as of sync)
+- ₹4,13,703 in educator earnings synced across 13 matched schools (16 unique educators)
+- 12 unmatched earnings surfaced (mostly missing timetables on the CheckIn side, plus 2 test schools + 2 not-onboarded schools)
+
+### Files
+- Modified: `/app/backend/.env` (rotated CheckIn URL + key)
+- Modified: `/app/backend/routes/expenses.py` (+~200 lines: `_compute_checkin_teacher_costs`, backfill, merge in P&L row builder, checkin_sync in response payload)
+- Modified: `/app/frontend/src/pages/admin/AdminExpenses.jsx` (CheckIn sync pill + unmatched modal in PnLSheet)
+
+### Verification
+- `curl /api/school-expenses/checkin-teacher-costs` → 13 schools + 12 unmatched
+- `curl /api/school-expenses/pnl-summary` → `totals.teacher_cost = 413703`, matching schools populated
+- Screenshot: badge visible, modal enumerates unmatched educators
+
+
 ## 2026-09-27 — Live TV Dashboard (`/admin/live`)
 **Status: COMPLETE**
 

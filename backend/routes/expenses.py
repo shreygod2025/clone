@@ -13,6 +13,8 @@ import logging
 
 from .shared import db, get_current_user
 
+logger = logging.getLogger(__name__)
+
 EXPENSE_CATEGORIES = [
     {"id": "kit_cost", "name": "Kit Cost", "description": "Learning kits and materials for students"},
     {"id": "teacher_cost", "name": "Teacher Cost", "description": "Teacher salary and training costs"},
@@ -211,12 +213,178 @@ async def get_single_school_expenses(school_id: str, user: dict = Depends(get_cu
     }
 
 
+async def _compute_checkin_teacher_costs() -> dict:
+    """Sync educator monthly earnings from the external CheckIn API and split
+    them across the schools each educator teaches at (proportional to the
+    number of active timetables per school for that educator).
+
+    Returns a dict:
+      {
+        "by_school_id": { school_inquiry_id: amount, ... },
+        "unmatched":    [ {educator_id, educator_name, school_name, amount}, ... ],
+        "total":        float,
+        "educators":    int,
+      }
+
+    All external calls are wrapped in try/except — if CheckIn is unreachable
+    or returns an error, we return an empty result so the P&L keeps working.
+    """
+    from routes.checkin_api import _fetch_all_pages  # local import to avoid circular
+    import httpx as _httpx
+
+    result: dict = {"by_school_id": {}, "unmatched": [], "total": 0.0, "educators": 0}
+    try:
+        async with _httpx.AsyncClient(timeout=25) as _client:
+            timetables = await _fetch_all_pages("/timetables", {}, per_page=500, hard_cap=2000, client=_client)
+            earnings   = await _fetch_all_pages("/earnings", {}, per_page=500, hard_cap=2000, client=_client)
+            educators  = await _fetch_all_pages("/educators", {}, per_page=500, hard_cap=2000, client=_client)
+    except Exception as e:
+        logger.warning("CheckIn teacher-cost sync failed: %s", e)
+        return result
+
+    # Build educator id -> name for reporting
+    edu_names = {e.get("id"): (e.get("full_name") or e.get("email") or "") for e in educators if e.get("id")}
+
+    # Build school_name(lc) -> school_inquiry.id map (also honour timetable_ids)
+    schools = await db.school_inquiries.find(
+        {}, {"_id": 0, "id": 1, "school_name": 1, "checkin_timetable_ids": 1, "checkin_timetable_id": 1}
+    ).to_list(5000)
+    name_to_sid: dict = {}
+    tid_to_sid: dict = {}
+    for s in schools:
+        sid = s.get("id")
+        if not sid:
+            continue
+        nm = (s.get("school_name") or "").strip().lower()
+        if nm and nm not in name_to_sid:
+            name_to_sid[nm] = sid
+        for tid in list(s.get("checkin_timetable_ids") or []):
+            if tid:
+                tid_to_sid[tid] = sid
+        legacy = s.get("checkin_timetable_id")
+        if legacy:
+            tid_to_sid.setdefault(legacy, sid)
+
+    # Build educator_id -> {sid: weight (=number of timetables), "__unmatched__": {school_name: weight}}
+    #   * Priority: if timetable.id is linked to a school via checkin_timetable_ids -> use that sid
+    #   * Fallback: match by school_name (case-insensitive exact)
+    #   * Last resort: fuzzy — first school_inquiry whose lower name starts with
+    #     the same 15-char prefix as the checkin timetable school_name
+    #     (handles branch suffixes like "Green Lawns High School, Warden Road"
+    #     vs "Green Lawns High School").
+    def _fuzzy_match(name_lc: str) -> Optional[str]:
+        if not name_lc:
+            return None
+        head = re.sub(r"[^a-z0-9 ]", "", name_lc).strip()
+        # try progressively shorter prefixes down to 12 chars
+        for cut in (30, 24, 20, 16, 12):
+            if len(head) < cut:
+                continue
+            prefix = head[:cut]
+            for full_lc, sid in name_to_sid.items():
+                other = re.sub(r"[^a-z0-9 ]", "", full_lc).strip()
+                if other.startswith(prefix) or prefix.startswith(other[:cut]):
+                    return sid
+        return None
+
+    edu_school_weight: dict = {}
+    for t in timetables:
+        eid   = t.get("educator_id")
+        tid   = t.get("id")
+        sname = (t.get("school_name") or "").strip()
+        if not eid:
+            continue
+        if t.get("is_active") is False:
+            continue
+
+        sid = tid_to_sid.get(tid) if tid else None
+        if not sid and sname:
+            sid = name_to_sid.get(sname.lower())
+        if not sid and sname:
+            sid = _fuzzy_match(sname.lower())
+
+        slot = edu_school_weight.setdefault(eid, {"__by_sid__": {}, "__unmatched__": {}})
+        if sid:
+            slot["__by_sid__"][sid] = slot["__by_sid__"].get(sid, 0) + 1
+        elif sname:
+            slot["__unmatched__"][sname] = slot["__unmatched__"].get(sname, 0) + 1
+
+    # Aggregate earnings by educator (only "paid" or "approved" — skip "pending"
+    # so unrealised commitments don't inflate the P&L. Include all statuses if
+    # nothing is marked paid yet, so admins at least see the accrued cost.)
+    ACCRUAL_STATUSES = {"paid", "approved", "issued", "final"}
+    def _is_realised(row: dict) -> bool:
+        st = (row.get("status") or "").lower()
+        return st in ACCRUAL_STATUSES
+
+    any_realised = any(_is_realised(e) for e in earnings)
+
+    seen_educators: set = set()
+    for e in earnings:
+        pid = e.get("profile_id")
+        if not pid:
+            continue
+        if any_realised and not _is_realised(e):
+            continue
+        try:
+            amount = float(e.get("final_amount") or e.get("calculated_amount") or 0)
+        except (TypeError, ValueError):
+            amount = 0.0
+        if amount <= 0:
+            continue
+
+        schools_wt = edu_school_weight.get(pid) or {}
+        by_sid    = schools_wt.get("__by_sid__") or {}
+        unmatched = schools_wt.get("__unmatched__") or {}
+        total_weight = sum(by_sid.values()) + sum(unmatched.values())
+        if total_weight <= 0:
+            result["unmatched"].append({
+                "educator_id": pid,
+                "educator_name": edu_names.get(pid, ""),
+                "school_name": "",
+                "amount": round(amount, 2),
+                "reason": "no_timetable",
+            })
+            continue
+
+        seen_educators.add(pid)
+        for sid, w in by_sid.items():
+            share = round(amount * (w / total_weight), 2)
+            result["by_school_id"][sid] = round(result["by_school_id"].get(sid, 0.0) + share, 2)
+            result["total"] = round(result["total"] + share, 2)
+        for sname, w in unmatched.items():
+            share = round(amount * (w / total_weight), 2)
+            result["unmatched"].append({
+                "educator_id": pid,
+                "educator_name": edu_names.get(pid, ""),
+                "school_name": sname,
+                "amount": share,
+                "reason": "school_name_not_matched",
+            })
+
+    result["educators"] = len(seen_educators)
+    return result
+
+
+@router.get("/school-expenses/checkin-teacher-costs")
+async def get_checkin_teacher_costs(user: dict = Depends(get_current_user)):
+    """Preview endpoint — returns the per-school teacher-cost breakdown that
+    will be merged into the P&L (from CheckIn earnings), plus a list of
+    earnings we could NOT match to a school (missing timetable or
+    school_name mismatch). Useful for the admin to reconcile before trusting
+    the auto-sync."""
+    return await _compute_checkin_teacher_costs()
+
+
 @router.get("/school-expenses/pnl-summary")
 async def get_pnl_summary(user: dict = Depends(get_current_user)):
     """
     School-wise P&L Master Sheet.
     Revenue from school_inquiries (payment tranches + paid amounts).
     Costs from school_expenses aggregated by category.
+    Educator payments are auto-synced from the external CheckIn API and
+    merged into teacher_cost (MAX of manual entry vs CheckIn earnings, so
+    admin overrides are never reduced).
     """
     PNL_COST_KEYS = [
         ("kit_cost",               "Kit Cost"),
@@ -236,6 +404,10 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
     # rely on `school_student_payments` instead of the manual `payments` array.
     ONLINE_LINK_METHODS = {"student", "online_link", "online", "cashfree", "student_online"}
     ONLINE_GATEWAY_PCT = 2.0  # Cashfree gateway fee % of gross received
+
+    # ── 0. Sync educator earnings from external CheckIn API (best-effort) ────
+    checkin_costs = await _compute_checkin_teacher_costs()
+    checkin_by_school: dict = checkin_costs.get("by_school_id") or {}
 
     # ── 1. Build revenue from school_inquiries ────────────────────────────────
     # Broadened from ["converted", "active", "renewed"] to also include
@@ -457,6 +629,31 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
                 "gateway_cost":      round(paid_amt * ONLINE_GATEWAY_PCT / 100.0, 2),
             }
 
+    # ── 1d. Backfill schools that have CheckIn educator earnings but are not
+    # already in school_rev (e.g. status='pilot', 'lost', or no revenue yet).
+    # Without this, real teacher costs would silently disappear from the P&L.
+    missing_checkin = [sid for sid in checkin_by_school.keys() if sid and sid not in school_rev]
+    if missing_checkin:
+        extra_ck = await db.school_inquiries.find(
+            {"id": {"$in": missing_checkin}},
+            {"_id": 0, "id": 1, "school_name": 1, "onboarding_data": 1, "status": 1},
+        ).to_list(1000)
+        for s in extra_ck:
+            sid = s.get("id")
+            od = s.get("onboarding_data") or {}
+            school_rev.setdefault(sid, {
+                "school_name":       s.get("school_name") or f"Unknown ({sid[:8]})",
+                "student_count":     int(od.get("total_students") or 0),
+                "total_revenue":     0.0,
+                "net_revenue":       0.0,
+                "gst":               0.0,
+                "received":          0.0,
+                "online_collected":  0.0,
+                "payment_method":    od.get("payment_method") or od.get("payment_mode") or "",
+                "is_online_link":    False,
+                "gateway_cost":      0.0,
+            })
+
     # ── 2. Aggregate expenses by school_id & category ─────────────────────────
     # `$toLower` on category guards against legacy/imported rows that may have
     # been written with mixed case ("Kit Cost", "KIT_COST", "kitCost") — those
@@ -509,12 +706,13 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         tr = rev["total_revenue"]
         school_exp_preview = exp_map.get(sid, {})
         has_expenses = any(float(v or 0) for v in school_exp_preview.values())
-        # Only skip schools with NO revenue AND NO expenses. Previously we
-        # dropped any zero-revenue school even if it had real expenses, which
-        # caused manually-added costs (e.g. School Share, marketing) to vanish
-        # from the master P&L. Keeping the row lets admins see and reconcile
-        # the expense against the school it belongs to.
-        if tr == 0 and nr == 0 and not has_expenses:
+        has_checkin_cost = float(checkin_by_school.get(sid) or 0) > 0
+        # Only skip schools with NO revenue AND NO expenses AND NO checkin
+        # educator cost. Previously we dropped any zero-revenue school even if
+        # it had real expenses/costs, which caused manually-added costs
+        # (School Share, marketing) or CheckIn teacher salaries to vanish
+        # from the master P&L. Keeping the row lets admins see and reconcile.
+        if tr == 0 and nr == 0 and not has_expenses and not has_checkin_cost:
             continue
         received   = rev["received"]
         # Compare received to total_revenue (gross incl. GST) — consistent since paid_amount is gross too
@@ -537,6 +735,15 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
             existing_gw = float(school_exp.get("payment_gateway") or 0)
             school_exp = dict(school_exp)
             school_exp["payment_gateway"] = max(existing_gw, rev["gateway_cost"])
+
+        # Merge CheckIn educator earnings into teacher_cost (MAX of manual
+        # and auto-synced so admin overrides are never reduced).
+        checkin_tc = float(checkin_by_school.get(sid) or 0)
+        if checkin_tc > 0:
+            existing_tc = float(school_exp.get("teacher_cost") or 0)
+            if not isinstance(school_exp, dict) or school_exp is exp_map.get(sid):
+                school_exp = dict(school_exp)
+            school_exp["teacher_cost"] = max(existing_tc, checkin_tc)
         costs = {}
         total_costs = 0.0
         misc_cost   = 0.0
@@ -607,7 +814,13 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         totals[cat_id] = round(sum(r["costs"].get(cat_id, {}).get("amount", 0) for r in rows), 2)
         totals[f"{cat_id}_pct"] = round(totals[cat_id] / total_nr * 100, 1) if total_nr else 0
 
-    return {"rows": rows, "totals": totals, "cost_keys": PNL_COST_KEYS}
+    return {"rows": rows, "totals": totals, "cost_keys": PNL_COST_KEYS,
+            "checkin_sync": {
+                "total_teacher_cost": checkin_costs.get("total", 0.0),
+                "educators": checkin_costs.get("educators", 0),
+                "matched_schools": len(checkin_by_school),
+                "unmatched": checkin_costs.get("unmatched", []),
+            }}
 
 
 @router.post("/school-expenses")

@@ -24,6 +24,9 @@ trials/renewals were not being auto-promoted to "Active Customers".
   attendance dropdown with Attended/Absent/Reschedule).
 
 ## Implemented (latest first)
+- **Sep 27, 2026** — **CheckIn → School P&L Educator-Cost Sync**
+  Rotated CheckIn API base + key to a working preview instance. New helper distributes each educator's monthly earnings across their schools (weighted by active timetables) and merges into `teacher_cost` via `MAX(manual, checkin)`. Live sync now surfaces ₹4.13L across 13 schools (16 educators). Unmatched earnings (missing timetable / school not onboarded) are shown in a P&L modal so admins can reconcile upstream. New endpoint `GET /school-expenses/checkin-teacher-costs`. **See CHANGELOG.md**.
+
 - **Sep 27, 2026** — **Live TV Dashboard (`/admin/live`)**
   Office wall-mounted 1920×1080 command centre with auto-refresh (30s):
   - India dark-map (ESRI tiles) with pulsing city dots — reuses `/central-database/by-city`.
