@@ -1836,7 +1836,7 @@ DEFAULT_ONBOARDING_STEPS = {
         "title": "Calendar Making",
         "description": "Academic calendar finalized with all events",
         "completed": False, "completed_date": None,
-        "data": {"holidays": [], "competitions": [], "exhibitions": [], "special_events": [], "notes": ""}
+        "data": {"events": [], "notes": ""}
     },
     "mou_signing": {
         "title": "MOU Signing",
@@ -1894,7 +1894,13 @@ def generate_dynamic_onboarding_steps(onboarding_data: dict, is_renewal: bool = 
     needs_student_training = training_type in ("student_training", "both")
 
     if needs_teacher_training:
+        # Teacher-training also needs a timetable so the training sessions can
+        # be scheduled + tracked via the CheckIn API. This is added BEFORE the
+        # student_training block so if both training types are on, we don't
+        # duplicate the timetable step.
         ordered_keys.append("teacher_training")
+        if not needs_student_training:
+            ordered_keys.append("timetable_finalization")
 
     if needs_student_training:
         ordered_keys += ["timetable_finalization", "teacher_allocation", "teacher_approval"]

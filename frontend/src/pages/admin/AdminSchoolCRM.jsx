@@ -13197,20 +13197,199 @@ ${FOOTER}</div></body></html>`
                       )}
                       
                       {/* Calendar Making */}
-                      {key === 'calendar_making' && (
-                        <div className="text-sm text-slate-500">
-                          <p>Add holidays, competitions, and exhibition dates for the school year.</p>
-                          <Textarea
-                            value={step.data?.notes || ''}
-                            onChange={(e) => handleStepFieldChange(
-                              showOnboardingWorkflowModal.id, key,
-                              'notes', e.target.value,
+                      {key === 'calendar_making' && (() => {
+                        const events = Array.isArray(step.data?.events) ? step.data.events : [];
+                        const EVENT_TYPES = [
+                          { value: 'holiday',     label: 'Holiday',     color: 'bg-red-100 text-red-700 border-red-200' },
+                          { value: 'workshop',    label: 'Workshop',    color: 'bg-purple-100 text-purple-700 border-purple-200' },
+                          { value: 'exhibition',  label: 'Exhibition',  color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                          { value: 'competition', label: 'Competition', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                          { value: 'exam',        label: 'Exam',        color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                        ];
+                        const typeMeta = (t) => EVENT_TYPES.find(e => e.value === t) || EVENT_TYPES[0];
+                        const commit = (nextEvents) => handleStepFieldChange(
+                          showOnboardingWorkflowModal.id, key, 'events', nextEvents,
+                        );
+                        const addEvent = () => {
+                          const draft = {
+                            id: `evt_${Date.now()}`,
+                            type: 'holiday',
+                            reason: '',
+                            date_mode: 'single', // 'single' | 'multiple'
+                            dates: [],           // array of ISO date strings YYYY-MM-DD
+                            notes: '',
+                          };
+                          commit([...(events || []), draft]);
+                        };
+                        const updateEvent = (idx, patch) => {
+                          const next = events.map((e, i) => i === idx ? { ...e, ...patch } : e);
+                          commit(next);
+                        };
+                        const removeEvent = (idx) => commit(events.filter((_, i) => i !== idx));
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-slate-500">
+                                Add holidays, workshops, exhibitions, competitions and exams for the school year.
+                              </p>
+                              <Button
+                                type="button" size="sm" variant="outline"
+                                onClick={addEvent}
+                                className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                data-testid="cal-add-event-btn"
+                              >
+                                <Plus className="w-3 h-3 mr-1" /> Add Event
+                              </Button>
+                            </div>
+
+                            {events.length === 0 ? (
+                              <div className="text-xs text-slate-400 text-center py-6 border border-dashed rounded-lg">
+                                No events added yet. Click "Add Event" to start.
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {events.map((evt, idx) => {
+                                  const meta = typeMeta(evt.type);
+                                  const dates = Array.isArray(evt.dates) ? evt.dates : [];
+                                  return (
+                                    <div key={evt.id || idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2" data-testid={`cal-event-row-${idx}`}>
+                                      <div className="flex gap-2 items-start">
+                                        {/* Event Type */}
+                                        <div className="flex-1 min-w-0">
+                                          <label className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Event Type</label>
+                                          <select
+                                            value={evt.type || 'holiday'}
+                                            onChange={(e) => updateEvent(idx, { type: e.target.value })}
+                                            className={`w-full mt-0.5 h-8 px-2 rounded border text-xs font-medium ${meta.color}`}
+                                            data-testid={`cal-event-type-${idx}`}
+                                          >
+                                            {EVENT_TYPES.map(t => (
+                                              <option key={t.value} value={t.value}>{t.label}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        {/* Date Mode */}
+                                        <div className="w-40">
+                                          <label className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Date Mode</label>
+                                          <div className="mt-0.5 flex bg-slate-100 rounded p-0.5">
+                                            {['single', 'multiple'].map(m => (
+                                              <button
+                                                key={m}
+                                                type="button"
+                                                onClick={() => updateEvent(idx, { date_mode: m, dates: [] })}
+                                                className={`flex-1 text-[11px] py-1 rounded font-semibold transition ${evt.date_mode === m ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+                                                data-testid={`cal-event-mode-${m}-${idx}`}
+                                              >
+                                                {m === 'single' ? 'Single' : 'Multi'}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        {/* Remove */}
+                                        <button
+                                          type="button"
+                                          onClick={() => removeEvent(idx)}
+                                          className="mt-4 p-1 text-slate-400 hover:text-red-600"
+                                          data-testid={`cal-event-remove-${idx}`}
+                                          title="Remove event"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+
+                                      {/* Date picker */}
+                                      <div>
+                                        <label className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold block mb-1">
+                                          {evt.date_mode === 'multiple' ? 'Pick Dates' : 'Pick Date'}
+                                        </label>
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button
+                                              type="button" variant="outline" size="sm"
+                                              className="w-full justify-start text-xs h-8 font-normal"
+                                              data-testid={`cal-event-datepicker-${idx}`}
+                                            >
+                                              <Calendar className="w-3 h-3 mr-1.5" />
+                                              {dates.length === 0
+                                                ? <span className="text-slate-400">Select date{evt.date_mode === 'multiple' ? 's' : ''}...</span>
+                                                : dates.length <= 3
+                                                  ? dates.map(d => format(new Date(d), 'MMM d')).join(', ')
+                                                  : `${dates.length} dates selected`}
+                                            </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent align="start" className="p-0 w-auto">
+                                            <CalendarComponent
+                                              mode={evt.date_mode === 'multiple' ? 'multiple' : 'single'}
+                                              selected={evt.date_mode === 'multiple'
+                                                ? dates.map(d => new Date(d))
+                                                : (dates[0] ? new Date(dates[0]) : undefined)}
+                                              onSelect={(v) => {
+                                                if (!v) return updateEvent(idx, { dates: [] });
+                                                const list = Array.isArray(v) ? v : [v];
+                                                const iso = list
+                                                  .filter(Boolean)
+                                                  .map(d => format(d, 'yyyy-MM-dd'));
+                                                updateEvent(idx, { dates: iso });
+                                              }}
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+                                        {dates.length > 0 && (
+                                          <div className="mt-1 flex flex-wrap gap-1">
+                                            {dates.slice(0, 8).map(d => (
+                                              <span key={d} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                                {format(new Date(d), 'd MMM yyyy')}
+                                              </span>
+                                            ))}
+                                            {dates.length > 8 && (
+                                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">+{dates.length - 8} more</span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Reason / Title */}
+                                      <div>
+                                        <label className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold block mb-0.5">
+                                          {evt.type === 'holiday' ? 'Reason' : 'Title'}
+                                        </label>
+                                        <Input
+                                          value={evt.reason || ''}
+                                          onChange={(e) => updateEvent(idx, { reason: e.target.value })}
+                                          placeholder={
+                                            evt.type === 'holiday'    ? 'e.g. Diwali, Independence Day' :
+                                            evt.type === 'workshop'   ? 'e.g. Robotics Workshop' :
+                                            evt.type === 'exhibition' ? 'e.g. Annual Science Expo' :
+                                            evt.type === 'competition'? 'e.g. Techathon Round 1' :
+                                                                        'e.g. Term End Exams'
+                                          }
+                                          className="h-8 text-xs"
+                                          data-testid={`cal-event-reason-${idx}`}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
-                            placeholder="Enter calendar notes, dates, events..."
-                            className="mt-2 min-h-[60px]"
-                          />
-                        </div>
-                      )}
+
+                            {/* Overall notes */}
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold block mb-0.5">Notes (optional)</label>
+                              <Textarea
+                                value={step.data?.notes || ''}
+                                onChange={(e) => handleStepFieldChange(
+                                  showOnboardingWorkflowModal.id, key,
+                                  'notes', e.target.value,
+                                )}
+                                placeholder="Any additional calendar notes..."
+                                className="min-h-[50px] text-xs"
+                                data-testid="cal-overall-notes"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                       
                       {/* Timetable */}
                       {key === 'timetable_finalization' && (

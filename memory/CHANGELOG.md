@@ -1,5 +1,33 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — School Onboarding: Timetable for Teacher-Training + Calendar Event Editor
+**Status: COMPLETE**
+
+### Timetable step for teacher-training-only schools
+Previously the `timetable_finalization` step in the school onboarding workflow only appeared when `training_type` was `student_training` or `both`. Teacher-training-only schools had no way to create a timetable, so their sessions never showed up in CheckIn / P&L.
+
+- **Backend** (`schools.py::generate_dynamic_onboarding_steps`) — added `timetable_finalization` to the ordered_keys list whenever `needs_teacher_training` is true (unless student_training will already add it). Existing schools can pick up the new step by clicking "Sync Steps" (calls the existing `regenerate-workflow` endpoint, which preserves completed data).
+- The existing "Create Timetable" button inside that step already syncs to CheckIn via `POST /api/schools/{sid}/timetable` — no frontend change needed for that flow.
+
+### Calendar Making step: structured event editor
+Replaced the free-text textarea with a proper multi-event editor:
+- **Add Event** button spawns a row per event.
+- **Event Type** dropdown (color-coded): Holiday, Workshop, Exhibition, Competition, Exam.
+- **Date Mode** toggle: Single vs Multi — Multi lets admin pick multiple non-contiguous dates using `CalendarComponent mode="multiple"`.
+- **Reason / Title** input with contextual placeholder ("e.g. Diwali, Independence Day", "e.g. Robotics Workshop", etc.).
+- Selected dates render as inline chips ("15 Aug 2026", etc.) with truncation past 8 dates.
+- Overall Notes textarea preserved at the bottom.
+- Backend `calendar_making.data` schema tightened from `{holidays, competitions, exhibitions, special_events, notes}` to a single `{events: [{id, type, reason, date_mode, dates: [YYYY-MM-DD], notes}], notes}` array.
+
+### Files
+- Modified: `/app/backend/routes/schools.py` (`DEFAULT_ONBOARDING_STEPS.calendar_making`, `generate_dynamic_onboarding_steps`)
+- Modified: `/app/frontend/src/pages/admin/AdminSchoolCRM.jsx` (new inline calendar-event editor replacing the textarea in the `calendar_making` step block)
+
+### Verification
+- `POST /api/schools/{sid}/regenerate-workflow` on a teacher-training-only converted school now returns steps including `timetable_finalization` ✓
+- Screenshot shows the new calendar UI (event-type dropdown, single/multi toggle, date picker) rendering correctly inside the onboarding modal ✓
+
+
 ## 2026-09-27 — CheckIn Educator Earnings → School P&L Teacher Cost Sync
 **Status: COMPLETE**
 
