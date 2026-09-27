@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle, RefreshCw, Sparkles, AlertTriangle, BarChart3, UserMinus, UserCheck, Loader2 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -12,6 +12,7 @@ import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns
 import axios from 'axios';
 import CitySearch from '../../components/CitySearch';
 import EducatorPaymentsTab from './educators/EducatorPaymentsTab';
+import EducatorReportModal from './educators/EducatorReportModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -21,6 +22,7 @@ const MAIN_TABS = [
   { value: 'applicants', label: 'Applicants', color: 'bg-blue-500' },
   { value: 'onboarded', label: 'Onboarding', color: 'bg-orange-500' },
   { value: 'active', label: 'Active Educators', color: 'bg-green-500' },
+  { value: 'inactive', label: 'Inactive', color: 'bg-rose-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
   { value: 'payments', label: 'Payments', color: 'bg-purple-500' },
 ];
@@ -93,6 +95,7 @@ const AdminEducators = () => {
   
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
+  const [reportEducator, setReportEducator] = useState(null); // opens EducatorReportModal
   const [interviewDetail, setInterviewDetail] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
   const [bookedSlots, setBookedSlots] = useState([]);
@@ -1769,6 +1772,50 @@ const AdminEducators = () => {
                 >
                   <Eye className="w-4 h-4 mr-1" /> View
                 </Button>
+                {educator.status === 'active' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    onClick={() => setReportEducator(educator)}
+                    data-testid={`report-educator-${educator.id}`}
+                    title="Monthly performance report"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                  </Button>
+                )}
+                {educator.status === 'active' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                    onClick={async () => {
+                      if (window.confirm(`Move ${educator.full_name || educator.name} to Inactive? They'll be excluded from active assignments.`)) {
+                        await handleStatusChange(educator, 'inactive');
+                      }
+                    }}
+                    data-testid={`inactive-educator-${educator.id}`}
+                    title="Move to Inactive"
+                  >
+                    <UserMinus className="w-4 h-4" />
+                  </Button>
+                )}
+                {educator.status === 'inactive' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    onClick={async () => {
+                      if (window.confirm(`Move ${educator.full_name || educator.name} back to Active?`)) {
+                        await handleStatusChange(educator, 'active');
+                      }
+                    }}
+                    data-testid={`reactivate-educator-${educator.id}`}
+                    title="Move back to Active"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -1799,6 +1846,14 @@ const AdminEducators = () => {
         </div>
       )}
         </>
+      )}
+
+      {/* Educator monthly report modal */}
+      {reportEducator && (
+        <EducatorReportModal
+          educator={reportEducator}
+          onClose={() => setReportEducator(null)}
+        />
       )}
 
       {/* View/Edit Details Dialog */}

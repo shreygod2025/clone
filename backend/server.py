@@ -4210,8 +4210,10 @@ api_router.include_router(simple_partners_router)
 
 from routes.field_reports import router as field_reports_router
 from routes.live_dashboard import router as live_dashboard_router
+from routes.educator_reports import router as educator_reports_router
 api_router.include_router(field_reports_router)
 api_router.include_router(live_dashboard_router)
+api_router.include_router(educator_reports_router)
 
 app.include_router(api_router)
 
