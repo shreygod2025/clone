@@ -1385,26 +1385,10 @@ const PnLSheet = ({ data, loading }) => {
                   <tr key={row.school_id} className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors ${rowBg(i)}`}>
                     {/* Sticky school name — explicit solid bg prevents transparency overlap */}
                     <td className={`px-4 py-2.5 font-medium text-slate-800 sticky left-0 z-10 border-r border-slate-200 ${rowBg(i)}`}>
-                      <div className="flex items-center gap-2">
-                        <span>{row.school_name}</span>
-                        {row.is_online_link && (
-                          <span
-                            className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 px-1.5 py-0.5 rounded"
-                            title="Students pay individually via online link (Cashfree)"
-                          >
-                            <CreditCard className="w-2.5 h-2.5" /> Online link
-                          </span>
-                        )}
-                      </div>
-                      {row.is_online_link && row.pending_students > 0 && (
-                        <div className="text-[10px] text-slate-500 mt-0.5">
-                          {row.pending_students} pending
-                        </div>
-                      )}
+                      {row.school_name}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-600 border-l">
                       {row.student_count || '—'}
-                      {row.is_online_link && <div className="text-[9px] text-fuchsia-600 leading-none mt-0.5">paid via link</div>}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-600">{row.price_per_student ? fmt(row.price_per_student) : '—'}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-blue-800">{fmt(row.total_revenue)}</td>
@@ -1413,7 +1397,6 @@ const PnLSheet = ({ data, loading }) => {
                     <td className="px-3 py-2.5 text-center border-l">{statusBadge(row.payment_status)}</td>
                     <td className="px-3 py-2.5 text-right text-green-700 font-medium">
                       {fmt(row.received)}
-                      {row.online_collected > 0 && <div className="text-[10px] text-blue-500">+{fmt(row.online_collected)} online</div>}
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       {row.receivable > 0 ? <span className="text-red-600">{fmt(row.receivable)}</span> : <span className="text-green-600 font-medium text-xs">✓ Cleared</span>}
