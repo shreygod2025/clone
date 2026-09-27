@@ -86,6 +86,12 @@ KPI_CATALOG = [
     {"id": "field_schools_visited", "label": "Schools visited", "category": "Field Ops", "unit": "count"},
     {"id": "field_schools_interested", "label": "Schools interested", "category": "Field Ops", "unit": "count"},
     {"id": "field_entries_gained", "label": "Entries gained (met contact)", "category": "Field Ops", "unit": "count"},
+
+    # Telecalling — sourced from `telecalling_activity`
+    {"id": "tc_calls_made",       "label": "Calls made",       "category": "Telecalling", "unit": "count"},
+    {"id": "tc_calls_picked",     "label": "Calls picked",     "category": "Telecalling", "unit": "count"},
+    {"id": "tc_leads_interested", "label": "Leads interested", "category": "Telecalling", "unit": "count"},
+    {"id": "tc_meetings_booked",  "label": "Meetings booked",  "category": "Telecalling", "unit": "count"},
 ]
 
 KPI_BY_ID = {k["id"]: k for k in KPI_CATALOG}
@@ -924,6 +930,25 @@ async def _compute_field_metrics(user_id: str, start_iso: str, end_iso: str) -> 
     }
 
 
+async def _compute_telecalling_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
+    """Metrics from `telecalling_activity` for the user in [start,end]."""
+    events = await db.telecalling_activity.find(
+        {"user_id": user_id, "created_at": {"$gte": start_iso, "$lte": end_iso}},
+        {"_id": 0, "event": 1},
+    ).to_list(20000)
+    counts = {"call_made": 0, "call_picked": 0, "lead_interested": 0, "meeting_booked": 0}
+    for e in events:
+        k = e.get("event")
+        if k in counts:
+            counts[k] += 1
+    return {
+        "tc_calls_made":       counts["call_made"],
+        "tc_calls_picked":     counts["call_picked"],
+        "tc_leads_interested": counts["lead_interested"],
+        "tc_meetings_booked":  counts["meeting_booked"],
+    }
+
+
 async def _compute_selected_metrics(
     user_id: str, role_kpi_ids: list, start_iso: str, end_iso: str
 ) -> dict:
@@ -938,6 +963,7 @@ async def _compute_selected_metrics(
     needs_social = any(k.startswith("social_") for k in role_kpi_ids)
     needs_fs = any(k.startswith("fs_") for k in role_kpi_ids)
     needs_field = any(k.startswith("field_") for k in role_kpi_ids)
+    needs_tc    = any(k.startswith("tc_") for k in role_kpi_ids)
     if needs_support:
         metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
     if needs_b2b:
@@ -958,6 +984,8 @@ async def _compute_selected_metrics(
         metrics.update(await _compute_future_skills_metrics(start_iso, end_iso))
     if needs_field:
         metrics.update(await _compute_field_metrics(user_id, start_iso, end_iso))
+    if needs_tc:
+        metrics.update(await _compute_telecalling_metrics(user_id, start_iso, end_iso))
     return metrics
 
 

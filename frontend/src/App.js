@@ -103,6 +103,7 @@ const AdminStudentCRM = lazy(() => import("./pages/admin/AdminStudentCRM"));
 const AdminLinkPreviewTester = lazy(() => import("./pages/admin/AdminLinkPreviewTester"));
 const AdminSchoolCRM = lazy(() => import("./pages/admin/AdminSchoolCRM"));
 const AdminFieldReports = lazy(() => import("./pages/admin/AdminFieldReports"));
+const AdminTelecalling  = lazy(() => import("./pages/admin/AdminTelecalling"));
 const SchoolReports = lazy(() => import("./pages/admin/SchoolReports"));
 const LMSSchoolReport = lazy(() => import("./pages/admin/LMSSchoolReport"));
 const PublicLMSReport = lazy(() => import("./pages/PublicLMSReport"));
@@ -422,6 +423,7 @@ function App() {
               <Route path="/admin/central-database" element={<ProtectedRoute permission="central_database"><AdminCentralDatabase /></ProtectedRoute>} />
               <Route path="/admin/live" element={<ProtectedRoute><AdminLive /></ProtectedRoute>} />
               <Route path="/admin/field-reports" element={<ProtectedRoute permission="field_reports"><AdminFieldReports /></ProtectedRoute>} />
+              <Route path="/admin/telecalling" element={<ProtectedRoute permission="telecalling"><AdminTelecalling /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute permission="blogs"><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute permission="settings"><AdminSettings /></ProtectedRoute>} />
               <Route path="/admin/data-export" element={<ProtectedRoute permission="data_center"><AdminDataExport /></ProtectedRoute>} />

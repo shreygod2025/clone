@@ -1,5 +1,60 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — Telecalling Module + Field-Visit Conditional CRM Link
+**Status: COMPLETE**
+
+### Field-Visit → School CRM linking is now conditional
+Previously, every field school-visit auto-created a `school_inquiry` — cluttering the pipeline with "dead" leads. Now:
+- `POST /field-reports/{id}/school-visits` only creates/links a `school_inquiry` when `lead_interested === "yes"`.
+- The visit's `products_interested` list is passed through to the new inquiry's `programs_interested` so the CRM row lands with proper context.
+- Everything else (visit history, photos, contacts, meeting notes) still lives on the field report.
+
+### New Telecalling / Cold-Calling module
+**Backend** — new `routes/telecalling.py`:
+- `POST /telecalling/import` — bulk XLSX upload with header aliasing (name / phone (required) / alt_phone / email / school_name / city / board / notes / source). Supports **single-user assignment** or **auto-assign round-robin** across a picked pool.
+- `GET /telecalling/sample-template.xlsx` — downloadable sample with 2 example rows.
+- `GET /telecalling/contacts` — list with status + search + assignee filters. Non-admins see only rows assigned to them.
+- `PATCH /telecalling/contacts/{id}` — inline updates. Auto-logs activity for `call_made / call_picked / lead_interested / meeting_booked`. When `lead_interested = yes` → transparently promotes the row to a `school_inquiry` (source=`telecalling`) with products, meeting date as followup_date.
+- `POST /telecalling/reassign` — bulk reassign (admins only).
+- `DELETE /telecalling/contacts/{id}` — admins only.
+- `GET /telecalling/reports?month=YYYY-MM` — per-user daily + monthly rollup of the 4 event types.
+
+**Frontend** — new `AdminTelecalling.jsx`:
+- Excel-like queue table: Contact · Phone (click-to-copy) · School · City · **Picked? Y/N** · **Interested? Y/N** · Note (inline editable) · Assignee (admins) · CRM link · Delete.
+- Toggling **Interested = Yes** opens the rich lead popup (name/school/products chips/meeting datetime/notes) which patches the row and creates the CRM inquiry.
+- KPI strip: Calls Made / Picked / Interested / Meetings Booked.
+- Filter bar: status (unworked, picked, not_picked, interested, not_interested), assignee (admin only), free-text search.
+- Admin Import modal with sample-template download + single/auto-assign chooser + auto-assign pool checkboxes (limited to users who have the `telecalling` permission).
+- Reports tab: Month picker + expandable per-user card showing daily breakdown.
+
+**Access control**
+- New `telecalling` permission in the permission catalog (`AdminUsers.jsx`) — admins toggle it per user; users then see the sidebar item + the module.
+- Backend enforces: non-admins can list/patch only their assigned rows; only admins can import, reassign, delete.
+- Sidebar item added to `AdminDashboard.jsx` with `permission: 'telecalling'`.
+
+### KPI catalog — new Telecalling category
+- `tc_calls_made`, `tc_calls_picked`, `tc_leads_interested`, `tc_meetings_booked`.
+- New `_compute_telecalling_metrics(user_id, start, end)` reads from `telecalling_activity`.
+- Admin can now attach these KPIs to a Telecaller role via Users & Roles.
+
+### Files
+- Created: `/app/backend/routes/telecalling.py`
+- Created: `/app/frontend/src/pages/admin/AdminTelecalling.jsx`
+- Modified: `/app/backend/routes/field_reports.py` (conditional inquiry creation)
+- Modified: `/app/backend/routes/kpis.py` (Telecalling KPI category + compute)
+- Modified: `/app/backend/server.py` (router registration)
+- Modified: `/app/frontend/src/App.js` (lazy import + route)
+- Modified: `/app/frontend/src/pages/admin/AdminDashboard.jsx` (sidebar entry)
+- Modified: `/app/frontend/src/pages/admin/AdminUsers.jsx` (permission catalog entry)
+
+### Verification (end-to-end curl)
+- `GET /telecalling/sample-template.xlsx` → 200, 5.1KB xlsx ✓
+- `POST /telecalling/import` (2-row template) → 2 inserted, 0 skipped ✓
+- `PATCH /telecalling/contacts/{id}` with `call_picked=yes` then `lead_interested=yes + products + meeting_at` → returns `school_inquiry_id` (auto-promoted) ✓
+- `GET /telecalling/reports` → 1 row with `{call_made:1, call_picked:1, lead_interested:1, meeting_booked:1}` ✓
+- Screenshots confirm: Queue rendering, Import modal, Reports rollup
+
+
 ## 2026-09-27 — Live Camera Capture + School-Visit Form Reordering
 **Status: COMPLETE**
 

@@ -152,47 +152,46 @@ async def add_school_visit(report_id: str, payload: SchoolVisitIn, user: dict = 
         **payload.model_dump(),
         "meeting": None,
     }
-    # Best-effort: seed a matching school_inquiry so the field visit
-    # feeds directly into School CRM (aligned with the "like adding a
-    # lead" spec). If a school with the same name + city already exists
-    # we link to it; otherwise we insert a lean new inquiry with status
-    # 'new' and mark the source as 'field_visit'.
+    # Only seed a matching school_inquiry when the visitor marked the
+    # lead as INTERESTED. Otherwise the visit stays in the field-report
+    # history but doesn't clutter the sales pipeline with dead leads.
     inquiry_id = None
-    try:
-        existing = await db.school_inquiries.find_one(
-            {"school_name": {"$regex": f"^{visit['school_name']}$", "$options": "i"},
-             "location":    visit.get("city") or ""},
-            {"id": 1, "_id": 0},
-        )
-        if existing:
-            inquiry_id = existing["id"]
-        else:
-            first_contact = (visit.get("contacts") or [{}])[0]
-            new_inquiry = {
-                "id": str(uuid.uuid4()),
-                "school_name":  visit["school_name"],
-                "contact_name": first_contact.get("name") or visit.get("contacts", [{}])[0].get("name") or "",
-                "phone":        first_contact.get("phone") or "",
-                "email":        first_contact.get("email") or "",
-                "location":     visit.get("city") or "",
-                "board":        visit.get("board") or "",
-                "status":       "new",
-                "school_contacts": [c for c in (visit.get("contacts") or []) if c.get("name")],
-                "programs_interested": [],
-                "source":       "field_visit",
-                "field_report_id": report_id,
-                "field_visit_id": visit["id"],
-                "assigned_to":  r.get("user_id"),
-                "assigned_to_name": r.get("user_name"),
-                "added_by":     r.get("user_id"),
-                "created_at":   _now_iso(),
-                "updated_at":   _now_iso(),
-            }
-            await db.school_inquiries.insert_one(new_inquiry)
-            inquiry_id = new_inquiry["id"]
-    except Exception:
-        # Never let a CRM sync failure block the field log.
-        inquiry_id = None
+    if (visit.get("lead_interested") or "").lower() == "yes":
+        try:
+            existing = await db.school_inquiries.find_one(
+                {"school_name": {"$regex": f"^{visit['school_name']}$", "$options": "i"},
+                 "location":    visit.get("city") or ""},
+                {"id": 1, "_id": 0},
+            )
+            if existing:
+                inquiry_id = existing["id"]
+            else:
+                first_contact = (visit.get("contacts") or [{}])[0]
+                new_inquiry = {
+                    "id": str(uuid.uuid4()),
+                    "school_name":  visit["school_name"],
+                    "contact_name": first_contact.get("name") or "",
+                    "phone":        first_contact.get("phone") or "",
+                    "email":        first_contact.get("email") or "",
+                    "location":     visit.get("city") or "",
+                    "board":        visit.get("board") or "",
+                    "status":       "new",
+                    "school_contacts": [c for c in (visit.get("contacts") or []) if c.get("name")],
+                    "programs_interested": list(visit.get("products_interested") or []),
+                    "source":       "field_visit",
+                    "field_report_id": report_id,
+                    "field_visit_id": visit["id"],
+                    "assigned_to":  r.get("user_id"),
+                    "assigned_to_name": r.get("user_name"),
+                    "added_by":     r.get("user_id"),
+                    "created_at":   _now_iso(),
+                    "updated_at":   _now_iso(),
+                }
+                await db.school_inquiries.insert_one(new_inquiry)
+                inquiry_id = new_inquiry["id"]
+        except Exception:
+            # Never let a CRM sync failure block the field log.
+            inquiry_id = None
     visit["school_inquiry_id"] = inquiry_id
 
     await db.field_reports.update_one(
