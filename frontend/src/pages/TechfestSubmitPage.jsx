@@ -222,6 +222,8 @@ export default function TechfestSubmitPage() {
       ['id_proof_url', 'ID Proof of Main Student'],
       ['id_proof_type', 'ID Proof Type'],
       ['competition', 'Competition'],
+      ['team_id', 'Team ID'],
+      ['competition_id', 'Competition ID'],
       ['drive_link', 'Google Drive Link'],
     ];
     for (const [k, label] of REQUIRED) {
@@ -514,12 +516,12 @@ export default function TechfestSubmitPage() {
                     </>
                   )}
                   <div>
-                    <label className="trp-label">Team ID</label>
-                    <input className="trp-input" value={form.team_id} onChange={setField('team_id')} placeholder="From techfest.org" data-testid="sub-team-id" />
+                    <label className="trp-label">Team ID*</label>
+                    <input required className="trp-input" value={form.team_id} onChange={setField('team_id')} placeholder="From techfest.org" data-testid="sub-team-id" />
                   </div>
                   <div>
-                    <label className="trp-label">Competition ID</label>
-                    <input className="trp-input" value={form.competition_id} onChange={setField('competition_id')} placeholder="From techfest.org" data-testid="sub-competition-id" />
+                    <label className="trp-label">Competition ID*</label>
+                    <input required className="trp-input" value={form.competition_id} onChange={setField('competition_id')} placeholder="From techfest.org" data-testid="sub-competition-id" />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="trp-label"><Link2 className="w-3 h-3 inline mr-1" /> Google Drive Link*</label>

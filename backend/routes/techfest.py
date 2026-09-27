@@ -323,9 +323,9 @@ class TechfestSubmissionIn(BaseModel):
     # Only meaningful when competition == robo_innovation
     project_category: Optional[str] = Field(None, max_length=120)
     project_theme:    Optional[str] = Field(None, max_length=120)
-    # Track ids from techfest.org
-    team_id:        Optional[str] = Field(None, max_length=60)
-    competition_id: Optional[str] = Field(None, max_length=60)
+    # Track ids from techfest.org — now REQUIRED
+    team_id:        str = Field(..., min_length=1, max_length=60)
+    competition_id: str = Field(..., min_length=1, max_length=60)
     drive_link:     str = Field(..., min_length=8, max_length=500)
     # NEW — team members (excluding lead) and school-permission letter
     team_members: List[TeamMemberIn] = Field(default_factory=list, max_length=5)

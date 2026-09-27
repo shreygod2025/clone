@@ -823,6 +823,13 @@ const LandingPage = () => {
           .home-tf-h2 { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:300; font-size:clamp(2rem, 4.6vw, 3.5rem); line-height:1.06; letter-spacing:-0.015em; color:#fff; }
           .home-tf-h2 em { font-family:'Caveat', cursive; font-style:normal; font-weight:700; color:#FCA5A5; }
           .home-tf-h2 strong { font-weight:700; }
+          /* Single-line variant used at the top of the home Techfest section */
+          .home-tf-topcenter { text-align:center; display:flex; flex-direction:column; align-items:center; gap:1.15rem; margin-bottom:2rem; }
+          .home-tf-h2-single { text-align:center; font-size:clamp(1.75rem, 3.6vw, 2.75rem); line-height:1.15; white-space:nowrap; max-width:100%; }
+          @media (max-width: 900px) {
+            .home-tf-h2-single { white-space:normal; }
+          }
+          .home-tf-columns { align-items:start; }
           .home-tf-body { font-family:'Proxima Nova','Montserrat',sans-serif; font-weight:300; font-size:0.94rem; line-height:1.6; color:rgba(226,232,240,0.9); }
 
           /* Mobile description clamp + View more toggle */
@@ -865,26 +872,28 @@ const LandingPage = () => {
         <span className="tf-spot" aria-hidden />
         <div className="home-tf-grain" aria-hidden />
 
-        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto', zIndex: 3 }}>
-          {/* Header row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
+        <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto', padding: '0 1.5rem', zIndex: 3 }}>
+          {/* ── Centered logo + heading (above description + video) ── */}
+          <div className="home-tf-topcenter">
+            <div className="tf-reveal tf-reveal-1 home-tf-lockup" data-testid="home-tf-lockup">
+              <img className="lockup-oll" src="/techfest/logo-oll.png" alt="OLL — Online Live Learning · India's largest school robotics network" />
+              <span className="lockup-divider" aria-hidden />
+              <img className="lockup-techfest" src="/techfest/logo-techfest.png" alt="Techfest, IIT Bombay — Asia's largest science &amp; technology festival" />
+            </div>
 
-            {/* Left · text */}
+            <h2 className="tf-reveal tf-reveal-3 home-tf-h2 home-tf-h2-single" data-testid="home-tf-headline">
+              India&rsquo;s <em>Biggest</em> School Robotics Championship.
+            </h2>
+          </div>
+
+          {/* ── Description + video row (constrained to nav max-width) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center home-tf-columns">
+
+            {/* Left · description + CTA */}
             <div>
-              <div className="tf-reveal tf-reveal-1 home-tf-lockup" data-testid="home-tf-lockup">
-                <img className="lockup-oll" src="/techfest/logo-oll.png" alt="OLL — Online Live Learning · India's largest school robotics network" />
-                <span className="lockup-divider" aria-hidden />
-                <img className="lockup-techfest" src="/techfest/logo-techfest.png" alt="Techfest, IIT Bombay — Asia's largest science &amp; technology festival" />
-              </div>
-
-              <h2 className="tf-reveal tf-reveal-3 home-tf-h2" style={{ marginTop: 22 }}>
-                India&rsquo;s Biggest <em>School Level</em><br />
-                <strong>Robotics Championship.</strong>
-              </h2>
-
               <p
                 className={`tf-reveal tf-reveal-4 home-tf-body ${moreOpen ? '' : 'home-tf-body-clamped'}`}
-                style={{ marginTop: 14, maxWidth: 620 }}
+                style={{ marginTop: 4, maxWidth: 620 }}
                 data-testid="home-tf-body"
               >
                 The <strong style={{ color: '#fff', fontWeight: 700 }}>OLL Robotics Championship</strong> — powered by <strong style={{ color: '#fff', fontWeight: 700 }}>Techfest, IIT Bombay 2026</strong>, Asia&rsquo;s largest science and technology festival. Grades 4–12 across three flagship tracks — <strong style={{ color: '#fff', fontWeight: 700 }}>RoboSumo, RoboRacer &amp; the Robotics Innovation Challenge</strong> — compete through online submission rounds and live Regional Qualifiers, culminating at the Grand Finale on the iconic <strong style={{ color: '#fff', fontWeight: 700 }}>IIT Bombay campus, 17 December 2026</strong>. Cash prizes up to ₹1,50,000, industry mentors, national visibility.

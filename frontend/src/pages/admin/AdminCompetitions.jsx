@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
   Trophy, Building2, GraduationCap, User, Download, Upload, Search,
   Mail, Phone, MapPin, Loader2, ExternalLink, Pencil, Trash2, Link2, Plus, Copy, X,
-  Layers, CheckSquare, Square, UserPlus,
+  Layers, CheckSquare, Square, UserPlus, ChevronDown, ChevronRight, FileText,
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -114,6 +114,13 @@ export default function AdminCompetitions() {
   const [combined, setCombined] = useState([]);
   const [combinedLoading, setCombinedLoading] = useState(false);
   const [combinedSelected, setCombinedSelected] = useState(() => new Set());
+  // Expanded submission row (id → true)
+  const [expandedSub, setExpandedSub] = useState(() => new Set());
+  const toggleExpandedSub = (id) => setExpandedSub(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   // Inline "assign coordinator" popover state on the combined table:
   //   { key: <school_key>, reg_id, current_user_id }
   const [inlineCoord, setInlineCoord] = useState(null);
@@ -818,6 +825,7 @@ export default function AdminCompetitions() {
                   <table className="w-full text-sm" data-testid="admin-competitions-submissions-table">
                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
                       <tr>
+                        <th className="text-left px-2 py-3 w-8"></th>
                         <th className="text-left px-3 py-3 font-bold">Sr.</th>
                         <th className="text-left px-3 py-3 font-bold">Team Lead</th>
                         <th className="text-left px-3 py-3 font-bold">School</th>
@@ -831,8 +839,21 @@ export default function AdminCompetitions() {
                       </tr>
                     </thead>
                     <tbody>
-                      {submissions.map((s, i) => (
-                        <tr key={s._id} className="border-b border-slate-100 hover:bg-slate-50/70" data-testid={`admin-submission-row-${s._id}`}>
+                      {submissions.map((s, i) => {
+                        const isOpen = expandedSub.has(s._id);
+                        return (
+                        <React.Fragment key={s._id}>
+                        <tr className="border-b border-slate-100 hover:bg-slate-50/70" data-testid={`admin-submission-row-${s._id}`}>
+                          <td className="px-2 py-3">
+                            <button
+                              onClick={() => toggleExpandedSub(s._id)}
+                              className="text-slate-500 hover:text-slate-900"
+                              data-testid={`admin-submission-toggle-${s._id}`}
+                              aria-label={isOpen ? 'Collapse row' : 'Expand row'}
+                            >
+                              {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                          </td>
                           <td className="px-3 py-3 text-slate-500 tabular-nums">{i + 1}</td>
                           <td className="px-3 py-3">
                             <div className="font-semibold text-slate-900">{s.full_name}</div>
@@ -860,7 +881,16 @@ export default function AdminCompetitions() {
                           </td>
                           <td className="px-3 py-3 text-slate-600 text-[11px]">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}</td>
                         </tr>
-                      ))}
+                        {isOpen && (
+                          <tr data-testid={`admin-submission-detail-${s._id}`}>
+                            <td colSpan={11} className="p-0 bg-slate-50 border-b border-slate-200">
+                              <SubmissionDetail s={s} />
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </>
@@ -1296,6 +1326,121 @@ function InlineCoordinatorPicker({ value, currentName, options, onSave }) {
         onClick={() => setOpen(false)}
         className="absolute -right-6 top-1 text-slate-400 hover:text-slate-700"
       ><X className="w-3.5 h-3.5" /></button>
+    </div>
+  );
+}
+
+
+// ─── Full submission detail (expanded row in Submissions tab) ─────────
+function SubmissionDetail({ s }) {
+  const F = ({ label, value, mono }) => (
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
+      <div className={`text-sm text-slate-800 mt-0.5 ${mono ? 'font-mono' : ''}`}>{value || <span className="text-slate-400">—</span>}</div>
+    </div>
+  );
+  const Link = ({ label, href, cta = 'Open' }) => (
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{label}</div>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:underline text-sm font-bold mt-0.5">
+          <ExternalLink className="w-3.5 h-3.5" /> {cta}
+        </a>
+      ) : <div className="text-slate-400 text-sm mt-0.5">—</div>}
+    </div>
+  );
+  const members = [
+    { name: s.full_name, date_of_birth: s.date_of_birth, email: s.email, phone: s.phone, school: s.school_or_college, id_proof_type: s.id_proof_type, id_proof_url: s.id_proof_url, isLead: true },
+    ...(s.team_members || []),
+  ];
+  return (
+    <div className="px-6 py-5 space-y-6" data-testid={`admin-submission-detail-body-${s._id}`}>
+      {/* ── Section: Team lead / primary contact ── */}
+      <section>
+        <h4 className="text-[11px] uppercase tracking-[0.25em] font-bold text-slate-500 mb-3 flex items-center gap-1.5"><User className="w-3 h-3" /> Team Lead · Personal Details</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <F label="Full Name" value={s.full_name} />
+          <F label="Date of Birth" value={s.date_of_birth} />
+          <F label="Age" value={s.age} />
+          <F label="Age Category" value={s.age_category} />
+          <F label="Email" value={s.email} />
+          <F label="Phone" value={s.phone} />
+          <F label="City" value={s.city} />
+          <F label="State" value={s.state} />
+          <F label="Pincode" value={s.pincode} />
+          <F label="Country" value={s.country} />
+          <F label="School / College" value={s.school_or_college} />
+          <F label="Referrer" value={s.referrer_slug} />
+        </div>
+      </section>
+
+      {/* ── Section: Competition ── */}
+      <section>
+        <h4 className="text-[11px] uppercase tracking-[0.25em] font-bold text-slate-500 mb-3 flex items-center gap-1.5"><Trophy className="w-3 h-3" /> Competition</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <F label="Competition" value={s.competition?.replace('_', ' ')} />
+          <F label="Zone" value={s.zone} />
+          <F label="Project Category" value={s.project_category} />
+          <F label="Project Theme" value={s.project_theme} />
+          <F label="Team ID" value={s.team_id} mono />
+          <F label="Competition ID" value={s.competition_id} mono />
+        </div>
+      </section>
+
+      {/* ── Section: Attachments & links ── */}
+      <section>
+        <h4 className="text-[11px] uppercase tracking-[0.25em] font-bold text-slate-500 mb-3 flex items-center gap-1.5"><Link2 className="w-3 h-3" /> Attachments</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Link label="Google Drive · Project Folder" href={s.drive_link} />
+          <Link label="School Permission Letter" href={s.school_permission_url} cta="View letter" />
+          <Link label={`Team Lead · ${s.id_proof_type ? s.id_proof_type.toUpperCase() : 'ID Proof'}`} href={s.id_proof_url} cta="View ID" />
+          <F label="Submitted On" value={s.created_at ? new Date(s.created_at).toLocaleString('en-IN') : ''} />
+        </div>
+      </section>
+
+      {/* ── Section: All team members (including lead) ── */}
+      <section>
+        <h4 className="text-[11px] uppercase tracking-[0.25em] font-bold text-slate-500 mb-3 flex items-center gap-1.5"><GraduationCap className="w-3 h-3" /> All Team Members ({members.length})</h4>
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-100 text-[10px] uppercase tracking-widest text-slate-500">
+              <tr>
+                <th className="text-left px-3 py-2 font-bold">#</th>
+                <th className="text-left px-3 py-2 font-bold">Name</th>
+                <th className="text-left px-3 py-2 font-bold">DOB</th>
+                <th className="text-left px-3 py-2 font-bold">Email</th>
+                <th className="text-left px-3 py-2 font-bold">Phone</th>
+                <th className="text-left px-3 py-2 font-bold">School</th>
+                <th className="text-left px-3 py-2 font-bold">ID Proof</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m, i) => (
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="px-3 py-2">
+                    {m.isLead ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold uppercase tracking-widest">Lead</span>
+                    ) : (i + 1)}
+                  </td>
+                  <td className="px-3 py-2 font-semibold text-slate-800">{m.name || '—'}</td>
+                  <td className="px-3 py-2 text-slate-700">{m.date_of_birth || '—'}</td>
+                  <td className="px-3 py-2 text-slate-700">{m.email || '—'}</td>
+                  <td className="px-3 py-2 text-slate-700">{m.phone || '—'}</td>
+                  <td className="px-3 py-2 text-slate-700">{m.school || '—'}</td>
+                  <td className="px-3 py-2">
+                    {m.id_proof_url ? (
+                      <a href={m.id_proof_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:underline font-bold">
+                        <FileText className="w-3 h-3" />
+                        {(m.id_proof_type || 'id').toUpperCase()}
+                      </a>
+                    ) : <span className="text-slate-400">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
