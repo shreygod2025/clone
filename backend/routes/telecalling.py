@@ -97,6 +97,7 @@ class ContactPatch(BaseModel):
     city:               Optional[str] = None
     board:              Optional[str] = None
     notes:              Optional[str] = None
+    status:             Optional[str] = None   # 'new' | 'follow_up' | 'no_answer' | 'interested'
     call_picked:        Optional[str] = None   # 'yes' | 'no'
     lead_interested:    Optional[str] = None   # 'yes' | 'no'
     products_interested: Optional[List[str]] = None
@@ -222,6 +223,7 @@ async def import_contacts(
             "board":            _cell("board"),
             "notes":            _cell("notes"),
             "source":           _cell("source") or (default_source or ""),
+            "status":           "new",
             "assigned_to":      assignee.get("id") if assignee else None,
             "assigned_to_name": (assignee.get("name") or assignee.get("email")) if assignee else None,
             "call_picked":       None,
@@ -263,14 +265,14 @@ async def list_contacts(
     elif assigned_to:
         q["assigned_to"] = assigned_to if assigned_to != "unassigned" else None
 
-    if status == "unworked":
+    if status in {"new", "follow_up", "no_answer", "interested"}:
+        q["status"] = status
+    elif status == "unworked":
         q["call_picked"] = None
     elif status == "picked":
         q["call_picked"] = "yes"
     elif status == "not_picked":
         q["call_picked"] = "no"
-    elif status == "interested":
-        q["lead_interested"] = "yes"
     elif status == "not_interested":
         q["lead_interested"] = "no"
 
@@ -313,6 +315,18 @@ async def update_contact(contact_id: str, patch: ContactPatch, user: dict = Depe
         await _log_activity(contact_id, user, "lead_interested")
     if changes.get("meeting_at") and prev.get("meeting_at") != changes["meeting_at"]:
         await _log_activity(contact_id, user, "meeting_booked")
+
+    # Auto-derive status when caller hasn't set it explicitly
+    if "status" not in changes:
+        merged = {**prev, **changes}
+        if (merged.get("lead_interested") or "").lower() == "yes":
+            changes["status"] = "interested"
+        elif (merged.get("call_picked") or "").lower() == "no":
+            changes["status"] = "no_answer"
+        elif merged.get("followup_at"):
+            changes["status"] = "follow_up"
+        elif prev.get("status") in {None, ""}:
+            changes["status"] = "new"
 
     # Reflect assignee name if reassigning
     if "assigned_to" in changes and changes["assigned_to"]:

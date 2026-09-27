@@ -780,6 +780,7 @@ const DayGroupCard = ({ day, reports, onView, onEdit }) => {
   const totalVisits = reports.reduce((n, r) => n + (r.school_visits?.length || 0), 0);
   const interested = reports.reduce((n, r) => n + (r.school_visits || []).filter(v => v.lead_interested === 'yes').length, 0);
   const entries = reports.reduce((n, r) => n + (r.school_visits || []).filter(v => v.got_entry === 'yes').length, 0);
+  const km = reports.reduce((n, r) => n + Number(r.distance_km || 0), 0);
   const users = [...new Set(reports.map(r => r.user_name).filter(Boolean))];
 
   return (
@@ -792,6 +793,7 @@ const DayGroupCard = ({ day, reports, onView, onEdit }) => {
             <Chip tone="emerald">{totalVisits} visits</Chip>
             <Chip tone="indigo">{entries} entries</Chip>
             <Chip tone="amber">{interested} interested</Chip>
+            <Chip tone="rose">{km.toFixed(1)} km</Chip>
             <Chip tone="slate">{users.length} team member{users.length === 1 ? '' : 's'}</Chip>
           </div>
           <div className="text-[11px] text-slate-500 mt-1 truncate">{users.join(' · ')}</div>
@@ -806,6 +808,7 @@ const DayGroupCard = ({ day, reports, onView, onEdit }) => {
                 <span className="font-semibold text-slate-800">{r.user_name}</span>
                 <span className="text-[11px] text-slate-500">since {fmtDateTime(r.check_in?.at)}</span>
                 <Chip tone={r.check_out ? 'slate' : 'emerald'}>{r.check_out ? 'Closed' : 'Live'}</Chip>
+                {r.distance_km > 0 && <Chip tone="rose">{Number(r.distance_km).toFixed(1)} km</Chip>}
               </div>
               {r.check_in?.photo_url && <img src={r.check_in.photo_url} alt="checkin" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />}
               {(r.school_visits || []).map(v => (
@@ -937,8 +940,11 @@ export default function AdminFieldReports() {
   const doCheckOut = async () => {
     if (!current) return;
     setBusy(true);
+    let lat = null, lon = null;
+    try { const c = await getCoords(); lat = c.lat; lon = c.lon; } catch {/* optional */}
     try {
-      await axios.patch(`${API}/field-reports/${current.id}/checkout`, {}, { headers: getAuthHeaders() });
+      await axios.patch(`${API}/field-reports/${current.id}/checkout`,
+        { latitude: lat, longitude: lon }, { headers: getAuthHeaders() });
       toast.success('Checked out');
       setCurrent(null);
       load();
@@ -973,16 +979,17 @@ export default function AdminFieldReports() {
 
   const kpis = useMemo(() => {
     const days = new Set();
-    let visits = 0, entries = 0, interested = 0;
+    let visits = 0, entries = 0, interested = 0, km = 0;
     filteredReports.forEach(r => {
       days.add(dayKey(r.check_in?.at || r.created_at));
+      km += Number(r.distance_km || 0);
       (r.school_visits || []).forEach(v => {
         visits += 1;
         if (v.got_entry === 'yes') entries += 1;
         if (v.lead_interested === 'yes') interested += 1;
       });
     });
-    return { days: days.size, visits, entries, interested };
+    return { days: days.size, visits, entries, interested, km: Math.round(km * 100) / 100 };
   }, [filteredReports]);
 
   return (
@@ -1013,9 +1020,10 @@ export default function AdminFieldReports() {
             ) : (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Chip tone="emerald">Live</Chip>
                     <span className="text-sm text-slate-600">since {fmtDateTime(current.check_in?.at)}</span>
+                    {current.distance_km > 0 && <Chip tone="rose">{Number(current.distance_km).toFixed(1)} km so far</Chip>}
                   </div>
                   <Button variant="outline" size="sm" onClick={doCheckOut} disabled={busy} data-testid="checkout-btn">
                     {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <LogOut className="w-4 h-4 mr-1" />} Check Out
@@ -1083,12 +1091,13 @@ export default function AdminFieldReports() {
             </div>
 
             {/* KPI strip */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {[
                 { label: 'Days on Field', val: kpis.days, color: 'from-emerald-600 to-emerald-400' },
                 { label: 'Schools Visited', val: kpis.visits, color: 'from-blue-600 to-blue-400' },
                 { label: 'Entries Gained', val: kpis.entries, color: 'from-indigo-600 to-indigo-400' },
                 { label: 'Schools Interested', val: kpis.interested, color: 'from-amber-600 to-amber-400' },
+                { label: 'Distance (km)', val: kpis.km, color: 'from-rose-600 to-rose-400' },
               ].map(c => (
                 <div key={c.label} className={`bg-gradient-to-br ${c.color} rounded-xl p-4 text-white`}>
                   <p className="text-white/70 text-xs font-medium mb-1">{c.label}</p>

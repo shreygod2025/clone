@@ -1,5 +1,45 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — Telecalling Excel Grid + Field Reports Distance Tracking
+**Status: COMPLETE**
+
+### Telecalling table — Excel-grade UX
+- **Follow-up popover** now renders with `position: fixed` outside the table clip — auto-positions above the button when there isn't room below. No more scrolling to see it.
+- **Follow-up chip** is a single `whitespace-nowrap` line: "05 Oct 02:00 pm" (no more 4-line wrapping).
+- **Serial number column** on the far left (auto-numbered after current sort).
+- **Date Added column** with click-to-toggle sort (↓ = newest first, default; ↑ = oldest first).
+- **Status column** — dropdown pill (color-coded):
+  - `New` (slate) → default on import
+  - `Follow-up` (indigo) → auto-set when `followup_at` is added
+  - `No Answer` (amber) → auto-set when `call_picked = no`
+  - `Interested` (emerald) → auto-set when `lead_interested = yes`
+  - Manual override always wins.
+- **Excel-like grid lines** on every cell (right + bottom borders) via `CELL` / `HEAD` classes.
+- Status filter dropdown now offers the same 4 statuses.
+
+### Field Reports — distance tracking
+- Backend: `CheckOutIn` now accepts `latitude` + `longitude`. New helpers:
+  - `_haversine_km(a_lat, a_lon, b_lat, b_lon)` — great-circle distance in km.
+  - `_report_distance_km(report)` — sums check-in → visits (in order) → check-out with `_haversine_km`.
+- Every report writes a `distance_km` field on:
+  - **checkout** (recomputed once with all data)
+  - **adding a school visit** (recomputed so the live counter updates)
+- Frontend: check-out now silently captures GPS with `getCoords()` and posts to the endpoint. The **My Field Day** live card shows a rose "X.X km so far" chip. Every day-group card and every session row shows the same chip. New **Distance (km)** KPI added to the Reports strip.
+- Ready for petrol-cost calc: multiply `distance_km` × per-km rate from the user's role settings.
+
+### Files
+- Modified: `/app/backend/routes/telecalling.py` (new `status` field + auto-derive on state transitions; `new/follow_up/no_answer/interested` filter values)
+- Modified: `/app/backend/routes/field_reports.py` (`CheckOutIn.latitude/longitude`, `_haversine_km`, `_report_distance_km`, recompute in checkout + add-visit)
+- Modified: `/app/frontend/src/pages/admin/AdminTelecalling.jsx` (fixed-position `FollowupCell`, Excel `CELL`/`HEAD` styles, `#` column, sortable Date Added, Status column with STATUS_OPTIONS)
+- Modified: `/app/frontend/src/pages/admin/AdminFieldReports.jsx` (checkout sends GPS, distance chip on live card & sessions, Distance KPI card, day-group km chip)
+
+### Verification
+- `PATCH /telecalling/contacts/{id}` with `{"status":"follow_up"}` → persists ✓
+- `_haversine_km(19.0760,72.8777, 28.7041,77.1025)` (Mumbai↔Delhi) → **1153.24 km** (actual ~1148) ✓
+- `_report_distance_km` on a simulated 4-point path → **11.17 km** ✓
+- Screenshots: Excel grid with #/Contact/Phone/School/City/**Date Added ↓**/**Status pill**/Picked?/Interested?/Note/Follow-up/Assignee/CRM columns; follow-up popover floats above the row.
+
+
 ## 2026-09-27 — Telecalling Follow-up + Meeting-Mode/Contacts + Field Reports Inline Actions + View/Edit Visit
 **Status: COMPLETE**
 

@@ -55,6 +55,8 @@ class CheckInIn(BaseModel):
 
 
 class CheckOutIn(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     end_notes: Optional[str] = Field(None, max_length=1000)
 
 
@@ -120,6 +122,38 @@ async def create_checkin(payload: CheckInIn, user: dict = Depends(get_current_us
     return doc
 
 
+def _haversine_km(a_lat, a_lon, b_lat, b_lon) -> float:
+    """Great-circle distance in km between two lat/lon points."""
+    import math
+    if None in (a_lat, a_lon, b_lat, b_lon):
+        return 0.0
+    R = 6371.0
+    dLat = math.radians(b_lat - a_lat)
+    dLon = math.radians(b_lon - a_lon)
+    la1 = math.radians(a_lat); la2 = math.radians(b_lat)
+    x = (math.sin(dLat/2) ** 2) + math.cos(la1) * math.cos(la2) * (math.sin(dLon/2) ** 2)
+    return round(2 * R * math.asin(math.sqrt(x)), 2)
+
+
+def _report_distance_km(report: dict) -> float:
+    """Total distance travelled during the field day: check-in → visits in
+    order → check-out. Missing coords contribute 0 for that leg."""
+    pts = []
+    ci = report.get("check_in") or {}
+    if ci.get("latitude") is not None:
+        pts.append((ci["latitude"], ci["longitude"]))
+    for v in (report.get("school_visits") or []):
+        if v.get("latitude") is not None:
+            pts.append((v["latitude"], v["longitude"]))
+    co = report.get("check_out") or {}
+    if co.get("latitude") is not None:
+        pts.append((co["latitude"], co["longitude"]))
+    total = 0.0
+    for i in range(1, len(pts)):
+        total += _haversine_km(pts[i-1][0], pts[i-1][1], pts[i][0], pts[i][1])
+    return round(total, 2)
+
+
 @router.patch("/field-reports/{report_id}/checkout")
 async def check_out(report_id: str, payload: CheckOutIn, user: dict = Depends(get_current_user)):
     r = await db.field_reports.find_one({"id": report_id})
@@ -127,10 +161,19 @@ async def check_out(report_id: str, payload: CheckOutIn, user: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Report not found")
     if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
         raise HTTPException(status_code=403, detail="Not your field day")
+
+    check_out = {"at": _now_iso(), "notes": payload.end_notes}
+    if payload.latitude is not None: check_out["latitude"] = payload.latitude
+    if payload.longitude is not None: check_out["longitude"] = payload.longitude
+
+    r_after = {**r, "check_out": check_out}
+    distance = _report_distance_km(r_after)
+
     await db.field_reports.update_one(
         {"id": report_id},
         {"$set": {
-            "check_out": {"at": _now_iso(), "notes": payload.end_notes},
+            "check_out": check_out,
+            "distance_km": distance,
             "updated_at": _now_iso(),
         }},
     )
@@ -199,6 +242,10 @@ async def add_school_visit(report_id: str, payload: SchoolVisitIn, user: dict = 
         {"$push": {"school_visits": visit},
          "$set":  {"updated_at": _now_iso()}},
     )
+    # Recompute total distance so KM traveled updates as visits happen.
+    fresh = await db.field_reports.find_one({"id": report_id}, {"_id": 0})
+    distance = _report_distance_km(fresh)
+    await db.field_reports.update_one({"id": report_id}, {"$set": {"distance_km": distance}})
     return visit
 
 
