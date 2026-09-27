@@ -1,5 +1,40 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — Live Camera Capture + School-Visit Form Reordering
+**Status: COMPLETE**
+
+### Live camera (not upload picker)
+Rebuilt photo capture end-to-end. Both **Check-in** and **Log School Visit → Click Photo** now open a new `CameraCaptureModal` that:
+- Requests `navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })` — real live camera preview inside the modal on desktop AND mobile.
+- **Flip** button toggles front/back camera.
+- **Capture** button draws the current video frame to a canvas, converts to JPEG blob → uploads → sets `photo_url`.
+- Falls back to the `<input type=file capture="environment">` shim only when `getUserMedia` is unavailable or permission is denied. No more silent file-picker.
+
+### School-Visit form — reordered per user spec
+1. Photo → Location → School Name
+2. **Did you get entry? Yes/No** (immediately below school name)
+3. City / Board / Students / Fees
+4. **Who did you meet?** (moved above contacts)
+5. **Contacts** (moved above robotics — matches primary interview flow)
+6. **Has Robotics? Yes/No** (with conditional "Provided by")
+7. **Lead Interested? Yes/No** (moved below Has Robotics)
+8. **Product Interested In** — only rendered when `lead_interested === 'yes'` (otherwise hidden). Selecting No auto-clears any previously chosen products so stale selections never sneak through.
+9. Notes → Save
+
+### CheckIn API — writes confirmed working
+Verified `POST /api/timetables` on the new key returns **201 with a fresh timetable id**. The earlier "read-only" diagnosis was because the preview app was temporarily down (all endpoints returning 404 from the Cloudflare edge). It's back up now. `_compute_checkin_teacher_costs()` and `create_or_update_timetable` both work end-to-end:
+  - GET educators → 200
+  - POST /schools/{sid}/timetable via our backend → `{"success": true, "timetable_id": "…"}` ✓
+
+### Files
+- Modified: `/app/frontend/src/pages/admin/AdminFieldReports.jsx` (new `CameraCaptureModal`, reordered fields, dual-mount on check-in and visit modals)
+
+### Verification
+- Screenshot: SchoolVisitModal renders with fields in the correct order (Did you get entry → City → Board → Students → Fees → Who did you meet → Contacts → Has Robotics → Lead Interested → Notes) ✓
+- Screenshot: Live camera modal opens with a real `getUserMedia` video feed + Flip + Capture buttons ✓
+- curl: POST timetable via backend returns 201 + timetable_id ✓
+
+
 ## 2026-09-27 — Field Reports: Camera Capture, Rich School Visit Form, Day-wise Reports, Team Filter & Calendar + New KPI Category
 **Status: COMPLETE**
 

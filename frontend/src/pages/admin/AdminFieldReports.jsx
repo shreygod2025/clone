@@ -115,18 +115,134 @@ const uploadImage = async (file, getAuthHeaders) => {
   return res.data.url;
 };
 
-// Camera capture — open the OS camera (fallback: file input with capture attr).
-// We use a hidden <input type=file accept="image/*" capture="environment">
-// which on mobile/PWA always opens the back camera, and on desktop lets the
-// user pick a file (still acceptable).
-const captureFromCamera = () => new Promise((resolve) => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.capture = 'environment';
-  input.onchange = () => resolve(input.files?.[0] || null);
-  input.click();
+// Live camera capture — opens the actual camera stream (works on desktop too
+// via getUserMedia). Falls back to the file-input `capture=environment` shim
+// on browsers where getUserMedia is unavailable / permission denied.
+const openCameraCapture = () => new Promise((resolve) => {
+  // Try live camera first
+  if (!navigator.mediaDevices?.getUserMedia) return resolve('__fallback__');
+  resolve('__live__');
 });
+
+const CameraCaptureModal = ({ open, onClose, onCaptured }) => {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const [starting, setStarting] = useState(false);
+  const [err, setErr] = useState(null);
+  const [facing, setFacing] = useState('environment');
+
+  const start = useCallback(async (mode = facing) => {
+    setStarting(true); setErr(null);
+    try {
+      // stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = s;
+      if (videoRef.current) {
+        videoRef.current.srcObject = s;
+        await videoRef.current.play();
+      }
+    } catch (e) {
+      setErr(e?.message || 'Camera access denied');
+    } finally { setStarting(false); }
+  }, [facing]);
+
+  useEffect(() => {
+    if (open) start(facing);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const flip = () => {
+    const next = facing === 'environment' ? 'user' : 'environment';
+    setFacing(next);
+    start(next);
+  };
+
+  const shoot = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const v = videoRef.current;
+    const c = canvasRef.current;
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0);
+    c.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      onCaptured(file);
+      // stop the stream + close
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      onClose();
+    }, 'image/jpeg', 0.85);
+  };
+
+  const useFallback = async () => {
+    // Fall back to the mobile file-input with capture attribute
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.onchange = () => {
+      const f = input.files?.[0] || null;
+      document.body.removeChild(input);
+      if (f) { onCaptured(f); onClose(); }
+    };
+    input.click();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg" data-testid="camera-capture-modal">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Camera className="w-5 h-5" /> Click Photo</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          {err ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+              Camera unavailable: {err}
+              <div className="mt-2">
+                <Button size="sm" variant="outline" onClick={useFallback} data-testid="camera-fallback-btn">Pick a photo instead</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" data-testid="camera-video" />
+                {starting && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                )}
+              </div>
+              <canvas ref={canvasRef} className="hidden" />
+              <div className="flex justify-between gap-2">
+                <Button variant="outline" size="sm" onClick={flip} data-testid="camera-flip-btn">Flip</Button>
+                <Button onClick={shoot} disabled={starting} className="flex-1 bg-emerald-600 hover:bg-emerald-700" data-testid="camera-shoot-btn">
+                  <Camera className="w-4 h-4 mr-1" /> Capture
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // ── Small building blocks ─────────────────────────────────────────
 const Chip = ({ children, tone = 'slate' }) => (
@@ -182,6 +298,7 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
   const [saving, setSaving] = useState(false);
   const [locBusy, setLocBusy] = useState(false);
   const [savedVisit, setSavedVisit] = useState(null);   // shows post-save action strip
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   useEffect(() => { if (open) { setForm(emptyVisit()); setSavedVisit(null); } }, [open]);
 
@@ -203,8 +320,7 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
     } finally { setLocBusy(false); }
   };
 
-  const doCapturePhoto = async () => {
-    const file = await captureFromCamera();
+  const onCameraCaptured = async (file) => {
     if (!file) return;
     try {
       const url = await uploadImage(file, getAuthHeaders);
@@ -354,14 +470,14 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1"><Camera className="w-3 h-3" /> Visit Photo *</div>
-                <Button size="sm" variant="outline" onClick={doCapturePhoto} data-testid="visit-capture-photo">
+                <Button size="sm" variant="outline" onClick={() => setCameraOpen(true)} data-testid="visit-capture-photo">
                   <Camera className="w-3.5 h-3.5 mr-1" /> {form.photo_url ? 'Retake' : 'Click Photo'}
                 </Button>
               </div>
               {form.photo_url ? (
                 <img src={form.photo_url} alt="visit" className="w-32 h-32 object-cover rounded-lg border border-slate-200" />
               ) : (
-                <div className="text-xs text-slate-400 italic">Photo required — click a picture from your phone camera.</div>
+                <div className="text-xs text-slate-400 italic">Photo required — click to open the camera.</div>
               )}
             </div>
 
@@ -377,23 +493,13 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
               {form.latitude != null && <div className="mt-2"><MapPreview lat={form.latitude} lon={form.longitude} /></div>}
             </div>
 
-            {/* School Name + Entry/Interest toggles */}
+            {/* School Name + Got Entry */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">School Name *</label>
               <Input value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} data-testid="visit-school-name" />
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Did you get entry?</label>
-                  <YesNoToggle value={form.got_entry} onChange={(v) => setForm({ ...form, got_entry: v })} testid="visit-got-entry" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Lead Interested?</label>
-                  <YesNoToggle value={form.lead_interested} onChange={(v) => setForm({ ...form, lead_interested: v })} testid="visit-interested" />
-                </div>
-              </div>
               <div className="mt-3">
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Who did you meet?</label>
-                <Input value={form.met_with} onChange={(e) => setForm({ ...form, met_with: e.target.value })} placeholder="e.g. Mrs. Sharma (Principal)" data-testid="visit-met-with" />
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Did you get entry?</label>
+                <YesNoToggle value={form.got_entry} onChange={(v) => setForm({ ...form, got_entry: v })} testid="visit-got-entry" />
               </div>
             </div>
 
@@ -421,32 +527,12 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
                   <option value="">Select</option>{FEES_BUCKETS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Has Robotics</label>
-                <YesNoToggle value={form.has_robotics} onChange={(v) => setForm({ ...form, has_robotics: v, robotics_provider: v === 'yes' ? form.robotics_provider : '' })} testid="visit-robotics" />
-              </div>
-              {form.has_robotics === 'yes' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Provided by</label>
-                  <Input placeholder="e.g. WhiteHat Jr" value={form.robotics_provider} onChange={(e) => setForm({ ...form, robotics_provider: e.target.value })} data-testid="visit-robotics-provider" />
-                </div>
-              )}
             </div>
 
-            {/* Products interested */}
+            {/* Who did you meet + Contacts (moved above Has Robotics) */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2">Product Interested In (select all that apply)</label>
-              <div className="flex flex-wrap gap-2" data-testid="visit-products">
-                {OLL_PRODUCTS.map(p => {
-                  const active = form.products_interested.includes(p.id);
-                  return (
-                    <button key={p.id} type="button" onClick={() => toggleProduct(p.id)}
-                      className={`px-2.5 py-1 text-xs rounded-full border-2 transition ${active ? 'bg-indigo-50 text-indigo-700 border-indigo-500 font-semibold' : 'border-slate-200 text-slate-500'}`}
-                      data-testid={`visit-product-${p.id}`}
-                    >{p.label}</button>
-                  );
-                })}
-              </div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Who did you meet?</label>
+              <Input value={form.met_with} onChange={(e) => setForm({ ...form, met_with: e.target.value })} placeholder="e.g. Mrs. Sharma (Principal)" data-testid="visit-met-with" />
             </div>
 
             {/* Contacts */}
@@ -472,6 +558,44 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
               ))}
             </div>
 
+            {/* Has Robotics (moved below contacts) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Has Robotics</label>
+                <YesNoToggle value={form.has_robotics} onChange={(v) => setForm({ ...form, has_robotics: v, robotics_provider: v === 'yes' ? form.robotics_provider : '' })} testid="visit-robotics" />
+              </div>
+              {form.has_robotics === 'yes' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Provided by</label>
+                  <Input placeholder="e.g. WhiteHat Jr" value={form.robotics_provider} onChange={(e) => setForm({ ...form, robotics_provider: e.target.value })} data-testid="visit-robotics-provider" />
+                </div>
+              )}
+            </div>
+
+            {/* Lead Interested — moved below Has Robotics */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Lead Interested?</label>
+              <YesNoToggle value={form.lead_interested} onChange={(v) => setForm({ ...form, lead_interested: v, products_interested: v === 'yes' ? form.products_interested : [] })} testid="visit-interested" />
+            </div>
+
+            {/* Products interested — only shown when lead_interested === 'yes' */}
+            {form.lead_interested === 'yes' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-2">Product Interested In (select all that apply)</label>
+                <div className="flex flex-wrap gap-2" data-testid="visit-products">
+                  {OLL_PRODUCTS.map(p => {
+                    const active = form.products_interested.includes(p.id);
+                    return (
+                      <button key={p.id} type="button" onClick={() => toggleProduct(p.id)}
+                        className={`px-2.5 py-1 text-xs rounded-full border-2 transition ${active ? 'bg-indigo-50 text-indigo-700 border-indigo-500 font-semibold' : 'border-slate-200 text-slate-500'}`}
+                        data-testid={`visit-product-${p.id}`}
+                      >{p.label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Notes</label>
@@ -489,6 +613,7 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
           </div>
         )}
       </DialogContent>
+      <CameraCaptureModal open={cameraOpen} onClose={() => setCameraOpen(false)} onCaptured={onCameraCaptured} />
     </Dialog>
   );
 };
@@ -725,18 +850,19 @@ export default function AdminFieldReports() {
 
   useEffect(() => { load(); }, [load]);
 
-  const doCheckIn = async () => {
+  const [checkinCameraOpen, setCheckinCameraOpen] = useState(false);
+  const [checkinBusy, setCheckinBusy] = useState(false);
+
+  const startCheckIn = () => {
+    if (busy || checkinBusy) return;
+    setCheckinCameraOpen(true);
+  };
+
+  const doCheckInWithPhoto = async (file) => {
     setBusy(true);
     let lat = null, lon = null, photo_url = null;
     try {
       try { const c = await getCoords(); lat = c.lat; lon = c.lon; } catch {/* optional */}
-      // Camera capture — mandatory
-      const file = await captureFromCamera();
-      if (!file) {
-        toast.error('Photo required — please click a photo to check in');
-        setBusy(false);
-        return;
-      }
       try { photo_url = await uploadImage(file, getAuthHeaders); }
       catch { toast.error('Photo upload failed'); setBusy(false); return; }
       const res = await axios.post(`${API}/field-reports/checkin`,
@@ -820,7 +946,7 @@ export default function AdminFieldReports() {
                 <MapPin className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                 <div className="font-semibold text-slate-800">Ready to hit the field?</div>
                 <div className="text-sm text-slate-500 mt-1 mb-4">Check in with a photo to start logging school visits.</div>
-                <Button onClick={doCheckIn} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700" data-testid="checkin-btn">
+                <Button onClick={startCheckIn} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700" data-testid="checkin-btn">
                   {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Camera className="w-4 h-4 mr-1" />}
                   Check In (click photo)
                 </Button>
@@ -933,6 +1059,11 @@ export default function AdminFieldReports() {
         reportId={meetingCtx?.reportId}
         visitId={meetingCtx?.visitId}
         getAuthHeaders={getAuthHeaders}
+      />
+      <CameraCaptureModal
+        open={checkinCameraOpen}
+        onClose={() => setCheckinCameraOpen(false)}
+        onCaptured={(f) => f && doCheckInWithPhoto(f)}
       />
     </AdminLayout>
   );
