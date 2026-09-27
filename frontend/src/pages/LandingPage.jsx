@@ -602,9 +602,7 @@ const LandingPage = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {[
                   { label: 'Pre-School',                           route: '/school/robotics/pre-school',   sub: 'Play + explore · Ages 3–5' },
-                  { label: 'Beginner',                             route: '/school/robotics/beginner',     sub: 'Grade 1–4 · First year of Robotics', highlight: true },
-                  { label: 'Intermediate',                         route: '/school/robotics/intermediate', sub: 'Grade 5–7 · Sensors + coding' },
-                  { label: 'Advanced',                             route: '/school/robotics/advanced',     sub: 'Grade 8–10 · IoT + automation' },
+                  { label: 'Robotics & AI Program for Schools',    route: '/school/robotics-ai-lab-for-schools-turnkey-solution/', sub: 'Grade 1–8 · Turnkey Robotics & AI Lab', highlight: true },
                   { label: 'ICSE — Group 3 Subject (9th & 10th)',  route: '/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th',      sub: 'Board-mapped elective' },
                 ].map(t => (
                   <button key={t.label}

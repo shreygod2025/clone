@@ -41,10 +41,10 @@ const ALL_PROGRAMS = {
     color: '#DC2626',
   },
   'robotics-beginner': {
-    href: '/school/robotics/beginner',
-    title: 'Beginner Robotics Program',
-    tag: 'CBSE · ICSE · State · Grades 1-4',
-    body: 'End-to-end lab setup, curriculum, teacher training and STEM.org-accredited outcomes.',
+    href: '/school/robotics-ai-lab-for-schools-turnkey-solution/',
+    title: 'AI & Robotics Lab for Schools',
+    tag: 'CBSE · ICSE · State · Grades 1-8',
+    body: 'Turnkey Robotics & AI Lab — curriculum, kits, teacher training, STEM.org accreditation. Aligned with NEP 2020 & NCF 2023.',
     color: '#10B981',
   },
 };

@@ -1309,3 +1309,32 @@ Bucket logic (`_buckets_for_scope`):
 - Migration script: `/app/backend/migrate_invoice_urls.py` — set empty-string `invoice_url` → `null` in `school_inquiries.payments`
 - Cleared test invoice URLs from Walle, Followup Test 2, Shreshth Daga School
 - Fixed GST formula: `exclusive_18` now uses `amount * 18 / 100` instead of `amount * 18 / 118`
+
+## 2026-09-27 — Robotics & AI Lab Landing Page Overhaul + SEO URL
+**Status: COMPLETE**
+
+### New canonical URL
+- New canonical: `/school/robotics-ai-lab-for-schools-turnkey-solution/`
+- Old routes 301-redirected to new: `/school/robotics/beginner`, `/school/robotics/intermediate`, `/school/robotics/advanced`, `/school/robotics/icse`, `/school/cs/icse`
+- Updated CANONICAL, TITLE, DESC, KEYWORDS, all schema.org JSON-LD, breadcrumb crumb, and internal cross-links to Grades 1–8
+
+### Homepage (`LandingPage.jsx`)
+- Consolidated Beginner/Intermediate/Advanced into a single card: **"Robotics & AI Program for Schools · Grade 1–8 · Turnkey Robotics & AI Lab"** (highlighted)
+
+### Landing page (`RoboticsBeginnerLanding.jsx`)
+- **Hero**: New H1 "AI and Robotics Lab for Schools Grade 1 to 8" + SEO intro paragraph ("Introducing OLL's Robotics and AI Labs…")
+- **Hero right column**: Removed student WINNERS slider (no student names/images). Replaced with autoplay **"Real Schools, Real Results"** school-video carousel + arrow controls + dots
+- **Books section**: Renamed to "A Robotics & AI Book for Grade 1 to Grade 8". Grid changed from 8×1 → 4×2 (all 8 grades)
+- **What the school gets**: Heading updated to "Everything you need to start an AI and Robotics Program for School"
+- **4 Pillars section**: New title "4 pillars in every Robotics project"; renamed to WitBrix Construction / WitPro Coding Block / AI Vision Blox / Electronics with image placeholders + NEP 2020/NCF 2023 intro paragraph
+- **Projects section**: Renamed to "Robotics & AI Projects for Students grade 1 to 10" — replaced 6-item grid with single showreel video placeholder
+- **Individual Take-Home Kits**: Added Grade 7 (AI Matrix) and Grade 8 (Human + Machine); grid changed 6×1 → 4×2; every kit card now has an **Unboxing Video** button (links to YouTube)
+- **Master Kit section**: Renamed to "Setup a Full Robotics Lab in your school."
+- **NEW section — Year Long Teacher Empowerment Program**: 4-step timeline (Month 1: 6 days · Initial Training; Month 3: 3 days · Competition Prep; Month 6: 2 days · Exhibition Prep; Month 8: 2 days · Advanced Refresher) + 4 support cards (Weekly Workshops, 24×7 Doubt Solving, Video Call Support, STEM.org Certification)
+- **Real Schools, Real Results**: Replaced "Schools we work with" marquee with a 3-up autoplay carousel + arrow controls + dot navigation. Partner school logos still scroll below
+- Removed unused `WINNERS` constant
+
+### Testing
+- Verified via screenshot tool: hero, books, kits, teacher empowerment, real schools, pillars, projects video all render correctly
+- Verified: old `/school/robotics/beginner` 301s to new URL
+- Verified: homepage card text = "Robotics & AI Program for Schools" with correct sub-copy

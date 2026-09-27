@@ -373,16 +373,20 @@ function App() {
               {/* School Products — dedicated per-tier landing pages. Robotics Beginner is
                   live; the rest fall back to the same demo-booking flow with a query
                   param (tier=) until each gets its own dedicated page. */}
-              <Route path="/school/robotics/beginner" element={<RoboticsBeginnerLanding />} />
+              {/* NEW canonical SEO URL for the Robotics & AI Lab turnkey pitch */}
+              <Route path="/school/robotics-ai-lab-for-schools-turnkey-solution"  element={<RoboticsBeginnerLanding />} />
+              <Route path="/school/robotics-ai-lab-for-schools-turnkey-solution/" element={<RoboticsBeginnerLanding />} />
+              {/* Old URLs → 301 to the new canonical */}
+              <Route path="/school/robotics/beginner"     element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
+              <Route path="/school/robotics/intermediate" element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
+              <Route path="/school/robotics/advanced"     element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
+              <Route path="/school/robotics/icse"         element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
+              <Route path="/school/cs/icse"               element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
               <Route path="/school/robotics/icse-9-10" element={<RoboticsICSE910Landing />} />
               <Route path="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" element={<RoboticsICSE910Landing />} />
               <Route path="/school/robotics/icse-9" element={<Navigate to="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" replace />} />
               <Route path="/school/robotics/icse-10" element={<Navigate to="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" replace />} />
               <Route path="/school/robotics/pre-school"    element={<StemPreschoolLanding />} />
-              <Route path="/school/robotics/intermediate" element={<RoboticsBeginnerLanding />} />
-              <Route path="/school/robotics/advanced"     element={<RoboticsBeginnerLanding />} />
-              <Route path="/school/robotics/icse"         element={<RoboticsBeginnerLanding />} />
-              <Route path="/school/cs/icse"               element={<RoboticsBeginnerLanding />} />
               <Route path="/school/cs/cbse"               element={<CBSECTAILanding />} />
               <Route path="/school/cs/cbse-ct-ai"         element={<CBSECTAILanding />} />
               <Route path="/school/cs/future-skills-icse" element={<FutureSkillsLanding board="ICSE" />} />

@@ -69,14 +69,6 @@ const MEDIA_LOGOS = [
 
 const SKILLS_LIST = 'Robotics • Coding • AI • 3D Design • STEM • Space • Drones';
 
-const WINNERS = [
-  { name: 'Aarav Mehta',       grade: 7, ach: 'National Robotics Challenge 2026', school: 'XYZ International School',   initials: 'XYZ', color: '#DC2626' },
-  { name: 'Diya Kapoor',       grade: 6, ach: 'IIT Bombay Techfest — 1st Place',   school: 'D. G. Khetan International', initials: 'DGK', color: '#1E3A8A' },
-  { name: 'Vihaan Sharma',     grade: 8, ach: 'STEM Innovator Award 2026',        school: 'Ryan International',         initials: 'RIS', color: '#60A5FA' },
-  { name: 'Ananya Iyer',       grade: 5, ach: 'Junior Maker Championship',        school: 'Bombay Scottish',            initials: 'BSS', color: '#DC2626' },
-  { name: 'Kabir Rao',         grade: 7, ach: 'Robo-Race Nationals — Finalist',   school: 'Podar International',        initials: 'PDR', color: '#1E3A8A' },
-];
-
 const SKILLS = [
   { l: 'Drones',           src: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=800&fit=crop' },
   { l: 'Robotics',         src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif' },
@@ -116,19 +108,21 @@ const PARENT_QUOTES = [
 ];
 
 const PARTS_BREAKDOWN = [
-  { i: Cog,   t: 'Construction', s: 'Chassis, frames, wheels, mounts',              color: '#DC2626' },
-  { i: Cpu,   t: 'Electronics',  s: 'Micro-controllers, sensors, motors',           color: '#1E3A8A' },
-  { i: Code2, t: 'Coding',       s: 'Block-based to Python — grade by grade',       color: '#0EA5E9' },
-  { i: Brain, t: 'AI',           s: 'Vision, voice, ML play from Grade 6 upward',   color: '#7C3AED' },
+  { i: Cog,   t: 'WitBrix Construction', s: 'Chassis, frames, wheels, mounts — snap-fit building system',              color: '#DC2626', img: '/kits/pillar-witbrix.png' },
+  { i: Code2, t: 'WitPro Coding Block',  s: 'Block-based to Python — grade by grade programming platform',              color: '#0EA5E9', img: '/kits/pillar-witpro.png' },
+  { i: Brain, t: 'AI Vision Blox',       s: 'Vision, voice, ML — real AI projects from Grade 4 upward',                 color: '#7C3AED', img: '/kits/pillar-ai-vision.png' },
+  { i: Cpu,   t: 'Electronics',          s: 'Micro-controllers, sensors, motors — plus open-source Arduino',            color: '#1E3A8A', img: '/kits/pillar-electronics.png' },
 ];
 
 const TAKE_HOME_KITS = [
-  { grade: 'Grade 1', theme: 'Be a Creator',    src: '/kits/grade-1.png', bg: '#FBBF24' },
-  { grade: 'Grade 2', theme: "Let's Explore",   src: '/kits/grade-2.png', bg: '#F97316' },
-  { grade: 'Grade 3', theme: 'Discover',        src: '/kits/grade-3.png', bg: '#84CC16' },
-  { grade: 'Grade 4', theme: 'Innovate',        src: '/kits/grade-4.png', bg: '#22C55E' },
-  { grade: 'Grade 5', theme: 'Prototype',       src: '/kits/grade-5.png', bg: '#1E3A8A' },
-  { grade: 'Grade 6', theme: 'Robot Academy',   src: '/kits/grade-6.png', bg: '#0F172A' },
+  { grade: 'Grade 1', theme: 'Be a Creator',    src: '/kits/grade-1.png', bg: '#FBBF24', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 2', theme: "Let's Explore",   src: '/kits/grade-2.png', bg: '#F97316', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 3', theme: 'Discover',        src: '/kits/grade-3.png', bg: '#84CC16', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 4', theme: 'Innovate',        src: '/kits/grade-4.png', bg: '#22C55E', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 5', theme: 'Prototype',       src: '/kits/grade-5.png', bg: '#1E3A8A', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 6', theme: 'Robot Academy',   src: '/kits/grade-6.png', bg: '#0F172A', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 7', theme: 'AI Matrix',       src: '/kits/grade-7.png', bg: '#7C3AED', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
+  { grade: 'Grade 8', theme: 'Human + Machine', src: '/kits/grade-8.png', bg: '#0891B2', unboxing: 'https://www.youtube.com/watch?v=xHhMLBzB_GU' },
 ];
 
 const LAB_KITS = [
@@ -167,6 +161,7 @@ const SCHOOL_VIDEOS = [
 export default function RoboticsBeginnerLanding() {
   const navigate = useNavigate();
   const [winIdx, setWinIdx] = useState(0);
+  const [schoolsIdx, setSchoolsIdx] = useState(0);
   const [parentIdx, setParentIdx] = useState(0);
   const [curtainProgress, setCurtainProgress] = useState(0);
   const [chartKey, setChartKey] = useState(0);
@@ -223,8 +218,9 @@ export default function RoboticsBeginnerLanding() {
   }, []);
 
   useEffect(() => {
-    const w = setInterval(() => setWinIdx((i) => (i + 1) % WINNERS.length), 5000);
+    const w = setInterval(() => setWinIdx((i) => (i + 1) % SCHOOL_VIDEOS.length), 6500);
     const p = setInterval(() => setParentIdx((i) => (i + 1) % PARENT_QUOTES.length), 4500);
+    const s = setInterval(() => setSchoolsIdx((i) => (i + 1) % SCHOOL_VIDEOS.length), 5500);
     // Curtains open progressively with scroll — tied to stage element position in viewport
     const onScroll = () => {
       const el = document.querySelector('[data-testid="rb-stage"]');
@@ -238,18 +234,19 @@ export default function RoboticsBeginnerLanding() {
     };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { clearInterval(w); clearInterval(p); window.removeEventListener('scroll', onScroll); };
+    return () => { clearInterval(w); clearInterval(p); clearInterval(s); window.removeEventListener('scroll', onScroll); };
   }, []);
 
-  const goWin = (i) => setWinIdx((i + WINNERS.length) % WINNERS.length);
-  const currentWinner = WINNERS[winIdx];
+  const goWin = (i) => setWinIdx((i + SCHOOL_VIDEOS.length) % SCHOOL_VIDEOS.length);
+  const goSchools = (i) => setSchoolsIdx((i + SCHOOL_VIDEOS.length) % SCHOOL_VIDEOS.length);
+  const currentVideo = SCHOOL_VIDEOS[winIdx];
 
   // ── SEO: imperative <head> injection (react-helmet-async unreliable) ──
   useEffect(() => {
-    const CANONICAL = 'https://oll.co/school/robotics/beginner';
-    const TITLE = 'Beginner Robotics for Schools · Grades 1-4 | OLL';
-    const DESC = "End-to-end Beginner Robotics program for CBSE, ICSE & State Board schools (Grades 1-4): curriculum, lab kits, teacher training & STEM.org-accredited outcomes.";
-    const KEYWORDS = "robotics for schools, school robotics program, robotics curriculum India, STEM lab setup, ICSE robotics, CBSE robotics, robotics grade 1, robotics grade 2, robotics grade 3, robotics grade 4, STEM.org accredited, school robotics lab, OLL robotics beginner, primary school robotics, K-12 robotics";
+    const CANONICAL = 'https://oll.co/school/robotics-ai-lab-for-schools-turnkey-solution/';
+    const TITLE = 'AI and Robotics Lab for Schools · Grades 1-8 | OLL Turnkey Solution';
+    const DESC = "OLL's turnkey Robotics & AI Lab for schools — end-to-end program for Grades 1-8 with curriculum, kits, teacher training and STEM.org accreditation. Aligned with NEP 2020 & NCF 2023.";
+    const KEYWORDS = "robotics and ai lab for schools, robotics lab setup, ai lab for schools, turnkey robotics program, robotics for schools, school robotics program, robotics curriculum India, STEM lab setup, ICSE robotics, CBSE robotics, NEP 2020 robotics, NCF 2023, robotics grade 1 to 8, STEM.org accredited, school robotics lab, K-12 robotics, ai education for kids";
     const OG_IMG = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
     document.title = TITLE;
     const upsertMeta = (key, value, attr = 'name') => {
@@ -263,8 +260,8 @@ export default function RoboticsBeginnerLanding() {
     upsertMeta('theme-color', '#0A1F44');
     upsertMeta('og:type', 'product', 'property');
     upsertMeta('og:url', CANONICAL, 'property');
-    upsertMeta('og:title', 'Robotics for Schools (Grade 1–4) | OLL — Future-Skills Powerhouse', 'property');
-    upsertMeta('og:description', 'End-to-end Beginner Robotics program for schools: curriculum, lab kits, teacher training, competitions and STEM.org-accredited outcomes. Featured on Shark Tank India & KBC.', 'property');
+    upsertMeta('og:title', 'AI & Robotics Lab for Schools (Grade 1–8) | OLL Turnkey Solution', 'property');
+    upsertMeta('og:description', "OLL's turnkey Robotics & AI Lab for schools — curriculum, kits, teacher training, competitions and STEM.org-accredited outcomes. Grades 1–8. Featured on Shark Tank India & KBC.", 'property');
     upsertMeta('og:image', OG_IMG, 'property');
     upsertMeta('og:image:width', '1200', 'property');
     upsertMeta('og:image:height', '630', 'property');
@@ -272,8 +269,8 @@ export default function RoboticsBeginnerLanding() {
     upsertMeta('og:locale', 'en_IN', 'property');
     upsertMeta('twitter:card', 'summary_large_image');
     upsertMeta('twitter:url', CANONICAL);
-    upsertMeta('twitter:title', 'Robotics for Schools (Grade 1–4) | OLL');
-    upsertMeta('twitter:description', 'Turn your school into a future-skills powerhouse. Full Beginner Robotics curriculum, kits, training & STEM.org-accredited outcomes.');
+    upsertMeta('twitter:title', 'AI & Robotics Lab for Schools (Grade 1–8) | OLL');
+    upsertMeta('twitter:description', 'Turnkey Robotics & AI Lab for Grades 1–8. Curriculum, kits, teacher training & STEM.org-accredited outcomes.');
     upsertMeta('twitter:image', OG_IMG);
     let canon = document.head.querySelector('link[rel="canonical"]');
     if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
@@ -281,15 +278,15 @@ export default function RoboticsBeginnerLanding() {
     const schemas = [
       {
         "@context": "https://schema.org", "@type": "Course",
-        "name": "Beginner Robotics Program for Schools (Grade 1–4)",
-        "description": "Turnkey Robotics program for schools — end-to-end Beginner curriculum for Grades 1–4 with lab kits, teacher training, competitions and STEM.org-accredited outcomes. Designed for CBSE, ICSE and State Board schools.",
+        "name": "AI & Robotics Lab Program for Schools (Grade 1–8)",
+        "description": "OLL's turnkey Robotics & AI Lab program for schools — end-to-end curriculum for Grades 1–8 with lab kits, teacher training, competitions and STEM.org-accredited outcomes. Aligned with NEP 2020 & NCF 2023. Designed for CBSE, ICSE and State Board schools.",
         "url": CANONICAL, "inLanguage": "en",
-        "educationalLevel": "Primary School (Grades 1–4)",
-        "coursePrerequisites": "None — first-year introduction to robotics.",
-        "teaches": ["Robotics", "Electronics", "Mechanics", "Block Coding", "STEM Reasoning", "Design Thinking"],
+        "educationalLevel": "Primary & Middle School (Grades 1–8)",
+        "coursePrerequisites": "None — a year-round Robotics & AI program.",
+        "teaches": ["Robotics", "Artificial Intelligence", "Electronics", "Mechanics", "Block Coding", "Python", "IoT", "STEM Reasoning", "Design Thinking"],
         "provider": { "@type": "EducationalOrganization", "name": "OLL", "url": "https://oll.co", "logo": "https://oll.co/favicon.png", "sameAs": ["https://www.instagram.com/ollindia/", "https://www.linkedin.com/company/ollindia/", "https://www.youtube.com/@ollindia"] },
         "hasCourseInstance": { "@type": "CourseInstance", "courseMode": "onsite", "location": { "@type": "Place", "name": "Partner Schools across India" }, "courseWorkload": "PT2H" },
-        "audience": { "@type": "EducationalAudience", "educationalRole": "student", "audienceType": "Children · Grades 1–4" },
+        "audience": { "@type": "EducationalAudience", "educationalRole": "student", "audienceType": "Children · Grades 1–8" },
         "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "500", "bestRating": "5", "worstRating": "1" },
         "offers": { "@type": "Offer", "category": "School Program", "priceCurrency": "INR", "availability": "https://schema.org/InStock", "url": "https://oll.co/school" }
       },
@@ -299,13 +296,13 @@ export default function RoboticsBeginnerLanding() {
           { "@type": "ListItem", "position": 1, "name": "OLL", "item": "https://oll.co/" },
           { "@type": "ListItem", "position": 2, "name": "For Schools", "item": "https://oll.co/school" },
           { "@type": "ListItem", "position": 3, "name": "Robotics", "item": "https://oll.co/school#robotics" },
-          { "@type": "ListItem", "position": 4, "name": "Beginner (Grade 1–4)", "item": CANONICAL }
+          { "@type": "ListItem", "position": 4, "name": "Robotics & AI Lab (Grade 1–8)", "item": CANONICAL }
         ]
       },
       {
         "@context": "https://schema.org", "@type": "FAQPage",
         "mainEntity": [
-          { "@type": "Question", "name": "Which grades is the OLL Beginner Robotics program for?", "acceptedAnswer": { "@type": "Answer", "text": "Grades 1 to 4. It is designed as a first-year introduction to Robotics with age-appropriate builds, block-coding basics and STEM problem-solving." } },
+          { "@type": "Question", "name": "Which grades is the OLL Robotics & AI Lab program for?", "acceptedAnswer": { "@type": "Answer", "text": "Grades 1 to 8. It is a year-round Robotics & AI program with age-appropriate builds, block-coding, Python and STEM problem-solving — aligned with NEP 2020 & NCF 2023." } },
           { "@type": "Question", "name": "Does the program come with a Robotics lab kit for the school?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Each school receives grade-wise hands-on kits (sensors, motors, structural parts, storage) along with printed workbooks and a teacher's manual." } },
           { "@type": "Question", "name": "Is the curriculum accredited?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The OLL Robotics curriculum is STEM.org accredited and is aligned with CBSE, ICSE and major State Board learning outcomes." } },
           { "@type": "Question", "name": "Do you provide teacher training?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. All partner schools get structured teacher-training sessions, ongoing pedagogy support and access to lesson plans through the OLL LMS." } },
@@ -315,8 +312,8 @@ export default function RoboticsBeginnerLanding() {
       },
       {
         "@context": "https://schema.org", "@type": "Product",
-        "name": "OLL Robotics — Beginner (Grade 1–4) School Program",
-        "description": "Turnkey Robotics program for CBSE / ICSE / State Board schools: 1-year Beginner curriculum, hands-on kits, teacher training and STEM.org-accredited outcomes.",
+        "name": "OLL Robotics & AI Lab — Grade 1–8 School Program",
+        "description": "Turnkey Robotics & AI Lab program for CBSE / ICSE / State Board schools: year-long curriculum for Grades 1–8, hands-on kits, teacher training and STEM.org-accredited outcomes. Aligned with NEP 2020 & NCF 2023.",
         "image": ["https://oll.co/favicon.png"],
         "brand": { "@type": "Brand", "name": "OLL" },
         "category": "K-12 School Programs · Robotics",
@@ -483,8 +480,8 @@ export default function RoboticsBeginnerLanding() {
         }
 
         /* 8-book row */
-        .rb-books-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.85rem; align-items: end; }
-        @media (max-width: 1180px) { .rb-books-grid { grid-template-columns: repeat(4, 1fr); } }
+        .rb-books-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem 0.85rem; align-items: end; }
+        @media (max-width: 900px) { .rb-books-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 640px)  { .rb-books-grid { grid-template-columns: repeat(2, 1fr); } }
 
         /* Curtains — scroll-linked (transform set via inline style) */
@@ -626,6 +623,12 @@ export default function RoboticsBeginnerLanding() {
         .rb-kit-ph:hover { border-color: #DC2626; color: #DC2626; transform: translateY(-4px); }
         .rb-kit-ph-label { font-family: 'Proxima Nova', sans-serif; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
         .rb-kit-ph-sub { font-size: 0.7rem; color: #94A3B8; font-style: italic; }
+        .rb-projects-video { aspect-ratio: 16 / 8.5; border-radius: 1.25rem; background: linear-gradient(135deg, #0A1F44 0%, #1E3A8A 100%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 30px 60px rgba(10,31,68,0.25); border: 1px solid rgba(255,255,255,0.1); }
+        .rb-projects-video::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 44px 44px; }
+        .rb-projects-video-inner { position: relative; z-index: 1; text-align: center; color: rgba(255,255,255,0.9); padding: 2rem; }
+        .rb-projects-video-inner > svg { color: #FCA5A5; filter: drop-shadow(0 8px 32px rgba(252,165,165,0.4)); margin-bottom: 1rem; }
+        .rb-projects-video-title { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: clamp(1.05rem, 2vw, 1.4rem); color: #fff; letter-spacing: 0.02em; }
+        .rb-projects-video-sub { font-family: 'Proxima Nova', sans-serif; font-size: 0.85rem; font-style: italic; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
 
         .rb-parts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
         .rb-part-card { position: relative; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 1.25rem; padding: 1.5rem 1.25rem; text-align: center; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); overflow: hidden; }
@@ -635,8 +638,12 @@ export default function RoboticsBeginnerLanding() {
         .rb-part-icon { width: 56px; height: 56px; border-radius: 16px; background: color-mix(in srgb, var(--pc) 12%, transparent); color: var(--pc); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.9rem; }
         .rb-part-t { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 1.05rem; color: #0A1F44; margin-bottom: 0.3rem; }
         .rb-part-s { font-size: 0.85rem; color: #64748B; line-height: 1.45; }
+        .rb-pillar-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+        .rb-pillar-img img { width: 100%; height: 100%; object-fit: contain; padding: 12px; display: block; }
+        .rb-pillar-fallback { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 6px; }
+        .rb-pillar-fallback::after { content: 'Image placeholder'; font-family: 'Proxima Nova', sans-serif; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; opacity: 0.7; }
 
-        .rb-takehome-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
+        .rb-takehome-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
         @media (max-width: 1080px) { .rb-takehome-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 620px)  { .rb-takehome-grid { grid-template-columns: repeat(2, 1fr); } }
         .rb-kit-card { position: relative; cursor: pointer; background: var(--kb); border-radius: 1.25rem; padding: 1rem; overflow: hidden; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); border: 2px solid transparent; }
@@ -650,6 +657,8 @@ export default function RoboticsBeginnerLanding() {
         .rb-kit-theme { font-size: 0.72rem; color: rgba(255,255,255,0.85); margin-top: 0.15rem; font-style: italic; }
         .rb-kit-hint { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.22); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; backdrop-filter: blur(6px); opacity: 0; transform: translateY(-4px); transition: all 0.3s ease; }
         .rb-kit-card:hover .rb-kit-hint { opacity: 1; transform: translateY(0); }
+        .rb-kit-unbox { position: relative; z-index: 3; margin-top: 0.75rem; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35); color: #fff; font-family: 'Proxima Nova', sans-serif; font-weight: 700; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 999px; text-decoration: none; backdrop-filter: blur(6px); transition: all 0.25s ease; }
+        .rb-kit-unbox:hover { background: #DC2626; border-color: #DC2626; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(220,38,38,0.35); }
 
         .rb-lab-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
         @media (max-width: 720px) { .rb-lab-grid { grid-template-columns: 1fr; } }
@@ -716,7 +725,7 @@ export default function RoboticsBeginnerLanding() {
             { label: 'Home', href: '/' },
             { label: 'For Schools', href: '/school' },
             { label: 'Robotics', href: '/school#robotics' },
-            { label: 'Beginner · Grades 1-4' },
+            { label: 'Robotics & AI Lab · Grades 1-8' },
           ]}
         />
       </div>
@@ -732,57 +741,78 @@ export default function RoboticsBeginnerLanding() {
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)', padding: '0.4rem 0.9rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700 }}>
               <Rocket size={14} style={{ color: '#FCA5A5' }} />
-              <span style={{ color: '#FCA5A5', letterSpacing: '0.12em', textTransform: 'uppercase' }}>For Schools · Robotics Beginner</span>
+              <span style={{ color: '#FCA5A5', letterSpacing: '0.12em', textTransform: 'uppercase' }}>For Schools · Robotics &amp; AI Lab · Grade 1–8</span>
             </div>
-            <h1 className="rb-hero-title" style={{ fontSize: 'clamp(2.6rem, 6vw, 4.8rem)', lineHeight: 0.96, marginTop: '1.1rem', marginBottom: '1.1rem' }}>
-              Turn your school into a<br />
-              <span className="rb-stroke" style={{ backgroundImage: 'linear-gradient(90deg, #FCA5A5, #60A5FA)' }}>future-skills powerhouse.</span>
+            <h1 className="rb-hero-title" style={{ fontSize: 'clamp(2.2rem, 5.2vw, 4.2rem)', lineHeight: 0.98, marginTop: '1.1rem', marginBottom: '1rem' }}>
+              AI and Robotics Lab<br />
+              for Schools<br />
+              <span className="rb-stroke" style={{ backgroundImage: 'linear-gradient(90deg, #FCA5A5, #60A5FA)' }}>Grade 1 to 8.</span>
             </h1>
-            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', 'Inter', sans-serif", fontWeight: 300, fontSize: '1.1rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.85)', maxWidth: 560, letterSpacing: '0.005em' }}>
-              Curriculum for {SKILLS_LIST}.
-            </p>
+            <div style={{ fontFamily: "'Proxima Nova', 'Montserrat', 'Inter', sans-serif" }}>
+              <p style={{ fontWeight: 700, fontSize: '1rem', color: '#FCA5A5', letterSpacing: '0.02em', marginBottom: '0.6rem' }}>
+                Introducing OLL&rsquo;s Robotics and AI Labs
+              </p>
+              <p style={{ fontWeight: 300, fontSize: '1.02rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', maxWidth: 620, letterSpacing: '0.005em' }}>
+                OLL is taking the lead in revolutionizing Robotics &amp; AI Labs worldwide, thanks to the expertise of our
+                <strong style={{ color: '#fff', fontWeight: 700 }}> IIT Bombay alumni curriculum developers</strong>. We are proud to state that we are teaching a massive
+                <strong style={{ color: '#fff', fontWeight: 700 }}> 1,55,000 students in ten countries</strong> to date. Our comprehensive product suite includes robotics kits,
+                AI and coding software, teacher training programs, books, and global competitions — supporting schools to introduce an
+                impressive curriculum that focuses on <strong style={{ color: '#fff', fontWeight: 700 }}>coding, AI, IoT, and robotics education</strong>.
+              </p>
+              <p style={{ fontWeight: 300, fontSize: '0.95rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.7)', maxWidth: 620, marginTop: '0.8rem' }}>
+                Curriculum for {SKILLS_LIST}.
+              </p>
+            </div>
           </div>
 
-          {/* Winners slider */}
-          <div style={{ position: 'relative' }} data-testid="rb-winners">
-            <div className="rb-hand" style={{ position: 'absolute', top: -30, left: 4, color: '#FCA5A5', fontSize: '1.4rem', transform: 'rotate(-4deg)', zIndex: 2 }}>real winners · real proof</div>
-            <div className="rb-glass rb-fade-in" key={winIdx} style={{ borderRadius: '1.5rem', padding: '1.2rem', position: 'relative' }}>
-              {/* Photo area — colored panel with initials (placeholder for real student photo) */}
-              <div style={{ position: 'relative', height: 320, borderRadius: '1rem', overflow: 'hidden', background: `linear-gradient(135deg, ${currentWinner.color}, #0A1F44 120%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {/* subtle grid */}
-                <div style={{ position: 'absolute', inset: 0, opacity: 0.14, backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
-                <div className="rb-h1" style={{ fontSize: '5.5rem', color: 'rgba(255,255,255,0.16)', letterSpacing: '0.02em' }}>{currentWinner.name.split(' ').map(n => n[0]).join('')}</div>
-                {/* achievement badge */}
-                <div style={{ position: 'absolute', top: 16, left: 16, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', padding: '0.35rem 0.8rem', borderRadius: 999, fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Trophy size={12} /> Winner
+          {/* Real Schools, Real Results — school video carousel */}
+          <div style={{ position: 'relative' }} data-testid="rb-school-video-carousel">
+            <div className="rb-hand" style={{ position: 'absolute', top: -30, left: 4, color: '#FCA5A5', fontSize: '1.4rem', transform: 'rotate(-4deg)', zIndex: 2 }}>Real Schools, Real Results</div>
+            <a
+              href={`https://youtu.be/${currentVideo.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rb-glass rb-fade-in"
+              key={winIdx}
+              data-testid={`rb-hero-video-${currentVideo.id}`}
+              style={{ display: 'block', borderRadius: '1.5rem', padding: '0.9rem', position: 'relative', textDecoration: 'none' }}
+            >
+              {/* Video thumbnail with play overlay */}
+              <div style={{ position: 'relative', aspectRatio: '16 / 10', borderRadius: '1rem', overflow: 'hidden', background: '#0A1F44' }}>
+                <img
+                  src={`https://i.ytimg.com/vi/${currentVideo.id}/hqdefault.jpg`}
+                  alt={currentVideo.name}
+                  loading="lazy"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,31,68,0.15) 0%, rgba(10,31,68,0.85) 100%)' }} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'rgba(220,38,38,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 20px 40px rgba(220,38,38,0.5)', border: '3px solid rgba(255,255,255,0.85)' }}>
+                    <Play size={30} fill="#fff" strokeWidth={0} style={{ marginLeft: 4 }} />
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: 16, left: 16, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', padding: '0.35rem 0.8rem', borderRadius: 999, fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backdropFilter: 'blur(6px)' }}>
+                  <School size={12} /> Partner School
                 </div>
               </div>
-              {/* Meta block */}
-              <div style={{ marginTop: '1rem', padding: '0.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.75rem' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="rb-h3" style={{ fontSize: '1.35rem', color: '#fff' }}>{currentWinner.name}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Grade {currentWinner.grade}</div>
-                  <div style={{ fontSize: '0.9rem', color: '#FCA5A5', marginTop: '0.35rem', fontWeight: 600 }}>{currentWinner.ach}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexShrink: 0 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff' }}>{currentWinner.initials}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'right', lineHeight: 1.2 }}>{currentWinner.school}</div>
-                </div>
+              <div style={{ marginTop: '0.9rem', padding: '0.25rem 0.5rem' }}>
+                <div className="rb-h3" style={{ fontSize: '1.15rem', color: '#fff', fontWeight: 600, lineHeight: 1.25 }}>{currentVideo.name}</div>
+                <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.65)', marginTop: 4, fontStyle: 'italic' }}>Watch what our students &amp; teachers built.</div>
               </div>
-            </div>
+            </a>
             {/* Controls */}
             <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                {WINNERS.map((_, i) => (
-                  <button key={i} onClick={() => goWin(i)} data-testid={`rb-winner-dot-${i}`} aria-label={`Winner ${i + 1}`}
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                {SCHOOL_VIDEOS.map((_, i) => (
+                  <button key={i} onClick={() => goWin(i)} data-testid={`rb-hero-video-dot-${i}`} aria-label={`School ${i + 1}`}
                     style={{ width: i === winIdx ? 22 : 8, height: 8, borderRadius: 999, border: 'none', cursor: 'pointer', background: i === winIdx ? '#FCA5A5' : 'rgba(255,255,255,0.3)', transition: 'width .3s' }} />
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <button onClick={() => goWin(winIdx - 1)} data-testid="rb-winner-prev" aria-label="Previous winner" style={{ width: 36, height: 36, borderRadius: 999, border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => goWin(winIdx - 1)} data-testid="rb-hero-video-prev" aria-label="Previous school video" style={{ width: 36, height: 36, borderRadius: 999, border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <ChevronLeft size={18} />
                 </button>
-                <button onClick={() => goWin(winIdx + 1)} data-testid="rb-winner-next" aria-label="Next winner" style={{ width: 36, height: 36, borderRadius: 999, border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => goWin(winIdx + 1)} data-testid="rb-hero-video-next" aria-label="Next school video" style={{ width: 36, height: 36, borderRadius: 999, border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <ChevronRight size={18} />
                 </button>
               </div>
@@ -1036,8 +1066,8 @@ export default function RoboticsBeginnerLanding() {
         <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.5rem' }}>what the school actually gets</div>
-            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
-              Everything you need <span className="rb-stroke">to start.</span>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+              Everything you need to start an <span className="rb-stroke">AI and Robotics Program</span> for School.
             </h2>
           </div>
 
@@ -1207,8 +1237,8 @@ export default function RoboticsBeginnerLanding() {
         <div style={{ position: 'relative', maxWidth: 1320, margin: '0 auto', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <div className="rb-hand" style={{ color: '#DC2626', fontSize: '2rem' }}>interactive books</div>
-            <h2 className="rb-h2" style={{ fontSize: 'clamp(2.6rem, 5.4vw, 4rem)', lineHeight: 1.02, color: '#0A1F44' }}>
-              A book for <span className="rb-stroke">every grade.</span>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2.2rem, 4.6vw, 3.4rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+              A Robotics &amp; AI Book for <span className="rb-stroke">Grade 1 to Grade 8.</span>
             </h2>
             <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1.1rem', maxWidth: 720, margin: '1rem auto 0', color: '#475569', lineHeight: 1.6 }}>
               Beautifully illustrated, story-driven student books — mapped to every lesson and every kit component.
@@ -1268,32 +1298,49 @@ export default function RoboticsBeginnerLanding() {
             </p>
           </div>
 
-          {/* ── Projects that students can make (placeholder for future media) ── */}
+          {/* ── Robotics & AI Projects for Students (Grade 1–10) — Single video ── */}
           <div style={{ marginBottom: '3.5rem' }}>
             <div className="rb-kits-sub">01 · Projects</div>
-            <div className="rb-kits-title">Projects your students will actually build.</div>
-            <div className="rb-kit-placeholder-grid" data-testid="rb-kits-projects">
-              {['Line Follower Bot', 'Obstacle Avoider', 'Smart Home Model', 'IoT Weather Station', 'Robotic Arm', 'AI Vision Bot'].map((p) => (
-                <div key={p} className="rb-kit-ph">
-                  <PlayCircle size={30} strokeWidth={1.6} />
-                  <div className="rb-kit-ph-label">{p}</div>
-                  <div className="rb-kit-ph-sub">Photo & video coming soon</div>
-                </div>
-              ))}
+            <div className="rb-kits-title">Robotics &amp; AI Projects for Students grade 1 to 10.</div>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 820, margin: '0.75rem 0 1.5rem', color: '#475569', lineHeight: 1.6 }}>
+              A single showreel of grade-wise projects — from first robots in Grade 1 to full IoT &amp; AI builds by Grade 10.
+            </p>
+            <div className="rb-projects-video" data-testid="rb-projects-video">
+              <div className="rb-projects-video-inner">
+                <PlayCircle size={72} strokeWidth={1.2} />
+                <div className="rb-projects-video-title">Grade-wise Robotics &amp; AI Projects · Full Showreel</div>
+                <div className="rb-projects-video-sub">Video will be embedded here — reach out to your OLL coordinator for the latest reel.</div>
+              </div>
             </div>
           </div>
 
-          {/* ── Parts breakdown ── */}
+          {/* ── Parts breakdown — 4 Pillars in every Robotics Project ── */}
           <div style={{ marginBottom: '3.5rem' }}>
-            <div className="rb-kits-sub">02 · Parts Breakdown</div>
-            <div className="rb-kits-title">4 pillars in every kit — matched to the curriculum.</div>
+            <div className="rb-kits-sub">02 · The 4 Pillars</div>
+            <div className="rb-kits-title">4 pillars in every Robotics project.</div>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 900, margin: '0.75rem 0 1.75rem', color: '#475569', lineHeight: 1.65 }} data-testid="rb-kits-parts-intro">
+              We offer robotics kits that are fully aligned with the rigorous Robotics and AI curriculum guidelines set forth in
+              <strong style={{ color: '#0A1F44', fontWeight: 700 }}> NEP 2020 and NCF 2023</strong>. Our Robotic kits are specifically designed for classroom learning,
+              providing students with a hands-on experience that brings theories and concepts to life. The kits are easily programmable, providing a seamless learning experience.
+              Additionally, all kits come with a comprehensive <strong style={{ color: '#0A1F44', fontWeight: 700 }}>12-month warranty on damage</strong>, giving schools peace of mind and the assurance that our kits are of the highest quality.
+              We also provide open-source hardware like <strong style={{ color: '#0A1F44', fontWeight: 700 }}>Arduino</strong>.
+            </p>
             <div className="rb-parts-grid" data-testid="rb-kits-parts">
               {PARTS_BREAKDOWN.map((p) => (
                 <div key={p.t} className="rb-part-card" style={{ '--pc': p.color }}>
-                  <div className="rb-part-icon"><p.i size={26} /></div>
-                  <div className="rb-part-t">{p.t}</div>
+                  <div className="rb-pillar-img" style={{ background: `${p.color}0F`, border: `1px solid ${p.color}33` }}>
+                    <img
+                      src={p.img}
+                      alt={p.t}
+                      loading="lazy"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
+                    />
+                    <div className="rb-pillar-fallback" style={{ color: p.color }}>
+                      <p.i size={40} strokeWidth={1.6} />
+                    </div>
+                  </div>
+                  <div className="rb-part-t" style={{ marginTop: '0.9rem' }}>{p.t}</div>
                   <div className="rb-part-s">{p.s}</div>
-                  <div style={{ marginTop: '0.9rem', fontSize: '0.7rem', color: '#94A3B8', fontStyle: 'italic', letterSpacing: '0.05em' }}>Component images coming soon</div>
                 </div>
               ))}
             </div>
@@ -1317,6 +1364,18 @@ export default function RoboticsBeginnerLanding() {
                   <div className="rb-kit-tag">{k.grade}</div>
                   <div className="rb-kit-name">Robotics Kit</div>
                   <div className="rb-kit-theme">{k.theme}</div>
+                  {k.unboxing && (
+                    <a
+                      href={k.unboxing}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="rb-kit-unbox"
+                      data-testid={`rb-kit-unbox-${k.grade.toLowerCase().replace(' ', '-')}`}
+                    >
+                      <PlayCircle size={14} /> Unboxing video
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
@@ -1325,7 +1384,7 @@ export default function RoboticsBeginnerLanding() {
           {/* ── Lab setup - Master Kit ── */}
           <div style={{ marginBottom: '3rem' }}>
             <div className="rb-kits-sub">04 · Lab Setup — Master Kit</div>
-            <div className="rb-kits-title">Set up a full Robotics Lab in a single carton.</div>
+            <div className="rb-kits-title">Setup a Full Robotics Lab in your school.</div>
             <div className="rb-lab-grid" data-testid="rb-kits-lab">
               {LAB_KITS.map((l) => (
                 <div
@@ -1376,6 +1435,79 @@ export default function RoboticsBeginnerLanding() {
         eyebrowText="live analytics & resources"
         testid="rb-lms"
       />
+
+      {/* ═══════════ 07.9 — YEAR-LONG TEACHER EMPOWERMENT PROGRAM ═══════════ */}
+      <section data-testid="rb-teacher-empowerment" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)', overflow: 'hidden' }}>
+        <div className="rb-orb rb-orb-red"  style={{ width: 380, height: 380, top: -140, left: -80, opacity: 0.14 }} />
+        <div className="rb-orb rb-orb-blue" style={{ width: 400, height: 400, bottom: -140, right: -80, opacity: 0.18 }} />
+
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.8rem' }}>empowering educators</div>
+            <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
+              Year Long <span className="rb-stroke">Teacher Empowerment</span> Program.
+            </h2>
+            <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1.02rem', maxWidth: 860, margin: '1rem auto 0', color: '#475569', lineHeight: 1.65 }}>
+              We believe in empowering our school&rsquo;s teachers to make this a long-term sustainable program — <strong style={{ color: '#0A1F44', fontWeight: 700 }}>Computers, Science and Maths teachers</strong> are preferred to teach this program. At the end, all teachers get a certification from <strong style={{ color: '#0A1F44', fontWeight: 700 }}>STEM.org</strong>. Empower them with the tools to implement advanced technologies in education. Our focus on continuous professional development ensures quality education, preparing students for a digitized future.
+            </p>
+          </div>
+
+          {/* Year-round training timeline */}
+          <div className="rb-tep-timeline" data-testid="rb-tep-timeline">
+            {[
+              { m: 'Month 1', d: '6 Days',  t: 'Initial Training Workshop',    c: '#DC2626', ic: GraduationCap },
+              { m: 'Month 3', d: '3 Days',  t: 'Competition Prep',             c: '#EA580C', ic: Trophy },
+              { m: 'Month 6', d: '2 Days',  t: 'Exhibition Prep',              c: '#0EA5E9', ic: Sparkles },
+              { m: 'Month 8', d: '2 Days',  t: 'Advanced Refresher',           c: '#1E3A8A', ic: Award },
+            ].map((s, i) => (
+              <div key={s.m} className="rb-tep-step" style={{ '--tc': s.c }} data-testid={`rb-tep-step-${i}`}>
+                <div className="rb-tep-icon"><s.ic size={22} /></div>
+                <div className="rb-tep-month">{s.m}</div>
+                <div className="rb-tep-days">{s.d}</div>
+                <div className="rb-tep-title">{s.t}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Ongoing support pills */}
+          <div className="rb-tep-support" data-testid="rb-tep-support">
+            {[
+              { i: BookOpen, t: 'Weekly Learning Workshops', s: 'Ongoing pedagogy refreshers, every week — with the OLL Academic Team.' },
+              { i: LifeBuoy, t: '24×7 Doubt Solving',        s: 'Dedicated WhatsApp group for real-time doubt solving with expert educators.' },
+              { i: Phone,    t: 'Video Call Expert Support', s: 'On-demand video calls with senior OLL educators — anytime, any grade.' },
+              { i: Award,    t: 'STEM.org Certification',    s: 'Every teacher earns a globally recognised STEM.org educator certificate.' },
+            ].map((c, i) => (
+              <div key={c.t} className="rb-tep-card" data-testid={`rb-tep-support-${i}`}>
+                <div className="rb-tep-card-icon"><c.i size={22} /></div>
+                <div className="rb-tep-card-title">{c.t}</div>
+                <div className="rb-tep-card-sub">{c.s}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <style>{`
+          .rb-tep-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; position: relative; margin-bottom: 3rem; }
+          .rb-tep-timeline::before { content: ''; position: absolute; top: 42px; left: 12%; right: 12%; height: 2px; background: linear-gradient(90deg, #DC2626, #EA580C, #0EA5E9, #1E3A8A); opacity: 0.35; z-index: 0; }
+          @media (max-width: 780px) { .rb-tep-timeline { grid-template-columns: repeat(2, 1fr); } .rb-tep-timeline::before { display: none; } }
+          @media (max-width: 460px) { .rb-tep-timeline { grid-template-columns: 1fr; } }
+          .rb-tep-step { position: relative; z-index: 1; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 1.15rem; padding: 1.4rem 1.25rem; text-align: center; box-shadow: 0 10px 30px rgba(15,30,80,0.06); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+          .rb-tep-step:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(15,30,80,0.12); }
+          .rb-tep-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--tc); color: #fff; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 10px 24px color-mix(in srgb, var(--tc) 35%, transparent); margin-bottom: 0.9rem; }
+          .rb-tep-month { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--tc); }
+          .rb-tep-days { font-family: 'Anton', 'Proxima Nova', sans-serif; font-weight: 400; font-size: 2rem; line-height: 1; color: #0A1F44; margin: 4px 0 6px; letter-spacing: 0.02em; }
+          .rb-tep-title { font-family: 'Proxima Nova', sans-serif; font-weight: 600; font-size: 0.92rem; color: #475569; line-height: 1.4; }
+
+          .rb-tep-support { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+          @media (max-width: 900px) { .rb-tep-support { grid-template-columns: repeat(2, 1fr); } }
+          @media (max-width: 520px) { .rb-tep-support { grid-template-columns: 1fr; } }
+          .rb-tep-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 1.15rem; padding: 1.4rem 1.25rem; box-shadow: 0 6px 18px rgba(15,30,80,0.05); transition: all 0.3s ease; }
+          .rb-tep-card:hover { border-color: #DC2626; transform: translateY(-4px); box-shadow: 0 16px 32px rgba(220,38,38,0.12); }
+          .rb-tep-card-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(220,38,38,0.10); color: #DC2626; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+          .rb-tep-card-title { font-family: 'Proxima Nova', sans-serif; font-weight: 800; font-size: 1rem; color: #0A1F44; }
+          .rb-tep-card-sub { font-family: 'Proxima Nova', sans-serif; font-weight: 400; font-size: 0.86rem; color: #64748B; margin-top: 0.35rem; line-height: 1.5; }
+        `}</style>
+      </section>
 
       {/* ═══════════ 08 — ABOUT OLL (Shark Tank / KBC + Trust Stats) ═══════════ */}
       <section data-testid="rb-about-oll" style={{ position: 'relative', padding: '5rem 1.25rem', background: 'linear-gradient(180deg, #0A1F44 0%, #10193A 100%)', color: '#fff', overflow: 'hidden' }}>
@@ -1505,32 +1637,79 @@ export default function RoboticsBeginnerLanding() {
         </div>
       </section>
 
-      {/* ═══════════ 08B — SCHOOLS WE WORK WITH ═══════════ */}
-      <section data-testid="rb-schools-with" style={{ position: 'relative', padding: '5rem 1.25rem 3rem', background: '#F8FAFC', overflow: 'hidden' }}>
+      {/* ═══════════ 08B — REAL SCHOOLS, REAL RESULTS ═══════════ */}
+      <section data-testid="rb-real-schools" style={{ position: 'relative', padding: '5rem 1.25rem 3rem', background: '#F8FAFC', overflow: 'hidden' }}>
         <div style={{ position: 'relative', maxWidth: 1240, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <div className="rb-hand" style={{ color: '#DC2626', fontSize: '1.6rem' }}>proof, not promises</div>
             <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#0A1F44' }}>
-              Schools we <span className="rb-stroke">work with.</span>
+              Real Schools, <span className="rb-stroke">Real Results.</span>
             </h2>
             <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 640, margin: '0.9rem auto 0', color: '#475569', lineHeight: 1.6 }}>
               Real classrooms. Real projects. Real principals telling the story in their own words.
             </p>
           </div>
 
-          {/* Auto-scrolling YouTube video marquee */}
-          <div className="rb-skills-wrap" data-testid="rb-videos-scroll" style={{ padding: '10px 0' }}>
-            <div className="rb-skills-track" style={{ animationDuration: '60s', alignItems: 'stretch' }}>
-              {[...SCHOOL_VIDEOS, ...SCHOOL_VIDEOS].map((v, i) => (
-                <a key={`${v.id}-${i}`} href={`https://youtu.be/${v.id}`} target="_blank" rel="noreferrer" className="rb-vid-card" style={{ marginTop: 0 }} data-testid={i < SCHOOL_VIDEOS.length ? `rb-video-${v.id}` : undefined}>
-                  <div className="rb-vid-thumb">
-                    <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
-                    <div className="rb-vid-play"><PlayCircle size={32} fill="rgba(255,255,255,0.15)" /></div>
-                  </div>
-                  <div style={{ padding: '0.9rem 1.1rem', color: '#fff', fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.2 }}>{v.name}</div>
-                  </div>
-                </a>
+          {/* Autoplay YouTube video carousel with arrow navigation */}
+          <div className="rb-rs-carousel" data-testid="rb-real-schools-carousel">
+            <div className="rb-rs-viewport">
+              <div
+                className="rb-rs-track"
+                style={{ transform: `translateX(calc(-${schoolsIdx} * (100% / 3) - ${schoolsIdx * 1}rem))` }}
+              >
+                {SCHOOL_VIDEOS.map((v, i) => (
+                  <a
+                    key={`rs-${v.id}`}
+                    href={`https://youtu.be/${v.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`rb-rs-card ${i === schoolsIdx ? 'is-active' : ''}`}
+                    data-testid={`rb-real-schools-video-${v.id}`}
+                  >
+                    <div className="rb-rs-thumb">
+                      <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt={v.name} loading="lazy" />
+                      <div className="rb-rs-play"><Play size={26} fill="#fff" strokeWidth={0} /></div>
+                    </div>
+                    <div className="rb-rs-meta">
+                      <div className="rb-rs-name">{v.name}</div>
+                      <div className="rb-rs-hint">Watch the story →</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Arrow controls */}
+            <button
+              className="rb-rs-arrow rb-rs-arrow-prev"
+              onClick={() => goSchools(schoolsIdx - 1)}
+              aria-label="Previous school video"
+              data-testid="rb-real-schools-prev"
+              type="button"
+            >
+              <ChevronLeft size={26} />
+            </button>
+            <button
+              className="rb-rs-arrow rb-rs-arrow-next"
+              onClick={() => goSchools(schoolsIdx + 1)}
+              aria-label="Next school video"
+              data-testid="rb-real-schools-next"
+              type="button"
+            >
+              <ChevronRight size={26} />
+            </button>
+
+            {/* Dots */}
+            <div className="rb-rs-dots">
+              {SCHOOL_VIDEOS.map((_, i) => (
+                <button
+                  key={`rs-dot-${i}`}
+                  onClick={() => goSchools(i)}
+                  aria-label={`Go to school ${i + 1}`}
+                  data-testid={`rb-real-schools-dot-${i}`}
+                  className={`rb-rs-dot ${i === schoolsIdx ? 'is-active' : ''}`}
+                  type="button"
+                />
               ))}
             </div>
           </div>
@@ -1551,6 +1730,32 @@ export default function RoboticsBeginnerLanding() {
             </div>
           </div>
         </div>
+
+        <style>{`
+          .rb-rs-carousel { position: relative; padding: 0 clamp(1rem, 4vw, 3.5rem); }
+          .rb-rs-viewport { overflow: hidden; border-radius: 1.25rem; }
+          .rb-rs-track { display: flex; gap: 1rem; transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+          .rb-rs-card { flex: 0 0 calc((100% - 2rem) / 3); position: relative; border-radius: 1rem; overflow: hidden; text-decoration: none; background: #0A1F44; transition: transform 0.35s ease, box-shadow 0.35s ease; box-shadow: 0 12px 30px rgba(15,30,80,0.08); }
+          .rb-rs-card.is-active { transform: scale(1.02); box-shadow: 0 24px 50px rgba(220,38,38,0.22); }
+          .rb-rs-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 24px 50px rgba(220,38,38,0.28); }
+          .rb-rs-thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+          .rb-rs-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .rb-rs-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,31,68,0.05) 0%, rgba(10,31,68,0.8) 100%); }
+          .rb-rs-play { position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; z-index: 2; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #DC2626; color: #fff; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 14px 30px rgba(220,38,38,0.5); }
+          .rb-rs-play svg { margin-left: 4px; }
+          .rb-rs-meta { padding: 0.9rem 1.1rem 1rem; color: #fff; font-family: 'Proxima Nova', 'Montserrat', sans-serif; }
+          .rb-rs-name { font-size: 1rem; font-weight: 700; line-height: 1.25; }
+          .rb-rs-hint { font-size: 0.72rem; color: #FCA5A5; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 5px; }
+          .rb-rs-arrow { position: absolute; top: 40%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: 1px solid #E2E8F0; background: #FFFFFF; color: #0A1F44; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 12px 28px rgba(15,30,80,0.12); z-index: 3; transition: all 0.25s ease; }
+          .rb-rs-arrow:hover { background: #DC2626; color: #fff; border-color: #DC2626; transform: translateY(-50%) scale(1.06); box-shadow: 0 18px 32px rgba(220,38,38,0.35); }
+          .rb-rs-arrow-prev { left: 0; }
+          .rb-rs-arrow-next { right: 0; }
+          .rb-rs-dots { display: flex; justify-content: center; gap: 6px; margin-top: 1.5rem; flex-wrap: wrap; }
+          .rb-rs-dot { width: 8px; height: 8px; border-radius: 999px; border: none; background: rgba(15,30,80,0.2); cursor: pointer; transition: all 0.25s ease; padding: 0; }
+          .rb-rs-dot.is-active { width: 22px; background: #DC2626; }
+          @media (max-width: 900px) { .rb-rs-card { flex: 0 0 calc((100% - 1rem) / 2); } .rb-rs-track { transform: translateX(calc(-${schoolsIdx} * 50% - ${schoolsIdx} * 0.5rem)) !important; } }
+          @media (max-width: 600px) { .rb-rs-card { flex: 0 0 100%; } .rb-rs-track { transform: translateX(calc(-${schoolsIdx} * 100%)) !important; } .rb-rs-arrow { width: 40px; height: 40px; } }
+        `}</style>
       </section>
 
       {/* ═══════════ 09 — GROWTH PATH ═══════════ */}
