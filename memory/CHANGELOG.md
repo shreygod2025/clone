@@ -1,5 +1,53 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — Telecalling Follow-up + Meeting-Mode/Contacts + Field Reports Inline Actions + View/Edit Visit
+**Status: COMPLETE**
+
+### Telecalling — inline Follow-up column
+- New **Follow-up** column in the queue table.
+- One-click presets: **Today EOD (6 PM)**, **Tomorrow same time**, **+2 days**, **+3 days**, plus a **Custom** datetime picker + Clear.
+- Chip shows the set date; turns rose-red when overdue.
+- Backend field `followup_at` added to `ContactPatch`.
+
+### Telecalling — Interested Lead popup (v2)
+- **Primary Contact** section (Name / Phone / Email + **Role dropdown** synced with School CRM roles).
+- **Board dropdown** (CBSE / ICSE / IB / IGCSE / State Board / Other) — no more free-text typos.
+- **Products interested in** chips unchanged.
+- **More contacts** — add/edit multiple contacts inline with Role dropdown.
+- **Schedule Meeting** is now a collapsible action point with:
+  - Datetime picker (existing)
+  - **Mode toggle**: Online / Offline
+  - If Online → **Meeting Link** field
+  - If Offline → **Address** textarea
+- All fields propagate to the auto-created `school_inquiry` on Save (school_contacts, meeting_mode, meeting_link, meeting_address).
+
+### Field Reports — action points moved inline (pre-save)
+- Removed the post-save "Saved — what next?" screen.
+- New **Action points** section inside the Log-Visit form (before Save button):
+  - Follow-up date + note (auto-patches the linked inquiry if `Lead Interested = Yes`; otherwise skipped with a helpful warning).
+  - Create Proposal helper text (opens after CRM link, from the row's CRM chip).
+  - **Send Email** checkbox → template picker + recipient input → sent via Resend right after the visit saves.
+- Save button now closes the modal after running all action-point side-effects.
+
+### Field Reports — View & Edit visit
+- Every visit row (in **Today's visits** on My Field Day and in every day-group expansion under Reports) now has:
+  - **View (eye)** icon → opens `ViewVisitModal` with the photo + full details rendered read-only (uses the same `VisitRow` component).
+  - **Edit (pencil)** icon → reopens the same rich form pre-filled, with `editMode` flag; save PATCHes the visit.
+- Backend: new `PATCH /field-reports/{report_id}/school-visits/{visit_id}` endpoint. Preserves `id`, `at`, `meeting`, and existing `school_inquiry_id`. If `lead_interested` flipped from no → yes, still auto-promotes to CRM.
+
+### Files
+- Modified: `/app/backend/routes/telecalling.py` (new followup_at + meeting_mode/link/address + contacts + role on ContactPatch; inquiry-promotion payload upgraded)
+- Modified: `/app/backend/routes/field_reports.py` (new PATCH endpoint for visits; conditional inquiry seeding on edit)
+- Modified: `/app/frontend/src/pages/admin/AdminTelecalling.jsx` (FollowupCell popover; upgraded InterestedLeadModal with primary-contact role, board dropdown, more contacts, meeting-mode)
+- Modified: `/app/frontend/src/pages/admin/AdminFieldReports.jsx` (inline pre-save action strip, ViewVisitModal, editMode support, View/Edit icons on all visit rows)
+
+### Verification (end-to-end)
+- `PATCH /telecalling/contacts/{id}` with `{followup_at, meeting_mode, meeting_link, contacts:[{role}]}` → all fields persisted ✓
+- Screenshot: queue shows Follow-up column with chip on Anita, "Set" on Ravi; popover opens with 4 presets + Custom picker.
+- Screenshot: Interested Lead popup shows Primary Contact + Role + Board dropdown (CBSE) + More contacts + Schedule Meeting collapsible.
+- Screenshot: Field Reports day expansion shows View + Edit icons next to every visit row.
+
+
 ## 2026-09-27 — Telecalling Module + Field-Visit Conditional CRM Link
 **Status: COMPLETE**
 

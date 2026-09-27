@@ -80,11 +80,19 @@ async def _log_activity(contact_id: str, user: dict, event: str) -> None:
 
 
 # ── Models ────────────────────────────────────────────────────────
+class Contact(BaseModel):
+    name:  str = ""
+    phone: str = ""
+    email: str = ""
+    role:  str = ""
+
+
 class ContactPatch(BaseModel):
     name:               Optional[str] = None
     phone:              Optional[str] = None
     alt_phone:          Optional[str] = None
     email:              Optional[str] = None
+    role:               Optional[str] = None
     school_name:        Optional[str] = None
     city:               Optional[str] = None
     board:              Optional[str] = None
@@ -92,7 +100,12 @@ class ContactPatch(BaseModel):
     call_picked:        Optional[str] = None   # 'yes' | 'no'
     lead_interested:    Optional[str] = None   # 'yes' | 'no'
     products_interested: Optional[List[str]] = None
+    followup_at:        Optional[str] = None   # ISO datetime
     meeting_at:         Optional[str] = None   # ISO datetime
+    meeting_mode:       Optional[str] = None   # 'online' | 'offline'
+    meeting_link:       Optional[str] = None
+    meeting_address:    Optional[str] = None
+    contacts:           Optional[List[Contact]] = None  # additional contacts
     assigned_to:        Optional[str] = None
 
 
@@ -286,6 +299,10 @@ async def update_contact(contact_id: str, patch: ContactPatch, user: dict = Depe
     if not changes:
         return row
 
+    # Normalise contacts (Contact -> dict)
+    if isinstance(changes.get("contacts"), list):
+        changes["contacts"] = [c if isinstance(c, dict) else c.model_dump() for c in changes["contacts"]]
+
     # Activity logging on state transitions
     prev = row
     if changes.get("call_picked") in {"yes", "no"} and prev.get("call_picked") != changes["call_picked"]:
@@ -321,8 +338,15 @@ async def update_contact(contact_id: str, patch: ContactPatch, user: dict = Depe
                     "board":         changes.get("board") or row.get("board") or "",
                     "status":        "new",
                     "programs_interested": merged_products,
+                    "school_contacts": [
+                        {**c, "role": c.get("role") or ""}
+                        for c in (changes.get("contacts") or row.get("contacts") or []) if c.get("name")
+                    ],
                     "source":        "telecalling",
                     "telecalling_contact_id": contact_id,
+                    "meeting_mode":  changes.get("meeting_mode") or row.get("meeting_mode"),
+                    "meeting_link":  changes.get("meeting_link") or row.get("meeting_link"),
+                    "meeting_address": changes.get("meeting_address") or row.get("meeting_address"),
                     "assigned_to":   row.get("assigned_to"),
                     "assigned_to_name": row.get("assigned_to_name"),
                     "added_by":      _uid(user),

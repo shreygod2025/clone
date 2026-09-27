@@ -202,6 +202,66 @@ async def add_school_visit(report_id: str, payload: SchoolVisitIn, user: dict = 
     return visit
 
 
+@router.patch("/field-reports/{report_id}/school-visits/{visit_id}")
+async def edit_visit(report_id: str, visit_id: str, payload: SchoolVisitIn, user: dict = Depends(get_current_user)):
+    r = await db.field_reports.find_one({"id": report_id})
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
+        raise HTTPException(status_code=403, detail="Not your field day")
+
+    visits = r.get("school_visits") or []
+    idx = next((i for i, v in enumerate(visits) if v.get("id") == visit_id), -1)
+    if idx < 0:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    existing = visits[idx]
+    updated_fields = payload.model_dump()
+    # Preserve id, timestamps, and previously-linked inquiry id
+    updated_fields["id"]                = existing.get("id")
+    updated_fields["at"]                = existing.get("at")
+    updated_fields["meeting"]           = existing.get("meeting")
+    updated_fields["school_inquiry_id"] = existing.get("school_inquiry_id")
+
+    # If the visit was NOT interested previously but now is, seed a CRM
+    # inquiry (same rules as create). If it was interested and still is, we
+    # leave the linked inquiry alone (admin can edit it directly in CRM).
+    if (updated_fields.get("lead_interested") or "").lower() == "yes" and not existing.get("school_inquiry_id"):
+        try:
+            first_contact = (updated_fields.get("contacts") or [{}])[0]
+            new_inquiry = {
+                "id":            str(uuid.uuid4()),
+                "school_name":   updated_fields["school_name"],
+                "contact_name":  first_contact.get("name") or "",
+                "phone":         first_contact.get("phone") or "",
+                "email":         first_contact.get("email") or "",
+                "location":      updated_fields.get("city") or "",
+                "board":         updated_fields.get("board") or "",
+                "status":        "new",
+                "school_contacts": [c for c in (updated_fields.get("contacts") or []) if c.get("name")],
+                "programs_interested": list(updated_fields.get("products_interested") or []),
+                "source":        "field_visit",
+                "field_report_id": report_id,
+                "field_visit_id": visit_id,
+                "assigned_to":   r.get("user_id"),
+                "assigned_to_name": r.get("user_name"),
+                "added_by":      r.get("user_id"),
+                "created_at":    _now_iso(),
+                "updated_at":    _now_iso(),
+            }
+            await db.school_inquiries.insert_one(new_inquiry)
+            updated_fields["school_inquiry_id"] = new_inquiry["id"]
+        except Exception:
+            pass
+
+    visits[idx] = updated_fields
+    await db.field_reports.update_one(
+        {"id": report_id},
+        {"$set": {"school_visits": visits, "updated_at": _now_iso()}},
+    )
+    return updated_fields
+
+
 @router.post("/field-reports/{report_id}/school-visits/{visit_id}/meeting")
 async def upsert_meeting(report_id: str, visit_id: str, payload: MeetingIn, user: dict = Depends(get_current_user)):
     r = await db.field_reports.find_one({"id": report_id})

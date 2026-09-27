@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import {
   MapPin, Camera, LogOut, LogIn, Building2, Users, Plus, FileText, Calendar,
   Phone, Mail, Trash2, ChevronDown, ChevronRight, Loader2, User, Send, X,
+  Eye, PenSquare,
 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -293,14 +294,36 @@ const emptyVisit = () => ({
   latitude: null, longitude: null, location_label: '',
 });
 
-const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) => {
+const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders, initialVisit = null, editMode = false }) => {
   const [form, setForm] = useState(emptyVisit());
   const [saving, setSaving] = useState(false);
   const [locBusy, setLocBusy] = useState(false);
-  const [savedVisit, setSavedVisit] = useState(null);   // shows post-save action strip
   const [cameraOpen, setCameraOpen] = useState(false);
+  // Pre-save "action points" — collected inline with the visit form.
+  const [followupDate,  setFollowupDate]  = useState('');
+  const [followupNote,  setFollowupNote]  = useState('');
+  const [wantEmail,     setWantEmail]     = useState(false);
+  const [emailTpl,      setEmailTpl]      = useState(EMAIL_TEMPLATES[0].id);
+  const [emailTo,       setEmailTo]       = useState('');
+  const currentTpl = EMAIL_TEMPLATES.find(t => t.id === emailTpl) || EMAIL_TEMPLATES[0];
 
-  useEffect(() => { if (open) { setForm(emptyVisit()); setSavedVisit(null); } }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    if (initialVisit) {
+      setForm({ ...emptyVisit(), ...initialVisit,
+        contacts: initialVisit.contacts?.length ? initialVisit.contacts : [{ name: '', phone: '', email: '', role: '' }] });
+    } else {
+      setForm(emptyVisit());
+    }
+    setFollowupDate(''); setFollowupNote(''); setWantEmail(false);
+    setEmailTpl(EMAIL_TEMPLATES[0].id); setEmailTo('');
+  }, [open, initialVisit]);
+
+  // Pre-select recipient email when contacts have one
+  useEffect(() => {
+    const firstEmail = (form.contacts || []).find(c => c.email)?.email || '';
+    setEmailTo((cur) => cur || firstEmail);
+  }, [form.contacts]);
 
   const captureLocation = async () => {
     setLocBusy(true);
@@ -346,7 +369,8 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
 
   const save = async () => {
     if (!form.school_name.trim()) { toast.error('School name is required'); return; }
-    if (!form.photo_url) { toast.error('Please click a photo of the visit'); return; }
+    if (!form.photo_url && !editMode) { toast.error('Please click a photo of the visit'); return; }
+    if (wantEmail && !emailTo.trim()) { toast.error('Enter recipient email or uncheck Send Email'); return; }
     setSaving(true);
     try {
       const payload = {
@@ -355,117 +379,65 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
           .filter((c) => c.name?.trim())
           .map((c) => ({ ...c, email: c.email?.trim() ? c.email.trim() : undefined })),
       };
-      const res = await axios.post(`${API}/field-reports/${reportId}/school-visits`, payload, { headers: getAuthHeaders() });
-      toast.success('School visit saved');
-      onSaved(res.data);
-      setSavedVisit(res.data);
+      let saved;
+      if (editMode && initialVisit?.id) {
+        const res = await axios.patch(
+          `${API}/field-reports/${reportId}/school-visits/${initialVisit.id}`,
+          payload, { headers: getAuthHeaders() });
+        saved = res.data;
+      } else {
+        const res = await axios.post(
+          `${API}/field-reports/${reportId}/school-visits`,
+          payload, { headers: getAuthHeaders() });
+        saved = res.data;
+      }
+      toast.success(editMode ? 'Visit updated' : 'School visit saved');
+
+      // ── Post-save side effects (executed only when data is filled) ─────
+      const jobs = [];
+      if (followupDate && saved.school_inquiry_id) {
+        jobs.push(axios.patch(`${API}/schools/${saved.school_inquiry_id}`, {
+          followup_date: followupDate, followup_note: followupNote || '',
+        }, { headers: getAuthHeaders() })
+          .then(() => toast.success('Follow-up added'))
+          .catch(() => toast.error('Follow-up could not be saved (school not linked yet — mark Lead Interested to promote to CRM first)')));
+      } else if (followupDate && !saved.school_inquiry_id) {
+        toast.warning('Follow-up skipped: mark Lead Interested = Yes to auto-create the CRM lead first.');
+      }
+      if (wantEmail) {
+        const firstContact = (saved.contacts || form.contacts || [])[0] || {};
+        const subject = currentTpl.subject
+          .replaceAll('{name}', firstContact.name || 'there')
+          .replaceAll('{school}', saved.school_name || '');
+        const body = currentTpl.body
+          .replaceAll('{name}', firstContact.name || 'there')
+          .replaceAll('{school}', saved.school_name || '')
+          .replaceAll('{sender}', 'OLL Team');
+        jobs.push(axios.post(`${API}/emails/send`, {
+          to: emailTo, subject, body_html: body.replace(/\n/g, '<br>'), body_text: body,
+        }, { headers: getAuthHeaders() })
+          .then(() => toast.success('Email sent'))
+          .catch((e) => toast.error(e?.response?.data?.detail || 'Email failed')));
+      }
+      await Promise.allSettled(jobs);
+
+      onSaved(saved);
+      onClose();
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Save failed');
     } finally { setSaving(false); }
   };
 
-  // Post-save actions
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailTpl, setEmailTpl] = useState(EMAIL_TEMPLATES[0].id);
-  const [emailTo, setEmailTo] = useState('');
-  const [emailSending, setEmailSending] = useState(false);
-  const currentTpl = EMAIL_TEMPLATES.find(t => t.id === emailTpl) || EMAIL_TEMPLATES[0];
-  useEffect(() => {
-    if (savedVisit) {
-      // preselect first contact email
-      const firstEmail = (savedVisit.contacts || []).find(c => c.email)?.email || '';
-      setEmailTo(firstEmail);
-    }
-  }, [savedVisit]);
-
-  const sendEmail = async () => {
-    if (!emailTo.trim()) { toast.error('Recipient email is required'); return; }
-    setEmailSending(true);
-    try {
-      const firstContact = (savedVisit?.contacts || [])[0] || {};
-      const subject = currentTpl.subject
-        .replaceAll('{name}', firstContact.name || 'there')
-        .replaceAll('{school}', savedVisit?.school_name || '');
-      const body = currentTpl.body
-        .replaceAll('{name}', firstContact.name || 'there')
-        .replaceAll('{school}', savedVisit?.school_name || '')
-        .replaceAll('{sender}', 'OLL Team');
-      await axios.post(`${API}/emails/send`, {
-        to: emailTo, subject, body_html: body.replace(/\n/g, '<br>'), body_text: body,
-      }, { headers: getAuthHeaders() });
-      toast.success('Email sent');
-      setEmailOpen(false);
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Failed to send email');
-    } finally { setEmailSending(false); }
-  };
-
-  const addFollowup = async () => {
-    if (!savedVisit?.school_inquiry_id) { toast.error('No linked school found — open the school in CRM first'); return; }
-    const when = window.prompt('Follow-up date (YYYY-MM-DD):', new Date(Date.now() + 3 * 86400e3).toISOString().slice(0, 10));
-    if (!when) return;
-    const note = window.prompt('Follow-up note (optional):', '');
-    try {
-      await axios.patch(`${API}/schools/${savedVisit.school_inquiry_id}`, {
-        followup_date: when, followup_note: note || '',
-      }, { headers: getAuthHeaders() });
-      toast.success('Follow-up added');
-    } catch (e) { toast.error('Failed to add follow-up'); }
-  };
-
-  const createProposal = () => {
-    if (!savedVisit?.school_inquiry_id) { toast.error('No linked school — visit the School CRM first'); return; }
-    window.open(`/admin/schools?school_id=${savedVisit.school_inquiry_id}&action=proposal`, '_blank');
+  const openProposal = () => {
+    toast.info('Proposal opens in a new tab after saving — set Lead Interested = Yes so we can link the school first.');
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto" data-testid="school-visit-modal">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Building2 className="w-5 h-5 text-emerald-600" /> Log School Visit</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Building2 className="w-5 h-5 text-emerald-600" /> {editMode ? 'Edit School Visit' : 'Log School Visit'}</DialogTitle></DialogHeader>
 
-        {savedVisit ? (
-          <div className="space-y-4 mt-2">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-emerald-700" />
-              </div>
-              <div>
-                <div className="font-semibold text-emerald-900">Saved — {savedVisit.school_name}</div>
-                <div className="text-xs text-emerald-700">What would you like to do next?</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button variant="outline" onClick={addFollowup} data-testid="post-save-followup"><Calendar className="w-4 h-4 mr-1" /> Add Follow-up</Button>
-              <Button variant="outline" onClick={createProposal} data-testid="post-save-proposal"><FileText className="w-4 h-4 mr-1" /> Create Proposal</Button>
-              <Button variant="outline" onClick={() => setEmailOpen(true)} data-testid="post-save-email"><Mail className="w-4 h-4 mr-1" /> Send Email</Button>
-            </div>
-            {emailOpen && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Send Email</div>
-                  <button onClick={() => setEmailOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                </div>
-                <label className="block text-xs font-semibold text-slate-600">Template</label>
-                <select className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm" value={emailTpl} onChange={(e) => setEmailTpl(e.target.value)} data-testid="email-template">
-                  {EMAIL_TEMPLATES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-                <label className="block text-xs font-semibold text-slate-600">To</label>
-                <Input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="contact@school.edu" data-testid="email-to" />
-                <div className="text-[11px] text-slate-500 border border-dashed border-slate-200 rounded p-2 bg-white whitespace-pre-wrap">
-                  <strong>Subject:</strong> {currentTpl.subject.replaceAll('{school}', savedVisit.school_name)}{'\n\n'}
-                  {currentTpl.body.replaceAll('{name}', savedVisit.contacts?.[0]?.name || 'there').replaceAll('{school}', savedVisit.school_name).replaceAll('{sender}', 'OLL Team')}
-                </div>
-                <Button className="w-full bg-[#1E3A5F] hover:bg-[#0F203E]" onClick={sendEmail} disabled={emailSending} data-testid="email-send-btn">
-                  {emailSending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />} Send Email
-                </Button>
-              </div>
-            )}
-            <div className="flex justify-end pt-3 border-t">
-              <Button variant="outline" onClick={onClose}>Close</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 mt-2">
+        <div className="space-y-4 mt-2">
             {/* Photo */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between mb-2">
@@ -604,14 +576,56 @@ const SchoolVisitModal = ({ open, onClose, onSaved, reportId, getAuthHeaders }) 
                 placeholder="Observations, next steps, anything else..." data-testid="visit-notes" />
             </div>
 
+            {/* Action Points (inline pre-save) */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3" data-testid="visit-action-points">
+              <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Action points</div>
+
+              {/* Follow-up */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-slate-700 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Add Follow-up</span>
+                  <span className="text-[10px] text-slate-500">Needs Lead Interested = Yes</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" className="h-9 text-sm" value={followupDate} onChange={(e) => setFollowupDate(e.target.value)} data-testid="visit-followup-date" />
+                  <Input className="h-9 text-sm" placeholder="Follow-up note (optional)" value={followupNote} onChange={(e) => setFollowupNote(e.target.value)} data-testid="visit-followup-note" />
+                </div>
+              </div>
+
+              {/* Proposal */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700 flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Create Proposal</span>
+                  <button type="button" onClick={openProposal} className="text-xs font-semibold text-indigo-600 hover:underline" data-testid="visit-proposal-btn">Open proposal builder</button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">Save the visit first — once the CRM lead is linked, use "CRM →" on the visit row to open the proposal builder.</p>
+              </div>
+
+              {/* Send Email */}
+              <div>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer mb-1">
+                  <input type="checkbox" checked={wantEmail} onChange={(e) => setWantEmail(e.target.checked)} data-testid="visit-email-toggle" />
+                  <Mail className="w-3.5 h-3.5" /> Send Email to contact
+                </label>
+                {wantEmail && (
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <select className="h-9 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                      value={emailTpl} onChange={(e) => setEmailTpl(e.target.value)} data-testid="visit-email-template">
+                      {EMAIL_TEMPLATES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    </select>
+                    <Input className="h-9 text-sm" type="email" placeholder="Recipient email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} data-testid="visit-email-to" />
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button variant="outline" onClick={onClose} data-testid="visit-cancel">Cancel</Button>
               <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700" data-testid="visit-save">
-                {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null} Save visit
+                {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null} {editMode ? 'Update visit' : 'Save visit'}
               </Button>
             </div>
           </div>
-        )}
       </DialogContent>
       <CameraCaptureModal open={cameraOpen} onClose={() => setCameraOpen(false)} onCaptured={onCameraCaptured} />
     </Dialog>
@@ -665,12 +679,51 @@ const MeetingModal = ({ open, onClose, onSaved, reportId, visitId, getAuthHeader
   );
 };
 
+// ── View-Details modal ────────────────────────────────────────────
+const ViewVisitModal = ({ open, visit, onClose, onEdit }) => {
+  if (!visit) return null;
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto" data-testid="view-visit-modal">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-emerald-600" /> {visit.school_name}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 mt-2">
+          <div className="text-xs text-slate-500">{fmtDateTime(visit.at)} · {visit.location_label || 'No address'}</div>
+          {visit.photo_url && <img src={visit.photo_url} alt="visit" className="w-full max-h-64 object-cover rounded-lg border border-slate-200" />}
+          <VisitRow v={visit} />
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button onClick={onEdit} className="bg-[#1E3A5F] hover:bg-[#0F203E]" data-testid="view-visit-edit-btn">
+              <PenSquare className="w-4 h-4 mr-1" /> Edit Visit
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ── Visit row inside day-wise report ───────────────────────────────
-const VisitRow = ({ v }) => (
+const VisitRow = ({ v, onView = null, onEdit = null }) => (
   <div className="rounded-lg border border-slate-200 bg-white p-3">
     <div className="flex items-center justify-between">
       <div className="font-semibold text-slate-800 flex items-center gap-2"><Building2 className="w-4 h-4 text-emerald-600" /> {v.school_name}</div>
-      <span className="text-[11px] text-slate-500">{fmtDateTime(v.at)}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-slate-500">{fmtDateTime(v.at)}</span>
+        {onView && (
+          <button onClick={() => onView(v)} className="text-slate-400 hover:text-indigo-600" title="View details" data-testid={`visit-view-${v.id}`}>
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {onEdit && (
+          <button onClick={() => onEdit(v)} className="text-slate-400 hover:text-indigo-600" title="Edit visit" data-testid={`visit-edit-${v.id}`}>
+            <PenSquare className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </div>
     <div className="mt-1 text-xs text-slate-500 flex flex-wrap gap-1.5">
       {v.city && <Chip tone="slate">{v.city}</Chip>}
@@ -722,7 +775,7 @@ const VisitRow = ({ v }) => (
 );
 
 // ── Day group card ─────────────────────────────────────────────────
-const DayGroupCard = ({ day, reports }) => {
+const DayGroupCard = ({ day, reports, onView, onEdit }) => {
   const [open, setOpen] = useState(false);
   const totalVisits = reports.reduce((n, r) => n + (r.school_visits?.length || 0), 0);
   const interested = reports.reduce((n, r) => n + (r.school_visits || []).filter(v => v.lead_interested === 'yes').length, 0);
@@ -755,7 +808,11 @@ const DayGroupCard = ({ day, reports }) => {
                 <Chip tone={r.check_out ? 'slate' : 'emerald'}>{r.check_out ? 'Closed' : 'Live'}</Chip>
               </div>
               {r.check_in?.photo_url && <img src={r.check_in.photo_url} alt="checkin" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />}
-              {(r.school_visits || []).map(v => <VisitRow key={v.id} v={v} />)}
+              {(r.school_visits || []).map(v => (
+                <VisitRow key={v.id} v={v}
+                  onView={() => onView && onView(r, v)}
+                  onEdit={() => onEdit && onEdit(r, v)} />
+              ))}
               {(!r.school_visits || r.school_visits.length === 0) && (
                 <div className="text-xs text-slate-400 italic">No visits logged in this session.</div>
               )}
@@ -831,6 +888,8 @@ export default function AdminFieldReports() {
   const [busy, setBusy] = useState(false);
   const [showVisit, setShowVisit] = useState(false);
   const [meetingCtx, setMeetingCtx] = useState(null);
+  const [viewVisit, setViewVisit] = useState(null);
+  const [editVisit, setEditVisit] = useState(null);   // { reportId, visit }
 
   // Filters
   const [monthFilter, setMonthFilter] = useState(() => new Date().toISOString().slice(0, 7));
@@ -975,7 +1034,17 @@ export default function AdminFieldReports() {
                       <div key={v.id} className="rounded-lg border border-slate-200 bg-white p-3">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-slate-800">{v.school_name}</span>
-                          <span className="text-[11px] text-slate-500">{fmtDateTime(v.at)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500">{fmtDateTime(v.at)}</span>
+                            <button onClick={() => setViewVisit({ reportId: current.id, visit: v })}
+                              className="text-slate-400 hover:text-indigo-600" title="View details" data-testid={`today-view-${v.id}`}>
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setEditVisit({ reportId: current.id, visit: v })}
+                              className="text-slate-400 hover:text-indigo-600" title="Edit visit" data-testid={`today-edit-${v.id}`}>
+                              <PenSquare className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         {!v.meeting ? (
                           <Button size="sm" variant="outline" className="mt-2" onClick={() => setMeetingCtx({ reportId: current.id, visitId: v.id })} data-testid={`add-meeting-${v.id}`}>
@@ -1037,7 +1106,11 @@ export default function AdminFieldReports() {
                 <div className="rounded-xl border-2 border-dashed border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">No visits in this window.</div>
               ) : (
                 <div className="space-y-3">
-                  {grouped.map(([day, rows]) => <DayGroupCard key={day} day={day} reports={rows} />)}
+                  {grouped.map(([day, rows]) => (
+                    <DayGroupCard key={day} day={day} reports={rows}
+                      onView={(r, v) => setViewVisit({ reportId: r.id, visit: v })}
+                      onEdit={(r, v) => setEditVisit({ reportId: r.id, visit: v })} />
+                  ))}
                 </div>
               )
             )}
@@ -1064,6 +1137,18 @@ export default function AdminFieldReports() {
         open={checkinCameraOpen}
         onClose={() => setCheckinCameraOpen(false)}
         onCaptured={(f) => f && doCheckInWithPhoto(f)}
+      />
+      <ViewVisitModal open={!!viewVisit} visit={viewVisit?.visit || null}
+        onClose={() => setViewVisit(null)}
+        onEdit={() => { const v = viewVisit; setViewVisit(null); setEditVisit(v); }} />
+      <SchoolVisitModal
+        open={!!editVisit}
+        onClose={() => setEditVisit(null)}
+        onSaved={() => load()}
+        reportId={editVisit?.reportId}
+        getAuthHeaders={getAuthHeaders}
+        initialVisit={editVisit?.visit || null}
+        editMode
       />
     </AdminLayout>
   );
