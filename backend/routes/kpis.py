@@ -80,6 +80,12 @@ KPI_CATALOG = [
     {"id": "tasks_overdue", "label": "Tasks overdue", "category": "Tasks & Responsibilities", "unit": "count", "aggregation": "snapshot"},
     {"id": "projects_member_of", "label": "Projects assigned to", "category": "Tasks & Responsibilities", "unit": "count", "aggregation": "max"},
     {"id": "projects_leading", "label": "Projects leading", "category": "Tasks & Responsibilities", "unit": "count", "aggregation": "max"},
+
+    # Field Ops — sourced from `field_reports`
+    {"id": "field_days_on_ground", "label": "Days on field", "category": "Field Ops", "unit": "count"},
+    {"id": "field_schools_visited", "label": "Schools visited", "category": "Field Ops", "unit": "count"},
+    {"id": "field_schools_interested", "label": "Schools interested", "category": "Field Ops", "unit": "count"},
+    {"id": "field_entries_gained", "label": "Entries gained (met contact)", "category": "Field Ops", "unit": "count"},
 ]
 
 KPI_BY_ID = {k["id"]: k for k in KPI_CATALOG}
@@ -881,6 +887,43 @@ async def _compute_future_skills_metrics(start_iso: str, end_iso: str) -> dict:
     }
 
 
+async def _compute_field_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
+    """Metrics from `field_reports` for the given user in the date range.
+
+    - field_days_on_ground: unique check-in dates in period
+    - field_schools_visited: total school_visits across all reports in period
+    - field_schools_interested: visits where lead_interested == 'yes'
+    - field_entries_gained: visits where got_entry == 'yes'
+    """
+    reports = await db.field_reports.find(
+        {"user_id": user_id, "created_at": {"$gte": start_iso, "$lte": end_iso}},
+        {"_id": 0, "check_in": 1, "school_visits": 1, "created_at": 1},
+    ).to_list(2000)
+
+    days = set()
+    schools_visited = 0
+    interested = 0
+    entries = 0
+    for r in reports:
+        ci = r.get("check_in") or {}
+        ts = ci.get("at") or r.get("created_at")
+        if ts:
+            days.add(str(ts)[:10])
+        for v in (r.get("school_visits") or []):
+            schools_visited += 1
+            if (v.get("lead_interested") or "").lower() == "yes":
+                interested += 1
+            if (v.get("got_entry") or "").lower() == "yes":
+                entries += 1
+
+    return {
+        "field_days_on_ground":       len(days),
+        "field_schools_visited":      schools_visited,
+        "field_schools_interested":   interested,
+        "field_entries_gained":       entries,
+    }
+
+
 async def _compute_selected_metrics(
     user_id: str, role_kpi_ids: list, start_iso: str, end_iso: str
 ) -> dict:
@@ -894,6 +937,7 @@ async def _compute_selected_metrics(
     needs_gp = any(k.startswith("gp_") for k in role_kpi_ids)
     needs_social = any(k.startswith("social_") for k in role_kpi_ids)
     needs_fs = any(k.startswith("fs_") for k in role_kpi_ids)
+    needs_field = any(k.startswith("field_") for k in role_kpi_ids)
     if needs_support:
         metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
     if needs_b2b:
@@ -912,6 +956,8 @@ async def _compute_selected_metrics(
         metrics.update(await _compute_social_media_metrics(start_iso, end_iso))
     if needs_fs:
         metrics.update(await _compute_future_skills_metrics(start_iso, end_iso))
+    if needs_field:
+        metrics.update(await _compute_field_metrics(user_id, start_iso, end_iso))
     return metrics
 
 

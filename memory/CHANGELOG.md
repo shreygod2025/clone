@@ -1,5 +1,44 @@
 # OLL Backend Changelog
 
+## 2026-09-27 — Field Reports: Camera Capture, Rich School Visit Form, Day-wise Reports, Team Filter & Calendar + New KPI Category
+**Status: COMPLETE**
+
+### Camera capture everywhere
+- Check-in and Add School Visit now open the phone camera via `<input type=file capture="environment">`. Both photos are mandatory now (empty → toast + block save).
+- File-upload fallback still works on desktop.
+
+### School Visit modal — expanded
+- Below the school name: **Did you get entry? Yes/No** + **Lead Interested? Yes/No** (color-coded YesNo toggles).
+- **Who did you meet?** free-text.
+- **Product Interested In** — multi-select chips from the canonical OLL Products catalog (Robotics Lab, Individual Kit, STEM Curriculum, After School, Teacher Training, Future Skills, Exhibition, Competition).
+- **Role** on each contact is now a dropdown synced with `PRIMARY_CONTACT_ROLES` from School CRM (Principal, Coordinator, Trustee/Owner, etc.).
+- **Notes** field (was buried in an unrelated place before).
+- **Capture Location** now reverse-geocodes via Nominatim and auto-fills City (only when empty — never overwrites admin input).
+- **Post-save action strip**: Add Follow-up (PATCHes the auto-created school inquiry), Create Proposal (opens School CRM in new tab), Send Email (in-modal template picker → Resend send via new `/api/emails/send` endpoint).
+
+### Reports section — day-wise, filtered, with KPIs
+- New tabs: **My Field Day / Reports / Calendar**.
+- **Reports** tab: month picker + team-member dropdown, then a KPI strip (Days on Field, Schools Visited, Entries Gained, Schools Interested) + day-grouped cards with expandable visits. Each visit row shows entry/interest chips, met_with, products, contacts, notes, photo, meeting.
+- **Calendar** tab: month grid with dot-per-visit and up-to-three team-member initials avatars per day. Visit count in the cell footer.
+
+### KPI catalog — new Field Ops category
+Backend `kpis.py`:
+- Added `field_days_on_ground`, `field_schools_visited`, `field_schools_interested`, `field_entries_gained` (unit=count).
+- New `_compute_field_metrics(user_id, start_iso, end_iso)` wired into `_compute_selected_metrics`. Roles can now assign these KPIs to team members via Users & Roles just like any other KPI.
+
+### Backend model
+`field_reports.py::SchoolVisitIn` extended with: `photo_url`, `got_entry`, `lead_interested`, `met_with`, `products_interested[]`. New endpoint `POST /api/emails/send` with Resend integration + audit trail in a new `email_outbox` collection.
+
+### Files
+- Modified: `/app/backend/routes/field_reports.py` (extended model, new email send endpoint)
+- Modified: `/app/backend/routes/kpis.py` (new Field Ops KPI category + compute + wiring)
+- Rewritten: `/app/frontend/src/pages/admin/AdminFieldReports.jsx` (camera capture, rich visit form, day-wise + calendar tabs, filters, KPI strip)
+
+### Verification
+- `GET /api/kpis/catalog` includes 4 Field Ops KPIs ✓
+- Screenshots: all 3 tabs render, month picker + team filter present, KPI strip shows real counts, calendar dots + initials avatars visible.
+
+
 ## 2026-09-27 — Teacher Training step: embedded timetable + graceful CheckIn write fallback
 **Status: COMPLETE**
 

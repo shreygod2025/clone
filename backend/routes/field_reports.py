@@ -70,6 +70,11 @@ class SchoolVisitIn(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_label: Optional[str] = Field(None, max_length=200)
+    photo_url: Optional[str] = None       # mandatory selfie/photo of the visit
+    got_entry: Optional[str] = Field(None, max_length=8)      # 'yes' | 'no' — did they meet anyone
+    lead_interested: Optional[str] = Field(None, max_length=8)  # 'yes' | 'no'
+    met_with: Optional[str] = Field(None, max_length=200)    # who did you meet (free text name)
+    products_interested: List[str] = []   # OLL product ids/names
     notes: Optional[str] = Field(None, max_length=1000)
 
 
@@ -248,3 +253,65 @@ async def get_field_report(report_id: str, user: dict = Depends(get_current_user
     if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
         raise HTTPException(status_code=403, detail="Not your report")
     return r
+
+
+# ── Simple email sender (used by the field visit "Send Email" action) ──
+class EmailIn(BaseModel):
+    to: EmailStr
+    subject: str = Field(..., min_length=1, max_length=500)
+    body_html: Optional[str] = None
+    body_text: Optional[str] = None
+
+
+@router.post("/emails/send")
+async def send_email(payload: EmailIn, user: dict = Depends(get_current_user)):
+    """Best-effort send via Resend. Records an outbox row regardless."""
+    import os, httpx as _httpx
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    sender = os.environ.get("SENDER_EMAIL", "OLL Team <welcome@oll.co>")
+    outbox = {
+        "id": str(uuid.uuid4()),
+        "to": payload.to,
+        "subject": payload.subject,
+        "body_html": payload.body_html or "",
+        "body_text": payload.body_text or "",
+        "sent_by": user.get("id") or user.get("user_id"),
+        "sent_by_name": user.get("name") or user.get("email"),
+        "created_at": _now_iso(),
+        "status": "queued",
+        "error": None,
+    }
+    if not resend_key:
+        outbox["status"] = "failed"
+        outbox["error"] = "RESEND_API_KEY not configured"
+        await db.email_outbox.insert_one(outbox)
+        raise HTTPException(status_code=400, detail="Email service not configured")
+    try:
+        async with _httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={
+                    "from": sender,
+                    "to": [payload.to],
+                    "subject": payload.subject,
+                    "html": payload.body_html or (payload.body_text or "").replace("\n", "<br>"),
+                    "text": payload.body_text or "",
+                },
+            )
+        if r.status_code >= 400:
+            outbox["status"] = "failed"
+            outbox["error"] = r.text[:400]
+            await db.email_outbox.insert_one(outbox)
+            raise HTTPException(status_code=400, detail=f"Email provider rejected the request: {r.text[:200]}")
+        outbox["status"] = "sent"
+        outbox["provider_response"] = r.json() if r.headers.get("content-type", "").startswith("application/json") else None
+        await db.email_outbox.insert_one(outbox)
+        return {"ok": True, "id": outbox["id"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        outbox["status"] = "failed"
+        outbox["error"] = str(e)[:400]
+        await db.email_outbox.insert_one(outbox)
+        raise HTTPException(status_code=400, detail=f"Could not send email: {e}")

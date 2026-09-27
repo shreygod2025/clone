@@ -3551,25 +3551,37 @@ ${FOOTER}</div></body></html>`
 
   const openStandaloneTimetableEditor = async (school) => {
     setStandaloneTimetableLoading(true);
-    // Ensure educators are loaded
+    // Ensure educators are loaded — but never block the modal on this.
+    // If the CheckIn API is unreachable (preview / read-only), surface a
+    // clear warning instead of leaving the admin staring at an empty dropdown.
+    let educatorError = null;
     if (checkinEducators.length === 0) {
       try {
         setCheckinEducatorsLoading(true);
-        const eduRes = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
+        const eduRes = await axios.get(`${API}/schools/checkin/educators`, {
+          headers: getAuthHeaders(),
+          timeout: 8000,
+        });
         setCheckinEducators(eduRes.data.educators || []);
-      } catch (e) { /* ignore */ } finally { setCheckinEducatorsLoading(false); }
+      } catch (e) {
+        educatorError = e?.response?.data?.detail || 'CheckIn API unreachable — educator list unavailable';
+      } finally { setCheckinEducatorsLoading(false); }
     }
     try {
-      const res = await axios.get(`${API}/schools/${school.id}/timetable`, { headers: getAuthHeaders() });
+      const res = await axios.get(`${API}/schools/${school.id}/timetable`, {
+        headers: getAuthHeaders(), timeout: 8000,
+      });
       const list = res.data.timetables || (res.data.timetable ? [res.data.timetable] : []);
       setAllSchoolTimetables(list);
       _hydrateTimetableForm(list[0] || null);
     } catch {
-      toast.error('Could not load timetable');
       setAllSchoolTimetables([]);
       _hydrateTimetableForm(null);
     } finally {
       setStandaloneTimetableLoading(false);
+    }
+    if (educatorError) {
+      toast.warning(`Educator list couldn't load — you can still enter timetable details, but the CheckIn link may be delayed. (${educatorError})`, { duration: 6000 });
     }
     setShowStandaloneTimetableModal(school);
   };
