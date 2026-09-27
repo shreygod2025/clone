@@ -85,19 +85,19 @@ export default function EducatorReportModal({ educator, onClose }) {
     return () => { cancelled = true; };
   }, [educator, month, getAuthHeaders]);
 
-  const downloadCsv = async () => {
+  const downloadPdf = async () => {
     setDownloading(true);
     try {
-      const res = await axios.get(`${API}/admin/educators/${educator.id}/report.csv`, {
+      const res = await axios.get(`${API}/admin/educators/${educator.id}/report.pdf`, {
         params: { month }, headers: getAuthHeaders(), responseType: 'blob',
       });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `educator-report-${educator.email || educator.id}-${month}.csv`;
+      a.download = `educator-report-${educator.email || educator.id}-${month}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       window.URL.revokeObjectURL(url);
-      toast.success('CSV downloaded');
+      toast.success('PDF downloaded');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Download failed');
     } finally { setDownloading(false); }
@@ -123,18 +123,35 @@ export default function EducatorReportModal({ educator, onClose }) {
   const days = data?.days_breakdown || [];
   const totalAttire = (attire.oll_tshirt || 0) + (attire.other || 0) + (attire.not_recorded || 0);
   const tshirtPct = totalAttire ? Math.round((attire.oll_tshirt / totalAttire) * 100) : 0;
+  const checkinLinked = !!data?.educator?.checkin_id;
 
   return (
     <Dialog open={!!educator} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-0" data-testid="educator-report-modal">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200">
           <DialogTitle className="flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <div className="text-[10px] tracking-[0.25em] uppercase font-bold text-slate-500">Performance Report</div>
               <div className="text-xl font-black text-slate-900 mt-0.5">
                 {educator.full_name || educator.name || educator.email}
               </div>
               <div className="text-xs text-slate-500 mt-0.5">{educator.email}</div>
+              {/* CheckIn link status pill */}
+              {data && (
+                <div className="mt-2" data-testid="checkin-link-status">
+                  {checkinLinked ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold uppercase tracking-widest">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Linked to CheckIn
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-bold uppercase tracking-widest">
+                      <AlertTriangle className="w-3 h-3" />
+                      Not linked to CheckIn
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -150,19 +167,20 @@ export default function EducatorReportModal({ educator, onClose }) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={downloadCsv}
+                onClick={downloadPdf}
                 disabled={downloading || loading}
-                data-testid="report-download-csv"
+                data-testid="report-download-pdf"
               >
                 {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                <span className="ml-1">CSV</span>
+                <span className="ml-1">Download PDF</span>
               </Button>
               <Button
                 size="sm"
                 onClick={emailReport}
-                disabled={emailing || loading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={emailing || loading || !checkinLinked}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
                 data-testid="report-email-btn"
+                title={checkinLinked ? '' : 'Educator is not linked to a CheckIn account'}
               >
                 {emailing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
                 <span className="ml-1">Email to educator</span>
@@ -206,7 +224,12 @@ export default function EducatorReportModal({ educator, onClose }) {
                 {days.length === 0 ? (
                   <div className="p-6 text-center text-sm text-slate-500">
                     No sessions in this period.
-                    {!data.educator.checkin_id && <div className="mt-2 text-xs text-amber-600">This educator's email isn't linked to a CheckIn account.</div>}
+                    {!checkinLinked && (
+                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        This educator's email is not linked to a CheckIn account — attendance & earnings can't be loaded until they're added there.
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="max-h-72 overflow-y-auto">

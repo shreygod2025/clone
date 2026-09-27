@@ -1129,6 +1129,44 @@ const AdminEducators = () => {
               Edit
             </button>
             <button
+              onClick={async () => {
+                if (window.confirm(`Move ${educator.full_name || educator.name} to Inactive? They'll be excluded from active assignments.`)) {
+                  await handleStatusChange(educator, 'inactive');
+                }
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 flex items-center gap-1 font-medium"
+              data-testid={`inactive-educator-${educator.id}`}
+            >
+              <UserMinus className="w-3 h-3" />
+              Move to Inactive
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+              data-testid={`archive-${educator.id}`}
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
+      case 'inactive':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={async () => {
+                if (window.confirm(`Move ${educator.full_name || educator.name} back to Active?`)) {
+                  await handleStatusChange(educator, 'active');
+                }
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`reactivate-${educator.id}`}
+            >
+              <UserCheck className="w-3 h-3" />
+              Move to Active
+            </button>
+            <button
               onClick={() => handleArchive(educator)}
               className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
               data-testid={`archive-${educator.id}`}
@@ -1761,7 +1799,7 @@ const AdminEducators = () => {
                 </div>
               )}
 
-              {/* View, Assign, Comment Buttons */}
+              {/* View, Report, Assign, Comment Buttons */}
               <div className="flex gap-2 mb-3">
                 <Button
                   variant="outline"
@@ -1782,38 +1820,6 @@ const AdminEducators = () => {
                     title="Monthly performance report"
                   >
                     <BarChart3 className="w-4 h-4" />
-                  </Button>
-                )}
-                {educator.status === 'active' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-rose-600 border-rose-200 hover:bg-rose-50"
-                    onClick={async () => {
-                      if (window.confirm(`Move ${educator.full_name || educator.name} to Inactive? They'll be excluded from active assignments.`)) {
-                        await handleStatusChange(educator, 'inactive');
-                      }
-                    }}
-                    data-testid={`inactive-educator-${educator.id}`}
-                    title="Move to Inactive"
-                  >
-                    <UserMinus className="w-4 h-4" />
-                  </Button>
-                )}
-                {educator.status === 'inactive' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                    onClick={async () => {
-                      if (window.confirm(`Move ${educator.full_name || educator.name} back to Active?`)) {
-                        await handleStatusChange(educator, 'active');
-                      }
-                    }}
-                    data-testid={`reactivate-educator-${educator.id}`}
-                    title="Move back to Active"
-                  >
-                    <UserCheck className="w-4 h-4" />
                   </Button>
                 )}
                 <Button

@@ -332,6 +332,184 @@ async def download_educator_report_csv(
     )
 
 
+def _build_pdf(r: Dict[str, Any]) -> bytes:
+    """Render the report dict into a branded PDF using reportlab."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak,
+    )
+
+    OLL_NAVY  = colors.HexColor("#0A1F44")
+    OLL_RED   = colors.HexColor("#D63031")
+    ACCENT    = colors.HexColor("#059669")
+    MUTED     = colors.HexColor("#64748b")
+    LIGHT_BG  = colors.HexColor("#F1F5F9")
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=15*mm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('T', parent=styles['Heading1'], textColor=OLL_NAVY, fontSize=20, spaceAfter=4, leading=24, fontName='Helvetica-Bold')
+    sub_style = ParagraphStyle('S', parent=styles['Normal'], textColor=MUTED, fontSize=10, spaceAfter=12)
+    h2_style = ParagraphStyle('H2', parent=styles['Heading2'], textColor=OLL_NAVY, fontSize=13, spaceAfter=8, spaceBefore=14, fontName='Helvetica-Bold')
+    body = ParagraphStyle('B', parent=styles['Normal'], fontSize=10, leading=13)
+
+    story: list = []
+    # Header
+    story.append(Paragraph("OLL Educator Performance Report", title_style))
+    edu = r["educator"]
+    story.append(Paragraph(
+        f"{edu.get('name') or edu.get('email') or 'Educator'} &nbsp;·&nbsp; "
+        f"<font color='#94a3b8'>{edu.get('email') or ''}</font>",
+        sub_style,
+    ))
+    month_label = r["month"] if r["month"] and r["month"] != "all" else "All time"
+    linked = "✓ Linked to CheckIn account" if edu.get("checkin_id") else "⚠ Not linked to CheckIn"
+    story.append(Paragraph(
+        f"<b>Period:</b> {month_label} &nbsp;&nbsp;·&nbsp;&nbsp; "
+        f"<b>Status:</b> <font color='{'#059669' if edu.get('checkin_id') else '#d97706'}'>{linked}</font>",
+        body,
+    ))
+    story.append(Spacer(1, 10))
+
+    # Summary table
+    s = r["sessions"]
+    a = r["attire"]
+    e = r["earnings"]
+    total_att = (a.get("oll_tshirt") or 0) + (a.get("other") or 0) + (a.get("not_recorded") or 0)
+    tshirt_pct = int(round((a.get("oll_tshirt", 0) / total_att) * 100)) if total_att else 0
+    earn_line = (
+        f"₹{(e.get('amount') or 0):,.0f} · {len(e.get('invoices') or [])} invoice(s)"
+        if e.get("available") else (e.get("note") or "Not available")
+    )
+    rows = [
+        ["Hours Teaching",  str(s.get("hours", 0)),     "Days Occupied",    str(s.get("unique_days", 0))],
+        ["Total Sessions",  str(s.get("total", 0)),     "Completed",        str(s.get("completed", 0))],
+        ["On-time",         str(s.get("on_time", 0)),   "Late",             str(s.get("late", 0))],
+        ["Absent",          str(s.get("absent", 0)),    "OLL T-shirt days", f"{a.get('oll_tshirt', 0)} · {tshirt_pct}%"],
+        ["Earnings (INR)",  earn_line,                  "",                 ""],
+    ]
+    tbl = Table(rows, colWidths=[38*mm, 45*mm, 38*mm, 45*mm])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('BACKGROUND', (0, 0), (0, -1), LIGHT_BG),
+        ('BACKGROUND', (2, 0), (2, -1), LIGHT_BG),
+        ('TEXTCOLOR', (0, 0), (0, -1), OLL_NAVY),
+        ('TEXTCOLOR', (2, 0), (2, -1), OLL_NAVY),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTNAME', (3, 0), (3, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    story.append(tbl)
+    story.append(Spacer(1, 6))
+
+    # Day-wise
+    story.append(Paragraph("Day-wise breakdown", h2_style))
+    days = r.get("days_breakdown") or []
+    if not days:
+        note = "No sessions in this period."
+        if not edu.get("checkin_id"):
+            note += " (This educator isn't linked to a CheckIn account.)"
+        story.append(Paragraph(f"<i><font color='#94a3b8'>{note}</font></i>", body))
+    else:
+        head = ["Date", "Sessions", "Hours", "On-time", "Late", "Absent", "Attire"]
+        data = [head] + [
+            [d["date"], str(d["sessions"]), f"{d['hours']:.2f}", str(d["on_time"]), str(d["late"]), str(d["absent"]), d.get("attire") or "—"]
+            for d in days
+        ]
+        tbl = Table(data, colWidths=[28*mm, 18*mm, 16*mm, 18*mm, 14*mm, 16*mm, 32*mm], repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), OLL_NAVY),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('ALIGN', (1, 0), (5, -1), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        story.append(tbl)
+
+    # Invoices
+    story.append(Paragraph("Earnings · Invoices", h2_style))
+    inv_rows = e.get("invoices") or []
+    if not e.get("available"):
+        story.append(Paragraph(f"<i><font color='#94a3b8'>{e.get('note') or 'Earnings data unavailable.'}</font></i>", body))
+    elif not inv_rows:
+        story.append(Paragraph("<i><font color='#94a3b8'>No invoices in this period.</font></i>", body))
+    else:
+        head = ["Invoice", "Month", "Status", "Base", "Travel", "TDS", "Adj.", "Amount"]
+        data = [head] + [
+            [
+                inv.get("invoice_number") or "—",
+                inv.get("month") or "—",
+                (inv.get("status") or "").upper(),
+                f"₹{(inv.get('calculated') or 0):,.0f}",
+                f"₹{(inv.get('travel_allowance') or 0):,.0f}",
+                f"₹{(inv.get('tds') or 0):,.0f}",
+                f"₹{(inv.get('adjustments') or 0):,.0f}",
+                f"₹{(inv.get('amount') or 0):,.0f}",
+            ] for inv in inv_rows
+        ]
+        tbl = Table(data, colWidths=[38*mm, 20*mm, 18*mm, 20*mm, 18*mm, 15*mm, 15*mm, 22*mm], repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), OLL_NAVY),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8.5),
+            ('ALIGN', (3, 0), (7, -1), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('FONTNAME', (7, 1), (7, -1), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (7, 1), (7, -1), ACCENT),
+        ]))
+        story.append(tbl)
+
+    # Footer
+    story.append(Spacer(1, 20))
+    story.append(Paragraph(
+        f"<font color='#94a3b8' size='8'>Generated by OLL · {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}</font>",
+        body,
+    ))
+    doc.build(story)
+    return buf.getvalue()
+
+
+@router.get("/{educator_id}/report.pdf")
+async def download_educator_report_pdf(
+    educator_id: str,
+    month: Optional[str] = Query(None),
+    user: dict = Depends(_admin_only),
+):
+    """PDF export of the educator's monthly report — branded layout."""
+    from fastapi.responses import Response
+    educator = await _find_educator(educator_id)
+    r = await _build_report(educator, month)
+    pdf = _build_pdf(r)
+    filename = f"educator-report-{(educator.get('email') or educator_id).replace('@','_')}-{month or 'all'}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/{educator_id}/report/email")
 async def email_educator_report(
     educator_id: str,
