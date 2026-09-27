@@ -52,19 +52,59 @@ const ageFromDob = (dob) => {
 export default function TechfestSubmitPage() {
   useEffect(() => { document.title = 'Submit Project · OLL Robotics Championship · Techfest 2026'; }, []);
 
-  const [form, setForm] = useState({
+  const DRAFT_KEY = 'techfest-submit-draft-v2';
+
+  const initialForm = {
     full_name: '', date_of_birth: '', age: '', email: '', phone: '',
     country: 'India', pincode: '', state: '', city: '', school_or_college: '',
     age_category: '',
+    // NEW: main student's ID proof
+    id_proof_url: '', id_proof_type: 'aadhar',
     competition: '', zone: '',
     project_category: '', project_theme: '',
     team_id: '', competition_id: '', drive_link: '',
     school_permission_url: '',
     team_members: [],   // extra members (excludes the team lead)
+  };
+
+  // Restore draft from localStorage on mount (only if not already submitted).
+  const [form, setForm] = useState(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...initialForm, ...parsed };
+      }
+    } catch { /* ignore */ }
+    return initialForm;
   });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+
+  // Autosave to localStorage on every form change (debounced by React batching).
+  // Only saves when the user has typed at least one field so blank drafts
+  // don't overwrite existing ones between refreshes.
+  useEffect(() => {
+    if (done) return;
+    const hasContent = Object.entries(form).some(([k, v]) => {
+      if (k === 'country') return v && v !== 'India';
+      if (Array.isArray(v)) return v.length > 0;
+      return !!(v && String(v).trim());
+    });
+    if (!hasContent) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      setDraftSavedAt(new Date());
+    } catch { /* quota exceeded — silently ignore */ }
+  }, [form, done]);
+
+  const clearDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setForm(initialForm);
+    setDraftSavedAt(null);
+  };
 
   const setField = (k) => (e) => {
     const v = e.target.value;
@@ -167,9 +207,51 @@ export default function TechfestSubmitPage() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.competition) { setError('Please select a competition'); return; }
+    // ── Comprehensive required-field validation ──
+    const REQUIRED = [
+      ['full_name', 'Full Name'],
+      ['date_of_birth', 'Date of Birth'],
+      ['email', 'Email'],
+      ['phone', 'Phone Number'],
+      ['country', 'Country'],
+      ['pincode', 'Pincode'],
+      ['state', 'State'],
+      ['city', 'City'],
+      ['school_or_college', 'School / College Name'],
+      ['age_category', 'Age Category'],
+      ['id_proof_url', 'ID Proof of Main Student'],
+      ['id_proof_type', 'ID Proof Type'],
+      ['competition', 'Competition'],
+      ['drive_link', 'Google Drive Link'],
+    ];
+    for (const [k, label] of REQUIRED) {
+      if (!form[k] || !String(form[k]).trim()) {
+        setError(`Please fill ${label}`);
+        try { document.querySelector(`[data-testid="sub-${k.replace(/_/g,'-')}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+        return;
+      }
+    }
     if (isZonal && !form.zone) { setError('Please select your zone'); return; }
+    if (isInnovation) {
+      if (!form.project_category) { setError('Please pick a project category'); return; }
+      if (!form.project_theme)    { setError('Please pick a project theme'); return; }
+    }
     if (!form.drive_link.startsWith('http')) { setError('Please paste a valid Google Drive link'); return; }
+    // If any team member row exists, every field on that row must be filled.
+    for (let i = 0; i < form.team_members.length; i++) {
+      const m = form.team_members[i];
+      const missing = [];
+      if (!m.name?.trim()) missing.push('Name');
+      if (!m.date_of_birth) missing.push('DOB');
+      if (!m.email?.trim()) missing.push('Email');
+      if (!m.phone?.trim()) missing.push('Phone');
+      if (!m.school?.trim()) missing.push('School');
+      if (!m.id_proof_url) missing.push('ID Proof');
+      if (missing.length) {
+        setError(`Team member #${i + 2}: please fill ${missing.join(', ')}`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -186,6 +268,8 @@ export default function TechfestSubmitPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Submission failed');
+      // Success — clear the saved draft so refreshing doesn't repopulate.
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       setDone(true);
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
     } catch (err) {
@@ -274,6 +358,95 @@ export default function TechfestSubmitPage() {
                     <input required className="trp-input" value={form.country} onChange={setField('country')} data-testid="sub-country" />
                   </div>
                 </div>
+              </section>
+
+              {/* ─── Main Student · ID Proof (mandatory) ─── */}
+              <section className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/40 p-4" data-testid="sub-main-id-block">
+                <h2 className="trp-eyebrow text-amber-800 mb-2 flex items-center gap-1.5"><FileText className="w-3 h-3" /> Main Student · ID Proof <span className="text-rose-600">*</span></h2>
+                <p className="text-[11px] text-slate-600 font-light mb-3">Upload the team lead&apos;s Aadhaar / PAN / valid ID. This is mandatory for verification on match day.</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="trp-input"
+                    style={{ width: 'auto', paddingRight: 32 }}
+                    value={form.id_proof_type}
+                    onChange={setField('id_proof_type')}
+                    data-testid="sub-id-proof-type"
+                  >
+                    <option value="aadhar">Aadhar card</option>
+                    <option value="pan">PAN card</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => pickAndUpload('main-id', (url) => setForm((f) => ({ ...f, id_proof_url: url })))}
+                    disabled={uploadingKey === 'main-id'}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#0A1F44] text-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest disabled:opacity-60"
+                    data-testid="sub-id-proof-url"
+                  >
+                    {uploadingKey === 'main-id' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    {form.id_proof_url ? 'Replace ID' : 'Upload ID'}
+                  </button>
+                  {form.id_proof_url && (
+                    <a href={form.id_proof_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold">
+                      <CheckCircle2 className="w-3 h-3" /> ID uploaded
+                    </a>
+                  )}
+                </div>
+              </section>
+
+              {/* ─── Team members (moved: appears right below Personal details) ─── */}
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="trp-eyebrow text-slate-500 flex items-center gap-1.5"><Users className="w-3 h-3" /> Team Members ({form.team_members.length + 1} / {MAX_TEAM_MEMBERS + 1})</h2>
+                  {form.team_members.length < MAX_TEAM_MEMBERS && (
+                    <button type="button" onClick={addMember} className="text-[11px] font-bold text-[#DC2626] uppercase tracking-widest inline-flex items-center gap-1" data-testid="sub-add-member">
+                      <Plus className="w-3 h-3" /> Add member
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 font-light mb-3">You (the team lead) count as member 1 — details taken from above. Add up to 4 more. <strong>Every field on each added member row is mandatory.</strong></p>
+                {form.team_members.map((m, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-3" data-testid={`sub-member-${i}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs font-bold text-slate-600">Member {i + 2}</div>
+                      <button type="button" onClick={() => removeMember(i)} className="text-slate-400 hover:text-red-500" data-testid={`sub-member-remove-${i}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <input required className="trp-input" placeholder="Full Name*" value={m.name} onChange={(e) => updateMember(i, 'name', e.target.value)} data-testid={`sub-member-${i}-name`} />
+                      <input required type="date" className="trp-input" placeholder="DOB*" value={m.date_of_birth} onChange={(e) => updateMember(i, 'date_of_birth', e.target.value)} data-testid={`sub-member-${i}-dob`} />
+                      <input required type="email" className="trp-input" placeholder="Email*" value={m.email} onChange={(e) => updateMember(i, 'email', e.target.value)} data-testid={`sub-member-${i}-email`} />
+                      <input required className="trp-input" placeholder="Phone*" value={m.phone} onChange={(e) => updateMember(i, 'phone', e.target.value)} data-testid={`sub-member-${i}-phone`} />
+                      <input required className="trp-input sm:col-span-2" placeholder="School / College*" value={m.school} onChange={(e) => updateMember(i, 'school', e.target.value)} data-testid={`sub-member-${i}-school`} />
+                      <div className="sm:col-span-2">
+                        <div className="flex items-center gap-2">
+                          <select className="trp-input flex-1" value={m.id_proof_type} onChange={(e) => updateMember(i, 'id_proof_type', e.target.value)}>
+                            <option value="aadhar">Aadhar card</option>
+                            <option value="pan">PAN card</option>
+                            <option value="other">Other</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => pickAndUpload(`member-${i}`, (url) => updateMember(i, 'id_proof_url', url))}
+                            disabled={uploadingKey === `member-${i}`}
+                            className="trp-input flex items-center justify-center gap-1.5 font-bold text-[11px] uppercase tracking-widest cursor-pointer hover:bg-slate-50 disabled:opacity-60"
+                            style={{ width: 'auto', paddingLeft: 16, paddingRight: 16 }}
+                            data-testid={`sub-member-${i}-idproof-upload`}
+                          >
+                            {uploadingKey === `member-${i}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                            {m.id_proof_url ? 'Replace ID*' : 'Upload ID*'}
+                          </button>
+                        </div>
+                        {m.id_proof_url && (
+                          <a href={m.id_proof_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold">
+                            <CheckCircle2 className="w-3 h-3" /> ID uploaded
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </section>
 
               <section>
@@ -372,61 +545,6 @@ export default function TechfestSubmitPage() {
                 </div>
               </section>
 
-              {/* ─── Team members ─── */}
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="trp-eyebrow text-slate-500 flex items-center gap-1.5"><Users className="w-3 h-3" /> Team Members ({form.team_members.length + 1} / {MAX_TEAM_MEMBERS + 1})</h2>
-                  {form.team_members.length < MAX_TEAM_MEMBERS && (
-                    <button type="button" onClick={addMember} className="text-[11px] font-bold text-[#DC2626] uppercase tracking-widest inline-flex items-center gap-1" data-testid="sub-add-member">
-                      <Plus className="w-3 h-3" /> Add member
-                    </button>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 font-light mb-3">You (the team lead) count as member 1 — details taken from above. Add up to 4 more.</p>
-                {form.team_members.map((m, i) => (
-                  <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-3" data-testid={`sub-member-${i}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-xs font-bold text-slate-600">Member {i + 2}</div>
-                      <button type="button" onClick={() => removeMember(i)} className="text-slate-400 hover:text-red-500" data-testid={`sub-member-remove-${i}`}>
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <input className="trp-input" placeholder="Full Name*" value={m.name} onChange={(e) => updateMember(i, 'name', e.target.value)} data-testid={`sub-member-${i}-name`} />
-                      <input type="date" className="trp-input" placeholder="DOB" value={m.date_of_birth} onChange={(e) => updateMember(i, 'date_of_birth', e.target.value)} data-testid={`sub-member-${i}-dob`} />
-                      <input type="email" className="trp-input" placeholder="Email" value={m.email} onChange={(e) => updateMember(i, 'email', e.target.value)} data-testid={`sub-member-${i}-email`} />
-                      <input className="trp-input" placeholder="Phone" value={m.phone} onChange={(e) => updateMember(i, 'phone', e.target.value)} data-testid={`sub-member-${i}-phone`} />
-                      <input className="trp-input sm:col-span-2" placeholder="School / College" value={m.school} onChange={(e) => updateMember(i, 'school', e.target.value)} data-testid={`sub-member-${i}-school`} />
-                      <div className="sm:col-span-2">
-                        <div className="flex items-center gap-2">
-                          <select className="trp-input flex-1" value={m.id_proof_type} onChange={(e) => updateMember(i, 'id_proof_type', e.target.value)}>
-                            <option value="aadhar">Aadhar card</option>
-                            <option value="pan">PAN card</option>
-                            <option value="other">Other</option>
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => pickAndUpload(`member-${i}`, (url) => updateMember(i, 'id_proof_url', url))}
-                            disabled={uploadingKey === `member-${i}`}
-                            className="trp-input flex items-center justify-center gap-1.5 font-bold text-[11px] uppercase tracking-widest cursor-pointer hover:bg-slate-50 disabled:opacity-60"
-                            style={{ width: 'auto', paddingLeft: 16, paddingRight: 16 }}
-                            data-testid={`sub-member-${i}-idproof-upload`}
-                          >
-                            {uploadingKey === `member-${i}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                            {m.id_proof_url ? 'Replace ID' : 'Upload ID'}
-                          </button>
-                        </div>
-                        {m.id_proof_url && (
-                          <a href={m.id_proof_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold">
-                            <CheckCircle2 className="w-3 h-3" /> ID uploaded
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </section>
-
               {/* ─── School permission letter ─── */}
               <section className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4" data-testid="sub-permission-block">
                 <h2 className="trp-eyebrow text-slate-500 mb-2 flex items-center gap-1.5"><FileText className="w-3 h-3" /> School Permission Letter</h2>
@@ -460,7 +578,7 @@ export default function TechfestSubmitPage() {
                 </div>
               </section>
 
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <button
                   type="submit"
                   disabled={submitting}
@@ -469,6 +587,21 @@ export default function TechfestSubmitPage() {
                 >
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</> : <><Upload className="w-4 h-4" /> Submit Project</>}
                 </button>
+                {draftSavedAt && (
+                  <span className="text-[11px] text-slate-500 font-light inline-flex items-center gap-1.5" data-testid="sub-draft-indicator">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Draft auto-saved · your data is safe if you leave
+                  </span>
+                )}
+                {draftSavedAt && (
+                  <button
+                    type="button"
+                    onClick={() => { if (window.confirm('Clear all saved draft data on this device?')) clearDraft(); }}
+                    className="text-[11px] text-slate-500 hover:text-rose-600 underline"
+                    data-testid="sub-draft-clear"
+                  >
+                    Clear draft
+                  </button>
+                )}
               </div>
             </form>
           </>

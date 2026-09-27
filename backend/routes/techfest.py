@@ -300,17 +300,20 @@ class TeamMemberIn(BaseModel):
 class TechfestSubmissionIn(BaseModel):
     # ── Team lead / primary contact ──
     full_name: str = Field(..., min_length=2, max_length=120)
-    date_of_birth: Optional[str] = Field(None, max_length=20)   # ISO YYYY-MM-DD
+    date_of_birth: str = Field(..., max_length=20)   # ISO YYYY-MM-DD — now REQUIRED
     age: Optional[int] = Field(None, ge=3, le=120)
     email: EmailStr
     phone: str = Field(..., min_length=6, max_length=20)
-    country: Optional[str] = Field(None, max_length=80)
-    pincode: Optional[str] = Field(None, max_length=20)
-    state: Optional[str] = Field(None, max_length=80)
-    city: Optional[str] = Field(None, max_length=80)
-    school_or_college: Optional[str] = Field(None, max_length=200)
+    country: str = Field(..., max_length=80)
+    pincode: str = Field(..., max_length=20)
+    state: str = Field(..., max_length=80)
+    city: str = Field(..., max_length=80)
+    school_or_college: str = Field(..., max_length=200)
     # Age category — Junior (Grade 4-7) | Senior (Grade 8-12)
-    age_category: Optional[str] = Field(None, max_length=20)
+    age_category: str = Field(..., max_length=20)
+    # ID proof of the main student (team lead) — NEW required field
+    id_proof_url:  str = Field(..., min_length=8, max_length=500)
+    id_proof_type: str = Field(..., max_length=20)  # 'aadhar' | 'pan' | 'other'
     # Competition: robo_sumo | robo_race | robo_innovation
     competition: str = Field(..., max_length=40)
     # Zone: north (Delhi), south (Bangalore), east (Kanpur), west (Mumbai),
@@ -1130,3 +1133,289 @@ async def send_sample_techfest_emails(user: dict = Depends(_admin)):
         "invite": invite_res,
         "confirmation": confirm_res,
     }
+
+
+# ── Combined Data view + Student CSV import ─────────────────────────────
+def _school_key(row: dict) -> str:
+    """Case/whitespace insensitive fingerprint for grouping school rows."""
+    name = (row.get("school_name") or row.get("school_or_institute") or row.get("name") or "").strip().lower()
+    return re.sub(r"\s+", " ", name)
+
+
+@router.get("/admin/techfest/combined-view")
+async def techfest_combined_view(user: dict = Depends(_admin_or_team)):
+    """One row per **unique school** aggregating school reg, educator regs,
+    student count, and submission count.
+
+    Row shape:
+    ```
+    {
+        school_name, school_key, city, competition, zone,
+        coordinator_name, coordinator_user_id,
+        school_registered: bool, school_reg_id,
+        educator_count, educator_reg_ids: [...],
+        student_count,
+        submission_count, submission_ids: [...],
+    }
+    ```
+    """
+    query = {"deleted_at": {"$exists": False}}
+    if not _is_admin(user):
+        slugs = await _user_scope_slugs(user)
+        uid = user.get("id") or user.get("user_id")
+        or_clauses: list[dict] = [{"referrer_slug": {"$in": slugs}}]
+        if uid:
+            or_clauses.append({"coordinator_user_id": uid})
+        query["$or"] = or_clauses
+
+    # Aggregate all techfest registrations by school key.
+    rows: dict[str, dict] = {}
+    async for doc in db.techfest_registrations.find(query):
+        key = _school_key(doc)
+        if not key:
+            continue
+        slot = rows.setdefault(key, {
+            "school_key": key,
+            "school_name": (doc.get("school_name") or doc.get("school_or_institute") or "").strip() or None,
+            "city": (doc.get("city") or "").strip() or None,
+            "competition": None,
+            "zone": (doc.get("zone") or None),
+            "coordinator_name": doc.get("coordinator_name"),
+            "coordinator_user_id": doc.get("coordinator_user_id"),
+            "school_registered": False,
+            "school_reg_id": None,
+            "school_reg_email": None,
+            "school_reg_phone": None,
+            "educator_count": 0,
+            "educator_reg_ids": [],
+            "student_count": 0,
+            "submission_count": 0,
+            "submission_ids": [],
+            "selected_competitions": [],
+        })
+        # Prefer a school-type row's identifying fields.
+        if doc.get("type") == "school":
+            slot["school_registered"] = True
+            slot["school_reg_id"] = str(doc["_id"])
+            slot["school_reg_email"] = doc.get("email")
+            slot["school_reg_phone"] = doc.get("phone")
+            if not slot["city"]:
+                slot["city"] = doc.get("city")
+            if not slot["coordinator_name"]:
+                slot["coordinator_name"] = doc.get("coordinator_name")
+                slot["coordinator_user_id"] = doc.get("coordinator_user_id")
+            if not slot["zone"]:
+                slot["zone"] = doc.get("zone")
+        elif doc.get("type") == "educator":
+            slot["educator_count"] += 1
+            slot["educator_reg_ids"].append(str(doc["_id"]))
+
+        # Merge competitions across all rows for this school.
+        for c in (doc.get("selected_competitions") or []):
+            if c and c not in slot["selected_competitions"]:
+                slot["selected_competitions"].append(c)
+
+        # Sum students from the registration's own students array.
+        slot["student_count"] += len(doc.get("students") or [])
+
+    # Match techfest_submissions by school_or_college name.
+    async for sub in db.techfest_submissions.find({}):
+        skey = re.sub(r"\s+", " ", (sub.get("school_or_college") or "").strip().lower())
+        if not skey:
+            continue
+        slot = rows.get(skey)
+        if not slot:
+            # Create a "submission-only" row for schools we haven't seen registered
+            slot = rows.setdefault(skey, {
+                "school_key": skey,
+                "school_name": sub.get("school_or_college") or None,
+                "city": sub.get("city") or None,
+                "competition": None,
+                "zone": sub.get("zone"),
+                "coordinator_name": None,
+                "coordinator_user_id": None,
+                "school_registered": False,
+                "school_reg_id": None,
+                "school_reg_email": None,
+                "school_reg_phone": None,
+                "educator_count": 0,
+                "educator_reg_ids": [],
+                "student_count": 0,
+                "submission_count": 0,
+                "submission_ids": [],
+                "selected_competitions": [],
+            })
+        slot["submission_count"] += 1
+        slot["submission_ids"].append(str(sub["_id"]))
+        # Team members inside a submission add to student count too
+        slot["student_count"] += 1 + len(sub.get("team_members") or [])
+
+    out = list(rows.values())
+    # Set "competition" as the first competition in the list for display convenience.
+    for r in out:
+        if r["selected_competitions"]:
+            r["competition"] = r["selected_competitions"][0]
+    out.sort(key=lambda r: (-(r["submission_count"] + r["student_count"] + r["educator_count"]), r.get("school_name") or ""))
+    return {"items": out, "count": len(out)}
+
+
+@router.post("/admin/techfest/students/import")
+async def import_techfest_students_csv(
+    file: UploadFile = File(...),
+    user: dict = Depends(_admin_or_team),
+):
+    """Bulk import students from the OLL Robotics Championship CSV export.
+
+    Columns accepted (extra columns are ignored):
+      Compi Reg ID · Competition Code · Competition Name · Techfest ID ·
+      Participant Name · Email · Phone No · Gender · College (school) ·
+      Pincode · City · State · Country · Address · Zonal City · Zonal College ·
+      Google ID · Team ID · Team Name · Team Role · Team Leader Name ·
+      Team Leader Email · Team Leader Phone · Team Joined Date · Registration Date
+
+    Every unique (Participant Name, Email, Team ID) is stored in a new
+    ``techfest_student_registrations`` collection.  When the College matches
+    an existing school registration, the student is also appended to that
+    registration's ``students`` list so the Combined View picks it up.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    try:
+        raw = (await file.read()).decode("utf-8-sig", errors="ignore")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not read file")
+    reader = csv.DictReader(io.StringIO(raw))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV has no header row")
+
+    def _pick(row: dict, *names: str) -> str:
+        for n in names:
+            v = (row.get(n) or "").strip()
+            if v:
+                return v
+        return ""
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    inserted = 0
+    updated = 0
+    linked = 0
+    errors: List[str] = []
+    per_school: dict[str, list] = {}
+
+    for idx, row in enumerate(reader, start=2):  # header on line 1
+        name = _pick(row, "Participant Name", "Name")
+        if not name:
+            continue
+        email = _pick(row, "Email").lower()
+        phone = _pick(row, "Phone No", "Phone")
+        team_id = _pick(row, "Team ID")
+        college = _pick(row, "College", "School")
+        record = {
+            "compi_reg_id":     _pick(row, "Compi Reg ID"),
+            "competition_code": _pick(row, "Competition Code"),
+            "competition_name": _pick(row, "Competition Name"),
+            "techfest_id":      _pick(row, "Techfest ID"),
+            "name":             name,
+            "email":            email,
+            "phone":            phone,
+            "gender":           _pick(row, "Gender"),
+            "school":           college,
+            "pincode":          _pick(row, "Pincode"),
+            "city":             _pick(row, "City"),
+            "state":            _pick(row, "State"),
+            "country":          _pick(row, "Country") or "India",
+            "address":          _pick(row, "Address"),
+            "zonal_city":       _pick(row, "Zonal City"),
+            "zonal_college":    _pick(row, "Zonal College"),
+            "team_id":          team_id,
+            "team_name":        _pick(row, "Team Name"),
+            "team_role":        _pick(row, "Team Role") or "Member",
+            "team_leader_name": _pick(row, "Team Leader Name"),
+            "team_leader_email": _pick(row, "Team Leader Email").lower(),
+            "team_leader_phone": _pick(row, "Team Leader Phone"),
+            "team_joined_date": _pick(row, "Team Joined Date"),
+            "registration_date": _pick(row, "Registration Date"),
+            "imported_at": now_iso,
+            "imported_by": user.get("email") or user.get("id"),
+        }
+
+        key = {"compi_reg_id": record["compi_reg_id"]} if record["compi_reg_id"] else {
+            "email": email, "team_id": team_id, "name": name,
+        }
+        try:
+            existing = await db.techfest_student_registrations.find_one(key)
+            if existing:
+                await db.techfest_student_registrations.update_one(
+                    {"_id": existing["_id"]}, {"$set": record}
+                )
+                updated += 1
+            else:
+                await db.techfest_student_registrations.insert_one(record)
+                inserted += 1
+        except Exception as e:
+            errors.append(f"Row {idx}: {e}")
+            continue
+
+        # Group by school for the append-to-registrations pass below.
+        skey = re.sub(r"\s+", " ", college.strip().lower())
+        if skey:
+            per_school.setdefault(skey, []).append({
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "team_id": team_id,
+                "team_name": record["team_name"],
+                "role": record["team_role"],
+            })
+
+    # Append imported students to matching school registrations so the
+    # combined view picks them up without a second query.
+    for skey, students in per_school.items():
+        reg = await db.techfest_registrations.find_one({
+            "type": "school",
+            "$expr": {
+                "$eq": [
+                    {"$toLower": {"$trim": {"input": {"$ifNull": ["$school_name", ""]}}}},
+                    skey,
+                ]
+            },
+        })
+        if not reg:
+            continue
+        existing_students = reg.get("students") or []
+        seen = {(s.get("name", "").lower(), s.get("email", "").lower()) for s in existing_students}
+        merged = list(existing_students)
+        for s in students:
+            k = (s["name"].lower(), s["email"].lower())
+            if k not in seen:
+                merged.append(s)
+                seen.add(k)
+        if len(merged) != len(existing_students):
+            await db.techfest_registrations.update_one(
+                {"_id": reg["_id"]},
+                {"$set": {"students": merged, "updated_at": now_iso}},
+            )
+            linked += 1
+
+    return {
+        "ok": True,
+        "inserted": inserted,
+        "updated": updated,
+        "schools_linked": linked,
+        "errors": errors[:20],
+    }
+
+
+@router.get("/admin/techfest/students")
+async def list_techfest_student_registrations(
+    limit: int = 2000,
+    user: dict = Depends(_admin_or_team),
+):
+    """Return the flat student registrations table (from the CSV import)."""
+    cursor = db.techfest_student_registrations.find({}).sort("registration_date", -1).limit(limit)
+    out: List[dict] = []
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        out.append(doc)
+    return {"items": out, "count": len(out)}

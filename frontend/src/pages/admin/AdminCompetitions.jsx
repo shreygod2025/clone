@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   Trophy, Building2, GraduationCap, User, Download, Upload, Search,
   Mail, Phone, MapPin, Loader2, ExternalLink, Pencil, Trash2, Link2, Plus, Copy, X,
+  Layers, CheckSquare, Square, UserPlus,
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -15,6 +16,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TECHFEST_URL = '/techfest';
 
 const TABS = [
+  { key: 'combined',    label: 'Combined Data',     icon: Layers,         color: 'bg-slate-800' },
   { key: 'school',      label: 'Schools',           icon: Building2,      color: 'bg-blue-500' },
   { key: 'educator',    label: 'Educators/Mentors', icon: GraduationCap,  color: 'bg-red-500' },
   { key: 'student',     label: 'Students',          icon: User,           color: 'bg-amber-500' },
@@ -108,6 +110,15 @@ export default function AdminCompetitions() {
   const [subLoading, setSubLoading] = useState(false);
   const [subCompFilter, setSubCompFilter] = useState('');
 
+  // Combined-view state
+  const [combined, setCombined] = useState([]);
+  const [combinedLoading, setCombinedLoading] = useState(false);
+  const [combinedSelected, setCombinedSelected] = useState(() => new Set());
+  // Inline "assign coordinator" popover state on the combined table:
+  //   { key: <school_key>, reg_id, current_user_id }
+  const [inlineCoord, setInlineCoord] = useState(null);
+  const [inlineZone, setInlineZone] = useState(null); // { key, reg_id, value }
+
   // Edit registration state
   const [editReg, setEditReg] = useState(null); // registration row being edited
   const [editForm, setEditForm] = useState({});
@@ -123,6 +134,33 @@ export default function AdminCompetitions() {
   useEffect(() => {
     if (!isAdmin && tab === 'referrers') setTab('school');
   }, [isAdmin, tab]);
+
+  const loadCombined = async () => {
+    setCombinedLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/techfest/combined-view`, { headers: getAuthHeaders() });
+      setCombined(res.data?.items || []);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to load combined data');
+    } finally { setCombinedLoading(false); }
+  };
+
+  // Inline update helper (assign coord / edit zone). Uses the school's
+  // school_reg_id when available; otherwise picks the first educator reg id
+  // so at least some record is updated. Refreshes the combined view after.
+  const patchRegistration = async (regId, patch) => {
+    if (!regId) {
+      toast.error('This school has no registration to update yet');
+      return false;
+    }
+    try {
+      await axios.patch(`${API}/admin/techfest/registrations/${regId}`, patch, { headers: getAuthHeaders() });
+      return true;
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Update failed');
+      return false;
+    }
+  };
 
   const load = async () => {
     if (!isRegistrationTab) return;
@@ -163,6 +201,7 @@ export default function AdminCompetitions() {
   useEffect(() => {
     if (tab === 'referrers') loadReferrers();
     else if (tab === 'submissions') loadSubmissions();
+    else if (tab === 'combined') loadCombined();
     else load();
      
   }, [tab, subCompFilter]);
@@ -229,12 +268,17 @@ export default function AdminCompetitions() {
     setImporting(true);
     try {
       const fd = new FormData(); fd.append('file', file);
-      const res = await axios.post(`${API}/admin/techfest/registrations/import`, fd, {
+      const endpoint = tab === 'student'
+        ? `${API}/admin/techfest/students/import`
+        : `${API}/admin/techfest/registrations/import`;
+      const res = await axios.post(endpoint, fd, {
         headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
       });
-      const { inserted = 0, updated = 0, skipped = 0, errors = [] } = res.data || {};
-      toast.success(`Imported: ${inserted} new · ${updated} updated · ${skipped} skipped${errors.length ? ` · ${errors.length} errors` : ''}`);
+      const { inserted = 0, updated = 0, skipped = 0, schools_linked = 0, errors = [] } = res.data || {};
+      const linkedNote = tab === 'student' ? ` · ${schools_linked} schools linked` : '';
+      toast.success(`Imported: ${inserted} new · ${updated} updated · ${skipped} skipped${linkedNote}${errors.length ? ` · ${errors.length} errors` : ''}`);
       if (errors.length) console.warn('Import errors', errors);
+      if (tab === 'student') await loadCombined().catch(() => {});
       await load();
     } catch (err) { toast.error(err.response?.data?.detail || 'Import failed'); }
     finally { setImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
@@ -423,8 +467,8 @@ export default function AdminCompetitions() {
             {visibleTabs.map((t) => {
               const active = t.key === tab;
               const Icon = t.icon;
-              const count = active ? (t.key === 'referrers' ? referrers.length : rows.length) : null;
-              const isLoading = active && (t.key === 'referrers' ? refLoading : loading);
+              const count = active ? (t.key === 'referrers' ? referrers.length : t.key === 'submissions' ? submissions.length : t.key === 'combined' ? combined.length : rows.length) : null;
+              const isLoading = active && (t.key === 'referrers' ? refLoading : t.key === 'submissions' ? subLoading : t.key === 'combined' ? combinedLoading : loading);
               return (
                 <button
                   key={t.key}
@@ -486,6 +530,111 @@ export default function AdminCompetitions() {
 
           {/* Content area */}
           <div className="overflow-x-auto">
+            {tab === 'combined' && (
+              combinedLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…</div>
+              ) : combined.length === 0 ? (
+                <div className="p-10 text-center text-slate-500" data-testid="admin-competitions-combined-empty">No school data yet.</div>
+              ) : (
+                <table className="w-full text-sm" data-testid="admin-competitions-combined-table">
+                  <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 sticky top-0">
+                    <tr>
+                      <th className="text-left px-3 py-3 font-bold w-8">
+                        <button
+                          onClick={() => setCombinedSelected(s => s.size === combined.length ? new Set() : new Set(combined.map(r => r.school_key)))}
+                          className="text-slate-500 hover:text-slate-900"
+                          data-testid="combined-select-all"
+                        >
+                          {combinedSelected.size === combined.length && combined.length > 0 ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                        </button>
+                      </th>
+                      <th className="text-left px-3 py-3 font-bold">School</th>
+                      <th className="text-left px-3 py-3 font-bold">City</th>
+                      <th className="text-left px-3 py-3 font-bold">Competition</th>
+                      <th className="text-left px-3 py-3 font-bold">Zone</th>
+                      <th className="text-left px-3 py-3 font-bold">Coordinator</th>
+                      <th className="text-center px-3 py-3 font-bold">School Reg</th>
+                      <th className="text-center px-3 py-3 font-bold">Educators</th>
+                      <th className="text-center px-3 py-3 font-bold">Students</th>
+                      <th className="text-center px-3 py-3 font-bold">Submissions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {combined.map((r) => (
+                      <tr key={r.school_key} className="border-b border-slate-100 hover:bg-slate-50/60">
+                        <td className="px-3 py-2">
+                          <button
+                            onClick={() => setCombinedSelected(prev => {
+                              const next = new Set(prev);
+                              if (next.has(r.school_key)) next.delete(r.school_key); else next.add(r.school_key);
+                              return next;
+                            })}
+                            className="text-slate-500 hover:text-slate-900"
+                            data-testid={`combined-check-${r.school_key}`}
+                          >
+                            {combinedSelected.has(r.school_key) ? <CheckSquare className="w-4 h-4 text-blue-600" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 font-semibold text-slate-800">{r.school_name || '—'}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.city || '—'}</td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {r.selected_competitions && r.selected_competitions.length
+                            ? r.selected_competitions.map(c => COMPETITION_LABEL[c] || c).join(', ')
+                            : <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="px-3 py-2">
+                          <InlineZonePicker
+                            value={r.zone}
+                            onSave={async (val) => {
+                              const ok = await patchRegistration(r.school_reg_id || r.educator_reg_ids?.[0], { zone: val });
+                              if (ok) { toast.success('Zone updated'); await loadCombined(); }
+                            }}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <InlineCoordinatorPicker
+                            value={r.coordinator_user_id}
+                            currentName={r.coordinator_name}
+                            options={teamUsers}
+                            onSave={async (uid, uname) => {
+                              const ok = await patchRegistration(r.school_reg_id || r.educator_reg_ids?.[0], { coordinator_user_id: uid || '', coordinator_name: uname || '' });
+                              if (ok) { toast.success('Coordinator updated'); await loadCombined(); }
+                            }}
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {r.school_registered
+                            ? <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 text-[11px] font-bold">✓ Yes</span>
+                            : <span className="inline-flex items-center gap-1 text-slate-500 bg-slate-100 rounded-full px-2 py-0.5 text-[11px] font-bold">✗ No</span>}
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums font-bold text-slate-800">{r.educator_count}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-bold text-slate-800">{r.student_count}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-bold text-slate-800">{r.submission_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-50 border-t-2 border-slate-200 text-xs">
+                    <tr>
+                      <td className="px-3 py-2" colSpan={2}>
+                        <span className="font-bold text-slate-700">
+                          {combinedSelected.size > 0 ? `${combinedSelected.size} selected` : `${combined.length} unique schools`}
+                        </span>
+                      </td>
+                      <td colSpan={5}></td>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700 tabular-nums">
+                        {combined.reduce((s, r) => s + r.educator_count, 0)}
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700 tabular-nums">
+                        {combined.reduce((s, r) => s + r.student_count, 0)}
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700 tabular-nums">
+                        {combined.reduce((s, r) => s + r.submission_count, 0)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )
+            )}
             {isRegistrationTab && (
               loading ? (
                 <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…</div>
@@ -534,6 +683,13 @@ export default function AdminCompetitions() {
                       <th className="text-left px-3 py-3 font-bold">Source</th>
                       <th className="text-left px-3 py-3 font-bold">School Address</th>
                       <th className="text-left px-3 py-3 font-bold">School Contact</th>
+                      {(tab === 'school' || tab === 'educator') && (
+                        <>
+                          <th className="text-left px-3 py-3 font-bold">Competition</th>
+                          <th className="text-left px-3 py-3 font-bold">Zone</th>
+                          <th className="text-left px-3 py-3 font-bold">Coordinator</th>
+                        </>
+                      )}
                       <th className="text-left px-3 py-3 font-bold">Status</th>
                       <th className="text-right px-3 py-3 font-bold">Actions</th>
                     </tr>
@@ -577,6 +733,35 @@ export default function AdminCompetitions() {
                           {r.school_phone ? <div className="mt-0.5 inline-flex items-center gap-1"><Phone className="w-3 h-3" />{r.school_phone}</div> : null}
                           {!(r.school_email || r.school_phone) && '—'}
                         </td>
+                        {(tab === 'school' || tab === 'educator') && (
+                          <>
+                            <td className="px-3 py-3 text-[12px] text-slate-700 max-w-[160px]">
+                              {(r.selected_competitions || []).length
+                                ? (r.selected_competitions || []).map(c => COMPETITION_LABEL[c] || c).join(', ')
+                                : <span className="text-slate-400">—</span>}
+                            </td>
+                            <td className="px-3 py-3 text-[12px]">
+                              <InlineZonePicker
+                                value={r.zone}
+                                onSave={async (val) => {
+                                  const ok = await patchRegistration(r._id, { zone: val });
+                                  if (ok) { toast.success('Zone updated'); await load(); }
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-3 text-[12px]">
+                              <InlineCoordinatorPicker
+                                value={r.coordinator_user_id}
+                                currentName={r.coordinator_name}
+                                options={teamUsers}
+                                onSave={async (uid, uname) => {
+                                  const ok = await patchRegistration(r._id, { coordinator_user_id: uid || '', coordinator_name: uname || '' });
+                                  if (ok) { toast.success('Coordinator updated'); await load(); }
+                                }}
+                              />
+                            </td>
+                          </>
+                        )}
                         <td className="px-3 py-3">
                           <span className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-blue-100 text-blue-800">{r.status || 'new'}</span>
                         </td>
@@ -1011,3 +1196,107 @@ function Field({ label, children }) {
     </div>
   );
 }
+
+// ─── Inline picker helpers (Combined tab) ─────────────────────────────
+function InlineZonePicker({ value, onSave }) {
+  const [open, setOpen] = useState(false);
+  const [local, setLocal] = useState(value || '');
+  useEffect(() => { setLocal(value || ''); }, [value]);
+  const zoneLabel = ZONE_OPTIONS.find(z => z.slug === value)?.label;
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`text-left inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${value ? 'text-slate-800 hover:bg-slate-100' : 'text-blue-600 hover:bg-blue-50 border border-dashed border-blue-300'}`}
+      >
+        {value ? zoneLabel : '+ Set zone'}
+        <Pencil className="w-3 h-3 opacity-60" />
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        autoFocus
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        className="text-xs px-2 py-1 border border-slate-300 rounded bg-white"
+      >
+        <option value="">— None —</option>
+        {ZONE_OPTIONS.map(z => (
+          <option key={z.slug} value={z.slug}>{z.label}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={async () => { await onSave(local); setOpen(false); }}
+        className="text-emerald-600 hover:bg-emerald-50 rounded p-1"
+      >✓</button>
+      <button
+        type="button"
+        onClick={() => { setLocal(value || ''); setOpen(false); }}
+        className="text-slate-400 hover:bg-slate-100 rounded p-1"
+      ><X className="w-3 h-3" /></button>
+    </div>
+  );
+}
+
+function InlineCoordinatorPicker({ value, currentName, options, onSave }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const filtered = (options || []).filter(u => {
+    const s = (u.name + ' ' + (u.email || '')).toLowerCase();
+    return !q || s.includes(q.toLowerCase());
+  }).slice(0, 8);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`text-left inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${value ? 'text-slate-800 hover:bg-slate-100' : 'text-blue-600 hover:bg-blue-50 border border-dashed border-blue-300'}`}
+        data-testid="inline-coord-open"
+      >
+        {value ? (currentName || 'Assigned') : '+ Assign'}
+        <UserPlus className="w-3 h-3 opacity-60" />
+      </button>
+    );
+  }
+  return (
+    <div className="relative">
+      <input
+        autoFocus
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search team…"
+        className="text-xs px-2 py-1 border border-slate-300 rounded bg-white w-40"
+      />
+      <div className="absolute z-30 mt-1 left-0 w-56 bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+        <button
+          type="button"
+          onClick={async () => { await onSave('', ''); setOpen(false); }}
+          className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 border-b border-slate-100"
+        >Unassign</button>
+        {filtered.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-slate-400">No matches</div>
+        ) : filtered.map(u => (
+          <button
+            key={u.id || u._id || u.email}
+            type="button"
+            onClick={async () => { await onSave(u.id || u._id, u.name); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50"
+          >
+            <div className="font-semibold text-slate-800">{u.name}</div>
+            <div className="text-slate-500 text-[10px]">{u.email}</div>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="absolute -right-6 top-1 text-slate-400 hover:text-slate-700"
+      ><X className="w-3.5 h-3.5" /></button>
+    </div>
+  );
+}
+
