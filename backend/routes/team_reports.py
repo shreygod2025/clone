@@ -16,6 +16,7 @@ The `period` argument controls both the window and the bucketing:
   quarterly → 3 months, month-wise breakdown
 """
 from __future__ import annotations
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from calendar import monthrange
@@ -452,6 +453,38 @@ async def team_member_report(
     # ── ROLE-BASED KPIs (matches /users/{id}/performance/timeseries) ──
     role_kpis = await _role_kpi_series(user_id, start, end, buckets)
 
+    # ── Projects the user leads / participates in (period-active) ─────
+    async def _projects_for(role_key: str) -> List[Dict[str, Any]]:
+        # Any project where user is a lead / member and touched during the period
+        q: Dict[str, Any] = {}
+        if role_key == "lead":
+            q = {"$or": [{"lead_id": user_id}, {"leader_id": user_id}, {"project_lead_id": user_id}]}
+        else:
+            q = {"$or": [{"member_ids": user_id}, {"members": user_id}]}
+        try:
+            docs = await db.projects.find(
+                q,
+                {"_id": 0, "id": 1, "name": 1, "title": 1, "status": 1,
+                 "progress": 1, "priority": 1, "due_date": 1, "start_date": 1,
+                 "created_at": 1, "updated_at": 1, "lead_id": 1, "leader_id": 1,
+                 "project_lead_id": 1, "lead_name": 1, "member_ids": 1, "members": 1},
+            ).sort("updated_at", -1).limit(80).to_list(80)
+        except Exception:
+            return []
+        # Normalize a few fields
+        for d in docs:
+            d["name"] = d.get("name") or d.get("title") or "—"
+            d["lead"] = d.get("lead_name") or ""
+        return docs
+
+    projects_leading, projects_member = await asyncio.gather(
+        _projects_for("lead"),
+        _projects_for("member"),
+    )
+    # De-dupe: if a user is both lead and member, keep in "leading" only
+    lead_ids = {p.get("id") for p in projects_leading if p.get("id")}
+    projects_member = [p for p in projects_member if p.get("id") not in lead_ids]
+
     # ── Breakdown unit label for the frontend ─────────────────────
     unit_label = {
         "daily": "hour",
@@ -501,4 +534,8 @@ async def team_member_report(
             "student_leads":     student_leads,
         },
         "role_kpis": role_kpis,
+        "projects": {
+            "leading":  projects_leading,
+            "member":   projects_member,
+        },
     }

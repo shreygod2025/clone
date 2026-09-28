@@ -342,6 +342,40 @@ def _build_report_pdf(payload: Dict[str, Any]) -> bytes:
         story.append(qtbl)
         story.append(Spacer(1, 12))
 
+    # ── Projects Leading / Member ─────────────
+    projects = payload.get("projects") or {}
+    leading = projects.get("leading") or []
+    members = projects.get("member") or []
+    if leading or members:
+        story.append(Paragraph(
+            f"<b>Projects · Leading ({len(leading)}) · Member of ({len(members)})</b>",
+            ParagraphStyle("h2", parent=styles["Heading3"], textColor=colors.HexColor("#7C3AED"))))
+        story.append(Spacer(1, 4))
+        rows = [["Role", "Project", "Status", "Progress", "Priority", "Due"]]
+        def _add_rows(lst, tag):
+            for p in lst[:60]:
+                rows.append([
+                    tag,
+                    (p.get("name") or "—")[:52],
+                    (p.get("status") or "—").title(),
+                    f"{p.get('progress')}%" if isinstance(p.get("progress"), (int, float)) else "—",
+                    (p.get("priority") or "normal").title(),
+                    (p.get("due_date") or "—")[:10],
+                ])
+        _add_rows(leading, "Lead")
+        _add_rows(members, "Member")
+        ptbl = Table(rows, colWidths=[1.4 * cm, 6.5 * cm, 2.2 * cm, 2 * cm, 2 * cm, 2 * cm])
+        ptbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7C3AED")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#F5F3FF"), colors.white]),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+        ]))
+        story.append(ptbl)
+        story.append(Spacer(1, 12))
+
     # ── CRM roll-up ─────────────────────────────
     story.append(Paragraph("<b>CRM Highlights</b>",
                             ParagraphStyle("h2", parent=styles["Heading3"], textColor=colors.HexColor("#E11D48"))))
@@ -400,6 +434,26 @@ async def _assemble_report(user_id: str, period: str, ref: Optional[str]) -> Dic
     )
     bucket_data = await _bucket_counts(user_id, buckets)
     role_kpis = await _role_kpi_series(user_id, start, end, buckets)
+
+    # ── Projects (leading / member of) ─────
+    async def _projects_for(role_key: str):
+        q = ({"$or": [{"lead_id": user_id}, {"leader_id": user_id}, {"project_lead_id": user_id}]}
+             if role_key == "lead"
+             else {"$or": [{"member_ids": user_id}, {"members": user_id}]})
+        try:
+            docs = await db.projects.find(
+                q, {"_id": 0, "id": 1, "name": 1, "title": 1, "status": 1,
+                    "progress": 1, "priority": 1, "due_date": 1},
+            ).sort("updated_at", -1).limit(80).to_list(80)
+        except Exception:
+            docs = []
+        for d in docs:
+            d["name"] = d.get("name") or d.get("title") or "—"
+        return docs
+    projects_leading = await _projects_for("lead")
+    projects_member = await _projects_for("member")
+    _lead_ids = {p.get("id") for p in projects_leading if p.get("id")}
+    projects_member = [p for p in projects_member if p.get("id") not in _lead_ids]
 
     leads_added = await _count_in_window("school_inquiries", "assigned_to", user_id, "created_at", start, end)
     schools_onboarded = await _count_in_window(
@@ -474,6 +528,7 @@ async def _assemble_report(user_id: str, period: str, ref: Optional[str]) -> Dic
         "queries": {"assigned": queries_assigned},
         "crm": {"leads_added": leads_added, "schools_onboarded": schools_onboarded, "student_leads": student_leads},
         "role_kpis": role_kpis,
+        "projects": {"leading": projects_leading, "member": projects_member},
     }
 
 

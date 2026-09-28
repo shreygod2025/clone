@@ -25,7 +25,7 @@ const fmtDate = (v) => {
 const cap = (s) => (s || '').charAt(0).toUpperCase() + (s || '').slice(1);
 
 export async function generateTeamMemberReportPDF(payload) {
-  const { user, period, breakdown_unit, buckets = [], totals = {}, tasks = {}, queries = {}, crm = {}, role_kpis = [] } = payload || {};
+  const { user, period, breakdown_unit, buckets = [], totals = {}, tasks = {}, queries = {}, crm = {}, role_kpis = [], projects = {} } = payload || {};
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -249,6 +249,41 @@ export async function generateTeamMemberReportPDF(payload) {
       theme: 'striped',
       styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
       headStyles: { fillColor: BRAND.amber, textColor: 255, fontStyle: 'bold' },
+      margin: { left: M, right: M },
+    });
+    y = doc.lastAutoTable.finalY + 16;
+  }
+
+  // ── Projects Leading / Member ────────────────────────────────
+  const leading = projects.leading || [];
+  const memberOf = projects.member || [];
+  if (leading.length > 0 || memberOf.length > 0) {
+    if (y > pageH - 200) { doc.addPage(); y = M; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(124, 58, 237); // violet-600
+    doc.text(`Projects · Leading (${leading.length})  ·  Member of (${memberOf.length})`, M, y);
+    y += 6;
+
+    const projRows = (list, tag) => list.map(p => [
+      tag,
+      p.name || '—',
+      cap(p.status || '—'),
+      (typeof p.progress === 'number') ? `${p.progress}%` : '—',
+      cap(p.priority || 'normal'),
+      fmtDate(p.due_date),
+    ]);
+    autoTable(doc, {
+      startY: y + 4,
+      head: [['Role', 'Project', 'Status', 'Progress', 'Priority', 'Due']],
+      body: [...projRows(leading, 'Lead'), ...projRows(memberOf, 'Member')],
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 45 },
+        1: { cellWidth: 200 },
+      },
       margin: { left: M, right: M },
     });
     y = doc.lastAutoTable.finalY + 16;

@@ -118,112 +118,102 @@ async def _success_stories_block() -> Dict[str, Any]:
 
 # ─── Support queries (tickets) ──────────────────────────────────────────
 async def _support_block() -> Dict[str, Any]:
-    start_dt, end_dt = _today_utc_bounds()
-    new_today = await _count_by_date_field("support_queries", "created_at")
+    """Mirror AdminSupportUnified counts *exactly*.
 
-    # Resolved today — use resolved_at when present. Try tz-aware, tz-suffixed
-    # ISO string and tz-naïve ISO string (see _count_by_date_field for context).
-    async def _count(q: Dict[str, Any]) -> int:
-        try: return await db.support_queries.count_documents(q)
-        except Exception: return 0
+    Support Center pulls from FOUR endpoints (see AdminSupportUnified.fetchAll):
+      • /api/inquiry/queries              → inquiry_queries
+      • /api/support/queries              → support_queries (user + educator)
+      • /api/support/tickets              → support_tickets (legacy)
+      • /api/support/tracking-tickets     → support_tickets where source=tracking_page
 
-    RESOLVED_STATES = ["resolved", "closed"]
-    ON_HOLD_STATES = ["on_hold", "onhold", "on hold", "hold", "paused"]
-    resolved_today = max(
-        await _count({
-            "status": {"$in": RESOLVED_STATES},
-            "resolved_at": {"$gte": start_dt, "$lt": end_dt},
-        }),
-        await _count({
-            "status": {"$in": RESOLVED_STATES},
-            "resolved_at": {"$gte": start_dt.isoformat(), "$lt": end_dt.isoformat()},
-        }),
-        await _count({
-            "status": {"$in": RESOLVED_STATES},
-            "resolved_at": {
-                "$gte": start_dt.replace(tzinfo=None).isoformat(),
-                "$lt": end_dt.replace(tzinfo=None).isoformat(),
-            },
-        }),
-    )
-
-    # Overdue — matches AdminSupportUnified.isOverdue():
-    #   status NOT IN (resolved, closed, on_hold) AND
-    #   (now - created_at) - paused_seconds > 24 hours
-    # We compute via aggregation so paused_seconds is subtracted correctly.
+    Predicates (identical to the frontend so the two numbers can never diverge):
+      new     = status ∈ (open, in_progress) AND !overdue
+      overdue = status ∉ (resolved, closed, on_hold) AND (elapsed - paused) > 24h
+      on_hold = status = on_hold
+      resolved_today = (resolved | closed) AND resolved_at within today IST
+    """
+    RESOLVED = ("resolved", "closed")
+    ON_HOLD  = ("on_hold",)
+    NEW_STATUSES = ("open", "in_progress")   # 'new' status is NOT counted as new here
     now_utc = datetime.now(timezone.utc)
-    try:
-        pipe = [
-            {"$match": {"status": {"$nin": RESOLVED_STATES + ON_HOLD_STATES}}},
-            {"$addFields": {
-                "_created_dt": {
-                    "$cond": [
-                        {"$eq": [{"$type": "$created_at"}, "date"]},
-                        "$created_at",
-                        {"$dateFromString": {
-                            "dateString": {"$ifNull": ["$created_at", ""]},
-                            "onError": None,
-                            "onNull": None,
-                        }},
-                    ]
-                },
-                "_paused_hrs": {
-                    "$divide": [{"$ifNull": ["$paused_seconds", 0]}, 3600]
-                },
-            }},
-            {"$match": {"_created_dt": {"$ne": None}}},
-            {"$addFields": {
-                "_elapsed_hrs": {
-                    "$divide": [
-                        {"$subtract": [now_utc, "$_created_dt"]},
-                        1000 * 60 * 60,
-                    ]
-                },
-            }},
-            {"$match": {
-                "$expr": {"$gt": [{"$subtract": ["$_elapsed_hrs", "$_paused_hrs"]}, 24]}
-            }},
-            {"$count": "n"},
-        ]
-        overdue = 0
-        async for row in db.support_queries.aggregate(pipe):
-            overdue = int(row.get("n") or 0)
-    except Exception as e:
-        logger.warning("[live-dashboard] overdue aggregation failed: %s", e)
-        overdue = 0
+    start_dt, end_dt = _today_utc_bounds()
 
-    open_total = await db.support_queries.count_documents({
-        "status": {"$nin": RESOLVED_STATES + ON_HOLD_STATES}
-    })
-    on_hold = await db.support_queries.count_documents({
-        "status": {"$in": ON_HOLD_STATES}
-    })
+    proj = {"_id": 0, "status": 1, "priority": 1, "created_at": 1,
+            "resolved_at": 1, "paused_seconds": 1}
 
-    # Open ticket count grouped by priority — used by the TV support card
-    priority_map: Dict[str, int] = {"urgent": 0, "high": 0, "normal": 0, "low": 0}
-    try:
-        pipe = [
-            {"$match": {"status": {"$nin": RESOLVED_STATES + ON_HOLD_STATES}}},
-            {"$group": {"_id": "$priority", "n": {"$sum": 1}}},
-        ]
-        async for row in db.support_queries.aggregate(pipe):
-            key = (row.get("_id") or "normal").lower()
-            # Normalise a few variants → the 4 canonical buckets
-            if key in ("medium", "med"):
-                key = "normal"
-            if key in ("critical",):
-                key = "urgent"
-            priority_map[key] = priority_map.get(key, 0) + row["n"]
-    except Exception as e:
-        logger.warning("[live-dashboard] support priority breakdown failed: %s", e)
+    async def _rows(collection: str, filt: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        # Same 500-row cap as the frontend endpoints — keeps parity.
+        try:
+            return await db[collection].find(filt or {}, proj).sort("created_at", -1).to_list(500)
+        except Exception as e:
+            logger.warning("[live-dashboard] load %s failed: %s", collection, e)
+            return []
+
+    inquiry, support, legacy, tracking = await asyncio.gather(
+        _rows("inquiry_queries"),
+        _rows("support_queries"),
+        _rows("support_tickets", {"$or": [{"source": {"$exists": False}},
+                                           {"source": {"$ne": "tracking_page"}}]}),
+        _rows("support_tickets", {"source": "tracking_page"}),
+    )
+    all_rows: List[Dict[str, Any]] = inquiry + support + legacy + tracking
+
+    def _to_dt(v) -> Optional[datetime]:
+        if isinstance(v, datetime):
+            return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+        if isinstance(v, str) and v:
+            try:
+                s = v[:-1] + "+00:00" if v.endswith("Z") else v
+                dt = datetime.fromisoformat(s)
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            except Exception:
+                return None
+        return None
+
+    def _is_overdue(row: Dict[str, Any]) -> bool:
+        if (row.get("status") or "").lower() in RESOLVED + ON_HOLD:
+            return False
+        dt = _to_dt(row.get("created_at"))
+        if not dt:
+            return False
+        elapsed_hrs = (now_utc - dt).total_seconds() / 3600
+        paused_hrs = float(row.get("paused_seconds") or 0) / 3600
+        return (elapsed_hrs - paused_hrs) > 24
+
+    new_count = overdue_count = on_hold_count = resolved_today = 0
+    priority = {"urgent": 0, "high": 0, "normal": 0, "low": 0}
+
+    for r in all_rows:
+        st = (r.get("status") or "").lower()
+        if st in ON_HOLD:
+            on_hold_count += 1
+            continue
+        if st in RESOLVED:
+            rdt = _to_dt(r.get("resolved_at"))
+            if rdt and start_dt <= rdt < end_dt:
+                resolved_today += 1
+            continue
+        overdue = _is_overdue(r)
+        if overdue:
+            overdue_count += 1
+        elif st in NEW_STATUSES:
+            new_count += 1
+        # Priority — for anything still open (not resolved/on_hold)
+        key = (r.get("priority") or "normal").lower()
+        if key in ("medium", "med"):
+            key = "normal"
+        if key == "critical":
+            key = "urgent"
+        if key in priority:
+            priority[key] += 1
 
     return {
-        "new_today": new_today,
-        "overdue": overdue,
+        "new_today":      new_count,
+        "overdue":        overdue_count,
+        "on_hold":        on_hold_count,
         "resolved_today": resolved_today,
-        "open_total": open_total,
-        "on_hold": on_hold,
-        "priority": priority_map,
+        "open_total":     new_count + overdue_count,
+        "priority":       priority,
     }
 
 

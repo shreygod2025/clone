@@ -31,6 +31,14 @@ const AdminMyTeam = () => {
   const [taskFor, setTaskFor] = useState(null); // team_user object to assign a task to
   const [period, setPeriod] = useState('weekly'); // 'weekly' | 'monthly' | 'quarterly'
   const [downloadingId, setDownloadingId] = useState(null);
+  // Ref anchor for the report window — used only when period=weekly to let
+  // managers step back through earlier weeks before downloading.
+  const _thisMonday = (() => {
+    const d = new Date(); const dow = d.getDay();
+    d.setDate(d.getDate() + ((dow === 0 ? -6 : 1) - dow));
+    return d.toISOString().slice(0, 10);
+  })();
+  const [weekRef, setWeekRef] = useState(_thisMonday);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,8 +56,10 @@ const AdminMyTeam = () => {
   const handleDownloadPDF = async (member) => {
     setDownloadingId(member.id);
     try {
+      const params = new URLSearchParams({ period });
+      if (period === 'weekly') params.set('ref', weekRef);
       const res = await axios.get(
-        `${API}/team/member-report/${member.id}?period=${period}`,
+        `${API}/team/member-report/${member.id}?${params.toString()}`,
         { headers: getAuthHeaders() },
       );
       await generateTeamMemberReportPDF(res.data);
@@ -115,6 +125,44 @@ const AdminMyTeam = () => {
                 </button>
               ))}
             </div>
+
+            {/* Week navigator — only when period=weekly */}
+            {period === 'weekly' && (() => {
+              const d = new Date(weekRef + 'T00:00:00');
+              const dow = d.getDay();
+              const monday = new Date(d);
+              monday.setDate(d.getDate() + ((dow === 0 ? -6 : 1) - dow));
+              const sunday = new Date(monday);
+              sunday.setDate(monday.getDate() + 6);
+              const fmt = (dd) => dd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+              const shift = (days) => {
+                const nd = new Date(monday);
+                nd.setDate(monday.getDate() + days);
+                setWeekRef(nd.toISOString().slice(0, 10));
+              };
+              const now = new Date();
+              const nowDow = now.getDay();
+              const nowMon = new Date(now); nowMon.setDate(now.getDate() + ((nowDow === 0 ? -6 : 1) - nowDow));
+              const isThisWeek = monday.toDateString() === nowMon.toDateString();
+              return (
+                <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1" data-testid="team-week-nav">
+                  <button type="button" onClick={() => shift(-7)} aria-label="Previous week"
+                    className="w-8 h-8 rounded-md text-slate-600 hover:bg-slate-100 flex items-center justify-center" data-testid="team-week-prev">‹</button>
+                  <div className="px-2 py-1 min-w-[160px] text-center">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">
+                      {isThisWeek ? 'This Week' : 'Week'}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-800 leading-tight" data-testid="team-week-range">
+                      {fmt(monday)} – {fmt(sunday)}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => shift(7)} disabled={isThisWeek} aria-label="Next week"
+                    className="w-8 h-8 rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center" data-testid="team-week-next">›</button>
+                  <input type="date" value={weekRef} onChange={(e) => setWeekRef(e.target.value)}
+                    className="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 cursor-pointer" data-testid="team-week-picker" title="Pick any date in the week" />
+                </div>
+              );
+            })()}
 
             <div className="relative w-full md:w-56">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />

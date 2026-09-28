@@ -219,16 +219,60 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
 
           {/* Ref picker — swaps based on scope */}
           <div className="flex items-center gap-2" data-testid="ref-picker">
-            {scope === 'week' && (
-              <input
-                type="date"
-                value={selWeekRef}
-                onChange={(e) => setSelWeekRef(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-                data-testid="week-picker"
-                title="Pick any date in the week"
-              />
-            )}
+            {scope === 'week' && (() => {
+              // The selected date defines a week (Monday → Sunday).
+              // We show a readable range + prev / next / this-week helpers.
+              const d = new Date(selWeekRef + 'T00:00:00');
+              const dow = d.getDay(); // 0=Sun..6=Sat
+              const monOffset = (dow === 0 ? -6 : 1) - dow;
+              const monday = new Date(d);
+              monday.setDate(d.getDate() + monOffset);
+              const sunday = new Date(monday);
+              sunday.setDate(monday.getDate() + 6);
+              const fmt = (dd) => dd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+              const shift = (deltaDays) => {
+                const nd = new Date(monday);
+                nd.setDate(monday.getDate() + deltaDays);
+                setSelWeekRef(nd.toISOString().slice(0, 10));
+              };
+              const isThisWeek = (() => {
+                const now = new Date(); const nowDow = now.getDay();
+                const nowMon = new Date(now); nowMon.setDate(now.getDate() + ((nowDow === 0 ? -6 : 1) - nowDow));
+                return monday.toDateString() === nowMon.toDateString();
+              })();
+              return (
+                <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1" data-testid="week-nav">
+                  <button
+                    type="button" onClick={() => shift(-7)}
+                    className="w-8 h-8 rounded-md text-slate-600 hover:bg-slate-100 flex items-center justify-center"
+                    aria-label="Previous week" data-testid="week-prev"
+                  >‹</button>
+                  <div className="px-2 py-1 min-w-[170px] text-center">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">
+                      {isThisWeek ? 'This Week' : 'Week'}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-800 leading-tight" data-testid="week-range-label">
+                      {fmt(monday)} – {fmt(sunday)}
+                    </div>
+                  </div>
+                  <button
+                    type="button" onClick={() => shift(7)}
+                    disabled={isThisWeek}
+                    className="w-8 h-8 rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center"
+                    aria-label="Next week" data-testid="week-next"
+                  >›</button>
+                  <input
+                    type="date"
+                    value={selWeekRef}
+                    onChange={(e) => setSelWeekRef(e.target.value)}
+                    className="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 cursor-pointer"
+                    style={{ colorScheme: 'light' }}
+                    data-testid="week-picker"
+                    title="Pick any date in the target week"
+                  />
+                </div>
+              );
+            })()}
             {scope === 'month' && (
               <select
                 value={selMonth}
