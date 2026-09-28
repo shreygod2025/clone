@@ -3304,13 +3304,13 @@ async def get_my_educator_application(user: dict = Depends(get_current_user)):
 
 # Open Requirements
 @router.get("/requirements", response_model=List[OpenRequirement])
-async def get_open_requirements(city: Optional[str] = None, skill: Optional[str] = None):
-    query = {"is_active": True}
+async def get_open_requirements(city: Optional[str] = None, skill: Optional[str] = None, include_inactive: bool = False):
+    query = {} if include_inactive else {"is_active": True}
     if city:
         query["city"] = city
     if skill:
         query["skill"] = skill
-    requirements = await db.open_requirements.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    requirements = await db.open_requirements.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     for req in requirements:
         if isinstance(req.get('created_at'), str):
             req['created_at'] = datetime.fromisoformat(req['created_at'])

@@ -1,5 +1,33 @@
 # OLL Backend Changelog
 
+## 2026-02-04 — Product tag "Techfest, IIT Bombay" + School Logo + Closed Requirements
+**Status: COMPLETE**
+
+### Telecalling & Field Reports
+- Added new product option **Techfest, IIT Bombay** (`techfest_iit_bombay`) to `OLL_PRODUCTS` in `AdminTelecalling.jsx` and `AdminFieldReports.jsx` — surfaces in the Interested Lead popup and the Field Visit form once "Lead Interested = Yes".
+- Telecalling queue now has a dedicated **Products** column next to Interested? — renders emerald chips of the selected product labels only when `lead_interested === 'yes'`.
+
+### School CRM · School Logo
+- Backend `SchoolInquiryUpdate` (`schools.py`) accepts new `logo_url` & `logo_filename` fields.
+- New `SchoolLogoUploader` sub-component in `AdminSchoolCRM.jsx`: uploads via `/api/upload?type=images` (Cloudinary), 5 MB max, PNG/JPG/WEBP/SVG. Preview thumbnail + Upload / Replace / Download / Remove.
+- Logo state flows through all three `setEditOnboardData` branches (embedded, fetched onboarding, new-from-school-doc) and is included in the PATCH payload on Save.
+- Download button fetches the Cloudinary asset as a blob and saves it as `<school-slug>-logo.<ext>` — fallback opens it in a new tab.
+
+### Educator Applications · Requirements tab
+- `/api/requirements` now accepts `include_inactive=true` (admin frontend passes it).
+- The Requirements tab in `AdminEducators.jsx` splits requirements into two sections:
+  1. **Active Requirements** grid (top, with count badge).
+  2. A **CLOSED REQUIREMENTS · N** divider (horizontal rule + centred label) followed by a muted grid of closed cards.
+- The status badge for closed cards reads **Closed** (was "Inactive"). Tab counter in the sidebar now shows only active count.
+
+### Files
+- `backend/routes/schools.py`, `backend/routes/educators.py`
+- `frontend/src/pages/admin/AdminTelecalling.jsx`
+- `frontend/src/pages/admin/AdminFieldReports.jsx`
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx`
+- `frontend/src/pages/admin/AdminEducators.jsx`
+
+
 ## 2026-02-04 — Shop Coupon Codes (checkout discount + admin CRUD)
 **Status: COMPLETE**
 

@@ -49,6 +49,7 @@ const OLL_PRODUCTS = [
   { id: 'future_skills',     label: 'Future Skills (AI/Coding)' },
   { id: 'exhibition',        label: 'Robotics Exhibition' },
   { id: 'competition',       label: 'Robotics Competition' },
+  { id: 'techfest_iit_bombay', label: 'Techfest, IIT Bombay' },
 ];
 
 const isAdminRole = (r) => ['admin', 'super_admin', 'superadmin'].includes((r || '').toLowerCase());
@@ -574,6 +575,22 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
           testid={`tc-interested-${row.id}`}
         />
       </td>
+      <td className={`${CELL} max-w-[220px]`} data-testid={`tc-products-${row.id}`}>
+        {row.lead_interested === 'yes' && (row.products_interested || []).length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {(row.products_interested || []).map(pid => {
+              const label = OLL_PRODUCTS.find(p => p.id === pid)?.label || pid;
+              return (
+                <span key={pid} className="inline-block text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        ) : (
+          <span className="text-slate-300 italic text-[10px]">—</span>
+        )}
+      </td>
       <td className={`${CELL} min-w-[180px]`}>
         <textarea ref={noteRef} value={note} onChange={(e) => setNote(e.target.value)} onBlur={commitNote}
           rows={1} placeholder="Add note..." className="w-full text-xs px-1 py-0.5 border-0 bg-transparent resize-none focus:outline-none focus:bg-white focus:border focus:border-slate-300 rounded"
@@ -865,6 +882,7 @@ export default function AdminTelecalling() {
                       <th className={HEAD}>Status</th>
                       <th className={HEAD}>Picked?</th>
                       <th className={HEAD}>Interested?</th>
+                      <th className={HEAD}>Products</th>
                       <th className={HEAD}>Note</th>
                       <th className={HEAD}>Follow-up</th>
                       {isAdmin && <th className={HEAD}>Assignee</th>}

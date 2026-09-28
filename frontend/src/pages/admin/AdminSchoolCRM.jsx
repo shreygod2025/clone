@@ -221,6 +221,118 @@ const TIME_SLOTS = [
 // Searchable assignee filter — dropdown with a live typeahead so admins can
 // find the right teammate quickly even with 40+ active users. Kept minimal on
 // purpose: no external combobox library, just a controlled div + input.
+const SchoolLogoUploader = ({ value, filename, schoolName, onChange }) => {
+  const { getAuthHeaders } = useAuth();
+  const [uploading, setUploading] = React.useState(false);
+  const inputRef = React.useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Logo must be under 5 MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await axios.post(`${API}/upload?type=images`, fd, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.url || res.data?.cloudinary_url;
+      if (!url) throw new Error('Upload failed');
+      onChange(url, file.name);
+      toast.success('Logo uploaded');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const removeLogo = () => onChange(null, null);
+
+  const downloadLogo = async () => {
+    if (!value) return;
+    try {
+      const res = await fetch(value);
+      const blob = await res.blob();
+      const link = document.createElement('a');
+      const cleanName = (schoolName || 'school').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const ext = filename?.split('.').pop() || (blob.type.split('/')[1] || 'png');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${cleanName || 'school'}-logo.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch {
+      // Fallback: open in new tab (Cloudinary allows anonymous access)
+      window.open(value, '_blank');
+    }
+  };
+
+  return (
+    <div className="mt-1 flex items-start gap-3">
+      <div className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0" data-testid="school-logo-preview">
+        {value ? (
+          <img src={value} alt="School logo" className="w-full h-full object-contain" />
+        ) : (
+          <span className="text-[10px] text-slate-400 text-center px-2">No logo yet</span>
+        )}
+      </div>
+      <div className="flex-1 space-y-2">
+        <input
+          type="file"
+          ref={inputRef}
+          onChange={handleFile}
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          className="hidden"
+          data-testid="school-logo-file-input"
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            data-testid="school-logo-upload-btn"
+          >
+            <Upload className="w-3.5 h-3.5 mr-1" /> {uploading ? 'Uploading…' : (value ? 'Replace' : 'Upload Logo')}
+          </Button>
+          {value && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={downloadLogo}
+                data-testid="school-logo-download-btn"
+              >
+                <Download className="w-3.5 h-3.5 mr-1" /> Download
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={removeLogo}
+                className="text-rose-600 hover:text-rose-700"
+                data-testid="school-logo-remove-btn"
+              >
+                <X className="w-3.5 h-3.5 mr-1" /> Remove
+              </Button>
+            </>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-500">PNG, JPG, WEBP or SVG · max 5 MB · square logos look best.</p>
+      </div>
+    </div>
+  );
+};
+
 const AssigneeSearchFilter = ({ value, onChange, teamUsers }) => {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState('');
@@ -4062,6 +4174,8 @@ ${FOOTER}</div></body></html>`
         location: school.location,
         board: school.board,
         address: school.address || '',
+        logo_url: school.logo_url || '',
+        logo_filename: school.logo_filename || '',
         school_address: existingOnboardData.school_address || school.address || school.location || '',
         offering: existingOnboardData.offering || '',
         model: existingOnboardData.model || school.model || '',
@@ -4123,6 +4237,8 @@ ${FOOTER}</div></body></html>`
         location: school.location,
         board: school.board,
         address: school.address || '',
+        logo_url: school.logo_url || response.data.logo_url || '',
+        logo_filename: school.logo_filename || response.data.logo_filename || '',
         school_address: response.data.school_address || school.address || school.location || '',
         // Ensure share fields exist
         pricing_type: response.data.pricing_type || 'per_student',
@@ -4153,6 +4269,8 @@ ${FOOTER}</div></body></html>`
         location: school.location,
         board: school.board,
         address: school.address || '',
+        logo_url: school.logo_url || '',
+        logo_filename: school.logo_filename || '',
         offering: '',
         model: school.model || '',
         book_type: '',
@@ -4295,6 +4413,8 @@ ${FOOTER}</div></body></html>`
         longitude: editOnboardData.longitude || null,
         geofence_radius: editOnboardData.geofence_radius || 500,
         model: editOnboardData.model,
+        logo_url: editOnboardData.logo_url || null,
+        logo_filename: editOnboardData.logo_filename || null,
         total_students: calculatedTotalStudents,
         // Keep conversion_amount in sync with total_amount for display purposes
         conversion_amount: calculatedTotalAmount ? String(calculatedTotalAmount) : undefined,
@@ -11393,6 +11513,16 @@ ${FOOTER}</div></body></html>`
                       }))}
                     />
                   </div>
+                </div>
+                {/* School Logo */}
+                <div className="mt-3">
+                  <label className="text-sm font-medium text-slate-700">School Logo</label>
+                  <SchoolLogoUploader
+                    value={editOnboardData.logo_url}
+                    filename={editOnboardData.logo_filename}
+                    schoolName={editOnboardData.school_name}
+                    onChange={(url, filename) => setEditOnboardData(prev => ({ ...prev, logo_url: url, logo_filename: filename }))}
+                  />
                 </div>
               </div>
 

@@ -46,6 +46,7 @@ const OLL_PRODUCTS = [
   { id: 'future_skills',     label: 'Future Skills (AI/Coding)' },
   { id: 'exhibition',        label: 'Robotics Exhibition' },
   { id: 'competition',       label: 'Robotics Competition' },
+  { id: 'techfest_iit_bombay', label: 'Techfest, IIT Bombay' },
 ];
 
 const EMAIL_TEMPLATES = [

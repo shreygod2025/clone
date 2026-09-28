@@ -180,6 +180,9 @@ class SchoolInquiryUpdate(BaseModel):
     renewal_meeting_address: Optional[str] = None
     # Documents (proposal, MOU, parent circular, etc.)
     documents: Optional[list] = None
+    # School logo (Cloudinary URL, uploaded via /api/upload)
+    logo_url: Optional[str] = None
+    logo_filename: Optional[str] = None
     # School team contacts (synced at top-level for quick access)
     school_contacts: Optional[List[dict]] = None
 

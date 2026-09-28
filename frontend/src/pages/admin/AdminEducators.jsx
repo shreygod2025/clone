@@ -176,7 +176,7 @@ const AdminEducators = () => {
   const fetchRequirements = async () => {
     try {
       const [reqRes, citiesRes] = await Promise.all([
-        axios.get(`${API}/requirements`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/requirements?include_inactive=true`, { headers: getAuthHeaders() }),
         axios.get(`${API}/cities`, { headers: getAuthHeaders() })
       ]);
       setRequirements(reqRes.data || []);
@@ -900,7 +900,7 @@ const AdminEducators = () => {
       return educators.filter(e => ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(e.status || 'new')).length;
     }
     if (status === 'requirements') {
-      return requirements.length;
+      return requirements.filter(r => r.is_active).length;
     }
     if (status === 'onboarded') {
       // Count educators that have onboarding records
@@ -1471,7 +1471,7 @@ const AdminEducators = () => {
 
       {/* Requirements Tab Content */}
       {activeTab === 'requirements' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {requirements.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
               <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -1484,119 +1484,154 @@ const AdminEducators = () => {
                 Add First Requirement
               </Button>
             </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {requirements.map((req) => {
-                const matchingApps = educators.filter(e => e.requirement_id === req.id).length;
-                return (
-                  <div key={req.id} className={`bg-white rounded-2xl border p-5 ${req.is_active ? 'border-slate-100' : 'border-slate-200 bg-slate-50 opacity-60'}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-[#1E3A5F]">{req.title}</h3>
-                        <p className="text-sm text-slate-500">{req.skill}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {req.is_active ? 'Active' : 'Inactive'}
-                      </span>
+          ) : (() => {
+            const activeReqs = requirements.filter(r => r.is_active);
+            const closedReqs = requirements.filter(r => !r.is_active);
+
+            const RequirementCard = ({ req }) => {
+              const matchingApps = educators.filter(e => e.requirement_id === req.id).length;
+              return (
+                <div className={`bg-white rounded-2xl border p-5 ${req.is_active ? 'border-slate-100' : 'border-slate-200 bg-slate-50/60 opacity-75'}`} data-testid={`requirement-card-${req.id}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-[#1E3A5F]">{req.title}</h3>
+                      <p className="text-sm text-slate-500">{req.skill}</p>
                     </div>
-                    <div className="space-y-2 text-sm text-slate-600 mb-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
+                      {req.is_active ? 'Active' : 'Closed'}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm text-slate-600 mb-3">
+                    <p className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-slate-400" /> {req.city} {req.area && `- ${req.area}`}
+                    </p>
+                    <p className="flex items-center gap-1">
+                      <Users className="w-3 h-3 text-slate-400" /> {req.positions} position(s)
+                    </p>
+                    {req.timing_from && (
                       <p className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-slate-400" /> {req.city} {req.area && `- ${req.area}`}
+                        <Clock className="w-3 h-3 text-slate-400" /> {req.timing_from} - {req.timing_to}
                       </p>
-                      <p className="flex items-center gap-1">
-                        <Users className="w-3 h-3 text-slate-400" /> {req.positions} position(s)
+                    )}
+                    {req.pay_amount && (
+                      <p className="flex items-center gap-1 text-green-600 font-medium">
+                        ₹{req.pay_amount} / {req.pay_type === 'per_session' ? 'session' : 'month'}
                       </p>
-                      {req.timing_from && (
-                        <p className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" /> {req.timing_from} - {req.timing_to}
-                        </p>
-                      )}
-                      {req.pay_amount && (
-                        <p className="flex items-center gap-1 text-green-600 font-medium">
-                          ₹{req.pay_amount} / {req.pay_type === 'per_session' ? 'session' : 'month'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => {
+                        setActiveTab('applicants');
+                        setApplicantSubFilter('all');
+                        setRequirementFilter(req.id);
+                      }}
+                      className="text-xs text-[#D63031] hover:underline flex items-center gap-1"
+                      data-testid={`view-applicants-${req.id}`}
+                    >
+                      <Eye className="w-3 h-3" />
+                      View {matchingApps} applicant(s)
+                    </button>
+                    <div className="flex gap-1">
                       <button
                         onClick={() => {
-                          setActiveTab('applicants');
-                          setApplicantSubFilter('all');
-                          // Filter by requirement - we'll add a filter state
-                          setRequirementFilter(req.id);
+                          const link = `${window.location.origin}/educator/apply/${req.id}`;
+                          navigator.clipboard.writeText(link);
+                          toast.success('Application link copied!');
                         }}
-                        className="text-xs text-[#D63031] hover:underline flex items-center gap-1"
-                        data-testid={`view-applicants-${req.id}`}
+                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Copy public application link"
                       >
-                        <Eye className="w-3 h-3" />
-                        View {matchingApps} applicant(s)
+                        <Copy className="w-4 h-4 text-blue-500" />
                       </button>
-                      <div className="flex gap-1">
-                        {/* Copy link */}
-                        <button
-                          onClick={() => {
-                            const link = `${window.location.origin}/educator/apply/${req.id}`;
-                            navigator.clipboard.writeText(link);
-                            toast.success('Application link copied!');
-                          }}
-                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Copy public application link"
-                        >
-                          <Copy className="w-4 h-4 text-blue-500" />
-                        </button>
-                        {/* Edit */}
-                        <button
-                          onClick={() => {
-                            setEditingRequirement(req);
-                            setRequirementForm(req);
-                            setShowRequirementModal(true);
-                          }}
-                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Edit requirement"
-                        >
-                          <Edit className="w-4 h-4 text-slate-500" />
-                        </button>
-                        {/* Send test email */}
-                        <button
-                          onClick={() => handleSendTestEmail(req)}
-                          className="p-2 hover:bg-purple-50 rounded-lg transition-colors text-purple-500 hover:text-purple-700"
-                          title="Send sample email to specific recipient(s)"
-                          data-testid={`req-test-email-${req.id}`}
-                        >
-                          <Mail className="w-4 h-4" />
-                        </button>
-                        {/* Re-broadcast to all educators */}
-                        <button
-                          onClick={() => handleResendBroadcast(req)}
-                          className="p-2 hover:bg-green-50 rounded-lg transition-colors text-green-600 hover:text-green-700"
-                          title="Re-send notification to ALL educators"
-                          data-testid={`req-resend-${req.id}`}
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                        {/* Close / Reopen */}
-                        <button
-                          onClick={() => handleCloseRequirement(req)}
-                          className={`p-2 rounded-lg transition-colors ${req.is_active ? 'hover:bg-amber-50 text-amber-500' : 'hover:bg-green-50 text-green-600'}`}
-                          title={req.is_active ? 'Close requirement' : 'Reopen requirement'}
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                        {/* Delete */}
-                        <button
-                          onClick={() => handleDeleteRequirement(req)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
-                          title="Delete requirement"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setEditingRequirement(req);
+                          setRequirementForm(req);
+                          setShowRequirementModal(true);
+                        }}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="Edit requirement"
+                      >
+                        <Edit className="w-4 h-4 text-slate-500" />
+                      </button>
+                      <button
+                        onClick={() => handleSendTestEmail(req)}
+                        className="p-2 hover:bg-purple-50 rounded-lg transition-colors text-purple-500 hover:text-purple-700"
+                        title="Send sample email to specific recipient(s)"
+                        data-testid={`req-test-email-${req.id}`}
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleResendBroadcast(req)}
+                        className="p-2 hover:bg-green-50 rounded-lg transition-colors text-green-600 hover:text-green-700"
+                        title="Re-send notification to ALL educators"
+                        data-testid={`req-resend-${req.id}`}
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleCloseRequirement(req)}
+                        className={`p-2 rounded-lg transition-colors ${req.is_active ? 'hover:bg-amber-50 text-amber-500' : 'hover:bg-green-50 text-green-600'}`}
+                        title={req.is_active ? 'Close requirement' : 'Reopen requirement'}
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRequirement(req)}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
+                        title="Delete requirement"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              );
+            };
+
+            return (
+              <>
+                {/* Active requirements */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-slate-700">Active Requirements</h2>
+                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{activeReqs.length}</span>
+                  </div>
+                  {activeReqs.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500" data-testid="requirements-active-empty">
+                      No active requirements — click <strong>New Requirement</strong> to post one.
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="requirements-active-grid">
+                      {activeReqs.map((req) => <RequirementCard key={req.id} req={req} />)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider + closed requirements */}
+                {closedReqs.length > 0 && (
+                  <div className="pt-2">
+                    <div className="relative my-6" data-testid="requirements-closed-divider">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t-2 border-slate-200" />
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-slate-50 px-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                          Closed Requirements · {closedReqs.length}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="requirements-closed-grid">
+                      {closedReqs.map((req) => <RequirementCard key={req.id} req={req} />)}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
