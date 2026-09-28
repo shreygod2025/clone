@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import {
   Phone, Upload, Download, FileSpreadsheet, Users, Search, Filter, X,
   Building2, Calendar, BarChart3, ChevronDown, ChevronRight, Loader2, Plus,
-  UserPlus, MessageSquare, Mail, MapPin,
+  UserPlus, MessageSquare, Mail, MapPin, AlertTriangle,
 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -149,8 +149,18 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
               <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}
                 className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white" data-testid="tc-assign-single">
                 <option value="">Select telecaller...</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name || u.email}{u._has_tc ? '' : '  — grant Telecalling access'}
+                  </option>
+                ))}
               </select>
+              {assignedTo && !(users.find(u => u.id === assignedTo)?._has_tc) && (
+                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  This user doesn&rsquo;t have <b>Telecalling</b> permission — grant it in Admin &rarr; Users &amp; Roles so they can open the queue.
+                </p>
+              )}
             </div>
           ) : (
             <div>
@@ -159,11 +169,14 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
                 {users.map(u => (
                   <label key={u.id} className="flex items-center gap-2 text-xs cursor-pointer p-1 hover:bg-slate-50 rounded">
                     <input type="checkbox" checked={autoPool.includes(u.id)} onChange={() => togglePool(u.id)} data-testid={`tc-pool-${u.id}`} />
-                    <span>{u.name || u.email}</span>
+                    <span className={u._has_tc ? '' : 'text-slate-500'}>
+                      {u.name || u.email}
+                      {!u._has_tc && <span className="ml-1 text-[10px] text-amber-600" title="No telecalling access">⚠</span>}
+                    </span>
                   </label>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">Rows are distributed round-robin across selected people.</p>
+              <p className="text-[11px] text-slate-500 mt-1">Rows are distributed round-robin across selected people. <span className="text-amber-600">⚠ = needs Telecalling permission</span>.</p>
             </div>
           )}
           <div>
@@ -574,7 +587,11 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
           <select value={row.assigned_to || ''} onChange={(e) => commit('assigned_to', e.target.value || null)}
             className="text-xs h-7 px-1 border border-slate-200 rounded bg-white max-w-[130px]" data-testid={`tc-assigned-${row.id}`}>
             <option value="">Unassigned</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name || u.email}{u._has_tc ? '' : ' ⚠'}
+              </option>
+            ))}
           </select>
         </td>
       )}
@@ -715,11 +732,19 @@ export default function AdminTelecalling() {
     try {
       const r = await axios.get(`${API}/team-users?limit=200`, { headers: getAuthHeaders() });
       const list = Array.isArray(r.data) ? r.data : (r.data.users || r.data.data || []);
-      // Filter to users with 'telecalling' permission (admins always allowed)
-      const eligible = list.filter(u =>
-        isAdminRole(u.role) || (u.permissions || []).includes('telecalling')
-      );
-      setUsers(eligible);
+      // Show every active team user. Tag each with whether they have the
+      // telecalling permission so the admin can see at a glance who can
+      // actually work the queue — but don't hard-filter, otherwise the
+      // dropdown ends up empty until permissions are granted.
+      const enriched = list
+        .filter(u => (u.status || 'active') !== 'inactive')
+        .map(u => ({
+          ...u,
+          _has_tc: isAdminRole(u.role) || (u.permissions || []).includes('telecalling'),
+        }))
+        // Sort: users with access first, then by name
+        .sort((a, b) => (b._has_tc - a._has_tc) || (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+      setUsers(enriched);
     } catch { /* silent */ }
   }, [getAuthHeaders, isAdmin]);
 
