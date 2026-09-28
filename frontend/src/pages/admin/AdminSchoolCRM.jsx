@@ -13280,8 +13280,114 @@ ${FOOTER}</div></body></html>`
                           commit(next);
                         };
                         const removeEvent = (idx) => commit(events.filter((_, i) => i !== idx));
+                        const calFile = step.data?.calendar_file || null; // { url, name, type, size }
+                        const setCalFile = (val) => handleStepFieldChange(
+                          showOnboardingWorkflowModal.id, key, 'calendar_file', val,
+                        );
+                        const handleCalendarFileUpload = async (file) => {
+                          if (!file) return;
+                          const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+                          if (!allowed.includes(file.type)) {
+                            toast.error('Only PNG, JPG/JPEG or PDF files are allowed');
+                            return;
+                          }
+                          if (file.size > 15 * 1024 * 1024) {
+                            toast.error('File too large — max 15 MB');
+                            return;
+                          }
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          try {
+                            const res = await axios.post(`${API}/upload`, fd, { headers: getAuthHeaders() });
+                            setCalFile({
+                              url: res.data.url,
+                              name: file.name,
+                              type: file.type,
+                              size: file.size,
+                              uploaded_at: new Date().toISOString(),
+                            });
+                            toast.success('Academic calendar uploaded');
+                          } catch (err) {
+                            toast.error('Failed to upload calendar file');
+                          }
+                        };
                         return (
                           <div className="space-y-3">
+                            {/* Academic calendar file upload */}
+                            <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3" data-testid="cal-file-upload-block">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-700">School Academic Calendar</p>
+                                  <p className="text-[11px] text-slate-500">Upload the school's official academic calendar (PNG, JPG/JPEG or PDF · max 15 MB)</p>
+                                </div>
+                                {calFile && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCalFile(null)}
+                                    className="text-[11px] text-red-600 hover:text-red-700 hover:underline"
+                                    data-testid="cal-file-remove-btn"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                              {!calFile ? (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+                                    onChange={(e) => handleCalendarFileUpload(e.target.files?.[0])}
+                                    className="block w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                                    data-testid="cal-file-input"
+                                  />
+                                </label>
+                              ) : (
+                                <div className="rounded-md border border-emerald-200 bg-white p-2 flex items-start gap-3" data-testid="cal-file-preview">
+                                  {calFile.type === 'application/pdf' ? (
+                                    <div className="w-14 h-16 rounded bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                                      <FileText className="w-6 h-6 text-red-600" />
+                                    </div>
+                                  ) : (
+                                    <a href={calFile.url} target="_blank" rel="noreferrer" className="flex-shrink-0">
+                                      <img
+                                        src={calFile.url}
+                                        alt={calFile.name || 'Academic calendar preview'}
+                                        className="w-14 h-16 object-cover rounded border border-slate-200 hover:opacity-90"
+                                      />
+                                    </a>
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-slate-800 truncate" title={calFile.name}>{calFile.name || 'Academic Calendar'}</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                      {calFile.type === 'application/pdf' ? 'PDF' : 'Image'} · {calFile.size ? `${(calFile.size / 1024).toFixed(0)} KB` : '—'}
+                                      {calFile.uploaded_at ? ` · ${format(new Date(calFile.uploaded_at), 'd MMM yyyy')}` : ''}
+                                    </p>
+                                    <div className="mt-1.5 flex gap-2">
+                                      <a
+                                        href={calFile.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800"
+                                        data-testid="cal-file-view-btn"
+                                      >
+                                        <Eye className="w-3 h-3" /> View / Download
+                                      </a>
+                                      <label className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
+                                        <RefreshCw className="w-3 h-3" /> Replace
+                                        <input
+                                          type="file"
+                                          accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+                                          onChange={(e) => handleCalendarFileUpload(e.target.files?.[0])}
+                                          className="hidden"
+                                          data-testid="cal-file-replace-input"
+                                        />
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
                             <div className="flex items-center justify-between">
                               <p className="text-xs text-slate-500">
                                 Add holidays, workshops, exhibitions, competitions and exams for the school year.
