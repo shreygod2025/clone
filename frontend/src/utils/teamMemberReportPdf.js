@@ -25,7 +25,7 @@ const fmtDate = (v) => {
 const cap = (s) => (s || '').charAt(0).toUpperCase() + (s || '').slice(1);
 
 export async function generateTeamMemberReportPDF(payload) {
-  const { user, period, breakdown_unit, buckets = [], totals = {}, tasks = {}, queries = {}, crm = {} } = payload || {};
+  const { user, period, breakdown_unit, buckets = [], totals = {}, tasks = {}, queries = {}, crm = {}, role_kpis = [] } = payload || {};
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -71,21 +71,55 @@ export async function generateTeamMemberReportPDF(payload) {
   doc.setTextColor(...BRAND.primary);
   doc.text(`${period?.start} → ${period?.end}`, pageW - M - 16, y + 30, { align: 'right' });
 
-  // ── Summary KPI strip ────────────────────────────────────────
+  // ── Summary KPI strip — ROLE-BASED (falls back to activity totals) ──
   y += 80;
-  const kpis = [
-    { label: 'Tasks Assigned',    value: totals.tasks_assigned,   color: BRAND.primary },
-    { label: 'Tasks Completed',   value: totals.tasks_completed,  color: BRAND.emerald },
-    { label: 'Queries Assigned',  value: totals.queries_assigned, color: BRAND.amber },
-    { label: 'Queries Resolved',  value: totals.queries_resolved, color: BRAND.emerald },
-    { label: 'Field Visits',      value: totals.field_visits,     color: [8, 145, 178] },  // cyan-700
-    { label: 'Calls Connected',   value: totals.calls_connected,  color: BRAND.emerald },
-    { label: 'Leads Added',       value: totals.leads_added,      color: BRAND.rose },
-    { label: 'Schools Onboarded', value: totals.schools_onboarded, color: [124, 58, 237] },  // violet-600
+
+  const fmtVal = (v, unit) => {
+    if (v === null || v === undefined || Number.isNaN(Number(v))) return String(v ?? '0');
+    const n = Number(v);
+    if (unit === '₹') return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    if (unit === '%') return `${(Math.round(n * 10) / 10)}%`;
+    if (unit === 'hours') return `${(Math.round(n * 10) / 10)}h`;
+    return Number.isInteger(n) ? n.toLocaleString('en-IN') : (Math.round(n * 10) / 10).toLocaleString('en-IN');
+  };
+
+  const palette = [
+    BRAND.primary, BRAND.emerald, BRAND.amber, [8, 145, 178],   // cyan
+    [124, 58, 237], BRAND.rose, [5, 150, 105], [249, 115, 22],   // orange
+    [14, 165, 233], [217, 70, 239], [16, 185, 129], [37, 99, 235],
   ];
+
+  const kpisToShow = (role_kpis && role_kpis.length > 0)
+    ? role_kpis.map((k, idx) => ({
+        label: k.name || k.id || 'KPI',
+        value: fmtVal(k.total, k.unit),
+        sub:   k.target ? `Target: ${fmtVal(k.target, k.unit)}` : (k.category || ''),
+        color: palette[idx % palette.length],
+      }))
+    : [
+        { label: 'Tasks Assigned',    value: fmtVal(totals.tasks_assigned),   color: BRAND.primary },
+        { label: 'Tasks Completed',   value: fmtVal(totals.tasks_completed),  color: BRAND.emerald },
+        { label: 'Queries Assigned',  value: fmtVal(totals.queries_assigned), color: BRAND.amber },
+        { label: 'Queries Resolved',  value: fmtVal(totals.queries_resolved), color: BRAND.emerald },
+        { label: 'Field Visits',      value: fmtVal(totals.field_visits),     color: [8, 145, 178] },
+        { label: 'Calls Connected',   value: fmtVal(totals.calls_connected),  color: BRAND.emerald },
+        { label: 'Leads Added',       value: fmtVal(totals.leads_added),      color: BRAND.rose },
+        { label: 'Schools Onboarded', value: fmtVal(totals.schools_onboarded), color: [124, 58, 237] },
+      ];
+
+  // Section heading — only if we're rendering role-based KPIs
+  if (role_kpis && role_kpis.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...BRAND.slate);
+    doc.text(`KPIs assigned to ${user?.role_name || 'this role'}  (${role_kpis.length})`, M, y);
+    y += 12;
+  }
+
   const cardW = (pageW - 2 * M - 3 * 8) / 4;
-  const cardH = 46;
-  kpis.forEach((k, idx) => {
+  const cardH = role_kpis && role_kpis.length > 0 ? 56 : 46;   // taller when we show sub-line
+  const rowCount = Math.ceil(kpisToShow.length / 4);
+  kpisToShow.forEach((k, idx) => {
     const row = Math.floor(idx / 4);
     const col = idx % 4;
     const x = M + col * (cardW + 8);
@@ -95,13 +129,19 @@ export async function generateTeamMemberReportPDF(payload) {
     doc.roundedRect(x, yy, cardW, cardH, 4, 4, 'FD');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.text(String(k.value ?? 0), x + 10, yy + 22);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(k.label.toUpperCase(), x + 10, yy + 38);
+    doc.setFontSize(7);
+    const lbl = k.label.length > 30 ? `${k.label.slice(0, 30)}…` : k.label;
+    doc.text(lbl.toUpperCase(), x + 10, yy + 38);
+    if (k.sub) {
+      doc.setFontSize(6.5);
+      const sub = k.sub.length > 34 ? `${k.sub.slice(0, 34)}…` : k.sub;
+      doc.text(sub, x + 10, yy + 50);
+    }
   });
-  y += cardH * 2 + 8 + 16;
+  y += cardH * rowCount + 8 * (rowCount - 1) + 16;
 
   // ── Time-bucketed breakdown ──────────────────────────────────
   const unitLabel = breakdown_unit === 'day'   ? 'Day-wise'

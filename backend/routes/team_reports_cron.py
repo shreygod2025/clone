@@ -33,7 +33,7 @@ from reportlab.platypus import (
 from routes.shared import db
 from routes.team_reports import (
     _parse_ref, _period_bounds, _get_member, _fetch_in_window,
-    _count_in_window, _bucket_counts, IST,
+    _count_in_window, _bucket_counts, _role_kpi_series, IST,
 )
 
 logger = logging.getLogger(__name__)
@@ -123,38 +123,107 @@ def _build_report_pdf(payload: Dict[str, Any]) -> bytes:
     story.append(member_tbl)
     story.append(Spacer(1, 12))
 
-    # ── KPI strip (2 rows × 4 cards) ────────────
-    kpi_defs = [
-        ("Tasks Assigned",   totals.get("tasks_assigned"),   "#2563EB"),
-        ("Tasks Completed",  totals.get("tasks_completed"),  "#10B981"),
-        ("Queries Assigned", totals.get("queries_assigned"), "#D97706"),
-        ("Queries Resolved", totals.get("queries_resolved"), "#10B981"),
-        ("Field Visits",     totals.get("field_visits"),     "#0891B2"),
-        ("Calls Connected",  totals.get("calls_connected"),  "#10B981"),
-        ("Leads Added",      totals.get("leads_added"),      "#E11D48"),
-        ("Schools Onboarded", totals.get("schools_onboarded"), "#7C3AED"),
-    ]
-    row1_cells, row2_cells = [], []
-    for i, (label, value, hex_col) in enumerate(kpi_defs):
-        cell = Paragraph(f"<font color='white' size=16><b>{value or 0}</b></font><br/>"
-                         f"<font color='white' size=7><b>{label.upper()}</b></font>",
-                         styles["Normal"])
-        (row1_cells if i < 4 else row2_cells).append(cell)
-    def _style_kpi_row(cells, colors_hex):
-        tbl = Table([cells], colWidths=[4.25 * cm] * 4)
-        style = [("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                 ("TOPPADDING", (0, 0), (-1, -1), 8),
-                 ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]
-        for i, hex_col in enumerate(colors_hex):
-            style.append(("BACKGROUND", (i, 0), (i, 0), colors.HexColor(hex_col)))
-        tbl.setStyle(TableStyle(style))
-        return tbl
-    story.append(_style_kpi_row(row1_cells, [d[2] for d in kpi_defs[:4]]))
-    story.append(Spacer(1, 4))
-    story.append(_style_kpi_row(row2_cells, [d[2] for d in kpi_defs[4:]]))
-    story.append(Spacer(1, 16))
+    # ── KPI strip: role-assigned KPIs (falls back to defaults) ─────
+    role_kpis = payload.get("role_kpis") or []
+    palette = ["#2563EB", "#10B981", "#D97706", "#0891B2", "#7C3AED", "#E11D48", "#059669", "#F97316", "#0EA5E9"]
+
+    def _fmt_val(v, unit):
+        if v is None:
+            return "0"
+        try:
+            n = float(v)
+            if unit == "₹":
+                return f"₹{int(n):,}"
+            if unit == "%":
+                return f"{round(n, 1)}%"
+            if unit == "hours":
+                return f"{round(n, 1)}h"
+            return f"{int(n):,}" if n.is_integer() else f"{n:,.1f}"
+        except (TypeError, ValueError):
+            return str(v)
+
+    if role_kpis:
+        story.append(Paragraph("<b>KPIs assigned to this role</b>",
+                                ParagraphStyle("h2", parent=styles["Heading3"], textColor=colors.HexColor("#334155"))))
+        story.append(Spacer(1, 6))
+        # 4 cards per row; wrap as many rows as needed
+        rows_of_cards: List[List[Any]] = []
+        row_colors: List[List[str]] = []
+        current_row: List[Any] = []
+        current_colors: List[str] = []
+        for idx, k in enumerate(role_kpis):
+            col_hex = palette[idx % len(palette)]
+            label = (k.get("name") or k.get("id") or "").upper()
+            value_str = _fmt_val(k.get("total"), k.get("unit"))
+            target = k.get("target")
+            target_line = f"<br/><font color='white' size=6>Target: {_fmt_val(target, k.get('unit'))}</font>" if target else ""
+            cell = Paragraph(
+                f"<font color='white' size=14><b>{value_str}</b></font><br/>"
+                f"<font color='white' size=7><b>{label[:32]}</b></font>{target_line}",
+                styles["Normal"],
+            )
+            current_row.append(cell)
+            current_colors.append(col_hex)
+            if len(current_row) == 4:
+                rows_of_cards.append(current_row)
+                row_colors.append(current_colors)
+                current_row, current_colors = [], []
+        # Pad the last row so all 4 columns match widths
+        if current_row:
+            while len(current_row) < 4:
+                current_row.append("")
+                current_colors.append("#F1F5F9")
+            rows_of_cards.append(current_row)
+            row_colors.append(current_colors)
+
+        for r_idx, cells in enumerate(rows_of_cards):
+            tbl = Table([cells], colWidths=[4.25 * cm] * 4)
+            style = [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+            for c_idx, hex_col in enumerate(row_colors[r_idx]):
+                style.append(("BACKGROUND", (c_idx, 0), (c_idx, 0), colors.HexColor(hex_col)))
+            tbl.setStyle(TableStyle(style))
+            story.append(tbl)
+            story.append(Spacer(1, 4))
+        story.append(Spacer(1, 8))
+    else:
+        # No role KPIs configured — fall back to the generic activity KPIs
+        kpi_defs = [
+            ("Tasks Assigned",   totals.get("tasks_assigned"),   "#2563EB"),
+            ("Tasks Completed",  totals.get("tasks_completed"),  "#10B981"),
+            ("Queries Assigned", totals.get("queries_assigned"), "#D97706"),
+            ("Queries Resolved", totals.get("queries_resolved"), "#10B981"),
+            ("Field Visits",     totals.get("field_visits"),     "#0891B2"),
+            ("Calls Connected",  totals.get("calls_connected"),  "#10B981"),
+            ("Leads Added",      totals.get("leads_added"),      "#E11D48"),
+            ("Schools Onboarded", totals.get("schools_onboarded"), "#7C3AED"),
+        ]
+        row1_cells, row2_cells = [], []
+        for i, (label, value, hex_col) in enumerate(kpi_defs):
+            cell = Paragraph(f"<font color='white' size=16><b>{value or 0}</b></font><br/>"
+                             f"<font color='white' size=7><b>{label.upper()}</b></font>",
+                             styles["Normal"])
+            (row1_cells if i < 4 else row2_cells).append(cell)
+        def _style_kpi_row(cells, colors_hex):
+            tbl = Table([cells], colWidths=[4.25 * cm] * 4)
+            style = [("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                     ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                     ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                     ("TOPPADDING", (0, 0), (-1, -1), 8),
+                     ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]
+            for i, hex_col in enumerate(colors_hex):
+                style.append(("BACKGROUND", (i, 0), (i, 0), colors.HexColor(hex_col)))
+            tbl.setStyle(TableStyle(style))
+            return tbl
+        story.append(_style_kpi_row(row1_cells, [d[2] for d in kpi_defs[:4]]))
+        story.append(Spacer(1, 4))
+        story.append(_style_kpi_row(row2_cells, [d[2] for d in kpi_defs[4:]]))
+        story.append(Spacer(1, 16))
 
     # ── Bucket breakdown ────────────────────────
     story.append(Paragraph(f"<b>{unit_label} Breakdown</b>",
@@ -330,6 +399,7 @@ async def _assemble_report(user_id: str, period: str, ref: Optional[str]) -> Dic
                     "created_at": 1, "resolved_at": 1, "name": 1, "email": 1},
     )
     bucket_data = await _bucket_counts(user_id, buckets)
+    role_kpis = await _role_kpi_series(user_id, start, end, buckets)
 
     leads_added = await _count_in_window("school_inquiries", "assigned_to", user_id, "created_at", start, end)
     schools_onboarded = await _count_in_window(
@@ -403,6 +473,7 @@ async def _assemble_report(user_id: str, period: str, ref: Optional[str]) -> Dic
         "tasks": {"assigned": tasks_assigned, "completed": tasks_completed},
         "queries": {"assigned": queries_assigned},
         "crm": {"leads_added": leads_added, "schools_onboarded": schools_onboarded, "student_leads": student_leads},
+        "role_kpis": role_kpis,
     }
 
 

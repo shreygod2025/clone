@@ -588,6 +588,7 @@ async def get_my_performance(
 def _buckets_for_scope(scope: str, ref_iso: Optional[str]) -> list:
     """Return list of {label, start_iso, end_iso} for the requested scope.
 
+    - week    → 7 daily buckets (Mon..Sun) for the ISO week containing ref
     - month   → weekly buckets covering the calendar month of ref
     - quarter → 3 monthly buckets of the quarter containing ref
     - year    → 4 quarterly buckets (Q1..Q4) of the year containing ref
@@ -601,7 +602,21 @@ def _buckets_for_scope(scope: str, ref_iso: Optional[str]) -> list:
         ref = datetime.now(timezone.utc)
 
     buckets = []
-    if scope == "month":
+    if scope == "week":
+        # Monday → Sunday, day-wise breakdown
+        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        wk_mon = ref - timedelta(days=ref.weekday())
+        wk_mon = wk_mon.replace(hour=0, minute=0, second=0, microsecond=0)
+        for i in range(7):
+            d_start = wk_mon + timedelta(days=i)
+            d_end = d_start.replace(hour=23, minute=59, second=59, microsecond=999999)
+            buckets.append({
+                "label": day_names[i],
+                "sub":   d_start.strftime('%d %b'),
+                "start_iso": d_start.isoformat(),
+                "end_iso":   d_end.isoformat(),
+            })
+    elif scope == "month":
         y, m = ref.year, ref.month
         last_day = monthrange(y, m)[1]
         # Week buckets aligned to calendar (Mon-Sun); may partially spill outside month
@@ -651,7 +666,7 @@ def _buckets_for_scope(scope: str, ref_iso: Optional[str]) -> list:
                 "end_iso":   datetime(y, end_m, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc).isoformat(),
             })
     else:
-        raise HTTPException(status_code=400, detail="scope must be month | quarter | year")
+        raise HTTPException(status_code=400, detail="scope must be week | month | quarter | year")
     return buckets
 
 
@@ -755,7 +770,7 @@ async def _timeseries_payload(uid: str, scope: str, ref_iso: Optional[str]) -> d
 
 @router.get("/me/performance/timeseries")
 async def get_my_performance_timeseries(
-    scope: str = Query("month", pattern="^(month|quarter|year)$"),
+    scope: str = Query("month", pattern="^(week|month|quarter|year)$"),
     ref: Optional[str] = Query(None, description="Anchor date YYYY-MM-DD; defaults to today"),
     user: dict = Depends(get_current_user),
 ):
@@ -769,7 +784,7 @@ async def get_my_performance_timeseries(
 @router.get("/users/{user_id}/performance/timeseries")
 async def get_user_performance_timeseries(
     user_id: str,
-    scope: str = Query("month", pattern="^(month|quarter|year)$"),
+    scope: str = Query("month", pattern="^(week|month|quarter|year)$"),
     ref: Optional[str] = Query(None, description="Anchor date YYYY-MM-DD; defaults to today"),
     user: dict = Depends(get_current_user),
 ):

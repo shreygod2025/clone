@@ -2,9 +2,12 @@
 
   GET /api/team/member-report/{user_id}?period=weekly&ref=YYYY-MM-DD
     → returns tasks, queries, CRM KPIs + time-bucketed breakdown for the member
+    → also includes ROLE-BASED KPIs so each person's PDF shows the metrics
+      that are actually assigned to their role (not a hardcoded set).
 
 Used by:
   • AdminMyTeam.jsx  "Download PDF" button
+  • UserPerformance.jsx  "Download PDF" button
   • Weekly cron that emails managers at 3PM Monday
 
 The `period` argument controls both the window and the bucketing:
@@ -20,6 +23,17 @@ from calendar import monthrange
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from routes.shared import db, get_current_user
+
+# Reuse the KPI machinery so role-specific metrics are always in sync
+# with the /users/{id}/performance page.
+try:
+    from routes.kpis import (
+        _compute_selected_metrics, KPI_BY_ID, _buckets_for_scope,
+    )
+except Exception:  # pragma: no cover — keeps module importable during boot
+    _compute_selected_metrics = None
+    KPI_BY_ID = {}
+    _buckets_for_scope = None
 
 router = APIRouter(prefix="/team", tags=["team-reports"])
 
@@ -218,6 +232,63 @@ async def _is_admin_or_manager(user: dict, target_id: str) -> bool:
     return False
 
 
+async def _role_kpi_series(uid: str, start: datetime, end: datetime,
+                            buckets: List[tuple[str, datetime, datetime]]) -> List[Dict[str, Any]]:
+    """Compute the target user's role-assigned KPIs, bucket-by-bucket.
+
+    Mirrors the payload shape used by `/users/{id}/performance/timeseries`.
+    If the user has no role or no KPIs, returns [].
+    """
+    if not _compute_selected_metrics:
+        return []
+    target = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1})
+    role_id = (target or {}).get("role_id")
+    role_doc = None
+    role_kpi_ids: List[str] = []
+    if role_id:
+        role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0, "kpis": 1})
+        role_kpi_ids = (role_doc or {}).get("kpis", []) or []
+    # Fallback → same default set that /users/{id}/performance/timeseries uses
+    # so the PDF's KPI strip always matches the on-screen performance page.
+    if not role_kpi_ids:
+        role_kpi_ids = [
+            "tasks_assigned", "tasks_completed", "tasks_overdue",
+            "projects_leading", "projects_member_of",
+        ]
+
+    # Total across the whole period
+    totals = await _compute_selected_metrics(
+        uid, role_kpi_ids, start.astimezone(timezone.utc).isoformat(),
+        end.astimezone(timezone.utc).isoformat(),
+    )
+
+    # Per-bucket series
+    series_by_kpi: Dict[str, List[Dict[str, Any]]] = {kid: [] for kid in role_kpi_ids}
+    for key, b_start, b_end in buckets:
+        b_metrics = await _compute_selected_metrics(
+            uid, role_kpi_ids, b_start.astimezone(timezone.utc).isoformat(),
+            b_end.astimezone(timezone.utc).isoformat(),
+        )
+        for kid in role_kpi_ids:
+            series_by_kpi[kid].append({"label": key, "value": b_metrics.get(kid, 0)})
+
+    out = []
+    for kid in role_kpi_ids:
+        meta = KPI_BY_ID.get(kid)
+        if not meta:
+            continue
+        out.append({
+            "id":       kid,
+            "name":     meta.get("name", kid),
+            "unit":     meta.get("unit", ""),
+            "category": meta.get("category", ""),
+            "target":   meta.get("target"),
+            "total":    totals.get(kid, 0),
+            "series":   series_by_kpi[kid],
+        })
+    return out
+
+
 async def _bucket_counts(uid: str, buckets: List[tuple[str, datetime, datetime]]) -> List[Dict[str, Any]]:
     """For each bucket, roll up per-bucket metrics."""
     out = []
@@ -378,6 +449,9 @@ async def team_member_report(
     # ── Bucket-wise breakdown ─────────────────────────────────────
     bucket_data = await _bucket_counts(user_id, buckets)
 
+    # ── ROLE-BASED KPIs (matches /users/{id}/performance/timeseries) ──
+    role_kpis = await _role_kpi_series(user_id, start, end, buckets)
+
     # ── Breakdown unit label for the frontend ─────────────────────
     unit_label = {
         "daily": "hour",
@@ -426,4 +500,5 @@ async def team_member_report(
             "schools_onboarded": schools_onboarded,
             "student_leads":     student_leads,
         },
+        "role_kpis": role_kpis,
     }

@@ -5,18 +5,20 @@ import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
+import { generateTeamMemberReportPDF } from '../../utils/teamMemberReportPdf';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, Legend,
 } from 'recharts';
 import {
   BarChart3, TrendingUp, TrendingDown, Minus, Clock, CheckCircle2, AlertTriangle,
-  Users as UsersIcon, IndianRupee, ArrowLeft, Sparkles, Wallet, PiggyBank,
+  Users as UsersIcon, IndianRupee, ArrowLeft, Sparkles, Wallet, PiggyBank, FileDown, Loader2,
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const SCOPE_TABS = [
+  { key: 'week',    label: 'Week',    sub: 'days' },
   { key: 'month',   label: 'Month',   sub: 'weeks' },
   { key: 'quarter', label: 'Quarter', sub: 'months' },
   { key: 'year',    label: 'Year',    sub: 'quarters' },
@@ -73,17 +75,42 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
   const [selMonth, setSelMonth] = useState(now.getMonth() + 1);   // 1..12
   const [selQuarter, setSelQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);  // 1..4
   const [selYear, setSelYear] = useState(now.getFullYear());
+  // For week scope — anchor is the Monday of the selected week (defaults = this Monday)
+  const _thisMon = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1)); return d; })();
+  const [selWeekRef, setSelWeekRef] = useState(_thisMon.toISOString().slice(0, 10));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
 
   // Compute the ref date (YYYY-MM-DD) from the current picker selection
   const buildRef = () => {
+    if (scope === 'week') return selWeekRef;
     let m;
     if (scope === 'month') m = selMonth;
     else if (scope === 'quarter') m = (selQuarter - 1) * 3 + 1;
     else m = 1; // year
     return `${selYear}-${String(m).padStart(2, '0')}-01`;
+  };
+
+  // Map the UserPerformance scope to /team/member-report period naming
+  const scopeToPeriod = (s) => ({ week: 'weekly', month: 'monthly', quarter: 'quarterly', year: 'yearly' }[s] || 'monthly');
+
+  const handleDownloadPDF = async () => {
+    if (!userId) return;
+    setDownloading(true);
+    try {
+      const res = await axios.get(
+        `${API}/team/member-report/${userId}?period=${scopeToPeriod(scope)}&ref=${buildRef()}`,
+        { headers: getAuthHeaders() },
+      );
+      await generateTeamMemberReportPDF(res.data);
+      toast.success('Report downloaded');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to generate report');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   useEffect(() => {
@@ -109,7 +136,7 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
     };
     run();
     return () => { cancelled = true; controller.abort(); };
-  }, [userId, scope, selMonth, selQuarter, selYear, selfMode]);
+  }, [userId, scope, selMonth, selQuarter, selYear, selWeekRef, selfMode]);
 
   // Load user switcher list only for admin/manager mode
   useEffect(() => {
@@ -192,6 +219,16 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
 
           {/* Ref picker — swaps based on scope */}
           <div className="flex items-center gap-2" data-testid="ref-picker">
+            {scope === 'week' && (
+              <input
+                type="date"
+                value={selWeekRef}
+                onChange={(e) => setSelWeekRef(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                data-testid="week-picker"
+                title="Pick any date in the week"
+              />
+            )}
             {scope === 'month' && (
               <select
                 value={selMonth}
@@ -216,15 +253,30 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
                 ))}
               </select>
             )}
-            <select
-              value={selYear}
-              onChange={(e) => setSelYear(Number(e.target.value))}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-              data-testid="year-picker"
-            >
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            {scope !== 'week' && (
+              <select
+                value={selYear}
+                onChange={(e) => setSelYear(Number(e.target.value))}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                data-testid="year-picker"
+              >
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            )}
           </div>
+
+          {/* PDF Download */}
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={downloading || !userId}
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 disabled:cursor-wait text-white text-sm font-medium rounded-lg shadow-sm"
+            data-testid="performance-download-pdf"
+            title="Download this performance report as PDF"
+          >
+            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            <span className="hidden sm:inline">Download PDF</span>
+          </button>
         </div>
 
         {/* Loading */}
