@@ -231,12 +231,19 @@ export default function AdminLive() {
   }, [isAuthenticated, getAuthHeaders]);
 
   const clockStr = useMemo(() => nowIST.toLocaleTimeString('en-IN', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    hour12: false, timeZone: 'Asia/Kolkata',
+    hour: 'numeric', minute: '2-digit', second: '2-digit',
+    hour12: true, timeZone: 'Asia/Kolkata',
   }), [nowIST]);
+  const dayStr = useMemo(
+    () => nowIST.toLocaleDateString('en-IN', {
+      weekday: 'long',
+      timeZone: 'Asia/Kolkata',
+    }),
+    [nowIST]
+  );
   const dateStr = useMemo(
     () => nowIST.toLocaleDateString('en-IN', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      day: 'numeric', month: 'long', year: 'numeric',
       timeZone: 'Asia/Kolkata',
     }),
     [nowIST]
@@ -332,13 +339,20 @@ export default function AdminLive() {
           </div>
         </div>
         <div className="flex items-center gap-5">
-          <div className="text-right">
-            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-400">
+          <div className="text-right leading-tight">
+            <div className="text-lg font-black text-white uppercase tracking-wider" data-testid="live-day">
+              {dayStr}
+            </div>
+            <div className="text-sm font-semibold text-slate-300 tabular-nums" data-testid="live-date">
               {dateStr}
+            </div>
+          </div>
+          <div className="text-right border-l border-slate-700/70 pl-4">
+            <div className="text-[10px] tracking-[0.3em] uppercase text-slate-400">
+              IST
             </div>
             <div className="text-2xl font-black text-white tabular-nums leading-none mt-0.5" data-testid="live-clock">
               {clockStr}
-              <span className="ml-2 text-[10px] text-slate-500 font-normal">IST</span>
             </div>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
@@ -440,6 +454,19 @@ export default function AdminLive() {
                 <PriorityChip label="High" value={support.priority?.high} tone="amber" />
                 <PriorityChip label="Normal" value={support.priority?.normal} tone="cyan" />
                 <PriorityChip label="Low" value={support.priority?.low} tone="slate" />
+              </div>
+            </div>
+            <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between">
+              <div className="text-[9px] tracking-widest uppercase text-slate-500">
+                Avg Resolution Time
+                {support.resolved_sample_size ? (
+                  <span className="ml-1 text-slate-600 normal-case tracking-normal">
+                    · {support.resolved_sample_size} resolved
+                  </span>
+                ) : null}
+              </div>
+              <div className="text-sm font-black text-emerald-300 tabular-nums" data-testid="support-avg-resolution">
+                {support.avg_resolution_display || '—'}
               </div>
             </div>
           </Card>

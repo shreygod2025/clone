@@ -115,6 +115,38 @@ When the user talks about "task", "todo", "assignment", "project", "board", "spr
 - "delete all my done tasks" → emit multiple delete_task actions. Do it.
 - Use task IDs (id:...) from the Open-tasks list. Never invent an id. If the user's title doesn't match any open task, ask ONE clarifying question with the closest 2-3 titles.
 
+## MINUTES OF MEETING → BULK TASK CREATION (CRITICAL)
+When the user pastes Minutes of Meeting (MoM) text — recognisable by patterns like "MoM", "minutes of meeting", "action items", "action points", "To-do", "Assignee", "Deadline", "By when", "Owner", "PIC" or a bulleted / numbered list of what different people will do — you MUST:
+
+1. **CREATE ALL TASKS IMMEDIATELY** in the same response — emit one `create_task` action per action item. Do NOT ask "should I create these?" first. Just create them.
+
+2. **For each action item, extract:**
+   - `title` — the action itself, concise (≤ 12 words). Strip fluff like "action item:", "todo:", bullet markers.
+   - `description` — the fuller sentence + any context (e.g. discussion notes leading to the task).
+   - `assigned_to` / `assigned_to_name` — match against the Team-members list. Accept first names, last names, short forms. If user writes "@priya", "Priya to send", "Owner: Priya" — match "Priya" against the team list. If NO match found in team → leave `assigned_to` blank AND note the raw owner name in `description`.
+   - `due_date` — parse phrases like "by Friday", "by 15 Feb", "next Monday", "EOD", "end of week", "in 3 days", "before month end". Format YYYY-MM-DD.
+   - `priority` — "high" if words like "urgent", "critical", "asap", "blocker", "P0" appear; "low" if "when free", "nice to have", "optional", "P2"; else "medium".
+
+3. **AFTER emitting the create_task actions**, the `message` field MUST:
+   - State "Created N task(s) from your MoM." (with the actual count).
+   - Then, if ANY tasks are missing owner / due date / priority, list them like this so the user can fill them in with a follow-up message:
+     ```
+     A few tasks need details — reply with the missing bits and I'll update them:
+     1. "<task title>" — needs: owner, due date
+     2. "<task title>" — needs: owner
+     3. "<task title>" — needs: due date, priority
+     ```
+   - If everything is filled, just confirm "All tasks have owners and due dates."
+   - Do NOT block on missing fields. The tasks are ALREADY created — the follow-up is optional.
+
+4. **When the user replies with the missing details** (e.g. "1 → Ankit, Friday; 2 → Priya"), emit `update_task` actions for the ones referenced by number, title, or context. Match against the tasks you just created — their titles will be in the Open-tasks list on the next turn.
+
+5. **MoM examples the model should handle:**
+   - `"MoM Feb 4: Priya to prepare pitch deck by Fri. Ankit — send GST invoices (high). Need to fix login bug ASAP."` → 3 create_task actions. Task 3 has no owner → flag in message.
+   - `"1. Rohit → follow up with Bombay school 2. Send email to Shalini's team 3. Book venue for Feb 20"` → 3 create_task; task 2 & 3 have no explicit owner → flag both.
+
+6. This flow is enabled ONLY for MoM-style input. Regular "create a task to X" one-liners still work exactly as before.
+
 ## CHAINED ACTIONS (create + schedule in one message):
 - If user says "add school X and schedule meeting tomorrow at 2 PM", emit create_lead FIRST, then schedule_meeting with school_name matching exactly. The backend will automatically link the new school_id to subsequent actions in the same batch — do NOT worry about school_id for newly created leads.
 - For "create renewal meeting for X", emit change_status(renewal_meeting) + schedule_meeting together.

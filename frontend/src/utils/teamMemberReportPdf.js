@@ -289,33 +289,6 @@ export async function generateTeamMemberReportPDF(payload) {
     y = doc.lastAutoTable.finalY + 16;
   }
 
-  // ── CRM roll-up ──────────────────────────────────────────────
-  if (y > pageH - 100) { doc.addPage(); y = M; }
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...BRAND.rose);
-  doc.text('CRM Highlights', M, y);
-  autoTable(doc, {
-    startY: y + 6,
-    head: [['Metric', 'Value']],
-    body: [
-      ['School Leads Added',   crm.leads_added ?? 0],
-      ['Schools Onboarded',    crm.schools_onboarded ?? 0],
-      ['Student Leads Added',  crm.student_leads ?? 0],
-      ['Field Visits · Total', totals.field_visits ?? 0],
-      ['Field Entries Gained', totals.field_entries ?? 0],
-      ['Field Interested Leads', totals.field_leads ?? 0],
-      ['Distance Travelled (km)', totals.field_km ?? 0],
-      ['Calls Made',           totals.calls_made ?? 0],
-      ['Calls Connected',      totals.calls_connected ?? 0],
-    ],
-    theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 5 },
-    headStyles: { fillColor: BRAND.rose, textColor: 255, fontStyle: 'bold' },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 220 }, 1: { halign: 'right' } },
-    margin: { left: M, right: M },
-  });
-
   // ── Footer on every page ─────────────────────────────────────
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {

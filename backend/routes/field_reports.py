@@ -361,6 +361,41 @@ async def get_field_report(report_id: str, user: dict = Depends(get_current_user
     return r
 
 
+# ── Delete endpoints (admin OR owner) ────────────────────────────────
+@router.delete("/field-reports/{report_id}")
+async def delete_field_report(report_id: str, user: dict = Depends(get_current_user)):
+    """Delete an entire field-day session (check-in + all school visits).
+    Only the user who created the check-in OR an admin can delete it."""
+    r = await db.field_reports.find_one({"id": report_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+    uid = user.get("id") or user.get("user_id")
+    if not _is_admin(user) and r.get("user_id") != uid:
+        raise HTTPException(status_code=403, detail="You can only delete your own check-ins")
+    await db.field_reports.delete_one({"id": report_id})
+    return {"ok": True, "deleted_id": report_id}
+
+
+@router.delete("/field-reports/{report_id}/school-visits/{visit_id}")
+async def delete_school_visit(report_id: str, visit_id: str, user: dict = Depends(get_current_user)):
+    """Remove a single school visit from a field report.
+    Only the report owner OR an admin can delete."""
+    r = await db.field_reports.find_one({"id": report_id})
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+    uid = user.get("id") or user.get("user_id")
+    if not _is_admin(user) and r.get("user_id") != uid:
+        raise HTTPException(status_code=403, detail="You can only edit your own check-ins")
+    visits = [v for v in (r.get("school_visits") or []) if v.get("id") != visit_id]
+    if len(visits) == len(r.get("school_visits") or []):
+        raise HTTPException(status_code=404, detail="Visit not found")
+    await db.field_reports.update_one(
+        {"id": report_id},
+        {"$set": {"school_visits": visits, "updated_at": _now_iso()}},
+    )
+    return {"ok": True, "deleted_visit_id": visit_id, "remaining": len(visits)}
+
+
 # ── Simple email sender (used by the field visit "Send Email" action) ──
 class EmailIn(BaseModel):
     to: EmailStr

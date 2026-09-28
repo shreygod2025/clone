@@ -182,6 +182,10 @@ async def _support_block() -> Dict[str, Any]:
 
     new_count = overdue_count = on_hold_count = resolved_today = 0
     priority = {"urgent": 0, "high": 0, "normal": 0, "low": 0}
+    # Rolling avg resolution time — over ALL resolved rows we can compute, not
+    # just today's. Using a wider window makes the metric stable when only a
+    # handful of tickets are resolved on a given day.
+    resolution_durations_hours: List[float] = []
 
     for r in all_rows:
         st = (r.get("status") or "").lower()
@@ -190,6 +194,12 @@ async def _support_block() -> Dict[str, Any]:
             continue
         if st in RESOLVED:
             rdt = _to_dt(r.get("resolved_at"))
+            cdt = _to_dt(r.get("created_at"))
+            if rdt and cdt and rdt >= cdt:
+                paused_hrs = float(r.get("paused_seconds") or 0) / 3600
+                dur = (rdt - cdt).total_seconds() / 3600 - paused_hrs
+                if dur >= 0:
+                    resolution_durations_hours.append(dur)
             if rdt and start_dt <= rdt < end_dt:
                 resolved_today += 1
             continue
@@ -207,6 +217,20 @@ async def _support_block() -> Dict[str, Any]:
         if key in priority:
             priority[key] += 1
 
+    avg_resolution_hours: Optional[float] = None
+    if resolution_durations_hours:
+        avg_resolution_hours = round(sum(resolution_durations_hours) / len(resolution_durations_hours), 2)
+
+    def _fmt(h: Optional[float]) -> str:
+        if h is None:
+            return "—"
+        if h < 1:
+            m = max(int(round(h * 60)), 1)
+            return f"{m}m"
+        if h < 48:
+            return f"{h:.1f}h"
+        return f"{h / 24:.1f}d"
+
     return {
         "new_today":      new_count,
         "overdue":        overdue_count,
@@ -214,6 +238,9 @@ async def _support_block() -> Dict[str, Any]:
         "resolved_today": resolved_today,
         "open_total":     new_count + overdue_count,
         "priority":       priority,
+        "avg_resolution_hours":  avg_resolution_hours,
+        "avg_resolution_display": _fmt(avg_resolution_hours),
+        "resolved_sample_size":  len(resolution_durations_hours),
     }
 
 

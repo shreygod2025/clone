@@ -1,5 +1,40 @@
 # OLL Backend Changelog
 
+## 2026-02-04 — AI-Chat MoM → Bulk Tasks + Field-Reports Deletes + Live Dashboard polish
+**Status: COMPLETE**
+
+### AI Chat — Minutes of Meeting → bulk task creation
+- Added a dedicated **MINUTES OF MEETING → BULK TASK CREATION** section to `AI_SYSTEM_PROMPT` (`ai_chat.py`). The model now recognises MoM/action-items patterns and emits ONE `create_task` action per line in the same turn — no confirmation prompt, no blocking on missing fields.
+- Per task the model extracts: `title` (concise), `description` (context), `assigned_to_name` (matched against team list; else flagged), `due_date` (parses "by Friday", "next Monday", "Feb 20", "EOD" etc.), `priority` (`high` for "urgent/critical/asap/P0", `low` for "when free/P2", else `medium`).
+- After executing, the assistant response lists which tasks are missing owner / due date / priority so the user can reply with a single follow-up ("1 → Ankit, Friday; 2 → Priya") — the model then emits `update_task` for the referenced items.
+- Input placeholder in `AdminAIChat.jsx` updated so users know to try MoM paste.
+- **Verified end-to-end**: pasted 4-line MoM → created TASK-000057 to TASK-000060, correctly flagged owners not in team + missing due dates in the message.
+
+### Field Reports — delete controls
+- Two new endpoints in `field_reports.py` (both **admin OR owner**):
+  - `DELETE /api/field-reports/{report_id}` — kills the entire check-in session and all its visits.
+  - `DELETE /api/field-reports/{report_id}/school-visits/{visit_id}` — removes a single visit.
+- `AdminFieldReports.jsx` — `VisitRow` gained a trash icon; every check-in header gained a **"Delete check-in"** button. Wired into both the day-group view and the multi-user grouped view. Also added a trash button next to today's visits on `My Field Day`. Non-admins only see the buttons for their own records.
+
+### Live Dashboard
+- Clock now renders in **12-hour format** (e.g. `3:14:17 pm`).
+- Header layout re-arranged so the **day (WEDNESDAY)** and **date (28 February 2026)** appear on their own lines to the *left* of the timer — day bigger than date, both slightly smaller than the timer. Border-left separator + `IST` label above the timer.
+- Support card now shows a new bottom row **"Avg Resolution Time"** with the total resolved sample size — driven by a new `avg_resolution_hours` / `avg_resolution_display` field in `_support_block` (computed from `resolved_at − created_at − paused_seconds` across all resolved tickets; formatted as `Nm`, `N.Nh`, or `N.Nd`).
+
+### Team Member PDF Reports
+- Removed the "CRM Highlights" section from both the frontend (`teamMemberReportPdf.js`) and the backend cron (`team_reports_cron.py`). Field-visit / call metrics remain visible in the earlier KPI blocks — the standalone CRM table was redundant.
+
+### Files
+- `backend/routes/ai_chat.py`
+- `backend/routes/field_reports.py`
+- `backend/routes/live_dashboard.py`
+- `backend/routes/team_reports_cron.py`
+- `frontend/src/pages/admin/AdminAIChat.jsx`
+- `frontend/src/pages/admin/AdminFieldReports.jsx`
+- `frontend/src/pages/admin/AdminLive.jsx`
+- `frontend/src/utils/teamMemberReportPdf.js`
+
+
 ## 2026-02-04 — Product tag "Techfest, IIT Bombay" + School Logo + Closed Requirements
 **Status: COMPLETE**
 

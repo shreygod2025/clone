@@ -376,33 +376,6 @@ def _build_report_pdf(payload: Dict[str, Any]) -> bytes:
         story.append(ptbl)
         story.append(Spacer(1, 12))
 
-    # ── CRM roll-up ─────────────────────────────
-    story.append(Paragraph("<b>CRM Highlights</b>",
-                            ParagraphStyle("h2", parent=styles["Heading3"], textColor=colors.HexColor("#E11D48"))))
-    story.append(Spacer(1, 4))
-    crm_rows = [["Metric", "Value"]] + [
-        ["School Leads Added", crm.get("leads_added", 0)],
-        ["Schools Onboarded", crm.get("schools_onboarded", 0)],
-        ["Student Leads Added", crm.get("student_leads", 0)],
-        ["Field Visits · Total", totals.get("field_visits", 0)],
-        ["Field Entries Gained", totals.get("field_entries", 0)],
-        ["Field Interested Leads", totals.get("field_leads", 0)],
-        ["Distance Travelled (km)", totals.get("field_km", 0)],
-        ["Calls Made", totals.get("calls_made", 0)],
-        ["Calls Connected", totals.get("calls_connected", 0)],
-    ]
-    ctbl = Table(crm_rows, colWidths=[10 * cm, 4 * cm])
-    ctbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E11D48")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#F8FAFC"), colors.white]),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
-    ]))
-    story.append(ctbl)
-
     doc.build(story)
     return buf.getvalue()
 

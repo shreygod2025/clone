@@ -573,7 +573,7 @@ export default function AdminAIChat() {
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? 'Listening…' : 'Ask me anything about your CRM...'}
+              placeholder={isListening ? 'Listening…' : 'Ask anything — try pasting Minutes of Meeting to auto-create tasks…'}
               rows={1}
               style={{ height: 'auto', overflowY: 'hidden' }}
               className="flex-1 text-sm text-slate-800 bg-transparent outline-none resize-none leading-5 placeholder:text-slate-400"

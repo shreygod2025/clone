@@ -745,7 +745,7 @@ const ViewVisitModal = ({ open, visit, onClose, onEdit }) => {
 };
 
 // ── Visit row inside day-wise report ───────────────────────────────
-const VisitRow = ({ v, onView = null, onEdit = null }) => (
+const VisitRow = ({ v, onView = null, onEdit = null, onDelete = null }) => (
   <div className="rounded-lg border border-slate-200 bg-white p-3">
     <div className="flex items-center justify-between">
       <div className="font-semibold text-slate-800 flex items-center gap-2"><Building2 className="w-4 h-4 text-emerald-600" /> {v.school_name}</div>
@@ -759,6 +759,11 @@ const VisitRow = ({ v, onView = null, onEdit = null }) => (
         {onEdit && (
           <button onClick={() => onEdit(v)} className="text-slate-400 hover:text-indigo-600" title="Edit visit" data-testid={`visit-edit-${v.id}`}>
             <PenSquare className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {onDelete && (
+          <button onClick={() => onDelete(v)} className="text-slate-400 hover:text-red-600" title="Delete visit" data-testid={`visit-delete-${v.id}`}>
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
@@ -813,7 +818,7 @@ const VisitRow = ({ v, onView = null, onEdit = null }) => (
 );
 
 // ── Day group card ─────────────────────────────────────────────────
-const DayGroupCard = ({ day, reports, onView, onEdit }) => {
+const DayGroupCard = ({ day, reports, onView, onEdit, onDeleteVisit, onDeleteCheckin }) => {
   const [open, setOpen] = useState(false);
   const totalVisits = reports.reduce((n, r) => n + (r.school_visits?.length || 0), 0);
   const interested = reports.reduce((n, r) => n + (r.school_visits || []).filter(v => v.lead_interested === 'yes').length, 0);
@@ -847,12 +852,23 @@ const DayGroupCard = ({ day, reports, onView, onEdit }) => {
                 <span className="text-[11px] text-slate-500">since {fmtDateTime(r.check_in?.at)}</span>
                 <Chip tone={r.check_out ? 'slate' : 'emerald'}>{r.check_out ? 'Closed' : 'Live'}</Chip>
                 {r.distance_km > 0 && <Chip tone="rose">{Number(r.distance_km).toFixed(1)} km</Chip>}
+                {onDeleteCheckin && (
+                  <button
+                    onClick={() => onDeleteCheckin(r)}
+                    className="ml-auto text-slate-400 hover:text-red-600 inline-flex items-center gap-1 text-[11px] font-semibold"
+                    title="Delete this entire check-in session"
+                    data-testid={`checkin-delete-${r.id}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete check-in
+                  </button>
+                )}
               </div>
               {r.check_in?.photo_url && <img src={r.check_in.photo_url} alt="checkin" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />}
               {(r.school_visits || []).map(v => (
                 <VisitRow key={v.id} v={v}
                   onView={() => onView && onView(r, v)}
-                  onEdit={() => onEdit && onEdit(r, v)} />
+                  onEdit={() => onEdit && onEdit(r, v)}
+                  onDelete={() => onDeleteVisit && onDeleteVisit(r, v)} />
               ))}
               {(!r.school_visits || r.school_visits.length === 0) && (
                 <div className="text-xs text-slate-400 italic">No visits logged in this session.</div>
@@ -949,6 +965,42 @@ export default function AdminFieldReports() {
   }, [getAuthHeaders, user]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── Delete handlers (admin OR owner) ────────────────────────────
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const canDeleteReport = (r) => isAdmin || r?.user_id === user?.id;
+
+  const handleDeleteCheckin = async (r) => {
+    if (!canDeleteReport(r)) {
+      toast.error('You can only delete your own check-ins');
+      return;
+    }
+    const label = r.user_name ? ` by ${r.user_name}` : '';
+    if (!window.confirm(`Delete the entire check-in session${label} on ${new Date(r.check_in?.at).toLocaleString()}? All ${(r.school_visits || []).length} school visit(s) will be removed. This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/field-reports/${r.id}`, { headers: getAuthHeaders() });
+      toast.success('Check-in deleted');
+      if (current?.id === r.id) setCurrent(null);
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Delete failed');
+    }
+  };
+
+  const handleDeleteVisit = async (r, v) => {
+    if (!canDeleteReport(r)) {
+      toast.error('You can only delete visits from your own check-ins');
+      return;
+    }
+    if (!window.confirm(`Delete the school visit at "${v.school_name}"? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/field-reports/${r.id}/school-visits/${v.id}`, { headers: getAuthHeaders() });
+      toast.success('School visit deleted');
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Delete failed');
+    }
+  };
 
   const [checkinCameraOpen, setCheckinCameraOpen] = useState(false);
   const [checkinBusy, setCheckinBusy] = useState(false);
@@ -1129,6 +1181,10 @@ export default function AdminFieldReports() {
                               className="text-slate-400 hover:text-indigo-600" title="Edit visit" data-testid={`today-edit-${v.id}`}>
                               <PenSquare className="w-3.5 h-3.5" />
                             </button>
+                            <button onClick={() => handleDeleteVisit(current, v)}
+                              className="text-slate-400 hover:text-red-600" title="Delete visit" data-testid={`today-delete-${v.id}`}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                         {!v.meeting ? (
@@ -1237,6 +1293,8 @@ export default function AdminFieldReports() {
                               reports={rows}
                               onView={(r, v) => setViewVisit({ reportId: r.id, visit: v })}
                               onEdit={(r, v) => setEditVisit({ reportId: r.id, visit: v })}
+                              onDeleteVisit={(r, v) => canDeleteReport(r) && handleDeleteVisit(r, v)}
+                              onDeleteCheckin={(r) => canDeleteReport(r) && handleDeleteCheckin(r)}
                             />
                           ))}
                         </div>
@@ -1250,7 +1308,9 @@ export default function AdminFieldReports() {
                   {grouped.map(([day, rows]) => (
                     <DayGroupCard key={day} day={day} reports={rows}
                       onView={(r, v) => setViewVisit({ reportId: r.id, visit: v })}
-                      onEdit={(r, v) => setEditVisit({ reportId: r.id, visit: v })} />
+                      onEdit={(r, v) => setEditVisit({ reportId: r.id, visit: v })}
+                      onDeleteVisit={(r, v) => canDeleteReport(r) && handleDeleteVisit(r, v)}
+                      onDeleteCheckin={(r) => canDeleteReport(r) && handleDeleteCheckin(r)} />
                   ))}
                 </div>
               )
