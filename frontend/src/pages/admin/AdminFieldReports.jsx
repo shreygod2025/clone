@@ -84,11 +84,31 @@ const monthKey = (iso) => (iso ? String(iso).slice(0, 7) : ''); // YYYY-MM
 
 // ── Geolocation ─────────────────────────────────────────────────
 const getCoords = () => new Promise((resolve, reject) => {
-  if (!navigator.geolocation) return reject(new Error('Geolocation not available'));
+  if (!navigator.geolocation) return reject(new Error('Geolocation not available on this device'));
+  const success = (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy });
+  const explain = (e) => {
+    // Convert cryptic browser errors into actionable messages.
+    if (e?.code === 1) return new Error('Location permission denied — allow location in browser settings');
+    if (e?.code === 2) return new Error('Location unavailable — check GPS/Wi-Fi and try again');
+    if (e?.code === 3) return new Error('Location request timed out — please retry');
+    return new Error(e?.message || 'Could not fetch location');
+  };
+  // Try high-accuracy (GPS) first, fall back to network-based positioning
+  // if the GPS chip refuses (very common on desktop / no GPS hardware).
   navigator.geolocation.getCurrentPosition(
-    (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
-    (e) => reject(e),
-    { enableHighAccuracy: true, timeout: 15000 },
+    success,
+    (err) => {
+      if (err?.code === 2 || err?.code === 3) {
+        navigator.geolocation.getCurrentPosition(
+          success,
+          (err2) => reject(explain(err2)),
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 },
+        );
+      } else {
+        reject(explain(err));
+      }
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
   );
 });
 
@@ -271,12 +291,29 @@ const YesNoToggle = ({ value, onChange, testid }) => (
 
 const MapPreview = ({ lat, lon }) => {
   if (lat == null || lon == null) return null;
-  const url = `https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.005}%2C${lat - 0.003}%2C${lon + 0.005}%2C${lat + 0.003}&layer=mapnik&marker=${lat}%2C${lon}`;
+  // Use Google Maps' keyless embed — no API key needed, works reliably in
+  // iframes (unlike openstreetmap.org/export/embed which is often blocked
+  // by X-Frame-Options / CSP and shows a broken image).
+  const url = `https://maps.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+  const externalUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
   return (
     <div className="rounded-lg overflow-hidden border border-slate-200" data-testid="field-map-preview">
-      <iframe title="map" src={url} className="w-full h-40 border-0" loading="lazy" />
-      <div className="bg-slate-50 border-t border-slate-200 px-2 py-1 text-[10px] text-slate-500 font-mono">
-        {lat.toFixed(5)}, {lon.toFixed(5)}
+      <iframe
+        title="school-location-map"
+        src={url}
+        className="w-full h-40 border-0"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      <div className="bg-slate-50 border-t border-slate-200 px-2 py-1 text-[10px] text-slate-500 font-mono flex items-center justify-between gap-2">
+        <span>{lat.toFixed(5)}, {lon.toFixed(5)}</span>
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-blue-600 hover:text-blue-700 font-semibold uppercase tracking-wider"
+          data-testid="field-map-open-external"
+        >Open in Maps ↗</a>
       </div>
     </div>
   );
@@ -977,6 +1014,45 @@ export default function AdminFieldReports() {
     return Object.entries(byDay).sort(([a], [b]) => b.localeCompare(a));
   }, [filteredReports]);
 
+  // Group reports by team member (user_id) → each user gets their own table.
+  // Used when the "All" filter is active so admins get a clear per-user split
+  // instead of a jumbled day-wise mixed feed.
+  const groupedByUser = useMemo(() => {
+    const byUser = {};
+    filteredReports.forEach(r => {
+      const uid = r.user_id || 'unknown';
+      const name = r.user_name || r.user_email || 'Unknown user';
+      if (!byUser[uid]) byUser[uid] = { uid, name, reports: [] };
+      byUser[uid].reports.push(r);
+    });
+    // Sort users by (# of school visits desc, then name asc)
+    const arr = Object.values(byUser).map(u => {
+      const days = new Set();
+      let visits = 0, entries = 0, interested = 0, km = 0;
+      u.reports.forEach(r => {
+        days.add(dayKey(r.check_in?.at || r.created_at));
+        km += Number(r.distance_km || 0);
+        (r.school_visits || []).forEach(v => {
+          visits += 1;
+          if (v.got_entry === 'yes') entries += 1;
+          if (v.lead_interested === 'yes') interested += 1;
+        });
+      });
+      const byDay = {};
+      u.reports.forEach(r => {
+        const d = dayKey(r.check_in?.at || r.created_at);
+        (byDay[d] = byDay[d] || []).push(r);
+      });
+      return {
+        ...u,
+        kpis: { days: days.size, visits, entries, interested, km: Math.round(km * 100) / 100 },
+        days: Object.entries(byDay).sort(([a], [b]) => b.localeCompare(a)),
+      };
+    });
+    arr.sort((a, b) => b.kpis.visits - a.kpis.visits || a.name.localeCompare(b.name));
+    return arr;
+  }, [filteredReports]);
+
   const kpis = useMemo(() => {
     const days = new Set();
     let visits = 0, entries = 0, interested = 0, km = 0;
@@ -1113,7 +1189,62 @@ export default function AdminFieldReports() {
                 <div className="text-center py-8 text-slate-400"><Loader2 className="w-5 h-5 mx-auto animate-spin" /></div>
               ) : grouped.length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">No visits in this window.</div>
+              ) : userFilter === 'all' ? (
+                // ── USER-WISE VIEW: one clearly-separated table per team member ──
+                <div className="space-y-6" data-testid="field-reports-by-user">
+                  {groupedByUser.map((u, idx) => {
+                    // rotate through 4 accent palettes so each user's block is visually distinct
+                    const palettes = [
+                      { border: 'border-emerald-300', bar: 'from-emerald-600 to-emerald-400', badge: 'bg-emerald-100 text-emerald-800', ring: 'ring-emerald-200' },
+                      { border: 'border-blue-300',    bar: 'from-blue-600 to-blue-400',       badge: 'bg-blue-100 text-blue-800',       ring: 'ring-blue-200' },
+                      { border: 'border-indigo-300',  bar: 'from-indigo-600 to-indigo-400',   badge: 'bg-indigo-100 text-indigo-800',   ring: 'ring-indigo-200' },
+                      { border: 'border-amber-300',   bar: 'from-amber-600 to-amber-400',     badge: 'bg-amber-100 text-amber-800',     ring: 'ring-amber-200' },
+                      { border: 'border-rose-300',    bar: 'from-rose-600 to-rose-400',       badge: 'bg-rose-100 text-rose-800',       ring: 'ring-rose-200' },
+                    ];
+                    const p = palettes[idx % palettes.length];
+                    const initials = (u.name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                    return (
+                      <section
+                        key={u.uid}
+                        className={`rounded-2xl border-2 ${p.border} bg-white overflow-hidden shadow-sm`}
+                        data-testid={`field-user-block-${u.uid}`}
+                      >
+                        {/* Colored header bar with user identity + per-user KPIs */}
+                        <div className={`bg-gradient-to-r ${p.bar} px-4 py-3 flex items-center gap-3 flex-wrap text-white`}>
+                          <div className={`w-10 h-10 rounded-full bg-white/25 ring-2 ${p.ring} flex items-center justify-center font-bold text-sm`}>
+                            {initials}
+                          </div>
+                          <div className="flex-1 min-w-[160px]">
+                            <div className="font-bold text-base leading-tight">{u.name}</div>
+                            <div className="text-white/80 text-xs mt-0.5">
+                              {u.kpis.days} day{u.kpis.days === 1 ? '' : 's'} · {u.reports.length} check-in{u.reports.length === 1 ? '' : 's'}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${p.badge}`}>{u.kpis.visits} visits</span>
+                            <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${p.badge}`}>{u.kpis.entries} entries</span>
+                            <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${p.badge}`}>{u.kpis.interested} interested</span>
+                            <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${p.badge}`}>{u.kpis.km} km</span>
+                          </div>
+                        </div>
+                        {/* Day-wise rows for this user */}
+                        <div className="p-3 space-y-3 bg-slate-50/40">
+                          {u.days.map(([day, rows]) => (
+                            <DayGroupCard
+                              key={`${u.uid}-${day}`}
+                              day={day}
+                              reports={rows}
+                              onView={(r, v) => setViewVisit({ reportId: r.id, visit: v })}
+                              onEdit={(r, v) => setEditVisit({ reportId: r.id, visit: v })}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
               ) : (
+                // ── SINGLE-USER VIEW: day-wise (existing behaviour) ──
                 <div className="space-y-3">
                   {grouped.map(([day, rows]) => (
                     <DayGroupCard key={day} day={day} reports={rows}

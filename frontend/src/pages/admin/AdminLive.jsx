@@ -424,9 +424,10 @@ export default function AdminLive() {
           {/* Sessions -- keep flex-1 removed, make normal so Outreach can also fit */}
           {/* Support Queries */}
           <Card title="Today's Support Queries" icon={Ticket} accent="amber" testId="card-support" className="flex-shrink-0">
-            <div className="grid grid-cols-3 gap-2 mb-1.5">
+            <div className="grid grid-cols-4 gap-2 mb-1.5">
               <Metric label="New" value={support.new_today} tone="cyan" testId="support-new" />
               <Metric label="Overdue" value={support.overdue} tone="rose" testId="support-overdue" />
+              <Metric label="On Hold" value={support.on_hold} tone="amber" testId="support-onhold" />
               <Metric label="Resolved" value={support.resolved_today} tone="emerald" testId="support-resolved" />
             </div>
             <div className="pt-2 border-t border-slate-800">
@@ -574,7 +575,7 @@ export default function AdminLive() {
           </Card>
 
           {/* Hiring pipeline */}
-          <Card title="Hiring Pipeline" icon={UserPlus} accent="emerald" testId="card-hiring" className="flex-1 min-h-0">
+          <Card title="Today's Hiring Pipeline" icon={UserPlus} accent="emerald" testId="card-hiring" className="flex-1 min-h-0">
             <div className="space-y-1.5">
               <HiringRow
                 icon={GraduationCap}

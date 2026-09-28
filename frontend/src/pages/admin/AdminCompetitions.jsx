@@ -173,9 +173,12 @@ export default function AdminCompetitions() {
     if (!isRegistrationTab) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/admin/techfest/registrations`, {
-        headers: getAuthHeaders(), params: { type: tab },
-      });
+      // Student registrations live in their own collection (populated by CSV import)
+      const url = tab === 'student'
+        ? `${API}/admin/techfest/students`
+        : `${API}/admin/techfest/registrations`;
+      const params = tab === 'student' ? {} : { type: tab };
+      const res = await axios.get(url, { headers: getAuthHeaders(), params });
       setRows(res.data?.items || []);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to load registrations');

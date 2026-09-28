@@ -53,28 +53,39 @@ async def _count_by_date_field(
     date_field: str,
     extra_query: Optional[Dict[str, Any]] = None,
 ) -> int:
-    """Count documents where the string ISO date-field falls inside today's IST window.
+    """Count documents where the ISO date-field falls inside today's IST window.
 
-    Handles both stored `datetime` objects and ISO string timestamps by
-    running two queries and taking the max (documents can't match both
-    shapes at the same time)."""
+    Handles three storage shapes seen in the codebase:
+      1. Python `datetime` (native BSON date) — direct range compare
+      2. ISO string with tz-suffix (…+00:00)
+      3. ISO string that is tz-naïve (no suffix)
+    We run all three queries and take the max because a document can only
+    match one of the shapes at a time.
+    """
     start_dt, end_dt = _today_utc_bounds()
     base = dict(extra_query or {})
 
     dt_q = {**base, date_field: {"$gte": start_dt, "$lt": end_dt}}
+    # tz-suffixed ISO string
     str_q = {
         **base,
         date_field: {"$gte": start_dt.isoformat(), "$lt": end_dt.isoformat()},
     }
-    try:
-        c1 = await db[collection].count_documents(dt_q)
-    except Exception:
-        c1 = 0
-    try:
-        c2 = await db[collection].count_documents(str_q)
-    except Exception:
-        c2 = 0
-    return max(c1, c2)
+    # tz-naïve ISO string (e.g. datetime.utcnow().isoformat())
+    naive_q = {
+        **base,
+        date_field: {
+            "$gte": start_dt.replace(tzinfo=None).isoformat(),
+            "$lt": end_dt.replace(tzinfo=None).isoformat(),
+        },
+    }
+    try: c1 = await db[collection].count_documents(dt_q)
+    except Exception: c1 = 0
+    try: c2 = await db[collection].count_documents(str_q)
+    except Exception: c2 = 0
+    try: c3 = await db[collection].count_documents(naive_q)
+    except Exception: c3 = 0
+    return max(c1, c2, c3)
 
 
 # ─── Success stories ────────────────────────────────────────────────────
@@ -110,31 +121,89 @@ async def _support_block() -> Dict[str, Any]:
     start_dt, end_dt = _today_utc_bounds()
     new_today = await _count_by_date_field("support_queries", "created_at")
 
-    # Resolved today — use resolved_at when present (added by earlier fix).
-    resolved_today = await db.support_queries.count_documents({
-        "status": {"$in": ["resolved", "closed"]},
-        "resolved_at": {
-            "$gte": start_dt.isoformat(),
-            "$lt": end_dt.isoformat(),
-        },
-    })
+    # Resolved today — use resolved_at when present. Try tz-aware, tz-suffixed
+    # ISO string and tz-naïve ISO string (see _count_by_date_field for context).
+    async def _count(q: Dict[str, Any]) -> int:
+        try: return await db.support_queries.count_documents(q)
+        except Exception: return 0
 
-    # Overdue — open ticket created > 48h ago
-    overdue_cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
-    overdue = await db.support_queries.count_documents({
-        "status": {"$nin": ["resolved", "closed"]},
-        "created_at": {"$lt": overdue_cutoff.isoformat()},
-    })
+    RESOLVED_STATES = ["resolved", "closed"]
+    ON_HOLD_STATES = ["on_hold", "onhold", "on hold", "hold", "paused"]
+    resolved_today = max(
+        await _count({
+            "status": {"$in": RESOLVED_STATES},
+            "resolved_at": {"$gte": start_dt, "$lt": end_dt},
+        }),
+        await _count({
+            "status": {"$in": RESOLVED_STATES},
+            "resolved_at": {"$gte": start_dt.isoformat(), "$lt": end_dt.isoformat()},
+        }),
+        await _count({
+            "status": {"$in": RESOLVED_STATES},
+            "resolved_at": {
+                "$gte": start_dt.replace(tzinfo=None).isoformat(),
+                "$lt": end_dt.replace(tzinfo=None).isoformat(),
+            },
+        }),
+    )
+
+    # Overdue — matches AdminSupportUnified.isOverdue():
+    #   status NOT IN (resolved, closed, on_hold) AND
+    #   (now - created_at) - paused_seconds > 24 hours
+    # We compute via aggregation so paused_seconds is subtracted correctly.
+    now_utc = datetime.now(timezone.utc)
+    try:
+        pipe = [
+            {"$match": {"status": {"$nin": RESOLVED_STATES + ON_HOLD_STATES}}},
+            {"$addFields": {
+                "_created_dt": {
+                    "$cond": [
+                        {"$eq": [{"$type": "$created_at"}, "date"]},
+                        "$created_at",
+                        {"$dateFromString": {
+                            "dateString": {"$ifNull": ["$created_at", ""]},
+                            "onError": None,
+                            "onNull": None,
+                        }},
+                    ]
+                },
+                "_paused_hrs": {
+                    "$divide": [{"$ifNull": ["$paused_seconds", 0]}, 3600]
+                },
+            }},
+            {"$match": {"_created_dt": {"$ne": None}}},
+            {"$addFields": {
+                "_elapsed_hrs": {
+                    "$divide": [
+                        {"$subtract": [now_utc, "$_created_dt"]},
+                        1000 * 60 * 60,
+                    ]
+                },
+            }},
+            {"$match": {
+                "$expr": {"$gt": [{"$subtract": ["$_elapsed_hrs", "$_paused_hrs"]}, 24]}
+            }},
+            {"$count": "n"},
+        ]
+        overdue = 0
+        async for row in db.support_queries.aggregate(pipe):
+            overdue = int(row.get("n") or 0)
+    except Exception as e:
+        logger.warning("[live-dashboard] overdue aggregation failed: %s", e)
+        overdue = 0
 
     open_total = await db.support_queries.count_documents({
-        "status": {"$nin": ["resolved", "closed"]}
+        "status": {"$nin": RESOLVED_STATES + ON_HOLD_STATES}
+    })
+    on_hold = await db.support_queries.count_documents({
+        "status": {"$in": ON_HOLD_STATES}
     })
 
     # Open ticket count grouped by priority — used by the TV support card
     priority_map: Dict[str, int] = {"urgent": 0, "high": 0, "normal": 0, "low": 0}
     try:
         pipe = [
-            {"$match": {"status": {"$nin": ["resolved", "closed"]}}},
+            {"$match": {"status": {"$nin": RESOLVED_STATES + ON_HOLD_STATES}}},
             {"$group": {"_id": "$priority", "n": {"$sum": 1}}},
         ]
         async for row in db.support_queries.aggregate(pipe):
@@ -153,6 +222,7 @@ async def _support_block() -> Dict[str, Any]:
         "overdue": overdue,
         "resolved_today": resolved_today,
         "open_total": open_total,
+        "on_hold": on_hold,
         "priority": priority_map,
     }
 
@@ -447,13 +517,29 @@ async def _outreach_block() -> Dict[str, Any]:
 
 # ─── Hiring pipeline (Educators / Growth Partners / Team) ───────────────
 async def _hiring_block() -> Dict[str, Any]:
-    """Roll up applicant counts for the three hiring pipelines."""
+    """Roll up TODAY's applicant counts for the three hiring pipelines."""
+    start_dt, end_dt = _today_utc_bounds()
+    # Build the created-today filter across all three date-storage shapes
+    # used in this codebase (native datetime, tz-suffixed ISO, tz-naïve ISO).
+    def _today_or(field: str) -> Dict[str, Any]:
+        return {"$or": [
+            {field: {"$gte": start_dt, "$lt": end_dt}},
+            {field: {"$gte": start_dt.isoformat(), "$lt": end_dt.isoformat()}},
+            {field: {
+                "$gte": start_dt.replace(tzinfo=None).isoformat(),
+                "$lt": end_dt.replace(tzinfo=None).isoformat(),
+            }},
+        ]}
 
     async def _counts(collection: str, buckets: Dict[str, List[str]]) -> Dict[str, int]:
+        today_filter = _today_or("created_at")
         out = {"new": 0, "interview": 0, "onboarded": 0, "inactive": 0}
         for key, statuses in buckets.items():
-            out[key] = await db[collection].count_documents({"status": {"$in": statuses}})
-        out["total"] = await db[collection].count_documents({})
+            out[key] = await db[collection].count_documents({
+                "status": {"$in": statuses},
+                **today_filter,
+            })
+        out["total"] = await db[collection].count_documents(today_filter)
         return out
 
     educators = await _counts("educator_applications", {
