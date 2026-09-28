@@ -1,5 +1,24 @@
 # OLL Backend Changelog
 
+## 2026-02-04 — Competitions Students Tab: Full Field Display
+**Status: COMPLETE**
+
+### Bug fix
+Bulk-imported competition students had 12+ fields silently missing from the admin panel view.
+- Backend `techfest_student_registrations` correctly stored all CSV fields (Techfest ID, Gender,
+  Pincode, State, Country, Address, Team ID/Name/Role, Team Leader Name/Email/Phone, Team Joined
+  Date, Registration Date) — but the frontend table only had columns for a subset AND referenced
+  wrong keys (`school_name`/`school_or_institute` instead of `school`, `created_at` instead of
+  `registration_date`, `school_address` instead of `address`).
+- Added a **dedicated horizontally-scrollable Students table** in `AdminCompetitions.jsx` with
+  24 columns covering every imported field. School/Educator tabs retain their compact layout.
+- Search filter now covers all imported student fields (Techfest ID, Team ID, Team Leader details,
+  address, state, pincode, country, gender, competition metadata, zonal info).
+
+### Files
+- `frontend/src/pages/admin/AdminCompetitions.jsx` — new student-tab table branch + widened filter.
+
+
 ## 2026-09-27 — Telecalling Excel Grid + Field Reports Distance Tracking
 **Status: COMPLETE**
 

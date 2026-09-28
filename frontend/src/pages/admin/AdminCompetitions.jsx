@@ -252,6 +252,12 @@ export default function AdminCompetitions() {
       r.role_designation, r.grade_taught, r.school_email, r.school_phone, r.school_address,
       r.source, r.source_details, r.referrer_slug,
       r.robotics_format, r.robotics_external_company,
+      // Student-import fields
+      r.school, r.address, r.state, r.pincode, r.country, r.gender,
+      r.techfest_id, r.compi_reg_id, r.competition_name, r.competition_code,
+      r.team_id, r.team_name, r.team_role,
+      r.team_leader_name, r.team_leader_email, r.team_leader_phone,
+      r.zonal_city, r.zonal_college,
     ].some((v) => (v || '').toString().toLowerCase().includes(needle)));
   }, [rows, q]);
 
@@ -663,6 +669,80 @@ export default function AdminCompetitions() {
                     <span className="text-slate-500">No {tab} registrations {q ? 'match your search' : 'yet'}.</span>
                   )}
                 </div>
+              ) : tab === 'student' ? (
+                <table className="w-full text-sm min-w-[2400px]" data-testid="admin-competitions-table-student">
+                  <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Sr.</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Registration Date</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Techfest ID</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Compi Reg ID</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Competition</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Name</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Email</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Phone No</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Gender</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">College / School</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Pincode</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">City</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">State</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Country</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Address</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Zonal City</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Zonal College</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team ID</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Name</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Role</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Leader Name</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Leader Email</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Leader Phone</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Joined Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((r, i) => (
+                      <tr key={r._id || `${r.email}-${r.team_id}-${i}`} className="border-b border-slate-100 hover:bg-slate-50/70 align-top" data-testid={`admin-competitions-row-student-${r._id || i}`}>
+                        <td className="px-3 py-3 text-slate-500 tabular-nums whitespace-nowrap">{i + 1}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.registration_date || fmtDateTime(r.created_at || r.imported_at)}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.techfest_id || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.compi_reg_id || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 text-[12px]">
+                          <div>{r.competition_name || '—'}</div>
+                          {r.competition_code && <div className="text-slate-500 text-[11px]">{r.competition_code}</div>}
+                        </td>
+                        <td className="px-3 py-3 font-semibold text-slate-900 whitespace-nowrap">{r.name || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
+                          {r.email ? <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1 text-[13px] hover:text-[#DC2626]"><Mail className="w-3 h-3" />{r.email}</a> : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
+                          {r.phone ? <span className="inline-flex items-center gap-1 text-[12px]"><Phone className="w-3 h-3" />{r.phone}</span> : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.gender || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700">{r.school || r.school_name || r.school_or_institute || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.pincode || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.city || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.state || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.country || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 max-w-[260px] text-[12px]">{r.address || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.zonal_city || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.zonal_college || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.team_id || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_name || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
+                          {r.team_role ? (
+                            <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${/lead/i.test(r.team_role) ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>{r.team_role}</span>
+                          ) : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_leader_name || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
+                          {r.team_leader_email ? <a href={`mailto:${r.team_leader_email}`} className="text-[12px] hover:text-[#DC2626]">{r.team_leader_email}</a> : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_leader_phone || '—'}</td>
+                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_joined_date || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               ) : (
                 <table className="w-full text-sm" data-testid={`admin-competitions-table-${tab}`}>
                   <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
