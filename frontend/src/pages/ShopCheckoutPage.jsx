@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
-import { ArrowLeft, Shield, Loader2, Truck, Store, MapPin } from 'lucide-react';
+import { ArrowLeft, Shield, Loader2, Truck, Store, MapPin, Tag, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCart } from '../context/CartContext';
 import { openCashfreeCheckout } from '../utils/cashfreeCheckout';
@@ -29,6 +29,9 @@ const ShopCheckoutPage = () => {
   const [form, setForm] = useState(initialForm);
   const [fulfillmentType, setFulfillmentType] = useState('delivery'); // 'delivery' | 'pickup'
   const [submitting, setSubmitting] = useState(false);
+  const [couponInput, setCouponInput] = useState('');
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [coupon, setCoupon] = useState(null); // { code, discount_amount }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,8 +40,50 @@ const ShopCheckoutPage = () => {
     }
   }, [items.length, navigate]);
 
+  // Re-validate coupon whenever cart changes so a swap or quantity update
+  // keeps the discount accurate. If it becomes invalid, silently drop it.
+  useEffect(() => {
+    if (!coupon?.code || items.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.post(`${API}/shop/coupons/validate`, {
+          code: coupon.code,
+          items: items.map((it) => ({ product_id: it.product_id, quantity: it.quantity, unit_price: it.unit_price })),
+        });
+        if (!cancelled) setCoupon({ code: res.data.code, discount_amount: res.data.discount_amount });
+      } catch {
+        if (!cancelled) setCoupon(null);
+      }
+    })();
+    return () => { cancelled = true; };
+     
+  }, [items]);
+
+  const discount = coupon?.discount_amount || 0;
+  const discountedSubtotal = Math.max(subtotal - discount, 0);
   const deliveryCharge = subtotal > 0 && fulfillmentType === 'delivery' ? DELIVERY : 0;
-  const total = subtotal > 0 ? subtotal + deliveryCharge : 0;
+  const total = subtotal > 0 ? discountedSubtotal + deliveryCharge : 0;
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    setApplyingCoupon(true);
+    try {
+      const res = await axios.post(`${API}/shop/coupons/validate`, {
+        code,
+        items: items.map((it) => ({ product_id: it.product_id, quantity: it.quantity, unit_price: it.unit_price })),
+      });
+      setCoupon({ code: res.data.code, discount_amount: res.data.discount_amount });
+      setCouponInput('');
+      toast.success(`Coupon ${res.data.code} applied — you saved ₹${res.data.discount_amount.toLocaleString('en-IN')}`);
+    } catch (err) {
+      const msg = err?.response?.data?.detail || 'Invalid coupon code';
+      toast.error(msg);
+    } finally { setApplyingCoupon(false); }
+  };
+
+  const removeCoupon = () => setCoupon(null);
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -70,6 +115,7 @@ const ShopCheckoutPage = () => {
       const createRes = await axios.post(`${API}/shop/orders`, {
         items: items.map((it) => ({ product_id: it.product_id, quantity: it.quantity })),
         fulfillment_type: fulfillmentType,
+        coupon_code: coupon?.code || null,
         shipping: {
           ...form,
           phone: form.phone.replace(/\D/g, ''),
@@ -248,10 +294,68 @@ const ShopCheckoutPage = () => {
             ))}
           </div>
           <div className="border-t border-white/10 pt-4 space-y-2 text-sm">
+            {/* Coupon input */}
+            <div className="mb-3">
+              {coupon ? (
+                <div
+                  className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-400/40"
+                  data-testid="checkout-coupon-applied"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-emerald-300 truncate">Coupon <span className="font-mono">{coupon.code}</span> applied</div>
+                      <div className="text-[11px] text-emerald-200/80">You saved ₹{discount.toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="text-emerald-200/70 hover:text-white p-1 rounded"
+                    data-testid="checkout-coupon-remove"
+                    aria-label="Remove coupon"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/60 flex items-center gap-1 mb-1.5">
+                    <Tag className="w-3 h-3" /> Have a coupon?
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      placeholder="Enter code"
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } }}
+                      className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/50 font-mono uppercase tracking-wider"
+                      data-testid="checkout-coupon-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={applyingCoupon || !couponInput.trim()}
+                      className="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg bg-white text-slate-900 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-testid="checkout-coupon-apply"
+                    >
+                      {applyingCoupon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Apply'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-between text-white/70">
               <span>Subtotal</span>
-              <span>₹{subtotal.toLocaleString('en-IN')}</span>
+              <span data-testid="checkout-subtotal">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-emerald-400 font-semibold" data-testid="checkout-discount-row">
+                <span>Discount ({coupon?.code})</span>
+                <span>− ₹{discount.toLocaleString('en-IN')}</span>
+              </div>
+            )}
             <div className="flex justify-between text-white/70">
               <span>
                 Delivery

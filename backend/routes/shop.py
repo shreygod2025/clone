@@ -61,6 +61,11 @@ except ImportError:
     CreateOrderRequest = None
 
 from .shared import db, get_current_user
+from .coupons import (
+    _find_coupon_by_code,
+    compute_coupon_discount,
+    increment_coupon_usage,
+)
 from .expenses import (
     VENDOR_PUBLIC_API,
     PO_API_BASE_URL,
@@ -342,6 +347,7 @@ class ShopOrderCreate(BaseModel):
     items: List[ShopCartItem]
     shipping: ShippingAddress
     fulfillment_type: Optional[str] = "delivery"  # "delivery" | "pickup"
+    coupon_code: Optional[str] = None
 
 
 # OLL office pickup address (kept in one place so future edits are trivial)
@@ -400,7 +406,31 @@ async def create_shop_order(body: ShopOrderCreate):
         })
 
     delivery = (DELIVERY_CHARGE if subtotal > 0 else 0.0) if fulfillment_type == "delivery" else 0.0
-    total = round(subtotal + delivery, 2)
+
+    # ── Apply coupon (if any) ───────────────────────────────────────────
+    coupon_code_upper: Optional[str] = None
+    coupon_discount: float = 0.0
+    coupon_snapshot: Optional[dict] = None
+    if body.coupon_code:
+        coupon_doc = await _find_coupon_by_code(body.coupon_code)
+        if not coupon_doc:
+            raise HTTPException(status_code=400, detail="Invalid coupon code")
+        coupon_discount, err = compute_coupon_discount(
+            coupon_doc,
+            [{"product_id": li["product_id"], "quantity": li["quantity"], "unit_price": li["unit_price"]}
+             for li in line_items],
+        )
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        coupon_code_upper = coupon_doc["code"]
+        coupon_snapshot = {
+            "code": coupon_doc["code"],
+            "discount_type": coupon_doc["discount_type"],
+            "discount_value": coupon_doc["discount_value"],
+            "product_ids": coupon_doc.get("product_ids") or [],
+        }
+
+    total = round(max(subtotal - coupon_discount, 0.0) + delivery, 2)
     order_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
 
@@ -413,6 +443,9 @@ async def create_shop_order(body: ShopOrderCreate):
         "pickup_address": PICKUP_ADDRESS if fulfillment_type == "pickup" else None,
         "subtotal": round(subtotal, 2),
         "delivery_charge": delivery,
+        "coupon_code": coupon_code_upper,
+        "coupon": coupon_snapshot,
+        "discount_amount": round(coupon_discount, 2),
         "total": total,
         "currency": "INR",
         "payment_status": "pending",
@@ -735,6 +768,9 @@ async def _finalize_paid_order(order: dict) -> dict:
     )
     order["payment_status"] = "paid"
     order["purchase_orders"] = [p["id"] for p in pos]
+    # Bump coupon usage_count (idempotent — only fires on the first flip to paid)
+    if order.get("coupon_code"):
+        asyncio.create_task(increment_coupon_usage(order["coupon_code"]))
     asyncio.create_task(_send_order_confirmation_email(order, pos))
     return order
 

@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { toast } from 'sonner';
 import axios from 'axios';
 import GmailBotPanel from './GmailBotPanel';
+import CouponsSection from './CouponsSection';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -616,6 +617,7 @@ const AdminSettings = () => {
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
     { id: 'centers', label: 'Centers', icon: Building, count: centers.length },
     { id: 'blogs', label: 'Blogs', icon: FileText, count: blogs.length },
+    { id: 'coupons', label: 'Coupons', icon: Tag, count: null },
     // ── External tabs — click navigates to the dedicated page (removed from sidebar).
     { id: 'broadcasts',          label: 'Bulk Email',          icon: Send,     count: null, external: '/admin/broadcasts' },
     { id: 'data-center',         label: 'Data Center',         icon: Database, count: null, external: '/admin/data-center' },
@@ -681,7 +683,7 @@ const AdminSettings = () => {
         </div>
 
         {/* Search & Add */}
-        {activeTab !== 'system' && activeTab !== 'daily-report' && activeTab !== 'gmail-bot' && (
+        {activeTab !== 'system' && activeTab !== 'daily-report' && activeTab !== 'gmail-bot' && activeTab !== 'coupons' && (
         <div className="flex gap-4 items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1805,6 +1807,11 @@ const AdminSettings = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* Coupons Tab */}
+        {activeTab === 'coupons' && (
+          <CouponsSection searchQuery={searchQuery} />
         )}
       </div>
 

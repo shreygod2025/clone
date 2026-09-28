@@ -1,5 +1,28 @@
 # OLL Backend Changelog
 
+## 2026-02-04 — Shop Coupon Codes (checkout discount + admin CRUD)
+**Status: COMPLETE**
+
+### What shipped
+- **New collection**: `shop_coupons` — `{code, discount_type ('percent'|'amount'), discount_value, product_ids[], expires_at, is_active, max_uses, usage_count, created_at, updated_at}`.
+- **Public endpoint** `POST /api/shop/coupons/validate` — used by checkout to preview the discount without holding an order.
+- **Admin CRUD** at `/api/admin/shop/coupons` (list/create/patch/delete, admin-only).
+- **Order flow** — `POST /api/shop/orders` now accepts `coupon_code`; the backend re-validates server-side, applies the discount to eligible line items, stores `coupon_code`, `coupon` snapshot and `discount_amount` on the order, and subtracts from the total *before* delivery is added. Coupon `usage_count` bumps on the payment-paid flip (idempotent).
+- **Auto-seed OLLSCHOOL** — 10% off Robo Sumo & Robo Racer kits, resolves product IDs from vendor catalog at startup (idempotent).
+
+### Frontend
+- `ShopCheckoutPage.jsx` — coupon input + "Apply" button inside Order Summary; green applied-chip with ✕ removes it. Discount line renders under Subtotal; total re-computes live and re-validates whenever the cart changes.
+- New **`CouponsSection.jsx`** — admin Settings → new "Coupons" tab. Create/edit modal supports percent or flat-amount, expiry date, max uses, active toggle, and multi-select of eligible products (fetched from `/admin/shop/products`).
+
+### Files
+- `backend/routes/coupons.py` (new)
+- `backend/routes/shop.py` (order create + finalise paid)
+- `backend/server.py` (router + startup seed)
+- `frontend/src/pages/ShopCheckoutPage.jsx`
+- `frontend/src/pages/admin/CouponsSection.jsx` (new)
+- `frontend/src/pages/admin/AdminSettings.jsx` (new tab)
+
+
 ## 2026-02-04 — Competitions Students Tab: Full Field Display
 **Status: COMPLETE**
 

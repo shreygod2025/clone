@@ -4132,6 +4132,7 @@ from routes.orders import router as orders_router
 from routes.misc import router as misc_router
 from routes.broadcasts import router as broadcasts_router, process_scheduled_broadcasts
 from routes.shop import router as shop_router
+from routes.coupons import router as coupons_router, ensure_default_coupons
 from routes.gmail_bot import router as gmail_bot_router, sync_all_gmail_accounts
 from routes.accounts_scheduler import run_accounts_reminders, router as accounts_scheduler_router
 from routes.custom_invoices import router as custom_invoices_router
@@ -4179,6 +4180,7 @@ api_router.include_router(orders_router)
 api_router.include_router(misc_router)
 api_router.include_router(broadcasts_router)
 api_router.include_router(shop_router)
+api_router.include_router(coupons_router)
 api_router.include_router(gmail_bot_router)
 api_router.include_router(accounts_scheduler_router)
 api_router.include_router(custom_invoices_router)
@@ -4353,6 +4355,12 @@ async def startup_db_client():
     global _db_index_task
     # Fire-and-forget — indexes are built while the server is already live
     _db_index_task = asyncio.create_task(_create_db_indexes())
+
+    # Idempotently seed the default OLLSCHOOL coupon (10% off Robo Sumo/Race kits)
+    try:
+        asyncio.create_task(ensure_default_coupons())
+    except Exception as e:
+        print(f"[STARTUP] ensure_default_coupons scheduling failed: {e}")
 
     # Seed the default "Admin" system role — a role that, when assigned to a
     # team member, elevates them to full admin access (all CRMs, all tasks,
