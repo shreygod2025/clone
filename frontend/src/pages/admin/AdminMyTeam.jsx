@@ -6,9 +6,10 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
+import { generateTeamMemberReportPDF } from '../../utils/teamMemberReportPdf';
 import {
   Users as UsersIcon, Sparkles, ListChecks, Send, CheckCircle2, FolderKanban,
-  BarChart3, Plus, Search, Mail, Phone,
+  BarChart3, Plus, Search, Mail, Phone, FileDown, Calendar, Loader2,
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -28,6 +29,8 @@ const AdminMyTeam = () => {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [taskFor, setTaskFor] = useState(null); // team_user object to assign a task to
+  const [period, setPeriod] = useState('weekly'); // 'weekly' | 'monthly' | 'quarterly'
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +44,22 @@ const AdminMyTeam = () => {
   }, [getAuthHeaders]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleDownloadPDF = async (member) => {
+    setDownloadingId(member.id);
+    try {
+      const res = await axios.get(
+        `${API}/team/member-report/${member.id}?period=${period}`,
+        { headers: getAuthHeaders() },
+      );
+      await generateTeamMemberReportPDF(res.data);
+      toast.success(`Downloaded ${period} report for ${member.name}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Failed to generate report');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const members = (data?.members || []).filter(m => {
     if (!query.trim()) return true;
@@ -76,14 +95,36 @@ const AdminMyTeam = () => {
             </p>
           </div>
 
-          <div className="relative w-full md:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="Search by name, email, role…"
-              className="pl-9 pr-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-              data-testid="team-search-input"
-            />
+          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+            {/* Period filter for the PDF report */}
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5" data-testid="team-report-period">
+              {[
+                { v: 'weekly',    l: 'Weekly' },
+                { v: 'monthly',   l: 'Monthly' },
+                { v: 'quarterly', l: 'Quarterly' },
+              ].map(o => (
+                <button
+                  key={o.v}
+                  onClick={() => setPeriod(o.v)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                    period === o.v ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                  data-testid={`team-period-${o.v}`}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full md:w-56">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                value={query} onChange={e => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="pl-9 pr-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                data-testid="team-search-input"
+              />
+            </div>
           </div>
         </div>
 
@@ -114,9 +155,12 @@ const AdminMyTeam = () => {
               <MemberCard
                 key={m.id}
                 member={m}
+                period={period}
+                downloading={downloadingId === m.id}
                 onAssignTask={() => setTaskFor(m)}
                 onViewPerformance={() => navigate(`/admin/users/${m.id}/performance`)}
                 onViewTasks={() => navigate(`/admin/tasks?assignee=${m.id}`)}
+                onDownloadPDF={() => handleDownloadPDF(m)}
               />
             ))}
           </div>
@@ -149,7 +193,7 @@ const SummaryTile = ({ label, value, icon: Icon, color }) => (
 );
 
 // ── Member Card ─────────────────────────────────────────────────────────────
-const MemberCard = ({ member, onAssignTask, onViewPerformance, onViewTasks }) => (
+const MemberCard = ({ member, period, downloading, onAssignTask, onViewPerformance, onViewTasks, onDownloadPDF }) => (
   <Card className="p-4 bg-white flex flex-col gap-3" data-testid={`member-card-${member.id}`}>
     {/* Header */}
     <div className="flex items-start gap-3">
@@ -187,20 +231,30 @@ const MemberCard = ({ member, onAssignTask, onViewPerformance, onViewTasks }) =>
     </div>
 
     {/* Actions */}
-    <div className="flex gap-2 pt-1">
+    <div className="flex flex-wrap gap-2 pt-1">
       <button
         onClick={onAssignTask}
-        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg"
+        className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg"
         data-testid={`assign-task-${member.id}`}
       >
         <Plus className="w-3.5 h-3.5" /> Assign Task
       </button>
       <button
         onClick={onViewTasks}
-        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg"
+        className="flex-1 min-w-[100px] inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg"
         data-testid={`view-tasks-${member.id}`}
       >
         <ListChecks className="w-3.5 h-3.5" /> View Tasks
+      </button>
+      <button
+        onClick={onDownloadPDF}
+        disabled={downloading}
+        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 disabled:cursor-wait text-white text-xs font-medium rounded-lg"
+        title={`Download ${period} PDF report`}
+        data-testid={`download-report-${member.id}`}
+      >
+        {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+        <span className="hidden sm:inline capitalize">{period} PDF</span>
       </button>
       <button
         onClick={onViewPerformance}

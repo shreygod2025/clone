@@ -1338,3 +1338,32 @@ Bucket logic (`_buckets_for_scope`):
 - Verified via screenshot tool: hero, books, kits, teacher empowerment, real schools, pillars, projects video all render correctly
 - Verified: old `/school/robotics/beginner` 301s to new URL
 - Verified: homepage card text = "Robotics & AI Program for Schools" with correct sub-copy
+
+## 2026-09-28 — Live Ops: Outreach + My Team PDF Reports + Weekly Cron
+**Status: COMPLETE**
+
+### 1. Today's Outreach — 2 new tiles
+- **Calls Connected**: today's `call_picked` count from `telecalling_activity` + connect rate + interested leads
+- **Field Visits**: today's `school_visits` total + entries gained + interested leads + reps count
+- Grid changed 2×1 → 2×2 in `AdminLive.jsx`
+- `OutreachTile` extended with `gainedLabel` + `engagementLabel` props (backward-compatible for IG/YT tiles)
+
+### 2. My Team — Weekly/Monthly/Quarterly PDF Reports
+- New endpoint `GET /api/team/member-report/{user_id}?period=weekly|monthly|quarterly&ref=YYYY-MM-DD` returns:
+  - Time-bucketed breakdown (day/week/month based on period)
+  - Tasks assigned + tasks completed lists
+  - Support queries assigned list
+  - CRM roll-up (leads, schools onboarded, student leads)
+  - Field/calls totals
+- Period pill filter (Weekly / Monthly / Quarterly) added to `AdminMyTeam.jsx` header
+- Green **PDF download** button on every MemberCard — client-side `jsPDF` + `jspdf-autotable` renders a branded multi-section report
+
+### 3. Weekly Email Cron — Every Monday 3PM IST
+- New file `.emergent/crons.yml` with `weekly-team-report` cron (`0 15 * * 1` in `Asia/Kolkata`)
+- New endpoint `POST /api/cron/weekly-team-report` — Bearer `WEBHOOK_CRON_SECRET` auth, idempotent via `X-Webhook-Id`, backgrounded work
+- Enumerates every user with direct reports, generates a **ReportLab PDF** per direct report matching the frontend layout, emails each manager one HTML digest with all PDFs attached via Resend
+- Manual admin trigger: `POST /api/cron/weekly-team-report/preview` (JWT-authed)
+- Preview verified: 2 managers emailed with 6 attachments, 0 failures
+
+### New Env Var
+- `WEBHOOK_CRON_SECRET` added to `backend/.env` (auto-generated 32-byte token)

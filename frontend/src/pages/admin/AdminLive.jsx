@@ -21,6 +21,7 @@ import {
   Activity, Trophy, Ticket, School as SchoolIcon, Users, Rocket,
   Clock, MapPin, Zap, ListChecks, FolderKanban, Instagram, Youtube,
   UserPlus, GraduationCap, Briefcase, TrendingUp, Maximize2,
+  Phone, Compass,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -470,6 +471,32 @@ export default function AdminLive() {
                 gradient="from-red-500/20 to-transparent"
                 testId="outreach-youtube"
               />
+              <OutreachTile
+                icon={Phone}
+                label="Calls Connected"
+                gained={outreach.calls?.connected}
+                gainedLabel="connected"
+                total={outreach.calls?.made}
+                totalLabel={`Made · ${outreach.calls?.connect_rate ?? 0}%`}
+                engagement={outreach.calls?.interested}
+                engagementLabel="Interested"
+                color="text-emerald-300"
+                gradient="from-emerald-500/20 to-transparent"
+                testId="outreach-calls"
+              />
+              <OutreachTile
+                icon={Compass}
+                label="Field Visits"
+                gained={outreach.field_visits?.visits}
+                gainedLabel="visits"
+                total={outreach.field_visits?.entries}
+                totalLabel="Got entry"
+                engagement={outreach.field_visits?.leads}
+                engagementLabel={`Leads · ${outreach.field_visits?.reps ?? 0} reps`}
+                color="text-cyan-300"
+                gradient="from-cyan-500/20 to-transparent"
+                testId="outreach-field-visits"
+              />
             </div>
           </Card>
         </section>
@@ -696,9 +723,9 @@ const CityPopup = ({ city }) => {
   );
 };
 
-const OutreachTile = ({ icon: Icon, label, total, totalLabel, gained, engagement, engGained, color, gradient, testId }) => {
+const OutreachTile = ({ icon: Icon, label, total, totalLabel, gained, gainedLabel, engagement, engagementLabel, engGained, color, gradient, testId }) => {
   const positive = (gained || 0) > 0;
-  const posEng = (engGained || 0) > 0;
+  const posEng = engGained !== undefined ? (engGained > 0) : (engagement || 0) > 0;
   return (
     <div
       className={`rounded-lg bg-gradient-to-br ${gradient} bg-slate-900/60 border border-slate-800 p-2 flex flex-col`}
@@ -711,23 +738,27 @@ const OutreachTile = ({ icon: Icon, label, total, totalLabel, gained, engagement
       {/* Big number = TODAY's gain (what matters day-to-day) */}
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className={`text-2xl font-black tabular-nums leading-none ${positive ? 'text-emerald-300' : 'text-slate-400'}`}>
-          {positive ? '+' : ''}{compact(gained || 0)}
+          {engGained !== undefined ? (positive ? '+' : '') : ''}{compact(gained || 0)}
         </span>
         <span className="text-[9px] uppercase tracking-widest text-slate-400">
-          {totalLabel} today
+          {gainedLabel || `${totalLabel} today`}
         </span>
       </div>
       {/* Total = small caption below */}
       <div className="mt-0.5 text-[10px] text-slate-500">
-        Total <span className="text-slate-300 font-semibold tabular-nums">{compact(total)}</span>
+        {engGained !== undefined ? 'Total' : totalLabel} <span className="text-slate-300 font-semibold tabular-nums">{compact(total)}</span>
       </div>
       <div className="mt-1.5 pt-1.5 border-t border-slate-800/70 flex items-center justify-between">
-        <span className="text-[9px] uppercase tracking-widest text-slate-400">Engagement</span>
+        <span className="text-[9px] uppercase tracking-widest text-slate-400">{engagementLabel || 'Engagement'}</span>
         <span className="text-slate-200 text-xs font-bold tabular-nums">
-          <span className={`${posEng ? 'text-emerald-300' : 'text-slate-500'}`}>
-            +{compact(engGained || 0)}
-          </span>
-          <span className="ml-1 text-[9px] text-slate-500 font-normal">/ {compact(engagement || 0)}</span>
+          {engGained !== undefined ? (
+            <>
+              <span className={`${posEng ? 'text-emerald-300' : 'text-slate-500'}`}>+{compact(engGained || 0)}</span>
+              <span className="ml-1 text-[9px] text-slate-500 font-normal">/ {compact(engagement || 0)}</span>
+            </>
+          ) : (
+            <span className="text-slate-200">{compact(engagement || 0)}</span>
+          )}
         </span>
       </div>
     </div>

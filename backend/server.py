@@ -4211,10 +4211,14 @@ api_router.include_router(simple_partners_router)
 from routes.field_reports import router as field_reports_router
 from routes.live_dashboard import router as live_dashboard_router
 from routes.educator_reports import router as educator_reports_router
+from routes.team_reports import router as team_reports_router
+from routes.team_reports_cron import router as team_reports_cron_router
 from routes.telecalling import router as telecalling_router
 api_router.include_router(field_reports_router)
 api_router.include_router(live_dashboard_router)
 api_router.include_router(educator_reports_router)
+api_router.include_router(team_reports_router)
+api_router.include_router(team_reports_cron_router)
 api_router.include_router(telecalling_router)
 
 app.include_router(api_router)

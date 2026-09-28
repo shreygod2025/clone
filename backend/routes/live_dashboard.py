@@ -512,6 +512,82 @@ async def _outreach_block() -> Dict[str, Any]:
     except Exception as e:
         logger.warning("[live-dashboard] youtube outreach failed: %s", e)
 
+    # ── Calls Connected today (from telecalling_activity) ─────────────
+    try:
+        start_dt, end_dt = _today_utc_bounds()
+        today_str = _ist_now().strftime("%Y-%m-%d")
+        # count call_picked=yes events today (calls connected). Fallback to
+        # calls_made if picked isn't tracked. Uses the "day" field (YYYY-MM-DD)
+        # populated by _log_activity — no tz-nightmares needed.
+        calls_connected = await db.telecalling_activity.count_documents({
+            "event": "call_picked",
+            "day": today_str,
+        })
+        calls_made = await db.telecalling_activity.count_documents({
+            "event": "call_made",
+            "day": today_str,
+        })
+        # Also count "interested" leads today (bonus signal)
+        interested = await db.telecalling_activity.count_documents({
+            "event": "lead_interested",
+            "day": today_str,
+        })
+        result["calls"] = {
+            "connected": calls_connected,
+            "made": calls_made,
+            "interested": interested,
+            "connect_rate": round((calls_connected / calls_made) * 100) if calls_made else 0,
+        }
+    except Exception as e:
+        logger.warning("[live-dashboard] telecalling outreach failed: %s", e)
+        result["calls"] = {"connected": 0, "made": 0, "interested": 0, "connect_rate": 0}
+
+    # ── School Field Visits today (from field_reports.school_visits) ───
+    try:
+        start_dt, end_dt = _today_utc_bounds()
+        # Field visits are stored as sub-docs inside `field_reports.school_visits`
+        # Each visit has an `at` timestamp. We roll them up using aggregation.
+        pipe = [
+            {"$match": {"$or": [
+                {"created_at": {"$gte": start_dt, "$lt": end_dt}},
+                {"created_at": {"$gte": start_dt.isoformat(), "$lt": end_dt.isoformat()}},
+                {"created_at": {
+                    "$gte": start_dt.replace(tzinfo=None).isoformat(),
+                    "$lt": end_dt.replace(tzinfo=None).isoformat(),
+                }},
+            ]}},
+            {"$project": {
+                "user_id": 1,
+                "visits": {"$size": {"$ifNull": ["$school_visits", []]}},
+                "entries": {"$size": {"$filter": {
+                    "input": {"$ifNull": ["$school_visits", []]},
+                    "cond": {"$eq": ["$$this.got_entry", "yes"]},
+                }}},
+                "leads": {"$size": {"$filter": {
+                    "input": {"$ifNull": ["$school_visits", []]},
+                    "cond": {"$eq": ["$$this.lead_interested", "yes"]},
+                }}},
+            }},
+            {"$group": {
+                "_id": None,
+                "visits":   {"$sum": "$visits"},
+                "entries":  {"$sum": "$entries"},
+                "leads":    {"$sum": "$leads"},
+                "reps":     {"$addToSet": "$user_id"},
+            }},
+        ]
+        agg = await db.field_reports.aggregate(pipe).to_list(1)
+        row = agg[0] if agg else {}
+        result["field_visits"] = {
+            "visits":  int(row.get("visits") or 0),
+            "entries": int(row.get("entries") or 0),
+            "leads":   int(row.get("leads") or 0),
+            "reps":    len(row.get("reps") or []),
+        }
+    except Exception as e:
+        logger.warning("[live-dashboard] field visits outreach failed: %s", e)
+        result["field_visits"] = {"visits": 0, "entries": 0, "leads": 0, "reps": 0}
+
     return result
 
 

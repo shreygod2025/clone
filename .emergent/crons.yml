@@ -1,0 +1,10 @@
+crons:
+  - name: weekly-team-report
+    description: "Emails each manager a PDF-attached weekly team performance report every Monday at 3PM IST"
+    # Monday 3:00 PM IST → hour=15, minute=0, dow=1 (Mon)
+    cron: "0 15 * * 1"
+    timezone: "Asia/Kolkata"
+    endpoint: "{{BASE_URL}}/api/cron/weekly-team-report"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true
