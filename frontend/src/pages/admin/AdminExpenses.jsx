@@ -1345,20 +1345,40 @@ const PnLSheet = ({ data, loading }) => {
           ))}
         </div>
         {checkin_sync && (
-          <button
-            onClick={() => setShowSyncModal(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap"
-            data-testid="pnl-checkin-sync-btn"
-            title="CheckIn Educator Earnings synced into Teacher Cost"
-          >
-            <Users className="w-3.5 h-3.5" />
-            CheckIn: {fmt(checkin_sync.total_teacher_cost)} · {checkin_sync.matched_schools} schools
-            {checkin_sync.unmatched?.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">
-                {checkin_sync.unmatched.length} unmatched
-              </span>
-            )}
-          </button>
+          <>
+            <button
+              onClick={() => setShowSyncModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap"
+              data-testid="pnl-checkin-sync-btn"
+              title="CheckIn Educator Earnings synced into Teacher Cost"
+            >
+              <Users className="w-3.5 h-3.5" />
+              CheckIn: {fmt(checkin_sync.total_teacher_cost)} · {checkin_sync.matched_schools} schools
+              {checkin_sync.unmatched?.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">
+                  {checkin_sync.unmatched.length} unmatched
+                </span>
+              )}
+            </button>
+            <button
+              onClick={async () => {
+                if (!window.confirm('Materialize every educator\'s monthly salary from CheckIn into the Expenses ledger?\n\n• One line item per (educator × school × month)\n• Dated the 7th of the following month\n• Backfill from April 2026\n• Safe to re-run — existing rows are updated, not duplicated')) return;
+                try {
+                  const r = await axios.post(`${API}/school-expenses/import-educator-salaries?since_month=2026-04`, {}, { headers: getAuthHeaders() });
+                  toast.success(`Materialized ${r.data.inserted} new + updated ${r.data.updated} (₹${(r.data.total_amount).toLocaleString('en-IN')}) — expense_date set to 7th of each following month.`);
+                  loadPnLData();
+                } catch (e) {
+                  toast.error(e?.response?.data?.detail || 'Materialize failed');
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 whitespace-nowrap"
+              data-testid="pnl-materialize-salaries-btn"
+              title="Create school_expenses line items — one per (educator × school × month), dated 7th of next month. Cron runs monthly on the 7th automatically."
+            >
+              <Users className="w-3.5 h-3.5" />
+              Materialize Salaries → Ledger
+            </button>
+          </>
         )}
       </div>
 

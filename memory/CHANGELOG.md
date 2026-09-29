@@ -1,5 +1,46 @@
 # OLL Backend Changelog
 
+## 2026-09-29 — Educator Salary → Ledger materialization (7th of next month)
+**Status: COMPLETE — 93 line items materialized on first backfill**
+
+### Diagnostic first
+- `/api/school-expenses/pnl-summary` was already returning `teacher_cost` correctly for **31 of 47 schools** via the live CheckIn sync. The 16 zeros are educators whose CheckIn `school_name` didn't match any `school_inquiries` row (spelling drift like "St. Gregorios High School" vs "St Gregorios High School"). Those are surfaced in `checkin_sync.unmatched` on the P&L API response.
+
+### New module — `backend/routes/educator_salary_sync.py`
+- `POST /api/school-expenses/import-educator-salaries?since_month=YYYY-MM&up_to_month=YYYY-MM`
+  Pulls CheckIn earnings, groups by (educator × school × month), and **upserts one `school_expenses` row per group** with:
+  - `category: teacher_cost`
+  - `amount: sum of realised earnings for that group`
+  - `expense_date: 7th of the following month` (Aug earnings → 2026-09-07)
+  - `salary_month: YYYY-MM`
+  - `sync_key` — deterministic ID for idempotent re-runs
+  - `sync_source: checkin_auto`
+  - `vendor_name`, `educator_name`, `educator_id`, `educator_email` all populated
+  - unmatched rows land under `"General (no timetable)"` or `"Unmatched · <school name>"` so nothing is lost.
+- `POST /api/cron/educator-salary-materialize` — cron endpoint (protected by `WEBHOOK_CRON_SECRET`). Materializes only the **previous month**.
+- `GET /api/school-expenses/educator-salary-sync-status` — returns per-month row counts and totals.
+
+### Cron
+- Added an entry to `.emergent/crons.yml`:
+  `cron: "0 4 7 * *"` (IST, i.e. 04:00 on the 7th of every month).
+
+### UI
+- New **"Materialize Salaries → Ledger"** button in `AdminExpenses.jsx` (P&L header, next to the existing CheckIn sync summary). Confirmation modal explains what it does. Fires the backfill and refreshes.
+
+### First-run stats (verified live)
+- **93 new line items** across May–Aug 2026 (April had zero earnings in CheckIn).
+- **Total materialized: ₹16.77L** — matches the P&L-side computed value.
+- **₹2.12L** unmatched (educators with no timetable) landed in "General" so the ledger stays complete.
+- Re-run produced `inserted: 0, updated: 0, skipped: 93` → **idempotent**.
+- Sample row: *Aakash Dalvi · Green Lawns High School · Aug 2026 · ₹19,575 · expense_date 2026-09-07*.
+
+### Files
+- `backend/routes/educator_salary_sync.py` (new)
+- `backend/server.py` (router + import)
+- `.emergent/crons.yml`
+- `frontend/src/pages/admin/AdminExpenses.jsx`
+
+
 ## 2026-09-29 — CheckIn sessions filter bug on Live Dashboard
 **Status: COMPLETE**
 

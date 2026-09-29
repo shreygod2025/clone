@@ -4108,6 +4108,7 @@ from routes.reports import router as reports_router
 from routes.social_media import router as social_media_router
 from routes.jobs import router as jobs_router, scheduled_educator_applicant_demo_reminders
 from routes.expenses import router as expenses_router, transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
+from routes.educator_salary_sync import router as educator_salary_sync_router
 from routes.admin_keys import router as admin_keys_router
 from routes.daily_report import router as daily_report_router, send_daily_reports
 from routes.school_emails import router as school_emails_router
@@ -4152,6 +4153,7 @@ api_router.include_router(reports_router)
 api_router.include_router(social_media_router)
 api_router.include_router(jobs_router)
 api_router.include_router(expenses_router)
+api_router.include_router(educator_salary_sync_router)
 api_router.include_router(admin_keys_router)
 api_router.include_router(payments_router)
 api_router.include_router(summer_camp_router)

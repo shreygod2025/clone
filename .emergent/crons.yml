@@ -8,3 +8,11 @@ crons:
     method: POST
     # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
     enabled: true
+
+  - name: educator-salary-materialize
+    description: "Materialize previous month's CheckIn educator earnings into school_expenses as a teacher_cost line item — runs on the 7th of every month at 4:00 AM IST"
+    cron: "0 4 7 * *"
+    timezone: "Asia/Kolkata"
+    endpoint: "{{BASE_URL}}/api/cron/educator-salary-materialize"
+    method: POST
+    enabled: true
