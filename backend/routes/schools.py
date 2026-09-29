@@ -401,6 +401,25 @@ async def update_school_inquiry(
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+    # If the assignee changed, always refresh ``assigned_to_name`` so the
+    # school card stops showing the previous owner (or the seed "OLL").
+    # Runs on both re-assign (userId provided) and un-assign (empty string).
+    if 'assigned_to' in update_data and update_data.get('assigned_to') != current_inquiry.get('assigned_to'):
+        new_uid = (update_data.get('assigned_to') or '').strip()
+        if new_uid:
+            assignee_doc = await db.team_users.find_one(
+                {"id": new_uid},
+                {"_id": 0, "name": 1, "email": 1},
+            )
+            update_data['assigned_to_name'] = (
+                (assignee_doc or {}).get('name')
+                or (assignee_doc or {}).get('email')
+                or ''
+            )
+        else:
+            # Un-assign — clear cached name too
+            update_data['assigned_to_name'] = ''
     
     # Track status changes and other important updates in activity_log
     activity_entries = []

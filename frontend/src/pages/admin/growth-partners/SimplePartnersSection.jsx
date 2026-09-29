@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../compo
 import { Input } from '../../../components/ui/input';
 import { Textarea } from '../../../components/ui/textarea';
 import { Button } from '../../../components/ui/button';
+import CitySearch from '../../../components/CitySearch';
 import { useAuth } from '../../../context/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -92,7 +93,14 @@ const PartnerModal = ({ open, partner, type, onClose, onSaved }) => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-slate-500">City</label>
-              <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-1" />
+              <div className="mt-1">
+                <CitySearch
+                  value={form.city}
+                  onChange={(cityName) => setForm({ ...form, city: cityName })}
+                  placeholder="Search city…"
+                  data-testid="simple-partner-city-input"
+                />
+              </div>
             </div>
             {type === 'influencer' && (
               <div>
@@ -353,10 +361,10 @@ export default function SimplePartnersSection({ type }) {
     try {
       const [pRes, sRes] = await Promise.all([
         axios.get(`${API}/simple-partners?type=${type}`, { headers: getAuthHeaders() }),
-        axios.get(`${API}/school-inquiries?limit=1000`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
+        axios.get(`${API}/schools/inquiries?limit=1000`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
       ]);
       setPartners(pRes.data || []);
-      const sData = Array.isArray(sRes.data) ? sRes.data : (sRes.data?.inquiries || sRes.data?.schools || []);
+      const sData = Array.isArray(sRes.data) ? sRes.data : (sRes.data?.inquiries || sRes.data?.schools || sRes.data?.items || []);
       setSchools(sData);
     } catch (e) {
       toast.error(`Failed to load ${label} partners`);

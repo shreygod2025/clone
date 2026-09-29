@@ -1,5 +1,32 @@
 # OLL Backend Changelog
 
+## 2026-09-29 — Growth Partners fixes + assignee cache + expense-driven GP share sync
+**Status: COMPLETE**
+
+### 1 · Influencer / Referral Partner — City field is now a picker
+- Replaced the plain text `<Input>` with the shared `<CitySearch>` component in `SimplePartnersSection.jsx`. Type-ahead lists real cities (e.g. typing "Mumbai" surfaces "Mumbai · Maharashtra" + "Navi Mumbai"). Prevents typos that were breaking city-wise partner grouping.
+
+### 2 · Assign Schools modal — "0 shown" fixed
+- The frontend was calling `/api/school-inquiries?limit=1000` (hyphen), which 404'd and was silently caught by `.catch()`. The real endpoint is `/api/schools/inquiries` (slash) → returns 180 schools. Switched to the correct path; assign-schools modal now populates.
+
+### 3 · Simple partners visible on Central Database
+- `central_database.py` `by-city` endpoint was only reading `db.growth_partners`. Extended it to also merge `db.simple_partners` (Referral + Influencer) into the same `growth_partners` city bucket — with a `role` of `referral_partner` or `influencer_partner` and useful `meta` (partner type, social handle, linked schools count) so the row is disambiguated in the UI.
+
+### 4 · GP Share expense → school modal + GP earnings
+- Root cause: when an admin created a `gp_share` expense from `/admin/expenses` and only picked the school by **name** (no id), the resulting expense had `school_id = ""` → the reverse-sync `_resync_school_share_from_expenses` was a no-op → `onboarding_data.gp_share_amount` stayed at zero → school edit modal AND GP earnings both looked broken.
+- Fix in `POST /api/school-expenses`: when `school_id` is empty but `school_name` is given, auto-resolve to a `school_inquiries.id` (case-insensitive exact match; falls back to unique substring). Silent no-op only if truly ambiguous. Reverse-sync now fires consistently → GP share amount shows in the school modal AND rolls into the GP earnings widget.
+
+### 5 · Assignee cache — "OLL" showing even after reassignment
+- Root cause: frontend PATCH sends only `assigned_to: <userId>` — the backend never refreshed the cached `assigned_to_name` field, so cards displayed the previous / seed name (e.g. "OLL").
+- Fix in `PATCH /api/schools/inquiry/{id}`: whenever `assigned_to` changes we now look up the new user in `team_users` and refresh `assigned_to_name` in the same update. Unassign clears it. Cards + list now reflect the new owner immediately.
+
+### Files
+- `backend/routes/schools.py` — assignee_name auto-refresh
+- `backend/routes/expenses.py` — school_id auto-resolution from school_name
+- `backend/routes/central_database.py` — merge simple_partners into growth_partners bucket
+- `frontend/src/pages/admin/growth-partners/SimplePartnersSection.jsx` — CitySearch + correct schools endpoint
+
+
 ## 2026-09-29 — Educator Salary → Ledger materialization (7th of next month)
 **Status: COMPLETE — 93 line items materialized on first backfill**
 

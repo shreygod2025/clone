@@ -837,6 +837,27 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
         school = await db.school_inquiries.find_one({"id": data.get("school_id")}, {"_id": 0})
         if not school:
             raise HTTPException(status_code=404, detail="School not found")
+    elif data.get("school_name"):
+        # Frontend passed a plain school name (e.g. from a name-search picker) —
+        # resolve to a real inquiry so downstream reverse-sync (GP Share /
+        # School Share) still fires. Case-insensitive exact match first, else
+        # unique substring match. Silent no-op if we can't resolve.
+        raw = str(data["school_name"]).strip()
+        if raw:
+            school = await db.school_inquiries.find_one(
+                {"school_name": {"$regex": f"^{re.escape(raw)}$", "$options": "i"}},
+                {"_id": 0},
+            )
+            if not school:
+                candidates = await db.school_inquiries.find(
+                    {"school_name": {"$regex": re.escape(raw), "$options": "i"}},
+                    {"_id": 0, "id": 1, "school_name": 1},
+                ).limit(3).to_list(3)
+                if len(candidates) == 1:
+                    school = await db.school_inquiries.find_one({"id": candidates[0]["id"]}, {"_id": 0})
+            if school:
+                data = dict(data)
+                data["school_id"] = school["id"]
 
     project_id = (data.get("project_id") or "").strip()
     project_name = ""

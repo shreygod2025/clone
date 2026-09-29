@@ -205,6 +205,32 @@ async def central_database_by_city(user: dict = Depends(get_current_user)):
             "meta": gp.get("interest_type") or "",
         })
 
+    # ── Simple partners (Referral + Influencer) ──────────────────
+    # These live in a separate ``simple_partners`` collection but should
+    # appear under the same "Growth Partners" city bucket so the central
+    # database view stays a single-source-of-truth for partner outreach.
+    async for sp in db.simple_partners.find(
+        {}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "city": 1,
+             "type": 1, "social_handle": 1, "school_ids": 1},
+    ):
+        c = _norm_city(sp.get("city"))
+        ptype = (sp.get("type") or "").lower()   # 'referral' | 'influencer'
+        meta_bits = [ptype.title() + " Partner" if ptype else "Partner"]
+        if ptype == "influencer" and sp.get("social_handle"):
+            meta_bits.append(sp["social_handle"])
+        linked = len(sp.get("school_ids") or [])
+        if linked:
+            meta_bits.append(f"{linked} school{'s' if linked != 1 else ''}")
+        _bucket(cities, c, "growth_partners", {
+            "id": sp.get("id"),
+            "name": sp.get("name") or "—",
+            "email": sp.get("email") or "",
+            "phone": sp.get("phone") or "",
+            "stage": ptype or "partner",
+            "role": f"{ptype}_partner" if ptype else "simple_partner",
+            "meta": " · ".join(meta_bits),
+        })
+
     # ── Teachers (educator applications) ──────────────────────
     async for ed in db.educator_applications.find(
         {}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "city": 1,
