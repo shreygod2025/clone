@@ -24,10 +24,11 @@ Access rules
 - Users with the 'telecalling' permission → see & edit ONLY rows assigned to them.
 """
 import io
+import re
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
@@ -145,6 +146,7 @@ async def import_contacts(
     assigned_to:   Optional[str] = Form(None),
     auto_pool:     str = Form(""),           # comma-separated user_ids
     default_source: Optional[str] = Form(None),
+    batch_name:    Optional[str] = Form(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -161,7 +163,9 @@ async def import_contacts(
     if not rows:
         raise HTTPException(status_code=400, detail="Empty spreadsheet")
 
-    headers = [str(h or "").strip().lower() for h in rows[0]]
+    # Original header labels preserved (case-sensitive display) + lower-cased for lookup
+    header_labels_raw = [str(h or "").strip() for h in rows[0]]
+    headers = [h.lower() for h in header_labels_raw]
 
     def col_index(canonical_key: str) -> Optional[int]:
         aliases = dict(XLSX_COLUMNS).get(canonical_key, [])
@@ -174,30 +178,68 @@ async def import_contacts(
     if idx["phone"] is None:
         raise HTTPException(status_code=400, detail="Missing required 'phone' column")
 
+    # Any column that isn't mapped to a known canonical key is preserved as
+    # an "extra field" so the UI can display everything the spreadsheet
+    # originally contained.
+    known_indices = {i for i in idx.values() if i is not None}
+    extra_columns: List[Tuple[int, str]] = [
+        (i, header_labels_raw[i] or headers[i])
+        for i in range(len(headers))
+        if i not in known_indices and (header_labels_raw[i] or headers[i])
+    ]
+
     # Build assignee pool
     pool = [p.strip() for p in (auto_pool or "").split(",") if p.strip()]
     pool_users = []
     if assign_mode == "auto" and pool:
-        pool_users = await db.users.find(
+        pool_users = await db.team_users.find(
             {"id": {"$in": pool}}, {"_id": 0, "id": 1, "name": 1, "email": 1}
         ).to_list(500)
 
     single_user = None
     if assign_mode == "single" and assigned_to:
-        single_user = await db.users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        single_user = await db.team_users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        if not single_user:
+            raise HTTPException(status_code=400, detail="Selected assignee could not be found")
 
+    # ── Batch metadata ─────────────────────────────────────────────
     batch_id = str(uuid.uuid4())
+    default_batch_name = (
+        (batch_name or "").strip()
+        or (file.filename or "").rsplit(".", 1)[0].strip()
+        or f"Import {_now()[:10]}"
+    )
+
+    # ── Duplicate detection (phone number, globally) ───────────────
+    def _norm_phone(p: str) -> str:
+        return re.sub(r"\D", "", str(p or ""))[-10:]  # last 10 digits — India phones
+
+    existing_raw_phones = await db.telecalling_contacts.distinct("phone")
+    existing_phones = {_norm_phone(p) for p in existing_raw_phones}
+    existing_phones.discard("")
+
+    seen_in_this_import: set[str] = set()
     inserted = 0
     skipped = 0
+    duplicates = 0
     docs = []
     for r in rows[1:]:
         if not r:
             skipped += 1
             continue
-        phone = str((r[idx["phone"]] or "")).strip()
-        if not phone:
+        raw_phone = str((r[idx["phone"]] or "")).strip()
+        if not raw_phone:
             skipped += 1
             continue
+
+        norm = _norm_phone(raw_phone)
+        if not norm or len(norm) < 7:
+            skipped += 1
+            continue
+        if norm in existing_phones or norm in seen_in_this_import:
+            duplicates += 1
+            continue
+        seen_in_this_import.add(norm)
 
         def _cell(k: str) -> str:
             i = idx.get(k)
@@ -212,10 +254,18 @@ async def import_contacts(
         elif assign_mode == "auto" and pool_users:
             assignee = pool_users[inserted % len(pool_users)]
 
+        # Capture unknown columns
+        extra_fields: Dict[str, str] = {}
+        for ei, label in extra_columns:
+            v = r[ei] if ei < len(r) else ""
+            s = str(v or "").strip()
+            if s:
+                extra_fields[label] = s
+
         docs.append({
             "id":               str(uuid.uuid4()),
             "name":             _cell("name"),
-            "phone":            phone,
+            "phone":            raw_phone,
             "alt_phone":        _cell("alt_phone"),
             "email":            _cell("email"),
             "school_name":      _cell("school_name"),
@@ -232,6 +282,9 @@ async def import_contacts(
             "meeting_at":        None,
             "school_inquiry_id": None,
             "imported_batch_id": batch_id,
+            "batch_id":          batch_id,       # duplicate for filter simplicity
+            "batch_name":        default_batch_name,
+            "extra_fields":      extra_fields,
             "imported_by":       _uid(user),
             "imported_by_name":  user.get("name") or user.get("email"),
             "created_at":        _now(),
@@ -242,12 +295,125 @@ async def import_contacts(
     if docs:
         await db.telecalling_contacts.insert_many(docs)
 
+    # Persist the batch itself (only if at least one row landed)
+    if inserted > 0:
+        await db.telecalling_batches.insert_one({
+            "id":              batch_id,
+            "name":            default_batch_name,
+            "file_name":       file.filename,
+            "row_count":       inserted,
+            "extra_columns":   [label for _, label in extra_columns],
+            "created_by":      _uid(user),
+            "created_by_name": user.get("name") or user.get("email"),
+            "created_at":      _now(),
+            "updated_at":      _now(),
+        })
+
     return {
-        "ok": True,
-        "batch_id": batch_id,
-        "inserted": inserted,
-        "skipped": skipped,
+        "ok":         True,
+        "batch_id":   batch_id,
+        "batch_name": default_batch_name,
+        "inserted":   inserted,
+        "skipped":    skipped,
+        "duplicates": duplicates,
     }
+
+
+# ── Batch (imported sheet / tab) management ──────────────────────
+@router.get("/telecalling/batches")
+async def list_batches(user: dict = Depends(get_current_user)):
+    """List every import batch — the UI renders one tab per batch."""
+    if not _is_admin(user):
+        # Non-admins see only the batches that contain rows assigned to them.
+        my_batches = await db.telecalling_contacts.distinct(
+            "batch_id", {"assigned_to": _uid(user)}
+        )
+        cursor = db.telecalling_batches.find({"id": {"$in": my_batches}}, {"_id": 0}).sort("created_at", -1)
+    else:
+        cursor = db.telecalling_batches.find({}, {"_id": 0}).sort("created_at", -1)
+    items: List[Dict[str, Any]] = []
+    async for b in cursor:
+        # attach live counts
+        b["contact_count"] = await db.telecalling_contacts.count_documents({"batch_id": b["id"]})
+        items.append(b)
+    return {"items": items, "count": len(items)}
+
+
+class BatchPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
+@router.patch("/telecalling/batches/{batch_id}")
+async def rename_batch(batch_id: str, patch: BatchPatch, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Only admins can rename batches")
+    new_name = patch.name.strip()
+    await db.telecalling_batches.update_one(
+        {"id": batch_id},
+        {"$set": {"name": new_name, "updated_at": _now()}},
+    )
+    # Cascade to contacts so tab labels stay in sync everywhere
+    await db.telecalling_contacts.update_many(
+        {"batch_id": batch_id}, {"$set": {"batch_name": new_name, "updated_at": _now()}}
+    )
+    return {"ok": True, "batch_id": batch_id, "name": new_name}
+
+
+@router.delete("/telecalling/batches/{batch_id}")
+async def delete_batch(batch_id: str, user: dict = Depends(get_current_user)):
+    """Deletes the batch AND every contact that came in through it."""
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Only admins can delete batches")
+    contacts_res = await db.telecalling_contacts.delete_many({"batch_id": batch_id})
+    await db.telecalling_batches.delete_one({"id": batch_id})
+    return {"ok": True, "deleted_contacts": contacts_res.deleted_count}
+
+
+# ── Bulk ops on contacts ────────────────────────────────────────
+class BulkIds(BaseModel):
+    ids: List[str]
+
+
+class BulkAssign(BaseModel):
+    ids: List[str]
+    assigned_to: Optional[str] = None  # None = unassign
+
+
+@router.post("/telecalling/contacts/bulk-delete")
+async def bulk_delete_contacts(payload: BulkIds, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Only admins can bulk delete")
+    if not payload.ids:
+        return {"ok": True, "deleted": 0}
+    res = await db.telecalling_contacts.delete_many({"id": {"$in": payload.ids}})
+    return {"ok": True, "deleted": res.deleted_count}
+
+
+@router.post("/telecalling/contacts/bulk-assign")
+async def bulk_assign_contacts(payload: BulkAssign, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Only admins can bulk assign")
+    if not payload.ids:
+        return {"ok": True, "updated": 0}
+
+    if payload.assigned_to:
+        target = await db.team_users.find_one({"id": payload.assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        if not target:
+            raise HTTPException(status_code=404, detail="Assignee user not found")
+        update = {"$set": {
+            "assigned_to": target["id"],
+            "assigned_to_name": target.get("name") or target.get("email"),
+            "updated_at": _now(),
+        }}
+    else:
+        update = {"$set": {
+            "assigned_to": None,
+            "assigned_to_name": None,
+            "updated_at": _now(),
+        }}
+
+    res = await db.telecalling_contacts.update_many({"id": {"$in": payload.ids}}, update)
+    return {"ok": True, "updated": res.modified_count}
 
 
 # ── List / Filter ────────────────────────────────────────────────
@@ -256,6 +422,7 @@ async def list_contacts(
     assigned_to: Optional[str] = None,
     status:      Optional[str] = None,   # 'unworked' | 'picked' | 'interested' | 'not_interested'
     search:      Optional[str] = None,
+    batch_id:    Optional[str] = None,
     limit:       int = 500,
     user: dict = Depends(get_current_user),
 ):
@@ -264,6 +431,9 @@ async def list_contacts(
         q["assigned_to"] = _uid(user)
     elif assigned_to:
         q["assigned_to"] = assigned_to if assigned_to != "unassigned" else None
+
+    if batch_id and batch_id != "all":
+        q["batch_id"] = batch_id
 
     if status in {"new", "follow_up", "no_answer", "interested"}:
         q["status"] = status
@@ -330,7 +500,7 @@ async def update_contact(contact_id: str, patch: ContactPatch, user: dict = Depe
 
     # Reflect assignee name if reassigning
     if "assigned_to" in changes and changes["assigned_to"]:
-        assignee = await db.users.find_one({"id": changes["assigned_to"]}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        assignee = await db.team_users.find_one({"id": changes["assigned_to"]}, {"_id": 0, "id": 1, "name": 1, "email": 1})
         if assignee:
             changes["assigned_to_name"] = assignee.get("name") or assignee.get("email")
 
@@ -398,13 +568,13 @@ async def reassign(payload: ReassignIn, user: dict = Depends(get_current_user)):
 
     pool_users = []
     if payload.assign_mode == "auto" and payload.auto_pool:
-        pool_users = await db.users.find(
+        pool_users = await db.team_users.find(
             {"id": {"$in": payload.auto_pool}}, {"_id": 0, "id": 1, "name": 1, "email": 1}
         ).to_list(500)
 
     single_user = None
     if payload.assign_mode == "single" and payload.assigned_to:
-        single_user = await db.users.find_one({"id": payload.assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        single_user = await db.team_users.find_one({"id": payload.assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1})
 
     updated = 0
     for i, cid in enumerate(payload.contact_ids):

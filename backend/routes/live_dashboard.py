@@ -189,12 +189,18 @@ async def _support_block() -> Dict[str, Any]:
 
     for r in all_rows:
         st = (r.get("status") or "").lower()
+        cdt = _to_dt(r.get("created_at"))
+        created_today = bool(cdt and start_dt <= cdt < end_dt)
+        # ── "New today" = any query created in today's IST window,
+        # regardless of status. Matches the Support Center visible count.
+        if created_today:
+            new_count += 1
+
         if st in ON_HOLD:
             on_hold_count += 1
             continue
         if st in RESOLVED:
             rdt = _to_dt(r.get("resolved_at"))
-            cdt = _to_dt(r.get("created_at"))
             if rdt and cdt and rdt >= cdt:
                 paused_hrs = float(r.get("paused_seconds") or 0) / 3600
                 dur = (rdt - cdt).total_seconds() / 3600 - paused_hrs
@@ -206,8 +212,6 @@ async def _support_block() -> Dict[str, Any]:
         overdue = _is_overdue(r)
         if overdue:
             overdue_count += 1
-        elif st in NEW_STATUSES:
-            new_count += 1
         # Priority — for anything still open (not resolved/on_hold)
         key = (r.get("priority") or "normal").lower()
         if key in ("medium", "med"):

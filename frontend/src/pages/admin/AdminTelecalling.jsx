@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import {
   Phone, Upload, Download, FileSpreadsheet, Users, Search, Filter, X,
   Building2, Calendar, BarChart3, ChevronDown, ChevronRight, Loader2, Plus,
-  UserPlus, MessageSquare, Mail, MapPin, AlertTriangle,
+  UserPlus, MessageSquare, Mail, MapPin, AlertTriangle, PenSquare, Trash2,
 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -80,11 +80,12 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
   const [assignedTo, setAssignedTo] = useState('');
   const [autoPool, setAutoPool] = useState([]);
   const [defaultSource, setDefaultSource] = useState('');
+  const [batchName, setBatchName] = useState('');
   const [uploading, setUploading] = useState(false);
   const { getAuthHeaders } = useAuth();
 
   useEffect(() => {
-    if (open) { setFile(null); setAssignMode('single'); setAssignedTo(''); setAutoPool([]); setDefaultSource(''); }
+    if (open) { setFile(null); setAssignMode('single'); setAssignedTo(''); setAutoPool([]); setDefaultSource(''); setBatchName(''); }
   }, [open]);
 
   const togglePool = (id) => setAutoPool(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
@@ -112,8 +113,10 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
       if (assignMode === 'single') fd.append('assigned_to', assignedTo);
       if (assignMode === 'auto') fd.append('auto_pool', autoPool.join(','));
       if (defaultSource) fd.append('default_source', defaultSource);
+      if (batchName) fd.append('batch_name', batchName);
       const r = await axios.post(`${API}/telecalling/import`, fd, { headers: getAuthHeaders() });
-      toast.success(`Imported ${r.data.inserted} contacts (${r.data.skipped} skipped)`);
+      const dupPart = r.data.duplicates ? `, ${r.data.duplicates} duplicate${r.data.duplicates === 1 ? '' : 's'} skipped` : '';
+      toast.success(`Imported ${r.data.inserted} contacts into "${r.data.batch_name}" (${r.data.skipped} empty${dupPart})`);
       onDone();
       onClose();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Import failed'); }
@@ -183,6 +186,13 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">Default source (optional)</label>
             <Input value={defaultSource} onChange={(e) => setDefaultSource(e.target.value)} placeholder="e.g. Winter Campaign 2026" data-testid="tc-default-source" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Tab / Sheet name (optional)</label>
+            <Input value={batchName} onChange={(e) => setBatchName(e.target.value)}
+              placeholder={file?.name?.replace(/\.[^.]+$/, '') || 'Auto-named from file'}
+              data-testid="tc-batch-name-input" />
+            <p className="text-[11px] text-slate-500 mt-1">Each import becomes its own tab in the queue. You can rename or delete the tab later.</p>
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -526,7 +536,7 @@ const STATUS_OPTIONS = [
 const CELL = 'px-2 py-1.5 border-r border-slate-200 border-b';
 const HEAD = 'px-2 py-2 text-left border-r border-slate-200 border-b bg-slate-50 text-[10px] uppercase font-bold text-slate-500 whitespace-nowrap';
 
-const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDelete }) => {
+const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDelete, selected = false, onToggleSelected, extraColumns = [] }) => {
   const noteRef = useRef(null);
   const [note, setNote] = useState(row.notes || '');
   useEffect(() => { setNote(row.notes || ''); }, [row.id, row.notes]);
@@ -540,7 +550,19 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
     : '—';
 
   return (
-    <tr className="hover:bg-slate-50/60 text-xs" data-testid={`tc-row-${row.id}`}>
+    <tr className={`hover:bg-slate-50/60 text-xs ${selected ? 'bg-indigo-50/60' : ''}`} data-testid={`tc-row-${row.id}`}>
+      {isAdmin && (
+        <td className={`${CELL} w-8 text-center`}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelected && onToggleSelected()}
+            className="rounded"
+            data-testid={`tc-select-${row.id}`}
+            aria-label={`Select ${row.name || row.phone}`}
+          />
+        </td>
+      )}
       <td className={`${CELL} text-slate-400 font-mono w-8 text-right`}>{idx + 1}</td>
       <td className={`${CELL} whitespace-nowrap`}>
         <div className="font-medium text-slate-800">{row.name || <span className="text-slate-400 italic">—</span>}</div>
@@ -548,6 +570,13 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
       </td>
       <td className={`${CELL} font-mono whitespace-nowrap`}>
         <a href={`tel:${row.phone}`} className="text-indigo-700 hover:underline" data-testid={`tc-phone-${row.id}`}>{row.phone}</a>
+      </td>
+      <td className={`${CELL} whitespace-nowrap`}>
+        {row.email ? (
+          <a href={`mailto:${row.email}`} className="text-indigo-600 hover:underline" data-testid={`tc-email-${row.id}`}>{row.email}</a>
+        ) : (
+          <span className="text-slate-400 italic">—</span>
+        )}
       </td>
       <td className={CELL}>{row.school_name || <span className="text-slate-400 italic">—</span>}</td>
       <td className={CELL}>{row.city || <span className="text-slate-400 italic">—</span>}</td>
@@ -620,6 +649,11 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
           <span className="text-slate-400 italic">—</span>
         )}
       </td>
+      {extraColumns.map(col => (
+        <td key={col} className={`${CELL} whitespace-nowrap max-w-[200px] truncate`} title={row.extra_fields?.[col] || ''} data-testid={`tc-extra-${row.id}-${col}`}>
+          {row.extra_fields?.[col] || <span className="text-slate-300 italic">—</span>}
+        </td>
+      ))}
       {isAdmin && (
         <td className={CELL}>
           <button onClick={() => onDelete(row.id)} className="text-slate-400 hover:text-rose-600" data-testid={`tc-del-${row.id}`}><X className="w-3.5 h-3.5" /></button>
@@ -730,6 +764,22 @@ export default function AdminTelecalling() {
   const [sortDesc, setSortDesc] = useState(true);   // Date Added sort direction
   const [showImport, setShowImport] = useState(false);
   const [interestedRow, setInterestedRow] = useState(null);
+  // Batches (imported sheets → tabs)
+  const [batches, setBatches] = useState([]);
+  const [activeBatch, setActiveBatch] = useState('all');   // 'all' | batch_id
+  const [renamingBatch, setRenamingBatch] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  // Bulk selection
+  const [selected, setSelected] = useState(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkAssignUser, setBulkAssignUser] = useState('');
+
+  const loadBatches = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/telecalling/batches`, { headers: getAuthHeaders() });
+      setBatches(r.data.items || []);
+    } catch { /* silent — batches optional */ }
+  }, [getAuthHeaders]);
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
@@ -738,11 +788,13 @@ export default function AdminTelecalling() {
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('search', search);
       if (isAdmin && assigneeFilter !== 'all') params.set('assigned_to', assigneeFilter);
+      if (activeBatch && activeBatch !== 'all') params.set('batch_id', activeBatch);
       const r = await axios.get(`${API}/telecalling/contacts?${params}`, { headers: getAuthHeaders() });
       setContacts(r.data.contacts || []);
+      setSelected(new Set());   // clear selection whenever the list changes
     } catch { toast.error('Failed to load contacts'); }
     finally { setLoading(false); }
-  }, [getAuthHeaders, statusFilter, search, isAdmin, assigneeFilter]);
+  }, [getAuthHeaders, statusFilter, search, isAdmin, assigneeFilter, activeBatch]);
 
   const loadUsers = useCallback(async () => {
     if (!isAdmin) return;
@@ -767,6 +819,69 @@ export default function AdminTelecalling() {
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
   useEffect(() => { loadContacts(); }, [loadContacts]);
+  useEffect(() => { loadBatches(); }, [loadBatches]);
+
+  // ── Bulk / batch operations ──────────────────────────────────
+  const toggleSelected = (id) => setSelected(s => {
+    const n = new Set(s);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+  const selectAllVisible = () => setSelected(new Set(contacts.map(c => c.id)));
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkDelete = async () => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    if (!window.confirm(`Delete ${ids.length} contact${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    try {
+      const r = await axios.post(`${API}/telecalling/contacts/bulk-delete`, { ids }, { headers: getAuthHeaders() });
+      toast.success(`Deleted ${r.data.deleted}`);
+      clearSelection();
+      loadContacts();
+      loadBatches();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Delete failed'); }
+  };
+
+  const bulkAssign = async () => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    try {
+      const r = await axios.post(
+        `${API}/telecalling/contacts/bulk-assign`,
+        { ids, assigned_to: bulkAssignUser || null },
+        { headers: getAuthHeaders() },
+      );
+      toast.success(`Assigned ${r.data.updated}`);
+      setBulkAssignOpen(false);
+      setBulkAssignUser('');
+      clearSelection();
+      loadContacts();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Assign failed'); }
+  };
+
+  const renameBatch = async (batchId, newName) => {
+    const clean = (newName || '').trim();
+    if (!clean) return;
+    try {
+      await axios.patch(`${API}/telecalling/batches/${batchId}`, { name: clean }, { headers: getAuthHeaders() });
+      setRenamingBatch(null);
+      setRenameValue('');
+      loadBatches();
+      loadContacts();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Rename failed'); }
+  };
+
+  const deleteBatch = async (batch) => {
+    if (!window.confirm(`Delete the "${batch.name}" tab and all ${batch.contact_count || 0} contacts in it? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/telecalling/batches/${batch.id}`, { headers: getAuthHeaders() });
+      toast.success('Tab deleted');
+      if (activeBatch === batch.id) setActiveBatch('all');
+      loadBatches();
+      loadContacts();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Delete failed'); }
+  };
 
   const patchRow = async (id, patch) => {
     // Optimistic update
@@ -799,6 +914,24 @@ export default function AdminTelecalling() {
     return { made, picked, interested, meetings };
   }, [contacts]);
 
+  // Union of extra_fields keys across the visible contacts → sheet-specific
+  // columns rendered after the standard ones.
+  const extraColumns = useMemo(() => {
+    const s = new Set();
+    contacts.forEach(c => { Object.keys(c.extra_fields || {}).forEach(k => s.add(k)); });
+    // Prefer the order defined on the batch metadata when a specific tab is active
+    if (activeBatch !== 'all') {
+      const batch = batches.find(b => b.id === activeBatch);
+      const ordered = (batch?.extra_columns || []).filter(k => s.has(k));
+      const rest = [...s].filter(k => !ordered.includes(k));
+      return [...ordered, ...rest];
+    }
+    return [...s];
+  }, [contacts, activeBatch, batches]);
+
+  const allSelected = contacts.length > 0 && contacts.every(c => selected.has(c.id));
+  const toggleAll = () => (allSelected ? clearSelection() : selectAllVisible());
+
   return (
     <AdminLayout>
       <div className="p-6 max-w-[1400px] mx-auto" data-testid="admin-telecalling">
@@ -819,6 +952,67 @@ export default function AdminTelecalling() {
 
         {tab === 'queue' && (
           <div className="space-y-3">
+            {/* Batch tabs (imported sheets) */}
+            {(batches.length > 0 || isAdmin) && (
+              <div className="flex items-center gap-1 flex-wrap bg-white rounded-lg border border-slate-200 p-1.5" data-testid="tc-batch-tabs">
+                <button
+                  onClick={() => setActiveBatch('all')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${activeBatch === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                  data-testid="tc-batch-tab-all"
+                >
+                  All Contacts
+                </button>
+                {batches.map(b => (
+                  <div key={b.id} className={`inline-flex items-center rounded-md ${activeBatch === b.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`} data-testid={`tc-batch-tab-${b.id}`}>
+                    {renamingBatch === b.id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={e => setRenameValue(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') renameBatch(b.id, renameValue);
+                          if (e.key === 'Escape') { setRenamingBatch(null); setRenameValue(''); }
+                        }}
+                        onBlur={() => renameBatch(b.id, renameValue)}
+                        className="px-2 py-1 text-xs bg-white text-slate-900 border border-indigo-300 rounded outline-none w-40"
+                        data-testid={`tc-batch-rename-input-${b.id}`}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setActiveBatch(b.id)}
+                        onDoubleClick={() => isAdmin && (setRenamingBatch(b.id), setRenameValue(b.name))}
+                        title={isAdmin ? 'Double-click to rename' : ''}
+                        className="px-3 py-1.5 text-xs font-semibold whitespace-nowrap"
+                      >
+                        {b.name}
+                        <span className={`ml-1.5 text-[10px] tabular-nums ${activeBatch === b.id ? 'text-white/70' : 'text-slate-400'}`}>{b.contact_count}</span>
+                      </button>
+                    )}
+                    {isAdmin && activeBatch === b.id && renamingBatch !== b.id && (
+                      <>
+                        <button
+                          onClick={() => { setRenamingBatch(b.id); setRenameValue(b.name); }}
+                          className="p-1 hover:bg-white/20 rounded"
+                          title="Rename tab"
+                          data-testid={`tc-batch-rename-${b.id}`}
+                        >
+                          <PenSquare className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => deleteBatch(b)}
+                          className="p-1 hover:bg-red-500/60 rounded mr-1"
+                          title="Delete this tab and all its contacts"
+                          data-testid={`tc-batch-delete-${b.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: 'Calls Made', val: kpis.made, color: 'from-slate-600 to-slate-400' },
@@ -832,6 +1026,29 @@ export default function AdminTelecalling() {
                 </div>
               ))}
             </div>
+
+            {/* Bulk toolbar */}
+            {isAdmin && selected.size > 0 && (
+              <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2" data-testid="tc-bulk-toolbar">
+                <span className="text-xs font-bold text-indigo-800">{selected.size} selected</span>
+                <button
+                  onClick={selectAllVisible}
+                  className="text-[11px] text-indigo-700 underline"
+                  data-testid="tc-bulk-select-all"
+                >
+                  Select all {contacts.length}
+                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setBulkAssignOpen(true)} data-testid="tc-bulk-assign-btn">
+                    <UserPlus className="w-3.5 h-3.5 mr-1" /> Assign…
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={bulkDelete} className="text-red-600 hover:text-red-700 hover:border-red-300" data-testid="tc-bulk-delete-btn">
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                  </Button>
+                  <button onClick={clearSelection} className="text-slate-500 hover:text-slate-900 text-sm px-2" data-testid="tc-bulk-clear">✕</button>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2 items-center bg-white rounded-lg border border-slate-200 p-2">
               <div className="relative flex-1 min-w-[180px] max-w-xs">
@@ -871,9 +1088,22 @@ export default function AdminTelecalling() {
                 <table className="w-full text-xs border-collapse" data-testid="tc-table">
                   <thead>
                     <tr>
+                      {isAdmin && (
+                        <th className={`${HEAD} w-8`}>
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleAll}
+                            className="rounded"
+                            data-testid="tc-header-checkbox"
+                            aria-label="Select all visible"
+                          />
+                        </th>
+                      )}
                       <th className={`${HEAD} w-8`}>#</th>
                       <th className={HEAD}>Contact</th>
                       <th className={HEAD}>Phone</th>
+                      <th className={HEAD}>Email</th>
                       <th className={HEAD}>School</th>
                       <th className={HEAD}>City</th>
                       <th className={`${HEAD} cursor-pointer select-none`} onClick={() => setSortDesc(s => !s)} data-testid="tc-sort-date">
@@ -887,6 +1117,9 @@ export default function AdminTelecalling() {
                       <th className={HEAD}>Follow-up</th>
                       {isAdmin && <th className={HEAD}>Assignee</th>}
                       <th className={HEAD}>CRM</th>
+                      {extraColumns.map(col => (
+                        <th key={col} className={HEAD} title={`Imported column: ${col}`}>{col}</th>
+                      ))}
                       {isAdmin && <th className={HEAD}></th>}
                     </tr>
                   </thead>
@@ -900,7 +1133,10 @@ export default function AdminTelecalling() {
                         <ContactRow key={c.id} row={c} idx={idx} isAdmin={isAdmin} users={users}
                           onPatch={patchRow}
                           onOpenInterested={setInterestedRow}
-                          onDelete={deleteRow} />
+                          onDelete={deleteRow}
+                          selected={selected.has(c.id)}
+                          onToggleSelected={() => toggleSelected(c.id)}
+                          extraColumns={extraColumns} />
                     ))}
                   </tbody>
                 </table>
@@ -912,8 +1148,43 @@ export default function AdminTelecalling() {
         {tab === 'reports' && <ReportsTab />}
       </div>
 
-      <ImportModal open={showImport} onClose={() => setShowImport(false)} onDone={loadContacts} users={users} />
+      <ImportModal open={showImport} onClose={() => setShowImport(false)} onDone={() => { loadContacts(); loadBatches(); }} users={users} />
       <InterestedLeadModal open={!!interestedRow} contact={interestedRow} onClose={() => setInterestedRow(null)} onSaved={loadContacts} />
+
+      {/* Bulk-assign modal */}
+      <Dialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen}>
+        <DialogContent className="max-w-md" data-testid="tc-bulk-assign-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5" /> Assign {selected.size} contact{selected.size === 1 ? '' : 's'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Assign to</label>
+              <select value={bulkAssignUser} onChange={(e) => setBulkAssignUser(e.target.value)}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white" data-testid="tc-bulk-assign-select">
+                <option value="">Unassigned</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name || u.email}{u._has_tc ? '' : '  — grant Telecalling access'}
+                  </option>
+                ))}
+              </select>
+              {bulkAssignUser && !(users.find(u => u.id === bulkAssignUser)?._has_tc) && (
+                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  This user doesn&rsquo;t have <b>Telecalling</b> permission yet.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" onClick={() => setBulkAssignOpen(false)}>Cancel</Button>
+              <Button onClick={bulkAssign} className="bg-[#1E3A5F] hover:bg-[#0F203E]" data-testid="tc-bulk-assign-confirm">
+                {bulkAssignUser ? 'Assign' : 'Unassign'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

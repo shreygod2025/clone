@@ -590,15 +590,37 @@ export default function AdminLive() {
         <section className="col-span-3 flex flex-col gap-3 min-h-0">
           {/* School CRM */}
           <Card title="Today · School CRM" icon={SchoolIcon} accent="violet" testId="card-school-crm" className="flex-shrink-0">
-            <div className="grid grid-cols-3 gap-2 mb-1.5">
+            <div className="grid grid-cols-3 gap-2 mb-2">
               <Metric label="New" value={school.new_today} tone="cyan" testId="school-new" />
               <Metric label="Meeting" value={school.meeting_done_today} tone="amber" testId="school-meeting" />
               <Metric label="Converted" value={school.converted_today} tone="emerald" testId="school-converted" />
             </div>
-            <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex justify-between">
-              <span>Total converted schools</span>
-              <span className="text-violet-300 font-bold tabular-nums">{school.total_converted ?? 0}</span>
-            </div>
+            {(() => {
+              const converted = Number(school.total_converted ?? 0);
+              const goal = 500;
+              const pct = Math.min(100, Math.round((converted / goal) * 100));
+              return (
+                <div className="pt-2 border-t border-slate-800" data-testid="school-total-progress">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-[9px] tracking-widest uppercase text-slate-400">Total converted schools</span>
+                    <span className="text-[10px] font-bold tabular-nums text-emerald-300">{pct}%</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black text-violet-300 tabular-nums leading-none" data-testid="school-total-count">
+                      {converted}
+                    </span>
+                    <span className="text-sm text-slate-500 font-semibold tabular-nums">/ {goal}</span>
+                  </div>
+                  <div className="mt-2 h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-emerald-400 transition-[width] duration-700"
+                      style={{ width: `${pct}%` }}
+                      data-testid="school-progress-bar"
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </Card>
 
           {/* Student CRM (Student + Future Skills combined) */}

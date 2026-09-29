@@ -1,5 +1,45 @@
 # OLL Backend Changelog
 
+## 2026-02-04 — Live Dashboard, Support "new today", Telecalling batches + bulk ops
+**Status: COMPLETE**
+
+### Live Dashboard · School CRM card
+- **Total Converted Schools** is now the star metric: renders in a big 3xl violet number over a `/ 500` goal, with a right-aligned live percentage badge and a gradient progress bar (violet → fuchsia → emerald). Progress clamped 0–100%.
+
+### Live Dashboard · Support "New" definition
+- `_support_block` in `live_dashboard.py` now counts **New Today** as *any* query whose `created_at` falls in today's IST window — regardless of status — matching what the user sees in Support Center. Previously it counted "open + not overdue" which produced smaller / stale numbers.
+
+### Telecalling · Assignee bug
+- **Root cause**: `import_contacts` and every reassign/bulk endpoint looked users up in `db.users`, which is empty in this project — real users live in `db.team_users`. Fixed all six lookups.
+- The bulk-import endpoint now also raises 400 when the selected assignee cannot be found (was silently un-assigning).
+
+### Telecalling · Batches (imported sheets → tabs)
+- New collection **`telecalling_batches`** stores `{id, name, file_name, row_count, extra_columns[], created_by, created_at}`.
+- Endpoints: `GET /api/telecalling/batches`, `PATCH /api/telecalling/batches/{id}` (rename), `DELETE /api/telecalling/batches/{id}` (deletes tab + all its contacts).
+- Every imported row now carries `batch_id`, `batch_name`, and `extra_fields` — a dict of the unmapped CSV columns preserved verbatim.
+- Import modal now accepts an optional **Tab / Sheet name** (falls back to filename without extension).
+- `list_contacts` accepts `batch_id=` (`all` = show everything).
+
+### Telecalling · Auto-dedupe on import
+- Duplicate detection normalises phone numbers (digits only, last 10). Skips any row whose phone already exists in the DB OR appears twice in the same import. Import response now returns `duplicates` count in addition to `inserted` / `skipped`.
+
+### Telecalling · Bulk operations (admin only)
+- `POST /api/telecalling/contacts/bulk-delete` — accepts `{ids: [str]}`.
+- `POST /api/telecalling/contacts/bulk-assign` — accepts `{ids: [str], assigned_to: str | null}`.
+- Frontend: checkbox column + header select-all, indigo bulk-toolbar showing "N selected · Select all X · [Assign…] [Delete] [✕]", and a modal picker for the bulk-assign target user.
+
+### Telecalling · Queue UI upgrades
+- **Batch tab bar** at the top of Queue: "All Contacts" (permanent, indigo) + one tab per import batch, showing live contact counts. Admins can double-click / click the pencil to rename, or click the trash to remove a whole tab.
+- **Email column** now visible in the queue (was mapped by backend but never surfaced).
+- **Extra columns** — every unknown CSV header (e.g. "Techfest ID", "Team ID", "Zonal City") is preserved and rendered as its own truncated column, ordered by the batch's original column order when a specific tab is active.
+
+### Files
+- `backend/routes/telecalling.py`
+- `backend/routes/live_dashboard.py`
+- `frontend/src/pages/admin/AdminTelecalling.jsx`
+- `frontend/src/pages/admin/AdminLive.jsx`
+
+
 ## 2026-02-04 — AI-Chat MoM → Bulk Tasks + Field-Reports Deletes + Live Dashboard polish
 **Status: COMPLETE**
 
