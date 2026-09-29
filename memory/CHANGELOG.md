@@ -1,5 +1,15 @@
 # OLL Backend Changelog
 
+## 2026-09-29 — CheckIn sessions filter bug on Live Dashboard
+**Status: COMPLETE**
+
+- Root cause: `_sessions_block()` in `live_dashboard.py` was calling `GET /sessions?per_page=500&page=N` with **no date filter**, then filtering locally against `session_date == today`. Upstream returns oldest-first, so 4 pages × 500 rows never reached today's data → the card always showed `0/0`.
+- Fix: pass `date=YYYY-MM-DD` to `/sessions` (the correct param name — NOT `session_date`), break early when a batch returns less than `per_page`, keep a client-side `session_date == today` re-filter as a safety net.
+- Verified live: sessions block now returns `total: 36, on_time: 29, late: 1, upcoming: 6` for 2026-09-29.
+
+### Files
+- `backend/routes/live_dashboard.py`
+
 ## 2026-02-04 — Live Dashboard, Support "new today", Telecalling batches + bulk ops
 **Status: COMPLETE**
 

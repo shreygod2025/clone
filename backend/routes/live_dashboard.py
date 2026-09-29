@@ -378,18 +378,21 @@ async def _sessions_block() -> Dict[str, Any]:
 
     today = _today_iso_date()
     all_sessions: List[Dict[str, Any]] = []
-    pages_to_fetch = 4  # ~2000 sessions — covers most of the recent window
+    # Upstream honours ``date=YYYY-MM-DD`` (NOT ``session_date``) — pass it and
+    # walk pages until the batch is empty (typically 1-2 pages of 200/day).
     try:
-        for page in range(1, pages_to_fetch + 1):
-            resp = await _checkin_get("/sessions", {"per_page": 500, "page": page})
+        for page in range(1, 6):
+            resp = await _checkin_get("/sessions", {"date": today, "per_page": 500, "page": page})
             batch = (resp.get("data") if isinstance(resp, dict) else None) or []
             all_sessions.extend(batch)
-            if not batch:
+            if len(batch) < 500:
                 break
     except Exception as e:
         logger.warning("[live-dashboard] CheckIn sessions fetch failed: %s", e)
         return {"total": 0, "on_time": 0, "late": 0, "absent": 0, "upcoming": 0, "source": "error"}
 
+    # Defensive: the upstream sometimes returns unfiltered rows when the filter
+    # is malformed. Belt-and-braces filter again on our side.
     todays = [s for s in all_sessions if s.get("session_date") == today]
 
     now_ist = _ist_now().replace(tzinfo=None)
