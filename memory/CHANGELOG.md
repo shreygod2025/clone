@@ -1,5 +1,29 @@
 # OLL Backend Changelog
 
+## 2026-09-29 — RoboSumo SEO Blog + Techfest + Kit funnel
+**Status: COMPLETE**
+
+- Shipped a long-form SEO pillar blog at `/blogs/how-to-build-robosumo-robot-iit-bombay-techfest` (`pages/blogs/RoboSumoBuildGuideBlog.jsx`, ~750 LOC).
+- 15-step build guide from a national RoboSumo winner (chassis → wedge → LiPo → BTS7960 → ESP32 → firmware → testing), with 5 copy-able ESP32 code blocks (`#include`s, pin map, motor mixer, phone-cmd endpoint, failsafe loop).
+- YouTube embed via privacy-first `youtube-nocookie.com` iframe (`data-testid="youtube-embed"`).
+- Full SEO stack via the codebase's imperative `useSeo` hook (Helmet-async is broken on React 19): unique title, meta description, keywords, canonical, robots (max-image-preview:large), og:type=article + og:image (wsrv-proxied 1200×630), Twitter summary_large_image, en-IN + x-default hreflang, article:published_time / modified / author / section / tag, preconnects to YouTube/i.ytimg.
+- Structured data: **Article + HowTo (15 steps) + BreadcrumbList + FAQPage** JSON-LD — verified 4 blocks land in DOM alongside the site-wide EducationalOrganization + WebSite.
+- 13 unique product/build photos uploaded to `/app/frontend/public/blog-assets/robosumo/` (hero circuit diagram, wedge dims, chassis views, BTS7960 pinout, ESP32-S3, LM2596, XT60, LiPo, Johnson motor, bracket) — every `<img>` has descriptive alt text with keywords + explicit width/height + `loading="lazy"`.
+- Internal linking to `/techfest` (championship page) and the RoboSumo shop kit PDP (3 CTAs: hero, body, footer).
+- Sticky right-rail ToC (17 entries) with IntersectionObserver-driven active highlight; on-page ordered ToC and semantic breadcrumbs.
+- Added URL to both the backend dynamic sitemap (`routes/seo.py`, priority 0.9, weekly) and the static `public/sitemap.xml`.
+- Registered a specific `/blogs/how-to-build-robosumo-robot-iit-bombay-techfest` route BEFORE the catch-all `/blogs/:slug` in `App.js`, plus a card entry at the top of the blog listing page (`BlogsPage.jsx`).
+
+### Files
+- `frontend/src/pages/blogs/RoboSumoBuildGuideBlog.jsx` (new)
+- `frontend/public/blog-assets/robosumo/*.{jpg,png}` (13 new images)
+- `frontend/src/App.js` — lazy import + route
+- `frontend/src/pages/BlogsPage.jsx` — new blog card at top of `DEFAULT_BLOGS`
+- `backend/routes/seo.py` — new STATIC_URLS entry
+- `frontend/public/sitemap.xml` — new `<url>` block
+
+
+
 ## 2026-09-29 — Timetable / Edit-Session modals unclickable (Radix focus-trap conflict)
 **Status: COMPLETE**
 

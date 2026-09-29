@@ -12,6 +12,17 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const DEFAULT_BLOGS = [
   {
+    id: 'robosumo-build-guide',
+    title: 'How to Build a RoboSumo Robot for Robotics Competitions: A Complete Step-by-Step Guide',
+    slug: 'how-to-build-robosumo-robot-iit-bombay-techfest',
+    excerpt: 'A national RoboSumo winner walks you through building a competition-ready sumo bot with ESP32, BTS7960 drivers and a 3S LiPo — plus full ESP32 code, wiring diagrams and OLL × TechFest IIT Bombay rules.',
+    content: '',
+    cover_image: '/blog-assets/robosumo/hero-robosumo-circuit-diagram.png',
+    category: 'students',
+    author: 'Pratyoosh · OLL × TechFest',
+    created_at: '2026-09-29T00:00:00Z',
+  },
+  {
     id: '1',
     title: 'Why Robotics is Essential for Your Child\'s Future',
     slug: 'why-robotics-essential-child-future',
