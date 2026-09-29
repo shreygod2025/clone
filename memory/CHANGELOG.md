@@ -1,5 +1,16 @@
 # OLL Backend Changelog
 
+## 2026-09-29 — Timetable / Edit-Session modals unclickable (Radix focus-trap conflict)
+**Status: COMPLETE**
+
+- Root cause: the **New / Edit Timetable** modal (and the **Edit Session Full** modal) in `AdminSchoolCRM.jsx` were plain `<div className="fixed inset-0 z-[70]">` elements rendered *inside* a Radix `<Dialog>` (Sessions / Edit School / Onboarding Workflow). Radix Dialog installs a focus trap + `aria-hidden` on everything outside its own content — clicks on our nested modal were being swallowed and the page felt hung.
+- Fix: `createPortal(...)` both modals to `document.body`, escaping the Radix DOM tree entirely. Bumped z-index to `z-[100]` for good measure.
+- Verified live: Mon/Fri day pills, date inputs, dropdowns and Create button are all interactive again. Selecting Mon + Fri correctly opens per-day time-slot editors underneath.
+
+### Files
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` — `createPortal` import + wrap on both modals.
+
+
 ## 2026-09-29 — Growth Partners fixes + assignee cache + expense-driven GP share sync
 **Status: COMPLETE**
 

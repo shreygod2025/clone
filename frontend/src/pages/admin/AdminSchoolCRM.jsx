@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AdminLayout } from './AdminDashboard';
 import LinkLmsSchoolModal from './LinkLmsSchoolModal';
 import { useAuth } from '../../context/AuthContext';
@@ -14760,8 +14761,9 @@ ${FOOTER}</div></body></html>`
       {/* ─────────────────────────────────────────────────────────────────── */}
 
       {/* ── Edit Session Full Modal ────────────────────────────────────────── */}
-      {showEditSessionModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50">
+      {/* Portalled — parent may be a Radix Dialog whose focus-trap would kill clicks. */}
+      {showEditSessionModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="font-semibold text-slate-800">Edit Session</h3>
@@ -14848,12 +14850,16 @@ ${FOOTER}</div></body></html>`
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* ── Standalone Timetable Editor Modal ──────────────────────────────── */}
-      {showStandaloneTimetableModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
+      {/* Rendered via portal because it can open ON TOP of a Radix <Dialog>
+          (Edit School / Onboarding Workflow), whose focus trap otherwise
+          swallows every click inside this modal. */}
+      {showStandaloneTimetableModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-6">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <div>
@@ -15029,7 +15035,8 @@ ${FOOTER}</div></body></html>`
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Manual LMS-link picker */}
