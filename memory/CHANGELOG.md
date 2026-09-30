@@ -1,5 +1,40 @@
 # OLL Backend Changelog
 
+## 2026-09-30 — RoboSumo & ICSE blog polish + Techfest CTA reshuffle
+**Status: COMPLETE · All 4 asks verified in-browser**
+
+### RoboSumo build-guide blog
+- **YouTube video now the hero** — moved the `youtube-nocookie` iframe (video `qCyF9I3IXCM`) directly under the H1 and killed the old "Watch the Full Tutorial" section. New hero caption: "Fig. 1 — Full build walkthrough."
+- **Circuit diagram moved down** — placed inside "Step 11-12 · Connect the BTS7960 to the ESP32", right after the ESP32-S3 board photo and just above the pin-map code block.
+- Removed the `video` section from the TOC.
+
+### Both blogs — sticky right-nav no longer hidden
+- Old `sticky top-6` (24 px from viewport top) was being partially covered by the pill-nav (~72 px tall + 12 px offset = 84 px total).
+- Bumped both TOC wrappers to explicit `style={{ position: 'sticky', top: '100px' }}` with `max-h-[calc(100vh-8rem)]` so the TOC clears the pill-nav on every scroll position. Verified: at `scrollY=4000` (RoboSumo) and `scrollY=5000` (ICSE), `getBoundingClientRect().top === 100` on both.
+
+### ICSE Code 66 blog — image placement matches the PDF
+- New **hero banner** `icse-code66-hero-banner.png` (downloaded from user upload) placed as Fig. 1 under H1, replacing the ecosystem infographic.
+- The former hero (`oll-code66-program-ecosystem.jpg`) has been **moved down to the "Connect every practical to a concept" section**, replacing the older CICSE cycle image there.
+- Updated Article JSON-LD `image[]` and og:image accordingly.
+
+### Techfest page — CTA reshuffle
+- **Removed** "Build Guide" from the pill-nav (`techfest-nav-build-guide` gone, verified false).
+- **Added** it right next to the primary hero CTA "Get the Official {track} Kit" — only on the Sumo track (`techfest-cta-build-guide-sumo`).
+- **Added** it inside the RoboSumo card in the "The Techfest-Ready Kits" section (`techfest-kit-sumo-build-guide`). The `KitCard` component was refactored to accept an optional `buildGuideHref` prop; only the Sumo kit passes it. `KitCard` is now a `<div>` wrapper (was `<Link>`) so the extra "Build Guide" link is separately clickable.
+
+### RoboSumo Kit product page (`/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-…`)
+- Injected a **YouTube build tutorial block** inside `TechfestDeepDive`, right below the "Robo Sumo · Battle-Ready Kit" ribbon and above the gallery. Displays only when `isSumo === true`.
+- 16:9 responsive iframe (`youtube-nocookie/embed/qCyF9I3IXCM`) with a short lead-in paragraph and a text link to the full written build guide (`data-testid="pdp-robosumo-blog-link"`).
+
+### Files
+- `frontend/src/pages/blogs/RoboSumoBuildGuideBlog.jsx` — hero video, circuit moved down, sticky top: 100
+- `frontend/src/pages/blogs/ICSECode66BlogPage.jsx` — new hero banner, ecosystem moved to concept-practical, sticky top: 100
+- `frontend/public/blog-assets/icse-code66/icse-code66-hero-banner.png` (new)
+- `frontend/src/pages/TechfestPage.jsx` — build guide moved to hero CTA & kit card
+- `frontend/src/pages/ProductDetailPage.jsx` — RoboSumo kit page YouTube tutorial
+
+
+
 ## 2026-09-30 — RoboSumo blog polish + new ICSE Code 66 pillar blog
 **Status: COMPLETE · Visual + sticky TOC verified in-browser**
 

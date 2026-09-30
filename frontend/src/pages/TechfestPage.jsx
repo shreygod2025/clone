@@ -435,14 +435,6 @@ export default function TechfestPage() {
             <button onClick={scrollToKits} className="tf-btn ghost-dark" data-testid="techfest-nav-buy-kits">
               <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-hide-sm">Buy </span>Kits
             </button>
-            <Link
-              to="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest"
-              className="tf-btn ghost-dark"
-              data-testid="techfest-nav-build-guide"
-            >
-              <Cpu className="w-3.5 h-3.5" />
-              <span className="tf-hide-sm">Build </span>Guide
-            </Link>
             <button onClick={openRegister} className="tf-btn primary" data-testid="techfest-nav-register">
               <Flag className="w-3.5 h-3.5" /> Register<span className="tf-hide-sm"> Now</span>
             </button>
@@ -665,6 +657,15 @@ export default function TechfestPage() {
                 <button onClick={scrollToKits} className="tf-btn primary" data-testid={`techfest-cta-kit-${track.key}`}>
                   Get the Official {track.label} Kit <ArrowRight className="w-4 h-4" />
                 </button>
+                {track.key === 'sumo' && (
+                  <Link
+                    to="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest"
+                    className="tf-btn ghost-dark"
+                    data-testid={`techfest-cta-build-guide-${track.key}`}
+                  >
+                    <Cpu className="w-4 h-4" /> Build Guide
+                  </Link>
+                )}
                 <button onClick={openRegister} className="tf-btn ghost-dark" data-testid={`techfest-track-register-${track.key}`}>
                   Register Now
                 </button>
@@ -786,7 +787,8 @@ export default function TechfestPage() {
         <div className="grid md:grid-cols-2 gap-6">
           <KitCard testId="techfest-kit-sumo" title="Robo Sumo Kit" tagline="Build. Battle. Win." image={SUMO_BOX}
             highlights={['Full Metal Body', '4 Powerful Motors', 'High-Grip Wheels', 'Wired Controller', 'Sumo Arena Mat (150 × 150 cm)']}
-            slug="robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a" />
+            slug="robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a"
+            buildGuideHref="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest" />
           <KitCard testId="techfest-kit-racer" title="Robo Racer Car Kit" tagline="Build. Code. Race. Win." image={RACER_TRACK}
             highlights={['Complete RC Chassis', '2 Motors + 4 Wheels', 'Modular Racing Track (240 × 120 cm)', 'Batteries + Switch', 'User Manual & Stickers']}
             slug="robo-racer-kit-specially-made-for-iit-bombay-8bf545dc" />
@@ -890,15 +892,13 @@ export default function TechfestPage() {
   );
 }
 
-const KitCard = ({ testId, title, tagline, image, highlights, slug }) => (
-  <Link
-    to={`/shop/product/${slug}`}
-    className="group relative rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-shadow"
-    data-testid={testId}
-  >
-    <div className="aspect-[16/10] overflow-hidden bg-slate-50">
-      <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width={1400} height={880} loading="lazy" />
-    </div>
+const KitCard = ({ testId, title, tagline, image, highlights, slug, buildGuideHref }) => (
+  <div className="group relative rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-shadow" data-testid={testId}>
+    <Link to={`/shop/product/${slug}`} className="block">
+      <div className="aspect-[16/10] overflow-hidden bg-slate-50">
+        <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width={1400} height={880} loading="lazy" />
+      </div>
+    </Link>
     <div className="p-5 lg:p-6">
       <div className="tf-section-title text-lg text-[#DC2626]" style={{ fontWeight: 300 }}>{tagline}</div>
       <div className="tf-h1 text-3xl mt-1 text-[#0A1F44]">{title}</div>
@@ -909,11 +909,26 @@ const KitCard = ({ testId, title, tagline, image, highlights, slug }) => (
           </li>
         ))}
       </ul>
-      <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#DC2626] uppercase tracking-widest">
-        Get the Kit <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Link
+          to={`/shop/product/${slug}`}
+          className="inline-flex items-center gap-2 text-sm font-bold text-[#DC2626] uppercase tracking-widest hover:gap-3 transition-all"
+          data-testid={`${testId}-get`}
+        >
+          Get the Kit <ArrowRight className="w-4 h-4" />
+        </Link>
+        {buildGuideHref && (
+          <Link
+            to={buildGuideHref}
+            className="inline-flex items-center gap-2 text-sm font-bold text-[#0A1F44] uppercase tracking-widest hover:text-[#DC2626] transition-colors"
+            data-testid={`${testId}-build-guide`}
+          >
+            <Cpu className="w-4 h-4" /> Build Guide
+          </Link>
+        )}
       </div>
     </div>
-  </Link>
+  </div>
 );
 
 

@@ -696,6 +696,41 @@ const TechfestDeepDive = ({ slug }) => {
           </div>
         </div>
 
+        {/* Build Tutorial Video — only on the RoboSumo kit page */}
+        {isSumo && (
+          <div className="bg-slate-50 border-b border-slate-200 p-6 sm:p-8" data-testid="pdp-robosumo-video">
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[#DC2626] mb-3">
+              Full Build Tutorial · 18-min video
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-[#0A1F44] mb-1">
+              How to Build Your RoboSumo — From Kit to Arena
+            </h3>
+            <p className="text-sm text-slate-600 mb-4 max-w-2xl">
+              Chassis, wedge, motors, wiring and code — watch the exact
+              step-by-step build before you order. Or{' '}
+              <Link
+                to="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest"
+                className="text-[#DC2626] font-semibold underline"
+                data-testid="pdp-robosumo-blog-link"
+              >
+                read the written guide
+              </Link>
+              .
+            </p>
+            <div className="relative rounded-2xl overflow-hidden bg-black shadow-lg" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube-nocookie.com/embed/qCyF9I3IXCM?rel=0&modestbranding=1"
+                title="RoboSumo Robot Build Tutorial — OLL × TechFest IIT Bombay 2026"
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
+
         {/* Body */}
         <div className="grid md:grid-cols-[1.15fr,1fr] gap-0">
           {/* Gallery */}

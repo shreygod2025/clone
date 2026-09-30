@@ -50,7 +50,8 @@ const PUBLISHED_ISO = '2026-09-30T09:00:00+05:30';
 const MODIFIED_ISO = new Date().toISOString();
 
 const IMG = (name) => `/blog-assets/icse-code66/${name}`;
-const HERO_IMAGE = IMG('oll-code66-program-ecosystem.jpg');
+const HERO_IMAGE = IMG('icse-code66-hero-banner.png');
+const ECOSYSTEM_IMAGE = IMG('oll-code66-program-ecosystem.jpg');
 
 const SHOP_URL = 'https://oll.co/shop';
 const PROGRAM_URL =
@@ -84,7 +85,7 @@ const buildJsonLd = () => [
     description: META_DESCRIPTION,
     image: [
       `https://oll.co${HERO_IMAGE}`,
-      `https://oll.co${IMG('icse-board-assessment-format.jpg')}`,
+      `https://oll.co${ECOSYSTEM_IMAGE}`,
       `https://oll.co${IMG('curriculum-provider-checklist.jpg')}`,
     ],
     datePublished: PUBLISHED_ISO,
@@ -451,8 +452,10 @@ const ICSECode66BlogPage = () => {
             <article className="min-w-0">
               <Figure
                 src={HERO_IMAGE}
-                alt="OLL Code 66 Program infographic showing a complete Robotics and AI learning ecosystem, including ICSE-aligned textbooks, 30+ hands-on activities, robotics kits, Python and AI projects, virtual labs, teacher resources, assessments, and LMS-based progress tracking."
-                caption="Fig. 1 — OLL Code 66: an end-to-end Robotics & AI implementation ecosystem."
+                alt="OLL ICSE Group 3 Subject — Code 66: Robotics & AI for Classes 9th & 10th. Implementation Guide for Schools. Blue-and-red circuit board hero banner featuring the OLL logo."
+                caption="Fig. 1 — OLL ICSE Group 3 · Code 66 · Robotics & AI Implementation Guide."
+                w={1600}
+                h={533}
               />
 
               <p className="text-lg leading-[1.85] text-slate-700 mb-6">
@@ -734,9 +737,9 @@ const ICSECode66BlogPage = () => {
                   components into a working project.
                 </p>
                 <Figure
-                  src={IMG('cicse-group3-concept-practical-cycle.jpg')}
-                  alt="OLL infographic explaining the CICSE Group 3 subject board assessment format. It presents a four-step learning cycle — Concept, Practical, Application, and Assessment — with an example of learning, wiring, applying, and documenting a sensor project. A table below summarises Theory Paper, Practical Examination, and Internal Assessment components with their marks and weightage."
-                  caption="Fig. 7 — The 4-step cycle: Concept → Practical → Application → Assessment."
+                  src={ECOSYSTEM_IMAGE}
+                  alt="OLL Code 66 Program infographic showing a complete Robotics and AI learning ecosystem, including ICSE-aligned textbooks, 30+ hands-on activities, robotics kits, Python and AI projects, virtual labs, teacher resources, assessments, and LMS-based progress tracking."
+                  caption="OLL Code 66: an end-to-end ecosystem where every practical maps back to a concept — books to kits to code to LMS assessments."
                 />
               </Section>
 
@@ -1131,7 +1134,8 @@ const ICSECode66BlogPage = () => {
             {/* ── Sticky TOC ─────────────────────────────────────── */}
             <aside className="hidden lg:block">
               <div
-                className="sticky top-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1"
+                className="max-h-[calc(100vh-8rem)] overflow-y-auto pr-1"
+                style={{ position: 'sticky', top: '100px' }}
                 data-testid="icse-toc-sidebar"
               >
                 <p className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-3">

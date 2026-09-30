@@ -79,7 +79,6 @@ const SECTIONS = [
   { id: 'what-is-robosumo', label: 'What is a RoboSumo Robot?' },
   { id: 'components', label: 'Components You’ll Need' },
   { id: 'kit', label: 'Get the Official Kit' },
-  { id: 'video', label: 'Watch the Full Tutorial' },
   { id: 'chassis', label: 'Step 1 · Build the Chassis' },
   { id: 'wedge', label: 'Step 2 · Design the Wedge' },
   { id: 'battery', label: 'Step 3 · Choose the Battery' },
@@ -659,14 +658,25 @@ const RoboSumoBuildGuideBlog = () => {
         <main className="relative bg-white">
           <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-10 py-14 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-x-12 gap-y-8">
           <article className="min-w-0">
-            {/* Hero image directly under the H1 */}
-            <Figure
-              src={HERO_IMAGE}
-              w={1600}
-              h={900}
-              alt="Full ESP32-S3 connection diagram for a RoboSumo robot showing dual BTS7960 motor drivers, an LM2596 DC-DC buck converter stepping 12 V to 5 V, a 3S 2200 mAh LiPo battery, two 300 RPM Johnson gear motors, GPIO pin mapping and Wi-Fi access-point credentials."
-              caption="Fig. 1 — Complete circuit diagram (SSID: SumoBot · Password: sumo12345 · IP: 192.168.4.1)."
-            />
+            {/* Watch first — hero YouTube directly under the H1 */}
+            <div className="not-prose my-2 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-black">
+              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1`}
+                  title="RoboSumo Robot Build Tutorial — full step-by-step video (OLL × TechFest IIT Bombay)"
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  data-testid="hero-youtube-embed"
+                />
+              </div>
+            </div>
+            <p className="text-sm text-slate-500 mb-8 mt-2 text-center">
+              Fig. 1 — Full build walkthrough. Prefer reading? Every step is
+              below with wiring diagrams and code.
+            </p>
 
             <p className="text-lg leading-[1.8] text-slate-700 mb-6">
               Planning to compete at the <strong>OLL × TechFest Robotics
@@ -881,42 +891,6 @@ const RoboSumoBuildGuideBlog = () => {
                   className="text-[#D63031] font-semibold hover:underline inline-flex items-center gap-1"
                 >
                   RoboSumo Resources folder <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-                .
-              </p>
-            </Section>
-
-            {/* ── Video ─────────────────────────────────────────── */}
-            <Section id="video" eyebrow="Watch first" title="The Complete RoboSumo Video Tutorial">
-              <p>
-                Prefer watching over reading? The full end-to-end build is on
-                YouTube — components, chassis, motor installation, wiring,
-                ESP32 programming and final testing.
-              </p>
-              <div className="not-prose my-6 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-black">
-                <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                  <iframe
-                    className="absolute inset-0 w-full h-full"
-                    src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1`}
-                    title="RoboSumo Robot Build Tutorial — full step-by-step video (OLL × TechFest IIT Bombay)"
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    data-testid="youtube-embed"
-                  />
-                </div>
-              </div>
-              <p className="text-sm text-slate-500 flex items-center gap-2">
-                <Youtube className="w-4 h-4 text-red-500" />
-                Trouble loading?{' '}
-                <a
-                  href={YOUTUBE_URL}
-                  target="_blank"
-                  rel="noopener"
-                  className="text-[#D63031] hover:underline"
-                >
-                  Watch on YouTube
                 </a>
                 .
               </p>
@@ -1153,6 +1127,13 @@ const RoboSumoBuildGuideBlog = () => {
                 caption="ESP32-S3 dev board — Wi-Fi + 20 kHz hardware PWM in one chip."
                 w={900}
                 h={700}
+              />
+              <Figure
+                src={HERO_IMAGE}
+                w={1600}
+                h={900}
+                alt="Full ESP32-S3 connection diagram for a RoboSumo robot showing dual BTS7960 motor drivers, an LM2596 DC-DC buck converter stepping 12 V to 5 V, a 3S 2200 mAh LiPo battery, two 300 RPM Johnson gear motors, GPIO pin mapping and Wi-Fi access-point credentials."
+                caption="Complete circuit diagram — Wi-Fi AP SSID: SumoBot · Password: sumo12345 · IP: 192.168.4.1."
               />
               <CodeBlock
                 language="cpp"
@@ -1424,13 +1405,14 @@ if (rcLive) {
           </article>
 
           {/* ── Sticky TOC (desktop) ─────────────────────────────
-               `sticky top-6` keeps the TOC glued to the top of the
-               viewport as soon as it clears the pill-nav. `max-h` +
-               `overflow-y-auto` guarantees it stays inside the viewport
-               even when the sections list grows. */}
+               Explicit `top: 100px` clears the sticky pill-nav (which is
+               ~72 px tall + 12 px offset). `max-h` + `overflow-y-auto`
+               guarantees the TOC stays inside the viewport even when the
+               sections list grows. */}
           <aside className="hidden lg:block">
             <div
-              className="sticky top-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1"
+              className="max-h-[calc(100vh-8rem)] overflow-y-auto pr-1"
+              style={{ position: 'sticky', top: '100px' }}
               data-testid="rs-toc-sidebar"
             >
               <p className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-3">
