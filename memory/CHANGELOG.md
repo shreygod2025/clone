@@ -1,5 +1,31 @@
 # OLL Backend Changelog
 
+## 2026-09-30 — WhatsApp fixes: memory, session visibility, PDF deep-links
+**Status: COMPLETE · End-to-end tested via signed curl (2-turn pronoun test passed)**
+
+Three issues from live WhatsApp use:
+
+1. **Sessions weren't showing in admin AI Chat sidebar**
+   - Root cause: `_resolve_user_for` looked at `db.users` but `admin@oll.co` lives in `db.team_users`. It fell through to a synthesised identity with `id="whatsapp-admin"`, which doesn't match the admin's real user_id used by `/api/ai-chat/sessions` (filters by `user_id`).
+   - Fix in `routes/whatsapp_twilio.py`: try `team_users` FIRST for both the phone-match and the `WHATSAPP_ADMIN_USER_EMAIL` fallback; require `id` to exist on the resolved doc.
+   - One-time migration ran: existing `wa-*` sessions with `user_id="whatsapp-admin"` were re-parented to the real admin id (5668d09f…).
+
+2. **No memory across process restarts**
+   - Root cause: `LlmChat` from `emergentintegrations` stores conversation only in process-local memory — every hot-reload (or Twilio-webhook cold-start) wiped it.
+   - Fix in `routes/ai_chat.py::run_ai_chat_turn`: load the last 30 turns from `ai_chat_sessions.messages` and pass them as `initial_messages=` to `LlmChat`. Verified: pronoun resolution ("generate a proposal for **this school**") correctly picked up "Shreyaan Daga school" from a prior turn even across a process restart.
+
+3. **No PDF over WhatsApp**
+   - Root cause: `generate_proposal` / `generate_mou` / `generate_invoice` actions all return `status: frontend_action` — the admin UI renders the PDF client-side via jsPDF; there's no server-side renderer.
+   - Interim fix in `routes/whatsapp_twilio.py`: for those 3 action types, append a deep-link `📄 Open the CRM to download the {label} PDF: https://oll.co/admin/school-crm?school={id}` to the WhatsApp reply so the user can grab the PDF one tap away.
+   - Also widened success detection (`frontend_action` now shows ✅ instead of ⚠️).
+   - **Future work**: build a server-side PDF renderer (reportlab/weasyprint) that mirrors the jsPDF output so proposals can be attached directly via TwiML `<Media>` — noted as backlog.
+
+### Files
+- `backend/routes/whatsapp_twilio.py` — user resolution + PDF deep-link
+- `backend/routes/ai_chat.py` — `initial_messages` loaded from DB
+
+
+
 ## 2026-09-30 — Twilio WhatsApp inbound webhook for AI Chat (prototype)
 **Status: COMPLETE · End-to-end tested via curl**
 

@@ -1255,12 +1255,27 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict) -> dict:
     tp_ctx  = await _tasks_projects_context()
     system = AI_SYSTEM_PROMPT + crm_ctx + tp_ctx
 
+    # Load prior conversation history so the LLM has full memory across
+    # process restarts (LlmChat's own memory is process-local and dies
+    # every hot-reload). Keep the last ~30 turns to stay well under the
+    # context window.
+    prior = await db.ai_chat_sessions.find_one(
+        {"session_id": session_id}, {"_id": 0, "messages": 1},
+    )
+    initial_messages: list[dict] = []
+    for m in ((prior or {}).get("messages") or [])[-30:]:
+        role = m.get("role")
+        content = (m.get("content") or "").strip()
+        if role in ("user", "assistant") and content:
+            initial_messages.append({"role": role, "content": content})
+
     # LLM call
     llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
     chat = LlmChat(
         api_key=llm_key,
         session_id=session_id,
-        system_message=system
+        system_message=system,
+        initial_messages=initial_messages or None,
     ).with_model("openai", "gpt-5.2")
 
     raw = await chat.send_message(UserMessage(text=enriched_text))

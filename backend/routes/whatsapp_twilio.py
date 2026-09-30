@@ -96,21 +96,31 @@ async def _resolve_user_for(phone_e164: str) -> Optional[dict]:
 
     Preference order:
       1. Team user whose ``phone`` matches the incoming E.164 number.
-      2. Fall-back to ``ADMIN_USER_EMAIL`` (or a plain admin record).
+      2. Team user with the configured ``ADMIN_USER_EMAIL``.
+      3. Legacy ``users`` collection with the same email.
+      4. Synthesised admin record as a last resort.
+
+    Whichever record we return MUST have an ``id`` field — the AI action
+    executor and the sessions listing both key off it, and we want the same
+    ``user_id`` on the AI-chat sessions as an admin logging into the web
+    UI so those WhatsApp turns show up in the sidebar.
     """
     digits = "".join(c for c in phone_e164 if c.isdigit())
     if digits:
-        # Try last-10 match first — Indian numbers are commonly stored
-        # without country code in team_users.
         last10 = digits[-10:]
         team_user = await db.team_users.find_one(
             {"phone": {"$regex": f"{last10}$"}}, {"_id": 0},
         )
-        if team_user:
+        if team_user and team_user.get("id"):
             return team_user
-    user = await db.users.find_one({"email": ADMIN_USER_EMAIL}, {"_id": 0})
-    if user:
-        return user
+
+    # Admin fallback — check team_users FIRST (that's where admin@oll.co
+    # actually lives in this codebase), then users.
+    for coll in ("team_users", "users"):
+        u = await db[coll].find_one({"email": ADMIN_USER_EMAIL}, {"_id": 0})
+        if u and u.get("id"):
+            return u
+
     # Absolute last resort — synthesise a lightweight admin identity so
     # the action-executor still has a stable `id` / `email` / `role`.
     return {"id": "whatsapp-admin", "email": ADMIN_USER_EMAIL, "role": "admin"}
@@ -202,18 +212,35 @@ async def twilio_whatsapp_webhook(request: Request):
 
     reply_text = (result.get("message") or "").strip() or "…"
     # Append a compact list of any CRM actions executed on this turn so the
-    # user sees confirmation in WhatsApp.
+    # user sees confirmation in WhatsApp. For actions that produce a PDF in
+    # the admin UI (proposal / MOU / invoice), also drop a deep-link so the
+    # user can open the CRM and download it — server-side PDF rendering
+    # for WhatsApp is a bigger piece of work, tracked as future scope.
     actions = result.get("actions") or []
+    pdf_links: list[str] = []
+    ADMIN_ORIGIN = "https://oll.co"
     if actions:
         lines = []
         for a in actions:
             exec_res = a.get("execution") or {}
             status = exec_res.get("status") or "?"
-            icon = "✅" if status == "success" else "⚠️"
+            success = status in ("success", "frontend_action")
+            icon = "✅" if success else "⚠️"
             label = a.get("type", "action").replace("_", " ")
             name = a.get("school_name") or exec_res.get("message") or ""
             lines.append(f"{icon} {label}{' — ' + name if name else ''}")
+
+            # Deep-link to the school for PDF-emitting actions.
+            if a.get("type") in {"generate_proposal", "generate_mou", "generate_invoice"}:
+                sid = exec_res.get("school_id") or a.get("school_id")
+                if sid:
+                    pdf_links.append(
+                        f"📄 Open the CRM to download the {label} PDF:\n"
+                        f"{ADMIN_ORIGIN}/admin/school-crm?school={sid}"
+                    )
         reply_text = f"{reply_text}\n\n" + "\n".join(lines)
+        if pdf_links:
+            reply_text += "\n\n" + "\n\n".join(pdf_links)
 
     return _twiml(*_split(reply_text))
 
