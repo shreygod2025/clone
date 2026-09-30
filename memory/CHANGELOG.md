@@ -1,5 +1,34 @@
 # OLL Backend Changelog
 
+## 2026-09-30 — Twilio WhatsApp inbound webhook for AI Chat (prototype)
+**Status: COMPLETE · End-to-end tested via curl**
+
+- New route `POST /api/whatsapp/twilio/webhook` (+ `GET /whatsapp/twilio/health`) in `backend/routes/whatsapp_twilio.py`.
+- Extracted the AI-Chat core into a reusable `run_ai_chat_turn(session_id, user_text, user)` coroutine so the WhatsApp webhook shares the exact same logic (LLM prompt, pronoun resolution, action executor) as the in-app chat.
+- Signature verification: every request is verified against `TWILIO_AUTH_TOKEN` using Twilio's `RequestValidator`. Reconstructs the full public URL from `X-Forwarded-Proto` + `X-Forwarded-Host` (k8s ingress rewrites `request.url` to an internal cluster hostname, which was breaking the initial signature check — fixed).
+- Allow-list: only numbers in `WHATSAPP_ALLOWED_NUMBERS` (comma-sep E.164) can hit the bot. Any other number gets a friendly private-beta reply.
+- Session persistence: one thread per phone in `whatsapp_threads` collection so context carries across messages. `/reset` (or `clear`, `new chat`) starts a fresh session.
+- Reply formatting: splits > 1500-char replies into multiple TwiML `<Message>` bodies (Twilio hard-caps single messages at 1600). Appends a compact status list of any CRM actions executed (`✅ create_lead — Sunshine School`).
+- User resolution: matches the WhatsApp number against `team_users.phone` (last-10-digit fuzzy match), else falls back to `WHATSAPP_ADMIN_USER_EMAIL` (default `admin@oll.co`). This drives all permissions and audit trail.
+- Config in `backend/.env`:
+  ```
+  TWILIO_ACCOUNT_SID=AC…
+  TWILIO_AUTH_TOKEN=…
+  TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+  WHATSAPP_ADMIN_USER_EMAIL=admin@oll.co
+  WHATSAPP_ALLOWED_NUMBERS=+919699188188
+  ```
+- Dependency: `twilio==9.11.2` (added to requirements.txt).
+
+### Files
+- `backend/routes/whatsapp_twilio.py` (new)
+- `backend/routes/ai_chat.py` — extracted `run_ai_chat_turn`
+- `backend/server.py` — registered router
+- `backend/.env` — credentials + allow-list
+- `backend/requirements.txt` — twilio
+
+
+
 ## 2026-09-29 — Student bulk import now skips duplicates cleanly
 **Status: COMPLETE · Tested with curl**
 

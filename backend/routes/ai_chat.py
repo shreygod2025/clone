@@ -1190,12 +1190,21 @@ async def _execute(action: dict, user: dict) -> dict:
 
 @router.post("/ai-chat/message")
 async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-
     session_id = payload.get("session_id") or str(uuid.uuid4())
     user_text = (payload.get("message") or "").strip()
     if not user_text:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
+    return await run_ai_chat_turn(session_id=session_id, user_text=user_text, user=user)
+
+
+async def run_ai_chat_turn(session_id: str, user_text: str, user: dict) -> dict:
+    """Core AI-chat turn — extracted from the HTTP route so non-HTTP callers
+    (e.g. the Twilio WhatsApp webhook) can invoke the same logic without
+    round-tripping through FastAPI. Returns
+    ``{"session_id", "message", "actions"}``.
+    """
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+
 
     # ── Pronoun resolution: inject last-mentioned school into message ──────
     # When user says "this", "it", "the same", "for this one" etc., look up
