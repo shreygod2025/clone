@@ -36,6 +36,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 
 from .shared import db
 from .ai_chat import run_ai_chat_turn
+from .proposal_pdf import build_public_proposal_url
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +61,21 @@ ALLOWED = {
 TWILIO_WA_MAX = 1500
 
 
-def _twiml(*messages: str) -> Response:
-    """Build a TwiML <Response> with 0..N <Message> bodies."""
+def _twiml(*messages) -> Response:
+    """Build a TwiML <Response> with 0..N <Message> bodies.
+
+    Each *message* may be a plain string OR a ``{"body": str, "media": [urls…]}``
+    dict so callers can attach WhatsApp media (Twilio fetches each URL and
+    forwards it to the user, typically as a document attachment for PDFs).
+    """
     resp = MessagingResponse()
     for m in messages:
-        resp.message(m)
+        if isinstance(m, dict):
+            msg = resp.message(m.get("body") or "")
+            for u in (m.get("media") or []):
+                msg.media(u)
+        else:
+            resp.message(m)
     return Response(content=str(resp), media_type="application/xml")
 
 
@@ -213,12 +224,22 @@ async def twilio_whatsapp_webhook(request: Request):
     reply_text = (result.get("message") or "").strip() or "…"
     # Append a compact list of any CRM actions executed on this turn so the
     # user sees confirmation in WhatsApp. For actions that produce a PDF in
-    # the admin UI (proposal / MOU / invoice), also drop a deep-link so the
-    # user can open the CRM and download it — server-side PDF rendering
-    # for WhatsApp is a bigger piece of work, tracked as future scope.
+    # the admin UI (proposal / MOU / invoice), attach the PDF as a WhatsApp
+    # media so the user gets a real downloadable document instead of a
+    # markdown wall of text.
     actions = result.get("actions") or []
-    pdf_links: list[str] = []
+    proposal_school_ids: list[str] = []
+    doc_deep_links: list[str] = []
     ADMIN_ORIGIN = "https://oll.co"
+
+    # Reconstruct the public origin of THIS request so the signed link is
+    # reachable — Twilio needs to fetch the PDF over HTTPS.
+    public_origin = ""
+    fwd_proto = request.headers.get("x-forwarded-proto") or "https"
+    fwd_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if fwd_host:
+        public_origin = f"{fwd_proto}://{fwd_host}"
+
     if actions:
         lines = []
         for a in actions:
@@ -230,17 +251,36 @@ async def twilio_whatsapp_webhook(request: Request):
             name = a.get("school_name") or exec_res.get("message") or ""
             lines.append(f"{icon} {label}{' — ' + name if name else ''}")
 
-            # Deep-link to the school for PDF-emitting actions.
-            if a.get("type") in {"generate_proposal", "generate_mou", "generate_invoice"}:
-                sid = exec_res.get("school_id") or a.get("school_id")
-                if sid:
-                    pdf_links.append(
-                        f"📄 Open the CRM to download the {label} PDF:\n"
-                        f"{ADMIN_ORIGIN}/admin/school-crm?school={sid}"
-                    )
+            sid = exec_res.get("school_id") or a.get("school_id")
+            atype = a.get("type")
+            if atype == "generate_proposal" and sid:
+                proposal_school_ids.append(sid)
+            elif atype in {"generate_mou", "generate_invoice"} and sid:
+                # These still need the admin UI to render — deep-link only.
+                doc_deep_links.append(
+                    f"📄 Open the CRM to download the {label} PDF:\n"
+                    f"{ADMIN_ORIGIN}/admin/school-crm?school={sid}"
+                )
         reply_text = f"{reply_text}\n\n" + "\n".join(lines)
-        if pdf_links:
-            reply_text += "\n\n" + "\n\n".join(pdf_links)
+        if doc_deep_links:
+            reply_text += "\n\n" + "\n\n".join(doc_deep_links)
+
+    # If we generated proposals, build a short reply + attach the signed PDF
+    # URL(s) as WhatsApp media so Twilio sends them as real documents.
+    if proposal_school_ids and public_origin:
+        pdf_urls = [
+            build_public_proposal_url(public_origin, sid)
+            for sid in proposal_school_ids
+        ]
+        # Short text with just the summary, and a separate media message per
+        # PDF (WhatsApp doesn't cleanly attach a media on a very long body).
+        short = _split(reply_text, limit=TWILIO_WA_MAX)
+        # Return the summary text then a media-carrying message per PDF.
+        return _twiml(
+            *short[:-1],
+            {"body": short[-1] if short else "Here's the proposal 👇", "media": []},
+            *({"body": "📄 Proposal PDF attached below.", "media": [u]} for u in pdf_urls),
+        )
 
     return _twiml(*_split(reply_text))
 

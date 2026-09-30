@@ -1,5 +1,26 @@
 # OLL Backend Changelog
 
+## 2026-09-30 — Server-side proposal PDF renderer + WhatsApp attachment
+**Status: COMPLETE · End-to-end tested (signed webhook → TwiML `<Media>` → 200 PDF)**
+
+Fixes the "WhatsApp replies with a text wall instead of a real PDF" issue.
+
+- **New module** `backend/routes/proposal_pdf.py` renders a Robotics & AI proposal to A4 PDF using **reportlab** — mirrors the frontend jsPDF layout (navy header band, "OLL Robotics and AI Program Proposal" title, program-details rounded box, bullet deliverables, fees table with alternating rows, estimated-total line, page 2 requirements + next-steps box + contact line).
+- **Two endpoints**:
+  - `GET /api/proposals/{school_id}/share-url` (auth) — returns `{url, filename}`
+  - `GET /api/public/proposals/{school_id}.pdf?sig=<hmac>` (public, signed) — streams the freshly rendered PDF. Auto-expires end of the next UTC day (accepts today's OR yesterday's HMAC) so cross-midnight WhatsApp taps still work.
+- **Signature**: `HMAC-SHA256(PROPOSAL_LINK_SECRET, "{school_id}|{yyyy-mm-dd}")[:32]`. Secret falls back to `JWT_SECRET` if `PROPOSAL_LINK_SECRET` isn't set.
+- **WhatsApp webhook now attaches the PDF as `<Media>`**: when a `generate_proposal` action succeeds, the webhook builds the signed public URL from the request's `X-Forwarded-*` origin and returns two TwiML `<Message>` bodies — first the summary, then `"📄 Proposal PDF attached below."` with `<Media>{url}</Media>`. Twilio fetches the PDF over HTTPS and forwards it to WhatsApp as a real document.
+- `_twiml()` helper extended to accept `{"body": str, "media": [urls…]}` dicts alongside plain strings.
+- Verified: signed URL returns 200 + `application/pdf` + valid `%PDF-1.4` header + 5.5 KB file. Rendered pages inspected visually — matches OLL brand.
+
+### Files
+- `backend/routes/proposal_pdf.py` (new)
+- `backend/routes/whatsapp_twilio.py` — imports `build_public_proposal_url`, attaches media
+- `backend/server.py` — registered `proposal_pdf_router`
+
+
+
 ## 2026-09-30 — WhatsApp fixes: memory, session visibility, PDF deep-links
 **Status: COMPLETE · End-to-end tested via signed curl (2-turn pronoun test passed)**
 

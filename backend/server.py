@@ -4149,6 +4149,7 @@ from routes.lms_api import router as lms_router, run_lms_sync_scheduled, run_lms
 from routes.discover import router as discover_router
 from routes.friendship_day import router as friendship_day_router
 from routes.whatsapp_twilio import router as whatsapp_twilio_router
+from routes.proposal_pdf import router as proposal_pdf_router
 
 api_router.include_router(reports_router)
 api_router.include_router(social_media_router)
@@ -4156,6 +4157,7 @@ api_router.include_router(jobs_router)
 api_router.include_router(expenses_router)
 api_router.include_router(educator_salary_sync_router)
 api_router.include_router(whatsapp_twilio_router)
+api_router.include_router(proposal_pdf_router)
 api_router.include_router(admin_keys_router)
 api_router.include_router(payments_router)
 api_router.include_router(summer_camp_router)
