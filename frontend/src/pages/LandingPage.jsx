@@ -1353,53 +1353,94 @@ const LandingPage = () => {
         </div>
       )}
 
-      {/* Footer - Always visible */}
-
-      {/* ── Blog callout: ICSE Code 66 complete guide ────────────── */}
+      {/* ── Blog callouts: RoboSumo + ICSE Code 66 ────────────── */}
       <section
         style={{ maxWidth: 1180, margin: '0 auto', padding: '3rem 1.25rem 3.5rem' }}
-        data-testid="home-icse-blog-callout"
+        data-testid="home-blog-callouts"
       >
-        <a
-          href="/blogs/icse-robotics-ai-code-66-classes-9-10-guide"
-          style={{
-            display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)',
-            gap: 0, borderRadius: 24, overflow: 'hidden',
-            border: '1px solid #E2E8F0', background: '#fff',
-            boxShadow: '0 10px 30px rgba(10,31,68,0.08)',
-            textDecoration: 'none', color: 'inherit',
-          }}
-          className="home-icse-blog"
-        >
-          <div style={{ padding: '2.25rem 2rem' }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626', marginBottom: 10 }}>
-              From the OLL blog · 22 min read
-            </div>
-            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '1.75rem', lineHeight: 1.15, color: '#0A1F44', fontWeight: 700, margin: '0 0 0.65rem' }}>
-              ICSE Robotics &amp; AI Code 66: Complete Guide for Classes 9 &amp; 10
-            </h3>
-            <p style={{ color: '#475569', fontSize: 15, lineHeight: 1.6, margin: '0 0 1.1rem' }}>
-              CISCE syllabus, exam pattern, lab setup, Python and teacher
-              support — the full implementation playbook for schools
-              introducing Subject Code 66.
-            </p>
-            <span style={{ color: '#DC2626', fontWeight: 600 }}>Read the guide →</span>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626', marginBottom: 6 }}>
+            From the OLL blog
           </div>
-          <div style={{ background: '#F8FAFC', borderLeft: '1px solid #F1F5F9' }}>
-            <img
-              src="/blog-assets/icse-code66/oll-code66-program-ecosystem.jpg"
-              alt="OLL Code 66 Program ecosystem — ICSE-aligned textbooks, 30+ hands-on activities, robotics kits, Python & AI projects, virtual labs, teacher resources, assessments, and LMS-based progress tracking."
-              width={1200}
-              height={900}
-              loading="lazy"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          </div>
-        </a>
+          <h2 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '1.9rem', color: '#0A1F44', fontWeight: 700, margin: 0 }}>
+            Deep dives, built for schools &amp; makers
+          </h2>
+        </div>
+
+        <div className="home-blog-grid">
+          {[
+            {
+              tid: 'home-blog-robosumo',
+              href: '/blogs/how-to-build-robosumo-robot-iit-bombay-techfest',
+              badge: 'OLL × TechFest · 18 min read',
+              title: 'How to Build a RoboSumo Robot for Robotics Competitions',
+              body:
+                "A national winner's step-by-step build guide — ESP32, BTS7960 drivers, LiPo, code and testing — with a full ESP32 sketch and wiring diagram.",
+              cover: '/blog-assets/robosumo/hero-robosumo-circuit-diagram.png',
+              alt: 'Complete ESP32-S3 wiring diagram for a RoboSumo robot with dual BTS7960 motor drivers, LM2596 buck converter and 3S LiPo battery.',
+            },
+            {
+              tid: 'home-blog-icse',
+              href: '/blogs/icse-robotics-ai-code-66-classes-9-10-guide',
+              badge: 'ICSE Code 66 · 22 min read',
+              title: 'ICSE Robotics & AI Group 3 Subject (Code 66): Complete Guide for Schools',
+              body:
+                'CISCE syllabus, exam pattern, lab setup, Python and teacher support — the full implementation playbook for schools introducing Code 66.',
+              cover: '/blog-assets/icse-code66/icse-code66-hero-banner-v2.jpg',
+              alt: 'OLL ICSE Group 3 Subject — Code 66: Robotics & AI for Classes 9th & 10th. Implementation Guide for Schools banner.',
+            },
+          ].map((b) => (
+            <a
+              key={b.tid}
+              href={b.href}
+              data-testid={b.tid}
+              className="home-blog-card"
+            >
+              <div className="home-blog-card__media">
+                <img src={b.cover} alt={b.alt} width={1200} height={720} loading="lazy" />
+              </div>
+              <div className="home-blog-card__body">
+                <div className="home-blog-card__badge">{b.badge}</div>
+                <h3>{b.title}</h3>
+                <p>{b.body}</p>
+                <span className="home-blog-card__cta">Read the guide →</span>
+              </div>
+            </a>
+          ))}
+        </div>
+
         <style>{`
-          @media (max-width: 720px) {
-            .home-icse-blog { grid-template-columns: 1fr !important; }
-            .home-icse-blog > div:last-child { display: none; }
+          .home-blog-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+          }
+          .home-blog-card {
+            display: flex; flex-direction: column;
+            border-radius: 22px; overflow: hidden;
+            border: 1px solid #E2E8F0; background: #fff;
+            box-shadow: 0 10px 30px rgba(10,31,68,0.06);
+            text-decoration: none; color: inherit;
+            transition: transform .2s ease, box-shadow .2s ease;
+          }
+          .home-blog-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px rgba(10,31,68,0.12);
+          }
+          .home-blog-card__media { aspect-ratio: 16/9; background: #F8FAFC; overflow: hidden; }
+          .home-blog-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .home-blog-card__body { padding: 1.4rem 1.5rem 1.6rem; }
+          .home-blog-card__badge {
+            font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+            font-weight: 700; color: #DC2626; margin-bottom: 8px;
+          }
+          .home-blog-card h3 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 1.2rem; line-height: 1.25; color: #0A1F44;
+            font-weight: 700; margin: 0 0 .55rem;
+          }
+          .home-blog-card p { color: #475569; font-size: 14.5px; line-height: 1.6; margin: 0 0 1rem; }
+          .home-blog-card__cta { color: #DC2626; font-weight: 600; font-size: 14px; }
+          @media (max-width: 760px) {
+            .home-blog-grid { grid-template-columns: 1fr; }
           }
         `}</style>
       </section>

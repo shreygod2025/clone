@@ -1,5 +1,39 @@
 # OLL Backend Changelog
 
+## 2026-09-30 — Related-blogs rail, homepage callouts, admin orders XLSX + growth-partners polish
+**Status: COMPLETE · All four asks verified in-browser**
+
+### 1) Related-blogs rail (RoboSumo ↔ ICSE Code 66)
+- New reusable `components/RelatedBlogsRail.jsx` — light-weight, dependency-free, drops in via `<RelatedBlogsRail exclude="…" />`. Renders each remaining post with a 16:9 cover, keyword eyebrow, keyword-rich H3, 2-line excerpt and read-time chip.
+- Wired into both `RoboSumoBuildGuideBlog.jsx` and `ICSECode66BlogPage.jsx` just before the Footer, with proper `exclude` slug so each blog only shows the *other* one.
+- Verified: rail appears with the expected cross-link on both pages (`related-blog-icse-code66-guide` on the RoboSumo blog, `related-blog-robosumo-build-guide` on the ICSE blog).
+
+### 2) RoboSumo blog card on Homepage
+- Replaced the single ICSE Code 66 callout on `LandingPage.jsx` with a **2-card "From the OLL blog / Deep dives, built for schools & makers" grid** — RoboSumo build guide + ICSE Code 66 side-by-side, each linking to its blog. Scoped CSS collapses to a single column on ≤760 px.
+
+### 3) Admin Robotics Shop orders — XLSX export + filters + sorting + inline product name
+File: `frontend/src/pages/admin/AdminShopPanel.jsx`
+- **Inline product name** in the Items column: shows the primary item title (with "+ N more" suffix if multi-item) and the total unit count on a second row.
+- **Product filter dropdown** — auto-populated from the distinct item titles across all currently-loaded orders (`shop-orders-product-filter`).
+- **Sorting dropdown** — Order Date newest/oldest and Product A→Z / Z→A (`shop-orders-sort`).
+- **Search now includes product titles** (was: order#, email, phone, name only).
+- **Export XLSX button** (`shop-orders-export`, emerald pill next to "Sync from Vendor") — dynamically imports `xlsx` at click-time (no bundle bloat), builds a 13-column workbook (Order #, Order Date, Customer, Email, Phone, City, State, Pincode, **Product Name**, Units, Total, Payment Status, Tracking Links) with sensible column widths, and downloads `oll-shop-orders-YYYY-MM-DD.xlsx`. Exports **the currently filtered/sorted view** so admins can slice → export in one flow.
+
+### 4) Growth Partners — Add Growth Partner modal
+File: `frontend/src/pages/admin/AdminGrowthPartners.jsx`
+- Swapped the plain City `<Select>` for the existing `CitySearch` component (backed by `/api/cities`, search-as-you-type + keyboard nav).
+- Replaced the old Interest Type options `[Franchise, Partnership, Investment, Reseller, Other]` with the four now-canonical values you asked for: **Business Partner · Influencer Partner · Referral Partner · Centre Franchise**.
+
+### Files
+- `frontend/src/components/RelatedBlogsRail.jsx` (new)
+- `frontend/src/pages/blogs/RoboSumoBuildGuideBlog.jsx` — rail
+- `frontend/src/pages/blogs/ICSECode66BlogPage.jsx` — rail
+- `frontend/src/pages/LandingPage.jsx` — 2-card blog callout grid
+- `frontend/src/pages/admin/AdminShopPanel.jsx` — XLSX + filters + sorting + inline product name
+- `frontend/src/pages/admin/AdminGrowthPartners.jsx` — CitySearch + new INTEREST_TYPES
+
+
+
 ## 2026-09-30 — RoboSumo & ICSE blog polish + Techfest CTA reshuffle
 **Status: COMPLETE · All 4 asks verified in-browser**
 

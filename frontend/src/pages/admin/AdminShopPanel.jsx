@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
-import { Loader2, Search, Package, Truck, CheckCircle2, ExternalLink, Eye, RefreshCw, Copy, ShieldCheck, RotateCcw, X } from 'lucide-react';
+import { Loader2, Search, Package, Truck, CheckCircle2, ExternalLink, Eye, RefreshCw, Copy, ShieldCheck, RotateCcw, X, Download, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -42,12 +42,12 @@ const OrdersTab = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [sortKey, setSortKey] = useState('date_desc'); // date_desc | date_asc | product_asc | product_desc
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState(null);
   const [verifyingId, setVerifyingId] = useState(null);
   const [refundOrder, setRefundOrder] = useState(null);
-  // Map of orderId -> array of POs (with tracking_url) so the table row can
-  // render an inline tracking link without having to expand the modal.
   const [posByOrderId, setPosByOrderId] = useState({});
 
   const load = async () => {
@@ -94,22 +94,105 @@ const OrdersTab = ({ embedded = false }) => {
     }
   };
 
+  const exportXlsx = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      const rows = filtered.map((o) => {
+        const items = o.items || [];
+        const productName = items.length === 1
+          ? (items[0].product_title || items[0].title || items[0].name || '')
+          : items.map((it) => `${it.product_title || it.title || it.name || ''} × ${it.quantity}`).join('\n');
+        return {
+          'Order #': o.order_no || '',
+          'Order Date': o.created_at ? new Date(o.created_at).toLocaleString('en-IN') : '',
+          'Customer Name': o.shipping?.full_name || '',
+          'Email': o.shipping?.email || '',
+          'Phone': o.shipping?.phone || '',
+          'City': o.shipping?.city || '',
+          'State': o.shipping?.state || '',
+          'Pincode': o.shipping?.pincode || '',
+          'Product Name': productName,
+          'Units': items.reduce((a, it) => a + (it.quantity || 0), 0),
+          'Total (INR)': o.total || 0,
+          'Payment Status': o.payment_status || '',
+          'Tracking Links': (posByOrderId[o.id] || [])
+            .map((p) => p.vendor_tracking_url).filter(Boolean).join(' | '),
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 26 }, { wch: 14 },
+        { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 40 }, { wch: 8 },
+        { wch: 12 }, { wch: 14 }, { wch: 40 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Shop Orders');
+      const day = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `oll-shop-orders-${day}.xlsx`);
+      toast.success(`Exported ${rows.length} orders`);
+    } catch (e) {
+      toast.error('Export failed');
+    }
+  };
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
+  // Distinct product names for the product filter dropdown.
+  const productOptions = useMemo(() => {
+    const s = new Set();
+    for (const o of orders) {
+      for (const it of (o.items || [])) {
+        const n = (it.product_title || it.title || it.name || '').trim();
+        if (n) s.add(n);
+      }
+    }
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [orders]);
+
+  const primaryProduct = (o) => {
+    const it = o.items?.[0];
+    return (it?.product_title || it?.title || it?.name || '').trim();
+  };
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return orders;
-    const s = search.trim().toLowerCase();
-    return orders.filter(
-      (o) =>
-        o.order_no?.toLowerCase().includes(s) ||
-        o.shipping?.email?.toLowerCase().includes(s) ||
-        o.shipping?.phone?.includes(s) ||
-        o.shipping?.full_name?.toLowerCase().includes(s)
-    );
-  }, [orders, search]);
+    let rows = orders;
+    if (search.trim()) {
+      const s = search.trim().toLowerCase();
+      rows = rows.filter(
+        (o) =>
+          o.order_no?.toLowerCase().includes(s) ||
+          o.shipping?.email?.toLowerCase().includes(s) ||
+          o.shipping?.phone?.includes(s) ||
+          o.shipping?.full_name?.toLowerCase().includes(s) ||
+          (o.items || []).some((it) =>
+            (it.product_title || it.title || it.name || '').toLowerCase().includes(s),
+          ),
+      );
+    }
+    if (productFilter) {
+      rows = rows.filter((o) =>
+        (o.items || []).some(
+          (it) => (it.product_title || it.title || it.name) === productFilter,
+        ),
+      );
+    }
+    // Sort — non-destructive copy
+    const sorted = [...rows];
+    if (sortKey === 'date_asc') {
+      sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (sortKey === 'product_asc') {
+      sorted.sort((a, b) => primaryProduct(a).localeCompare(primaryProduct(b)));
+    } else if (sortKey === 'product_desc') {
+      sorted.sort((a, b) => primaryProduct(b).localeCompare(primaryProduct(a)));
+    } else {
+      // date_desc default
+      sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    return sorted;
+  }, [orders, search, productFilter, sortKey]);
 
   // Stats are computed across ALL orders (not filtered) so admins always see
   // the global picture even while drilling into a search.
@@ -231,6 +314,36 @@ const OrdersTab = ({ embedded = false }) => {
           <option value="paid">Paid</option>
           <option value="refunded">Refunded</option>
         </select>
+        <select
+          value={productFilter}
+          onChange={(e) => setProductFilter(e.target.value)}
+          className="px-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-white max-w-[240px]"
+          data-testid="shop-orders-product-filter"
+        >
+          <option value="">All Products</option>
+          {productOptions.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value)}
+          className="px-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-white"
+          data-testid="shop-orders-sort"
+        >
+          <option value="date_desc">Order Date · Newest first</option>
+          <option value="date_asc">Order Date · Oldest first</option>
+          <option value="product_asc">Product · A → Z</option>
+          <option value="product_desc">Product · Z → A</option>
+        </select>
+        <button
+          onClick={exportXlsx}
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg transition-colors"
+          data-testid="shop-orders-export"
+          title="Download the current (filtered) list of orders as an Excel file"
+        >
+          <Download className="w-3.5 h-3.5" /> Export XLSX
+        </button>
         <button
           onClick={sync}
           disabled={syncing || loading}
@@ -281,7 +394,18 @@ const OrdersTab = ({ embedded = false }) => {
                       <p className="text-xs text-slate-500">{o.shipping?.phone}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
-                      {o.items?.reduce((a, it) => a + it.quantity, 0)} unit(s)
+                      <p className="font-semibold text-slate-800 line-clamp-2 max-w-[280px]" title={(o.items || []).map((it) => `${it.product_title || it.title || it.name || ''} × ${it.quantity}`).join('\n')}>
+                        {(() => {
+                          const items = o.items || [];
+                          if (items.length === 0) return '—';
+                          const primary = items[0].product_title || items[0].title || items[0].name || '';
+                          if (items.length === 1) return primary;
+                          return `${primary} + ${items.length - 1} more`;
+                        })()}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {(o.items || []).reduce((a, it) => a + (it.quantity || 0), 0)} unit(s)
+                      </p>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       ₹{o.total?.toLocaleString('en-IN')}

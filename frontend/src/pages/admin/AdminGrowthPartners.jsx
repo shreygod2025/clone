@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import CitySearch from '../../components/CitySearch';
 import { toast } from 'sonner';
 import GPActivePartnerCard from './growth-partners/GPActivePartnerCard';
 import SimplePartnersSection from './growth-partners/SimplePartnersSection';
@@ -31,11 +32,10 @@ const STATUS_SECTIONS = [
 ];
 
 const INTEREST_TYPES = [
-  { value: 'franchise', label: 'Franchise' },
-  { value: 'partnership', label: 'Partnership' },
-  { value: 'investment', label: 'Investment' },
-  { value: 'reseller', label: 'Reseller' },
-  { value: 'other', label: 'Other' },
+  { value: 'business_partner', label: 'Business Partner' },
+  { value: 'influencer_partner', label: 'Influencer Partner' },
+  { value: 'referral_partner', label: 'Referral Partner' },
+  { value: 'centre_franchise', label: 'Centre Franchise' },
 ];
 
 const SOURCE_OPTIONS = [
@@ -1139,16 +1139,12 @@ const AdminGrowthPartners = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <Select value={newPartner.city} onValueChange={(v) => setNewPartner({ ...newPartner, city: v })}>
-                  <SelectTrigger data-testid="add-city">
-                    <SelectValue placeholder="Select city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((city) => (
-                      <SelectItem key={city.id} value={city.name}>{city.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CitySearch
+                  value={newPartner.city}
+                  onChange={(v) => setNewPartner({ ...newPartner, city: v })}
+                  placeholder="Search city..."
+                  data-testid="add-city"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Interest Type</label>

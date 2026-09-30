@@ -30,6 +30,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import Footer from '../../components/Footer';
+import RelatedBlogsRail from '../../components/RelatedBlogsRail';
 import { ogImage } from '../../utils/ogImage';
 import { useSeo } from '../../hooks/useSeo';
 
@@ -1159,6 +1160,10 @@ const ICSECode66BlogPage = () => {
             </aside>
           </div>
         </main>
+
+        <div className="bg-white">
+          <RelatedBlogsRail exclude="icse-code66-guide" />
+        </div>
 
         <Footer />
       </div>
