@@ -40,7 +40,7 @@ const OLL_LOGO_HORIZONTAL =
 const CANONICAL_URL =
   'https://oll.co/blogs/icse-robotics-ai-code-66-classes-9-10-guide';
 const PAGE_TITLE =
-  'ICSE Robotics & AI Code 66: Complete Guide for Classes 9 & 10 (2026)';
+  'ICSE Robotics & AI Group 3 Subject (Code 66): Complete Guide for Schools to Implementing Classes 9 & 10';
 const META_DESCRIPTION =
   'Planning ICSE Robotics and Artificial Intelligence (Code 66) for Classes 9 & 10? Learn the CISCE syllabus, assessment pattern, lab setup, Python programming and teacher support your school needs — with a ready-to-run implementation checklist and OLL Code 66 program overview.';
 const KEYWORDS =
@@ -50,8 +50,11 @@ const PUBLISHED_ISO = '2026-09-30T09:00:00+05:30';
 const MODIFIED_ISO = new Date().toISOString();
 
 const IMG = (name) => `/blog-assets/icse-code66/${name}`;
-const HERO_IMAGE = IMG('icse-code66-hero-banner.png');
+const HERO_IMAGE = IMG('icse-code66-hero-banner-v2.jpg');
 const ECOSYSTEM_IMAGE = IMG('oll-code66-program-ecosystem.jpg');
+const BOARD_ASSESSMENT_IMAGE = IMG('icse-board-assessment-format.jpg');
+const YEAR_PLAN_IMAGE = IMG('assessment-plan-7-stage-timeline.jpg');
+const KIT_COMPONENTS_IMAGE = IMG('oll-kit-components-36-items.jpg');
 
 const SHOP_URL = 'https://oll.co/shop';
 const PROGRAM_URL =
@@ -86,7 +89,7 @@ const buildJsonLd = () => [
     image: [
       `https://oll.co${HERO_IMAGE}`,
       `https://oll.co${ECOSYSTEM_IMAGE}`,
-      `https://oll.co${IMG('curriculum-provider-checklist.jpg')}`,
+      `https://oll.co${BOARD_ASSESSMENT_IMAGE}`,
     ],
     datePublished: PUBLISHED_ISO,
     dateModified: MODIFIED_ISO,
@@ -403,9 +406,9 @@ const ICSECode66BlogPage = () => {
               style={{ fontFamily: 'Manrope, sans-serif' }}
               data-testid="blog-h1"
             >
-              ICSE Robotics &amp; AI (Code 66):{' '}
+              ICSE Robotics &amp; AI Group 3 Subject (Code 66):{' '}
               <span className="text-[#FDBA74]">
-                Complete Guide to Implementing Classes 9 &amp; 10
+                Complete Guide for Schools to Implementing Classes 9 &amp; 10
               </span>
             </h1>
 
@@ -452,8 +455,8 @@ const ICSECode66BlogPage = () => {
             <article className="min-w-0">
               <Figure
                 src={HERO_IMAGE}
-                alt="OLL ICSE Group 3 Subject — Code 66: Robotics & AI for Classes 9th & 10th. Implementation Guide for Schools. Blue-and-red circuit board hero banner featuring the OLL logo."
-                caption="Fig. 1 — OLL ICSE Group 3 · Code 66 · Robotics & AI Implementation Guide."
+                alt="OLL ICSE Group 3 Subject — Code 66: Robotics & AI for Classes 9th & 10th. Implementation Guide for Schools. Blue-and-red circuit-board hero banner featuring the OLL logo, the CODE 66 label and the '9th & 10th' badge."
+                caption="Fig. 1 — OLL ICSE Group 3 · Code 66 · Robotics & AI Implementation Guide for Schools."
                 w={1600}
                 h={533}
               />
@@ -581,11 +584,6 @@ const ICSECode66BlogPage = () => {
                   two-hour written paper of 100 marks, and 100 marks of
                   internal assessment.
                 </p>
-                <Figure
-                  src={IMG('icse-board-assessment-format.jpg')}
-                  alt="OLL infographic explaining the ICSE Robotics & AI Board Assessment Format for Subject Code 66. It shows a 100-mark Written Paper and 100-mark Internal Assessment, with internal assessment components including Robotics, Artificial Intelligence, Python Programming, and Report and Presentation."
-                  caption="Fig. 2 — 100 + 100 mark structure. Internal assessment carries the same weight as theory."
-                />
                 <p>
                   Because half the marks come from internal assessment, {' '}
                   <strong>year-round implementation matters</strong>. CISCE
@@ -607,9 +605,9 @@ const ICSECode66BlogPage = () => {
               {/* Assessment plan */}
               <Section id="assessment-plan" eyebrow="Year plan" title="How should schools structure assessments through the year?">
                 <Figure
-                  src={IMG('assessment-plan-7-stage-timeline.jpg')}
-                  alt="OLL infographic showing a suggested ICSE Robotics & AI assessment plan for Classes 9 and 10, presented as a seven-stage academic timeline from pre-session preparation through Term 1, mid-year assessment, Term 2, pre-prelims, prelims, and final ICSE examination preparation."
-                  caption="Fig. 4 — A 7-stage assessment timeline that keeps theory, practical and IA in lock-step."
+                  src={KIT_COMPONENTS_IMAGE}
+                  alt="OLL Kit Components infographic listing 36 items included in the Robotics and AI kit — including Arduino Uno, sensors, motor driver, robot chassis, motors, wheels, screws, jumper wires, breadboard, servo motor, LEDs, buzzer, battery, tools, stickers, and packaging, with quantities shown for applicable components."
+                  caption="An implementation-ready kit anchors every stage of the yearly plan — practicals map directly to the assignments prescribed in each term."
                 />
 
                 <div className="not-prose grid md:grid-cols-2 gap-4 my-6">
@@ -712,11 +710,6 @@ const ICSECode66BlogPage = () => {
                   <li>Simulation and virtual laboratory environments</li>
                   <li>Computers with Python installed / OLL's Virtual Python IDE</li>
                 </ul>
-                <Figure
-                  src={IMG('oll-kit-components-36-items.jpg')}
-                  alt="OLL Kit Components infographic listing 36 items included in the Robotics and AI kit — including Arduino Uno, sensors, motor driver, robot chassis, motors, wheels, screws, jumper wires, breadboard, servo motor, LEDs, buzzer, battery, tools, stickers, and packaging, with quantities shown for applicable components."
-                  caption="Fig. 6 — OLL's Class 9 & 10 Code 66 kit: 36 items covering every prescribed activity."
-                />
                 <p>
                   The real question isn't how many components you buy. It is
                   whether those components are enough for{' '}
@@ -753,9 +746,9 @@ const ICSECode66BlogPage = () => {
                 </p>
                 <p>When comparing providers, ask five questions:</p>
                 <Figure
-                  src={IMG('curriculum-provider-checklist.jpg')}
-                  alt="OLL checklist infographic highlighting key criteria for an ICSE Robotics & AI programme, including CISCE syllabus alignment, robotics kits and lab infrastructure, teacher support and training, student progress tracking through LMS and assessments, and ongoing academic and technical service support."
-                  caption="Fig. 8 — The 5-question provider checklist OLL scores ✓ on every row."
+                  src={YEAR_PLAN_IMAGE}
+                  alt="OLL infographic showing a suggested ICSE Robotics & AI assessment plan for Classes 9 and 10, presented as a seven-stage academic timeline from pre-session preparation through Term 1, mid-year assessment, Term 2, pre-prelims, prelims, and final ICSE examination preparation."
+                  caption="A strong Code 66 provider maps every practical, assignment and assessment against a year-long academic timeline — from pre-session prep to the ICSE board exam."
                 />
                 <div className="not-prose overflow-x-auto my-6 rounded-2xl border border-slate-200">
                   <table className="min-w-full text-sm">
@@ -922,6 +915,11 @@ const ICSECode66BlogPage = () => {
 
               {/* OLL support */}
               <Section id="oll" eyebrow="Full implementation" title="How OLL supports ICSE Robotics & AI implementation">
+                <Figure
+                  src={BOARD_ASSESSMENT_IMAGE}
+                  alt="OLL infographic explaining the ICSE Robotics & AI Board Assessment Format for Subject Code 66. It shows a 100-mark Written Paper and 100-mark Internal Assessment, with internal assessment components including Robotics, Artificial Intelligence, Python Programming, and Report and Presentation."
+                  caption="OLL's programme is built around the 100 + 100 board pattern — theory paper, and an internal-assessment stream that keeps Robotics, AI, Python and the final report all covered."
+                />
                 <p>
                   OLL's ICSE Robotics &amp; AI programme for Classes 9 and 10
                   is an <strong>integrated school solution</strong>, not just
