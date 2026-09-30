@@ -1262,6 +1262,7 @@ async def techfest_combined_view(user: dict = Depends(_admin_or_team)):
 @router.post("/admin/techfest/students/import")
 async def import_techfest_students_csv(
     file: UploadFile = File(...),
+    update_existing: bool = False,
     user: dict = Depends(_admin_or_team),
 ):
     """Bulk import students from the OLL Robotics Championship CSV export.
@@ -1273,10 +1274,16 @@ async def import_techfest_students_csv(
       Google ID · Team ID · Team Name · Team Role · Team Leader Name ·
       Team Leader Email · Team Leader Phone · Team Joined Date · Registration Date
 
-    Every unique (Participant Name, Email, Team ID) is stored in a new
-    ``techfest_student_registrations`` collection.  When the College matches
-    an existing school registration, the student is also appended to that
-    registration's ``students`` list so the Combined View picks it up.
+    Dedup strategy — a row is treated as an existing student if ANY of these
+    already match a document in ``techfest_student_registrations``:
+      1. Same ``compi_reg_id`` (when present)
+      2. Same ``techfest_id`` (when present)
+      3. Same ``email`` (when present)
+      4. Same normalised (name, phone) pair (when both present)
+
+    By default duplicates are **skipped** (only genuinely new students are
+    inserted). Pass ``?update_existing=true`` to also refresh matched
+    records with the CSV values instead of skipping them.
     """
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1296,112 +1303,165 @@ async def import_techfest_students_csv(
                 return v
         return ""
 
+    def _norm(s: str) -> str:
+        return re.sub(r"\s+", " ", (s or "").strip().lower())
+
     now_iso = datetime.now(timezone.utc).isoformat()
     inserted = 0
     updated = 0
-    linked = 0
+    skipped = 0
     errors: List[str] = []
     per_school: dict[str, list] = {}
 
-    for idx, row in enumerate(reader, start=2):  # header on line 1
-        name = _pick(row, "Participant Name", "Name")
-        if not name:
-            continue
-        email = _pick(row, "Email").lower()
-        phone = _pick(row, "Phone No", "Phone")
-        team_id = _pick(row, "Team ID")
-        college = _pick(row, "College", "School")
-        record = {
-            "compi_reg_id":     _pick(row, "Compi Reg ID"),
-            "competition_code": _pick(row, "Competition Code"),
-            "competition_name": _pick(row, "Competition Name"),
-            "techfest_id":      _pick(row, "Techfest ID"),
-            "name":             name,
-            "email":            email,
-            "phone":            phone,
-            "gender":           _pick(row, "Gender"),
-            "school":           college,
-            "pincode":          _pick(row, "Pincode"),
-            "city":             _pick(row, "City"),
-            "state":            _pick(row, "State"),
-            "country":          _pick(row, "Country") or "India",
-            "address":          _pick(row, "Address"),
-            "zonal_city":       _pick(row, "Zonal City"),
-            "zonal_college":    _pick(row, "Zonal College"),
-            "team_id":          team_id,
-            "team_name":        _pick(row, "Team Name"),
-            "team_role":        _pick(row, "Team Role") or "Member",
-            "team_leader_name": _pick(row, "Team Leader Name"),
-            "team_leader_email": _pick(row, "Team Leader Email").lower(),
-            "team_leader_phone": _pick(row, "Team Leader Phone"),
-            "team_joined_date": _pick(row, "Team Joined Date"),
-            "registration_date": _pick(row, "Registration Date"),
-            "imported_at": now_iso,
-            "imported_by": user.get("email") or user.get("id"),
-        }
+    # Preload lightweight index of existing students so dedup checks are O(1)
+    # and don't hit the DB per-row (import of 5,000 rows became a 5,000-round-
+    # trip storm otherwise, which was almost certainly what caused the earlier
+    # "Import failed" — the request just timed out on the ingress).
+    existing_by_compi: dict = {}
+    existing_by_tf:    dict = {}
+    existing_by_email: dict = {}
+    existing_by_np:    dict = {}  # (name, phone)
+    try:
+        cursor = db.techfest_student_registrations.find(
+            {},
+            {"_id": 1, "compi_reg_id": 1, "techfest_id": 1, "email": 1,
+             "name": 1, "phone": 1},
+        )
+        async for d in cursor:
+            oid = d["_id"]
+            if d.get("compi_reg_id"): existing_by_compi[_norm(d["compi_reg_id"])] = oid
+            if d.get("techfest_id"):  existing_by_tf[_norm(d["techfest_id"])] = oid
+            if d.get("email"):        existing_by_email[_norm(d["email"])] = oid
+            if d.get("name") and d.get("phone"):
+                existing_by_np[(_norm(d["name"]), _norm(d["phone"]))] = oid
+    except Exception as e:
+        logger.warning("Could not preload techfest students for dedup: %s", e)
 
-        key = {"compi_reg_id": record["compi_reg_id"]} if record["compi_reg_id"] else {
-            "email": email, "team_id": team_id, "name": name,
-        }
+    for idx, row in enumerate(reader, start=2):  # header on line 1
         try:
-            existing = await db.techfest_student_registrations.find_one(key)
-            if existing:
-                await db.techfest_student_registrations.update_one(
-                    {"_id": existing["_id"]}, {"$set": record}
-                )
-                updated += 1
+            name = _pick(row, "Participant Name", "Name")
+            if not name:
+                continue
+            email = _pick(row, "Email").lower()
+            phone = _pick(row, "Phone No", "Phone")
+            team_id = _pick(row, "Team ID")
+            college = _pick(row, "College", "School")
+            compi_reg_id = _pick(row, "Compi Reg ID")
+            techfest_id  = _pick(row, "Techfest ID")
+
+            record = {
+                "compi_reg_id":     compi_reg_id,
+                "competition_code": _pick(row, "Competition Code"),
+                "competition_name": _pick(row, "Competition Name"),
+                "techfest_id":      techfest_id,
+                "name":             name,
+                "email":            email,
+                "phone":            phone,
+                "gender":           _pick(row, "Gender"),
+                "school":           college,
+                "pincode":          _pick(row, "Pincode"),
+                "city":             _pick(row, "City"),
+                "state":            _pick(row, "State"),
+                "country":          _pick(row, "Country") or "India",
+                "address":          _pick(row, "Address"),
+                "zonal_city":       _pick(row, "Zonal City"),
+                "zonal_college":    _pick(row, "Zonal College"),
+                "team_id":          team_id,
+                "team_name":        _pick(row, "Team Name"),
+                "team_role":        _pick(row, "Team Role") or "Member",
+                "team_leader_name": _pick(row, "Team Leader Name"),
+                "team_leader_email": _pick(row, "Team Leader Email").lower(),
+                "team_leader_phone": _pick(row, "Team Leader Phone"),
+                "team_joined_date": _pick(row, "Team Joined Date"),
+                "registration_date": _pick(row, "Registration Date"),
+                "imported_at": now_iso,
+                "imported_by": user.get("email") or user.get("id"),
+            }
+
+            # Resolve the existing document (if any) via any of 4 keys.
+            match_id = (
+                existing_by_compi.get(_norm(compi_reg_id))
+                or existing_by_tf.get(_norm(techfest_id))
+                or existing_by_email.get(_norm(email))
+                or existing_by_np.get((_norm(name), _norm(phone)))
+            )
+
+            if match_id:
+                if update_existing:
+                    await db.techfest_student_registrations.update_one(
+                        {"_id": match_id}, {"$set": record},
+                    )
+                    updated += 1
+                else:
+                    skipped += 1
+                # Still allow this student to be linked into the school
+                # registration's `students` array on the second pass below —
+                # the linker itself de-dupes on (name, email).
             else:
-                await db.techfest_student_registrations.insert_one(record)
+                res = await db.techfest_student_registrations.insert_one(record)
                 inserted += 1
+                # Add to in-memory index so later rows in the SAME file that
+                # collide with this new record are also skipped.
+                if compi_reg_id: existing_by_compi[_norm(compi_reg_id)] = res.inserted_id
+                if techfest_id:  existing_by_tf[_norm(techfest_id)] = res.inserted_id
+                if email:        existing_by_email[_norm(email)] = res.inserted_id
+                if name and phone:
+                    existing_by_np[(_norm(name), _norm(phone))] = res.inserted_id
+
+            # Group by school for the append-to-registrations pass below.
+            skey = _norm(college)
+            if skey:
+                per_school.setdefault(skey, []).append({
+                    "name": name,
+                    "email": email,
+                    "phone": phone,
+                    "team_id": team_id,
+                    "team_name": record["team_name"],
+                    "role": record["team_role"],
+                })
         except Exception as e:
             errors.append(f"Row {idx}: {e}")
             continue
 
-        # Group by school for the append-to-registrations pass below.
-        skey = re.sub(r"\s+", " ", college.strip().lower())
-        if skey:
-            per_school.setdefault(skey, []).append({
-                "name": name,
-                "email": email,
-                "phone": phone,
-                "team_id": team_id,
-                "team_name": record["team_name"],
-                "role": record["team_role"],
-            })
-
     # Append imported students to matching school registrations so the
     # combined view picks them up without a second query.
+    linked = 0
     for skey, students in per_school.items():
-        reg = await db.techfest_registrations.find_one({
-            "type": "school",
-            "$expr": {
-                "$eq": [
-                    {"$toLower": {"$trim": {"input": {"$ifNull": ["$school_name", ""]}}}},
-                    skey,
-                ]
-            },
-        })
-        if not reg:
+        try:
+            reg = await db.techfest_registrations.find_one({
+                "type": "school",
+                "$expr": {
+                    "$eq": [
+                        {"$toLower": {"$trim": {"input": {"$ifNull": ["$school_name", ""]}}}},
+                        skey,
+                    ]
+                },
+            })
+            if not reg:
+                continue
+            existing_students = reg.get("students") or []
+            seen = {(s.get("name", "").lower(), s.get("email", "").lower()) for s in existing_students}
+            merged = list(existing_students)
+            for s in students:
+                k = (s["name"].lower(), s["email"].lower())
+                if k not in seen:
+                    merged.append(s)
+                    seen.add(k)
+            if len(merged) != len(existing_students):
+                await db.techfest_registrations.update_one(
+                    {"_id": reg["_id"]},
+                    {"$set": {"students": merged, "updated_at": now_iso}},
+                )
+                linked += 1
+        except Exception as e:
+            errors.append(f"School link ({skey}): {e}")
             continue
-        existing_students = reg.get("students") or []
-        seen = {(s.get("name", "").lower(), s.get("email", "").lower()) for s in existing_students}
-        merged = list(existing_students)
-        for s in students:
-            k = (s["name"].lower(), s["email"].lower())
-            if k not in seen:
-                merged.append(s)
-                seen.add(k)
-        if len(merged) != len(existing_students):
-            await db.techfest_registrations.update_one(
-                {"_id": reg["_id"]},
-                {"$set": {"students": merged, "updated_at": now_iso}},
-            )
-            linked += 1
 
     return {
         "ok": True,
         "inserted": inserted,
         "updated": updated,
+        "skipped": skipped,
         "schools_linked": linked,
         "errors": errors[:20],
     }

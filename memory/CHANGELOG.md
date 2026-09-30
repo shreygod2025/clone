@@ -1,5 +1,24 @@
 # OLL Backend Changelog
 
+## 2026-09-29 — Student bulk import now skips duplicates cleanly
+**Status: COMPLETE · Tested with curl**
+
+- Fix in `backend/routes/techfest.py::import_techfest_students_csv`:
+  - **Dedup upfront in a single query** — preloads compi_reg_id, techfest_id, email and (name, phone) indexes from `techfest_student_registrations` into memory so each CSV row is checked in O(1) instead of hammering Mongo with N `find_one` calls. That per-row query storm is almost certainly what was causing the earlier "Import failed" toast on large uploads (ingress timeout).
+  - **New default behavior: SKIP duplicates**, only insert genuinely new students. Returns a distinct `skipped` counter alongside `inserted` / `updated`.
+  - Added a `?update_existing=true` opt-in for admins who want to overwrite matched records.
+  - Whole per-row block now sits inside a `try/except` — even a poison row can't crash the whole import; instead it's collected into `errors[]`.
+  - Same in-memory index is updated after each insert so duplicates *within* the same CSV are also skipped correctly.
+- Verified via curl (admin token) with a 3-row CSV containing 1 in-file duplicate:
+  - 1st run: `inserted=2, skipped=1` (in-file dup caught)
+  - 2nd run: `inserted=0, skipped=3` (all existing) ✅
+- Frontend `AdminCompetitions.jsx::handleImportFile` already displays `skipped` in the success toast (`Imported: X new · Y updated · Z skipped`) — no frontend change required.
+
+### Files
+- `backend/routes/techfest.py` — `import_techfest_students_csv` refactored (~1262–1440).
+
+
+
 ## 2026-09-29 — RoboSumo SEO Blog + Techfest + Kit funnel
 **Status: COMPLETE**
 
