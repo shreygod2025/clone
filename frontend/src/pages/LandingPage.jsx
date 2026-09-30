@@ -1354,6 +1354,56 @@ const LandingPage = () => {
       )}
 
       {/* Footer - Always visible */}
+
+      {/* ── Blog callout: ICSE Code 66 complete guide ────────────── */}
+      <section
+        style={{ maxWidth: 1180, margin: '0 auto', padding: '3rem 1.25rem 3.5rem' }}
+        data-testid="home-icse-blog-callout"
+      >
+        <a
+          href="/blogs/icse-robotics-ai-code-66-classes-9-10-guide"
+          style={{
+            display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)',
+            gap: 0, borderRadius: 24, overflow: 'hidden',
+            border: '1px solid #E2E8F0', background: '#fff',
+            boxShadow: '0 10px 30px rgba(10,31,68,0.08)',
+            textDecoration: 'none', color: 'inherit',
+          }}
+          className="home-icse-blog"
+        >
+          <div style={{ padding: '2.25rem 2rem' }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626', marginBottom: 10 }}>
+              From the OLL blog · 22 min read
+            </div>
+            <h3 style={{ fontFamily: 'Manrope, sans-serif', fontSize: '1.75rem', lineHeight: 1.15, color: '#0A1F44', fontWeight: 700, margin: '0 0 0.65rem' }}>
+              ICSE Robotics &amp; AI Code 66: Complete Guide for Classes 9 &amp; 10
+            </h3>
+            <p style={{ color: '#475569', fontSize: 15, lineHeight: 1.6, margin: '0 0 1.1rem' }}>
+              CISCE syllabus, exam pattern, lab setup, Python and teacher
+              support — the full implementation playbook for schools
+              introducing Subject Code 66.
+            </p>
+            <span style={{ color: '#DC2626', fontWeight: 600 }}>Read the guide →</span>
+          </div>
+          <div style={{ background: '#F8FAFC', borderLeft: '1px solid #F1F5F9' }}>
+            <img
+              src="/blog-assets/icse-code66/oll-code66-program-ecosystem.jpg"
+              alt="OLL Code 66 Program ecosystem — ICSE-aligned textbooks, 30+ hands-on activities, robotics kits, Python & AI projects, virtual labs, teacher resources, assessments, and LMS-based progress tracking."
+              width={1200}
+              height={900}
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+        </a>
+        <style>{`
+          @media (max-width: 720px) {
+            .home-icse-blog { grid-template-columns: 1fr !important; }
+            .home-icse-blog > div:last-child { display: none; }
+          }
+        `}</style>
+      </section>
+
       <Footer />
     </div>
     </>

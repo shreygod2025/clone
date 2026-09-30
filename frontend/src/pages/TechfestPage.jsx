@@ -435,6 +435,14 @@ export default function TechfestPage() {
             <button onClick={scrollToKits} className="tf-btn ghost-dark" data-testid="techfest-nav-buy-kits">
               <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-hide-sm">Buy </span>Kits
             </button>
+            <Link
+              to="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest"
+              className="tf-btn ghost-dark"
+              data-testid="techfest-nav-build-guide"
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span className="tf-hide-sm">Build </span>Guide
+            </Link>
             <button onClick={openRegister} className="tf-btn primary" data-testid="techfest-nav-register">
               <Flag className="w-3.5 h-3.5" /> Register<span className="tf-hide-sm"> Now</span>
             </button>
@@ -863,6 +871,13 @@ export default function TechfestPage() {
             <button onClick={scrollToKits} className="tf-btn ghost-light" data-testid="techfest-final-shop">
               Shop the Kits
             </button>
+            <Link
+              to="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest"
+              className="tf-btn ghost-light"
+              data-testid="techfest-final-build-guide"
+            >
+              How to Make a RoboSumo Robot <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
           <div className="mt-10 text-xs text-white/60 tf-body">
             Official communication · <a href="mailto:siddhi@techfest.org" className="underline">siddhi@techfest.org</a>

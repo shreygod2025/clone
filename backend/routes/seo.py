@@ -27,6 +27,7 @@ STATIC_URLS: List[dict] = [
     {"loc": "/resources",   "priority": "0.7",  "changefreq": "weekly"},
     {"loc": "/blogs",       "priority": "0.85", "changefreq": "daily"},
     {"loc": "/blogs/how-to-build-robosumo-robot-iit-bombay-techfest", "priority": "0.9", "changefreq": "weekly"},
+    {"loc": "/blogs/icse-robotics-ai-code-66-classes-9-10-guide", "priority": "0.9", "changefreq": "weekly"},
     # Tier 2: Funnel pages
     {"loc": "/offerings",       "priority": "0.95", "changefreq": "weekly"},
     {"loc": "/student",         "priority": "0.85", "changefreq": "weekly"},

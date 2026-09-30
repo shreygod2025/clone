@@ -33,10 +33,14 @@ import {
   ShieldAlert,
   Youtube,
 } from 'lucide-react';
-import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { ogImage } from '../../utils/ogImage';
 import { useSeo } from '../../hooks/useSeo';
+
+/* Same logos the Techfest page uses — keeps the pill-nav visually consistent. */
+const OLL_LOGO_HORIZONTAL =
+  'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+const TECHFEST_LOGO = '/techfest/techfest-iitb-logo.webp';
 
 /* ─────────────────────────────────────────────────────────
    Constants — all SEO-critical strings live at the top so
@@ -234,12 +238,12 @@ const Section = ({ id, eyebrow, title, children }) => (
       </p>
     )}
     <h2
-      className="text-2xl md:text-3xl font-bold text-[#0F172A] mb-5 leading-tight"
+      className="text-[26px] md:text-[32px] font-bold text-[#0F172A] mb-6 leading-tight tracking-tight"
       style={{ fontFamily: 'Manrope, sans-serif' }}
     >
       {title}
     </h2>
-    <div className="prose-content text-slate-700 leading-[1.75] text-[17px]">
+    <div className="rs-prose">
       {children}
     </div>
   </section>
@@ -450,13 +454,129 @@ const RoboSumoBuildGuideBlog = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-white">
-        <Navbar showBookDemo onBookDemo={() => (window.location.href = '/student')} />
+      <style>{`
+        /* Page-scoped override: the global stylesheet sets
+           "html, body { overflow-x: hidden; }" which, since
+           overflow-x != visible, silently creates a body-level
+           scroll container that breaks position: sticky for the
+           right-rail TOC. overflow: clip blocks overflow the
+           same way but WITHOUT creating a scroll container, so
+           sticky descendants behave correctly again. */
+        html:has(.rs-page), body:has(.rs-page) {
+          overflow-x: clip !important;
+          overflow-y: visible !important;
+          max-width: none !important;
+        }
+        .rs-page {
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at 15% 8%, rgba(220,38,38,0.28), transparent 40%),
+            radial-gradient(circle at 85% 30%, rgba(96,165,250,0.18), transparent 50%),
+            linear-gradient(180deg, #0A1F44 0%, #1E3A5F 45%, #0A1F44 100%);
+          background-attachment: fixed;
+        }
+        @media (max-width: 820px), (hover: none) and (pointer: coarse) {
+          .rs-page { background-attachment: scroll; }
+        }
+        /* ── Sticky pill nav (identical to Techfest page) ─────── */
+        .tf-pillnav { position: sticky; top: 12px; z-index: 60; margin: 0 auto; padding: 12px 12px 0; }
+        .tf-pillnav-inner {
+          max-width: 1220px; margin: 0 auto;
+          background: rgba(255,255,255,0.94);
+          -webkit-backdrop-filter: saturate(180%) blur(14px);
+          backdrop-filter: saturate(180%) blur(14px);
+          border: 1px solid rgba(255,255,255,0.5);
+          box-shadow: 0 20px 44px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.12);
+          border-radius: 999px;
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 8px 10px 8px 18px;
+        }
+        .tf-pillnav-brands { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        .tf-pillnav-brands .divider { width: 1px; height: 36px; background: rgba(10,31,68,0.15); }
+        .tf-pillnav-brands img { display: block; height: 42px; width: auto; }
+        .tf-pillnav-brands img.tf-mark { height: 46px; }
+        .tf-pillnav-ctas { display: flex; align-items: center; gap: 8px; }
+        .tf-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 10px 18px; border-radius: 999px;
+          font-family: 'Proxima Nova', 'Montserrat', sans-serif;
+          font-weight: 700; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+          cursor: pointer; text-decoration: none;
+        }
+        .tf-btn.primary { background: #DC2626; color: #fff; box-shadow: 0 12px 22px rgba(220,38,38,0.35); }
+        .tf-btn.primary:hover { background: #B91C1C; transform: translateY(-1px); }
+        .tf-btn.ghost-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.30); }
+        .tf-btn.ghost-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
+        @media (max-width: 640px) {
+          .tf-pillnav { top: 8px; padding: 8px 8px 0; }
+          .tf-pillnav-inner { padding: 6px 6px 6px 10px; }
+          .tf-pillnav-brands { gap: 8px; }
+          .tf-pillnav-brands img { height: 28px; }
+          .tf-pillnav-brands img.tf-mark { height: 32px; }
+          .tf-pillnav-brands .divider { height: 26px; }
+          .tf-pillnav-ctas { gap: 6px; }
+          .tf-btn { padding: 8px 10px; font-size: 0.65rem; letter-spacing: 0.03em; gap: 4px; }
+          .tf-btn .tf-hide-sm { display: none; }
+        }
 
-        {/* ── Hero ────────────────────────────────────────────────── */}
-        <header className="relative overflow-hidden bg-gradient-to-br from-[#0F172A] via-[#1E3A5F] to-[#0F172A] text-white">
+        /* ── Blog typography ───────────────────────────────────
+           Slightly bigger body copy for comfortable long-form reading,
+           and generous side padding on the content column so nothing
+           bleeds into the sticky right-rail. */
+        .rs-prose { font-size: 18px; line-height: 1.85; color: #334155; }
+        .rs-prose p { margin: 0 0 1.15rem; }
+        .rs-prose ul, .rs-prose ol { margin: 0.4rem 0 1.25rem; padding-left: 1.4rem; }
+        .rs-prose li { margin-bottom: 0.35rem; }
+        .rs-prose strong { color: #0F172A; font-weight: 700; }
+        .rs-prose code { font-size: 0.94em; padding: 2px 6px; border-radius: 4px;
+          background: #F1F5F9; color: #0F172A; }
+      `}</style>
+
+      <div className="rs-page">
+        {/* ── Sticky pill nav ─────────────────────────────────── */}
+        <nav
+          className="tf-pillnav"
+          aria-label="RoboSumo blog primary navigation"
+          data-testid="robosumo-pillnav"
+        >
+          <div className="tf-pillnav-inner">
+            <div className="tf-pillnav-brands">
+              <Link to="/" data-testid="rs-nav-oll-logo" aria-label="OLL Home">
+                <img src={OLL_LOGO_HORIZONTAL} alt="OLL" />
+              </Link>
+              <span className="divider" aria-hidden="true" />
+              <Link to={TECHFEST_URL} aria-label="Techfest IIT Bombay">
+                <img className="tf-mark" src={TECHFEST_LOGO} alt="Techfest IIT Bombay" />
+              </Link>
+            </div>
+            <div className="tf-pillnav-ctas">
+              <a
+                href={SHOP_KIT_URL}
+                target="_blank"
+                rel="noopener"
+                className="tf-btn ghost-dark"
+                data-testid="rs-nav-buy-kit"
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                <span className="tf-hide-sm">Buy </span>Kit
+              </a>
+              <Link
+                to={TECHFEST_URL}
+                className="tf-btn primary"
+                data-testid="rs-nav-register"
+              >
+                Register<span className="tf-hide-sm"> Now</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </nav>
+
+        {/* ── Hero ────────────────────────────────────────────── */}
+        <header className="relative overflow-hidden text-white">
           <div className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(circle_at_20%_10%,white,transparent_40%),radial-gradient(circle_at_80%_60%,white,transparent_40%)]" />
-          <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-14">
+          <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-14">
             {/* Breadcrumbs */}
             <nav
               aria-label="Breadcrumb"
@@ -532,8 +652,12 @@ const RoboSumoBuildGuideBlog = () => {
           </div>
         </header>
 
-        {/* ── Body layout: article + sticky TOC ───────────────── */}
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-12">
+        {/* ── Body layout: article + sticky TOC ─────────────────
+             White sheet on the gradient makes the article read as a
+             "document" the way Substack / Medium do, and gives the sticky
+             right-rail a clean surface to live against. */}
+        <main className="relative bg-white">
+          <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-10 py-14 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-x-12 gap-y-8">
           <article className="min-w-0">
             {/* Hero image directly under the H1 */}
             <Figure
@@ -1299,15 +1423,22 @@ if (rcLive) {
             </div>
           </article>
 
-          {/* ── Sticky TOC (desktop) ─────────────────────────── */}
+          {/* ── Sticky TOC (desktop) ─────────────────────────────
+               `sticky top-6` keeps the TOC glued to the top of the
+               viewport as soon as it clears the pill-nav. `max-h` +
+               `overflow-y-auto` guarantees it stays inside the viewport
+               even when the sections list grows. */}
           <aside className="hidden lg:block">
-            <div className="sticky top-24">
+            <div
+              className="sticky top-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1"
+              data-testid="rs-toc-sidebar"
+            >
               <p className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-3">
                 On this page
               </p>
               <nav
                 aria-label="Table of contents"
-                className="border-l border-slate-200 pl-4 space-y-2 text-[13.5px]"
+                className="border-l border-slate-200 pl-4 space-y-2 text-[14px]"
               >
                 {SECTIONS.map((s) => (
                   <a
@@ -1326,6 +1457,7 @@ if (rcLive) {
               </nav>
             </div>
           </aside>
+          </div>
         </main>
 
         <Footer />

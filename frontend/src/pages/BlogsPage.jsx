@@ -12,6 +12,17 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const DEFAULT_BLOGS = [
   {
+    id: 'icse-code66-guide',
+    title: 'ICSE Robotics & AI Code 66: Complete Guide for Classes 9 & 10',
+    slug: 'icse-robotics-ai-code-66-classes-9-10-guide',
+    excerpt: 'Planning ICSE Robotics and Artificial Intelligence (Code 66) for Classes 9 & 10? Syllabus, assessment pattern, lab setup, Python and teacher support — end-to-end, mapped to CISCE.',
+    content: '',
+    cover_image: '/blog-assets/icse-code66/oll-code66-program-ecosystem.jpg',
+    category: 'schools',
+    author: 'OLL Curriculum Team',
+    created_at: '2026-09-30T00:00:00Z',
+  },
+  {
     id: 'robosumo-build-guide',
     title: 'How to Build a RoboSumo Robot for Robotics Competitions: A Complete Step-by-Step Guide',
     slug: 'how-to-build-robosumo-robot-iit-bombay-techfest',

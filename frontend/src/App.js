@@ -37,6 +37,7 @@ const AboutPage = lazy(() => import("./pages/AboutPage"));
 const BlogsPage = lazy(() => import("./pages/BlogsPage"));
 const BlogDetailPage = lazy(() => import("./pages/BlogDetailPage"));
 const RoboSumoBuildGuideBlog = lazy(() => import("./pages/blogs/RoboSumoBuildGuideBlog"));
+const ICSECode66BlogPage = lazy(() => import("./pages/blogs/ICSECode66BlogPage"));
 const SuccessStoriesPage = lazy(() => import("./pages/SuccessStoriesPage"));
 const SuccessStoryDetailPage = lazy(() => import("./pages/SuccessStoryDetailPage"));
 const AdminSuccessStories = lazy(() => import("./pages/admin/AdminSuccessStories"));
@@ -249,6 +250,7 @@ function App() {
               <Route path="/join-team" element={<JoinTeamPage />} />
               <Route path="/blogs" element={<BlogsPage />} />
               <Route path="/blogs/how-to-build-robosumo-robot-iit-bombay-techfest" element={<RoboSumoBuildGuideBlog />} />
+              <Route path="/blogs/icse-robotics-ai-code-66-classes-9-10-guide" element={<ICSECode66BlogPage />} />
               <Route path="/blogs/:slug" element={<BlogDetailPage />} />
               <Route path="/success-stories" element={<SuccessStoriesPage />} />
               <Route path="/success-stories/:slug" element={<SuccessStoryDetailPage />} />

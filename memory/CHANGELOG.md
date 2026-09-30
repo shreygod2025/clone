@@ -1,5 +1,43 @@
 # OLL Backend Changelog
 
+## 2026-09-30 — RoboSumo blog polish + new ICSE Code 66 pillar blog
+**Status: COMPLETE · Visual + sticky TOC verified in-browser**
+
+### RoboSumo blog updates
+- Replaced the generic site Navbar with the **same sticky pill-nav** used on `/techfest` (OLL logo · Techfest logo · Buy Kit · Register) — brand continuity for the Techfest funnel.
+- Content now sits on a **white sheet inside the navy gradient** with generous side padding (`px-5 sm:px-8 lg:px-10`) so text no longer bleeds into the right-rail.
+- Body copy up to **18 px / 1.85 line-height**, H2s to **26–32 px** — noticeably easier long-form read.
+- **Fixed the broken sticky right-rail TOC**: the global stylesheet sets `html, body { overflow-x: hidden; }` which silently creates a body-level scroll container and kills `position: sticky` for descendants. Page-scoped override switches these to `overflow: clip` — same overflow behaviour but without a scroll container, so sticky works again. Verified: at `scrollY=2500`, TOC `getBoundingClientRect().top === 24` — pinned under the pill-nav.
+- Added `data-testid="rs-toc-sidebar"` + `max-h-[calc(100vh-6rem)] overflow-y-auto` on the sticky wrapper so long TOCs never spill off-screen.
+
+### Techfest page CTA
+- New pill-nav button **"Build Guide"** (`data-testid="techfest-nav-build-guide"`) and a final-section CTA **"How to Make a RoboSumo Robot"** (`data-testid="techfest-final-build-guide"`) both linking to the RoboSumo blog.
+
+### New: ICSE Robotics & AI Code 66 pillar blog
+- Route: `/blogs/icse-robotics-ai-code-66-classes-9-10-guide` (registered before catch-all `/blogs/:slug`).
+- File: `frontend/src/pages/blogs/ICSECode66BlogPage.jsx` (~800 LOC).
+- Content: 17 sections mirroring the OLL SEO brief — CISCE aims, decision framework, 6 school responsibilities, board assessment format (100+100), minimum-assignments infographic, 7-stage year plan, per-grade assignment lists, digital+physical lab layer, kit-components infographic, Concept→Practical→Application→Assessment cycle with fees table, 5-question provider checklist (with OLL scoring ✓ on every row), Class 9 + Class 10 curriculum grids, book recommendations, teacher-selection guidance, OLL Code 66 program summary + CTA card, real 100/100 topper results table, adopting schools, readiness checklist, and a 5-question FAQ.
+- All 7 verified CISCE infographics from `Archive 5.zip` uploaded to `/blog-assets/icse-code66/` with keyword-rich alt text.
+- Same SEO stack as RoboSumo: `useSeo` for title/description/canonical/og/twitter, imperative `useEffect` for `article:*` + `hreflang` extras, **Article + BreadcrumbList + FAQPage** JSON-LD, single H1, matching sticky pill-nav, matching sticky right-rail TOC with scroll-spy.
+- Registered in `App.js`, added to `BlogsPage` `DEFAULT_BLOGS` (top position), and added to both the backend dynamic sitemap and static `public/sitemap.xml` with priority 0.9.
+
+### Cross-links from Home & ICSE 9-10 landing
+- **Homepage** (`LandingPage.jsx`): new blog callout card just above the footer with the Code 66 ecosystem infographic + red "Read the guide →" CTA (`data-testid="home-icse-blog-callout"`).
+- **ICSE 9-10 landing** (`RoboticsICSE910Landing.jsx`): new blog callout section after `SchoolRelatedPrograms` with the same layout (`data-testid="icse-blog-callout"`).
+
+### Files
+- `frontend/src/pages/blogs/RoboSumoBuildGuideBlog.jsx` — pill-nav, sticky TOC fix, typography, margins
+- `frontend/src/pages/blogs/ICSECode66BlogPage.jsx` (new)
+- `frontend/public/blog-assets/icse-code66/*.jpg` (8 new infographics)
+- `frontend/src/pages/TechfestPage.jsx` — 2 new build-guide CTAs
+- `frontend/src/pages/LandingPage.jsx` — homepage blog callout
+- `frontend/src/pages/school/RoboticsICSE910Landing.jsx` — landing blog callout
+- `frontend/src/pages/BlogsPage.jsx` — new default card
+- `frontend/src/App.js` — new route
+- `backend/routes/seo.py` + `frontend/public/sitemap.xml` — sitemap entries
+
+
+
 ## 2026-09-30 — Server-side proposal PDF renderer + WhatsApp attachment
 **Status: COMPLETE · End-to-end tested (signed webhook → TwiML `<Media>` → 200 PDF)**
 

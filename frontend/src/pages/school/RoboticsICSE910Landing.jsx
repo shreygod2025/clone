@@ -1285,6 +1285,50 @@ export default function RoboticsICSE910Landing() {
 
       <SchoolRelatedPrograms current="robotics-icse-9-10" theme="light" testid="icse-related-programs" />
 
+      {/* ── Blog callout: full implementation guide ────────────────── */}
+      <section
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14"
+        data-testid="icse-blog-callout"
+      >
+        <a
+          href="/blogs/icse-robotics-ai-code-66-classes-9-10-guide"
+          className="group relative block rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-md hover:shadow-xl transition-shadow"
+        >
+          <div className="grid md:grid-cols-[1.3fr_1fr] gap-0">
+            <div className="p-8 lg:p-10">
+              <span className="inline-block text-[11px] tracking-[0.2em] uppercase font-semibold text-[#DC2626] mb-3">
+                Deep dive · 22 min read
+              </span>
+              <h3
+                className="text-2xl md:text-3xl font-bold text-[#0A1F44] leading-tight mb-3"
+                style={{ fontFamily: 'Manrope, sans-serif' }}
+              >
+                ICSE Robotics &amp; AI Code 66: Complete Guide for Classes 9 &amp; 10
+              </h3>
+              <p className="text-slate-600 text-[15px] leading-relaxed mb-5">
+                Everything you need to plan and implement Code 66 at your
+                school — CISCE syllabus, assessment pattern, lab setup,
+                Python environment, teacher support and a ready-to-run
+                readiness checklist.
+              </p>
+              <span className="inline-flex items-center gap-2 text-[#DC2626] font-semibold group-hover:gap-3 transition-all">
+                Read the guide →
+              </span>
+            </div>
+            <div className="hidden md:block bg-slate-50 border-l border-slate-100">
+              <img
+                src="/blog-assets/icse-code66/oll-code66-program-ecosystem.jpg"
+                alt="OLL Code 66 Program ecosystem — ICSE-aligned textbooks, 30+ hands-on activities, robotics kits, Python & AI projects, virtual labs, teacher resources, assessments, and LMS-based progress tracking."
+                width={1200}
+                height={900}
+                loading="lazy"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        </a>
+      </section>
+
       {/* ── Sample Book flipbook lightbox — Grade 9 & 10 Heyzine ─────── */}
       {activeBook && (
         <div
