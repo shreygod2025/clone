@@ -1,5 +1,34 @@
 # OLL Backend Changelog
 
+## 2026-10-02 — Techfest rules + Robo Sumo/Racer kit inclusions refresh
+**Status: COMPLETE · Verified in preview browser**
+
+### 1) Techfest landing page — rules copy update (`TechfestPage.jsx`)
+- RoboSumo Arena stat → **100 cm (1m) circular diameter** (was 150 cm).
+- RoboRacer Track stat → **5 m · 2 lanes** (was 10–12 m).
+- RoboRacer Bot Size stat → **20 × 20 × 15 cm** (was 20 × 15 × 15 cm).
+
+### 2) Robo Sumo kit page — Kit Includes rewrite (`ProductDetailPage.jsx` → `TechfestDeepDive`)
+New inclusions reflect the real shipping bill-of-materials:
+Metal Body (20×25), 2 High-Grip Wheels, 2 High-Torque 300 RPM Johnson Motors, 2 High Power Motor Drivers, ESP32 S3 Wireless Controller, 20 F-F Wires, 1 × LIPO Battery, Lipo Battery Charger, Soldering Iron 25W + Soldering Wire, Sumo Arena Mat (150 cm), Structure Components. Also updated the ribbon strapline (`multi-motor drive`) and the Arena spec panel (100 cm ring).
+
+### 3) Robo Racer kit page — Making-of video + Kit Includes rewrite
+- New **"Making of the Kit"** section inserted between the hero ribbon and the body grid (parallel to the existing Sumo build-tutorial block) — embeds `youtube-nocookie.com/embed/n24iJFNf0C0` with lazy-load + strict referrer policy. `data-testid="pdp-roboracer-video"`.
+- New inclusions: 1 × RC Chassis, 1 × ESP32 S3, 1 × Castor Wheel, 2 × Motors, 2 × Motor Drivers, 2 × Wheels, 1 × LIPO Battery, Lipo Battery Charger, User Manual, 5m Racing Track.
+- Ribbon strapline updated to `1v1 racing kit · 5m racing track · battery included · out-of-box race.` and Arena spec panel to `5 m straight · 2 parallel lanes` + `20 × 20 × 15 cm max`.
+
+### 4) Inclusion list UI polish
+- The subtitle `<div>` now only renders when a subtitle string exists — items without a subtitle (e.g. `20 F-F Wires`, `1 × LIPO Battery`) render as a single tight bold row instead of leaving an empty line.
+
+### Verified in browser
+- `/techfest` RoboRacer stats row shows `5 M · 2 LANES` and `20 × 20 × 15 CM`.
+- `/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a` — new Sumo inclusions list rendering with checkmarks.
+- `/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc` — "Making of the RoboRacer Kit" video section + new Racer inclusions list + updated Arena & Bot Rules panel.
+
+### Not run this session (carry-over to next)
+- Full-regression `testing_agent` sweep (user opted to skip). Previous session's Twilio sandbox webhook / server-side PDF / Admin Shop XLSX / blog routing still awaiting automated QA.
+- "Sync Expenses from check-in" manual-trigger button inside Admin Expenses tab (requested earlier, still not implemented).
+
 ## 2026-09-30 — Related-blogs rail, homepage callouts, admin orders XLSX + growth-partners polish
 **Status: COMPLETE · All four asks verified in-browser**
 

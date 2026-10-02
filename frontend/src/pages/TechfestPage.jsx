@@ -70,7 +70,7 @@ const TRACKS = [
     long: 'RoboSumo turns mechanical design and control programming into a head-to-head duel. Teams build a fully autonomous, wireless bot and send it into the arena to push the opponent clean over the edge. No weapons, no flipping — just raw traction, weight distribution, and sharp control strategy going toe-to-toe.',
     hero: SUMO_HERO,
     stats: [
-      { k: 'Arena',     v: '150 cm circular' },
+      { k: 'Arena',     v: '100 cm (1m) circular diameter' },
       { k: 'Bot Size',  v: '25 × 25 × 25 cm' },
       { k: 'Max Weight',v: '3 kg' },
       { k: 'Match',     v: '2 min · Knockout' },
@@ -92,8 +92,8 @@ const TRACKS = [
     long: 'RoboRacer puts drivetrain design and nerve to the test. Teams build RC bots and race them head-to-head down a shared track, from a standing start to the finish line. Whether built for raw top speed or tight control, every bot lives or dies by its traction, steering, and the driver\u2019s reflexes.',
     hero: RACER_HERO,
     stats: [
-      { k: 'Track',      v: '10–12 m · 2 lanes' },
-      { k: 'Bot Size',   v: '20 × 15 × 15 cm' },
+      { k: 'Track',      v: '5 m · 2 lanes' },
+      { k: 'Bot Size',   v: '20 × 20 × 15 cm' },
       { k: 'Max Weight', v: '1.5 kg' },
       { k: 'Heat',       v: '2 min · Knockout' },
     ],

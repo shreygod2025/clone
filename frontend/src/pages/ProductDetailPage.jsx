@@ -638,33 +638,39 @@ const TechfestDeepDive = ({ slug }) => {
     : ['/techfest/5.webp', '/techfest/6.webp', '/techfest/7.webp'];
 
   const inclusions = isSumo ? [
-    { k: 'Metal Body', v: 'Pre-cut & pre-drilled · 20cm × 20cm' },
-    { k: '4 High-Grip Wheels', v: 'Maximum traction, cross-terrain tread' },
-    { k: '4 High-Torque BO Motors', v: 'Aggressive push, low RPM' },
-    { k: 'Dual-Channel Motor Driver', v: 'Precise, independent motor control' },
-    { k: 'Wired Controller', v: 'Ergonomic, low-latency' },
-    { k: 'Soldering Iron 25W', v: '1 per kit — for assembly' },
+    { k: 'Metal Body', v: 'Pre-cut & pre-drilled · 20cm × 25cm' },
+    { k: '2 High-Grip Wheels', v: 'Maximum traction, cross-terrain tread' },
+    { k: '2 High-Torque 300RPM Johnson Motors', v: '' },
+    { k: '2 High Power Motor Drivers', v: 'Precise, independent motor control' },
+    { k: 'ESP32 S3 Wireless Controller', v: 'Ergonomic, low-latency' },
+    { k: '20 F-F Wires', v: '' },
+    { k: '1 × LIPO Battery', v: '' },
+    { k: 'Lipo Battery Charger', v: '' },
+    { k: 'Soldering Iron 25W and Soldering Wire', v: '1 per kit — for assembly' },
     { k: 'Sumo Arena Mat', v: '150cm × 150cm high-contrast fight mat' },
     { k: 'Structure Components', v: 'Screws, nuts, standoffs, hardware' },
   ] : [
     { k: '1 × RC Chassis', v: 'Aerodynamic body, painted & branded' },
-    { k: '1 × RC Controller', v: 'Wireless remote · 1-channel per team' },
-    { k: '2 × Motors + 4 Wheels', v: 'Tuned drivetrain' },
-    { k: '1 × Battery Holder + 2 × AA', v: 'Ready to power on out of the box' },
-    { k: '1 × Switch, 1 × Screwdriver', v: 'Plus screws, nuts & stickers' },
-    { k: '1 × User Manual', v: 'Step-by-step build & code guide' },
-    { k: 'Racing Track', v: 'Modular 240cm × 120cm track with ramps + turns' },
+    { k: '1 × ESP32 S3', v: '' },
+    { k: '1 × Castor Wheel', v: '' },
+    { k: '2 × Motors', v: '' },
+    { k: '2 × Motor Drivers', v: '' },
+    { k: '2 × Wheels', v: 'Tuned drivetrain' },
+    { k: '1 × LIPO Battery', v: '' },
+    { k: 'Lipo Battery Charger', v: '' },
+    { k: 'User Manual', v: 'Step-by-step build & code guide' },
+    { k: '5m Racing Track', v: '' },
   ];
 
   const arenaSpecs = isSumo ? [
-    { k: 'Arena', v: '150 cm circular ring, marked boundary' },
+    { k: 'Arena', v: '100 cm (1m) circular diameter, marked boundary' },
     { k: 'Bot Envelope', v: '25 × 25 × 25 cm max' },
     { k: 'Bot Weight', v: '3 kg max (incl. battery)' },
     { k: 'Control', v: 'Autonomous, wired or wireless RC' },
     { k: 'Match', v: '2 min · knockout · first push-out wins' },
   ] : [
-    { k: 'Track', v: '10–12 m straight · 2 parallel lanes' },
-    { k: 'Bot Envelope', v: '20 × 15 × 15 cm max' },
+    { k: 'Track', v: '5 m straight · 2 parallel lanes' },
+    { k: 'Bot Envelope', v: '20 × 20 × 15 cm max' },
     { k: 'Bot Weight', v: '1.5 kg max (incl. battery)' },
     { k: 'Control', v: 'Wireless RC only · 1 channel per team' },
     { k: 'Heat', v: '2 min · knockout · first across finish wins' },
@@ -682,8 +688,8 @@ const TechfestDeepDive = ({ slug }) => {
                 {isSumo ? 'Robo Sumo · Battle-Ready Kit' : 'Robo Racer · Race-Ready Kit'}
               </h2>
               <div className="text-sm text-white/80 mt-1 font-light">
-                {isSumo ? 'Full metal chassis · 4-motor drive · 150cm arena mat · everything for the ring.'
-                        : '1v1 racing kit · modular 240cm × 120cm track · batteries included · out-of-box race.'}
+                {isSumo ? 'Full metal chassis · multi-motor drive · 150cm arena mat · everything for the ring.'
+                        : '1v1 racing kit · 5m racing track · battery included · out-of-box race.'}
               </div>
             </div>
             <Link
@@ -731,6 +737,33 @@ const TechfestDeepDive = ({ slug }) => {
           </div>
         )}
 
+        {/* Making of the Kit Video — only on the RoboRacer kit page */}
+        {!isSumo && (
+          <div className="bg-slate-50 border-b border-slate-200 p-6 sm:p-8" data-testid="pdp-roboracer-video">
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[#DC2626] mb-3">
+              Making of the Kit · Behind the build
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-[#0A1F44] mb-1">
+              Making of the RoboRacer Kit
+            </h3>
+            <p className="text-sm text-slate-600 mb-4 max-w-2xl">
+              Chassis, motors, drivetrain and finish — see how every RoboRacer kit is engineered,
+              assembled and race-tuned before it ships to your team.
+            </p>
+            <div className="relative rounded-2xl overflow-hidden bg-black shadow-lg" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube-nocookie.com/embed/n24iJFNf0C0?rel=0&modestbranding=1"
+                title="Making of the RoboRacer Kit — OLL × TechFest IIT Bombay 2026"
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
+
         {/* Body */}
         <div className="grid md:grid-cols-[1.15fr,1fr] gap-0">
           {/* Gallery */}
@@ -759,7 +792,9 @@ const TechfestDeepDive = ({ slug }) => {
                     <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
                       <div className="font-bold text-slate-900">{it.k}</div>
-                      <div className="text-xs text-slate-500 leading-relaxed">{it.v}</div>
+                      {it.v && (
+                        <div className="text-xs text-slate-500 leading-relaxed">{it.v}</div>
+                      )}
                     </div>
                   </li>
                 ))}
