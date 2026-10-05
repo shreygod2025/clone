@@ -6,6 +6,7 @@ import { ArrowLeft, Shield, Loader2, Truck, Store, MapPin, Tag, X, CheckCircle2 
 import { toast } from 'sonner';
 import { useCart } from '../context/CartContext';
 import { openCashfreeCheckout } from '../utils/cashfreeCheckout';
+import { useSeo } from '../hooks/useSeo';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const DELIVERY = 150;
@@ -33,6 +34,13 @@ const ShopCheckoutPage = () => {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [coupon, setCoupon] = useState(null); // { code, discount_amount }
   const navigate = useNavigate();
+
+  // Private flow — do not index even if the cart is empty and we redirect.
+  // Sits above the empty-cart redirect so the meta is in <head> instantly.
+  useSeo({
+    robots: 'noindex, nofollow, noarchive, nosnippet',
+    canonical: 'https://oll.co/shop',
+  });
 
   useEffect(() => {
     if (items.length === 0) {

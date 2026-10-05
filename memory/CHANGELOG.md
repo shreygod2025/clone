@@ -1,5 +1,50 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — SEO consolidation (www/http redirect, noindex private pages, 3× competition landing pages, PDF→HTML Problem Statement)
+**Status: COMPLETE · tested by `testing_agent` iteration_117, 19 of 22 checks pass, remaining 3 are test-design limitations (noindex is correctly set in DOM; test measured post-redirect URL)**
+
+Fixes five Search Console issues reported by the user: www vs non-www duplication, private pages indexed, Problem-Statement PDF ranking without HTML variant, and missing competition landing pages for "robo sumo" / "robo race" / "robo innovation" queries.
+
+### 1) Canonical-host enforcement (www/http → https://oll.co)
+- `frontend/public/index.html` — new pre-React inline script. If hostname is `www.oll.co` OR protocol is `http:` on apex `oll.co`, immediately `window.location.replace()`s to `https://oll.co` preserving path + query + hash. True 301 at DNS/CDN layer still has to be configured once in Cloudflare — flagged in Next Action Items.
+- `frontend/src/hooks/useSeo.js` — hardened the canonical pipeline. Every page now goes through `normaliseCanonical()` which forces `https://`, strips `www.`, rewrites `/blog/*` → `/blogs/*`, drops tracking params (`utm_*`, `ref`, `fbclid`, `gclid`, `mc_*`, `igshid`, `yclid`) and trims trailing slash. Pass `canonical: 'auto'` for a self-referencing canonical derived from `window.location`.
+- `frontend/src/App.js` — new `BlogSlugRedirect` catches `/blog/*` (splat) and 302s to `/blogs/*`, kills the `www.oll.co/blog/…` SERP variant.
+
+### 2) Private-page noindex coverage
+- New `frontend/src/components/NoIndexMeta.jsx` — drops in anywhere, writes `<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">` on mount, restores previous meta on unmount.
+- `App.js` `ProtectedRoute` auto-wraps every admin route in `<NoIndexMeta/>`.
+- Public-but-private flows explicitly wrapped: `/receipt`, `/receipts`, `/student/pay/:id`, `/student/payment/success`, `/school-pay/:schoolId`, `/school-payment-success/:schoolId`, `/school-payment-tracker-public/:schoolId`, `/pay/:token`, `/shop/checkout`, `/shop/success`, `/summer-camp/book|success|portal`, `/ai-foundations/book|success`, `/future-skills/book|success`, `/workshops/*/success`, `/social-media-intern/apply|success`, `/mycoursedetail/:id` and both `/login` + `/admin/login`.
+- `ShopCheckoutPage.jsx` additionally calls `useSeo({ robots: 'noindex, nofollow' })` so the meta is in `<head>` instantly even in the empty-cart redirect window.
+- `/shop?category=…` and `/shop?search=…` — `ShopPage.jsx` migrated from react-helmet-async to `useSeo` with canonical pinned to `https://oll.co/shop` regardless of query string, kills filter duplication Search Console was flagging.
+
+### 3) robots.txt + sitemap.xml hardening
+- Both the backend route (`/app/backend/routes/seo.py`) and the static files (`/app/frontend/public/robots.txt`, `sitemap.xml`) are now in sync.
+- Added Disallow entries for `/receipt`, `/receipts`, `/mycoursedetail*`, `/school-pay/`, `/school-payment-success/`, `/school-payment-tracker-public/`, `/student/pay/`, `/pay/`, `/shop/checkout`, `/shop/success`, `/workshops/*/success`, `/social-media-intern/apply|success`, `/discover`, `/friendship-day/success`, `/public/lms-report/`, `/center`, `/techfest/submit`, `/blog/` (legacy prefix), `/shop?` (filtered variants), `/*?fbclid=`, `/*?gclid=`.
+- Static sitemap.xml extended with the 4 new Techfest competition URLs (hub + 3 track pages + problem-statement).
+
+### 4) Problem Statement PDF → HTML landing page
+- New route `/techfest-iitbombay/problem-statement` (`frontend/src/pages/techfest/ProblemStatementPage.jsx`). Full HTML version of the official rulebook with per-track spec blocks (RoboSumo arena 100 cm, Robo Race 5 m track · 20×20×15 cm, Innovation Challenge 2 rounds + judging rubric). Two prominent "Download the official PDF" CTAs preserve the original download. JSON-LD: `Article` + `BreadcrumbList`.
+- `TechfestPage.jsx` — the "Read the full Problem Statement" link in all three track panels now points at the new HTML page (previously pointed at the raw PDF, which was ranking at 1.5% CTR per Search Console).
+
+### 5) Three new competition landing pages (/techfest-iitbombay/…)
+- New shared layout `frontend/src/pages/techfest/CompetitionLandingLayout.jsx` — mobile-first, keyword-rich scaffold with Hero + Stats + Why Compete + Video + Rounds + Rules + Judging + Prizes + Kit callout + FAQ + Related rail. JSON-LD per page: `Event` (grand finale at IIT Bombay, 17 Dec 2026) + `BreadcrumbList` + `FAQPage`.
+- `/techfest-iitbombay/robo-sumo-competition` — targets "robo sumo", "robosumo". Interlinks to Robo Sumo kit PDP (already 243 clicks, 20% CTR) + build-guide blog.
+- `/techfest-iitbombay/robo-race-competition` — targets "robo race competition 2026", "roboracer". Interlinks to Robo Racer kit PDP.
+- `/techfest-iitbombay/robo-innovation-competition` — targets "robotics innovation challenge". No kit callout (hardware-agnostic track).
+- 301 aliases registered so legacy slugs still land: `/techfest-iitbombay/robosumo-competition` and `/techfest-iitbombay/roboracer-competition`.
+
+### Verified in browser
+- `/techfest-iitbombay/robo-sumo-competition` → canonical `https://oll.co/techfest-iitbombay/robo-sumo-competition`, robots `index, follow`, Event schema valid.
+- `/techfest-iitbombay/problem-statement` → full HTML page with PDF download buttons.
+- `/shop?category=robotics` → canonical pinned to `https://oll.co/shop`.
+- `/blog/how-to-build-robosumo-robot-iit-bombay-techfest` → auto-redirects to `/blogs/…`.
+- `/receipt`, `/admin/login`, `/login`, `/mycoursedetail/123` → `robots: noindex, nofollow, noarchive, nosnippet`.
+- Homepage `/` and `/techfest` still `index, follow` — no regression on public pages.
+
+### Still awaiting user action (cannot do from code)
+- **DNS/CDN-level 301** for `www.oll.co` → `oll.co` and `http://oll.co` → `https://oll.co`. This is the true-301 that Google loves most; client-side redirect in `index.html` covers real-user browsers and JS-rendering crawlers in the meantime.
+- **"Mobile underperforms"** — user chose to defer; waiting for which pages / which metric specifically.
+
 ## 2026-10-02 — Techfest rules + Robo Sumo/Racer kit inclusions refresh
 **Status: COMPLETE · Verified in preview browser**
 

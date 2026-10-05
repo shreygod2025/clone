@@ -1,0 +1,60 @@
+{
+  "summary": "Frontend SEO/routing release tested. 4 new Techfest competition pages render cleanly with correct canonicals, robots meta (index,follow), kit links, stats, prizes, and content. 301 aliases (robosumo→robo-sumo, roboracer→robo-race), blog→blogs splat redirect, shop canonical pinning to https://oll.co/shop under query params, techfest problem-statement link, and robots.txt + static sitemap.xml with all 4 new URLs all PASS. No runtime errors / ogImage crash. 3 noindex gaps identified: /admin/login, /shop/checkout (redirects to /shop), /mycoursedetail/:id (redirects to /login) do not emit noindex,nofollow in meta — robots.txt Disallow covers them, but explicit meta is missing per the test requirement.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/sitemap.xml (backend route in seo.py)", "issue": "Backend route not reachable via preview ingress (/api/sitemap.xml → 404). Mounted at root /sitemap.xml, so in preview env the static /app/frontend/public/sitemap.xml is served. Fine in prod (Cloudflare routes /sitemap.xml to backend), but worth noting that preview cannot exercise the dynamic sitemap."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminLogin page (/admin/login)", "issue": "robots meta is 'index, follow, max-image-preview:large,...' — should be noindex,nofollow. /admin/login is OUTSIDE ProtectedRoute wrapper, so NoIndexMeta is never mounted. Wrap the AdminLogin route (and public /login route) with <NoIndexMeta/> inline.", "selector": "meta[name=robots] on /admin/login", "priority": "HIGH"},
+      {"component": "Shop CheckoutPage (/shop/checkout)", "issue": "Route redirects client-side to /shop before NoIndexMeta can mount. Final rendered page has 'index, follow' robots. Even though robots.txt disallows the path, the explicit test requirement (meta must be noindex,nofollow) fails. Consider setting NoIndexMeta BEFORE the redirect, or render a brief noindex shell.", "selector": "meta[name=robots] on /shop/checkout", "priority": "MEDIUM"},
+      {"component": "MyCourseDetail (/mycoursedetail/:id)", "issue": "Unauth user redirected to /login which has robots 'index, follow'. Also /login itself should emit noindex (user-session route).", "selector": "meta[name=robots] on /login", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results_verified_pass": [
+    "/techfest-iitbombay/robo-sumo-competition renders — H1 'Robo Sumo Competition 2026 — Build. Battle. Dominate.', arena 100 cm, bot 25, 3 kg, ₹75k prize, kit links to /shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a (3 links)",
+    "/techfest-iitbombay/robo-race-competition — 5 m track, 2 lanes, 2 min heats, kit → /shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc",
+    "/techfest-iitbombay/robo-innovation-competition — H1 Robotics Innovation Challenge, Originality 20% / Technical 30% / Impact 25% / Pitch 15% / Team 10% = 100%, 'No regional qualifier', NO kit callout (confirmed 'no mandatory OLL kit')",
+    "/techfest-iitbombay/problem-statement — H1 OLL Robotics Championship — Official Problem Statement, contains 100 cm + 5 m + Download PDF CTAs",
+    "canonical on all 4 new pages = https://oll.co/techfest-iitbombay/… (production host, not preview)",
+    "robots meta on all 4 new pages = 'index, follow, max-image-preview:large, max-snippet:-1'",
+    "/techfest-iitbombay/robosumo-competition → 301/redirect → /techfest-iitbombay/robo-sumo-competition ✓",
+    "/techfest-iitbombay/roboracer-competition → /techfest-iitbombay/robo-race-competition ✓",
+    "/blog/how-to-build-robosumo-robot-iit-bombay-techfest → /blogs/how-to-build-robosumo-robot-iit-bombay-techfest ✓",
+    "/shop?category=robotics canonical = https://oll.co/shop ✓",
+    "/shop?search=foo canonical = https://oll.co/shop ✓",
+    "/receipt robots = noindex, nofollow, noarchive, nosnippet ✓",
+    "/shop/success robots = noindex, nofollow, noarchive, nosnippet ✓",
+    "/school-pay/test123 robots = noindex, nofollow, noarchive, nosnippet ✓",
+    "Regression: /, /techfest, /blogs/<slug> still index,follow ✓",
+    "/techfest problem-statement link data-testid=techfest-problem-statement-sumo href = /techfest-iitbombay/problem-statement ✓",
+    "Static /sitemap.xml contains all 4 new URLs + /techfest ✓",
+    "/robots.txt contains Disallow /school-pay/, /mycoursedetail, /receipt, /receipts, /shop/checkout, /shop/success, /blog/, /shop? ✓",
+    "No pageerror / red overlay / ogImage.startsWith crash on any new page ✓"
+  ],
+  "test_results_verified_fail": [
+    "/admin/login robots meta = 'index, follow' — expected noindex (HIGH)",
+    "/shop/checkout robots meta = 'index, follow' after redirect to /shop",
+    "/mycoursedetail/123 robots meta = 'index, follow' after redirect to /login"
+  ],
+  "action_items": [
+    "Wrap AdminLogin route in <NoIndexMeta/> (currently outside ProtectedRoute, so helper never mounts). Same for public /login.",
+    "For routes that redirect-when-empty (/shop/checkout, /mycoursedetail/:id), emit NoIndexMeta BEFORE the Navigate() so crawler-rendered DOM still carries noindex,nofollow. Alternatively keep as-is since robots.txt already Disallows them — but then update the test expectation.",
+    "Optional: register backend /sitemap.xml at /api/sitemap.xml too, so Emergent preview URL can also hit the dynamic sitemap (prod Cloudflare already routes correctly)."
+  ],
+  "critical_code_review_comments": [
+    "useSeo canonical normalisation + NoIndexMeta pattern is clean and reusable.",
+    "App.js has grown large with many inline NoIndexMeta wrappers — consider a <PrivateRoute> HOC analogous to ProtectedRoute to DRY it up.",
+    "AdminLogin and public Login are the one obvious gap in the private-route wrapping."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not in scope)", "frontend": "~90% (17/20 explicit assertions pass; 3 noindex gaps)"},
+  "seed_data_creation": "none",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All 4 new techfest pages, their canonicals/robots, redirects (robosumo/roboracer aliases, blog→blogs), shop filter canonical, techfest problem-statement link, and static sitemap/robots.txt are verified good. Only remaining noindex-meta gaps are /admin/login, /login, and client-side-redirecting routes (/shop/checkout, /mycoursedetail/:id). Main agent only needs to add NoIndexMeta to AdminLogin + Login components and ensure NoIndexMeta mounts before client-side Navigate() on checkout/mycoursedetail."
+}

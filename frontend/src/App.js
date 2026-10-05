@@ -329,7 +329,7 @@ function App() {
               <Route path="/reports/:token" element={<PublicReports />} />
               
               {/* User Auth Routes */}
-              <Route path="/login" element={<LoginPage />} />
+              <Route path="/login" element={<><NoIndexMeta /><LoginPage /></>} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
               <Route path="/educator-dashboard" element={<EducatorDashboard />} />
               <Route path="/educator-profile" element={<EducatorProfile />} />
@@ -378,7 +378,7 @@ function App() {
               <Route path="/shop/success" element={<><NoIndexMeta /><ShopSuccessPage /></>} />
               
               {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/login" element={<><NoIndexMeta /><AdminLogin /></>} />
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/students" element={<ProtectedRoute permission="students"><AdminStudentCRM /></ProtectedRoute>} />
               <Route path="/admin/link-preview-tester" element={<ProtectedRoute permission="settings"><AdminLinkPreviewTester /></ProtectedRoute>} />
