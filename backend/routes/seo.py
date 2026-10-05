@@ -34,6 +34,12 @@ STATIC_URLS: List[dict] = [
     {"loc": "/techfest-iitbombay/robo-race-competition",                  "priority": "0.9",  "changefreq": "weekly"},
     {"loc": "/techfest-iitbombay/robo-innovation-competition",            "priority": "0.85", "changefreq": "weekly"},
     {"loc": "/techfest-iitbombay/problem-statement",                      "priority": "0.8",  "changefreq": "monthly"},
+    # Tier 1c: Shop category landing pages (new 2026-10-05)
+    {"loc": "/shop",                                                      "priority": "0.9",  "changefreq": "daily"},
+    {"loc": "/shop/category/curriculum-books",                            "priority": "0.85", "changefreq": "weekly"},
+    {"loc": "/shop/category/curriculum-robotic-kits",                     "priority": "0.85", "changefreq": "weekly"},
+    {"loc": "/shop/category/competition-and-advanced-kits",               "priority": "0.9",  "changefreq": "weekly"},
+    {"loc": "/shop/category/individual-components",                       "priority": "0.75", "changefreq": "weekly"},
     # Tier 2: Funnel pages
     {"loc": "/offerings",       "priority": "0.95", "changefreq": "weekly"},
     {"loc": "/student",         "priority": "0.85", "changefreq": "weekly"},

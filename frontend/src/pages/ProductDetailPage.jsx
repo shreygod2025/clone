@@ -11,6 +11,7 @@ import Footer from '../components/Footer';
 import CartDrawer from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
 import { productSlug } from '../utils/slug';
+import { CATEGORY_BY_SLUG, getShopCategorySlug } from '../utils/shopCategories';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -45,6 +46,7 @@ const ProductDetailPage = () => {
 
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
+  const [allShopProducts, setAllShopProducts] = useState([]);
   const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -71,15 +73,49 @@ const ProductDetailPage = () => {
     return () => { mounted = false; };
   }, [slug]);
 
+  // Fetch the full shop catalogue once so "You may also like" can show
+  // STRICTLY same-category peers regardless of what the server's /related
+  // endpoint picked.
+  useEffect(() => {
+    let mounted = true;
+    axios
+      .get(`${API}/shop/products`)
+      .then((r) => mounted && setAllShopProducts(r.data?.products || []))
+      .catch(() => { /* graceful degrade — fall back to server related */ });
+    return () => { mounted = false; };
+  }, []);
+
   const discountPct = useMemo(() => {
     if (!product || !product.mrp || product.mrp <= product.selling_price) return 0;
     return Math.round(((product.mrp - product.selling_price) / product.mrp) * 100);
   }, [product]);
 
   const canonicalUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/shop/product/${(product?.slug) || slug}`;
+    // Canonical ALWAYS points to the production domain so Search Console
+    // doesn't fork the index across preview URLs.
+    return `https://oll.co/shop/product/${(product?.slug) || slug}`;
   }, [product, slug]);
+
+  // Classify the product + its related items into one of our 4 shop
+  // categories so breadcrumb, "You may also like" and the category badge
+  // all read the same source of truth.
+  const shopCategorySlug = useMemo(
+    () => (product ? getShopCategorySlug(product) : null),
+    [product],
+  );
+  const shopCategory = shopCategorySlug ? CATEGORY_BY_SLUG[shopCategorySlug] : null;
+
+  const relatedInCategory = useMemo(() => {
+    if (!shopCategorySlug || !product) return [];
+    // Pool = full shop catalogue (if loaded) + server's related suggestions.
+    const pool = allShopProducts.length ? allShopProducts : (related || []);
+    const sameCat = pool.filter(
+      (p) => getShopCategorySlug(p) === shopCategorySlug && p.id !== product.id,
+    );
+    // Shuffle lightly by id so the same 8 don't appear every page view, but
+    // keep it deterministic within a single session so re-renders are stable.
+    return sameCat.slice(0, 8);
+  }, [allShopProducts, related, shopCategorySlug, product]);
 
   const seoTitle = product
     ? `${product.name.trim()} · ${product.category} · OLL Shop`
@@ -133,19 +169,31 @@ const ProductDetailPage = () => {
   }, [product, canonicalUrl]);
 
   const breadcrumbLd = useMemo(() => {
-    if (!product || typeof window === 'undefined') return null;
-    const origin = window.location.origin;
+    if (!product) return null;
+    const items = [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://oll.co/' },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: 'https://oll.co/shop' },
+    ];
+    if (shopCategory) {
+      items.push({
+        '@type': 'ListItem',
+        position: 3,
+        name: shopCategory.name,
+        item: `https://oll.co/shop/category/${shopCategory.slug}`,
+      });
+    }
+    items.push({
+      '@type': 'ListItem',
+      position: items.length + 1,
+      name: product.name?.trim(),
+      item: canonicalUrl,
+    });
     return {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: 'Shop', item: `${origin}/shop` },
-        { '@type': 'ListItem', position: 3, name: product.category || 'Robotics Kits', item: `${origin}/shop?cat=${encodeURIComponent(product.category || '')}` },
-        { '@type': 'ListItem', position: 4, name: product.name?.trim(), item: canonicalUrl },
-      ],
+      itemListElement: items,
     };
-  }, [product, canonicalUrl]);
+  }, [product, canonicalUrl, shopCategory]);
 
   // Imperatively apply SEO tags to <head> — reliable across React 19 + lazy-loaded routes.
   useEffect(() => {
@@ -244,7 +292,7 @@ const ProductDetailPage = () => {
   // ── UI ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px]">
         {helmetNode}
         {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={() => {}} onAdd={() => {}} /> : <NavBar count={count} openDrawer={openDrawer} />}
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid lg:grid-cols-2 gap-8">
@@ -263,7 +311,7 @@ const ProductDetailPage = () => {
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px]">
         {helmetNode}
         <NavBar count={count} openDrawer={openDrawer} />
         <main className="max-w-3xl mx-auto text-center py-24 px-6" data-testid="pdp-not-found">
@@ -283,7 +331,7 @@ const ProductDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50" data-testid="product-detail-page">
+    <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px]" data-testid="product-detail-page">
       {helmetNode}
 
       {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={handleBuyNow} onAdd={handleAdd} /> : <NavBar count={count} openDrawer={openDrawer} />}
@@ -298,7 +346,17 @@ const ProductDetailPage = () => {
         <ChevronRight className="w-3 h-3 opacity-50" />
         <Link to="/shop" className="hover:text-slate-800">Shop</Link>
         <ChevronRight className="w-3 h-3 opacity-50" />
-        <span className="text-slate-700">{product.category}</span>
+        {shopCategory ? (
+          <Link
+            to={`/shop/category/${shopCategory.slug}`}
+            className="hover:text-slate-800 text-slate-700"
+            data-testid="pdp-breadcrumb-category"
+          >
+            {shopCategory.name}
+          </Link>
+        ) : (
+          <span className="text-slate-700">{product.category}</span>
+        )}
         <ChevronRight className="w-3 h-3 opacity-50" />
         <span className="text-slate-900 font-medium line-clamp-1">{product.name.trim()}</span>
       </nav>
@@ -464,15 +522,28 @@ const ProductDetailPage = () => {
       {/* Techfest deep-dive — only for the two official IIT Bombay Techfest kits */}
       <TechfestDeepDive slug={slug} />
 
-      {/* Related products */}
-      {related.length > 0 && (
+      {/* Related products — scoped to the same shop category so
+          "You may also like" is actually relevant (books-with-books,
+          components-with-components, etc.) */}
+      {relatedInCategory.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16" data-testid="pdp-related">
-          <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            You may also like
-          </h2>
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              {shopCategory ? `More from ${shopCategory.name}` : 'You may also like'}
+            </h2>
+            {shopCategory && (
+              <Link
+                to={`/shop/category/${shopCategory.slug}`}
+                className="text-xs font-bold uppercase tracking-widest text-[#D63031] hover:text-[#B91C1C] inline-flex items-center gap-1"
+                data-testid="pdp-related-view-all"
+              >
+                See all <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {related.map((p) => (
+            {relatedInCategory.map((p) => (
               <Link
                 key={p.id}
                 to={`/shop/product/${p.slug || productSlug(p)}`}
@@ -488,7 +559,9 @@ const ProductDetailPage = () => {
                   />
                 </div>
                 <div className="p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{p.category}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    {CATEGORY_BY_SLUG[getShopCategorySlug(p)]?.short || p.category}
+                  </p>
                   <h3 className="mt-0.5 text-sm font-semibold text-slate-900 line-clamp-2">{p.name?.trim()}</h3>
                   <div className="mt-1 text-sm font-bold text-slate-900">
                     ₹{Number(p.selling_price || 0).toLocaleString('en-IN')}
@@ -508,7 +581,7 @@ const ProductDetailPage = () => {
 
 // ── Reusable NavBar (mirrors ShopPage's, minus category filter) ─────────
 const NavBar = ({ count, openDrawer }) => (
-  <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm" data-testid="pdp-navbar">
+  <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm" data-testid="pdp-navbar">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3 sm:gap-6">
       <Link to="/" className="flex-shrink-0">
         <img src={LOGO_URL} alt="OLL" className="h-8 sm:h-10 w-auto" loading="eager" />
@@ -545,7 +618,7 @@ const TrustBadge = ({ icon, title, sub }) => (
 
 // ── Techfest-branded sticky nav (OLL × Techfest IIT Bombay) — sumo/racer only ─
 const TechfestKitNavBar = ({ count, openDrawer, onBuyNow, onAdd }) => (
-  <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm" data-testid="pdp-techfest-navbar">
+  <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm" data-testid="pdp-techfest-navbar">
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 sm:gap-4">
       <Link to="/techfest" className="flex items-center gap-2 sm:gap-3 flex-shrink-0" data-testid="pdp-techfest-nav-home" aria-label="Back to Techfest campaign">
         <img src={OLL_HORIZONTAL_LOGO} alt="OLL" className="h-7 sm:h-9 w-auto block" loading="eager" />

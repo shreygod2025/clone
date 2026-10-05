@@ -91,6 +91,38 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- ═══════ TIER 1c: Shop + 4 category landing pages ═══════════════════ -->
+  <url>
+    <loc>https://oll.co/shop</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://oll.co/shop/category/curriculum-books</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://oll.co/shop/category/curriculum-robotic-kits</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://oll.co/shop/category/competition-and-advanced-kits</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://oll.co/shop/category/individual-components</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
   <!-- ═══════ TIER 2: Course / Funnel Pages ═════════════════════════════ -->
   <url>
     <loc>https://oll.co/offerings</loc>

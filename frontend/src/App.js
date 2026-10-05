@@ -373,6 +373,7 @@ function App() {
 
               {/* Robotics Kit Shop */}
               <Route path="/shop" element={<ShopPage />} />
+              <Route path="/shop/category/:categorySlug" element={<ShopPage />} />
               <Route path="/shop/product/:slug" element={<ProductDetailPage />} />
               <Route path="/shop/checkout" element={<><NoIndexMeta /><ShopCheckoutPage /></>} />
               <Route path="/shop/success" element={<><NoIndexMeta /><ShopSuccessPage /></>} />
