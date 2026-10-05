@@ -1,5 +1,40 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — OLLBot v4 — broken product links fixed + School/Centers/Brochures/Blogs knowledge
+**Status: COMPLETE · verified in-browser**
+
+Follow-up on v3 — user reported 404s on bot-generated product URLs and missing coverage of school products, centers, brochures and specific regional-round dates. Four fixes:
+
+### 1) Broken product URLs fixed — `_product_slug()` now mirrors the frontend
+Vendor products come with `slug=None`. v3 fallback was linking to `/shop` for everything, but the LLM kept inventing fake slugs like `/product/book-g-1/` or `/shop/product/mm-coupler-2c7ce9a4` that 404 on the live site. Added `_product_slug(product)` in `faq_chat.py` that reproduces `frontend/src/utils/slug.js :: productSlug` 1:1 (`{slugified-name}-{first-8-of-id}`). Verified: bot now links to `https://oll.co/shop/product/book-g-1-97099b46` and that URL resolves to Book-G-1 (₹990) via the shop router. Also added a HARD RULE #3 in the system prompt explicitly banning invented slugs — bot MUST only use URLs that appear verbatim in the live catalog block.
+
+### 2) Techfest regional round dates / venues now authoritative
+Previous bot replied "I don't have specific information about the TechFest regional rounds schedule". Fixed by baking the regional qualifier dates into both the hard-coded authoritative-specs block AND the editable Techfest section in `faq_settings.py`:
+- East — IIT Kanpur — Sat 24 Oct 2026
+- South — RV University Bangalore — Thu 26 Nov 2026
+- West — IIT Bombay — Thu 17 Dec 2026
+- Grand Finale — IIT Bombay — Wed-Fri 16-18 Dec 2026
+
+### 3) Three new live-data injectors — Centers, School Offerings, Blogs
+Backend now pulls on every chat request (gated by admin toggles):
+- `_fetch_live_centers_block()` — reads `db.centers` where `is_active=true`, injects name / address / phone / email / Google Maps link. Verified: "Do you have a center in Mumbai?" → bot lists Andheri + Powai + Dahisar with exact addresses and phone numbers.
+- `_fetch_live_offerings_block()` — reads `db.school_offerings`, groups by category (Robotics / AI & ML / Coding / Financial Literacy), outputs `/school-offerings/<cat-slug>/<id>` URLs. Verified: "We are a CBSE school looking for a robotics program" → bot recommends Robotics & AI Program, Future Skills 4-in-1, CBSE Computational Thinking & AI with real URLs.
+- `_fetch_live_blogs_block()` — reads `db.blogs` where `is_published=true`, top-25 by recency, injects title + category + `/blogs/<slug>`.
+
+### 4) Three new admin-editable knowledge sections
+Added to `FaqSettings` pydantic + `/admin/faq-settings` UI:
+- `school_products` — B2B catalogue (Pre-School, Robotics & AI Program, ICSE Group 3, Future Skills ICSE+CBSE, AI Center, Entrepreneurship, Vibe Coding, Coding Afterschool, FL summer camps…).
+- `centers` — note that the live list is auto-injected; context for how to join, what happens at a center.
+- `brochures` — curated list of PDF download URLs (problem statement PDF, kit datasheets, program brochures).
+
+Also added 4 toggles (one per live data source) in the admin UI instead of a single lumped toggle, so admins can turn off e.g. live blogs if there's a staleness issue without losing live centers.
+
+### Files touched this round
+- `backend/routes/faq_settings.py` — expanded `FaqSettings` model (3 new sections, 3 new toggles), rewrote defaults with regional dates, authoritative "OLL = On Learn Learn" note, strict linking rules.
+- `backend/routes/faq_chat.py` — new `_product_slug()`, `_fetch_live_centers_block()`, `_fetch_live_offerings_block()`, `_fetch_live_blogs_block()`, updated system prompt order & hard-rules, authoritative regional dates.
+- `frontend/src/pages/admin/AdminFaqSettings.jsx` — 3 new sections rendered, 4-toggle live-data card, updated starter chip set.
+
+
 ## 2026-10-05 — OLLBot v3 — live shop catalog, no-external-sellers policy, scroll fix, admin-editable knowledge base
 **Status: COMPLETE · verified end-to-end (frontend + backend curl)**
 

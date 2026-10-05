@@ -68,18 +68,28 @@ except FileNotFoundError:
 _SEP = "=" * 72
 
 
+def _product_slug(product: dict) -> str:
+    """Mirror `frontend/src/utils/slug.js :: productSlug`.
+
+    Format: `{slugified-name}-{first-8-of-id-with-dashes-removed}`.
+    IMPORTANT: must match the frontend 1:1 — the shop router accepts the
+    trailing id fragment, but we build the full slug so the bot's URLs are
+    SEO-correct too.
+    """
+    import re
+    name = (product.get("name") or "").lower().strip()
+    name = re.sub(r"[^a-z0-9]+", "-", name)
+    name = re.sub(r"-+", "-", name).strip("-") or "product"
+    pid = str(product.get("id") or "").replace("-", "")
+    return f"{name}-{pid[:8]}"
+
+
 def _format_live_products(products: List[dict]) -> str:
     """One-liner per product so the LLM can pattern-match on both human
-    names and category keywords.
-
-    Example:
-      - [Competition & Advanced Kits] RoboSumo Championship Kit — ₹5,499 (MRP ₹6,999)
-        https://oll.co/shop/product/robo-sumo-kit-...-22b5228a
-    """
+    names and category keywords. URL is the real SEO slug URL — never a guess."""
     if not products:
         return ""
-    # Keep the prompt compact; top-80 products by default (full catalog is ~120).
-    products = products[:80]
+    products = products[:120]  # cap to keep the prompt bounded
     lines: List[str] = []
     for p in products:
         name = (p.get("name") or "").strip()
@@ -88,8 +98,8 @@ def _format_live_products(products: List[dict]) -> str:
         cat = (p.get("category") or "").strip() or "Uncategorised"
         price = p.get("selling_price")
         mrp = p.get("mrp")
-        slug = p.get("slug") or ""
-        url = f"https://oll.co/shop/product/{slug}" if slug else "https://oll.co/shop"
+        slug = _product_slug(p)
+        url = f"https://oll.co/shop/product/{slug}"
         price_bits: List[str] = []
         if isinstance(price, (int, float)):
             price_bits.append(f"₹{int(price):,}")
@@ -101,10 +111,7 @@ def _format_live_products(products: List[dict]) -> str:
 
 
 async def _fetch_live_products_block() -> str:
-    """Pull the full live product catalog from shop.py, formatted for the LLM.
-
-    Returns '' on any failure so the chatbot gracefully degrades to the
-    static knowledge in the admin settings."""
+    """Pull the full live product catalog from shop.py, formatted for the LLM."""
     try:
         from routes.shop import _fetch_vendor_catalog, _get_overrides_map, _merge_product
         vendor_products = await _fetch_vendor_catalog()
@@ -115,6 +122,85 @@ async def _fetch_live_products_block() -> str:
         return _format_live_products(merged)
     except Exception:
         return ""
+
+
+async def _fetch_live_centers_block() -> str:
+    """Live OLL Centers list — address, phone, email, maps link."""
+    try:
+        docs = await db.centers.find({"is_active": True}, {"_id": 0}).to_list(50)
+    except Exception:
+        return ""
+    if not docs:
+        return ""
+    lines: List[str] = []
+    for c in docs:
+        name = c.get("name") or "OLL Center"
+        city = c.get("city") or ""
+        area = c.get("area") or ""
+        location = ", ".join([x for x in (area, city) if x])
+        bits = [f"- **{name}** ({location})"]
+        if c.get("address"):
+            bits.append(f"  Address: {c['address']}")
+        line2 = []
+        if c.get("contact_phone"):
+            line2.append(f"📞 {c['contact_phone']}")
+        if c.get("contact_email"):
+            line2.append(f"✉️ {c['contact_email']}")
+        if line2:
+            bits.append(f"  {' · '.join(line2)}")
+        if c.get("google_maps_link"):
+            bits.append(f"  Map: {c['google_maps_link']}")
+        lines.append("\n".join(bits))
+    return "\n\n".join(lines)
+
+
+async def _fetch_live_offerings_block() -> str:
+    """School-offerings catalog with canonical URLs."""
+    try:
+        docs = await db.school_offerings.find({}, {"_id": 0}).to_list(200)
+    except Exception:
+        return ""
+    if not docs:
+        return ""
+    # Group by category
+    by_cat: dict[str, list[str]] = {}
+    for o in docs:
+        cat = (o.get("category") or "Other").strip() or "Other"
+        oid = (o.get("id") or "").strip()
+        title = (o.get("title") or "").strip()
+        if not title:
+            continue
+        cat_slug = cat.lower().replace("&", "and").replace(" ", "-")
+        url = f"https://oll.co/school-offerings/{cat_slug}/{oid}" if oid else "https://oll.co/for-schools"
+        by_cat.setdefault(cat, []).append(f"- {title} → {url}")
+    chunks: List[str] = []
+    for cat, items in by_cat.items():
+        chunks.append(f"**{cat}:**\n" + "\n".join(items))
+    return "\n\n".join(chunks)
+
+
+async def _fetch_live_blogs_block() -> str:
+    """Published blog titles + canonical URLs (max 25 most recent)."""
+    try:
+        docs = (
+            await db.blogs.find({"is_published": True}, {"_id": 0})
+            .sort("created_at", -1)
+            .to_list(25)
+        )
+    except Exception:
+        return ""
+    if not docs:
+        return ""
+    lines: List[str] = []
+    for b in docs:
+        slug = (b.get("slug") or "").strip()
+        title = (b.get("title") or "").strip()
+        category = (b.get("category") or "").strip()
+        if not title or not slug:
+            continue
+        tag = f"[{category}] " if category else ""
+        lines.append(f"- {tag}{title} → https://oll.co/blogs/{slug}")
+    return "\n".join(lines)
 
 
 async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
@@ -133,10 +219,13 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
 
     sections: List[str] = [
         "You are OLLBot — the official AI assistant for OLL (On Learn Learn) at https://oll.co.",
-        "You help parents, teachers, students and partner-school admins with questions about:",
-        "• The OLL × TechFest IIT Bombay 2026-27 Robotics Championship",
-        "• OLL's robotics kits, curriculum books and shop",
-        "• OLL learning programs, workshops, summer camps and support",
+        "OLL = **On Learn Learn** (do NOT expand it as 'Open League Learning' or anything else).",
+        "You help parents, teachers, students, principals and partner-school admins with:",
+        "• The OLL × TechFest IIT Bombay 2026-27 Robotics Championship (dates, rules, registration)",
+        "• OLL's robotics kits, curriculum books and shop (public B2C products)",
+        "• OLL's school programs (B2B — Robotics Lab, Future Skills, AI Center, etc.)",
+        "• OLL learning programs, camps, workshops, centers and support",
+        "• Brochures, problem-statement PDFs and blog articles",
         "",
         _SEP,
         "🚫 HARD RULES — NEVER VIOLATE:",
@@ -144,16 +233,21 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "1. NEVER recommend buying from external sellers like Robu.in, Amazon, Flipkart,",
         "   RoboKits India, AliExpress, local electronics markets, or any third party.",
         "   For ALL purchases, direct the user to the OLL Shop (https://oll.co/shop).",
-        "   If a user asks 'where can I buy X', first search the LIVE PRODUCT CATALOG",
-        "   below and link to the matching OLL product; only if nothing matches, say:",
-        "   'This isn\\'t on OLL Shop yet — email support@oll.co and we\\'ll help you source it.'",
+        "   If a user asks 'where can I buy X', search the LIVE PRODUCT CATALOG below",
+        "   and link to the matching OLL product only.",
         "2. NEVER invent facts. If a question isn\\'t covered below, say so plainly and",
         "   offer the human handoff (support@oll.co or the Need Help button bottom-right).",
-        "3. NEVER mention 'the FAQ PDF' or 'my knowledge base' — just answer the question.",
-        "4. NEVER write `<br/>` or any HTML tags in your reply — plain Markdown only.",
+        "3. NEVER guess or shorten a product URL. The ONLY valid product URLs are the",
+        "   full URLs that appear verbatim in the LIVE OLL SHOP CATALOG section below",
+        "   (e.g. https://oll.co/shop/product/<full-slug>-<id8>). If the exact product",
+        "   is not in the live catalog, link to the matching CATEGORY page or",
+        "   https://oll.co/shop. Writing a made-up slug like `/product/book-g-1/` is",
+        "   a bug — it 404s.",
+        "4. NEVER mention 'the FAQ PDF' or 'my knowledge base' — just answer the question.",
+        "5. NEVER write `<br/>` or any HTML tags in your reply — plain Markdown only.",
         "   The frontend auto-converts bare https:// URLs into clickable links, so write",
         "   full URLs raw on their own line.",
-        "5. Respond in the user\\'s language. If they write Hindi/Marathi/etc, reply in that language.",
+        "6. Respond in the user\\'s language. If they write Hindi/Marathi/etc, reply in that language.",
         "",
         "TONE & STYLE:",
         "- Be concise. 2-6 sentences per answer. Use bullet lists for 3+ items.",
@@ -185,13 +279,22 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "  • Two rounds — Round 1 online submission (deadline 20 Oct 2026) + Round 2 live pitch at IIT Bombay Grand Finale",
         "  • Team size: 2-4 students + 1 mentor",
         "  • Hardware is OPEN — Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts all allowed",
+        "",
+        "Techfest 2026-27 regional qualifier dates (AUTHORITATIVE):",
+        "  • East  — IIT Kanpur             — Saturday, 24 October 2026",
+        "  • South — RV University Bangalore — Thursday, 26 November 2026",
+        "  • West  — IIT Bombay              — Thursday, 17 December 2026",
+        "  • Grand Finale — IIT Bombay — Wednesday-Friday, 16-18 December 2026",
     ]
 
     # Admin-editable DB sections
     for title, content in [
         ("TECHFEST — rules, dates, prizes:", settings.techfest),
-        ("SHOP — categories, delivery, pricing, policy:", settings.shop),
-        ("LEARNING PROGRAMS, CAMPS & WORKSHOPS:", settings.programs),
+        ("OLL SHOP — categories, delivery, pricing, policy:", settings.shop),
+        ("SCHOOL PRODUCTS (B2B) — labs, Future Skills, AI Center, Group 3:", settings.school_products),
+        ("B2C LEARNING PROGRAMS, CAMPS & WORKSHOPS:", settings.programs),
+        ("OLL CENTERS (physical labs) — notes & how-to-join:", settings.centers),
+        ("BROCHURES & PDF DOWNLOADS:", settings.brochures),
         ("SUPPORT POLICY:", settings.support),
         ("OLL CORE FACTS & SITEMAP:", settings.core_facts),
     ]:
@@ -205,9 +308,45 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
             sections += [
                 "",
                 _SEP,
-                "LIVE OLL SHOP CATALOG (current prices · ALWAYS prefer these over external sellers):",
+                "LIVE OLL SHOP CATALOG (current prices · ALWAYS prefer these over external sellers · ONLY use these exact URLs for product links):",
                 _SEP,
                 live_block,
+            ]
+
+    # Live centers list
+    if settings.include_live_centers:
+        centers_block = await _fetch_live_centers_block()
+        if centers_block:
+            sections += [
+                "",
+                _SEP,
+                "LIVE OLL CENTERS (physical labs with weekly batches — quote the exact address/phone from here):",
+                _SEP,
+                centers_block,
+            ]
+
+    # Live school offerings catalog
+    if settings.include_live_offerings:
+        offerings_block = await _fetch_live_offerings_block()
+        if offerings_block:
+            sections += [
+                "",
+                _SEP,
+                "LIVE SCHOOL OFFERINGS CATALOG (B2B programs with canonical URLs):",
+                _SEP,
+                offerings_block,
+            ]
+
+    # Live blog titles
+    if settings.include_live_blogs:
+        blogs_block = await _fetch_live_blogs_block()
+        if blogs_block:
+            sections += [
+                "",
+                _SEP,
+                "RECENTLY PUBLISHED OLL BLOG ARTICLES (link these when they match the user\\'s question):",
+                _SEP,
+                blogs_block,
             ]
 
     # Vendor FAQ PDFs

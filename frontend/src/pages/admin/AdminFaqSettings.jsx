@@ -17,7 +17,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import {
   Save, Loader2, Trophy, ShoppingBag, GraduationCap, LifeBuoy, Globe,
-  Sparkles, Plus, X, RefreshCw, ExternalLink,
+  Sparkles, Plus, X, RefreshCw, ExternalLink, Building2, MapPin, FileDown,
 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { Button } from '../../components/ui/button';
@@ -32,9 +32,9 @@ const SECTIONS = [
   {
     key: 'techfest',
     title: 'Techfest 2026',
-    desc: 'Rules, dates, arena/track specs, team sizes, prize pool.',
+    desc: 'Rules, dates, arena/track specs, team sizes, prize pool, regional round venues.',
     icon: Trophy,
-    rows: 16,
+    rows: 18,
   },
   {
     key: 'shop',
@@ -44,11 +44,32 @@ const SECTIONS = [
     rows: 16,
   },
   {
+    key: 'school_products',
+    title: 'School Products (B2B)',
+    desc: 'Robotics Lab Setup, Future Skills (ICSE/CBSE), AI Center, Group 3 Subject, Entrepreneurship — the full school programs catalog.',
+    icon: Building2,
+    rows: 20,
+  },
+  {
     key: 'programs',
-    title: 'Learning Programs & Camps',
+    title: 'B2C Learning Programs & Camps',
     desc: 'AI Foundations, Summer Camp, Continuous Learning, Workshops, Future Skills.',
     icon: GraduationCap,
     rows: 14,
+  },
+  {
+    key: 'centers',
+    title: 'OLL Centers (physical labs)',
+    desc: 'Context about centers, batches, how to join. The LIVE centers list below is injected automatically.',
+    icon: MapPin,
+    rows: 10,
+  },
+  {
+    key: 'brochures',
+    title: 'Brochures & PDF downloads',
+    desc: 'Direct links to downloadable PDFs — problem statements, program brochures, kit datasheets.',
+    icon: FileDown,
+    rows: 10,
   },
   {
     key: 'support',
@@ -64,6 +85,17 @@ const SECTIONS = [
     icon: Globe,
     rows: 16,
   },
+];
+
+const LIVE_TOGGLES = [
+  { key: 'include_live_products', label: 'Inject live OLL Shop catalog',
+    desc: 'Pulls every product currently visible on /shop (name, category, ₹price, correct SEO slug URL). Prevents the bot from inventing broken product links.' },
+  { key: 'include_live_centers', label: 'Inject live Centers list',
+    desc: 'Pulls name / address / phone / email / maps-link for every active OLL center so the bot can direct users precisely.' },
+  { key: 'include_live_offerings', label: 'Inject live School Offerings catalog',
+    desc: 'Pulls every B2B school program (Robotics Lab, Future Skills, AI Center…) with its canonical URL.' },
+  { key: 'include_live_blogs', label: 'Inject recent Blogs',
+    desc: 'Pulls up to 25 most-recent published blog titles + slugs so the bot can share articles when relevant.' },
 ];
 
 const AdminFaqSettings = () => {
@@ -173,21 +205,21 @@ const AdminFaqSettings = () => {
           </div>
         </div>
 
-        {/* Live products toggle */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-4">
-          <div>
-            <div className="font-bold text-[#0A1F44] text-sm">Inject live OLL Shop catalog</div>
-            <p className="text-xs text-slate-500 mt-1 max-w-xl">
-              Pulls every product currently visible on <code>/shop</code> (name, category, price, slug)
-              into the prompt so the bot can quote real prices and link to the right product page.
-              Keep this ON unless you&apos;re debugging the raw knowledge.
-            </p>
-          </div>
-          <Switch
-            checked={!!settings.include_live_products}
-            onCheckedChange={(v) => update('include_live_products', v)}
-            data-testid="admin-faq-live-products-toggle"
-          />
+        {/* Live-data injection toggles */}
+        <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
+          {LIVE_TOGGLES.map((t) => (
+            <div key={t.key} className="p-4 flex items-center justify-between gap-4">
+              <div>
+                <div className="font-bold text-[#0A1F44] text-sm">{t.label}</div>
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl">{t.desc}</p>
+              </div>
+              <Switch
+                checked={!!settings[t.key]}
+                onCheckedChange={(v) => update(t.key, v)}
+                data-testid={`admin-faq-toggle-${t.key}`}
+              />
+            </div>
+          ))}
         </div>
 
         {/* Starter chips */}

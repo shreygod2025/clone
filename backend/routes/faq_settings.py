@@ -9,14 +9,23 @@ Each knowledge section is a free-form string that gets concatenated into
 the chatbot's system prompt by `routes/faq_chat.py::build_system_prompt`.
 
 Sections (editable in the admin UI):
-  - techfest       Rules, dates, arena/track specs, prizes
-  - shop           Product catalog overview, categories, delivery, pricing
-  - programs       AI Foundations, Future Skills, Summer Camp, Workshops
-  - support        Support SLAs, contact channels, escalation flow
-  - core_facts     Company facts, URLs, sitemap
+  - techfest         Rules, dates, arena/track specs, prizes, regional venues
+  - shop             Product catalog overview, categories, delivery, pricing
+  - school_products  B2B — school programs, labs, Future Skills, Group 3
+  - programs         Camps, workshops, AI Foundations, continuous learning
+  - centers          Physical lab locations, batches, B2C classes
+  - brochures        Downloadable PDFs — problem statements, program brochures
+  - support          Support SLAs, contact channels, escalation flow
+  - core_facts       Company facts, URLs, sitemap
+
+Live-data sections (not stored — pulled from MongoDB on every chat request):
+  - OLL Shop catalog with real prices & slug URLs (toggle: include_live_products)
+  - OLL Centers list with address/phone/email      (toggle: include_live_centers)
+  - OLL School Offerings catalog with URLs         (toggle: include_live_offerings)
+  - Published blog titles & URLs                   (toggle: include_live_blogs)
 
 Also editable:
-  - suggestions    List of starter-question chips shown on /faq
+  - suggestions      List of starter-question chips shown on /faq
 """
 from __future__ import annotations
 
@@ -35,11 +44,17 @@ router = APIRouter()
 class FaqSettings(BaseModel):
     techfest: str = ""
     shop: str = ""
+    school_products: str = ""
     programs: str = ""
+    centers: str = ""
+    brochures: str = ""
     support: str = ""
     core_facts: str = ""
     suggestions: List[str] = []
     include_live_products: bool = True
+    include_live_centers: bool = True
+    include_live_offerings: bool = True
+    include_live_blogs: bool = True
     updated_at: Optional[str] = None
     updated_by: Optional[str] = None
 
@@ -47,40 +62,64 @@ class FaqSettings(BaseModel):
 DEFAULT_SETTINGS = FaqSettings(
     techfest=(
         "OLL × Techfest IIT Bombay 2026-27 Robotics Championship\n"
-        "- Three tracks: RoboSumo, RoboRacer, Robotics Innovation Challenge.\n"
-        "- Registration deadline: October 10, 2026.\n"
-        "- Round 1 submission (Innovation Challenge): October 20, 2026.\n"
-        "- Regional qualifiers: East (IIT Kanpur, 24 Oct), South (RVU Bangalore, 26 Nov), West (IIT Bombay, 17 Dec).\n"
-        "- Grand Finale: December 16-18, 2026 at IIT Bombay.\n"
-        "- Participation is COMPLETELY FREE across all tracks and rounds.\n"
-        "- Prize pool: ₹1.5L across top-3 teams per track.\n"
-        "- Register: https://oll.co/techfest/register\n"
-        "- Problem statement: https://oll.co/techfest-iitbombay/problem-statement\n"
+        "- Three tracks: RoboSumo (combat), RoboRacer (speed), Robotics Innovation Challenge (ideas).\n"
+        "- Participation is COMPLETELY FREE across every track and every round.\n"
+        "- Prize pool: ₹1.5 Lakh across the top-3 teams per track.\n"
+        "- Target students: Grades 5-12.\n"
+        "- Team size: 2-4 students + 1 mentor/teacher per team.\n"
         "\n"
-        "RoboSumo specs (AUTHORITATIVE — override any older FAQ):\n"
+        "KEY DATES (2026-27 season — AUTHORITATIVE):\n"
+        "- Registration opens: now (free, online).\n"
+        "- Registration DEADLINE: October 10, 2026.\n"
+        "- Round 1 submission (Innovation Challenge): October 20, 2026 — online 90-sec video + 3-slide PDF.\n"
+        "\n"
+        "REGIONAL QUALIFIER ROUNDS (physical, Round 2):\n"
+        "- East Qualifier  — IIT Kanpur             — Saturday, 24 October 2026\n"
+        "- South Qualifier — RV University, Bangalore — Thursday, 26 November 2026\n"
+        "- West Qualifier  — IIT Bombay             — Thursday, 17 December 2026\n"
+        "- Teams unable to attend their regional qualifier can request a video submission —\n"
+        "  reach out to the organisers via support@oll.co.\n"
+        "\n"
+        "GRAND FINALE:\n"
+        "- IIT Bombay, Techfest 2026 campus\n"
+        "- Wednesday → Friday · December 16-18, 2026\n"
+        "- Top teams from each region face off live on the IIT Bombay competition stage.\n"
+        "- Winners announced on 18 December · prizes handed out same evening.\n"
+        "\n"
+        "OFFICIAL LINKS (always paste these raw — frontend auto-links):\n"
+        "- Techfest hub                 → https://oll.co/techfest\n"
+        "- Register (all three tracks)  → https://oll.co/techfest/register\n"
+        "- Submit Round 1 project       → https://oll.co/techfest/submit\n"
+        "- Problem statement (HTML)     → https://oll.co/techfest-iitbombay/problem-statement\n"
+        "- RoboSumo page                → https://oll.co/techfest-iitbombay/robo-sumo-competition\n"
+        "- RoboRacer page               → https://oll.co/techfest-iitbombay/robo-race-competition\n"
+        "- Innovation Challenge page    → https://oll.co/techfest-iitbombay/robo-innovation-competition\n"
+        "\n"
+        "RoboSumo specs (AUTHORITATIVE — override any older PDF/FAQ):\n"
         "- Arena: 100 cm (1 m) circular diameter.\n"
         "- Bot envelope: 25 × 25 × 25 cm max.\n"
         "- Max weight: 3 kg including battery.\n"
-        "- Match: 2 min · 1v1 knockout · first bot pushed out loses.\n"
-        "- Control: autonomous, wired or wireless RC — one channel per team.\n"
-        "- 2 min grace period to fix a non-functional bot.\n"
+        "- Match: 2 min · 1v1 knockout · first bot pushed out of the ring loses.\n"
+        "- Control: autonomous, wired or wireless RC — one radio channel per team.\n"
+        "- 2 min grace period to fix a non-functional bot before forfeit.\n"
         "\n"
-        "RoboRacer specs (AUTHORITATIVE — override any older FAQ):\n"
+        "RoboRacer specs (AUTHORITATIVE):\n"
         "- Track: 5 m straight · 2 parallel lanes.\n"
         "- Bot envelope: 20 × 20 × 15 cm max.\n"
         "- Max weight: 1.5 kg including battery.\n"
         "- Heat: 2 min · wireless RC only · first across the finish line wins.\n"
         "\n"
         "Robotics Innovation Challenge:\n"
-        "- Two rounds — Round 1 online submission + Round 2 live pitch at IIT Bombay Grand Finale.\n"
-        "- Team size: 2-4 students + 1 mentor.\n"
-        "- Hardware is OPEN — Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts all allowed.\n"
+        "- Round 1 online submission (90-sec video + 3-slide PDF, deadline 20 Oct 2026).\n"
+        "- Round 2 live pitch at the IIT Bombay Grand Finale.\n"
+        "- Hardware is OPEN — Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts, custom PCBs.\n"
+        "- Theme: everyday problems solved with robotics + AI (education, agriculture, accessibility, environment).\n"
     ),
     shop=(
         "OLL Shop — robotics kits, curriculum books & electronics components\n"
         "- Main shop URL: https://oll.co/shop (ALL purchases MUST happen here).\n"
         "- Flat ₹150 delivery, pan-India shipping, Cashfree checkout.\n"
-        "- 4 categories (sticky nav on /shop):\n"
+        "- 4 sticky-nav categories:\n"
         "  * Curriculum Books (14 titles, Grades 1-10)  → /shop/category/curriculum-books\n"
         "  * Curriculum Robotic Kits (Grade 1-10)       → /shop/category/curriculum-robotic-kits\n"
         "  * Competition & Advanced Kits (RoboSumo, RoboRacer, Drone, Aeromodel, 3D Pen)\n"
@@ -96,29 +135,126 @@ DEFAULT_SETTINGS = FaqSettings(
         "robots, you MUST recommend the OLL Shop ONLY. NEVER mention or link to\n"
         "Robu.in, Amazon, Flipkart, RoboKits India, AliExpress, local electronics\n"
         "markets or any other third-party seller. If a specific OLL product does not\n"
-        "exist, say 'this isn't on OLL Shop yet — please email support@oll.co and\n"
-        "we'll help you source it.'\n"
+        "exist in the LIVE CATALOG below, say 'this isn\\'t on OLL Shop yet — please\n"
+        "email support@oll.co and we\\'ll help you source it.'\n"
+        "\n"
+        "🔗 PRODUCT LINKING — CRITICAL: Only ever use product URLs that appear verbatim\n"
+        "in the LIVE OLL SHOP CATALOG section below. NEVER invent, guess or shorten a\n"
+        "product slug (e.g. don\\'t write `/product/book-g-1/` or `/shop/product/mm-coupler-...`\n"
+        "unless that exact URL is listed below). If you can\\'t find the exact product\n"
+        "URL, link to the matching CATEGORY page or `https://oll.co/shop` instead.\n"
+    ),
+    school_products=(
+        "OLL for Schools — B2B programs (K-12)\n"
+        "Landing page: https://oll.co/for-schools (hub for all school programs).\n"
+        "Also listed on: https://oll.co/offerings\n"
+        "\n"
+        "PRODUCT FAMILY · ROBOTICS:\n"
+        "- Pre-School — play + explore · Ages 3-5\n"
+        "- Robotics & AI Program for Schools (FLAGSHIP) — Grades 1-8 · turnkey lab + curriculum\n"
+        "  → https://oll.co/school-offerings/robotics/robotics-lab-setup\n"
+        "- ICSE — Group 3 Subject (9th & 10th) — board-mapped elective\n"
+        "  → https://oll.co/school-offerings/robotics/icse-group3-kits\n"
+        "- Robotics Curriculum with Take-home Kits & Books (Grades 1-10)\n"
+        "  → https://oll.co/school-offerings/robotics/robotics-curriculum-kits\n"
+        "- Robotics Exhibition Preparation / Host a Robotics Exhibition in your school\n"
+        "- Participate in Robotics Competitions at IIT Bombay (Techfest tie-in)\n"
+        "- Robotics Books, Robotics Kits (standalone purchases)\n"
+        "\n"
+        "PRODUCT FAMILY · COMPUTER SCIENCE / FUTURE SKILLS:\n"
+        "- ICSE — Future Skills — 4-in-1 (ICT · Coding · AI · Robotics) · Grades 1-8\n"
+        "- CBSE — Future Skills — 4-in-1 (ICT · Coding · AI · Robotics) · Grades 1-8\n"
+        "- CBSE — Computational Thinking & AI — CBSE Acad-15/2026 elective · Grades 9-10\n"
+        "\n"
+        "PRODUCT FAMILY · AI & ML:\n"
+        "- Launch an AI Center for Excellence (lab setup)\n"
+        "  → https://oll.co/school-offerings/ai/ai-center-excellence\n"
+        "- Agentic AI Workshop for Students / AI Seminar / Agentic AI Summer Camp\n"
+        "- Start AI Services Agency Course (for college students)\n"
+        "\n"
+        "PRODUCT FAMILY · CODING:\n"
+        "- Vibe Coding Seminar\n"
+        "- Coding & Logic Building After School Classes\n"
+        "  → https://oll.co/school-offerings/coding/coding-afterschool\n"
+        "- Coding Summer Camp\n"
+        "\n"
+        "PRODUCT FAMILY · FINANCIAL LITERACY & ENTREPRENEURSHIP:\n"
+        "- Entrepreneurship 3-Day Workshop\n"
+        "  → https://oll.co/school-offerings/financial-literacy/entrepreneurship-workshop\n"
+        "- Skill Titans TV Show & Entrepreneurship Olympiad\n"
+        "- Financial Literacy & Entrepreneurship Program (part of curriculum)\n"
+        "- E-Cell Opening in School / FL Summer Camp\n"
+        "\n"
+        "HOW SCHOOLS ENGAGE:\n"
+        "- Book a live demo → https://oll.co/for-schools (program expert walks through lab + syllabus + outcomes).\n"
+        "- Email: contact@oll.co for a partnership proposal.\n"
+        "- Each program ships with: curriculum books, teacher training, lab setup support, student kits (where applicable).\n"
+        "- 500+ partner schools, 50K+ students currently.\n"
+        "\n"
+        "If a user is a school admin / principal / teacher asking about pricing,\n"
+        "ALWAYS suggest booking the live demo (programs are quoted per school based on\n"
+        "grade bands + student count). Do not fabricate prices.\n"
     ),
     programs=(
-        "OLL Learning Programs\n"
-        "- AI Foundations (NEW · online · Grades 6-12, max 10 students/cohort, 10-day live course)\n"
+        "OLL B2C Programs (students & families)\n"
+        "- AI Foundations (NEW · ONLINE · Grades 6-12, max 10 students/cohort, 10-day live course)\n"
         "    → https://oll.co/ai-foundations\n"
         "- Summer Internship Program (real portfolio, stipend on completion)\n"
-        "- Continuous Learning Program (Robotics · Coding · AI · 3D Design · Grades 1-10 · once a week · OFFLINE)\n"
-        "- Summer Camp 2026 — Mumbai (Andheri West, Mira Road, Dombivli, Dahisar) + Online India\n"
-        "    By skill: Robotics, Coding & Python, AI & ML, 3D Design & Printing, Financial Literacy\n"
-        "    By age: 4-6, 6-8, 8-10, 10-12 (Tech Creators), 12-14, 14-16 (Future Innovators)\n"
+        "    → https://oll.co/summer-internship\n"
+        "- Continuous Learning Program — FLAGSHIP · OFFLINE\n"
+        "    Robotics · Coding · AI · 3D Design · Grades 1-10 · once a week at an OLL Center.\n"
+        "- Summer Camp 2026 — in-person Mumbai + Online India-wide\n"
+        "    Mumbai locations: Andheri West, Mira Road, Dombivli, Dahisar · plus Online all-India.\n"
+        "    By skill: Robotics · Coding & Python · AI & ML · 3D Design & Printing · Financial Literacy\n"
+        "    By age: 4-6 (Little Explorers) · 6-8 · 8-10 · 10-12 (Tech Creators) · 12-14 · 14-16 (Future Innovators)\n"
         "    → https://oll.co/summer-camp\n"
-        "- One-day Workshops & Events (Father's Day Robotics, Mother's Day, Diwali, Christmas family events)\n"
-        "    → https://oll.co/workshops/fathers-day-robotics\n"
+        "- One-day Workshops & Events\n"
+        "    * Father's Day Robotics Workshop → https://oll.co/workshops/fathers-day-robotics\n"
+        "    * Mother's Day, Diwali, Christmas hands-on family events (coming soon)\n"
         "- Future Skills program → https://oll.co/future-skills\n"
-        "- Centers (physical labs) → https://oll.co/centers\n"
-        "- All offerings → https://oll.co/offerings\n"
+        "- All offerings hub → https://oll.co/offerings\n"
+    ),
+    centers=(
+        "OLL Centers — Physical labs where kids attend weekly classes\n"
+        "Hub: https://oll.co/centers\n"
+        "\n"
+        "The LIVE CENTERS LIST below is injected automatically on every reply —\n"
+        "always quote the exact address / phone / email from that live list, not from\n"
+        "memory. If a user asks for a city not in the live list, offer online\n"
+        "programs instead (https://oll.co/ai-foundations · https://oll.co/summer-camp).\n"
+        "\n"
+        "WHAT HAPPENS AT A CENTER:\n"
+        "- Weekly 90-min classes (continuous learning · Grades 1-10)\n"
+        "- Small batches (max 8-10 students) · dedicated educator\n"
+        "- Students build real projects (robots, apps, AI tools) they can take home\n"
+        "- Progress reports shared every 4 weeks with parents\n"
+        "\n"
+        "HOW TO JOIN:\n"
+        "- Walk into any center during business hours OR\n"
+        "- Book a free trial class at https://oll.co/future-skills OR\n"
+        "- Email contact@oll.co with your city — the Growth Partners team will\n"
+        "  reply with the nearest center + available batch times.\n"
+    ),
+    brochures=(
+        "Downloadable OLL brochures & PDFs\n"
+        "- Techfest 2026 Problem Statement PDF → https://oll.co/techfest/problem-statement.pdf\n"
+        "- Techfest 2026 Rulebook (HTML)       → https://oll.co/techfest-iitbombay/problem-statement\n"
+        "- RoboSumo kit datasheet              → https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a (see 'Kit Includes' section)\n"
+        "- RoboRacer kit datasheet             → https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc (see 'Kit Includes' section)\n"
+        "- Robotics & AI Program brochure (for schools) → request via https://oll.co/for-schools (program expert emails it after demo booking)\n"
+        "- Future Skills curriculum brochure (ICSE / CBSE) → request via https://oll.co/for-schools\n"
+        "- Summer Camp 2026 brochure           → https://oll.co/summer-camp (scroll to the download button)\n"
+        "- AI Foundations course outline       → https://oll.co/ai-foundations\n"
+        "- Centers list                        → https://oll.co/centers\n"
+        "\n"
+        "If a user asks for a brochure that isn\\'t in this list, tell them to email\n"
+        "contact@oll.co and the Growth Partners team will share it within a few hours.\n"
     ),
     support=(
         "OLL Support Policy\n"
         "- Public FAQs are at https://oll.co/faq (this page — the chatbot).\n"
-        "- Email: support@oll.co · typical response within a few hours during business days.\n"
+        "- Support email: support@oll.co · typical response within a few hours during business days.\n"
+        "- Business/partnership email: contact@oll.co\n"
         "- WhatsApp / instant chat: use the 'Need Help' button at the bottom-right of any page.\n"
         "- Personal account / order / payment questions: ask the visitor to log in first\n"
         "  (https://oll.co/login) so the bot can see their tickets, otherwise escalate to email.\n"
@@ -130,19 +266,27 @@ DEFAULT_SETTINGS = FaqSettings(
     core_facts=(
         "About OLL (On Learn Learn)\n"
         "- OLL is India's leading school robotics, AI and future-skills partner.\n"
-        "- 400+ partner schools, students across Grades 1-10.\n"
-        "- Website: https://oll.co · Support: support@oll.co\n"
+        "- 500+ partner schools, 50,000+ students across Grades 1-12.\n"
+        "- Website: https://oll.co · Support: support@oll.co · Partnerships: contact@oll.co\n"
         "- Head office: Mumbai, India.\n"
+        "- NOTE: OLL = On Learn Learn. Do NOT expand it as 'Open League Learning' or anything else.\n"
         "\n"
         "COMPLETE SITEMAP — use these exact URLs when a user asks 'where is X?':\n"
         "- Techfest hub                 → https://oll.co/techfest\n"
         "- Register (all three tracks)  → https://oll.co/techfest/register\n"
         "- Submit Round 1 project       → https://oll.co/techfest/submit\n"
         "- Problem Statement HTML       → https://oll.co/techfest-iitbombay/problem-statement\n"
+        "- Problem Statement PDF        → https://oll.co/techfest/problem-statement.pdf\n"
         "- RoboSumo competition page    → https://oll.co/techfest-iitbombay/robo-sumo-competition\n"
         "- RoboRacer competition page   → https://oll.co/techfest-iitbombay/robo-race-competition\n"
         "- Innovation Challenge page    → https://oll.co/techfest-iitbombay/robo-innovation-competition\n"
         "- Main shop                    → https://oll.co/shop\n"
+        "- For Schools (B2B hub)        → https://oll.co/for-schools\n"
+        "- Offerings catalog            → https://oll.co/offerings\n"
+        "- Centers (physical labs)      → https://oll.co/centers\n"
+        "- AI Foundations               → https://oll.co/ai-foundations\n"
+        "- Future Skills                → https://oll.co/future-skills\n"
+        "- Summer Camp 2026             → https://oll.co/summer-camp\n"
         "- Login                        → https://oll.co/login\n"
         "- My bookings / orders         → https://oll.co/my-bookings\n"
         "- Blog                         → https://oll.co/blogs\n"
@@ -150,15 +294,18 @@ DEFAULT_SETTINGS = FaqSettings(
     ),
     suggestions=[
         "How do I register my school for Techfest 2026?",
-        "What are the eligibility criteria for RoboSumo?",
-        "How much does the RoboRacer kit cost?",
-        "What is the Robotics Innovation Challenge about?",
-        "When is the Grand Finale at IIT Bombay?",
-        "What's included in the OLL curriculum kits?",
-        "How do I track my OLL shop order?",
-        "What's the prize money for winners?",
+        "When and where are the Techfest regional rounds?",
+        "What are the RoboSumo arena specs?",
+        "Where can I buy a RoboRacer kit?",
+        "What school programs does OLL offer?",
+        "Where is my nearest OLL center?",
+        "Can I get a brochure for the Robotics & AI Program?",
+        "What's the prize money for Techfest winners?",
     ],
     include_live_products=True,
+    include_live_centers=True,
+    include_live_offerings=True,
+    include_live_blogs=True,
 )
 
 
