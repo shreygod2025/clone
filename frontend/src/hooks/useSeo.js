@@ -15,7 +15,8 @@
  *   useSeo({
  *     title: 'Page title | OLL',
  *     description: '160-char description for SERPs.',
- *     canonical: 'https://oll.co/route',
+ *     canonical: 'https://oll.co/route',   // explicit, OR
+ *     canonical: 'auto',                   // auto self-reference from window.location
  *     robots: 'index, follow, max-image-preview:large',
  *     og: { title, description, image, type, url, siteName },
  *     twitter: { card, title, description, image },
@@ -28,6 +29,44 @@
 import { useEffect } from 'react';
 
 const ATTR = 'data-seo-hook';
+const CANONICAL_HOST = 'https://oll.co';
+
+/**
+ * Normalise ANY URL (or path) into the one canonical form:
+ *   • force https://
+ *   • strip www.
+ *   • rewrite oll.co/blog/… → oll.co/blogs/…  (we moved to /blogs plural)
+ *   • strip any ?utm_*, ?ref=, ?fbclid, ?gclid tracking params
+ *   • strip trailing slash (except root)
+ * Accepts either a full URL or a path starting with /.
+ */
+export const normaliseCanonical = (input) => {
+  if (!input) return CANONICAL_HOST + '/';
+  try {
+    const u = new URL(input, CANONICAL_HOST);
+    // Force https + non-www canonical host
+    u.protocol = 'https:';
+    u.host = 'oll.co';
+    // Legacy /blog/* → /blogs/*
+    if (u.pathname.startsWith('/blog/')) {
+      u.pathname = '/blogs/' + u.pathname.slice('/blog/'.length);
+    } else if (u.pathname === '/blog') {
+      u.pathname = '/blogs';
+    }
+    // Strip tracking params
+    const strip = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+                   'ref', 'fbclid', 'gclid', 'mc_cid', 'mc_eid', 'igshid', 'yclid'];
+    strip.forEach((k) => u.searchParams.delete(k));
+    // Strip trailing slash (keep root)
+    if (u.pathname.length > 1 && u.pathname.endsWith('/')) {
+      u.pathname = u.pathname.replace(/\/+$/, '');
+    }
+    const qs = u.searchParams.toString();
+    return `${u.origin}${u.pathname}${qs ? '?' + qs : ''}`;
+  } catch {
+    return CANONICAL_HOST + (input.startsWith('/') ? input : '/' + input);
+  }
+};
 
 const upsertMeta = (selectorAttrs, content) => {
   if (!content) return null;
@@ -94,10 +133,21 @@ export const useSeo = ({
       );
     }
 
-    // Canonical (link tag, not meta)
+    // Canonical (link tag, not meta) — ALWAYS normalise to https://oll.co form
     let canonicalEl = null;
     let canonicalOriginal;
+    let resolvedCanonical = null;
     if (canonical) {
+      // 'auto' = derive from current location (self-referencing canonical).
+      // Falls back to '/' during SSR / prerender where window is undefined.
+      const raw =
+        canonical === 'auto'
+          ? (typeof window !== 'undefined'
+              ? window.location.pathname + window.location.search
+              : '/')
+          : canonical;
+      resolvedCanonical = normaliseCanonical(raw);
+
       canonicalEl = document.head.querySelector('link[rel="canonical"]');
       if (!canonicalEl) {
         canonicalEl = document.createElement('link');
@@ -105,7 +155,7 @@ export const useSeo = ({
         document.head.appendChild(canonicalEl);
       }
       canonicalOriginal = canonicalEl.getAttribute('href');
-      canonicalEl.setAttribute('href', canonical);
+      canonicalEl.setAttribute('href', resolvedCanonical);
       canonicalEl.setAttribute(ATTR, '1');
     }
 

@@ -36,6 +36,32 @@
         <!-- Canonical (Helmet overrides per-route) -->
         <link rel="canonical" href="https://oll.co/" />
 
+        <!-- ─── CANONICAL HOST REDIRECT ────────────────────────────────
+             Fires BEFORE React mounts. If a visitor lands on
+             www.oll.co, http://oll.co or http://www.oll.co, we hard-
+             replace to the single canonical origin https://oll.co so
+             Google only ever sees one source of truth. True 301s still
+             have to be configured at the DNS/CDN layer, but this gives
+             real users (and clientside crawlers) the correct URL.
+             ────────────────────────────────────────────────────────── -->
+        <script>
+            (function () {
+                try {
+                    var host = window.location.hostname;
+                    var proto = window.location.protocol;
+                    var isOll = host === 'oll.co' || host.endsWith('.oll.co');
+                    var isWww = host === 'www.oll.co';
+                    var isHttp = proto === 'http:';
+                    // Only act for our own apex/www domain — never redirect
+                    // preview URLs (…preview.emergentagent.com) or localhost.
+                    if (isOll && (isWww || (isHttp && host === 'oll.co'))) {
+                        var target = 'https://oll.co' + window.location.pathname + window.location.search + window.location.hash;
+                        window.location.replace(target);
+                    }
+                } catch (e) { /* no-op */ }
+            })();
+        </script>
+
         <!-- Favicons & PWA -->
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />

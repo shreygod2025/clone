@@ -28,6 +28,12 @@ STATIC_URLS: List[dict] = [
     {"loc": "/blogs",       "priority": "0.85", "changefreq": "daily"},
     {"loc": "/blogs/how-to-build-robosumo-robot-iit-bombay-techfest", "priority": "0.9", "changefreq": "weekly"},
     {"loc": "/blogs/icse-robotics-ai-code-66-classes-9-10-guide", "priority": "0.9", "changefreq": "weekly"},
+    # Tier 1b: Techfest IIT Bombay competition hub + per-track pages
+    {"loc": "/techfest",                                                  "priority": "0.95", "changefreq": "weekly"},
+    {"loc": "/techfest-iitbombay/robo-sumo-competition",                  "priority": "0.9",  "changefreq": "weekly"},
+    {"loc": "/techfest-iitbombay/robo-race-competition",                  "priority": "0.9",  "changefreq": "weekly"},
+    {"loc": "/techfest-iitbombay/robo-innovation-competition",            "priority": "0.85", "changefreq": "weekly"},
+    {"loc": "/techfest-iitbombay/problem-statement",                      "priority": "0.8",  "changefreq": "monthly"},
     # Tier 2: Funnel pages
     {"loc": "/offerings",       "priority": "0.95", "changefreq": "weekly"},
     {"loc": "/student",         "priority": "0.85", "changefreq": "weekly"},
@@ -164,19 +170,33 @@ Disallow: /educator-profile
 Disallow: /educator-onboarding
 Disallow: /educator-interview
 Disallow: /my-bookings
+Disallow: /mycoursedetail
+Disallow: /mycoursedetail/
+Disallow: /receipt
+Disallow: /receipts
 Disallow: /school-student/dashboard
 Disallow: /school-student/login
+Disallow: /school-pay/
+Disallow: /school-payment-success/
+Disallow: /school-payment-tracker-public/
 Disallow: /school-tracking
 Disallow: /school-payment-tracker
 Disallow: /school-student/pay
 Disallow: /school-support
+Disallow: /student/pay/
+Disallow: /student/payment/success
 Disallow: /support-flow
 Disallow: /gp-onboarding-track
 Disallow: /gp-self-onboarding
+Disallow: /gp-onboard/
+Disallow: /gp-track/
 Disallow: /team-onboarding
+Disallow: /team-track/
 Disallow: /track-onboarding
+Disallow: /track/
 Disallow: /verify-otp
 Disallow: /payment/return
+Disallow: /pay/
 Disallow: /api/
 Disallow: /summer-camp/portal
 Disallow: /summer-camp/success
@@ -185,12 +205,32 @@ Disallow: /ai-foundations/book
 Disallow: /ai-foundations/success
 Disallow: /future-skills/book
 Disallow: /future-skills/success
+Disallow: /workshops/*/success
 Disallow: /sm-intern/apply
 Disallow: /sm-intern/success
+Disallow: /social-media-intern/apply
+Disallow: /social-media-intern/success
+Disallow: /shop/checkout
+Disallow: /shop/success
+Disallow: /discover
+Disallow: /discover/success
+Disallow: /friendship-day/success
+Disallow: /unsubscribe
+Disallow: /center
 Disallow: /reports/
+Disallow: /public/lms-report/
+Disallow: /add
+Disallow: /add/
+Disallow: /techfest/submit
+# De-dupe: /blog/* is a 301 to /blogs/* — keep crawlers off the legacy variant
+Disallow: /blog/
+# Faceted URLs that duplicate /shop
+Disallow: /shop?*
 Disallow: /*?ref=
 Disallow: /*?utm_*
 Disallow: /*?token=
+Disallow: /*?fbclid=
+Disallow: /*?gclid=
 Disallow: /static/
 
 User-agent: GPTBot
@@ -207,6 +247,9 @@ Crawl-delay: 10
 
 User-agent: AhrefsBot
 Crawl-delay: 10
+
+# Canonical host — Google: do NOT index www.oll.co or http://oll.co variants.
+Host: oll.co
 
 Sitemap: https://oll.co/sitemap.xml
 """

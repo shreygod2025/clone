@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import { ShoppingCart, ShoppingBag, Check, Truck, Shield, Sparkles, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,6 +7,7 @@ import Footer from '../components/Footer';
 import CartDrawer from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
 import { productSlug } from '../utils/slug';
+import { useSeo } from '../hooks/useSeo';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -72,16 +72,28 @@ const ShopPage = () => {
     });
   };
 
+  // SEO — self-referencing canonical that ALWAYS resolves to /shop,
+  // never /shop?category=xxx or /shop?search=yyy. Search Console was
+  // treating every filter combo as a separate indexable URL, diluting
+  // ranking signals away from the real /shop page.
+  useSeo({
+    title: 'Robotics Kit Shop · OLL',
+    description:
+      'Buy OLL Robotics & IoT kits for grades 1-10. Pan-India delivery, secure Cashfree checkout, designed by OLL educators.',
+    canonical: 'https://oll.co/shop',
+    robots: 'index, follow, max-image-preview:large',
+    og: {
+      title: 'Robotics Kit Shop · OLL',
+      description:
+        'Buy OLL Robotics & IoT kits for grades 1-10. Pan-India delivery, secure Cashfree checkout.',
+      url: 'https://oll.co/shop',
+      type: 'website',
+      siteName: 'OLL',
+    },
+  });
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Helmet>
-        <title>Robotics Kit Shop · OLL</title>
-        <meta
-          name="description"
-          content="Buy OLL Robotics & IoT kits for grades 1-10. Pan-India delivery, secure Cashfree checkout, designed by OLL educators."
-        />
-      </Helmet>
-
       {/* Sticky white navbar with logo + search + cart */}
       <nav
         className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm"

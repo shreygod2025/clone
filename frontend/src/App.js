@@ -5,6 +5,15 @@ const CourseRedirect = () => {
   const { courseSlug } = useParams();
   return <Navigate to={`/courses/${courseSlug}`} replace />;
 };
+
+// Dynamic redirect: /blog/* → /blogs/* (consolidates /blog vs /blogs
+// duplication Search Console flagged — kills the www.oll.co/blog/… variants).
+// Uses splat ("*") so deep paths like /blog/foo/bar also 302 to /blogs/foo/bar.
+const BlogSlugRedirect = () => {
+  const location = useLocation();
+  const rest = location.pathname.replace(/^\/blog\/?/, '');
+  return <Navigate to={`/blogs/${rest}${location.search}`} replace />;
+};
 import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from "./components/ScrollToTop";
 import { lazy, Suspense } from "react";
@@ -167,7 +176,12 @@ const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
 const TechfestPage = lazy(() => import("./pages/TechfestPage"));
 const TechfestRegisterPage = lazy(() => import("./pages/TechfestRegisterPage"));
 const TechfestSubmitPage = lazy(() => import("./pages/TechfestSubmitPage"));
+const RoboSumoCompetitionPage = lazy(() => import("./pages/techfest/RoboSumoCompetitionPage"));
+const RoboRacerCompetitionPage = lazy(() => import("./pages/techfest/RoboRacerCompetitionPage"));
+const RoboInnovationCompetitionPage = lazy(() => import("./pages/techfest/RoboInnovationCompetitionPage"));
+const ProblemStatementPage = lazy(() => import("./pages/techfest/ProblemStatementPage"));
 const AccessDenied = lazy(() => import("./pages/admin/AccessDenied"));
+import NoIndexMeta from "./components/NoIndexMeta";
 
 const ProtectedRoute = ({ children, permission = null }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -223,7 +237,15 @@ const ProtectedRoute = ({ children, permission = null }) => {
     }
   }
 
-  return children;
+  return (
+    <>
+      {/* Every admin / authenticated route is noindex, nofollow —
+          Google Search Console was indexing /admin, /educator-dashboard,
+          /my-bookings etc. after they appeared in internal links. */}
+      <NoIndexMeta />
+      {children}
+    </>
+  );
 };
 
 function App() {
@@ -258,15 +280,16 @@ function App() {
               <Route path="/resources/:slug" element={<ResourcesPage />} />
               <Route path="/faq" element={<FAQPage />} />
               <Route path="/faqs" element={<FAQPage />} />
-              <Route path="/receipt" element={<PublicReceiptPage />} />
-              <Route path="/receipts" element={<PublicReceiptPage />} />
+              <Route path="/receipt" element={<><NoIndexMeta /><PublicReceiptPage /></>} />
+              <Route path="/receipts" element={<><NoIndexMeta /><PublicReceiptPage /></>} />
               <Route path="/centers" element={<CentersPage />} />
               
               {/* URL Redirects for old/external links */}
               <Route path="/team" element={<Navigate to="/join-team" replace />} />
               <Route path="/blog" element={<Navigate to="/blogs" replace />} />
+              <Route path="/blog/*" element={<BlogSlugRedirect />} />
               <Route path="/help" element={<Navigate to="/faq" replace />} />
-              <Route path="/mycoursedetail/:id" element={<Navigate to="/login" replace />} />
+              <Route path="/mycoursedetail/:id" element={<><NoIndexMeta /><Navigate to="/login" replace /></>} />
               <Route path="/all-courses" element={<Navigate to="/offerings" replace />} />
               <Route path="/about-us" element={<Navigate to="/about" replace />} />
               {/* Fix old indexed course URLs: /course/:slug → /courses/:slug */}
@@ -281,13 +304,13 @@ function App() {
               <Route path="/track/:token" element={<SchoolTrackingPage />} />
               
               {/* Student Payment Page */}
-              <Route path="/student/pay/:studentId" element={<StudentPayment />} />
-              <Route path="/student/payment/success" element={<StudentPayment />} />
+              <Route path="/student/pay/:studentId" element={<><NoIndexMeta /><StudentPayment /></>} />
+              <Route path="/student/payment/success" element={<><NoIndexMeta /><StudentPayment /></>} />
               
               {/* School Student Payment Page (Public) */}
-              <Route path="/school-pay/:schoolId" element={<SchoolStudentPayment />} />
-              <Route path="/school-payment-success/:schoolId" element={<SchoolStudentPayment />} />
-              <Route path="/school-payment-tracker-public/:schoolId" element={<SchoolPaymentTrackerPublic />} />
+              <Route path="/school-pay/:schoolId" element={<><NoIndexMeta /><SchoolStudentPayment /></>} />
+              <Route path="/school-payment-success/:schoolId" element={<><NoIndexMeta /><SchoolStudentPayment /></>} />
+              <Route path="/school-payment-tracker-public/:schoolId" element={<><NoIndexMeta /><SchoolPaymentTrackerPublic /></>} />
               
               {/* School Student Login & Dashboard */}
               <Route path="/school-student/login" element={<SchoolStudentLogin />} />
@@ -320,39 +343,39 @@ function App() {
               <Route path="/courses/:courseSlug" element={<CoursePage />} />
 
               {/* Summer Camp 2026 */}
-              <Route path="/summer-camp/book" element={<SummerCampBookingPage />} />
-              <Route path="/summer-camp/success" element={<SummerCampSuccessPage />} />
-              <Route path="/summer-camp/portal" element={<SummerCampPortalPage />} />
+              <Route path="/summer-camp/book" element={<><NoIndexMeta /><SummerCampBookingPage /></>} />
+              <Route path="/summer-camp/success" element={<><NoIndexMeta /><SummerCampSuccessPage /></>} />
+              <Route path="/summer-camp/portal" element={<><NoIndexMeta /><SummerCampPortalPage /></>} />
               <Route path="/summer-camp/:type/:slug" element={<SummerCampSEOPage />} />
               <Route path="/summer-camp" element={<SummerCampLandingPage />} />
               <Route path="/summer-camp/:ageGroup" element={<SummerCampLandingPage />} />
 
               {/* AI Foundations Course */}
               <Route path="/ai-foundations" element={<AiFoundationsLandingPage />} />
-              <Route path="/ai-foundations/book" element={<AiFoundationsBookingPage />} />
-              <Route path="/ai-foundations/success" element={<AiFoundationsSuccessPage />} />
+              <Route path="/ai-foundations/book" element={<><NoIndexMeta /><AiFoundationsBookingPage /></>} />
+              <Route path="/ai-foundations/success" element={<><NoIndexMeta /><AiFoundationsSuccessPage /></>} />
 
               {/* Future Skills Continuous Learning Program */}
               <Route path="/future-skills" element={<FutureSkillsLandingPage />} />
               <Route path="/workshops/fathers-day-robotics" element={<FathersDayWorkshopLandingPage />} />
-              <Route path="/workshops/:slug/success" element={<WorkshopSuccessPage />} />
-              <Route path="/future-skills/book" element={<FutureSkillsBookingPage />} />
-              <Route path="/future-skills/success" element={<FutureSkillsSuccessPage />} />
+              <Route path="/workshops/:slug/success" element={<><NoIndexMeta /><WorkshopSuccessPage /></>} />
+              <Route path="/future-skills/book" element={<><NoIndexMeta /><FutureSkillsBookingPage /></>} />
+              <Route path="/future-skills/success" element={<><NoIndexMeta /><FutureSkillsSuccessPage /></>} />
               <Route path="/future-skills/s/:slug" element={<FutureSkillsSourceRedirect />} />
 
               {/* Public white-labeled payment link (admin-generated for parents) */}
-              <Route path="/pay/:token" element={<PaymentRedirect />} />
+              <Route path="/pay/:token" element={<><NoIndexMeta /><PaymentRedirect /></>} />
 
               {/* Social Media Internship Readiness Program */}
               <Route path="/social-media-intern" element={<SocialMediaInternPage />} />
-              <Route path="/social-media-intern/apply" element={<SocialMediaInternApplyPage />} />
-              <Route path="/social-media-intern/success" element={<SocialMediaInternSuccessPage />} />
+              <Route path="/social-media-intern/apply" element={<><NoIndexMeta /><SocialMediaInternApplyPage /></>} />
+              <Route path="/social-media-intern/success" element={<><NoIndexMeta /><SocialMediaInternSuccessPage /></>} />
 
               {/* Robotics Kit Shop */}
               <Route path="/shop" element={<ShopPage />} />
               <Route path="/shop/product/:slug" element={<ProductDetailPage />} />
-              <Route path="/shop/checkout" element={<ShopCheckoutPage />} />
-              <Route path="/shop/success" element={<ShopSuccessPage />} />
+              <Route path="/shop/checkout" element={<><NoIndexMeta /><ShopCheckoutPage /></>} />
+              <Route path="/shop/success" element={<><NoIndexMeta /><ShopSuccessPage /></>} />
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -364,6 +387,20 @@ function App() {
               <Route path="/techfest" element={<TechfestPage />} />
               <Route path="/techfest/register" element={<TechfestRegisterPage />} />
               <Route path="/techfest/submit" element={<TechfestSubmitPage />} />
+              {/* ─── IIT Bombay Techfest SEO landing pages ────────────────
+                   One keyword-targeted HTML page per competition track plus
+                   an HTML Problem-Statement page (replaces the orphaned PDF
+                   in Google so a real page can rank for "robo sumo
+                   competition", "robo race competition 2026", etc.). */}
+              <Route path="/techfest-iitbombay/robo-sumo-competition" element={<RoboSumoCompetitionPage />} />
+              <Route path="/techfest-iitbombay/robo-race-competition" element={<RoboRacerCompetitionPage />} />
+              <Route path="/techfest-iitbombay/robo-innovation-competition" element={<RoboInnovationCompetitionPage />} />
+              <Route path="/techfest-iitbombay/problem-statement" element={<ProblemStatementPage />} />
+              {/* Alias — the robo-racer kit landing page used to be the
+                   only hit for "roboracer competition" in Google. Keep the
+                   old path alive via 301 to the new SEO page. */}
+              <Route path="/techfest-iitbombay/roboracer-competition" element={<Navigate to="/techfest-iitbombay/robo-race-competition" replace />} />
+              <Route path="/techfest-iitbombay/robosumo-competition" element={<Navigate to="/techfest-iitbombay/robo-sumo-competition" replace />} />
               <Route path="/school-offerings/robotics/iit-bombay-competitions" element={<Navigate to="/techfest" replace />} />
               <Route path="/school-offerings/robotics/icse-group3-kits" element={<Navigate to="/school/robotics/icse-9-10" replace />} />
               <Route path="/admin/success-stories" element={<ProtectedRoute><AdminSuccessStories /></ProtectedRoute>} />

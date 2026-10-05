@@ -1,5 +1,6 @@
-# ─── OLL Robots.txt — last updated 2026-04-29 ───────────────────────────────
-# Allow search engines, block private/admin/payment/auth flows.
+# ─── OLL Robots.txt — last updated 2026-10-05 ───────────────────────────────
+# Allow search engines, block private/admin/payment/auth/private-flow URLs.
+# Canonical host: https://oll.co (not www., not http).
 
 User-agent: *
 Allow: /
@@ -13,32 +14,72 @@ Disallow: /educator-profile
 Disallow: /educator-onboarding
 Disallow: /educator-interview
 Disallow: /my-bookings
+Disallow: /mycoursedetail
+Disallow: /mycoursedetail/
+Disallow: /receipt
+Disallow: /receipts
 Disallow: /school-student/dashboard
 Disallow: /school-student/login
+Disallow: /school-pay/
+Disallow: /school-payment-success/
+Disallow: /school-payment-tracker-public/
 Disallow: /school-tracking
 Disallow: /school-payment-tracker
 Disallow: /school-student/pay
 Disallow: /school-support
+Disallow: /student/pay/
+Disallow: /student/payment/success
 Disallow: /support-flow
 Disallow: /gp-onboarding-track
 Disallow: /gp-self-onboarding
+Disallow: /gp-onboard/
+Disallow: /gp-track/
 Disallow: /team-onboarding
+Disallow: /team-track/
 Disallow: /track-onboarding
+Disallow: /track/
 Disallow: /verify-otp
 Disallow: /payment/return
+Disallow: /pay/
 Disallow: /api/
 Disallow: /summer-camp/portal
 Disallow: /summer-camp/success
 Disallow: /summer-camp/book
 Disallow: /ai-foundations/book
 Disallow: /ai-foundations/success
+Disallow: /future-skills/book
+Disallow: /future-skills/success
+Disallow: /workshops/*/success
 Disallow: /sm-intern/apply
 Disallow: /sm-intern/success
+Disallow: /social-media-intern/apply
+Disallow: /social-media-intern/success
+Disallow: /shop/checkout
+Disallow: /shop/success
+Disallow: /discover
+Disallow: /discover/success
+Disallow: /friendship-day/success
+Disallow: /unsubscribe
+Disallow: /center
 Disallow: /reports/
+Disallow: /public/lms-report/
+Disallow: /add
+Disallow: /add/
+Disallow: /techfest/submit
+
+# ── Consolidate /blog/* (legacy) → /blogs/* (canonical) ──
+# Every /blog/… URL already 301-redirects to /blogs/… but telling Googlebot
+# not to crawl the legacy prefix speeds up the dedupe process.
+Disallow: /blog/
+
+# ── Faceted / tracking URLs that duplicate real pages ──
 Disallow: /inquiry?
+Disallow: /shop?
 Disallow: /*?ref=
 Disallow: /*?utm_*
 Disallow: /*?token=
+Disallow: /*?fbclid=
+Disallow: /*?gclid=
 
 # ── Block file types that aren't useful in search ──
 Disallow: /*.json$

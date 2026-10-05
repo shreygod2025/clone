@@ -618,16 +618,14 @@ export default function TechfestPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href="/techfest/problem-statement.pdf"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to="/techfest-iitbombay/problem-statement"
                 className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#DC2626] hover:text-[#7f1d1d]"
                 data-testid={`techfest-problem-statement-${track.key}`}
               >
                 Read the full Problem Statement <ArrowRight className="w-3.5 h-3.5" />
-              </a>
-              <p className="tf-body text-[11px] text-slate-500 mt-1">Detailed rules, bot spec, submission format &amp; judging criteria — IIT Bombay OLL Championship 2026-27 PDF.</p>
+              </Link>
+              <p className="tf-body text-[11px] text-slate-500 mt-1">Detailed rules, bot spec, submission format &amp; judging criteria — IIT Bombay OLL Championship 2026-27.</p>
             </div>
 
             {track.rubric && (
