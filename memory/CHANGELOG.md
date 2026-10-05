@@ -1,5 +1,30 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — OLLBot v2 — sticky composer, clickable links, submission link, better model
+**Status: COMPLETE · all 4 user-reported issues verified fixed in-browser**
+
+Four fixes on top of the FAQ chatbot shipped earlier today:
+
+### 1) Composer now ALWAYS pinned to bottom
+Previously used `position: sticky bottom-3` which silently fails because `index.css` sets `html, body { overflow-x: hidden }` (promotes BODY to a scroll container → breaks sticky). Switched to `position: fixed` with a `bg-gradient-to-t from-white` fade behind it so content behind reads cleanly, and added `pb-32` on the chat `<main>` so the final message bubble isn't hidden under the composer. Verified: `composer.getBoundingClientRect().top` reads `1004px` at both `scrollY=0` AND `scrollY=2000`.
+
+### 2) URLs now render as clickable `<a>` links
+Added a bare-URL auto-linker to `utils/richContent.js :: mdToHtml`. The regex catches any raw `https://…` not already inside an href attribute and wraps it in `<a href="…" target="_blank" rel="noopener noreferrer">`. Verified live reply HTML:
+`<a href="https://oll.co/techfest/submit" …>https://oll.co/techfest/submit</a>`.
+
+### 3) Fixed the literal `<br/>` bug
+`mdToHtml` was HTML-escaping the string BEFORE replacing `\n` with `<br/>`, so when the newline-replace step added `<br/>` it was treated as text inside the already-escaped output. Fix: swap newlines for a `\u0001BR\u0001` sentinel BEFORE escape, then replace sentinel → `<br/>` AFTER escape. Verified: `hasLiteralBr: false` on live reply.
+
+### 4) Model switched + full sitemap added to system prompt
+- Switched from `gpt-5.6-terra` → **`claude-sonnet-4-5-20250929`** (Anthropic via Emergent key). Dramatically better at long-context grounding, structured markdown output and following "do NOT contradict these specs" overrides.
+- Added a **COMPLETE SITEMAP** block to the system prompt listing every major URL (register, submit, problem statement HTML + PDF, three competition landings, four shop categories, kit PDPs, offerings, auth routes). Bot can now answer "what is the submission link?" with `https://oll.co/techfest/submit` reliably.
+- Promoted the **AUTHORITATIVE 2026 SPECS** block to the TOP of the prompt (above the FAQ PDF so Claude obeys the overrides first). Verified: when asked "what are the rules for RoboSumo?" the bot cites **100 cm (1 m)** arena, not 150 cm from the stale FAQ PDF.
+- Explicit instruction in the prompt: "Write URLs RAW — NEVER write `<br/>` or any HTML tags".
+
+### Not changed
+- In-memory session store, suggestion chips, feedback 👍/👎, escalation form — unchanged and still working.
+- Backend endpoints unchanged; just the model string + system prompt.
+
 ## 2026-10-05 — Support-tickets metric fix + OLLBot AI chatbot at /faq
 **Status: COMPLETE · testing_agent iteration_120 passed 10/10 (0 failures, 0 action items)**
 

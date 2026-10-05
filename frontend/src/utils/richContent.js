@@ -27,11 +27,15 @@ const escapeHtml = (s = '') =>
  *   • `**bold**`, `__bold__`
  *   • `*italic*`, `_italic_`
  *   • `` `code` ``
- *   • `[text](https://url)`
+ *   • `[text](https://url)`  AND  bare `https://…` URLs (auto-linked)
  *   • `- bullet`  OR  `* bullet`  (unordered list)
  *   • `1. item`                   (ordered list)
  *   • blank-line separated paragraphs
+ *   • single `\n` inside a paragraph → `<br/>`
  */
+// Placeholders used to carry formatting tags across the HTML-escape step.
+const BR_SENTINEL = '\u0001BR\u0001';
+
 export const mdToHtml = (raw = '') => {
   if (!raw) return '';
   const text = String(raw).replace(/\r\n?/g, '\n').trim();
@@ -50,7 +54,13 @@ export const mdToHtml = (raw = '') => {
       const items = lines.map((l) => inline(l.replace(/^\s*\d+\.\s+/, '')));
       out.push(`<ol>${items.map((i) => `<li>${i}</li>`).join('')}</ol>`);
     } else {
-      out.push(`<p>${inline(block.replace(/\n/g, '<br/>'))}</p>`);
+      // Replace newlines with a sentinel BEFORE escape, then restore as <br/>
+      // AFTER escape so the raw '<', '>' characters that live inside '<br/>'
+      // don't get HTML-escaped into '&lt;br/&gt;'. This was a visible bug —
+      // bot replies showed literal '<br/>' in the chat bubble.
+      const withSentinel = block.replace(/\n/g, BR_SENTINEL);
+      const inlined = inline(withSentinel).split(BR_SENTINEL).join('<br/>');
+      out.push(`<p>${inlined}</p>`);
     }
   }
   return out.join('');
@@ -67,9 +77,16 @@ const inline = (txt) => {
   // Italic *text* or _text_   (after bold so ** isn't greedy)
   s = s.replace(/(^|[\s(])\*([^\s*][^*]*?)\*(?=[\s).,!?]|$)/g, '$1<em>$2</em>');
   s = s.replace(/(^|[\s(])_([^\s_][^_]*?)_(?=[\s).,!?]|$)/g, '$1<em>$2</em>');
-  // Links [text](url) — reject anything that isn't http(s) to block js:
+  // Markdown links [text](url) — reject anything that isn't http(s) to block js:
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, label, url) =>
     `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`,
+  );
+  // Auto-link bare URLs. Must NOT match URLs that already live inside an
+  // href="…" attribute above — we check that the match isn't immediately
+  // preceded by `"` or `=`.
+  s = s.replace(
+    /(^|[^"=>])(https?:\/\/[^\s<)]+[^\s<).,!?;:'"])/g,
+    (m, pre, url) => `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`,
   );
   return s;
 };

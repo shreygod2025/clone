@@ -85,11 +85,6 @@ OLL Techfest IIT Bombay 2026-27 Robotics Championship:
   * https://oll.co/techfest-iitbombay/robo-race-competition
   * https://oll.co/techfest-iitbombay/robo-innovation-competition
 
-AUTHORITATIVE 2026 SPECS (always use these numbers — if any FAQ text below conflicts, these win):
-- RoboSumo arena: 100 cm (1 m) circular diameter · bot envelope 25 × 25 × 25 cm max · 3 kg max weight (incl. battery) · 2-minute matches · first bot pushed out loses.
-- RoboRacer track: 5 m straight · 2 parallel lanes · bot envelope 20 × 20 × 15 cm max · 1.5 kg max weight (incl. battery) · 2-minute heats · wireless RC only.
-- Robotics Innovation Challenge: 2 rounds (online submission + Grand Finale pitch at IIT Bombay) · teams of 2–4 students + 1 mentor · hardware is open (Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts).
-
 OLL Shop (robotics kits & books):
 - Shop URL: https://oll.co/shop
 - Four categories:
@@ -108,6 +103,53 @@ Order & payment questions:
 Support policy:
 - Public FAQs are at https://oll.co/faq (this page).
 - For personal account / order / payment issues, visitors should log in.
+
+────────────────────────────────────────────────────────────────────────
+COMPLETE SITEMAP — use these exact URLs when a user asks "where is X?":
+────────────────────────────────────────────────────────────────────────
+Techfest championship:
+- Register (all three tracks)  → https://oll.co/techfest/register
+- Submit Round 1 project       → https://oll.co/techfest/submit
+- Problem Statement (HTML)     → https://oll.co/techfest-iitbombay/problem-statement
+- Problem Statement PDF        → https://oll.co/techfest/problem-statement.pdf
+- Techfest hub                 → https://oll.co/techfest
+- RoboSumo competition page    → https://oll.co/techfest-iitbombay/robo-sumo-competition
+- RoboRacer competition page   → https://oll.co/techfest-iitbombay/robo-race-competition
+- Innovation Challenge page    → https://oll.co/techfest-iitbombay/robo-innovation-competition
+
+Shop:
+- Main shop                    → https://oll.co/shop
+- Curriculum Books             → https://oll.co/shop/category/curriculum-books
+- Curriculum Robotic Kits      → https://oll.co/shop/category/curriculum-robotic-kits
+- Competition & Advanced Kits  → https://oll.co/shop/category/competition-and-advanced-kits
+- Individual Components        → https://oll.co/shop/category/individual-components
+- Robo Sumo kit                → https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a
+- Robo Racer kit               → https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc
+
+Learning & programs:
+- All offerings                → https://oll.co/offerings
+- AI Foundations course        → https://oll.co/ai-foundations
+- Future Skills program        → https://oll.co/future-skills
+- Summer Camp 2026             → https://oll.co/summer-camp
+- Centers (physical labs)      → https://oll.co/centers
+
+Account / support:
+- Login                        → https://oll.co/login
+- My bookings / orders         → https://oll.co/my-bookings
+- Raise a support ticket       → use the "Need Help" button bottom-right of any page
+- Blog (WordPress)             → https://oll.co/blogs
+- About OLL                    → https://oll.co/about
+
+ANSWER STYLE FOR LINK QUESTIONS:
+When the user asks "what is the X link" or "where do I register/submit/pay/track",
+reply with ONE short sentence introducing the link, then paste the FULL URL on its
+own. Do NOT use `<br/>` or any HTML tags — plain Markdown only. The frontend
+auto-converts bare https:// URLs to clickable links, so write them raw:
+
+  You can register for the Robotics Innovation Challenge here:
+  https://oll.co/techfest/register
+
+NEVER write "<br/>" or any angle-bracket tags in your reply.
 """
 
 
@@ -119,16 +161,42 @@ def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "• OLL's robotics kits, curriculum books and shop",
         "• General OLL offerings, pricing, delivery, support",
         "",
+        "=" * 72,
+        "🔒 AUTHORITATIVE 2026 SPECS — HIGHEST PRIORITY, OVERRIDES EVERYTHING BELOW:",
+        "=" * 72,
+        "If any FAQ text or problem-statement text later in this prompt conflicts",
+        "with these numbers, use THESE numbers in your answer, not the ones in the",
+        "FAQ. The FAQ PDF is from an older season and has outdated arena/track specs.",
+        "",
+        "RoboSumo:",
+        "  • Arena: 100 cm (1 m) circular diameter — NOT 150 cm.",
+        "  • Bot envelope: 25 × 25 × 25 cm max",
+        "  • Max weight: 3 kg including battery",
+        "  • Match: 2 min · 1v1 knockout · first bot pushed out loses",
+        "  • Control: autonomous, wired or wireless RC — one channel per team",
+        "  • 2 min grace period to fix a non-functional bot",
+        "",
+        "RoboRacer:",
+        "  • Track: 5 m straight · 2 parallel lanes — NOT 10-12 m, NOT a modular ramp track.",
+        "  • Bot envelope: 20 × 20 × 15 cm max — NOT 20 × 15 × 15 cm.",
+        "  • Max weight: 1.5 kg including battery",
+        "  • Heat: 2 min · wireless RC only · first across finish line wins",
+        "",
+        "Robotics Innovation Challenge:",
+        "  • Two rounds — Round 1 online submission (deadline 20 Oct 2026) + Round 2 live pitch at IIT Bombay Grand Finale",
+        "  • Team size: 2-4 students + 1 mentor",
+        "  • Hardware is OPEN — Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts all allowed",
+        "",
         "TONE & STYLE RULES:",
         "- Be concise. 2-6 sentences per answer. Use bullet lists for 3+ items.",
         "- Friendly, warm, confidence-building. Never robotic.",
-        "- When referencing a page, include its FULL URL (e.g. https://oll.co/techfest/register) so users can click directly.",
+        "- When referencing a page, include its FULL URL (e.g. https://oll.co/techfest/register) so users can click directly. Write URLs RAW (no `<a>`, no `<br/>`, no HTML tags — the frontend auto-converts them to clickable links).",
         "- NEVER make up facts. If the answer is NOT in the context below, say so plainly and offer the human handoff (support@oll.co or the Need Help button).",
         "- NEVER mention 'the FAQ PDF' or 'my knowledge base' — just answer the question.",
         "- Respond in the user's language. If they write in Hindi/Marathi/etc, reply in that language.",
         "",
         "=" * 72,
-        "OLL CORE FACTS (always true, highest priority):",
+        "OLL CORE FACTS:",
         "=" * 72,
         OLL_CORE_FACTS,
     ]
@@ -291,7 +359,7 @@ async def faq_chat(req: FaqChatRequest, request: Request):
         session_id=req.session_id,
         system_message=system,
         initial_messages=initial_messages,
-    ).with_model("openai", "gpt-5.6-terra")
+    ).with_model("anthropic", "claude-sonnet-4-5-20250929")
 
     try:
         reply = await chat.send_message(UserMessage(text=req.message))
