@@ -76,7 +76,7 @@ push the opponent clean over the edge. No weapons, no flipping, just raw tractio
 weight distribution, and sharp control strategy going toe to toe.
 Arena Specifications
 Parameter Specification
-Shape & size Circular arena, approximately 150 cm in diameter
+Shape & size Circular arena, approximately 100 cm (1 m) in diameter
 
 Boundary The arena is marked with a clearly defined circular
 boundary line. A bot is declared out the moment any

@@ -41,6 +41,12 @@ from routes.admin_keys import get_current_user
 router = APIRouter()
 
 
+class YoutubeMapping(BaseModel):
+    youtube_url: str = ""      # Full YouTube URL or video ID
+    description: str = ""      # e.g. "RoboSumo build guide" — helps the LLM pick the right one
+    keywords: str = ""         # comma-separated — e.g. "robo sumo, sumo bot, how to build sumo"
+
+
 class FaqSettings(BaseModel):
     techfest: str = ""
     shop: str = ""
@@ -50,6 +56,15 @@ class FaqSettings(BaseModel):
     brochures: str = ""
     support: str = ""
     core_facts: str = ""
+    # Admin can paste any extra context — exam syllabi, kit datasheets, pricing
+    # grids, Excel-copy-paste. Injected verbatim at the end of the prompt.
+    extra_knowledge: str = ""
+    # List of OLL URLs the admin considers "authoritative" — the bot is told
+    # to always link to these when relevant. Not scraped — just referenced.
+    training_urls: List[str] = []
+    # YouTube videos the bot should embed as answers when the question matches.
+    # Rendered as iframes in the chat UI.
+    youtube_mappings: List[YoutubeMapping] = []
     suggestions: List[str] = []
     include_live_products: bool = True
     include_live_centers: bool = True
@@ -306,6 +321,54 @@ DEFAULT_SETTINGS = FaqSettings(
     include_live_centers=True,
     include_live_offerings=True,
     include_live_blogs=True,
+    extra_knowledge="",
+    training_urls=[
+        "https://oll.co/techfest",
+        "https://oll.co/techfest-iitbombay/problem-statement",
+        "https://oll.co/techfest-iitbombay/robo-sumo-competition",
+        "https://oll.co/techfest-iitbombay/robo-race-competition",
+        "https://oll.co/techfest-iitbombay/robo-innovation-competition",
+        "https://oll.co/shop",
+        "https://oll.co/for-schools",
+        "https://oll.co/centers",
+    ],
+    youtube_mappings=[
+        YoutubeMapping(
+            youtube_url="https://youtu.be/D5ngdbvLMC4",
+            description="RoboSumo competition overview video",
+            keywords="robo sumo, robosumo, sumo bot, sumo competition, sumo rules",
+        ),
+        YoutubeMapping(
+            youtube_url="https://youtu.be/5Egq4njczf4",
+            description="RoboRacer competition overview video",
+            keywords="robo race, roboracer, race competition, race rules, rc race",
+        ),
+        YoutubeMapping(
+            youtube_url="https://youtu.be/Px1kNkio0oY",
+            description="Robotics Innovation Challenge overview video",
+            keywords="innovation challenge, prototype, pitch, innovation competition",
+        ),
+        YoutubeMapping(
+            youtube_url="https://youtu.be/5GsFOwR2gj4",
+            description="Student registration guide",
+            keywords="student registration, how to register, register as student",
+        ),
+        YoutubeMapping(
+            youtube_url="https://youtu.be/Q-L4rrule-Y",
+            description="Educator / Mentor registration guide",
+            keywords="mentor registration, educator registration, teacher registration",
+        ),
+        YoutubeMapping(
+            youtube_url="https://youtu.be/Qdqs0hCc1bY",
+            description="School registration guide",
+            keywords="school registration, how to register school, principal registration",
+        ),
+        YoutubeMapping(
+            youtube_url="https://youtu.be/AwgBPOTevpg",
+            description="How to submit Round 1 project",
+            keywords="submit, submission, round 1 submission, how to submit project",
+        ),
+    ],
 )
 
 

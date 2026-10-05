@@ -55,6 +55,19 @@ def _decode_token(token: str) -> Optional[dict]:
 
 # ─── Load vendor-shipped PDF-extracted knowledge files once ───────────────
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+# NEW (2026-10-05): The official rulebook PDF uploaded by the OLL product
+# team. This supersedes the older techfest_faqs.txt / techfest_problem_statement.txt
+# which had leftover 150 cm arena / 10-12 m track specs from an older season.
+try:
+    OFFICIAL_RULEBOOK = (_DATA_DIR / "techfest_official_rulebook_2026.md").read_text(encoding="utf-8")
+except FileNotFoundError:
+    OFFICIAL_RULEBOOK = ""
+# Verbatim content copied from the live OLL competition landing pages.
+try:
+    OLL_PAGES_VERBATIM = (_DATA_DIR / "oll_pages_verbatim.md").read_text(encoding="utf-8")
+except FileNotFoundError:
+    OLL_PAGES_VERBATIM = ""
+# Legacy PDF-derived knowledge (older season, kept but demoted).
 try:
     FAQ_TEXT = (_DATA_DIR / "techfest_faqs.txt").read_text(encoding="utf-8")
 except FileNotFoundError:
@@ -63,16 +76,36 @@ try:
     PROBLEM_STATEMENT_TEXT = (_DATA_DIR / "techfest_problem_statement.txt").read_text(encoding="utf-8")
 except FileNotFoundError:
     PROBLEM_STATEMENT_TEXT = ""
-# Verbatim content copied from the live OLL competition landing pages —
-# this is the single source of truth for the 2026-27 season. It overrides
-# ANY conflicting fact in the LLM's pretraining data.
-try:
-    OLL_PAGES_VERBATIM = (_DATA_DIR / "oll_pages_verbatim.md").read_text(encoding="utf-8")
-except FileNotFoundError:
-    OLL_PAGES_VERBATIM = ""
 
 
 _SEP = "=" * 72
+
+# Real mailboxes on OLL domains. Anything else on those domains is a hallucination.
+# skills@oll.co is real (hosting a regional qualifier, per the official rulebook).
+_KNOWN_OLL_EMAILS = {"info@oll.co", "skills@oll.co"}
+
+# The system prompt is rebuilt on every request; the live catalog / centers /
+# offerings / blogs blocks dominate its cost (remote fetches + DB reads), so
+# they are cached for a few minutes. Empty (failed) results are never cached.
+_LIVE_BLOCK_TTL_SEC = 300
+
+
+def _ttl_cached(fn):
+    import functools
+    store = {"at": 0.0, "val": None}
+
+    @functools.wraps(fn)
+    async def wrapper():
+        now = time.time()
+        if store["val"] and now - store["at"] < _LIVE_BLOCK_TTL_SEC:
+            return store["val"]
+        val = await fn()
+        if val:
+            store["at"], store["val"] = now, val
+        return val
+
+    wrapper.cache_clear = lambda: store.update(at=0.0, val=None)
+    return wrapper
 
 
 def _product_slug(product: dict) -> str:
@@ -117,6 +150,7 @@ def _format_live_products(products: List[dict]) -> str:
     return "\n".join(lines)
 
 
+@_ttl_cached
 async def _fetch_live_products_block() -> str:
     """Pull the full live product catalog from shop.py, formatted for the LLM."""
     try:
@@ -131,6 +165,7 @@ async def _fetch_live_products_block() -> str:
         return ""
 
 
+@_ttl_cached
 async def _valid_product_urls() -> set[str]:
     """Build the set of currently-valid product URLs so we can sanitize any
     URL the LLM invents at response time. Returns a lowercase set keyed by
@@ -186,6 +221,19 @@ def _sanitize_reply(reply: str, valid_product_urls: set[str]) -> str:
     ):
         reply = re.sub(re.escape(wrong), "info@oll.co", reply, flags=re.IGNORECASE)
 
+    # 2b. Generic guard: the model invents plausible-looking addresses
+    # (techfest@oll.co, techfest@onlearnlearn.com ...). Any address on an OLL
+    # domain that is not a known-real mailbox is rewritten to info@oll.co.
+    def _email_repl(m: re.Match) -> str:
+        return m.group(0) if m.group(0).lower() in _KNOWN_OLL_EMAILS else "info@oll.co"
+
+    reply = re.sub(
+        r"\b[A-Za-z0-9._%+-]+@(?:oll\.co|onlearnlearn\.com|onlinelivelearning\.com)\b",
+        _email_repl,
+        reply,
+        flags=re.IGNORECASE,
+    )
+
     # 3. Wrong-season leakage. Only trip on explicit "TechFest 2025" strings;
     # we don't want to touch unrelated "2025" references.
     reply = re.sub(r"\bTechFest\s*20(2[0-5])\b", "TechFest 2026-27", reply, flags=re.IGNORECASE)
@@ -198,6 +246,7 @@ def _sanitize_reply(reply: str, valid_product_urls: set[str]) -> str:
     return reply
 
 
+@_ttl_cached
 async def _fetch_live_centers_block() -> str:
     """Live OLL Centers list — address, phone, email, maps link."""
     try:
@@ -228,6 +277,7 @@ async def _fetch_live_centers_block() -> str:
     return "\n\n".join(lines)
 
 
+@_ttl_cached
 async def _fetch_live_offerings_block() -> str:
     """School-offerings catalog with canonical URLs."""
     try:
@@ -253,6 +303,7 @@ async def _fetch_live_offerings_block() -> str:
     return "\n\n".join(chunks)
 
 
+@_ttl_cached
 async def _fetch_live_blogs_block() -> str:
     """Published blog titles + canonical URLs (max 25 most recent)."""
     try:
@@ -342,12 +393,20 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "- When referencing a page, include its FULL URL on its own line (e.g. https://oll.co/shop).",
     ]
 
-    # VERBATIM content from the live OLL landing pages — highest-priority source
+    # VERBATIM content from the live OLL landing pages — second-highest priority
+    if OFFICIAL_RULEBOOK:
+        sections += [
+            "",
+            _SEP,
+            "📘 OFFICIAL OLL TECHFEST 2026-27 RULEBOOK (uploaded by OLL product team · HIGHEST-PRIORITY source · ignore any conflicting pretraining memory):",
+            _SEP,
+            OFFICIAL_RULEBOOK,
+        ]
     if OLL_PAGES_VERBATIM:
         sections += [
             "",
             _SEP,
-            "🏆 VERBATIM CONTENT FROM THE LIVE OLL LANDING PAGES (SINGLE SOURCE OF TRUTH):",
+            "🏆 VERBATIM CONTENT FROM THE LIVE OLL LANDING PAGES:",
             _SEP,
             OLL_PAGES_VERBATIM,
         ]
@@ -362,9 +421,39 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         ("BROCHURES & PDF DOWNLOADS:", settings.brochures),
         ("SUPPORT POLICY:", settings.support),
         ("OLL CORE FACTS & SITEMAP:", settings.core_facts),
+        ("EXTRA KNOWLEDGE (pasted by admin — treat as authoritative):", settings.extra_knowledge),
     ]:
         if (content or "").strip():
             sections += ["", _SEP, title, _SEP, content.strip()]
+
+    # Authoritative training URLs — bot is told to always use these verbatim.
+    if settings.training_urls:
+        urls = "\n".join(f"- {u}" for u in settings.training_urls if u.strip())
+        if urls:
+            sections += [
+                "",
+                _SEP,
+                "📚 AUTHORITATIVE OLL PAGES — always link to these when relevant (never invent other paths):",
+                _SEP,
+                urls,
+            ]
+
+    # YouTube video embeds — bot pastes the raw URL on its own line when the
+    # user's question matches the keywords, and the frontend auto-embeds it.
+    if settings.youtube_mappings:
+        yt_lines = []
+        for m in settings.youtube_mappings:
+            if not (m.youtube_url or "").strip():
+                continue
+            yt_lines.append(f"- {m.description} — keywords: {m.keywords}\n  Video: {m.youtube_url}")
+        if yt_lines:
+            sections += [
+                "",
+                _SEP,
+                "🎥 YOUTUBE VIDEO LIBRARY — when the user\\'s question matches the keywords below, INCLUDE the Video URL on its own line in your answer. The frontend will auto-embed it as an iframe. Prefer embedding one relevant video over a long written explanation when a video answers it best.",
+                _SEP,
+                "\n".join(yt_lines),
+            ]
 
     # Live shop catalog
     if settings.include_live_products:
@@ -414,23 +503,8 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
                 blogs_block,
             ]
 
-    # Vendor FAQ PDFs
-    if FAQ_TEXT:
-        sections += [
-            "",
-            _SEP,
-            "VENDOR TECHFEST FAQ (secondary — override with the 2026 specs above on conflict):",
-            _SEP,
-            FAQ_TEXT,
-        ]
-    if PROBLEM_STATEMENT_TEXT:
-        sections += [
-            "",
-            _SEP,
-            "OFFICIAL PROBLEM STATEMENT (bot specs, arena rules, round-by-round progression):",
-            _SEP,
-            PROBLEM_STATEMENT_TEXT,
-        ]
+    # Legacy PDFs intentionally NOT injected — they have outdated 150 cm/10-12 m specs
+    # that contradict the current official rulebook. Keep as data-only, don't inject.
 
     if user_tickets_block:
         sections += [
@@ -444,11 +518,23 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
     sections += [
         "",
         _SEP,
+        "FINAL REMINDER - AUTHORITATIVE FACTS (override the vendor PDFs above and your own memory):",
+        _SEP,
+        "- RoboSumo ring: 100 cm (1 m) circular diameter. Do NOT quote 150 cm as the arena diameter.",
+        "- RoboRacer track: about 5 m long, 2 parallel lanes.",
+        "- The ONLY support email is info@oll.co. Never invent any other address.",
+        "- OLL = On Learn Learn.",
+        "- Only send buyers to the OLL Shop (https://oll.co/shop); never to external sellers.",
+    ]
+
+    sections += [
+        "",
+        _SEP,
         "HANDOFF POLICY:",
         _SEP,
         "If a user's question cannot be answered from the facts above, respond with:",
-        '  "I\'m not sure about that — the best next step is to email support@oll.co or tap the Need Help button at the bottom-right. Would you like me to raise a support ticket for you?"',
-        "If they say yes, instruct them to click the Need Help button or email support@oll.co.",
+        '  "I\'m not sure about that — the best next step is to email info@oll.co or tap the Need Help button at the bottom-right. Would you like me to raise a support ticket for you?"',
+        "If they say yes, instruct them to click the Need Help button or email info@oll.co.",
     ]
     return "\n".join(sections)
 
@@ -548,10 +634,14 @@ async def faq_chat(req: FaqChatRequest, request: Request):
     if not llm_key:
         raise HTTPException(status_code=503, detail="LLM is temporarily unavailable")
 
-    initial_messages = [
+    # LlmChat only honours `system_message` when `initial_messages` is empty
+    # (`self.messages = initial_messages or [system]`). Passing history alone
+    # silently dropped the whole knowledge base from turn 2 onward, so the
+    # system prompt is always sent explicitly as the first message.
+    initial_messages = [{"role": "system", "content": system}] + [
         {"role": m["role"], "content": m["content"]}
         for m in sess["messages"][-20:]
-    ] or None
+    ]
 
     chat = LlmChat(
         api_key=llm_key,

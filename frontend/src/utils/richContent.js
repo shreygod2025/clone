@@ -44,6 +44,30 @@ export const mdToHtml = (raw = '') => {
 
   for (const block of blocks) {
     const lines = block.split('\n');
+
+    // YouTube iframe short-circuit: if a block is ONLY a YouTube URL (ignoring
+    // optional surrounding whitespace or a leading "Video:" / "- " marker),
+    // render it as a responsive iframe instead of a text link.
+    const ytMatch = block.trim().match(
+      /^(?:(?:Video|Watch)\s*:\s*|[-*]\s*)?(https?:\/\/(?:www\.)?(?:youtu\.be|youtube\.com|youtube-nocookie\.com)\/\S+?)\s*$/,
+    );
+    if (ytMatch) {
+      const vid = youtubeIdFromUrl(ytMatch[1]);
+      if (vid) {
+        out.push(
+          `<div class="faq-yt-embed" style="position:relative;width:100%;padding-bottom:56.25%;margin:12px 0;border-radius:12px;overflow:hidden;background:#000;">
+            <iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1"
+              style="position:absolute;inset:0;width:100%;height:100%;border:0;"
+              title="YouTube video"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen></iframe>
+          </div>`,
+        );
+        continue;
+      }
+    }
+
     const isUl = lines.every((l) => /^\s*[-*]\s+/.test(l));
     const isOl = lines.every((l) => /^\s*\d+\.\s+/.test(l));
 

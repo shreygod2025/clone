@@ -65,6 +65,14 @@ const FAQPage = () => {
   // never scrolls to the footer).
   const messageRefs = useRef([]);
 
+  // Hide the global "Need Help?" floating button while this page is mounted —
+  // the chatbot itself is the help channel, and the floating button collides
+  // with our sticky composer on mobile.
+  useEffect(() => {
+    document.body.classList.add('faq-chatbot-open');
+    return () => { document.body.classList.remove('faq-chatbot-open'); };
+  }, []);
+
   const scrollToIndex = useCallback((idx) => {
     const node = messageRefs.current[idx];
     if (!node) return;
@@ -198,17 +206,13 @@ const FAQPage = () => {
       <section className="relative overflow-hidden border-b border-slate-200" data-testid="faq-hero">
         <div className="absolute inset-0 opacity-70"
           style={{ background: 'radial-gradient(1200px 400px at 20% 0%, rgba(214,48,49,0.08), transparent 60%), radial-gradient(1200px 400px at 100% 100%, rgba(10,31,68,0.08), transparent 60%)' }} />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 text-center">
           <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#D63031] shadow-sm">
             <Sparkles className="w-3.5 h-3.5" /> AI-powered · Live
           </div>
-          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#0A1F44]">
+          <h1 className="mt-3 text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#0A1F44]">
             Ask OLLBot anything
           </h1>
-          <p className="mt-3 text-slate-600 max-w-2xl mx-auto text-sm sm:text-base">
-            Trained on the full Techfest rulebook, our kit catalog and the OLL knowledge base.
-            Logged-in users also get instant answers about their own orders and support tickets.
-          </p>
         </div>
       </section>
 
@@ -234,33 +238,36 @@ const FAQPage = () => {
               </div>
             ))}
             {sending && <ThinkingRow />}
-            {/* Scroll runway — guarantees the latest user question can be
-                anchored to the top of the viewport even when the newest
-                answer is short. Without this, the window hits the
-                scrollable bottom early and the question stays mid-page. */}
-            <div aria-hidden className="h-[70vh]" />
+
+            {/* Suggestion chips — right under the welcome message so users don't
+                have to scroll to find them. Only shown when no user message yet. */}
+            {suggestions.length > 0 && messages.filter((m) => m.role === 'user').length === 0 && (
+              <div className="pt-2" data-testid="faq-suggestions">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1 pl-12">
+                  <Lightbulb className="w-3.5 h-3.5" /> Try one of these
+                </div>
+                <div className="flex flex-wrap gap-2 pl-12">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => sendMessage(s)}
+                      className="text-xs bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-400 text-slate-700 rounded-full px-3 py-1.5 font-semibold transition"
+                      data-testid={`faq-suggestion-${s.slice(0, 20).replace(/\W+/g, '-')}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Scroll runway — only after a conversation starts, guarantees the
+                latest user question can be anchored to the top. */}
+            {messages.filter((m) => m.role === 'user').length > 0 && (
+              <div aria-hidden className="h-[70vh]" />
+            )}
           </div>
 
-          {/* Suggestion chips — only shown when no user message yet */}
-          {suggestions.length > 0 && messages.filter((m) => m.role === 'user').length === 0 && (
-            <div className="mt-6" data-testid="faq-suggestions">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1">
-                <Lightbulb className="w-3.5 h-3.5" /> Try one of these
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => sendMessage(s)}
-                    className="text-xs bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-400 text-slate-700 rounded-full px-3 py-1.5 font-semibold transition"
-                    data-testid={`faq-suggestion-${s.slice(0, 20).replace(/\W+/g, '-')}`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </main>
 

@@ -169,7 +169,7 @@ Rules (verbatim):
 - Problem must be real and specific — rooted in a user, community or industry pain point your team has observed first-hand.
 - Solution must be an original robotics / AI / automation prototype designed by the team. No off-the-shelf resellable products.
 - Hardware is OPEN — Arduino, ESP32, Raspberry Pi, Jetson Nano, LEGO SPIKE, 3D-printed parts, LLM APIs, computer vision stacks are all allowed.
-- Team size: 2–4 students + one school mentor.
+- Team size: 3 to 5 members (Innovation Challenge also allows 1-5 or individual).
 - Round 1 submission must include a concept note (≤2 pages) and a prototype video (60–90 sec).
 - Round 2 finalists must bring the physical prototype and demo it live during the pitch at IIT Bombay.
 - Judging panel decision on originality, feasibility and real-world impact is final.
@@ -195,7 +195,7 @@ CROSS-CUTTING TECHFEST FACTS (apply to all three tracks unless noted)
 - Prize pool: ₹1,50,000 per track (₹75k / ₹50k / ₹25k splits).
 - Grand Finale date: 17 December 2026, at IIT Bombay Techfest.
 - Each student picks ONLY ONE track (RoboSumo, RoboRacer OR Innovation Challenge).
-- Eligibility: Grade 6 upward · school teams only · 2–4 students + 1 mentor.
+- Eligibility: Grades 4-12 · school teams only · 3-5 students + 1 mentor (Innovation Challenge: 1-5 or individual).
 - Prize-money payouts: via NEFT after winners submit bank details on-site, with final payment by May 2027.
 - Register: https://oll.co/techfest/register
 - Submit Round 1: https://oll.co/techfest/submit

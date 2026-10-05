@@ -476,3 +476,9 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 .org-role-stack-item > .org-node > .org-card::before {
   display: none;
 }
+
+/* Hide the floating "Need Help?" button on the /faq chatbot page —
+   the chatbot IS the help channel. Prevents mobile overlap with composer. */
+body.faq-chatbot-open .raise-query-btn-faq-safe {
+  display: none !important;
+}

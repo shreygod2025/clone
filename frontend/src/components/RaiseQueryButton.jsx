@@ -1034,7 +1034,7 @@ const RaiseQueryButton = () => {
           bg-[#1E3A5F] backdrop-blur-lg 
           text-white rounded-full shadow-lg 
           hover:bg-[#2d5a8a] hover:shadow-xl hover:scale-105
-          transition-all duration-300 raise-query-btn"
+          transition-all duration-300 raise-query-btn raise-query-btn-faq-safe"
         data-testid="raise-query-btn"
       >
         <MessageCircleQuestion className="w-5 h-5" />

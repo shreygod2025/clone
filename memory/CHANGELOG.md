@@ -1,5 +1,51 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — OLLBot v6 — Official PDF rulebook + YouTube video embeds + mobile fixes
+**Status: COMPLETE · verified end-to-end · all user asks shipped**
+
+User uploaded 2 authoritative PDFs (`OLL Robotics Championship 2026-27.pdf` and `FAQs.pdf`) and reported 4 UI/UX issues. All addressed:
+
+### 1) Official rulebook baked in
+Extracted the full OLL Robotics Championship 2026-27 PDF and the comprehensive FAQ PDF, hand-curated into a new ~400-line knowledge file `/app/backend/data/techfest_official_rulebook_2026.md`. Injected as the HIGHEST priority block in the system prompt (right after hard rules, before the pre-existing landing-page verbatim content). Covers team sizes (3-5 for Sumo/Racer, 1-5 or individual for Innovation), bank-details form flow for prize money, battery voltage limits, kit vs own-build rules, Blix/Witblox/Avishkaar handling, OLL customer-school guaranteed-entry rules, five zonal hubs, exact grade bands (Grades 4-7 Junior / 8-12 Senior), ChatGPT code policy, 3D-print rules, and much more.
+
+Also demoted the stale `techfest_faqs.txt` / `techfest_problem_statement.txt` (they had leftover 150 cm arena / 10-12 m track references from an older season) — kept the files for reference but no longer injected into the prompt.
+
+### 2) YouTube video embeds in chat (new feature)
+- Admin can map (youtube_url, description, keywords) tuples under `/admin/faq-settings`.
+- The system prompt teaches the bot: "when the user's question matches these keywords, paste the Video URL on its own line".
+- Frontend `mdToHtml` detects any YouTube URL on its own line and renders it as a responsive 16:9 iframe (youtube-nocookie, lazy-loaded). Verified: asking "show me a video about robo sumo" now embeds the RoboSumo overview video inline in the chat bubble.
+- Seeded 7 default videos from the FAQ PDF (RoboSumo / RoboRacer / Innovation overviews, student/mentor/school registration guides, Round 1 submission guide).
+
+### 3) Admin can paste any extra knowledge + manage training URLs
+Three new sections in `/admin/faq-settings`:
+- **YouTube Video Library** — list editor with URL + description + keywords per video
+- **Authoritative URLs** — chip-list of OLL URLs the bot always links to (never invents paths)
+- **Extra Knowledge** — big textarea where admin can paste PDF text, Excel rows, kit datasheets, policy FAQs. Everything there is appended verbatim to the prompt as authoritative context. Essentially a self-service PDF-upload substitute that works today (no server-side PDF parsing needed).
+
+### 4) Mobile + layout fixes on /faq
+- Removed the hero description paragraph under "Ask OLLBot anything" (user asked).
+- Starter chips now render **immediately below the welcome bubble** (previously at the end of a tall scroll runway → users had to scroll to the footer to see them).
+- Scroll runway only renders AFTER the user sends their first message (so the chip zone stays compact on first visit).
+- Global "Need Help?" floating button is now hidden on `/faq` via `body.faq-chatbot-open .raise-query-btn-faq-safe { display: none }` — the chatbot IS the help channel. Removes the mobile overlap with the sticky composer.
+
+### Files touched
+- `backend/data/techfest_official_rulebook_2026.md` (new) — authoritative rulebook from PDFs
+- `backend/routes/faq_chat.py` — loads rulebook as highest-priority, injects YouTube library + training URLs + extra_knowledge into prompt
+- `backend/routes/faq_settings.py` — new fields `youtube_mappings`, `training_urls`, `extra_knowledge`; seeded 7 default YouTube videos + 8 default URLs
+- `frontend/src/pages/FAQPage.jsx` — removed hero description, moved chips above runway, added `body.faq-chatbot-open` class on mount
+- `frontend/src/utils/richContent.js` — `mdToHtml` now renders YouTube URLs as 16:9 lazy iframes
+- `frontend/src/components/RaiseQueryButton.jsx` — added `raise-query-btn-faq-safe` class
+- `frontend/src/index.css` — hide rule for the faq-safe class
+- `frontend/src/pages/admin/AdminFaqSettings.jsx` — 3 new sections (YouTube library, Authoritative URLs, Extra Knowledge)
+
+### Verified
+- "How many students for Innovation Challenge?" → 1-5 or individual + Junior Grades 4-7 / Senior Grades 8-12 (per PDF)
+- "When will I get prize money?" → NEFT by May 2027 · 31 Dec 2026 bank-form deadline · exact 4-field bank list (per PDF)
+- "Can we use ChatGPT code?" → Reference only, team must adapt & understand (per PDF)
+- "Show me a video about robo sumo" → embeds the RoboSumo overview video as a playable iframe in the chat bubble
+- Mobile `/faq` → chips visible at top, Need Help hidden, composer at bottom, no overlap
+
+
 ## 2026-10-05 — OLLBot v5 — verbatim live-page knowledge + response sanitiser (kills hallucinations)
 **Status: COMPLETE · verified end-to-end**
 

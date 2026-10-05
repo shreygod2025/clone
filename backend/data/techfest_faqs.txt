@@ -250,7 +250,7 @@ portal.
 Section 3: Technical Rules & Arena Doubts (Robo Sumo)
 If a tiny piece of our robot breaks off and falls outside the ring while the main body is
 inside, are we out? Yes. A robot is declared out the exact moment any part of it (even a
-single wheel or a small broken-off piece) crosses the boundary line of the 150 cm circular
+single wheel or a small broken-off piece) crosses the boundary line of the 100 cm circular
 ring.
 
 Can we use an extending ramp or pushing arm in Robo Sumo? Yes, pushing
@@ -365,7 +365,7 @@ controlled via a wireless remote or phone.
 volts.
 ● When is a bot considered out? The robot is eliminated the exact moment any part
 of it (including a single wheel or a piece that breaks off) crosses the outer line of the
-150 cm circular ring.
+100 cm circular ring.
 3. Track 2: Robo Racer Rules & Specifications
 ● What are the size and weight limits? The racer must fit within a 20 cm x 15 cm x
 15 cm envelope and weigh 1.5 kg or under (including the battery).
@@ -474,7 +474,7 @@ start of a match, it is acceptable as long as its nominal rating is 12V.
 eliminated the exact moment any part of the bot (including a single wheel or a small
 piece that breaks and falls off) crosses the outer boundary line of the circular ring.
 ● What are the dimensions of the Robo Sumo ring? The arena is a circular ring with
-a diameter of 150 cm and is marked with a clear boundary line.
+a diameter of 100 cm and is marked with a clear boundary line.
 ● What happens if both bots exit the ring simultaneously? The referee will
 determine which bot crossed the line first. If the referee cannot determine this, the
 match is immediately restarted.

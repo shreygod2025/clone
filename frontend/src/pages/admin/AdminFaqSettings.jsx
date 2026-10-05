@@ -104,6 +104,8 @@ const AdminFaqSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newChip, setNewChip] = useState('');
+  const [newTrainingUrl, setNewTrainingUrl] = useState('');
+  const [newYt, setNewYt] = useState({ youtube_url: '', description: '', keywords: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -288,6 +290,191 @@ const AdminFaqSettings = () => {
             </div>
           );
         })}
+
+        {/* YouTube video library */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4" data-testid="admin-faq-youtube">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[#0A1F44] text-sm">YouTube Video Library</div>
+              <p className="text-xs text-slate-500">
+                When the user&apos;s question matches the keywords, the bot pastes the Video URL on its
+                own line and the chat UI auto-embeds it as a playable iframe.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2 mb-3">
+            {(settings.youtube_mappings || []).map((m, idx) => (
+              <div key={idx} className="flex items-start gap-2 border border-slate-200 rounded-lg p-2 bg-slate-50/50">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Input
+                    value={m.youtube_url || ''}
+                    onChange={(e) => {
+                      const copy = [...settings.youtube_mappings];
+                      copy[idx] = { ...copy[idx], youtube_url: e.target.value };
+                      update('youtube_mappings', copy);
+                    }}
+                    placeholder="https://youtu.be/VIDEO_ID"
+                    className="text-xs font-mono"
+                  />
+                  <Input
+                    value={m.description || ''}
+                    onChange={(e) => {
+                      const copy = [...settings.youtube_mappings];
+                      copy[idx] = { ...copy[idx], description: e.target.value };
+                      update('youtube_mappings', copy);
+                    }}
+                    placeholder="Short description"
+                    className="text-xs"
+                  />
+                  <Input
+                    value={m.keywords || ''}
+                    onChange={(e) => {
+                      const copy = [...settings.youtube_mappings];
+                      copy[idx] = { ...copy[idx], keywords: e.target.value };
+                      update('youtube_mappings', copy);
+                    }}
+                    placeholder="keywords, comma, separated"
+                    className="text-xs"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    const copy = (settings.youtube_mappings || []).filter((_, i) => i !== idx);
+                    update('youtube_mappings', copy);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-red-600"
+                  aria-label="Remove video"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <Input
+              value={newYt.youtube_url}
+              onChange={(e) => setNewYt({ ...newYt, youtube_url: e.target.value })}
+              placeholder="YouTube URL"
+              className="text-xs font-mono"
+              data-testid="admin-faq-new-yt-url"
+            />
+            <Input
+              value={newYt.description}
+              onChange={(e) => setNewYt({ ...newYt, description: e.target.value })}
+              placeholder="Description"
+              className="text-xs"
+            />
+            <Input
+              value={newYt.keywords}
+              onChange={(e) => setNewYt({ ...newYt, keywords: e.target.value })}
+              placeholder="keywords, comma, separated"
+              className="text-xs"
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!newYt.youtube_url.trim()) { toast.error('YouTube URL is required'); return; }
+                update('youtube_mappings', [...(settings.youtube_mappings || []), { ...newYt }]);
+                setNewYt({ youtube_url: '', description: '', keywords: '' });
+              }}
+              data-testid="admin-faq-new-yt-add"
+            >
+              <Plus className="w-4 h-4 mr-1.5" /> Add video
+            </Button>
+          </div>
+        </div>
+
+        {/* Training URLs */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4" data-testid="admin-faq-training-urls">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <ExternalLink className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[#0A1F44] text-sm">Authoritative URLs</div>
+              <p className="text-xs text-slate-500">
+                OLL page URLs the bot is explicitly told to link to when relevant. Add any
+                landing page here (e.g. new campaign pages, blog posts). The bot gets the
+                exact URL — it never invents a path.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {(settings.training_urls || []).map((u, idx) => (
+              <span key={idx} className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs text-slate-700 font-mono">
+                {u}
+                <button
+                  onClick={() => update('training_urls', settings.training_urls.filter((_, i) => i !== idx))}
+                  className="text-slate-400 hover:text-red-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              value={newTrainingUrl}
+              onChange={(e) => setNewTrainingUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const u = newTrainingUrl.trim();
+                  if (!u) return;
+                  if ((settings.training_urls || []).includes(u)) { toast.error('Already added'); return; }
+                  update('training_urls', [...(settings.training_urls || []), u]);
+                  setNewTrainingUrl('');
+                }
+              }}
+              placeholder="https://oll.co/... (press Enter)"
+              className="text-xs font-mono max-w-xl"
+              data-testid="admin-faq-new-training-url"
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                const u = newTrainingUrl.trim();
+                if (!u) return;
+                if ((settings.training_urls || []).includes(u)) { toast.error('Already added'); return; }
+                update('training_urls', [...(settings.training_urls || []), u]);
+                setNewTrainingUrl('');
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1.5" /> Add URL
+            </Button>
+          </div>
+        </div>
+
+        {/* Extra knowledge pasteboard (replaces PDF upload — paste any content here) */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4" data-testid="admin-faq-extra-knowledge">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <FileDown className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[#0A1F44] text-sm">Extra Knowledge (paste anything)</div>
+              <p className="text-xs text-slate-500">
+                Paste text from PDFs, Excel exports, kit datasheets, email FAQs — anything.
+                Everything in this box is appended verbatim to the chatbot&apos;s system prompt
+                as &quot;authoritative&quot; context on every reply. Max ~50,000 chars.
+              </p>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {(settings.extra_knowledge || '').length} chars
+            </span>
+          </div>
+          <Textarea
+            value={settings.extra_knowledge || ''}
+            onChange={(e) => update('extra_knowledge', e.target.value)}
+            rows={16}
+            className="font-mono text-xs leading-relaxed"
+            placeholder="Paste raw PDF text, Excel rows, policy FAQs… the bot will treat it as fact."
+            data-testid="admin-faq-extra-knowledge-textarea"
+          />
+        </div>
 
         {/* Footer save bar */}
         <div className="sticky bottom-4 flex justify-end z-20">
