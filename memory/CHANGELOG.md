@@ -1,5 +1,48 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — Shop navbar + category refinement + enriched PDPs (gallery, video, kit-includes table, bullet descriptions)
+**Status: COMPLETE · testing_agent iteration_119 passed 24/26 UI + 4/4 backend tests. Both action items addressed in this same release.**
+
+### 1) "Shop" in the homepage navbar
+- `frontend/src/components/Navbar.jsx` — `navLinks` now includes `{ path: '/shop', label: 'Shop' }` between Offerings and About. Flows through to both the desktop top-bar render (line ~339) and the mobile burger-menu render (line ~588), so it's visible on every breakpoint.
+
+### 2) AI Vision Blox → Individual Components
+- `frontend/src/utils/shopCategories.js` — dropped `'ai vision'` from the Competition rules. AI Vision Blox now falls through to Individual Components (its correct bucket — it's a standalone sensor module, not a competition kit). Updated the Competition and Individual Components tagline/description/keywords copy to reflect the move.
+- New counts: Competition 5 (was 6), Individual Components 61 (was 60).
+
+### 3) Vendor-rich PDP — gallery, YouTube video, kit-includes table, bullet-formatted description
+User chose: **wire fields from the vendor public API when it exposes them, keep an admin-override escape hatch in the meantime.** Both paths now work end-to-end.
+
+**Backend — `routes/shop.py :: _merge_product`**
+- Added five new fields on every product payload (both `/api/shop/products` and `/api/shop/products/:slug`):
+  - `gallery_urls: string[]` — vendor `images[]` / `image_urls[]` / `gallery[]`, or override `gallery_urls` / `images`. Normalised via `_normalize_vendor_image`, de-duped, with the primary `image_url` guaranteed as `gallery[0]`.
+  - `video_url: string | null` — vendor `video_url` / `youtube_url` / `video`, or override `video_url`.
+  - `includes: {name, qty, unit}[]` — vendor `includes` / `kit_includes` / `whats_included`, or override. Rows coerced to the structured shape; malformed rows are silently dropped (defensive — tested with `includes:[['string','string']]` and `video_url: 123`).
+  - `description_html: string | null` — vendor rich HTML (future-proof when their editor outputs HTML).
+  - `description_md: string | null` — vendor Markdown or override `long_description`.
+
+**Frontend — `pages/ProductDetailPage.jsx`**
+- New state `activeImageIdx` + derived memos `gallery`, `youtubeId`, `includes`, `descriptionHtml`.
+- Hero image replaced with a **gallery**: main image + horizontally-scrollable thumbnail strip under it ([data-testid=pdp-gallery-thumbs]). Clicking a thumbnail swaps the hero. Thumbs only render when there are 2+ images (bare products stay single-image).
+- New **YouTube section** [data-testid=pdp-video] below the hero — lazy-loaded iframe to `youtube-nocookie.com/embed/{id}` with strict referrer policy. Hidden entirely when `youtubeId` is null.
+- New **"What's in the box" table** [data-testid=pdp-includes] — card with sticky-styled header + one row per item showing `× qty UNIT`. Hidden entirely when `includes.length === 0`.
+- **Description section** now routes through a tiny md→HTML renderer (`utils/richContent.js`) that supports paragraphs, bullets, ordered lists, bold, italic, inline code and `[text](url)` links. Safety: every raw character is HTML-escaped before formatting tags are reinserted — a `<script>` in a vendor description cannot survive. Links are forced `rel="noopener noreferrer" target="_blank"`. Falls back to plain `<p>` for products that have no rich description.
+
+**Supporting**
+- `frontend/src/utils/richContent.js` — new. `mdToHtml()` and `youtubeIdFromUrl()` (handles watch?v=, youtu.be/, embed/, shorts/, nocookie, raw 11-char id).
+- `frontend/src/index.css` — hand-rolled `.pdp-rich` typography (bullets/bold/links). We intentionally don't ship `@tailwindcss/typography` for size.
+- Seeded a demo override on `shop_product_overrides` for the Robo Sumo kit (3 gallery images, YouTube `D5ngdbvLMC4`, 9 kit-includes rows, markdown description with two bullet lists) so the enriched PDP is already viewable in production without waiting on the vendor API extension.
+
+### Awaiting vendor team
+- Vendor to extend `/api/public/products/{id}` to return `images[]`, `video_url`, `includes[]`, `description_html` or `description_md`. Our backend already looks for these fields under multiple reasonable key names and merges them in with correct precedence (vendor → override → sample fallback), so once vendor ships, every product auto-enriches without any code change on OLL side.
+
+### Verified in browser
+- `/` navbar shows `Offerings · Shop · About · Centers · Techfest · Blog`.
+- `/shop/category/competition-and-advanced-kits` shows exactly 5 kits (no AI Vision Blox).
+- `/shop/category/individual-components` includes AI Vision Blox.
+- `/shop/product/robo-sumo-kit…` renders: 4-thumbnail gallery, YouTube iframe `D5ngdbvLMC4`, 9-row kit-includes table (× qty + unit), rich description with `<strong>` + `<ul><li>` bullets.
+- `/shop/product/<any-bare-product>` cleanly hides the three new sections — no empty tables.
+
 ## 2026-10-05 — Robotics Shop refresh (4 category landings, fixed navbar, same-category "You may also like", per-product SEO)
 **Status: COMPLETE · testing_agent iteration_118 passed 11/13; both remaining items addressed in this same release.**
 

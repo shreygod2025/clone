@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 119 tested shop enrichment: Shop link in navbar (desktop+mobile), AI Vision Blox recategorization, enriched PDP with gallery/video/includes/rich description, bare product graceful hiding, SEO regression, and backend _merge_product new fields. 24/26 UI assertions passed; backend 4/4 pytest passed. Core features working — PDP correctly shows 4 thumbs, YouTube iframe with D5ngdbvLMC4, 9 includes rows, bold + bullets in description with no <script>. Bare product PDP hides all empty sections. Canonical/robots/JSON-LD intact. Two minor issues found: (1) /shop category tile shows 64 ITEMS for Individual Components instead of spec'd 61; (2) 'Competition Kits' tile description still lists 'AI Vision' in its blurb copy even though the product moved to Individual Components.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/shop category grid", "issues": ["Individual Components tile shows '64 ITEMS' — spec expected 61. Likely frontend/shopCategories bucketing is wider than spec anticipated.", "Competition Kits & Advanced Kits tile description still reads 'RoboSumo, RoboRacer, Drone, Aeromodel, 3D Pen, AI Vision' — the 'AI Vision' phrase is stale copy since AI Vision Blox was moved to Individual Components."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter119_shop_enrichment.py", "/app/test_reports/pytest/iter119.xml"],
+  "action_items": [
+    "Review Individual Components count: expected 61 but frontend tile shows 64. Verify shopCategories.js bucketing / API filter is correct, or update the spec expectation.",
+    "Update the Competition Kits & Advanced Kits category tile description (in frontend/src/utils/shopCategories.js or wherever the tile.description is defined) to remove the 'AI Vision' mention so the tile copy matches its actual contents."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/shop.py:_merge_product correctly normalises malformed includes rows (dicts without name are skipped, strings are accepted, non-list input yields []). Robust.",
+    "frontend/src/utils/richContent.js mdToHtml escapes HTML before re-introducing markdown-generated tags — verified no <script> leaks. Good.",
+    "shop.py:_fetch_vendor_catalog has 5-min cache; _VENDOR_CACHE['ts']=0 invalidation on admin override update is correct.",
+    "Hero image is forced to gallery[0] which guarantees gallery has >=1 element even if vendor sends no images; good defensive logic."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter119_shop_enrichment.py"],
+  "success_rate": {"backend": "100%", "frontend": "92% (24/26 UI assertions; 2 are minor copy/count issues)"},
+  "test_credentials": "N/A — public shop only",
+  "seed_data_creation": "None — override on Robo Sumo was pre-seeded by main agent.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Enriched PDP contract via data-testid is now stable: pdp-gallery-thumbs, pdp-gallery-thumb-N, pdp-video, pdp-includes, pdp-includes-row-N, pdp-description-html. Robo Sumo kit (vendor_id 22b5228a) is the live reference for enriched case; any Blox/motor is the bare case. Backend test file /app/backend/tests/test_iter119_shop_enrichment.py is pytest-ready for regression. The two open items (components count=64 vs spec 61, 'AI Vision' still in competition tile blurb) are copy/count tweaks — main agent can resolve in a one-line change each.",
+  "rca of the issue": "N/A — no critical bugs. Minor count discrepancy likely stems from frontend shopCategories.js bucketing more SKUs into Individual Components than the spec anticipated after AI Vision Blox was moved; stale blurb text is a simple copy update."
+}

@@ -47,14 +47,14 @@ export const SHOP_CATEGORIES = [
     icon: 'Trophy',
     accent: '#F59E0B',
     bg: 'from-amber-50 to-amber-100',
-    tagline: 'Championship-ready kits — RoboSumo, RoboRacer, Drone, Aeromodel, 3D Pen, AI Vision',
+    tagline: 'Championship-ready kits — RoboSumo, RoboRacer, Drone, Aeromodel & 3D Pen',
     description:
-      'Battle-ready kits for the OLL × Techfest IIT Bombay championship (RoboSumo, RoboRacer) plus advanced build kits — drones, aero-models, 3D pens and AI Vision Blox — for students pushing beyond the standard syllabus.',
+      'Battle-ready kits for the OLL × Techfest IIT Bombay championship (RoboSumo, RoboRacer) plus advanced build kits — drones, aero-models and 3D pens — for students pushing beyond the standard syllabus.',
     seoTitle: 'Competition & Advanced Robotics Kits — RoboSumo, RoboRacer, Drone | OLL Shop',
     seoDescription:
-      'OLL competition-grade robotics kits for Techfest IIT Bombay 2026 — RoboSumo kit, RoboRacer kit, drone, aero-model, 3D pen and AI Vision Blox. Prize pool ₹1.5L, free registration.',
+      'OLL competition-grade robotics kits for Techfest IIT Bombay 2026 — RoboSumo kit, RoboRacer kit, drone, aero-model and 3D pen. Prize pool ₹1.5L, free registration.',
     keywords:
-      'robosumo kit, roboracer kit, iit bombay techfest kit, drone kit for school, aeromodel kit, 3d pen for kids, ai vision blox, school robotics competition kit',
+      'robosumo kit, roboracer kit, iit bombay techfest kit, drone kit for school, aeromodel kit, 3d pen for kids, school robotics competition kit',
   },
   {
     slug: 'individual-components',
@@ -65,12 +65,12 @@ export const SHOP_CATEGORIES = [
     bg: 'from-emerald-50 to-emerald-100',
     tagline: 'Motors, sensors, wires, Blox and structural parts — buy only what you need',
     description:
-      'Need just one Blox, a BO motor, an ESP32 chip or a 60mm axle? Buy OLL robotics components à-la-carte. Perfect for replacing worn parts, extending a lab or prototyping a one-off project.',
-    seoTitle: 'Robotics Components — Motors, Sensors, Blox, Wires, ESP32 | OLL Shop',
+      'Need just one Blox, a BO motor, an ESP32 chip, an AI Vision module or a 60mm axle? Buy OLL robotics components à-la-carte. Perfect for replacing worn parts, extending a lab or prototyping a one-off project.',
+    seoTitle: 'Robotics Components — Motors, Sensors, Blox, Wires, ESP32, AI Vision | OLL Shop',
     seoDescription:
-      'Buy individual robotics components — BO motors, servo motors, ESP32-S3, IR sensors, Blox modules, wires, beams, elbows, axles, gears, batteries. Flat ₹150 delivery across India.',
+      'Buy individual robotics components — BO motors, servo motors, ESP32-S3, IR sensors, Blox modules, AI Vision Blox, wires, beams, elbows, axles, gears, batteries. Flat ₹150 delivery across India.',
     keywords:
-      'bo motor, servo motor, esp32 s3 chip, ir sensor, oll blox, robotics components india, motor driver, lipo battery, buzzer blox, servo blox',
+      'bo motor, servo motor, esp32 s3 chip, ir sensor, oll blox, ai vision blox, robotics components india, motor driver, lipo battery, buzzer blox, servo blox',
   },
 ];
 
