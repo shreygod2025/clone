@@ -1,337 +1,460 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { Search, ChevronDown, ChevronUp, MessageCircle, Send, ArrowRight } from 'lucide-react';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../components/ui/accordion';
-import { toast } from 'sonner';
+/**
+ * FAQPage — public AI chatbot at https://oll.co/faq
+ *
+ * ─ UI ──────────────────────────────────────────────────────────────
+ *   Full-screen chat with a header, suggestion chips (first visit),
+ *   message log and a composer. On every assistant reply we also show
+ *   a "Was this helpful? ✓ Yes / ✗ No" bar — tapping No opens a tiny
+ *   form to escalate to a human (writes to /api/faq-chat/raise-ticket).
+ *
+ * ─ Data ────────────────────────────────────────────────────────────
+ *   • session_id persisted in sessionStorage so a refresh keeps context
+ *   • logged-in users: we forward their JWT via Authorization header so
+ *     the server can inline their own support tickets into the prompt
+ *   • messages kept in local component state only (not in Mongo)
+ *
+ * ─ SEO ─────────────────────────────────────────────────────────────
+ *   This replaces the old static FAQ page. Keywords retained via the
+ *   FAQPage JSON-LD block emitted below so Google still ranks the page
+ *   for competition / registration / kit queries.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
+import {
+  Send, Sparkles, MessageSquare, Loader2, ThumbsUp, ThumbsDown,
+  Lightbulb, RotateCcw, CheckCircle2, ExternalLink, ArrowRight,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import useSeo from '../hooks/useSeo';
+import { mdToHtml } from '../utils/richContent';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const DEFAULT_FAQS = [
-  {
-    id: '1',
-    category: 'courses',
-    question: 'What courses does OLL offer?',
-    answer: 'OLL offers a comprehensive range of skill-based courses including Robotics, Coding, AI & Machine Learning, Entrepreneurship, and Financial Literacy. Each course is designed for different age groups and skill levels.'
-  },
-  {
-    id: '2',
-    category: 'courses',
-    question: 'What age groups do you cater to?',
-    answer: 'We cater to students from age 6 and above. Our programs are divided into age-appropriate batches: 6-8 years, 9-12 years, 13-16 years, and 17+ years.'
-  },
-  {
-    id: '3',
-    category: 'fees',
-    question: 'What are the course fees?',
-    answer: 'Course fees vary based on the program, duration, and learning mode (online/offline). Please book a free demo session to get detailed pricing information tailored to your requirements.'
-  },
-  {
-    id: '4',
-    category: 'fees',
-    question: 'Are there any discounts available?',
-    answer: 'Yes, we offer sibling discounts, early bird discounts, and special pricing for annual enrollments. Contact our team for current offers.'
-  },
-  {
-    id: '5',
-    category: 'demos',
-    question: 'How does the demo session work?',
-    answer: 'The demo session is a free 30-45 minute introductory class where your child can experience our teaching methodology. It includes a brief orientation and hands-on activity.'
-  },
-  {
-    id: '6',
-    category: 'demos',
-    question: 'Can I reschedule my demo?',
-    answer: 'Yes, you can reschedule your demo by contacting our support team at least 4 hours before the scheduled time.'
-  },
-  {
-    id: '7',
-    category: 'online_vs_offline',
-    question: 'What is the difference between online and offline classes?',
-    answer: 'Online classes are conducted via video conferencing with screen sharing and interactive tools. Offline classes are in-person sessions at our partner locations with hands-on equipment access.'
-  },
-  {
-    id: '8',
-    category: 'online_vs_offline',
-    question: 'Do online students get the same curriculum?',
-    answer: 'Yes, both online and offline students follow the same curriculum. Online students receive kits at home for hands-on projects.'
-  },
-];
+const BOT_NAME = 'OLLBot';
+const WELCOME = `Hi — I'm **${BOT_NAME}**, OLL's AI assistant.\n\nAsk me anything about the **Techfest IIT Bombay 2026** championship, our **robotics kits**, **curriculum books**, **orders** or **support**. I know the full rulebook, the official problem statement and the OLL shop.`;
 
-const CATEGORIES = [
-  { value: 'all', label: 'All Questions' },
-  { value: 'courses', label: 'Courses' },
-  { value: 'fees', label: 'Fees' },
-  { value: 'demos', label: 'Demos' },
-  { value: 'online_vs_offline', label: 'Online vs Offline' },
-];
+// Stable session id so a page refresh keeps the bot's memory.
+const getSessionId = () => {
+  let sid = sessionStorage.getItem('oll_faq_session');
+  if (!sid) {
+    sid = `fq-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    sessionStorage.setItem('oll_faq_session', sid);
+  }
+  return sid;
+};
+
+const authHeader = () => {
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 const FAQPage = () => {
-  const [faqs, setFaqs] = useState(DEFAULT_FAQS);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [showSupportForm, setShowSupportForm] = useState(false);
-  const [supportForm, setSupportForm] = useState({
-    name: '',
-    email: '',
-    user_type: 'student',
-    subject: '',
-    message: '',
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: WELCOME, feedback: null, isWelcome: true },
+  ]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [escalateFor, setEscalateFor] = useState(null); // msg index user said No to
+  const [sessionId] = useState(getSessionId);
+  const logRef = useRef(null);
+
+  useSeo({
+    title: 'OLL FAQ — Ask OLLBot about Techfest, Kits, Orders & Support',
+    description:
+      'Chat with OLLBot — the official AI assistant for OLL. Instant answers on the Techfest IIT Bombay 2026 championship, RoboSumo & RoboRacer kits, curriculum books, orders and support.',
+    keywords: 'oll faq, oll chatbot, techfest iit bombay 2026 faq, robosumo rules, roboracer rules, robotics innovation challenge, oll kits support, oll ai assistant',
+    canonical: 'https://oll.co/faq',
+    robots: 'index, follow, max-image-preview:large',
+    og: {
+      title: 'OLL FAQ — Ask OLLBot anything',
+      description: 'AI assistant with the full Techfest rulebook, kit catalog and OLL support knowledge.',
+      url: 'https://oll.co/faq',
+      type: 'website',
+      siteName: 'OLL',
+    },
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: 'How do I register for OLL Techfest IIT Bombay 2026?',
+            acceptedAnswer: { '@type': 'Answer', text: 'Register free at https://oll.co/techfest/register before 10 October 2026. Choose RoboSumo, RoboRacer or the Robotics Innovation Challenge.' },
+          },
+          {
+            '@type': 'Question',
+            name: 'Is there a registration fee for the OLL Robotics Championship?',
+            acceptedAnswer: { '@type': 'Answer', text: 'No — participation is completely free across all three tracks and all rounds.' },
+          },
+          {
+            '@type': 'Question',
+            name: 'When is the Grand Finale at IIT Bombay?',
+            acceptedAnswer: { '@type': 'Answer', text: 'December 16–18, 2026 at Techfest, IIT Bombay.' },
+          },
+          {
+            '@type': 'Question',
+            name: 'What are the arena specs for RoboSumo?',
+            acceptedAnswer: { '@type': 'Answer', text: '100 cm circular diameter arena. Bot envelope 25 × 25 × 25 cm max, 3 kg max weight. 2-minute matches, first bot pushed out of the ring loses.' },
+          },
+        ],
+      },
+    ],
   });
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchFaqs();
+    axios.get(`${API}/faq-chat/suggestions`)
+      .then((r) => setSuggestions(r.data?.suggestions || []))
+      .catch(() => {});
   }, []);
 
-  const fetchFaqs = async () => {
-    try {
-      const response = await axios.get(`${API}/faqs`);
-      if (response.data.length > 0) {
-        setFaqs(response.data);
-      }
-    } catch (error) {
-      // Use default FAQs
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
     }
+  }, [messages, sending]);
+
+  const sendMessage = useCallback(async (text) => {
+    const message = (text ?? input).trim();
+    if (!message || sending) return;
+    setMessages((m) => [...m, { role: 'user', content: message }]);
+    setInput('');
+    setSending(true);
+    try {
+      const r = await axios.post(
+        `${API}/faq-chat`,
+        { session_id: sessionId, message },
+        { headers: { ...authHeader() }, timeout: 60000 },
+      );
+      setMessages((m) => [...m, { role: 'assistant', content: r.data?.reply || '…', feedback: null }]);
+    } catch (e) {
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        content: "I couldn't reach the server. Please email **support@oll.co** or tap **Need Help** at the bottom-right of this page.",
+        feedback: null,
+      }]);
+    } finally {
+      setSending(false);
+    }
+  }, [input, sending, sessionId]);
+
+  const resetChat = async () => {
+    try { await axios.post(`${API}/faq-chat/reset`, null, { params: { session_id: sessionId } }); } catch {}
+    sessionStorage.removeItem('oll_faq_session');
+    setMessages([{ role: 'assistant', content: WELCOME, feedback: null, isWelcome: true }]);
+    setEscalateFor(null);
   };
 
-  const filteredFaqs = faqs.filter(faq => {
-    const matchesSearch = faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'all' || faq.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const markFeedback = (idx, value) => {
+    setMessages((m) => m.map((msg, i) => i === idx ? { ...msg, feedback: value } : msg));
+    if (value === 'down') setEscalateFor(idx);
+  };
 
-  const handleSupportSubmit = async (e) => {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
+      <Navbar />
+
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-slate-200" data-testid="faq-hero">
+        <div className="absolute inset-0 opacity-70"
+          style={{ background: 'radial-gradient(1200px 400px at 20% 0%, rgba(214,48,49,0.08), transparent 60%), radial-gradient(1200px 400px at 100% 100%, rgba(10,31,68,0.08), transparent 60%)' }} />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
+          <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#D63031] shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" /> AI-powered · Live
+          </div>
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#0A1F44]">
+            Ask OLLBot anything
+          </h1>
+          <p className="mt-3 text-slate-600 max-w-2xl mx-auto text-sm sm:text-base">
+            Trained on the full Techfest rulebook, our kit catalog and the OLL knowledge base.
+            Logged-in users also get instant answers about their own orders and support tickets.
+          </p>
+        </div>
+      </section>
+
+      {/* Chat area */}
+      <main className="flex-1 flex items-stretch justify-center">
+        <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-6 flex flex-col" data-testid="faq-chat">
+          {/* Message log */}
+          <div
+            ref={logRef}
+            className="flex-1 overflow-y-auto space-y-5 pb-4 pr-1 scroll-smooth min-h-[420px]"
+            data-testid="faq-chat-log"
+          >
+            {messages.map((m, i) => (
+              <MessageRow
+                key={i}
+                msg={m}
+                index={i}
+                onFeedback={markFeedback}
+                data-testid={`faq-msg-${i}`}
+              />
+            ))}
+            {sending && <ThinkingRow />}
+          </div>
+
+          {/* Suggestion chips — only shown when no user message yet */}
+          {suggestions.length > 0 && messages.filter((m) => m.role === 'user').length === 0 && (
+            <div className="mb-4" data-testid="faq-suggestions">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1">
+                <Lightbulb className="w-3.5 h-3.5" /> Try one of these
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => sendMessage(s)}
+                    className="text-xs bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-400 text-slate-700 rounded-full px-3 py-1.5 font-semibold transition"
+                    data-testid={`faq-suggestion-${s.slice(0, 20).replace(/\W+/g, '-')}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Composer */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+            className="sticky bottom-3 flex items-end gap-2 bg-white rounded-2xl border border-slate-200 shadow-lg p-2"
+            data-testid="faq-composer"
+          >
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              rows={1}
+              placeholder="Type your question… (Shift+Enter for a new line)"
+              className="flex-1 resize-none max-h-32 bg-transparent focus:outline-none text-sm px-3 py-2.5 min-h-[42px]"
+              disabled={sending}
+              data-testid="faq-input"
+            />
+            <button
+              type="button"
+              onClick={resetChat}
+              className="text-slate-500 hover:text-slate-900 p-2.5 rounded-xl hover:bg-slate-100 transition"
+              title="New conversation"
+              data-testid="faq-reset"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              type="submit"
+              disabled={sending || !input.trim()}
+              className="flex items-center gap-1.5 bg-[#D63031] hover:bg-[#B91C1C] text-white rounded-xl px-4 py-2.5 text-sm font-bold disabled:bg-slate-300 disabled:cursor-not-allowed transition shadow-sm"
+              data-testid="faq-send"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <span className="hidden sm:inline">Send</span>
+            </button>
+          </form>
+        </div>
+      </main>
+
+      {/* Escalate dialog */}
+      {escalateFor !== null && (
+        <EscalateDialog
+          sessionId={sessionId}
+          messages={messages}
+          onClose={() => setEscalateFor(null)}
+          onDone={() => {
+            setEscalateFor(null);
+            toast.success("Thanks — a human will reach out shortly.");
+          }}
+        />
+      )}
+
+      <Footer />
+    </div>
+  );
+};
+
+/* ──────────────────────────────────────────────────────────────────────
+   Rendered row for one message. Assistant replies include a thumbs
+   up/down bar that collapses to "Thanks for the feedback" when picked.
+   ────────────────────────────────────────────────────────────────────── */
+const MessageRow = ({ msg, index, onFeedback }) => {
+  const isUser = msg.role === 'user';
+  const html = useMemo(() => (isUser ? '' : mdToHtml(msg.content)), [msg.content, isUser]);
+  return (
+    <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`} data-testid={`faq-msg-${index}`}>
+      {!isUser && (
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D63031] to-[#0A1F44] flex items-center justify-center flex-shrink-0 shadow-sm">
+          <Sparkles className="w-4 h-4 text-white" />
+        </div>
+      )}
+      <div className={`${isUser ? 'max-w-[82%]' : 'max-w-[85%]'}`}>
+        <div
+          className={`${
+            isUser
+              ? 'bg-[#0A1F44] text-white rounded-2xl rounded-tr-sm'
+              : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm shadow-sm'
+          } px-4 py-3 text-sm leading-relaxed break-words`}
+        >
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{msg.content}</p>
+          ) : (
+            <div className="pdp-rich" dangerouslySetInnerHTML={{ __html: html }} />
+          )}
+        </div>
+        {!isUser && !msg.isWelcome && (
+          <div className="mt-1.5 flex items-center gap-1 pl-1 text-xs">
+            {msg.feedback === null ? (
+              <>
+                <span className="text-slate-400 mr-1">Was this helpful?</span>
+                <button
+                  onClick={() => onFeedback(index, 'up')}
+                  className="p-1 rounded hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 transition"
+                  data-testid={`faq-msg-${index}-thumbs-up`}
+                  aria-label="Helpful"
+                ><ThumbsUp className="w-3.5 h-3.5" /></button>
+                <button
+                  onClick={() => onFeedback(index, 'down')}
+                  className="p-1 rounded hover:bg-red-50 text-slate-500 hover:text-red-600 transition"
+                  data-testid={`faq-msg-${index}-thumbs-down`}
+                  aria-label="Not helpful"
+                ><ThumbsDown className="w-3.5 h-3.5" /></button>
+              </>
+            ) : msg.feedback === 'up' ? (
+              <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Thanks for the feedback</span>
+            ) : (
+              <span className="text-slate-500">A human will reach out shortly — form below.</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ThinkingRow = () => (
+  <div className="flex gap-3 justify-start" data-testid="faq-thinking">
+    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D63031] to-[#0A1F44] flex items-center justify-center shadow-sm">
+      <Sparkles className="w-4 h-4 text-white animate-pulse" />
+    </div>
+    <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-2">
+      <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+      <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+      <span className="text-xs text-slate-500 ml-1">OLLBot is thinking…</span>
+    </div>
+  </div>
+);
+
+/* ──────────────────────────────────────────────────────────────────────
+   Escalation dialog — only shown when user taps 👎. Writes a row to
+   support_queries with the full chat transcript so the support team
+   can pick up where OLLBot gave up.
+   ────────────────────────────────────────────────────────────────────── */
+const EscalateDialog = ({ sessionId, messages, onClose, onDone }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Prefill message with the last user question
+  useEffect(() => {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (lastUserMsg) setMessage(lastUserMsg.content);
+  }, [messages]);
+
+  const submit = async (e) => {
     e.preventDefault();
-    if (!supportForm.name || !supportForm.email || !supportForm.message) {
-      toast.error('Please fill all required fields');
+    if (!email || !message.trim()) {
+      toast.error('Please enter your email and a short description.');
       return;
     }
-
     setSubmitting(true);
     try {
-      await axios.post(`${API}/support/ticket`, supportForm);
-      toast.success('Support ticket created! We will get back to you soon.');
-      setShowSupportForm(false);
-      setSupportForm({
-        name: '',
-        email: '',
-        user_type: 'student',
-        subject: '',
-        message: '',
+      await axios.post(`${API}/faq-chat/raise-ticket`, {
+        session_id: sessionId,
+        name, email, phone, message,
       });
-    } catch (error) {
-      toast.error('Failed to submit. Please try again.');
+      onDone();
+    } catch (err) {
+      toast.error('Could not raise ticket. Please email support@oll.co directly.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Helmet>
-        <title>FAQ - OLL | Robotics, Coding & AI Classes for Kids</title>
-        <meta name="description" content="Find answers to frequently asked questions about OLL's skill education programs. Learn about course fees, demo sessions, age groups, online vs offline classes, and more." />
-        <meta property="og:url" content="https://oll.co/faq" />
-        <meta property="og:title" content="FAQ - OLL | Robotics, Coding & AI Classes for Kids" />
-        <meta property="og:description" content="Find answers to frequently asked questions about OLL's Robotics, AI, Coding & Entrepreneurship programs. Fees, batch timings, age groups and more." />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-            {"@type": "Question", "name": "What age groups does OLL teach?", "acceptedAnswer": {"@type": "Answer", "text": "OLL teaches students aged 4 to 16 years across Robotics, Coding, AI, Entrepreneurship and Financial Literacy. We have dedicated curricula for each age group."}},
-            {"@type": "Question", "name": "Does OLL offer online classes?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, OLL offers live online classes via Zoom with the same hands-on experience as offline. Physical kits are shipped to your home."}},
-            {"@type": "Question", "name": "What subjects does OLL teach?", "acceptedAnswer": {"@type": "Answer", "text": "OLL teaches Robotics, Artificial Intelligence, Python & Scratch Coding, 3D Design, Entrepreneurship and Financial Literacy."}},
-            {"@type": "Question", "name": "Is OLL certified?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. OLL is STEM.org accredited and UNESCO USFUCA aligned. Every student receives a STEM.org certificate upon completion."}},
-            {"@type": "Question", "name": "How do I book a free demo?", "acceptedAnswer": {"@type": "Answer", "text": "You can book a free demo class at oll.co/student. Our team will contact you within 24 hours to schedule."}}
-          ]
-        })}</script>
-      </Helmet>
-      <Navbar showBookDemo onBookDemo={() => window.location.href = '/student'} />
-
-      {/* Main Content */}
-      <main className="py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Hero */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Frequently Asked Questions
-            </h1>
-            <p className="text-slate-600 max-w-2xl mx-auto">
-              Find answers to common questions about our programs, fees, and more.
-            </p>
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" data-testid="faq-escalate-dialog">
+      <form onSubmit={submit} className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#D63031]">We&apos;ll take it from here</div>
+            <h3 className="text-lg font-black text-[#0A1F44]">Raise a support ticket</h3>
+            <p className="text-xs text-slate-500 mt-1">A real human from OLL will reply within a few hours.</p>
           </div>
-
-          {/* Search */}
-          <div className="glass-card rounded-2xl p-4 mb-8">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <Input
-                placeholder="Search questions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 bg-white border-slate-200 rounded-xl"
-                data-testid="faq-search"
-              />
-            </div>
-          </div>
-
-          {/* Category Filters */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  activeCategory === cat.value
-                    ? 'bg-[#1E3A5F] text-white'
-                    : 'bg-white text-slate-600 hover:bg-slate-100'
-                }`}
-                data-testid={`category-${cat.value}`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-
-          {/* FAQ List */}
-          <div className="glass-card rounded-3xl p-6 md:p-8 mb-8">
-            {filteredFaqs.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-slate-500">No questions found matching your search.</p>
-              </div>
-            ) : (
-              <Accordion type="single" collapsible className="space-y-4">
-                {filteredFaqs.map((faq, index) => (
-                  <AccordionItem 
-                    key={faq.id} 
-                    value={faq.id}
-                    className="border border-slate-200 rounded-xl px-4 data-[state=open]:bg-slate-50"
-                  >
-                    <AccordionTrigger className="text-left hover:no-underline py-4" data-testid={`faq-${index}`}>
-                      <span className="font-medium text-[#1E3A5F]">{faq.question}</span>
-                    </AccordionTrigger>
-                    <AccordionContent className="text-slate-600 pb-4">
-                      {faq.answer}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            )}
-          </div>
-
-          {/* Still Have Questions */}
-          <div className="glass-card rounded-3xl p-6 md:p-8 text-center">
-            <MessageCircle className="w-12 h-12 text-[#D63031] mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-[#1E3A5F] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Still have questions?
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Can't find what you're looking for? Send us a message and we'll get back to you.
-            </p>
-            <Button 
-              onClick={() => setShowSupportForm(true)} 
-              className="btn-primary"
-              data-testid="contact-support-btn"
-            >
-              Contact Support
-            </Button>
-          </div>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl leading-none" data-testid="faq-escalate-close">&times;</button>
         </div>
-      </main>
-
-      {/* Support Form Modal */}
-      {showSupportForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="glass-card rounded-3xl p-6 md:p-8 max-w-lg w-full animate-slide-up">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Contact Support
-              </h3>
-              <button 
-                onClick={() => setShowSupportForm(false)} 
-                className="text-slate-400 hover:text-slate-600"
-                data-testid="close-support-modal"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleSupportSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Name *</label>
-                <Input
-                  placeholder="Your name"
-                  value={supportForm.name}
-                  onChange={(e) => setSupportForm({...supportForm, name: e.target.value})}
-                  className="input-glass"
-                  data-testid="support-name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
-                <Input
-                  type="email"
-                  placeholder="Your email"
-                  value={supportForm.email}
-                  onChange={(e) => setSupportForm({...supportForm, email: e.target.value})}
-                  className="input-glass"
-                  data-testid="support-email"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">I am a</label>
-                <select
-                  value={supportForm.user_type}
-                  onChange={(e) => setSupportForm({...supportForm, user_type: e.target.value})}
-                  className="w-full h-12 px-4 bg-white/50 border border-slate-200 rounded-xl"
-                  data-testid="support-user-type"
-                >
-                  <option value="student">Learner</option>
-                  <option value="educator">Educator</option>
-                  <option value="school">School</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Subject</label>
-                <Input
-                  placeholder="Brief subject"
-                  value={supportForm.subject}
-                  onChange={(e) => setSupportForm({...supportForm, subject: e.target.value})}
-                  className="input-glass"
-                  data-testid="support-subject"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Message *</label>
-                <textarea
-                  placeholder="Describe your question or issue..."
-                  value={supportForm.message}
-                  onChange={(e) => setSupportForm({...supportForm, message: e.target.value})}
-                  className="w-full h-32 p-4 bg-white/50 border border-slate-200 rounded-xl resize-none"
-                  data-testid="support-message"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="btn-primary w-full flex items-center justify-center gap-2"
-                data-testid="submit-support-btn"
-              >
-                {submitting ? 'Sending...' : 'Send Message'}
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
-          </div>
+        <div className="space-y-2.5">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none"
+            data-testid="faq-escalate-name"
+          />
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your.email@school.in *"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none"
+            data-testid="faq-escalate-email"
+          />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone (optional)"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none"
+            data-testid="faq-escalate-phone"
+          />
+          <textarea
+            required
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+            placeholder="What do you need help with? *"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none resize-none"
+            data-testid="faq-escalate-message"
+          />
         </div>
-      )}
-
-      <Footer />
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <a
+            href="mailto:support@oll.co"
+            className="text-xs text-slate-500 hover:text-[#D63031] inline-flex items-center gap-1"
+            data-testid="faq-escalate-email-link"
+          >
+            Or email support@oll.co <ExternalLink className="w-3 h-3" />
+          </a>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 bg-[#D63031] hover:bg-[#B91C1C] text-white rounded-lg px-4 py-2 text-sm font-bold disabled:bg-slate-300"
+            data-testid="faq-escalate-submit"
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+            Raise ticket
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

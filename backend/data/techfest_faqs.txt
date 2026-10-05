@@ -1,0 +1,588 @@
+Registration, Eligibility & Teams
+Q1. Who can participate in the competition?
+Answer: School students can participate in RoboSumo and RoboRacer. The Robotics
+Innovation Challenge has Junior and Senior categories.
+Q2. What are the grade categories for each track?
+Answer: Robotics Innovation Challenge: Junior — Grades 4–7; Senior — Grades 8–12.
+RoboSumo and RoboRacer: Junior — Grades 4–7; Senior — Grades 8–12
+Q3. Can one school register multiple teams?
+Answer: Yes, but each team must have different students. A student cannot be part of more
+than one team.
+Q4. Can one school participate in all three tracks?
+Answer: Yes.
+Q5. How many students can be there in a team?
+Answer: RoboSumo and RoboRacer teams must have 3–5 members. Robotics Innovation
+Challenge allows individual participation or teams of 1–5 students.
+Q6. Can a teacher or parent accompany the team?
+Answer: Yes. One teacher or one parent can accompany each team.
+Q7. Can two teams from the same school share one bot or project?
+Answer: No. Each team must have its own original bot or project.
+Q8. Can students register now and finalise their team later?
+Answer: All teams must register before 10 October 2026.
+Q10. Can we participate in a different Regional Round if we do not qualify at our nearest
+venue?
+Answer: No.
+Kits, Components & Originality
+Q11. Is the official OLL kit compulsory?
+Answer: No. The kit is recommended, but students can purchase their own components.
+Q12. Can we build our own bot instead of using the official kit?
+Answer: Yes. Bots must follow the specifications and be of the team's original design.
+Q13. Can we use motors, sensors, wheels or other components from existing kits?
+Answer: Yes, you can use individual hardware components like DC motors, LEGO motors,
+wheels, sensors, or chassis plates from existing kits. However, the overall vehicle cannot be
+a pre-assembled, ready-made commercial toy car or robot. The assembly, mounting, wiring,
+and integration must be done entirely by the students.
+
+Q14. Can we use 3D-printed parts in our bot?
+Answer: Yes. Custom 3D-printed brackets, mounts, spacers, or chassis frames are
+completely allowed and encouraged, as long as the complete bot stays within the maximum
+size and weight limits for your track.
+Q15. Can we use Arduino, ESP32 or other microcontrollers?
+Answer: Yes. You are completely free to use microcontrollers such as Arduino, ESP32,
+Raspberry Pi Pico, or micro:bit for controlling your motors, managing wireless
+communication, or running autonomous routines
+.
+Q16. Can we use ChatGPT-generated code or ready-made Arduino code if we understand
+how it works?
+Answer: You can use open-source libraries or sample code snippets as reference points to
+learn, but the overall logic and final program must be adapted, configured, and understood
+by the team. During the technical inspection and judging Q&A, students must be able to
+explain how their code and circuits function. Direct copying of ready-made projects without
+original contribution can lead to disqualification.
+Q17. Can we use a ready-made or pre-programmed bot?
+Answer: No. Ready-made bots are not permitted. The bot must be the team's own original
+design.
+Q18. What are the rules regarding originality of control logic and code?
+Answer:The chassis, drivetrain, and control logic must be the team's own original design and
+assembly. Any submission that uses a pre-built commercial solution or copies existing work
+without meaningful, original student modifications will be disqualified.
+Q19. When will we receive the official kit after ordering?
+Answer: Within two weeks of ordering.
+RoboSumo FAQs
+Q20. What is RoboSumo?
+Answer: RoboSumo is a head-to-head competition in which two bots compete inside a
+circular arena. The objective is to push the opponent out of the arena.
+Q21. Can RoboSumo bots be autonomous, wired or wireless?
+Answer: Yes. Fully autonomous, wired remote-controlled and wireless remote-controlled bots
+are permitted.
+Q22. What are the RoboSumo bot size and weight limits?
+Answer: Maximum size: 25 × 25 × 25 cm. Maximum weight: 3 kg, including the battery.
+Q23. What battery voltage is allowed for RoboSumo?
+Answer: The nominal battery voltage must not exceed 12V.
+Q24. Can we use six motors in RoboSumo?
+
+Answer: Yes, provided the bot follows the size, weight, voltage and safety requirements.
+Q25. What parts or mechanisms are prohibited in RoboSumo?
+Answer: Weapons, sharp or pinching mechanisms, flipping mechanisms, projectiles and
+mechanisms designed to damage the opponent are prohibited.
+Q26. What happens if a RoboSumo match ends without either bot being pushed out?
+Answer: The referee/judges decide the winner based on control and dominance
+demonstrated during the match. The referee's decision is final.
+Q27. What happens if a RoboSumo bot becomes non-functional during a match?
+Answer: If both bots are unable to fight or move, the referee grants a 2-minute grace period
+for teams to fix their bots. If a bot cannot be made functional within this window, it will lead to
+disqualification. Participants cannot touch or manually interfere with their bot during a match
+without explicit referee permission.
+RoboRacer FAQs
+Q29. What is RoboRacer?
+Answer: RoboRacer is a head-to-head racing competition in which two bots race on adjacent
+lanes. The first bot to cross the finish line wins.
+Q30. Is RoboRacer wireless RC only, or can it be wired?
+Answer: Fully wireless remote control is required. Wired control is not permitted.
+Q31. What are the RoboRacer bot size and weight limits?
+Answer: Maximum size: 20 × 15 × 15 cm. Maximum weight: 1.5 kg, including the battery.
+Q32. What are the RoboRacer track dimensions and conditions?
+Answer: The track is approximately 10–12 metres long, with two adjacent lanes
+approximately 40–50 cm wide each. The lanes are separated by clear markings. Exact
+venue dimensions may vary.
+Q33. What is the width of one RoboRacer lane?
+Answer: Approximately 40–50 cm.
+Q34. What battery voltage should be used for RoboRacer?
+Answer: You can use any standard battery pack (such as a 7.4V 2S LiPo or a 9V–12V pack),
+provided the total voltage stays within standard safety limits (12V nominal recommended)
+and the total car weight remains under 1.5 kg including the battery.
+Q35. Can we use a microcontroller for wireless control in RoboRacer?
+Answer: Yes. You can use an ESP32, Arduino paired with a Bluetooth/radio module, or
+Raspberry Pi Pico to manage wireless communication via a custom smartphone app,
+Bluetooth gamepad, or transmitter.
+
+Q36. Does the RoboRacer kit include an Arduino/ESP32, sensors and a motor driver?
+Answer: No. The standard RoboRacer kit includes an RC chassis, motors, wheels, battery
+setup, power switch, and a direct radio-frequency remote control system. It does not come
+with an Arduino, ESP32, or autonomous sensors.
+Q37. Is the RoboRacer kit pre-programmed, and can it be custom-programmed?
+Answer: The official kit operates using direct radio transmitter-receiver hardware, so it is not
+a pre-programmed computer. If you want to custom-program throttle curves or steering trim,
+you are free to add your own microcontroller board like an ESP32 or Arduino.
+Q38. Can we connect our own ESP32 or use our own components instead of the official kit?
+Answer: Yes, absolutely. You can use your own ESP32, custom motor driver, steering servo,
+and independent chassis parts, provided the completed car is fully wireless, stays under 1.5
+kg, and fits inside the 20 × 15 × 15 cm limit.
+Q39. What mechanisms are prohibited in RoboRacer?
+Answer: Mechanisms designed to obstruct, block or damage the opposing bot, along with
+sharp or protruding parts and projectiles, are prohibited.
+Q40. What happens if a RoboRacer race ends in a tie?
+Answer: A tie or photo finish results in an immediate rerun between the same two bots.
+Robotics Innovation Challenge FAQs
+Q41. What are the themes for the Junior and Senior categories?
+Answer:Junior, Grades 4–7: Smart Solutions for Everyday Life.
+Senior, Grades 8–12: Robotics & Automation for a Smart, Sustainable Future.
+Q42. What are the Round 1 submission requirements?
+Answer: Teams must submit:
+Team registration details.
+A one-page problem write-up.
+A technical abstract of 500–800 words.
+A labelled design diagram, circuit diagram or sketch.
+A 1–3 minute demonstration video showing the working or partially working model, with all
+team members' faces visible.
+Q44. Should the video and documents be uploaded separately or together?
+Answer: Upload them together in one Google Drive link. Ensure the link is set to “Anyone
+with the link can view.”
+Q45. What does “working or partially working model” mean?
+Answer: It means you must show a physical prototype rather than just a concept sketch or
+presentation slide. A working model performs the full intended task, while a partially working
+model demonstrates core operations (such as a sensor triggering an alert, a motor
+mechanism running, or data logging) even if the secondary casing or final features are still
+being refined.
+
+Q46. How much functionality is required for a partially working model?
+Answer: The model must clearly demonstrate its main operating principle. For example, if
+you are designing a smart waste sorter, the sorting sensor and motor mechanism should
+physically activate and move during the video, showing that the core engineering logic
+works.
+Q47. How is Round 1 evaluated?
+Answer:
+Problem relevance and clarity: 20%
+Originality and technical soundness: 30%
+Design clarity: 20%
+Working/partial model demonstration: 30%
+Q48. What happens in Round 2 at the Grand Finale?
+Answer: Shortlisted teams display their prototype, give a live 10-minute demonstration, and
+participate in a 5-minute Q&A with the judges.
+Q49. How is Round 2 evaluated?
+Answer:
+Originality and creativity: 30%
+Technical execution: 35%
+Real-world relevance: 15%
+Presentation and Q&A: 20%
+Q50. Can we use Arduino, ESP32, Raspberry Pi, sensors and motors in our Innovation
+Challenge project?
+Answer: yes
+Regional Rounds, Qualification & Grand Finale
+Q51. Which tracks have Regional Rounds?
+Answer: Regional Rounds are for RoboSumo and RoboRacer only. The Robotics Innovation
+Challenge follows its own online qualification and Grand Finale process.
+Q52. What are the Regional Round dates and venues?
+Answer:
+Kanpur - 24th Oct 2026, IIT Kanpur
+Bangalore - 26 Nov 2026, RVU College, Bangalore
+Mumbai - 17th Dec 2026, IIT Bombay
+Delhi - To be confirmed
+Indore - To be confirmed
+Q53. How does qualification work for RoboSumo and RoboRacer?
+Answer: Teams must clear the mandatory online qualifier and then compete in their Regional
+Round. Qualified teams advance to the Grand Finale at IIT Bombay.
+Q54. How are teams selected for the RoboSumo and RoboRacer knockout rounds?
+
+Answer: Two teams from each category (Junior and Senior) qualify, giving four teams per
+track.
+Q55. How does qualification work for the Robotics Innovation Challenge?
+Answer: Round 1 is an online qualifier. Shortlisted teams advance to Round 2 at IIT Bombay.
+The Regional Round bypass does not apply to this track.
+Q56. Are there wildcard or extra qualification rounds before the Grand Finale?
+Answer: No wildcard entries are planned. Only teams that qualify through the applicable
+online or Regional Round pathway advance to the Grand Finale.
+Q57. When and where is the IIT Bombay Grand Finale?
+Answer: 17 December 2026, IIT Bombay, Powai.
+General Rules, Certificates & Prizes
+Q58. Is technical inspection compulsory?
+Answer: Yes. RoboSumo and RoboRacer bots undergo technical inspection for size, weight,
+power and prohibited features before competing.
+Q59. What happens if a bot does not meet the submitted specifications or competition rules?
+Answer: A bot that does not meet its submitted specifications may be disqualified from the
+match or round in progress.
+Q60. Are judging and referee decisions final?
+Answer: Yes. Referee and judging panel decisions are final and not open to appeal.
+Q61. Will participants receive certificates?
+Answer: Students who participate and submit an acceptable entry receive a Certificate of
+Participation. Grand Finale competitors also receive finalist recognition.
+Q62. What are the prizes and how will prize money be distributed?
+Answer: Prize money is awarded to the top three teams in each track. Payment is made
+through NEFT, with payment expected by May 2027.
+Q63. What is the deadline for registration?
+Answer: 10th October 2026
+Q64. Where can we ask competition-related questions?
+Answer: Submit competition queries through the Doubt section of the Techfest Competition
+Portal. Important official announcements are sent by email and in the Official Whatsapp
+Community
+Q65. What is the deadline for submission?
+Answer: 20th October 2026
+
+Section 1: Grade, Eligibility, and Team Composition
+Can a seventh grader participate in the senior category? No. The junior category is
+strictly for grades 4 to 7, while the senior category is reserved for grades 8 to 12. A
+seventh-grade student must compete in the junior block.
+Is there any exception to allow students below Grade 4 to participate? Normally,
+students below grade 4 are not eligible.
+Can we mix students of different grades on the same team? Yes. You can merge
+different grades on a team as long as all members belong to the same age block. The
+primary/junior block spans grades 4 to 7, and the secondary/senior block spans grades 8
+to 12.
+Can a student participate in multiple tracks or join different teams if the school has very
+few students? No. Each student is strictly restricted to one team and one track because
+multiple track events (such as Robo Racer and Robo Innovation) will run simultaneously
+during the Grand Finale. Organizers do not allow students to be duplicated across
+competitions. If a school has exactly five students, they can be split into separate teams
+(e.g., three students on a Robo Sumo team and two students on an Innovation Challenge
+team).
+Section 2: Logistics, Chaperones, and Certificates
+If school teachers are unavailable to travel in December, can a parent chaperone the
+teams? Yes. One adult guardian—either a teacher or a parent per school—is permitted to
+accompany all of a school's qualifying teams.
+Will a parent chaperone receive an official certificate? Certificates are printed based on
+registration data. If the parent registers on the portal officially as the team's mentor or
+coordinator, they will receive a printed certificate from IIT Bombay Techfest. If a teacher
+registers but cannot travel, only the registered teacher's certificate is printed.
+How does an educator link multiple student teams to their mentor registration? After
+registering on the mentor panel, the educator must enter the unique Team IDs or student
+Competition IDs for all the teams they are supervising to map them together on the
+portal.
+Section 3: Technical Rules & Arena Doubts (Robo Sumo)
+If a tiny piece of our robot breaks off and falls outside the ring while the main body is
+inside, are we out? Yes. A robot is declared out the exact moment any part of it (even a
+single wheel or a small broken-off piece) crosses the boundary line of the 150 cm circular
+ring.
+
+Can we use an extending ramp or pushing arm in Robo Sumo? Yes, pushing
+mechanisms are allowed. However, the robot must still fit within the strict 25 cm x 25 cm
+x 25 cm dimensional envelope even when its mechanisms are fully extended or in
+motion.
+Is physical attacking or flipping allowed? No. Attacking, flipping, or any mechanism
+designed to damage or block the opposing robot is strictly prohibited. Rotating parts are
+only allowed if they do not harm the opponent.
+What happens if a robot breaks down during an active match? If a bot breaks down, the
+team is given a strict 2-minute grace period to repair it. Students cannot touch the robot
+during an active match unless they receive explicit approval from the referee. If it is not
+running after 2 minutes, the team is disqualified, and the functional bot wins. If both
+break down simultaneously and cannot be repaired in 2 minutes, both are disqualified.
+Section 4: Technical Rules & Arena Doubts (Robo Racer)
+Can students use mobile apps to control the Robo Racer? Yes. Mobile phones are
+permitted to control the racer wirelessly via Bluetooth or Wi-Fi, provided they do not
+cause signal interference with the opponent.
+What happens if a racer accidentally drives into the adjacent lane? Entering or
+obstructing the opponent's lane is strictly prohibited. The referee will either disqualify the
+offending bot or call for an immediate re-race depending on the severity and intent of the
+interference.
+Are there any curves, loops, or elevations on the Robo Racer track? No. The Robo Racer
+track is a completely straight path roughly 10 to 12 meters long with no curves or
+elevations. There may be minor straight obstacles to jump over.
+Section 5: Robotics Innovation Challenge Clarifications
+Is a microcontroller like Arduino mandatory for the Innovation Challenge? No. There are
+no hardware or software restrictions in the Innovation Challenge. Junior teams (grades
+4–7) are not required to use microcontrollers and can build simple circuits or machines.
+While microcontrollers like Arduino or basic IoT logic are preferred for senior teams
+(grades 8–12) to demonstrate higher technical complexity, they are not strictly forced.
+Can we build a daily life solution project that does not use robotics? While daily life
+solutions are allowed, it is highly recommended to build a project with robotics
+components. Projects using robotics will be awarded higher marks because the
+evaluation rubrics place significant weight on technical functionality.
+Section 6: Electronics, Kit Sourcing, and Budgets
+Why are standard Vidblocks/Witblocks electronics disqualified from Robo Sumo and
+Robo Racer? Standard electronics from Vidblocks/Witblocks are classified as
+"readymade kits," which are banned in Robo Sumo and Robo Racer. Students must
+assemble the electronics themselves using open-source components. However, students
+are permitted to use physical building blocks or acrylic bodies from their school kits to
+build their robot's external chassis.
+Are we required to buy the kits sold on the OLL website? No, purchasing the kits on the
+website is completely optional. They consist of standard open-source components
+
+compiled in one place for convenience. You can buy equivalent parts from any local
+electronics market.
+What is the estimated budget for materials if students build their own robot? The cost of
+components is estimated between 1,000 and 3,500/4,000 rupees depending on the kit
+selected. Since participation is team-based, this cost can be divided among the 3 to 5
+team members.
+Section 7: Guaranteed Entry Policies for Partner/Customer Schools
+What are the exact guaranteed entry rules for customer/partner schools? All OLL
+customer schools receive guaranteed selection for the Grand Finale of the Robotics
+Innovation Challenge (one primary/junior team and one secondary/senior team). They
+are also guaranteed selection for the regional on-ground Zonal Rounds in Robo Sumo
+and Robo Racer. They do not get a guaranteed entry to the Grand Finale for Sumo or
+Racer, as those spots are decided purely by actual match outcomes.
+If a customer school registers multiple teams, do all of them get guaranteed entries?
+No. The guarantee applies to only one team per age category per competition. The
+school teacher must designate which team gets the guaranteed spot. All other teams
+from that school must go through the standard online selection process.
+Section 8: Formats, Prize Claims, and Live Training
+Can we submit the online Round 1 materials across separate links or emails? No. Any
+submission split across multiple links or missing any of the five required items will be
+disqualified. Everything must be uploaded into a single Google Drive folder with viewer
+access enabled.
+How and when is the prize money distributed to winners? Prize money is distributed via
+NEFT. After the Grand Finale, winners must submit their bank account details (parent or
+guardian accounts are acceptable) via a website form by the absolute deadline of
+December 31st.
+Is there any training for students who have zero prior exposure to robotics? Yes.
+Organizers are conducting live webinars every Saturday (with some training on Fridays,
+Saturdays, and Sundays). These sessions are broadcast live on YouTube and are open to
+all students, teachers, and parents (even non-partner schools). They will cover
+open-source components, build instructions, and answer technical doubts.
+Will schools receive a participation certificate under the school's name? Only schools
+that are officially registered on the oll.co/techfest website will receive a printed certificate
+bearing the school’s name. If a school is not registered, its name will not be included on
+the default student/educator certificates, and no separate school certificate will be
+issued. (This rule can be ignored if the school has already completed its registration).
+Key Action for Mentors and RMs:
+
+While students can register individually without waiting for their school, organizers strongly
+recommend that the school's Relationship Managers (RMs) or administrators initiate and
+complete the school registration as soon as possible so that the institution is properly
+recognized and certified.
+I have compiled the questions, answers, and guidelines from both orientation meetings to
+create a comprehensive Q&A Reference Guide in your Studio panel as a Tailored Report.
+This document serves as an exhaustive guide organizing all administrative, technical, and
+logistical information for the championship. Here is a high-level summary of the key
+questions and answers from the meetings:
+1. Registration, Roles, and Team Management
+● What is the required team size? Teams must consist of 3 to 5 members.
+● How do team registrations work? The team leader registers on the portal, names
+the team to generate a Team ID, and adds the email addresses of the other
+members. Each team member must then log in and register individually using that
+same email to automatically connect to the team.
+● Can a parent accompany the team if teachers are unavailable? Yes, one
+guardian (either a parent or a teacher) is allowed to accompany all of a school's
+teams. However, only the official coordinator registered on the website will receive a
+printed certificate.
+● Is a school permission letter mandatory for individual registrants? Yes, a school
+permission letter is required for all individual registrations across all three tracks.
+2. Track 1: Robo Sumo Rules & Specifications
+● What are the dimensional and weight limits? The bot must fit within a 25 cm x 25
+cm x 25 cm space (even when in motion) and weigh 3 kg or under (including the
+battery). No grace weight limits are allowed.
+● What type of control is allowed? The sumo bot can be fully autonomous, wired, or
+controlled via a wireless remote or phone.
+● What is the nominal voltage limit? The nominal battery voltage cannot exceed 12
+volts.
+● When is a bot considered out? The robot is eliminated the exact moment any part
+of it (including a single wheel or a piece that breaks off) crosses the outer line of the
+150 cm circular ring.
+3. Track 2: Robo Racer Rules & Specifications
+● What are the size and weight limits? The racer must fit within a 20 cm x 15 cm x
+15 cm envelope and weigh 1.5 kg or under (including the battery).
+
+● What type of control is allowed? Control must be fully wireless (RC control).
+Mobile phones are allowed via Bluetooth or Wi-Fi as long as they do not cause
+frequency interference with opponents. Wired controllers are strictly prohibited.
+● What happens if a bot enters the opponent's lane? Driving into the opponent's
+lane or obstructing them is prohibited and can lead to disqualification or a re-race at
+the referee's discretion.
+4. Track 3: Robotics Innovation Challenge
+● What are the junior and senior themes?
+○ Junior (Grades 4–7): "Smart solutions for everyday life" using simple circuits
+or recycled materials.
+○ Senior (Grades 8–12): "Robotics and automation for a smart and sustainable
+future".
+● What are the five mandatory Round 1 online submissions? Teams must submit a
+single Google Drive folder containing: (1) team registration details, (2) a one-page
+problem writeup, (3) a 500-to-800-word technical abstract (which cannot be written
+with AI tools), (4) a design sketch/CAD drawing, and (5) a 1-to-3 minute working
+video demo with all team faces visible.
+● Can teams upgrade their models for the Grand Finale? Yes, teams are allowed to
+bring an upgraded version of the prototype submitted in Round 1.
+5. Technical Components & Kits
+● Are existing school kits (like Blix/Witblox/Avishkaar) allowed? No. Standard
+Blix/Witblox/Avishkaars electronics are classified as "readymade kits" and are
+disqualified for Robo Sumo and Robo Racer. However, their structural bricks or
+acrylic bodies are permitted for Robotics innovation challenge.
+● Are Blix/Witblox/Avishkaar allowed for the Innovation Challenge? Yes,
+electronics and components from the school kits are fully permitted in the Robotics
+Innovation Challenge.
+● Are we required to buy kits from the website? No, purchasing the kits is optional.
+They are open-source components compiled in one place for convenience.
+6. Logistical Hubs and Important Deadlines
+● September 10th: Online project submission portal opens.
+● October 20th: Deadline for Round 1 submissions (video demo and abstracts).
+● October 21st: Round 1 results announced.
+● October to November: Zonal/Regional rounds held on-ground across five hubs:
+Mumbai (West), Kanpur (East), Delhi (North), Bangalore (South), and Indore
+(Central).
+● December 16th–18th: Grand Finale at IIT Bombay.
+● December 31st: Deadline for winners to submit bank details via form to claim prize
+money.
+
+Section 1: Registration, Roles, and Team Management
+● What are the different ways to register for the championship? There are three
+pathways to register on the platform:
+1. Individual Student Registration: Students register themselves as
+individuals and select their competition track.
+2. Educator and Mentor Registration: Teachers or mentors register to tag
+along with and oversee their teams.
+3. School Registration: School administrators or Relationship Managers (RMs)
+register the official institution.
+● How does a team register and link its members? The team leader must register
+on the portal first, inputting their details to generate a unique Competition ID and
+creating a team to generate a Team ID. The team leader then inputs the exact email
+addresses of the other team members. Each individual team member must
+subsequently visit the registration link and sign in via Google using that exact email
+address to automatically connect to the team.
+● What is the permitted team size? For all three tracks, each team must consist of 3
+to 5 members. Individual participation is only permitted for the Robotics Innovation
+Challenge; Robo Sumo and Robo Racer require team participation.
+● Can a student participate in multiple tracks or teams? No. A single student is
+restricted to only one team and one track. This is because multiple competitions
+and tracks will run simultaneously at the Grand Finale, making it impossible for a
+student to participate in more than one event. Similarly, a registered team can only
+compete in one track.
+● Are there any registration fees? No, there is no registration fee to participate in
+the championship.
+● What is the age/grade eligibility for students? The championship is strictly for
+school students in Grades 4 through 12. College or diploma students are not
+permitted to participate. Students below Grade 4 are also ineligible, with the sole
+exception of Grade 3 winners from the prior Juggilal competition.
+● Is a school permission letter mandatory for students registering individually?
+Yes. If a student's school is not officially registering teams but the student wants to
+compete, they must secure and upload a school permission letter to complete their
+individual registration.
+● What happens if a school does not register on the official portal? If a school is
+not registered on the oll.co/techfest website, the school will not receive any
+participation certificate under the school's name. While students can still register
+and compete, the school’s name will be omitted from default certificates unless the
+school completes its registration.
+
+● Can parents accompany the team as mentors? Yes. If school teachers are
+unavailable, one parent or guardian is allowed to accompany the team. However,
+only the official coordinator registered on the website receives the printed certificate.
+If a parent registers officially as the team's mentor, they can receive the printed
+mentor certificate.
+Section 2: Track 1: Robo Sumo Rules & Specifications
+● What is the core objective of Robo Sumo? The goal is to push the opponent's
+robot entirely out of the arena. The match is a pure test of engineering, control, and
+pushing strategy.
+● What are the dimensional and weight specifications for a Sumo Bot?
+○ Dimensions: The bot must fit entirely within a 25 cm x 25 cm x 25 cm
+envelope (length, width, and height). This limit is strict and applies even when
+the robot is in motion or has mechanisms extended.
+○ Weight: The maximum weight limit is 3 kg, which includes the battery. There
+is no grace weight limit during the mandatory technical inspection.
+● What control mechanisms are allowed? Sumo bots can be fully autonomous,
+wired, or controlled via wireless remote or phone.
+● What are the battery voltage rules for Robo Sumo? The total nominal battery
+voltage cannot exceed 12 volts. Rechargeable batteries are permitted. If a fully
+charged 12V battery temporarily reads slightly higher (e.g., 12.3V or 12.4V) at the
+start of a match, it is acceptable as long as its nominal rating is 12V.
+● What constitutes an elimination or a "knockout"? A robot is considered
+eliminated the exact moment any part of the bot (including a single wheel or a small
+piece that breaks and falls off) crosses the outer boundary line of the circular ring.
+● What are the dimensions of the Robo Sumo ring? The arena is a circular ring with
+a diameter of 150 cm and is marked with a clear boundary line.
+● What happens if both bots exit the ring simultaneously? The referee will
+determine which bot crossed the line first. If the referee cannot determine this, the
+match is immediately restarted.
+● What are the rules regarding weapon systems or flipping mechanisms? All
+weapons, flipping mechanisms, or devices designed to damage, block, or harm the
+opposing bot are strictly prohibited. Rotating mechanisms are allowed only if they
+are not designed to harm the opponent.
+● What happens if a bot breaks down during a match? If a robot breaks down in the
+arena, the team is given a strict 2-minute grace period to fix it. If it cannot be
+
+repaired within 2 minutes, the team is disqualified, and the functional bot takes the
+win. If both bots break down simultaneously and cannot be fixed within 2 minutes,
+both teams are disqualified.
+● Are students allowed to touch their robot during a match? No. Manual
+interference or touching the robot is strictly forbidden once the match begins,
+unless explicitly approved and permitted by the referee.
+Section 3: Track 2: Robo Racer Rules & Specifications
+● What is the core objective of Robo Racer? Robo Racer is a 1v1 speed, control,
+and precision challenge on a designated track.
+● What are the track specifications? The track is a straight path roughly 10 meters
+long with no curves or elevation changes. It is split into two parallel lanes, each
+measuring 40 to 50 cm wide.
+● What are the dimensional and weight limits for a Robo Racer?
+○ Dimensions: The racer must fit within a 20 cm x 15 cm x 15 cm envelope.
+○ Weight: The maximum weight limit is 1.5 kg, including the battery.
+● What control mechanisms are allowed for Robo Racer? The control must be fully
+wireless using RC controllers. Wired controllers are strictly prohibited. Mobile
+phones are permitted for control via Bluetooth or Wi-Fi, provided they do not cause
+frequency interference with opponents. Each team must operate on a distinct
+frequency/channel to prevent signal crossover.
+● What happens if a bot crosses into the opponent's lane? Driving into or
+obstructing the opponent's lane is prohibited. The referee will either disqualify the
+offending bot or call for a re-race, depending on the intent and severity of the
+obstruction.
+● How is a tie or "photo finish" resolved? A tie or photo finish results in an
+immediate re-race between the same two bots.
+Section 4: Robotics Innovation Challenge
+● How is this track different from Sumo and Racer? This is a prototype and pitch
+competition focused on solving real-world challenges; it is not a hardware combat or
+speed race.
+
+● What are the age groups and themes?
+○ Junior Category (Grades 4–7): Theme is "Smart solutions for everyday
+life". Teams must build basic working models using simple circuits or recycled
+materials focusing on topics like waste segregation or plant care.
+○ Senior Category (Grades 8–12): Theme is "Robotics and automation for
+a smart and sustainable future". Teams must demonstrate advanced
+functional prototypes using microcontrollers (like Arduino) or basic IoT logic
+targeting complex problems like smart agriculture or disaster management.
+● What are the mandatory submissions for Round 1 (Online)? Teams must submit
+one Google Drive link containing a folder with these five items:
+○ Official team registration details.
+○ A one-page problem writeup stating the issue they are addressing.
+○ A 500-to-800-word technical abstract describing their technology,
+components, and originality. This abstract must not be written using AI
+tools like ChatGPT or Gemini.
+○ A design diagram, sketch, or CAD drawing.
+○ A 1-to-3 minute video demonstration showing the working prototype with
+the faces of all team members clearly visible.
+● Note: Teams can compile these documents into a single PDF if preferred, but all
+items must reside in one enabled Drive link.
+● What are the evaluation rubrics for both rounds?
+○ Round 1 (Online Selection): Problem and relevance (20%), Originality &
+Technical soundness of the abstract (30%), Design clarity (20%), Working
+model/Partial demonstration (30%).
+○ Round 2 (Grand Finale live presentation at IIT Bombay): Originality &
+Creativity of the idea (30%), Technical execution/bringing the concept to life
+(35%), Real-world relevance (15%), Presentation and Technical Q&A (20%).
+● Can teams upgrade their prototypes before the Grand Finale? Yes. Teams are
+explicitly permitted to bring an upgraded or improved version of their model to the
+Grand Finale.
+● Is there a special rule for OOL partner/customer schools? Yes. All OOL customer
+schools are guaranteed selection for the Grand Finale of the Innovation
+Challenge (one primary team and one secondary team per school). They must still
+submit their online materials for review, but their spot in the finals is guaranteed.
+Section 5: Technical Components, Kits, and Battery Rules
+● Are existing school kits (like Vidblocks/Witblocks) allowed in the Sumo and
+Racer tracks? No. Standard readymade electronics kits like Vidblocks/Witblocks are
+classified as "readymade kits" and will be disqualified if used as the internal
+
+electronics or control cards in Robo Sumo and Robo Racer. However, teams are
+allowed to use the physical building blocks, structural bricks, or acrylic bodies from
+these kits for external decoration/chassis support.
+● Are Vidblocks allowed in the Robotics Innovation Challenge? Yes. Electronic
+parts and modules from Vidblocks/Witblocks are fully permitted for the Innovation
+Challenge.
+● Are teams required to purchase the kits listed on the website? No. Purchasing
+the kits is completely optional. They are compiled open-source components
+(motors, chassis, drivers) provided in one place for ease of access so students do
+not have to hunt for parts in the market.
+● Are microcontrollers like Arduino mandatory for Sumo and Racer? No. Arduino
+is optional for Sumo and Racer. These bots can be wired directly to function or use a
+basic open-source wireless TX/RX system. Arduino is only necessary if a team
+decides to program a Bluetooth mobile control app.
+Section 6: Event Logistics, Deadlines, and Zonal Hubs
+○ December 31st: Final deadline for winners to submit their bank details form
+to claim prize money.
+● Where are the five regional/zonal on-ground qualification hubs?
+○ Mumbai (West Hub)
+○ Kanpur (East Hub)
+○ Delhi (North Hub)
+○ Bangalore (South Hub)
+○ Indore (Central Hub)
+● How will participation and winning certificates be distributed?
+○ Standard Participation: Issued as a soft copy.
+○ Zonal Qualifiers & Finalists: Issued as a hard copy. If a school is easily
+accessible by the team, organizers will print and deliver the physical
+certificate directly to the school.
+● Who is responsible for travel and accommodation expenses? All travel, stay,
+and logistical expenses for regional rounds and the Grand Finale must be borne
+individually by the participating teams or their respective schools.

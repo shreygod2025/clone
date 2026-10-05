@@ -21,12 +21,16 @@ router = APIRouter(tags=["kpis"])
 # Only these are computable today (backed by real data in preview/prod).
 KPI_CATALOG = [
     # Support Center — sourced from `support_queries` (assigned_to = team_user.id)
-    {"id": "support_tickets_assigned", "label": "No. of tickets assigned", "category": "Support Center", "unit": "count"},
+    # `tickets_assigned` is a *workload snapshot* (how many tickets were on
+    # this user's plate during the bucket), so we use max() across buckets
+    # instead of sum() to avoid double-counting a backlog ticket in every
+    # week it stayed open.
+    {"id": "support_tickets_assigned", "label": "No. of tickets assigned", "category": "Support Center", "unit": "count", "aggregation": "max"},
     {"id": "support_tickets_resolved", "label": "No. of tickets resolved", "category": "Support Center", "unit": "count"},
     {"id": "support_avg_resolution_hours", "label": "Avg resolution time (hours)", "category": "Support Center", "unit": "hours"},
     {"id": "support_first_response_hours", "label": "Avg first-response time (hours)", "category": "Support Center", "unit": "hours"},
     {"id": "support_resolution_rate", "label": "Resolution rate (%)", "category": "Support Center", "unit": "%"},
-    {"id": "support_sla_breach_over_3d", "label": "Tickets pending > 3 days", "category": "Support Center", "unit": "count"},
+    {"id": "support_sla_breach_over_3d", "label": "Tickets pending > 3 days", "category": "Support Center", "unit": "count", "aggregation": "snapshot"},
 
     # Sales B2B — sourced from `school_inquiries`
     {"id": "b2b_leads_assigned", "label": "No. of school leads assigned", "category": "Sales — B2B", "unit": "count"},
@@ -179,16 +183,53 @@ def _scope_bounds_iso(scope: str, ref_iso: Optional[str] = None) -> tuple[str, s
 async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
     """Metrics from `support_queries` where assigned_to == user_id.
 
-    - `assigned` counts tickets whose `created_at` falls inside the range
-      (i.e. tickets that landed on this user's plate during the period).
+    - `assigned` counts tickets that were on this user's plate at any point
+      during the period: created on or before `end_iso` AND either still open
+      OR resolved on/after `start_iso`. The old implementation only counted
+      tickets *created* in the window, which under-counted dramatically for
+      support agents carrying a backlog (e.g. Kirti had 100+ open tickets
+      from previous months but the Oct dashboard showed only 8 = new
+      tickets created in Oct).
     - `resolved` counts tickets whose `resolved_at` (fallback `updated_at`
       when `resolved_at` is missing on older docs) falls inside the range
-      AND whose current status is resolved/closed. This is timezone-safe
-      because all timestamps are stored as ISO strings.
+      AND whose current status is resolved/closed. Timezone-safe because
+      all timestamps are stored as ISO strings.
     """
     coll = db.support_queries
-    assigned_base = {"assigned_to": user_id, "created_at": {"$gte": start_iso, "$lte": end_iso}}
-    assigned = await coll.count_documents(assigned_base)
+
+    # "On this user's plate during the period" = ticket existed by period end
+    # AND (still open OR resolved during-or-after period start).
+    #
+    # We also honour `assigned_at` when the doc has it — a ticket re-assigned
+    # mid-period should still show up as the user's workload for that period.
+    assigned_query = {
+        "assigned_to": user_id,
+        "created_at": {"$lte": end_iso},
+        "$or": [
+            # Still open at the time of the query → was on their plate end of period
+            {"status": {"$nin": ["resolved", "closed"]}},
+            # Resolved on or after period start → was on their plate during period
+            {"resolved_at": {"$gte": start_iso}},
+            # Fallback for docs with no resolved_at — use updated_at
+            {
+                "resolved_at": {"$in": [None, ""]},
+                "updated_at": {"$gte": start_iso},
+            },
+            {
+                "resolved_at": {"$exists": False},
+                "updated_at": {"$gte": start_iso},
+            },
+        ],
+    }
+    assigned = await coll.count_documents(assigned_query)
+
+    # Kept for the first-response calculation below (which should look only
+    # at tickets NEWLY created in-period — a first response on a 3-month-old
+    # ticket is noise for this period's metric).
+    newly_created_query = {
+        "assigned_to": user_id,
+        "created_at": {"$gte": start_iso, "$lte": end_iso},
+    }
 
     # Resolved-in-range: prefer `resolved_at`; fall back to `updated_at`
     # for pre-`resolved_at` rows (matches daily_report.py convention).
@@ -234,7 +275,7 @@ async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -
     # `assigned` above).
     first_response_hours = 0.0
     fr_count = 0
-    fr_docs = await coll.find(assigned_base, {"_id": 0, "created_at": 1, "replies": 1}).to_list(2000)
+    fr_docs = await coll.find(newly_created_query, {"_id": 0, "created_at": 1, "replies": 1}).to_list(2000)
     for d in fr_docs:
         replies = d.get("replies") or []
         if not replies:

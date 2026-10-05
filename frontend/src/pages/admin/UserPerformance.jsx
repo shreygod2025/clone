@@ -401,6 +401,7 @@ const KpiChartCard = ({ kpi, scopeSub, theme }) => {
   const trend = kpi.trend || 0;
   const isPct = kpi.unit === '%';
   const isHrs = kpi.unit === 'hours';
+  const isSnapshot = kpi.aggregation === 'snapshot' || kpi.aggregation === 'max';
   const display = kpi.display_value ?? kpi.total ?? 0;
 
   // Compute % change for the header pill
@@ -440,7 +441,7 @@ const KpiChartCard = ({ kpi, scopeSub, theme }) => {
           {formatValue(display, kpi.unit)}
         </p>
         <p className="text-xs text-slate-400">
-          {isPct || isHrs ? `avg across ${scopeSub}` : `total across ${scopeSub}`}
+          {isSnapshot ? `peak across ${scopeSub}` : isPct || isHrs ? `avg across ${scopeSub}` : `total across ${scopeSub}`}
         </p>
       </div>
 

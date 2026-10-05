@@ -1,0 +1,323 @@
+Techfest 2026-27
+OLL Robotics Championship
+Objective
+The Techfest’s OLL Robotics Championship gives school students across the country
+a structured, credible platform to design, build, and compete with robots, and to
+pitch original engineering ideas in front of a national panel. The championship is
+built around three tracks so that students with different strengths, mechanical
+building, dynamic control, or research and innovation, all have a track suited to
+them.
+Specifically, the championship aims to:
+● Introduce school students to hands-on robotics, mechanical design, and
+applied STEM concepts through competition.
+● Offer three distinct tracks that test different skills: structural design and
+strategy (RoboSumo), agile control and speed engineering (Roboracer), and
+original problem-solving and research (Robotics Innovation Challenge).
+● Build a wide, scalable outreach funnel that combines a national online
+qualifier with on-ground OLL Regional Qualifiers.
+● Recognise genuine technical effort and original thinking with a credible
+national stage, at the Techfest Grand Finale in IIT Bombay.
+Note: Visit oll.co/techfest for latest updates, and detailed videos
+The Challenge
+The Techfest Robotics Championship is one championship with three competitive
+tracks, each run to its own format and its own set of rules, but all converging at the
+same Grand Finale during Techfest at IIT Bombay.
+
+Track 1 - RoboSumo
+A head-to-head pushing contest between two bots inside a circular ring, testing
+structural design, traction, and pushing power. Full rules are adapted from the
+Technoxian World Robotics Championship Sumo Bot format.
+Track 2 - Roboracer
+A head-to-head speed contest between two RC bots on a shared track, testing
+drivetrain design, agility, and race-line strategy.
+Track 3 - Robotics Innovation Challenge
+A research and presentation-driven track where students identify a real-world
+problem and present an original robotic prototype or automation concept to a
+judging panel. This track runs across two age categories, Junior (grades 4-7) and
+Senior (grades 8-12), each with its own problem statement theme.
+RoboSumo and Roboracer both qualify to the Grand Finale through the Qualification
+Pathway detailed below. The Robotics Innovation Challenge runs on its own
+two-round structure, online qualifier followed by an on-site final, detailed in its own
+track section.
+Qualification Pathway
+Applies to: RoboSumo and Roboracer.
+Round 1: National Online Qualifier (Mandatory)
+Open to all students registering directly through the official Techfest website. Every
+team must submit a technical abstract and a short video demonstration of
+their bot. Teams that clear Round 1 qualify for their nearest OLL Regional Qualifier.
+Technical Abstract (For Track 1 & 2): 500-800 words, should cover:
+1. Team & bot name, one-line design approach
+2. Mechanical design - chassis, dimensions/weight, key structural choices
+3. Drivetrain & motors - motor type/count, wheels, battery/voltage
+4. Control system - autonomous/wired/wireless (Track 1); RC setup (Track 2)
+5. Match strategy - pushing/defense (Track 1) or driving approach (Track 2)
+Round 2: OLL Regional Qualifiers
+OLL hosts on-ground Regional Qualifiers across five city hubs, open only to teams
+that have qualified through Round 1.
+
+Zone City
+West Mumbai
+East Kanpur
+North Delhi
+South Banglore
+Central Indore
+If you would like to host an offline Regional Qualifier at your institution, reach out
+to skills@oll.co.
+Dates and Locations of these Regional Qualifiers will be live on
+https://oll.co/techfest
+Grand Finale
+The top 4 teams from each of the five Regional Qualifiers converge at IIT Bombay
+for the final round of RoboSumo and Roboracer during Techfest 2026-27.
+Track 1: RoboSumo
+Description
+RoboSumo turns mechanical design and control programming into a head-to-head
+duel. Teams build a fully autonomous, wireless bot and send it into the arena to
+push the opponent clean over the edge. No weapons, no flipping, just raw traction,
+weight distribution, and sharp control strategy going toe to toe.
+Arena Specifications
+Parameter Specification
+Shape & size Circular arena, approximately 150 cm in diameter
+
+Boundary The arena is marked with a clearly defined circular
+boundary line. A bot is declared out the moment any
+part of it, including a single wheel, crosses this line.
+Bot Specifications
+Parameter Limit
+Bot size Must fit within a 25 cm × 25 cm × 25 cm space at all
+times, including any moving or extended
+mechanisms.
+Maximum weight 3 kg including battery
+Control Fully autonomous, wired, or wireless remote control
+permitted.
+Prohibited Weapons, sharp or pinching mechanisms, flipping
+mechanisms, projectiles, or any part designed to
+damage the opponent bot.
+No restriction on motor type or count, provided total
+battery voltage does not exceed 12V nominal, and
+the bot stays within the size and weight limits.
+Build origin Must be the team's own original design and
+construction; ready-made kits or bots are not
+permitted.
+(Not compulsory but https://oll.co/shop/product/robo-sumo-kit-specially-f
+Recommended) Kit or-techfest-iit-bombay-22b5228a
+Competition Structure
+● Each match is a 1v1 face-off between two bots, placed at opposite starting
+points in the arena.
+● A match lasts up to 2 minutes; the first bot to push its opponent out of the
+arena wins.
+● If neither bot is pushed out within the time limit, 2 restart / sudden-death
+rounds will be conducted, after that the referee decides the winner based on
+control and dominance shown during the matches. Refree’s decision is final.
+● Once the robot is placed in the arena, there can be no manual interference
+by the participants unless the referee permits the same.
+
+● lf both the robots are not able to fight then a time period of 2 minutes will be
+given for grace period to fix the robot, if even then the robot is not
+functional, it will lead to disqualification of both teams.
+● Matches are run on a knockout bracket; the winner advances, the loser is
+eliminated.
+Evaluation
+RoboSumo is decided purely on match outcomes. Each 1v1 match has one winner,
+who advances in the bracket; there is no separate scoring or weightage system
+unless it’s a tie.
+Track 2: Roboracer
+Description
+Roboracer puts drivetrain design and nerve to the test. Teams build RC bots and
+race them head-to-head down a shared track, from a standing start to the finish
+line. Whether built for raw top speed or tight control, every bot lives or dies by its
+traction, steering, and the driver’s reflexes.
+Arena & Bot Specifications
+Parameter Specification
+Track & Lane Layout Straight track, approximately 10-12 m long, with 2
+parallel lanes (approx. 40-50 cm wide each)
+separated by clearly marked lane lines. Start and
+finish lines marked. Exact dimensions may vary by
+venue
+Bot size Fits within a 20 cm × 15 cm × 15 cm envelope
+Maximum weight 1.5 kg including battery
+Control Fully wireless RC control only, one frequency/channel
+per team to avoid interference
+Track Surface Non-slip vinyl or mat surface with painted lane
+markings; exact surface material may vary by venue.
+
+Finish Line Clearly marked finish line at the end of each lane; a
+bot must fully cross the line to be considered
+finished.
+Prohibited Any mechanism designed to obstruct, block, or
+damage the opposing bot or lane; sharp or protruding
+parts; projectiles.
+Build origin Chassis, drivetrain, and control logic must be the
+team's own original design and assembly;
+ready-made RC toy cars are not permitted.
+(Not compulsory but https://oll.co/shop/product/robo-racer-kit-specially-m
+Recommended) Kit ade-for-iit-bombay-8bf545dc
+Competition Structure
+● Each race is a 1v1 heat between two bots running in adjacent lanes on the
+same track, starting simultaneously on the referee's signal.
+● Each heat lasts up to 2 minutes. The first bot to complete the track and fully
+cross the finish line wins the heat.
+● A dead heat(tie) or photo finish goes to an immediate re-race between the
+same two bots.
+● Matches are run on a knockout bracket; the winner advances, the loser is
+eliminated.
+Evaluation
+Roboracer is decided purely on race outcomes. Each 1v1 heat has one winner, who
+advances in the bracket; there is no separate scoring or weightage system.
+Track 3: Robotics Innovation Challenge
+Description
+This track steps away from head-to-head competition. Students spot a real-world
+problem and design an original robotic prototype, automation system, or STEM
+concept to solve it, then pitch it to a judging panel. It runs on its own two-round
+structure and does not use the OLL Regional bypass.
+
+Age Categories
+Category Grade Range
+Junior Grades 4 to 7 - Theme: Smart Solutions for Everyday
+Life
+Senior Grades 8 to 12 - Theme: Robotics & Automation for a
+Smart, Sustainable Future
+Round 1 - Online Qualifier
+Round 1 is conducted entirely online. Every team submits the following, specific to
+the problem statement theme assigned to their age category:
+● Team registration details: team name, school or RoboClub name, category
+(Junior or Senior), and details of all team members and the mentor.
+● Problem write-up (1 page): a clear statement of the real-world problem being
+addressed, why it matters, and who it affects.
+● Technical abstract (500-800 words): describing the proposed solution, how it
+works, the technology or components involved, and what makes the
+approach original.
+● Design diagram or sketch: a labelled diagram, circuit sketch, or CAD drawing
+showing how the prototype is structured and how its parts connect.
+● Video demonstration (1-3 minutes): showing the working or partially working
+model in action, with a brief walkthrough by the team explaining what it does
+(The faces of all team members must be clearly visible in the video).
+Evaluation Criteria
+Criterion Weightage
+Problem relevance & clarity (write-up) 20%
+Originality & technical soundness of the abstract 30%
+Design clarity (diagram/sketch) 20%
+Working/partial model demonstrated (video) 30%
+
+Round 2 - Grand Finale (IIT Bombay)
+Shortlisted teams travel to IIT Bombay to compete in Round 2 during Techfest. This
+round centres on a live prototype presentation:
+● Prototype display: teams set up their physical prototype (or an upgraded
+version of the Round 1 model) at an assigned presentation space.
+● Live demonstration: teams demonstrate the prototype working in front of the
+judging panel in a 10 mins slot, showing the problem-to-solution flow in
+action.
+● Judge walkthrough & 5 mins Q&A : judges question the team on the
+technical working, design choices, and real-world feasibility of the prototype.
+● Presentation format: Junior category presentations are kept conversational
+and encouraging; Senior category presentations may include a more detailed
+technical walkthrough of the build.
+Evaluation Criteria
+Criterion Weightage
+Originality & creativity of 30%
+the idea
+Technical execution of the 35%
+prototype
+Real-world relevance 15%
+Presentation & Q&A 20%
+Round 1 is used only to shortlist teams; final rankings are based on Round 2.
+Junior Theme (Grades 4-7): Smart Solutions for Everyday Life
+Simple, relatable problems from school, home, or the neighbourhood, solved with a
+basic working model.
+Suggested directions: waste segregation, water conservation, road/school safety,
+plant care, home help, energy saving. Basic components (simple circuits, recycled
+materials) are expected; a working physical model matters more than technical
+complexity.
+Senior Theme (Grades 8-12): Robotics & Automation for a Smart,
+
+Sustainable Future
+More technically demanding problems solved with a functional prototype.
+Suggested directions: smart agriculture, disaster management, healthcare &
+assistive tech, sustainable energy, smart mobility, environmental monitoring.
+Submissions may use microcontrollers, sensors, or basic IoT logic (Arduino,
+Raspberry Pi, micro:bit), and should show a working principle, not just a concept
+sketch.
+Team Specification and Eligibility
+● Eligibility: Track 1 (RoboSumo) and Track 2 (Roboracer) are open to all
+school students. The Robotics Innovation Challenge runs by age category:
+Junior (grades 4-7) and Senior (grades 8-12).
+● Team Specification: Each team must consist of 3 to 5 members, across all
+three tracks (RoboSumo, Roboracer and the Robotics Innovation Challenge).
+Round 1 - Common Submission Guidelines (All Tracks)
+Regardless of track, every team must submit a single Google Drive link (with
+viewer access enabled) containing all required documents in one folder.
+Submissions split across multiple links, or missing any required item, will not be
+considered for shortlisting.
+Required for all tracks:
+● School permission letter - scanned document on the school's official
+letterhead, signed by the Principal (or equivalent school authority),
+authorizing the team's participation.
+Competition Timeline
+Event Date
+Deadline of Registration on Techfest 30th Sept 2026
+Website
+Round 1 Submission Deadline of all 3 10th October 2026
+tracks on Techfest’s Website
+
+Round 1 Result announcement of all 3 17th October 2026
+tracks of submissions made on
+Techfest’s Website
+Round 2 OLL Regional Qualifiers Dates of these Regional Qualifiers will
+be live on https://oll.co/techfest
+Round 2 OLL Regional Qualifiers Result On the Same day of OLL Regional
+Announcement Qualifier round.
+Grand Finale - Finals of all 3 Tracks 16th - 18th December 2026
+General Rules
+● Every participant must register online at techfest.org, receiving an ID for
+future reference.
+● Techfest, IIT Bombay, is not responsible for late or lost entries.
+● The latest information will be available on techfest.org, with registered
+participants notified of changes via email.
+● All bots across RoboSumo and Roboracer undergo a mandatory technical
+inspection before their first match, checking size, weight, power, and
+prohibited-feature compliance.
+● The OLL Regional Qualifier bypass applies only to RoboSumo and Roboracer;
+the Robotics Innovation Challenge is evaluated solely through its own
+two-round online-to-onsite structure.
+● Referee and judging panel decisions are final and not open to appeal, across
+all three tracks.
+● Any team found using a bot or prototype that does not match its submitted
+specifications will be disqualified from the match or round in progress.
+● Exact arena dimensions, goal sizes, and ring diameters may vary by up to
+10% depending on venue constraints at each Regional Qualifier or the Grand
+Finale.
+● Any idea, design, or bot submitted must be the team's own original work;
+plagiarism or use of pre-built commercial products without meaningful
+original modification will result in disqualification.
+● Teams are expected to maintain safe and respectful conduct at all venues;
+unruly behaviour, damage to venue property, or interference with another
+team's bot or prototype can result in disqualification.
+● Techfest and OLL reserve the right to amend match schedules, venues, or
+minor rule details in case of unavoidable circumstances, with reasonable prior
+
+notice to teams.
+● All technical, procedural, and competition-related queries must be submitted
+directly through the Techfest Competition Portal under the Doubt section.
+Participants are strictly requested to regularly check the portal for answers
+and updates
+● Official communication for important announcements will be through the
+email siddhi@techfest.org. Queries submitted via email will not be
+entertained
+Certificate Policy
+All students who take part and submit an acceptable entry will receive a Certificate
+of Participation. Teams that qualify for and compete in the Grand Finale at Techfest
+2026-27 will additionally receive a Certificate of Finalist recognition.
+Prize Money
+Prize money will be awarded to the top three teams of each track via NEFT,
+latest by May 2027.
+Prize Money Submission Process
+● Submission Channel: Complete the prize money form directly on the
+website after the final round concludes. The winners would be able to view
+the form through their registered email ID
+● Deadline: The form must be submitted by December 31, 2026.
+Details Needed for the Website Form
+When filling out the form on the website, make sure you have the following bank
+account details ready:
+1. Account Holder's Name
+2. Account Number
+3. Bank Name and Branch Name
+4. IFSC Code
