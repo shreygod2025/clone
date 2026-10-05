@@ -84,7 +84,10 @@ const RULES = [
   // ── Books first (so "Book-G-9 IOT /AI Vision" lands in books, not comp) ─
   { slug: 'curriculum-books', match: ['book-', 'book g', 'book-g', 'textbook'] },
   // ── Competition & Advanced ───────────────────────────────────────────
-  { slug: 'competition-and-advanced-kits', match: ['robo sumo', 'robosumo', 'robo racer', 'roboracer', 'drone', 'aeromodel', '3d pen', 'ai vision'] },
+  // NB: AI Vision Blox was previously here under 'ai vision' but it is a
+  // standalone sensor module customers buy à-la-carte, so it belongs under
+  // Individual Components (handled implicitly by the fall-through below).
+  { slug: 'competition-and-advanced-kits', match: ['robo sumo', 'robosumo', 'robo racer', 'roboracer', 'drone', 'aeromodel', '3d pen'] },
   // ── Grade kits ──
   { slug: 'curriculum-robotic-kits', match: ['grade 1 robotics kit', 'grade 2  robotics kit', 'grade 2 robotics kit', 'grade 3 robotics kit', 'grade 4 robotics kit', 'grade 5 robotics kit', 'grade 6 robotics kit', 'grade 7  robotics kit', 'grade 7 robotics kit', 'grade 8 robotics kit', 'grade 9 rob kit', 'grade 10 rob kit'] },
 ];

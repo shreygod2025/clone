@@ -214,6 +214,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
   // Removed Blog and FAQ from navbar - moved to footer
   const navLinks = [
     { path: '/offerings', label: 'Offerings' },
+    { path: '/shop', label: 'Shop' },
     { path: '/about', label: 'About' },
     { path: '/centers', label: 'Centers' },
     { path: '/techfest', label: 'Techfest', highlight: true },

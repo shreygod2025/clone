@@ -5,6 +5,7 @@ import axios from 'axios';
 import {
   ShoppingCart, ChevronRight, Truck, Shield, Sparkles,
   ArrowLeft, Package, BadgeCheck, Star, Trophy, Flag, Zap, ArrowRight,
+  PlayCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../components/Footer';
@@ -12,6 +13,7 @@ import CartDrawer from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
 import { productSlug } from '../utils/slug';
 import { CATEGORY_BY_SLUG, getShopCategorySlug } from '../utils/shopCategories';
+import { mdToHtml, youtubeIdFromUrl } from '../utils/richContent';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
@@ -51,6 +53,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   const techfestKind = isTechfestSlug(slug);
   const isTechfest = !!techfestKind;
 
@@ -116,6 +119,33 @@ const ProductDetailPage = () => {
     // keep it deterministic within a single session so re-renders are stable.
     return sameCat.slice(0, 8);
   }, [allShopProducts, related, shopCategorySlug, product]);
+
+  // ── Rich media derived from the backend's _merge_product payload. All
+  // optional — PDP falls back to the single hero image / plain description
+  // when the vendor hasn't filled these fields in yet. ─────────────────────
+  const gallery = useMemo(() => {
+    if (!product) return [];
+    const list = Array.isArray(product.gallery_urls) ? product.gallery_urls.filter(Boolean) : [];
+    if (list.length) return list;
+    return product.image_url ? [product.image_url] : [];
+  }, [product]);
+
+  const youtubeId = useMemo(
+    () => (product?.video_url ? youtubeIdFromUrl(product.video_url) : null),
+    [product?.video_url],
+  );
+
+  const includes = Array.isArray(product?.includes) ? product.includes : [];
+
+  const descriptionHtml = useMemo(() => {
+    if (!product) return '';
+    if (product.description_html) return product.description_html; // vendor-provided HTML
+    if (product.description_md) return mdToHtml(product.description_md);
+    // Legacy plain text — convert \n to <br/> so vendor line-breaks survive.
+    const plain = product.description || '';
+    if (plain.includes('\n')) return mdToHtml(plain);
+    return '';
+  }, [product]);
 
   const seoTitle = product
     ? `${product.name.trim()} · ${product.category} · OLL Shop`
@@ -363,11 +393,11 @@ const ProductDetailPage = () => {
 
       {/* Product hero */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Image */}
+        {/* Image — gallery when the vendor supplies 2+ images, else single hero */}
         <div className="lg:sticky lg:top-24 self-start">
           <div className={`relative bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm ${isTechfest ? 'aspect-[4/3]' : 'aspect-square'}`}>
             <img
-              src={product.image_url || fallbackImage(product.id)}
+              src={gallery[activeImageIdx] || product.image_url || fallbackImage(product.id)}
               alt={product.name}
               className={`w-full h-full block ${isTechfest ? 'object-contain p-3' : 'object-cover'}`}
               loading="eager"
@@ -385,6 +415,34 @@ const ProductDetailPage = () => {
               </span>
             )}
           </div>
+          {gallery.length > 1 && (
+            <div
+              className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-thin"
+              data-testid="pdp-gallery-thumbs"
+            >
+              {gallery.map((src, i) => (
+                <button
+                  key={`${src}-${i}`}
+                  type="button"
+                  onClick={() => setActiveImageIdx(i)}
+                  aria-label={`Show image ${i + 1} of ${gallery.length}`}
+                  className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition ${
+                    i === activeImageIdx
+                      ? 'border-[#D63031] shadow-md'
+                      : 'border-slate-200 hover:border-slate-400'
+                  }`}
+                  data-testid={`pdp-gallery-thumb-${i}`}
+                >
+                  <img
+                    src={src}
+                    alt={`${product.name} — view ${i + 1}`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Details */}
@@ -423,13 +481,22 @@ const ProductDetailPage = () => {
           </div>
           <p className="mt-1 text-xs text-slate-500">Inclusive of all taxes · Flat ₹150 shipping</p>
 
-          {/* Description — mobile-friendly: smaller font + collapsed with view-more */}
+          {/* Description — vendor-supplied HTML/Markdown when present (bullets,
+              bold, links), else plain text with mobile truncation. */}
           <div className="mt-6" data-testid="pdp-description">
-            <p
-              className={`text-slate-700 leading-relaxed text-xs sm:text-sm md:text-base ${!descExpanded ? 'line-clamp-4 sm:line-clamp-none' : ''}`}
-            >
-              {product.description || 'A curated OLL Robotics kit built for hands-on learning.'}
-            </p>
+            {descriptionHtml ? (
+              <div
+                className={`pdp-rich prose prose-sm sm:prose-base max-w-none text-slate-700 leading-relaxed ${!descExpanded ? 'line-clamp-6 sm:line-clamp-none' : ''}`}
+                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                data-testid="pdp-description-html"
+              />
+            ) : (
+              <p
+                className={`text-slate-700 leading-relaxed text-xs sm:text-sm md:text-base ${!descExpanded ? 'line-clamp-4 sm:line-clamp-none' : ''}`}
+              >
+                {product.description || 'A curated OLL Robotics kit built for hands-on learning.'}
+              </p>
+            )}
             {(product.description || '').length > 220 && (
               <button
                 type="button"
@@ -521,6 +588,75 @@ const ProductDetailPage = () => {
 
       {/* Techfest deep-dive — only for the two official IIT Bombay Techfest kits */}
       <TechfestDeepDive slug={slug} />
+
+      {/* ── Vendor-provided video (optional) ───────────────────────────── */}
+      {youtubeId && (
+        <section
+          className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-6"
+          data-testid="pdp-video"
+        >
+          <div className="rounded-3xl overflow-hidden border border-slate-200 bg-black shadow-sm">
+            <div className="relative" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube-nocookie.com/embed/${youtubeId}?rel=0&modestbranding=1`}
+                title={`${product.name} — product video`}
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+            <PlayCircle className="w-3.5 h-3.5" />
+            Product walkthrough from OLL
+          </p>
+        </section>
+      )}
+
+      {/* ── Vendor-provided "What the kit includes" table (optional) ───── */}
+      {includes.length > 0 && (
+        <section
+          className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-6"
+          data-testid="pdp-includes"
+        >
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 bg-slate-50 border-b border-slate-200">
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-[#D63031]">
+                What&apos;s in the box
+              </div>
+              <h2 className="mt-1 text-xl sm:text-2xl font-black text-slate-900">
+                Kit includes {includes.length} {includes.length === 1 ? 'item' : 'items'}
+              </h2>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {includes.map((row, i) => (
+                <div
+                  key={`${row.name}-${i}`}
+                  className="grid grid-cols-[1fr,auto] gap-4 items-center px-5 sm:px-6 py-3"
+                  data-testid={`pdp-includes-row-${i}`}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-slate-800 font-semibold truncate">
+                      {row.name}
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-black text-slate-900 tabular-nums whitespace-nowrap">
+                    × {row.qty}
+                    {row.unit && (
+                      <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        {row.unit}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Related products — scoped to the same shop category so
           "You may also like" is actually relevant (books-with-books,

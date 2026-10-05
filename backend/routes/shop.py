@@ -241,6 +241,84 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
     else:
         show_on_shop = False
 
+    # ── Rich media (gallery, video, kit-includes table, formatted description) ──
+    # The vendor panel started accepting these in Oct 2026. We read whatever
+    # the public API returns under several reasonable key names so a vendor-side
+    # rename doesn't silently break the PDP, then let an admin override win.
+    gallery = (
+        ov.get("gallery_urls")
+        or ov.get("images")
+        or v.get("images")
+        or v.get("image_urls")
+        or v.get("gallery")
+        or []
+    )
+    # Normalise gallery to a list of absolute URLs; strip empties & dupes.
+    seen = set()
+    gallery_norm: List[str] = []
+    for src in gallery:
+        if not src:
+            continue
+        src = _normalize_vendor_image(src) if isinstance(src, str) else None
+        if src and src not in seen:
+            seen.add(src)
+            gallery_norm.append(src)
+    # Always include the primary image_url first so UI can rely on gallery[0]
+    # being the hero shot.
+    if image_url and image_url not in seen:
+        gallery_norm.insert(0, image_url)
+
+    video_url = (
+        ov.get("video_url")
+        or v.get("video_url")
+        or v.get("youtube_url")
+        or v.get("video")
+        or ""
+    ) or None
+
+    includes_raw = (
+        ov.get("includes")
+        or ov.get("includes_table")
+        or v.get("includes")
+        or v.get("includes_table")
+        or v.get("kit_includes")
+        or v.get("whats_included")
+        or []
+    )
+    # Normalise each row → {name, qty, unit}. Accepts list[dict] or list[str].
+    includes: List[dict] = []
+    for row in includes_raw if isinstance(includes_raw, list) else []:
+        if isinstance(row, dict):
+            n = (row.get("name") or row.get("item") or row.get("title") or "").strip()
+            if not n:
+                continue
+            q = row.get("qty") or row.get("quantity") or 1
+            try:
+                q = int(float(q))
+            except (TypeError, ValueError):
+                q = 1
+            u = (row.get("unit") or row.get("units") or "").strip() or None
+            includes.append({"name": n, "qty": q, "unit": u})
+        elif isinstance(row, str) and row.strip():
+            includes.append({"name": row.strip(), "qty": 1, "unit": None})
+
+    # Formatted / long description. Prefer explicit vendor-supplied HTML or
+    # Markdown; falls back to the plain description (which the UI will
+    # auto-newline).
+    description_html = (
+        ov.get("description_html")
+        or v.get("description_html")
+        or v.get("long_description_html")
+        or ""
+    ) or None
+    description_md = (
+        ov.get("description_md")
+        or ov.get("long_description")
+        or v.get("description_md")
+        or v.get("long_description")
+        or ""
+    ) or None
+
     return {
         "id": pid,
         "name": name,
@@ -249,9 +327,14 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         "vendor_name": v.get("vendor_name"),
         "unit": v.get("unit", "pcs"),
         "description": description,
+        "description_html": description_html,
+        "description_md": description_md,
         "mrp": mrp,
         "selling_price": selling_price,
         "image_url": image_url,
+        "gallery_urls": gallery_norm,
+        "video_url": video_url,
+        "includes": includes,
         "show_on_shop": show_on_shop,
         "category": ov.get("category")
         or ("IoT Kits" if "iot" in name.lower() else "Robotics Kits"),
