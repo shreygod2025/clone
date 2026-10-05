@@ -1,5 +1,38 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — OLLBot v3 — live shop catalog, no-external-sellers policy, scroll fix, admin-editable knowledge base
+**Status: COMPLETE · verified end-to-end (frontend + backend curl)**
+
+Three user complaints fixed in one pass:
+
+### 1) Scroll jumps to footer on every reply → now anchors to the user's latest question
+`FAQPage.jsx` was running `window.scrollTo({ top: document.body.scrollHeight })` on every `messages` state change, which parks the viewport past the content (user sees footer, not answer). Replaced with: capture a ref array of each message DOM node, find the index of the *latest user message* after send, and `window.scrollTo` to that element's `getBoundingClientRect().top - 80px`. Added a `70vh` scroll runway below the chat log so even a one-line answer leaves enough room to pin the question near the top of the viewport. First-mount no longer auto-scrolls at all.
+
+### 2) Bot was recommending external sellers (Robu.in, Amazon, RoboKits) → now redirects to OLL Shop only
+Root cause: static `OLL_CORE_FACTS` in `faq_chat.py` literally said "Online: Robu.in, Amazon India, RoboKits India". Rewrote the chatbot:
+- Pulled all static knowledge into a new MongoDB collection `faq_settings` with sensible defaults.
+- Added a 🚫 HARD RULES block in the system prompt that bans external sellers by name.
+- Pulls the **live OLL Shop catalog** on every request (via `shop.py :: _fetch_vendor_catalog + _merge_product`) and injects name + category + ₹price + slug URL for each product (top 80). Live verification: "where can I buy motors and sensors?" → bot quotes real OLL prices like ₹283 for 500RPM Motor, ₹99 for BO Motor, ₹99 for IR Sensor, and links to `/shop/category/individual-components`. No external vendors referenced.
+
+### 3) Model not trained on all data → everything editable in Admin → Settings → FAQ Chatbot
+New admin surface at `/admin/faq-settings` (also linked from `/admin/settings` as the "FAQ Chatbot" external tab). Structured sections, each a free-form editor the bot concatenates into its system prompt on every reply:
+- Techfest 2026 — rules, specs, dates, prizes
+- Shop & Kits — categories, delivery, flagship kits, no-external-sellers policy
+- Learning Programs & Camps — AI Foundations, Summer Camp, Continuous Learning
+- Support Policy — SLAs, channels, escalation
+- Core Facts & Sitemap — URLs, company info
+Plus: editable starter chip list, `include_live_products` toggle, char counters per section, sticky save bar, timestamp of last edit.
+
+### Files touched
+- `backend/routes/faq_settings.py` (new) — `GET/PUT /api/admin/faq-settings`, Pydantic `FaqSettings` model + defaults
+- `backend/routes/faq_chat.py` (rewrite) — DB-driven system prompt, live product injection, hard-rules block, ban on external sellers
+- `backend/server.py` — registered `faq_settings_router`
+- `frontend/src/pages/FAQPage.jsx` — scroll-to-latest-question logic, 70vh scroll runway
+- `frontend/src/pages/admin/AdminFaqSettings.jsx` (new) — structured section editor
+- `frontend/src/pages/admin/AdminSettings.jsx` — new "FAQ Chatbot" external tab (Sparkles icon)
+- `frontend/src/App.js` — `/admin/faq-settings` route behind `permission="settings"`
+
+
 ## 2026-10-05 — OLLBot v2 — sticky composer, clickable links, submission link, better model
 **Status: COMPLETE · all 4 user-reported issues verified fixed in-browser**
 

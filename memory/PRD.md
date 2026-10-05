@@ -13,6 +13,15 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Educator / Support — reviews trials, follow-ups.
 - Payments Ops — reconciles Cashfree state with app state.
 
+
+## 2026-10-05 — OLLBot v3 (admin-editable knowledge base + live shop catalog)
+- Bot no longer recommends external sellers (Robu.in, Amazon etc.) — hard rule in system prompt + live OLL product catalog injected on every reply.
+- Scroll bug fixed: new replies anchor the user's latest question near the top of the viewport (no more jump-to-footer).
+- Full knowledge base now editable at `/admin/faq-settings` (Admin → Settings → FAQ Chatbot) with 5 structured sections, starter-chip editor, and live-products toggle. No code deploy needed for content tweaks.
+- New collection `faq_settings` (single doc, `id="main"`). Falls back to curated defaults when missing.
+- Endpoints: `GET/PUT /api/admin/faq-settings` (permission=settings), `GET /api/faq-chat/suggestions` now reads from DB.
+
+
 ## Core Requirements
 - Excel-like Future Skills CRM (dense grid, column filters, inline notes, status auto-tint).
 - Consolidated toolbar (single row): search + status chips + Add / Import buttons.

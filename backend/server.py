@@ -4115,6 +4115,7 @@ from routes.school_emails import router as school_emails_router
 from routes.checkin_api import router as checkin_router
 from routes.ai_chat import router as ai_chat_router
 from routes.faq_chat import router as faq_chat_router
+from routes.faq_settings import router as faq_settings_router
 from routes.users import router as users_router
 from routes.students import router as students_router
 from routes.team import router as team_router
@@ -4170,6 +4171,7 @@ api_router.include_router(school_emails_router)
 api_router.include_router(checkin_router)
 api_router.include_router(ai_chat_router)
 api_router.include_router(faq_chat_router)
+api_router.include_router(faq_settings_router)
 api_router.include_router(users_router)
 api_router.include_router(students_router)
 api_router.include_router(team_router)

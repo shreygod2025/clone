@@ -8,7 +8,7 @@ import {
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
   Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal, Inbox,
-  Send, Link2, ExternalLink
+  Send, Link2, ExternalLink, Sparkles
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -620,6 +620,7 @@ const AdminSettings = () => {
     { id: 'coupons', label: 'Coupons', icon: Tag, count: null },
     // ── External tabs — click navigates to the dedicated page (removed from sidebar).
     { id: 'broadcasts',          label: 'Bulk Email',          icon: Send,     count: null, external: '/admin/broadcasts' },
+    { id: 'faq-chatbot',         label: 'FAQ Chatbot',         icon: Sparkles, count: null, external: '/admin/faq-settings' },
     { id: 'data-center',         label: 'Data Center',         icon: Database, count: null, external: '/admin/data-center' },
     { id: 'data-export',         label: 'Data Export',         icon: Download, count: null, external: '/admin/data-export' },
     { id: 'link-preview-tester', label: 'Link Preview Tester', icon: Link2,    count: null, external: '/admin/link-preview-tester' },

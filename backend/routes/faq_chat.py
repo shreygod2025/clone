@@ -3,22 +3,23 @@ FAQ Chatbot — /api/faq-chat
 ──────────────────────────
 Powers the public AI chatbot at https://oll.co/faq.
 
-Knowledge sources (all baked into the system prompt — no live retrieval):
-  1. `data/techfest_faqs.txt`               — the 60+ Q&A rulebook from the vendor
-  2. `data/techfest_problem_statement.txt`  — the official competition problem statement
-  3. `OLL_CORE_FACTS` constant below        — pricing, dates, support contact, offerings
+Knowledge sources (merged into the system prompt on every request):
+  1. Admin-editable sections from the `faq_settings` MongoDB collection
+     (Techfest / Shop / Programs / Support / Core facts + starter chips).
+     Managed in Admin → Settings → Edit FAQ Chatbot (/admin/faq-settings).
+  2. Live OLL shop catalog pulled from `routes.shop._fetch_vendor_catalog`
+     when `include_live_products` is on in the settings. This is why the
+     bot can answer "how much is the AI Vision Blox?" with a real price.
+  3. `data/techfest_faqs.txt`               — vendor-provided 60+ Q&A rulebook
+  4. `data/techfest_problem_statement.txt`  — competition problem statement
 
 Modes:
-  • Anonymous: answers general public questions (competition rules, kits, pricing).
-    For "what's the status of my order?" it points them at /login.
-  • Logged-in (JWT in Authorization header): the user's own open support tickets are
-    pulled from `support_queries` and included in the system prompt so the bot can
-    say "your ticket #ABC is in progress with Kirti, last reply 2 days ago". We NEVER
-    expose anyone else's tickets.
+  • Anonymous:  general public answers only.
+  • Logged-in: user's own open support tickets are pulled from `support_queries`
+    and inlined so the bot can say "your ticket #ABC is in progress".
 
 Persistence:
-  • Conversation state is in-memory (`_SESSIONS` dict). Lost on backend restart —
-    acceptable for a public FAQ chatbot where users rarely come back mid-conversation.
+  • Conversation state is in-memory (`_SESSIONS`). Lost on backend restart.
 """
 from __future__ import annotations
 
@@ -33,6 +34,7 @@ from pydantic import BaseModel, Field
 import jwt as pyjwt
 
 from database import db
+from routes.faq_settings import read_settings
 
 router = APIRouter()
 
@@ -42,9 +44,7 @@ _JWT_ALGO = "HS256"
 
 def _decode_token(token: str) -> Optional[dict]:
     """Best-effort decode of the OLL JWT. Returns payload dict or None.
-    Never raises — any decode error (expired, bad signature, malformed)
-    is treated as "no auth", so the chatbot gracefully falls back to
-    anonymous mode."""
+    Never raises — any decode error is treated as 'no auth'."""
     if not token or not _JWT_SECRET:
         return None
     try:
@@ -52,7 +52,8 @@ def _decode_token(token: str) -> Optional[dict]:
     except Exception:
         return None
 
-# ─── Load the two PDF-extracted knowledge files once at import time ─────────
+
+# ─── Load vendor-shipped PDF-extracted knowledge files once ───────────────
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 try:
     FAQ_TEXT = (_DATA_DIR / "techfest_faqs.txt").read_text(encoding="utf-8")
@@ -63,110 +64,108 @@ try:
 except FileNotFoundError:
     PROBLEM_STATEMENT_TEXT = ""
 
-# ─── Hand-curated OLL facts the bot MUST know even when FAQ doesn't cover ──
-OLL_CORE_FACTS = """\
-About OLL (On Learn Learn):
-- OLL is India's leading school robotics, AI and future-skills partner. 400+ partner schools, students across Grades 1-10.
-- Website: https://oll.co · Support: support@oll.co · WhatsApp: use the "Need Help" button bottom-right.
-- Head office: Mumbai, India.
 
-OLL Techfest IIT Bombay 2026-27 Robotics Championship:
-- Three competition tracks: RoboSumo, RoboRacer, and the Robotics Innovation Challenge.
-- Registration deadline: October 10, 2026.
-- Round 1 submission deadline (Innovation Challenge): October 20, 2026.
-- Regional qualifiers: East (IIT Kanpur, 24 Oct), South (RVU Bangalore, 26 Nov), West (IIT Bombay, 17 Dec).
-- Grand Finale: December 16-18, 2026 at IIT Bombay.
-- Participation is COMPLETELY FREE — no registration fee for any track.
-- Prize pool: ₹1.5L across the top-3 teams per track.
-- Register at https://oll.co/techfest/register.
-- Full problem statement HTML: https://oll.co/techfest-iitbombay/problem-statement
-- Per-track landing pages:
-  * https://oll.co/techfest-iitbombay/robo-sumo-competition
-  * https://oll.co/techfest-iitbombay/robo-race-competition
-  * https://oll.co/techfest-iitbombay/robo-innovation-competition
-
-OLL Shop (robotics kits & books):
-- Shop URL: https://oll.co/shop
-- Four categories:
-  * Curriculum Books (14 titles for Grades 1-10)
-  * Curriculum Robotic Kits (Grade 1-10 kits)
-  * Competition & Advanced Kits — RoboSumo, RoboRacer, Drone, Aeromodel, 3D Pen
-  * Individual Components — motors, sensors, Blox, wires, ESP32, AI Vision Blox
-- Flat ₹150 delivery, pan-India shipping, Cashfree checkout.
-- Official RoboSumo kit: https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a
-- Official RoboRacer kit: https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc
-
-Order & payment questions:
-- Logged-in users can see their orders at https://oll.co/my-bookings
-- Payment issues: email support@oll.co with the order id — resolved within 24h usually.
-
-Support policy:
-- Public FAQs are at https://oll.co/faq (this page).
-- For personal account / order / payment issues, visitors should log in.
-
-────────────────────────────────────────────────────────────────────────
-COMPLETE SITEMAP — use these exact URLs when a user asks "where is X?":
-────────────────────────────────────────────────────────────────────────
-Techfest championship:
-- Register (all three tracks)  → https://oll.co/techfest/register
-- Submit Round 1 project       → https://oll.co/techfest/submit
-- Problem Statement (HTML)     → https://oll.co/techfest-iitbombay/problem-statement
-- Problem Statement PDF        → https://oll.co/techfest/problem-statement.pdf
-- Techfest hub                 → https://oll.co/techfest
-- RoboSumo competition page    → https://oll.co/techfest-iitbombay/robo-sumo-competition
-- RoboRacer competition page   → https://oll.co/techfest-iitbombay/robo-race-competition
-- Innovation Challenge page    → https://oll.co/techfest-iitbombay/robo-innovation-competition
-
-Shop:
-- Main shop                    → https://oll.co/shop
-- Curriculum Books             → https://oll.co/shop/category/curriculum-books
-- Curriculum Robotic Kits      → https://oll.co/shop/category/curriculum-robotic-kits
-- Competition & Advanced Kits  → https://oll.co/shop/category/competition-and-advanced-kits
-- Individual Components        → https://oll.co/shop/category/individual-components
-- Robo Sumo kit                → https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a
-- Robo Racer kit               → https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc
-
-Learning & programs:
-- All offerings                → https://oll.co/offerings
-- AI Foundations course        → https://oll.co/ai-foundations
-- Future Skills program        → https://oll.co/future-skills
-- Summer Camp 2026             → https://oll.co/summer-camp
-- Centers (physical labs)      → https://oll.co/centers
-
-Account / support:
-- Login                        → https://oll.co/login
-- My bookings / orders         → https://oll.co/my-bookings
-- Raise a support ticket       → use the "Need Help" button bottom-right of any page
-- Blog (WordPress)             → https://oll.co/blogs
-- About OLL                    → https://oll.co/about
-
-ANSWER STYLE FOR LINK QUESTIONS:
-When the user asks "what is the X link" or "where do I register/submit/pay/track",
-reply with ONE short sentence introducing the link, then paste the FULL URL on its
-own. Do NOT use `<br/>` or any HTML tags — plain Markdown only. The frontend
-auto-converts bare https:// URLs to clickable links, so write them raw:
-
-  You can register for the Robotics Innovation Challenge here:
-  https://oll.co/techfest/register
-
-NEVER write "<br/>" or any angle-bracket tags in your reply.
-"""
+_SEP = "=" * 72
 
 
-def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
-    sections = [
+def _format_live_products(products: List[dict]) -> str:
+    """One-liner per product so the LLM can pattern-match on both human
+    names and category keywords.
+
+    Example:
+      - [Competition & Advanced Kits] RoboSumo Championship Kit — ₹5,499 (MRP ₹6,999)
+        https://oll.co/shop/product/robo-sumo-kit-...-22b5228a
+    """
+    if not products:
+        return ""
+    # Keep the prompt compact; top-80 products by default (full catalog is ~120).
+    products = products[:80]
+    lines: List[str] = []
+    for p in products:
+        name = (p.get("name") or "").strip()
+        if not name:
+            continue
+        cat = (p.get("category") or "").strip() or "Uncategorised"
+        price = p.get("selling_price")
+        mrp = p.get("mrp")
+        slug = p.get("slug") or ""
+        url = f"https://oll.co/shop/product/{slug}" if slug else "https://oll.co/shop"
+        price_bits: List[str] = []
+        if isinstance(price, (int, float)):
+            price_bits.append(f"₹{int(price):,}")
+        if isinstance(mrp, (int, float)) and isinstance(price, (int, float)) and mrp > price:
+            price_bits.append(f"(MRP ₹{int(mrp):,})")
+        price_str = " ".join(price_bits) or "price on request"
+        lines.append(f"- [{cat}] {name} — {price_str}\n  {url}")
+    return "\n".join(lines)
+
+
+async def _fetch_live_products_block() -> str:
+    """Pull the full live product catalog from shop.py, formatted for the LLM.
+
+    Returns '' on any failure so the chatbot gracefully degrades to the
+    static knowledge in the admin settings."""
+    try:
+        from routes.shop import _fetch_vendor_catalog, _get_overrides_map, _merge_product
+        vendor_products = await _fetch_vendor_catalog()
+        overrides = await _get_overrides_map()
+        merged = [_merge_product(v, overrides.get(v["id"])) for v in vendor_products if v.get("id")]
+        merged = [p for p in merged if p.get("show_on_shop")]
+        merged.sort(key=lambda x: (x.get("category") or "", x.get("name") or ""))
+        return _format_live_products(merged)
+    except Exception:
+        return ""
+
+
+async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
+    """Assemble the full system prompt for OLLBot.
+
+    Order (highest to lowest priority — later sections lose on conflict):
+      1. Identity + hard rules (external vendors, formatting)
+      2. Authoritative 2026 specs
+      3. Admin-editable knowledge sections (DB)
+      4. Live shop catalog (DB-gated)
+      5. Vendor-shipped FAQ PDF text + Problem Statement PDF text
+      6. User's own tickets (if logged in)
+      7. Handoff policy
+    """
+    settings = await read_settings()
+
+    sections: List[str] = [
         "You are OLLBot — the official AI assistant for OLL (On Learn Learn) at https://oll.co.",
         "You help parents, teachers, students and partner-school admins with questions about:",
-        "• The OLL × TechFest IIT Bombay 2026-27 Robotics Championship (RoboSumo, RoboRacer, Innovation Challenge)",
+        "• The OLL × TechFest IIT Bombay 2026-27 Robotics Championship",
         "• OLL's robotics kits, curriculum books and shop",
-        "• General OLL offerings, pricing, delivery, support",
+        "• OLL learning programs, workshops, summer camps and support",
         "",
-        "=" * 72,
-        "🔒 AUTHORITATIVE 2026 SPECS — HIGHEST PRIORITY, OVERRIDES EVERYTHING BELOW:",
-        "=" * 72,
-        "If any FAQ text or problem-statement text later in this prompt conflicts",
-        "with these numbers, use THESE numbers in your answer, not the ones in the",
-        "FAQ. The FAQ PDF is from an older season and has outdated arena/track specs.",
+        _SEP,
+        "🚫 HARD RULES — NEVER VIOLATE:",
+        _SEP,
+        "1. NEVER recommend buying from external sellers like Robu.in, Amazon, Flipkart,",
+        "   RoboKits India, AliExpress, local electronics markets, or any third party.",
+        "   For ALL purchases, direct the user to the OLL Shop (https://oll.co/shop).",
+        "   If a user asks 'where can I buy X', first search the LIVE PRODUCT CATALOG",
+        "   below and link to the matching OLL product; only if nothing matches, say:",
+        "   'This isn\\'t on OLL Shop yet — email support@oll.co and we\\'ll help you source it.'",
+        "2. NEVER invent facts. If a question isn\\'t covered below, say so plainly and",
+        "   offer the human handoff (support@oll.co or the Need Help button bottom-right).",
+        "3. NEVER mention 'the FAQ PDF' or 'my knowledge base' — just answer the question.",
+        "4. NEVER write `<br/>` or any HTML tags in your reply — plain Markdown only.",
+        "   The frontend auto-converts bare https:// URLs into clickable links, so write",
+        "   full URLs raw on their own line.",
+        "5. Respond in the user\\'s language. If they write Hindi/Marathi/etc, reply in that language.",
+        "",
+        "TONE & STYLE:",
+        "- Be concise. 2-6 sentences per answer. Use bullet lists for 3+ items.",
+        "- Friendly, warm, confidence-building. Never robotic.",
+        "- When referencing a page, include its FULL URL on its own line (e.g. https://oll.co/shop).",
+        "",
+        _SEP,
+        "🔒 AUTHORITATIVE 2026 SPECS — HIGHEST PRIORITY:",
+        _SEP,
+        "If any FAQ text or problem-statement text later in this prompt conflicts with",
+        "these numbers, use THESE numbers in your answer, not the ones in the FAQ PDF",
+        "(the FAQ PDF is from an older season and has outdated arena/track specs).",
         "",
         "RoboSumo:",
         "  • Arena: 100 cm (1 m) circular diameter — NOT 150 cm.",
@@ -186,52 +185,66 @@ def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "  • Two rounds — Round 1 online submission (deadline 20 Oct 2026) + Round 2 live pitch at IIT Bombay Grand Finale",
         "  • Team size: 2-4 students + 1 mentor",
         "  • Hardware is OPEN — Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts all allowed",
-        "",
-        "TONE & STYLE RULES:",
-        "- Be concise. 2-6 sentences per answer. Use bullet lists for 3+ items.",
-        "- Friendly, warm, confidence-building. Never robotic.",
-        "- When referencing a page, include its FULL URL (e.g. https://oll.co/techfest/register) so users can click directly. Write URLs RAW (no `<a>`, no `<br/>`, no HTML tags — the frontend auto-converts them to clickable links).",
-        "- NEVER make up facts. If the answer is NOT in the context below, say so plainly and offer the human handoff (support@oll.co or the Need Help button).",
-        "- NEVER mention 'the FAQ PDF' or 'my knowledge base' — just answer the question.",
-        "- Respond in the user's language. If they write in Hindi/Marathi/etc, reply in that language.",
-        "",
-        "=" * 72,
-        "OLL CORE FACTS:",
-        "=" * 72,
-        OLL_CORE_FACTS,
     ]
+
+    # Admin-editable DB sections
+    for title, content in [
+        ("TECHFEST — rules, dates, prizes:", settings.techfest),
+        ("SHOP — categories, delivery, pricing, policy:", settings.shop),
+        ("LEARNING PROGRAMS, CAMPS & WORKSHOPS:", settings.programs),
+        ("SUPPORT POLICY:", settings.support),
+        ("OLL CORE FACTS & SITEMAP:", settings.core_facts),
+    ]:
+        if (content or "").strip():
+            sections += ["", _SEP, title, _SEP, content.strip()]
+
+    # Live shop catalog
+    if settings.include_live_products:
+        live_block = await _fetch_live_products_block()
+        if live_block:
+            sections += [
+                "",
+                _SEP,
+                "LIVE OLL SHOP CATALOG (current prices · ALWAYS prefer these over external sellers):",
+                _SEP,
+                live_block,
+            ]
+
+    # Vendor FAQ PDFs
     if FAQ_TEXT:
         sections += [
             "",
-            "=" * 72,
-            "TECHFEST FAQ — 60+ Q&As on registration, rules, team formation, kits, judging, prizes:",
-            "=" * 72,
+            _SEP,
+            "VENDOR TECHFEST FAQ (secondary — override with the 2026 specs above on conflict):",
+            _SEP,
             FAQ_TEXT,
         ]
     if PROBLEM_STATEMENT_TEXT:
         sections += [
             "",
-            "=" * 72,
+            _SEP,
             "OFFICIAL PROBLEM STATEMENT (bot specs, arena rules, round-by-round progression):",
-            "=" * 72,
+            _SEP,
             PROBLEM_STATEMENT_TEXT,
         ]
+
     if user_tickets_block:
         sections += [
             "",
-            "=" * 72,
+            _SEP,
             "THIS USER'S OWN SUPPORT TICKETS (private — only share with THIS user):",
-            "=" * 72,
+            _SEP,
             user_tickets_block,
         ]
+
     sections += [
         "",
-        "=" * 72,
+        _SEP,
         "HANDOFF POLICY:",
-        "=" * 72,
+        _SEP,
         "If a user's question cannot be answered from the facts above, respond with:",
         '  "I\'m not sure about that — the best next step is to email support@oll.co or tap the Need Help button at the bottom-right. Would you like me to raise a support ticket for you?"',
-        "If they say yes, instruct them to click the Need Help button or email support@oll.co with their query (we cannot create a ticket for anonymous visitors from this chat).",
+        "If they say yes, instruct them to click the Need Help button or email support@oll.co.",
     ]
     return "\n".join(sections)
 
@@ -243,7 +256,6 @@ _SESSION_TTL_SEC = 60 * 30  # 30 min idle timeout
 
 def _get_session(session_id: str) -> dict:
     now = time.time()
-    # Lazy GC of stale sessions on every lookup — cheap.
     for sid in list(_SESSIONS.keys()):
         if now - _SESSIONS[sid]["touched"] > _SESSION_TTL_SEC:
             _SESSIONS.pop(sid, None)
@@ -255,10 +267,8 @@ def _get_session(session_id: str) -> dict:
     return sess
 
 
-# ─── Logged-in user tickets ────────────────────────────────────────────────
 async def _fetch_user_tickets_block(authorization: Optional[str]) -> Optional[str]:
-    """Return a markdown summary of the authenticated user's open/recent
-    support tickets, or None if the user isn't logged in."""
+    """Return markdown summary of the authed user's recent support tickets."""
     if not authorization or not authorization.lower().startswith("bearer "):
         return None
     token = authorization.split(None, 1)[1].strip()
@@ -270,8 +280,7 @@ async def _fetch_user_tickets_block(authorization: Optional[str]) -> Optional[st
     if not email and not user_id:
         return None
 
-    # Collect up to the 10 most-recent tickets by this user.
-    query_filter = {"$or": []}
+    query_filter: dict = {"$or": []}
     if email:
         query_filter["$or"].append({"user_email": email})
         query_filter["$or"].append({"email": email})
@@ -306,7 +315,6 @@ async def _fetch_user_tickets_block(authorization: Optional[str]) -> Optional[st
     return "\n".join(lines)
 
 
-# ─── Request / Response models ──────────────────────────────────────────────
 class FaqChatRequest(BaseModel):
     session_id: str = Field(..., min_length=4, max_length=64)
     message: str = Field(..., min_length=1, max_length=2000)
@@ -318,37 +326,24 @@ class FaqChatReply(BaseModel):
     message_count: int
 
 
-# ─── Suggestion chips ───────────────────────────────────────────────────────
-SUGGESTIONS = [
-    "How do I register my school for Techfest 2026?",
-    "What are the eligibility criteria for RoboSumo?",
-    "How much does the RoboRacer kit cost?",
-    "What is the Robotics Innovation Challenge about?",
-    "When is the Grand Finale at IIT Bombay?",
-    "What's included in the OLL curriculum kits?",
-    "How do I track my OLL shop order?",
-    "What's the prize money for winners?",
-]
-
-
 @router.get("/faq-chat/suggestions")
 async def faq_chat_suggestions():
-    return {"suggestions": SUGGESTIONS}
+    settings = await read_settings()
+    return {"suggestions": settings.suggestions}
 
 
 @router.post("/faq-chat", response_model=FaqChatReply)
 async def faq_chat(req: FaqChatRequest, request: Request):
-    from emergentintegrations.llm.chat import LlmChat, UserMessage  # local import — library pre-installed
+    from emergentintegrations.llm.chat import LlmChat, UserMessage  # pre-installed
 
     sess = _get_session(req.session_id)
     user_tickets_block = await _fetch_user_tickets_block(request.headers.get("authorization"))
-    system = _build_system_prompt(user_tickets_block=user_tickets_block)
+    system = await _build_system_prompt(user_tickets_block=user_tickets_block)
 
     llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
     if not llm_key:
         raise HTTPException(status_code=503, detail="LLM is temporarily unavailable")
 
-    # Pass prior conversation turns so the bot has context.
     initial_messages = [
         {"role": m["role"], "content": m["content"]}
         for m in sess["messages"][-20:]
@@ -363,8 +358,7 @@ async def faq_chat(req: FaqChatRequest, request: Request):
 
     try:
         reply = await chat.send_message(UserMessage(text=req.message))
-    except Exception as e:
-        # Fail soft — the chat UI should still show something useful.
+    except Exception:
         return FaqChatReply(
             reply=(
                 "I ran into a technical hiccup. For a quick answer, email "
@@ -375,7 +369,6 @@ async def faq_chat(req: FaqChatRequest, request: Request):
             message_count=len(sess["messages"]),
         )
 
-    # Append both turns to the session so follow-up questions keep context.
     sess["messages"].append({"role": "user", "content": req.message})
     sess["messages"].append({"role": "assistant", "content": reply})
 
@@ -394,8 +387,7 @@ async def faq_chat_reset(session_id: str):
 
 @router.post("/faq-chat/raise-ticket")
 async def faq_chat_raise_ticket(payload: dict, request: Request):
-    """When the user says 'the bot didn't help', write a support_queries row
-    (requires at least name + email + the conversation transcript)."""
+    """When the user says 'the bot didn't help', write a support_queries row."""
     name = (payload.get("name") or "").strip()
     email = (payload.get("email") or "").strip()
     phone = (payload.get("phone") or "").strip()

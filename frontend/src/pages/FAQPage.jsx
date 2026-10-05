@@ -18,7 +18,7 @@
  *   FAQPage JSON-LD block emitted below so Google still ranks the page
  *   for competition / registration / kit queries.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -60,14 +60,49 @@ const FAQPage = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [escalateFor, setEscalateFor] = useState(null); // msg index user said No to
   const [sessionId] = useState(getSessionId);
+  // Refs to the message DOM nodes so we can scroll the latest *user* question
+  // to the top of the viewport (keeps the answer visible from its start —
+  // never scrolls to the footer).
+  const messageRefs = useRef([]);
 
-  // We no longer need a ref — the scroll root is `window` after we moved
-  // the composer to position: fixed. Autoscroll on new messages instead.
+  const scrollToIndex = useCallback((idx) => {
+    const node = messageRefs.current[idx];
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const absoluteTop = rect.top + window.scrollY;
+    // Give some breathing room above the pinned question (navbar + hero padding).
+    const headerOffset = 80;
+    window.scrollTo({ top: Math.max(absoluteTop - headerOffset, 0), behavior: 'smooth' });
+  }, []);
+
+  // When a new message is appended (user sends → assistant replies), park the
+  // last user question near the top so the answer renders from its start,
+  // not from the footer. We never auto-scroll on first mount.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    if (messages.length <= 1) return;
+    // Find the last user message index — we anchor to that so the user sees
+    // their own question + the fresh answer flowing below it.
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === 'user') { lastUserIdx = i; break; }
     }
-  }, [messages, sending]);
+    if (lastUserIdx >= 0) {
+      // Wait for the DOM to paint the new nodes before measuring.
+      requestAnimationFrame(() => scrollToIndex(lastUserIdx));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]);
+  // Nudge view a touch when the "thinking…" bubble appears so the user sees
+  // feedback immediately — but keep their question at the top of the viewport.
+  useEffect(() => {
+    if (!sending) return;
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === 'user') { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx >= 0) requestAnimationFrame(() => scrollToIndex(lastUserIdx));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sending]);
 
   useSeo({
     title: 'OLL FAQ — Ask OLLBot about Techfest, Kits, Orders & Support',
@@ -186,15 +221,24 @@ const FAQPage = () => {
             data-testid="faq-chat-log"
           >
             {messages.map((m, i) => (
-              <MessageRow
+              <div
                 key={i}
-                msg={m}
-                index={i}
-                onFeedback={markFeedback}
-                data-testid={`faq-msg-${i}`}
-              />
+                ref={(el) => { messageRefs.current[i] = el; }}
+              >
+                <MessageRow
+                  msg={m}
+                  index={i}
+                  onFeedback={markFeedback}
+                  data-testid={`faq-msg-${i}`}
+                />
+              </div>
             ))}
             {sending && <ThinkingRow />}
+            {/* Scroll runway — guarantees the latest user question can be
+                anchored to the top of the viewport even when the newest
+                answer is short. Without this, the window hits the
+                scrollable bottom early and the question stays mid-page. */}
+            <div aria-hidden className="h-[70vh]" />
           </div>
 
           {/* Suggestion chips — only shown when no user message yet */}
