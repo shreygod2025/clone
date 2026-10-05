@@ -1,5 +1,40 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — Vendor API field-map confirmed and wired (shop_images / youtube_url / kit_includes / markdown description / additional_info / dimensions)
+**Status: COMPLETE · verified live against vendor API `https://vendorplus-4.emergent.host/api/public/products/{id}`**
+
+Vendor team confirmed the extended public API shipped. Their canonical field names differ slightly from the generic names we were coding against — the backend now reads from the vendor's exact keys first, with graceful fall-through to our old guesses and the admin override as a final backstop.
+
+### Field map (vendor → OLL `_merge_product` → PDP)
+| Vendor key          | What we expose on `/api/shop/products[/:slug]` | PDP element |
+|---------------------|------------------------------------------------|-------------|
+| `shop_images[]`     | `gallery_urls[]` (primary `image_url` prepended, deduped) | Hero + thumbnail strip `[data-testid=pdp-gallery-thumbs]` |
+| `youtube_url`       | `video_url` (falls back to `shop_videos[0]`)   | YouTube iframe `[data-testid=pdp-video]` |
+| `shop_videos[]`     | fallback source for `video_url`                | ↑ |
+| `kit_includes[{name, quantity}]` | `includes[{name, qty, unit}]`     | Kit-includes table `[data-testid=pdp-includes]` |
+| `description` (Markdown-friendly) | `description_md` (routed through client-side `mdToHtml`) | Rich description `[data-testid=pdp-description-html]` |
+| `additional_info`   | `additional_info` (secondary notes block)      | *plumbed through — surfaced later if admin asks* |
+| `dimensions {length, breadth, height, unit, weight, weight_unit}` | `dimensions` | *plumbed through — specs panel on roadmap* |
+| `mrp`               | `mrp`                                          | Already used in price strike-through |
+| `show_on_shop`      | `show_on_shop` (vendor-managed visibility)     | Hides product from list when false |
+
+### Precedence order inside `_merge_product`
+`admin override → canonical vendor key → legacy fallback key → sample fallback`.
+So an OLL admin can still force-override a vendor field (bad hero image, missing kit list), but the moment they clear the override the vendor-controlled value takes over cleanly.
+
+### Defensive normalisation (unchanged, but worth noting)
+- `kit_includes` rows coerce `quantity → qty` as int, invalid rows silently dropped.
+- `shop_images[]` entries normalised through `_normalize_vendor_image` (strips bad URLs, deduped).
+- `shop_videos[]` only accepts non-empty strings — a numeric `video_url: 123` wouldn't crash.
+
+### Verified
+- `/api/shop/products/robo-sumo-kit…` → 4 gallery URLs, YT id `D5ngdbvLMC4`, 9 includes rows, markdown description.
+- `/api/shop/products/bo-motor-*` → single image, no video / no includes, plain `BO motor` description. PDP correctly hides empty sections.
+- Vendor-side the fields exist but are empty on the Robo Sumo kit today — the admin override we seeded continues to drive the enriched layout. The moment vendor fills them in, admin can delete the override and the data flows end-to-end.
+
+### Still ping vendor team about
+- They mentioned `/api/external/products` returns the full catalogue incl. cost + tax rate (behind `X-API-Key`). We only use `/api/public/products` on the shop. If OLL finance wants cost-landed pricing on PO generation, we'd need to wire the external endpoint — out of scope for shop PDPs.
+
 ## 2026-10-05 — Shop navbar + category refinement + enriched PDPs (gallery, video, kit-includes table, bullet descriptions)
 **Status: COMPLETE · testing_agent iteration_119 passed 24/26 UI + 4/4 backend tests. Both action items addressed in this same release.**
 

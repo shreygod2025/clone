@@ -242,12 +242,20 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         show_on_shop = False
 
     # ── Rich media (gallery, video, kit-includes table, formatted description) ──
-    # The vendor panel started accepting these in Oct 2026. We read whatever
-    # the public API returns under several reasonable key names so a vendor-side
-    # rename doesn't silently break the PDP, then let an admin override win.
+    # The vendor panel started accepting these in Oct 2026. Vendor key names
+    # are canonical; override keys win when present.
+    #
+    # Field map (vendor_name → our output):
+    #   shop_images[]        → gallery_urls (+ image_url prepended)
+    #   youtube_url / shop_videos[0] → video_url
+    #   kit_includes[{name, quantity}] → includes[{name, qty, unit}]
+    #   description (markdown-friendly plain text) → description_md
+    #   additional_info      → additional_info (secondary notes)
+    #   dimensions {length, breadth, height, unit, weight, weight_unit} → dimensions
     gallery = (
         ov.get("gallery_urls")
         or ov.get("images")
+        or v.get("shop_images")   # ← canonical vendor key
         or v.get("images")
         or v.get("image_urls")
         or v.get("gallery")
@@ -268,10 +276,18 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
     if image_url and image_url not in seen:
         gallery_norm.insert(0, image_url)
 
+    # Prefer the override video; fall back to vendor's primary youtube_url;
+    # fall back to the first entry in vendor's shop_videos array.
+    shop_videos = v.get("shop_videos") or []
+    first_shop_video = next(
+        (sv for sv in shop_videos if isinstance(sv, str) and sv.strip()),
+        None,
+    )
     video_url = (
         ov.get("video_url")
+        or v.get("youtube_url")      # ← canonical vendor key
+        or first_shop_video
         or v.get("video_url")
-        or v.get("youtube_url")
         or v.get("video")
         or ""
     ) or None
@@ -279,9 +295,9 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
     includes_raw = (
         ov.get("includes")
         or ov.get("includes_table")
+        or v.get("kit_includes")     # ← canonical vendor key
         or v.get("includes")
         or v.get("includes_table")
-        or v.get("kit_includes")
         or v.get("whats_included")
         or []
     )
@@ -292,7 +308,7 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
             n = (row.get("name") or row.get("item") or row.get("title") or "").strip()
             if not n:
                 continue
-            q = row.get("qty") or row.get("quantity") or 1
+            q = row.get("quantity") or row.get("qty") or 1   # vendor uses `quantity`
             try:
                 q = int(float(q))
             except (TypeError, ValueError):
@@ -302,9 +318,10 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         elif isinstance(row, str) and row.strip():
             includes.append({"name": row.strip(), "qty": 1, "unit": None})
 
-    # Formatted / long description. Prefer explicit vendor-supplied HTML or
-    # Markdown; falls back to the plain description (which the UI will
-    # auto-newline).
+    # Formatted / long description.
+    # Vendor team confirmed `description` is plain text with Markdown
+    # formatting (`- bullet`, `**bold**`, `*italic*`). We route it through
+    # our Markdown renderer on the client, so expose it as `description_md`.
     description_html = (
         ov.get("description_html")
         or v.get("description_html")
@@ -316,8 +333,24 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         or ov.get("long_description")
         or v.get("description_md")
         or v.get("long_description")
+        # Fall back to the primary `description` which the vendor now
+        # formats as Markdown. The client-side renderer handles plain
+        # paragraphs gracefully too.
+        or v.get("description")
         or ""
     ) or None
+
+    # Secondary notes block ("care instructions", "safety notes", etc.)
+    additional_info = (
+        ov.get("additional_info")
+        or v.get("additional_info")
+        or ""
+    ) or None
+
+    # Physical dimensions for the Specs panel.
+    dimensions = ov.get("dimensions") or v.get("dimensions") or None
+    if dimensions and not isinstance(dimensions, dict):
+        dimensions = None
 
     return {
         "id": pid,
@@ -335,6 +368,8 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         "gallery_urls": gallery_norm,
         "video_url": video_url,
         "includes": includes,
+        "additional_info": additional_info,
+        "dimensions": dimensions,
         "show_on_shop": show_on_shop,
         "category": ov.get("category")
         or ("IoT Kits" if "iot" in name.lower() else "Robotics Kits"),
