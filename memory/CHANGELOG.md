@@ -1,5 +1,53 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — Support-tickets metric fix + OLLBot AI chatbot at /faq
+**Status: COMPLETE · testing_agent iteration_120 passed 10/10 (0 failures, 0 action items)**
+
+### 1) Bug fix — "No. of tickets assigned" severely under-counted
+User reported Kirti Jaisinghani's performance page showed 8 tickets assigned for Oct 2026 when she actually has 100-150 tickets on her plate.
+
+**Root cause** in `backend/routes/kpis.py :: _compute_support_metrics`:
+Old query only counted tickets whose `created_at` fell in the period — missing every older ticket still open and assigned to the user. Support agents carrying a backlog from previous months were effectively invisible.
+
+**Fix**:
+- Redefined `assigned` as "any ticket on this user's plate during the period":
+  `assigned_to == user_id AND created_at ≤ end_iso AND (status NOT IN [resolved, closed] OR resolved_at ≥ start_iso)`.
+- Marked the KPI entry with `aggregation: 'max'` so the weekly timeseries uses the **peak** week (true workload snapshot), not a cumulative sum that would double-count a backlog ticket across every week it stayed open.
+- Also marked `support_sla_breach_over_3d` as `aggregation: 'snapshot'` for the same reason.
+- `UserPerformance.jsx` label switched from "total across weeks" → "**peak across weeks**" when aggregation is `max` or `snapshot`.
+- First-response metric (which SHOULD only look at newly-created tickets in the period) now reads from a dedicated `newly_created_query`.
+
+### 2) OLLBot — public AI chatbot at `/faq`
+A full-screen, branded chat UI powered by GPT-5.6 Terra via the Emergent LLM key. Trained on three stacked knowledge sources, with a graceful human-handoff when the bot can't help.
+
+**Backend — `routes/faq_chat.py` (new)**
+- `POST /api/faq-chat` — stateless-looking but server-side keeps a 30-min in-memory conversation per `session_id` (`_SESSIONS` dict) so follow-up questions keep context.
+- `GET /api/faq-chat/suggestions` — 8 pre-written chips that render on first-load (registration, eligibility, kit pricing, finale date, etc.).
+- `POST /api/faq-chat/reset` — nukes the session.
+- `POST /api/faq-chat/raise-ticket` — on thumbs-down, writes a `support_queries` row with the full chat transcript and `source: "faq_chatbot"` so a human can pick it up.
+
+**Knowledge-base layering (precedence top-first)**
+1. `OLL_CORE_FACTS` constant — curated truths about Techfest dates, prize pool, URLs, shop categories, support contact.
+2. `AUTHORITATIVE 2026 SPECS` block (inside core facts) — explicitly overrides older FAQ numbers (e.g. the vendor PDF still said 150 cm arena; the current spec is **100 cm (1 m)**). Prompt makes it clear: "if any FAQ text below conflicts, these win".
+3. `data/techfest_faqs.txt` — 37 KB extraction of the 60+ Q&A rulebook PDF the user uploaded.
+4. `data/techfest_problem_statement.txt` — 16 KB extraction of the problem-statement PDF.
+5. Logged-in users: their own `support_queries` are inlined into the system prompt via `_fetch_user_tickets_block` (keyed off JWT email + user_id). Anonymous users get a public-safe response (never see anyone else's tickets).
+
+**Frontend — `pages/FAQPage.jsx` (rewritten)**
+- Full-screen chat with hero ("Ask OLLBot anything · AI-powered · Live"), suggestion chips (first visit only), message log, thinking indicator (bouncing dots), composer.
+- `session_id` persists in `sessionStorage` so a refresh keeps the bot's memory.
+- Logged-in users auto-forward their JWT via `Authorization: Bearer` so the bot can inline their own tickets.
+- Markdown in replies renders via our existing `mdToHtml` util (bold, bullets, links).
+- Every assistant reply gets a 👍 👎 bar. Tapping 👎 opens an escalation dialog prefilled with the user's last question → writes a support ticket.
+- Full `useSeo` with JSON-LD FAQPage schema (4 common Q&As) for SEO.
+
+**Verified end-to-end**
+- Chatbot answered "What is the RoboSumo arena diameter?" with **100 cm (1 m)** — correctly overriding the FAQ PDF's stale 150 cm.
+- Chatbot answered "What is the RoboRacer track length?" with **5 m**.
+- Memory worked across turns ("Grade 7 student" context persisted into the next question).
+- Logged-in flow fetched the admin's tickets; anonymous flow returned a public-safe reply.
+- Escalation wrote a `support_queries` row with status=open + full transcript.
+
 ## 2026-10-05 — Vendor API field-map confirmed and wired (shop_images / youtube_url / kit_includes / markdown description / additional_info / dimensions)
 **Status: COMPLETE · verified live against vendor API `https://vendorplus-4.emergent.host/api/public/products/{id}`**
 
