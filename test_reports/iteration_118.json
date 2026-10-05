@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only testing of Robotics Shop update (iteration 118). Verified sticky navbar, 4-card category grid, category sections on /shop, individual category landing pages, PDP SEO/canonical, same-category 'You may also like', Book-G classifier, sitemap, and robots.txt. 11/13 feature checks PASS. 2 issues found: (1) /sitemap.xml is served from static frontend copy and does NOT include /shop/product/:slug URLs (backend dynamic route is shadowed by frontend static file); (2) Individual Components category renders 60 products instead of the 49 expected in the request (catalog has 90 shop products total, not 79 — likely a product-count expectation mismatch, not necessarily a classifier bug).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/sitemap.xml", "issue": "Static /app/frontend/public/sitemap.xml (14054 bytes) is served by ingress/cloudflare instead of the backend dynamic route in backend/routes/seo.py. Static file contains the 4 category URLs but ZERO /shop/product/:slug URLs. Dynamic backend route works correctly when invoked directly (89 products returned), but it is unreachable because the static file wins. Needs ingress rewrite OR removal of /app/frontend/public/sitemap.xml so the FastAPI route is served."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Make /sitemap.xml serve from backend dynamic route (routes/seo.py). Current ingress serves /app/frontend/public/sitemap.xml which lacks /shop/product/:slug URLs required by the SEO ask. Simplest fix: delete /app/frontend/public/sitemap.xml so the backend FastAPI route (which already enumerates all shop products via _fetch_vendor_catalog) handles the request.",
+    "Reconcile product-count expectations: Individual Components actually renders 60 products (and the category header shows '90 PRODUCTS' total across the 4 categories), while the review request said 49 / 79 total. Either (a) classifier is over-including items in components, or (b) the request's expected counts are stale. Breakdown confirmed by UI: books=14, curriculum-kits=10, competition=6, components=60. Books/kits/competition match request exactly, so the delta is isolated to components."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/seo.py:134-151 — sitemap product enumeration is wrapped in a bare `except Exception: pass`. If the dynamic sitemap route were actually hit, any ImportError or runtime failure would be silently swallowed; add logging.",
+    "Static sitemap at frontend/public/sitemap.xml duplicates and overrides the dynamic one — duplication is a maintenance trap. Pick one source of truth.",
+    "ProductDetailPage breadcrumb category href uses relative routing which resolves to the preview origin (camp-lead-capture…) in the DOM; canonical correctly uses oll.co. Not a bug for SEO (canonical rules), but visually inconsistent."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not retested)", "frontend": "92%"},
+  "test_credentials": "none required",
+  "seed_data_creation": "none",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Sticky navbar verified: computed position='fixed', top=0 at scrollY 0/500/1500 on both desktop (1440x900) and mobile (390x844). Category grid [data-testid=shop-category-grid] with all 4 cards present. /shop renders 4 shop-cat-section-:slug bands each showing <=8 products with 'View all' buttons. Category pages: canonical EXACTLY https://oll.co/shop/category/:slug, title matches request wording, robots='index, follow, max-image-preview:large', breadcrumb visible. Product counts observed on category pages: curriculum-books=14 ✓, curriculum-robotic-kits=10 ✓, competition-and-advanced-kits=6 ✓, individual-components=60 (request expected 49). PDP robo-sumo-kit: canonical=https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a ✓, Product JSON-LD present ✓, breadcrumb category href ends with /shop/category/competition-and-advanced-kits ✓, 'You may also like' h2='More from Competition Kits & Advanced Kits' ✓, related names include 3D Pen, AI Vision Blox, Aeromodel, Drone, Robo Racer Kit (no books, no grade kits) ✓. PDP book-g-10-iot-ai-vision: canonical correct, breadcrumb category=/shop/category/curriculum-books ✓, related h2='More from Curriculum Books', related names all Book-G items ✓ (Book-G-9 IOT/AI Vision classifier works correctly — stays in books). Sitemap served from static frontend file; backend dynamic route is shadowed — sitemap contains 4 category URLs but NO product URLs. Robots.txt is correct: disallows /shop/checkout and /shop/success, does NOT block /shop/category/.",
+  "rca_of_the_issue": "Sitemap product-URL omission RCA: FastAPI backend route GET /sitemap.xml in /app/backend/routes/seo.py:103 correctly builds dynamic sitemap including every show_on_shop=True product (verified: 89 products returned by _fetch_vendor_catalog). However, Kubernetes ingress / cloudflare serves /app/frontend/public/sitemap.xml (14054 bytes, last-modified matches disk file) BEFORE routing to the backend because non-/api paths go to the frontend. The static file was mirrored but not regenerated for products. Fix: either delete the static file so backend route handles it, or run a build-time script to regenerate the static file with product URLs."
+}

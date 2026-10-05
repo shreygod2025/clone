@@ -1,5 +1,42 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — Robotics Shop refresh (4 category landings, fixed navbar, same-category "You may also like", per-product SEO)
+**Status: COMPLETE · testing_agent iteration_118 passed 11/13; both remaining items addressed in this same release.**
+
+### 1) Fixed (sticky) navbar on `/shop` and `/shop/product/*` — mobile AND desktop
+- Diagnosed the root cause: `/app/frontend/src/index.css` line 10 sets `html, body { overflow-x: hidden; max-width: 100vw; }` which silently promotes BODY to a scroll container and breaks `position: sticky` everywhere it was used. User's "navbar is not sticky on mobile" bug.
+- Fix: switched the shop + PDP navbars from `sticky top-0` to **`fixed top-0 left-0 right-0`** and added `pt-[64px] sm:pt-[72px]` on the outer wrappers to compensate. The navbars now stay pinned to viewport-top on every viewport width.
+
+### 2) Four big category landing pages
+Each is its own crawlable SEO page with hero / description / full product grid + CollectionPage + BreadcrumbList JSON-LD:
+- `/shop/category/curriculum-books` — targets "robotics textbook", "AI textbook class 7 8 9 10", "IoT book school curriculum" (14 products)
+- `/shop/category/curriculum-robotic-kits` — targets "grade 1 robotics kit", "grade 9 robotics kit", "school robotics kit India" (10 products)
+- `/shop/category/competition-and-advanced-kits` — targets "robosumo kit", "roboracer kit", "techfest IIT Bombay 2026 kit", "drone kit for school" (6 products incl. RoboSumo, RoboRacer, Drone, Aeromodel, 3D Pen, AI Vision Blox)
+- `/shop/category/individual-components` — targets "bo motor", "esp32 s3 chip", "ir sensor", "oll blox" (60 products)
+- New file: `frontend/src/utils/shopCategories.js` — defines all 4 categories (slug, name, icon, accent colour, tagline, SEO title/description/keywords) + a `getShopCategorySlug(product)` classifier that puts BOOKS first in rule order so "Book-G-9 IOT /AI Vision" lands under Curriculum Books (not Competition where the "ai vision" needle used to match).
+- New route in `App.js`: `<Route path="/shop/category/:categorySlug" element={<ShopPage />} />`.
+
+### 3) `/shop` main page — the 4 big category cards + category stacks
+- Below the hero, a `grid-cols-2 lg:grid-cols-4` tile grid with icon (`BookOpen`, `Package`, `Trophy`, `Cpu` from lucide-react), name, tagline and item count — each card is a `<Link>` to its category page. The active category gets a highlighted ring on category pages.
+- On the default `/shop` (no filter): each category renders as its own **labelled band** (`CategoryStacks`) with up to 8 products + a "View all N …" CTA, so users SEE products divided under each section without a filter click. On a filtered category page, the band is replaced by a flat 4-col grid of all products in that category.
+
+### 4) `/shop/product/*` — per-product SEO + strict same-category "You may also like"
+- Fixed canonical: was `window.location.origin + /shop/product/…` (preview URL) → now **always `https://oll.co/shop/product/…`** (production domain).
+- Breadcrumb JSON-LD now uses the shop category (`Home › Shop › Curriculum Books › …`) instead of the raw vendor category. Visible breadcrumb has a clickable `[data-testid=pdp-breadcrumb-category]` link to the category page.
+- "You may also like" rail now reads strictly from the shop category: fetches full catalogue, filters by same `shop_category_slug`, excludes current product, slices 8. Heading rewrites to `"More from {Category Name}"`. Verified in-browser: on the Robo Sumo kit page, related = 3D Pen, AI Vision Blox, Aeromodel, Drone, Robo Racer Kit (no Grade kits, no Books).
+
+### 5) SEO plumbing — sitemap + robots
+- Added 4 category URLs to both the static `/app/frontend/public/sitemap.xml` and the dynamic backend route (`backend/routes/seo.py`).
+- Added `scripts/rebuild_product_sitemap.py` — fetches the live `/api/shop/products` catalogue and splices every PDP URL into the static sitemap (idempotent, marked with `Shop product PDPs (auto-generated …)` block). Ran once this release → **159 total URLs** in sitemap.xml (69 base + 90 product PDPs).
+- robots.txt unchanged — `/shop/category/*` is implicitly allowed, `/shop?filter=…` remains disallowed.
+
+### Verified in browser
+- `/shop` navbar `bounding.top = 0` after `window.scrollTo(0, 1500)`.
+- `/shop` 4-card category grid rendering with correct counts (14 / 10 / 6 / 60).
+- `/shop/category/curriculum-books` canonical = `https://oll.co/shop/category/curriculum-books`, title = "Robotics, AI & IoT Curriculum Books for Grades 1–10 | OLL Shop".
+- `/shop/product/robo-sumo-kit…` canonical hardcoded to production, "You may also like" shows only competition peers.
+- `sitemap.xml` serves 159 URLs including every PDP.
+
 ## 2026-10-05 — SEO consolidation (www/http redirect, noindex private pages, 3× competition landing pages, PDF→HTML Problem Statement)
 **Status: COMPLETE · tested by `testing_agent` iteration_117, 19 of 22 checks pass, remaining 3 are test-design limitations (noindex is correctly set in DOM; test measured post-redirect URL)**
 
