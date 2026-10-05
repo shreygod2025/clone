@@ -1,5 +1,40 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — OLLBot v5 — verbatim live-page knowledge + response sanitiser (kills hallucinations)
+**Status: COMPLETE · verified end-to-end**
+
+User reported the bot was STILL hallucinating despite v3/v4 — saying "TechFest 2025", "support@onlinelivelearning.com", and generating 404-ing product URLs (e.g. `/shop/product/robo-sumo-kit-b8176a8d`). Three definitive fixes:
+
+### 1) New verbatim knowledge file — `/app/backend/data/oll_pages_verbatim.md`
+Hand-curated content extracted directly from the live React landing pages (`RoboSumoCompetitionPage.jsx`, `RoboRacerCompetitionPage.jsx`, `RoboInnovationCompetitionPage.jsx`) — hero lede, every stat, every round, every rule, every judging rubric row, every FAQ, every prize split, verified kit URLs. Loaded at import time, injected FIRST (before any PDF-derived FAQ or admin-editable section) so it has highest priority in the system prompt. Marked as "🏆 VERBATIM CONTENT FROM THE LIVE OLL LANDING PAGES (SINGLE SOURCE OF TRUTH)".
+
+### 2) `_sanitize_reply()` — post-processing guard against LLM hallucinations
+A regex-based filter that runs on every LLM reply before it goes to the user:
+- **Product URL whitelist** — builds the set of valid `https://oll.co/shop/product/<slug>` URLs from the live catalog and replaces any invented one with `https://oll.co/shop` (guarantees users never land on a 404).
+- **Email normalisation** — replaces `support@oll.co`, `support@onlinelivelearning.com`, `contact@oll.co`, `hello@oll.co` → `info@oll.co` (per user: info@oll.co is the only correct email).
+- **Season normalisation** — rewrites `TechFest 20xx` where xx ≤ 25 to `TechFest 2026-27` so stale pretraining years never leak through.
+- **OLL name expansion** — rewrites `Online Live Learning` / `Open League Learning` → `On Learn Learn`.
+
+### 3) Hard-rule rewrite in the system prompt — 8 explicit rules + "common hallucinations to avoid" list
+Added a "COMMON HALLUCINATIONS TO AVOID" block listing each wrong answer the bot has previously generated verbatim, with the correct version next to it. In Anthropic's models, listing the common mistake inline is far more effective than a generic "don't hallucinate" instruction.
+
+Also updated `faq_settings.py` DEFAULT_SETTINGS to replace every `support@oll.co` / `contact@oll.co` with `info@oll.co`.
+
+### Files touched this round
+- `backend/data/oll_pages_verbatim.md` (new) — ~250-line authoritative knowledge file
+- `backend/routes/faq_chat.py` — loads the verbatim file, adds `_valid_product_urls()`, adds `_sanitize_reply()`, rewrites hard rules, adds hallucination list
+- `backend/routes/faq_settings.py` — email normalised to `info@oll.co` in all defaults
+
+### Verified against previously-failing queries
+| Question | v4 reply | v5 reply |
+|---|---|---|
+| "dates of techfest regionals and finals" | "TechFest 2025 · Feb 15 2025 · March 15 2025" | ✅ "TechFest 2026-27 · East IIT Kanpur 24 Oct · South RVU 26 Nov · West IIT Bombay 17 Dec · Finale 17 Dec 2026" |
+| "rules for Robo Innovation Challenge" | Generic made-up rules + `support@onlinelivelearning.com` | ✅ Full official rules verbatim from live page + `info@oll.co` |
+| "where can I buy robo sumo kit" | `/shop/product/robo-sumo-kit-b8176a8d` (404) | ✅ `/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a` (resolves to real ₹6,999 product) |
+| "tell me about CT&AI for CBSE" | Generic hallucinated "Code 417, Classes 11-12" | ✅ "CBSE Acad 15/2026 elective · Grades 9-10 · part of Future Skills" |
+| "what is OLL + support email" | "support@onlinelivelearning.com" | ✅ "On Learn Learn · info@oll.co" |
+
+
 ## 2026-10-05 — OLLBot v4 — broken product links fixed + School/Centers/Brochures/Blogs knowledge
 **Status: COMPLETE · verified in-browser**
 

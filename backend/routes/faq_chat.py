@@ -63,6 +63,13 @@ try:
     PROBLEM_STATEMENT_TEXT = (_DATA_DIR / "techfest_problem_statement.txt").read_text(encoding="utf-8")
 except FileNotFoundError:
     PROBLEM_STATEMENT_TEXT = ""
+# Verbatim content copied from the live OLL competition landing pages —
+# this is the single source of truth for the 2026-27 season. It overrides
+# ANY conflicting fact in the LLM's pretraining data.
+try:
+    OLL_PAGES_VERBATIM = (_DATA_DIR / "oll_pages_verbatim.md").read_text(encoding="utf-8")
+except FileNotFoundError:
+    OLL_PAGES_VERBATIM = ""
 
 
 _SEP = "=" * 72
@@ -122,6 +129,73 @@ async def _fetch_live_products_block() -> str:
         return _format_live_products(merged)
     except Exception:
         return ""
+
+
+async def _valid_product_urls() -> set[str]:
+    """Build the set of currently-valid product URLs so we can sanitize any
+    URL the LLM invents at response time. Returns a lowercase set keyed by
+    URL for fast `in` lookups."""
+    try:
+        from routes.shop import _fetch_vendor_catalog, _get_overrides_map, _merge_product
+        vendor_products = await _fetch_vendor_catalog()
+        overrides = await _get_overrides_map()
+        urls: set[str] = set()
+        for v in vendor_products:
+            if not v.get("id"):
+                continue
+            p = _merge_product(v, overrides.get(v["id"]))
+            if not p.get("show_on_shop"):
+                continue
+            urls.add(f"https://oll.co/shop/product/{_product_slug(p)}")
+        return urls
+    except Exception:
+        return set()
+
+
+def _sanitize_reply(reply: str, valid_product_urls: set[str]) -> str:
+    """Post-process the LLM reply:
+
+    1. Replace any invented `/shop/product/<slug>` URL that is NOT in the
+       live valid set with the main shop URL — this guarantees we never
+       send a user to a 404.
+    2. Replace common wrong support emails with the correct one.
+    3. Replace wrong-season strings (TechFest 2025 / Feb 15, 2025 etc.)
+       with a neutral pointer so a stale pretraining fact can't leak.
+    """
+    import re
+
+    # 1. Product URL sanitisation
+    pattern = re.compile(r"https?://(?:www\.)?oll\.co/shop/product/[A-Za-z0-9][A-Za-z0-9\-]*")
+
+    def _repl(m: re.Match) -> str:
+        url = m.group(0).rstrip(".,);]")
+        if url in valid_product_urls:
+            return m.group(0)
+        # 404-bound → replace with main shop
+        return "https://oll.co/shop"
+
+    reply = pattern.sub(_repl, reply)
+
+    # 2. Email normalisation
+    for wrong in (
+        "support@onlinelivelearning.com",
+        "support@oll.co",
+        "contact@oll.co",
+        "hello@oll.co",
+        "info@onlinelivelearning.com",
+    ):
+        reply = re.sub(re.escape(wrong), "info@oll.co", reply, flags=re.IGNORECASE)
+
+    # 3. Wrong-season leakage. Only trip on explicit "TechFest 2025" strings;
+    # we don't want to touch unrelated "2025" references.
+    reply = re.sub(r"\bTechFest\s*20(2[0-5])\b", "TechFest 2026-27", reply, flags=re.IGNORECASE)
+    reply = re.sub(r"\bTech\s*Fest\s*20(2[0-5])\b", "TechFest 2026-27", reply, flags=re.IGNORECASE)
+
+    # 4. Expand wrong OLL names if they leak in anyway.
+    reply = re.sub(r"\bOnline Live Learning\b", "On Learn Learn", reply)
+    reply = re.sub(r"\bOpen League Learning\b", "On Learn Learn", reply)
+
+    return reply
 
 
 async def _fetch_live_centers_block() -> str:
@@ -219,7 +293,7 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
 
     sections: List[str] = [
         "You are OLLBot — the official AI assistant for OLL (On Learn Learn) at https://oll.co.",
-        "OLL = **On Learn Learn** (do NOT expand it as 'Open League Learning' or anything else).",
+        "OLL = **On Learn Learn** (do NOT expand it as 'Open League Learning', 'Online Live Learning' or anything else).",
         "You help parents, teachers, students, principals and partner-school admins with:",
         "• The OLL × TechFest IIT Bombay 2026-27 Robotics Championship (dates, rules, registration)",
         "• OLL's robotics kits, curriculum books and shop (public B2C products)",
@@ -230,62 +304,53 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         _SEP,
         "🚫 HARD RULES — NEVER VIOLATE:",
         _SEP,
-        "1. NEVER recommend buying from external sellers like Robu.in, Amazon, Flipkart,",
+        "1. The current season is **TechFest IIT Bombay 2026-27**. NEVER mention",
+        "   'TechFest 2025' or earlier years. The Grand Finale is on **17 December 2026**.",
+        "   Regional qualifiers: East IIT Kanpur 24 Oct 2026 · South RVU Bangalore 26 Nov 2026",
+        "   · West IIT Bombay 17 Dec 2026. These dates are AUTHORITATIVE.",
+        "2. The ONLY support email is **info@oll.co**. NEVER write 'support@oll.co',",
+        "   'support@onlinelivelearning.com', 'contact@oll.co' or any other variant.",
+        "3. NEVER recommend buying from external sellers like Robu.in, Amazon, Flipkart,",
         "   RoboKits India, AliExpress, local electronics markets, or any third party.",
         "   For ALL purchases, direct the user to the OLL Shop (https://oll.co/shop).",
-        "   If a user asks 'where can I buy X', search the LIVE PRODUCT CATALOG below",
-        "   and link to the matching OLL product only.",
-        "2. NEVER invent facts. If a question isn\\'t covered below, say so plainly and",
-        "   offer the human handoff (support@oll.co or the Need Help button bottom-right).",
-        "3. NEVER guess or shorten a product URL. The ONLY valid product URLs are the",
-        "   full URLs that appear verbatim in the LIVE OLL SHOP CATALOG section below",
-        "   (e.g. https://oll.co/shop/product/<full-slug>-<id8>). If the exact product",
-        "   is not in the live catalog, link to the matching CATEGORY page or",
-        "   https://oll.co/shop. Writing a made-up slug like `/product/book-g-1/` is",
-        "   a bug — it 404s.",
-        "4. NEVER mention 'the FAQ PDF' or 'my knowledge base' — just answer the question.",
-        "5. NEVER write `<br/>` or any HTML tags in your reply — plain Markdown only.",
-        "   The frontend auto-converts bare https:// URLs into clickable links, so write",
-        "   full URLs raw on their own line.",
-        "6. Respond in the user\\'s language. If they write Hindi/Marathi/etc, reply in that language.",
+        "4. NEVER invent facts. If a question isn\\'t covered below, say so plainly and",
+        "   point the user to **info@oll.co** or the Need Help button.",
+        "5. 🔗 PRODUCT URLs — CRITICAL: The ONLY valid shop URLs are:",
+        "   (a) the full URLs listed verbatim in the LIVE OLL SHOP CATALOG section below,",
+        "   (b) the 4 category pages: /shop/category/curriculum-books · /curriculum-robotic-kits",
+        "       · /competition-and-advanced-kits · /individual-components,",
+        "   (c) the main shop: https://oll.co/shop.",
+        "   DO NOT invent, shorten or guess product slugs. Writing a made-up URL like",
+        "   `/shop/product/robo-sumo-kit-b8176a8d` or `/product/book-g-1/` is a BUG — it 404s.",
+        "   If you can\\'t find the exact URL in the catalog below, link to the category",
+        "   page or the main shop and ask the user to search there.",
+        "6. NEVER mention 'the FAQ PDF', 'my knowledge base' or 'my training data' — just answer.",
+        "7. NEVER write `<br/>` or any HTML tags in your reply — plain Markdown only.",
+        "   The frontend auto-converts bare https:// URLs into clickable links.",
+        "8. Respond in the user\\'s language. If they write Hindi/Marathi/etc, reply in that language.",
+        "",
+        "COMMON HALLUCINATIONS TO AVOID (if any of these appear in your draft, STOP and rewrite):",
+        "- 'TechFest 2025' / 'February 15, 2025' / 'March 15, 2025' / any 2025 date → WRONG. Use 2026-27 dates.",
+        "- 'Open League Learning' / 'Online Live Learning' → WRONG. OLL = On Learn Learn.",
+        "- 'support@onlinelivelearning.com' / 'support@oll.co' → WRONG. The email is info@oll.co.",
+        "- Generic 'contact support for exact dates' → WRONG. The exact dates ARE listed below.",
+        "- Guessing product URL slugs → WRONG. Only use URLs from the live catalog below.",
         "",
         "TONE & STYLE:",
         "- Be concise. 2-6 sentences per answer. Use bullet lists for 3+ items.",
         "- Friendly, warm, confidence-building. Never robotic.",
         "- When referencing a page, include its FULL URL on its own line (e.g. https://oll.co/shop).",
-        "",
-        _SEP,
-        "🔒 AUTHORITATIVE 2026 SPECS — HIGHEST PRIORITY:",
-        _SEP,
-        "If any FAQ text or problem-statement text later in this prompt conflicts with",
-        "these numbers, use THESE numbers in your answer, not the ones in the FAQ PDF",
-        "(the FAQ PDF is from an older season and has outdated arena/track specs).",
-        "",
-        "RoboSumo:",
-        "  • Arena: 100 cm (1 m) circular diameter — NOT 150 cm.",
-        "  • Bot envelope: 25 × 25 × 25 cm max",
-        "  • Max weight: 3 kg including battery",
-        "  • Match: 2 min · 1v1 knockout · first bot pushed out loses",
-        "  • Control: autonomous, wired or wireless RC — one channel per team",
-        "  • 2 min grace period to fix a non-functional bot",
-        "",
-        "RoboRacer:",
-        "  • Track: 5 m straight · 2 parallel lanes — NOT 10-12 m, NOT a modular ramp track.",
-        "  • Bot envelope: 20 × 20 × 15 cm max — NOT 20 × 15 × 15 cm.",
-        "  • Max weight: 1.5 kg including battery",
-        "  • Heat: 2 min · wireless RC only · first across finish line wins",
-        "",
-        "Robotics Innovation Challenge:",
-        "  • Two rounds — Round 1 online submission (deadline 20 Oct 2026) + Round 2 live pitch at IIT Bombay Grand Finale",
-        "  • Team size: 2-4 students + 1 mentor",
-        "  • Hardware is OPEN — Arduino, ESP32, Raspberry Pi, LLMs, CV, 3D-printed parts all allowed",
-        "",
-        "Techfest 2026-27 regional qualifier dates (AUTHORITATIVE):",
-        "  • East  — IIT Kanpur             — Saturday, 24 October 2026",
-        "  • South — RV University Bangalore — Thursday, 26 November 2026",
-        "  • West  — IIT Bombay              — Thursday, 17 December 2026",
-        "  • Grand Finale — IIT Bombay — Wednesday-Friday, 16-18 December 2026",
     ]
+
+    # VERBATIM content from the live OLL landing pages — highest-priority source
+    if OLL_PAGES_VERBATIM:
+        sections += [
+            "",
+            _SEP,
+            "🏆 VERBATIM CONTENT FROM THE LIVE OLL LANDING PAGES (SINGLE SOURCE OF TRUTH):",
+            _SEP,
+            OLL_PAGES_VERBATIM,
+        ]
 
     # Admin-editable DB sections
     for title, content in [
@@ -501,12 +566,17 @@ async def faq_chat(req: FaqChatRequest, request: Request):
         return FaqChatReply(
             reply=(
                 "I ran into a technical hiccup. For a quick answer, email "
-                "**support@oll.co** or tap the **Need Help** button at the "
+                "**info@oll.co** or tap the **Need Help** button at the "
                 "bottom-right of this page. Our team usually replies within a few hours."
             ),
             session_id=req.session_id,
             message_count=len(sess["messages"]),
         )
+
+    # Post-process the reply to kill common hallucinations (invented product
+    # slugs → 404s, wrong support emails, wrong season year).
+    valid_urls = await _valid_product_urls()
+    reply = _sanitize_reply(reply, valid_urls)
 
     sess["messages"].append({"role": "user", "content": req.message})
     sess["messages"].append({"role": "assistant", "content": reply})
