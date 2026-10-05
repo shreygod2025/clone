@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2, ChevronDown, ChevronUp, ExternalLink, Inbox, Copy, KeyRound, Shield, Trophy } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2, ChevronDown, ChevronUp, ExternalLink, Inbox, Copy, KeyRound, Shield, Trophy, Sparkles } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
@@ -1409,6 +1409,14 @@ const AdminSupportUnified = () => {
           <Settings className="w-4 h-4" />
           Settings
         </button>
+        <a
+          href="/admin/faq-analytics"
+          className="px-5 py-3 rounded-xl font-medium flex items-center gap-2 transition-all bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+          data-testid="support-ai-resolutions-link"
+        >
+          <Sparkles className="w-4 h-4 text-[#D63031]" />
+          AI Resolutions
+        </a>
       </div>
 
       {/* Filters — hide when on settings tab */}

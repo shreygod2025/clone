@@ -148,6 +148,7 @@ const AdminRequirements = lazy(() => import("./pages/admin/AdminRequirements"));
 const AdminSupportUnified = lazy(() => import("./pages/admin/AdminSupportUnified"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminFaqSettings = lazy(() => import("./pages/admin/AdminFaqSettings"));
+const AdminFaqAnalytics = lazy(() => import("./pages/admin/AdminFaqAnalytics"));
 const AdminDataExport = lazy(() => import("./pages/admin/AdminDataExport"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
@@ -474,6 +475,7 @@ function App() {
               <Route path="/admin/blogs" element={<ProtectedRoute permission="blogs"><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute permission="settings"><AdminSettings /></ProtectedRoute>} />
               <Route path="/admin/faq-settings" element={<ProtectedRoute permission="settings"><AdminFaqSettings /></ProtectedRoute>} />
+              <Route path="/admin/faq-analytics" element={<ProtectedRoute permission="support"><AdminFaqAnalytics /></ProtectedRoute>} />
               <Route path="/admin/data-export" element={<ProtectedRoute permission="data_center"><AdminDataExport /></ProtectedRoute>} />
               <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
               <Route path="/admin/ai-foundations" element={<ProtectedRoute permission="settings"><AdminAiFoundations /></ProtectedRoute>} />

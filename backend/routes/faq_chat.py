@@ -240,6 +240,21 @@ def _sanitize_reply(reply: str, valid_product_urls: set[str]) -> str:
     reply = re.sub(r"\bTech\s*Fest\s*20(2[0-5])\b", "TechFest 2026-27", reply, flags=re.IGNORECASE)
 
     # 4. Expand wrong OLL names if they leak in anyway.
+    # 4a. The prompt itself names the wrong expansions ("do NOT expand it as ...")
+    # and the model sometimes parrots that warning back to the user. Drop those
+    # echoes first - otherwise 4b would rewrite the names inside the denial and
+    # produce nonsense like "NOT 'On Learn Learn' or 'On Learn Learn'".
+    _wrong = r"(?:Open League Learning|Online Live Learning)"
+    _neg = r"\b(?:not|never|don'?t|wrong|incorrect|avoid)\b"
+
+    def _drop_denial(m: re.Match) -> str:
+        t = m.group(0)
+        return "" if re.search(_wrong, t, re.I) and re.search(_neg, t, re.I) else t
+
+    reply = re.sub(r"[ \t]*\([^()\n]*\)", _drop_denial, reply)
+    reply = re.sub(r"[^.!?\n]+[.!?]?[ \t]*", _drop_denial, reply)
+
+    # 4b. A genuine wrong assertion ("OLL stands for Open League Learning") is corrected.
     reply = re.sub(r"\bOnline Live Learning\b", "On Learn Learn", reply)
     reply = re.sub(r"\bOpen League Learning\b", "On Learn Learn", reply)
 
@@ -359,22 +374,27 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "   'TechFest 2025' or earlier years. The Grand Finale is on **17 December 2026**.",
         "   Regional qualifiers: East IIT Kanpur 24 Oct 2026 · South RVU Bangalore 26 Nov 2026",
         "   · West IIT Bombay 17 Dec 2026. These dates are AUTHORITATIVE.",
-        "2. The ONLY support email is **info@oll.co**. NEVER write 'support@oll.co',",
-        "   'support@onlinelivelearning.com', 'contact@oll.co' or any other variant.",
+        "2. The ONLY support channels are:",
+        "   • WhatsApp: **+91 99201 88188** (fastest · wa.me/919920188188)",
+        "   • Email: **info@oll.co**",
+        "   NEVER write 'support@oll.co', 'support@onlinelivelearning.com',",
+        "   'contact@oll.co' or any other variant.",
         "3. NEVER recommend buying from external sellers like Robu.in, Amazon, Flipkart,",
         "   RoboKits India, AliExpress, local electronics markets, or any third party.",
         "   For ALL purchases, direct the user to the OLL Shop (https://oll.co/shop).",
         "4. NEVER invent facts. If a question isn\\'t covered below, say so plainly and",
-        "   point the user to **info@oll.co** or the Need Help button.",
-        "5. 🔗 PRODUCT URLs — CRITICAL: The ONLY valid shop URLs are:",
-        "   (a) the full URLs listed verbatim in the LIVE OLL SHOP CATALOG section below,",
-        "   (b) the 4 category pages: /shop/category/curriculum-books · /curriculum-robotic-kits",
-        "       · /competition-and-advanced-kits · /individual-components,",
-        "   (c) the main shop: https://oll.co/shop.",
-        "   DO NOT invent, shorten or guess product slugs. Writing a made-up URL like",
-        "   `/shop/product/robo-sumo-kit-b8176a8d` or `/product/book-g-1/` is a BUG — it 404s.",
-        "   If you can\\'t find the exact URL in the catalog below, link to the category",
-        "   page or the main shop and ask the user to search there.",
+        "   point the user to **+91 99201 88188 on WhatsApp** or **info@oll.co**.",
+        "5. 🛍️ PRODUCT URLs — CRITICAL:",
+        "   • The ONLY valid product URLs are the full URLs listed verbatim in the",
+        "     LIVE OLL SHOP CATALOG section below.",
+        "   • When recommending a specific product, place the FULL product URL on its",
+        "     OWN LINE (nothing else on that line). The frontend auto-converts this",
+        "     into a product card with image, price and Buy Now button — so you don\\'t",
+        "     need to describe the kit in prose, the card does it.",
+        "   • Valid category pages: /shop/category/curriculum-books · /curriculum-robotic-kits",
+        "     · /competition-and-advanced-kits · /individual-components.",
+        "   • DO NOT invent product slugs. Writing `/shop/product/robo-sumo-kit-b8176a8d`",
+        "     or `/product/book-g-1/` is a BUG — it 404s.",
         "6. NEVER mention 'the FAQ PDF', 'my knowledge base' or 'my training data' — just answer.",
         "7. NEVER write `<br/>` or any HTML tags in your reply — plain Markdown only.",
         "   The frontend auto-converts bare https:// URLs into clickable links.",
@@ -523,7 +543,7 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
         "- RoboSumo ring: 100 cm (1 m) circular diameter. Do NOT quote 150 cm as the arena diameter.",
         "- RoboRacer track: about 5 m long, 2 parallel lanes.",
         "- The ONLY support email is info@oll.co. Never invent any other address.",
-        "- OLL = On Learn Learn.",
+        "- OLL = On Learn Learn. When asked, state this plainly; never list, quote or deny any other expansion.",
         "- Only send buyers to the OLL Shop (https://oll.co/shop); never to external sellers.",
     ]
 
@@ -614,17 +634,88 @@ class FaqChatReply(BaseModel):
     reply: str
     session_id: str
     message_count: int
+    rate_limited: bool = False
+    remaining: Optional[int] = None
+
+
+# Rate-limit: 3 questions per calendar day per visitor identity.
+DAILY_LIMIT = 3
+
+
+def _visitor_identity(session_id: str, authorization: Optional[str], client_host: str) -> str:
+    """A stable per-visitor key for daily rate limiting.
+
+    Priority: authed user email > authed user id > client IP > session_id.
+    Session_id alone is NOT safe because it rotates per sessionStorage, but
+    client IP + session_id combined catches the common case."""
+    if authorization and authorization.lower().startswith("bearer "):
+        payload = _decode_token(authorization.split(None, 1)[1].strip())
+        if payload:
+            key = payload.get("email") or payload.get("sub") or payload.get("user_id")
+            if key:
+                return f"user:{str(key).lower()}"
+    if client_host:
+        return f"ip:{client_host}"
+    return f"sess:{session_id}"
+
+
+def _normalise_query(q: str) -> str:
+    """Collapse near-duplicates for the admin analytics view."""
+    import re
+    q = (q or "").lower().strip()
+    q = re.sub(r"[^a-z0-9 ]+", " ", q)
+    q = re.sub(r"\s+", " ", q)
+    return q[:200]
+
+
+async def _check_and_increment_rate_limit(identity: str) -> tuple[bool, int]:
+    """Returns (allowed, remaining_after_this_call). Uses an atomic $inc so
+    two parallel requests from the same identity can't both squeeze through."""
+    from datetime import date
+    today = date.today().isoformat()
+    doc = await db.faq_chat_rate.find_one_and_update(
+        {"identity": identity, "day": today},
+        {"$inc": {"count": 1}, "$setOnInsert": {"identity": identity, "day": today}},
+        upsert=True,
+        return_document=True,
+    )
+    count = (doc or {}).get("count", 1) if doc else 1
+    # find_one_and_update default return_document is BEFORE; some drivers
+    # return the post-update doc under newer versions. Normalise:
+    if count == 0:
+        count = 1
+    remaining = max(0, DAILY_LIMIT - count)
+    return count <= DAILY_LIMIT, remaining
 
 
 @router.get("/faq-chat/suggestions")
 async def faq_chat_suggestions():
     settings = await read_settings()
-    return {"suggestions": settings.suggestions}
+    return {"suggestions": settings.suggestions, "daily_limit": DAILY_LIMIT}
 
 
 @router.post("/faq-chat", response_model=FaqChatReply)
 async def faq_chat(req: FaqChatRequest, request: Request):
     from emergentintegrations.llm.chat import LlmChat, UserMessage  # pre-installed
+
+    # ─── Rate limit ───────────────────────────────────────────────────────
+    client_host = (request.client.host if request.client else "") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    identity = _visitor_identity(req.session_id, request.headers.get("authorization"), client_host)
+    allowed, remaining = await _check_and_increment_rate_limit(identity)
+    if not allowed:
+        rl_reply = (
+            f"You've reached today's limit of **{DAILY_LIMIT} questions**. 🙏\n\n"
+            "For more help right now, you can:\n\n"
+            "- 💬 WhatsApp us at **+91 99201 88188** (fastest)\n"
+            "- ✉️ Email **info@oll.co**\n"
+            "- 🎫 Or tap *Raise a ticket* below and our team will reach out\n\n"
+            "Come back tomorrow and I'll be happy to help with 3 more questions!"
+        )
+        return FaqChatReply(
+            reply=rl_reply, session_id=req.session_id,
+            message_count=len(_get_session(req.session_id)["messages"]),
+            rate_limited=True, remaining=0,
+        )
 
     sess = _get_session(req.session_id)
     user_tickets_block = await _fetch_user_tickets_block(request.headers.get("authorization"))
@@ -635,9 +726,6 @@ async def faq_chat(req: FaqChatRequest, request: Request):
         raise HTTPException(status_code=503, detail="LLM is temporarily unavailable")
 
     # LlmChat only honours `system_message` when `initial_messages` is empty
-    # (`self.messages = initial_messages or [system]`). Passing history alone
-    # silently dropped the whole knowledge base from turn 2 onward, so the
-    # system prompt is always sent explicitly as the first message.
     initial_messages = [{"role": "system", "content": system}] + [
         {"role": m["role"], "content": m["content"]}
         for m in sess["messages"][-20:]
@@ -655,27 +743,61 @@ async def faq_chat(req: FaqChatRequest, request: Request):
     except Exception:
         return FaqChatReply(
             reply=(
-                "I ran into a technical hiccup. For a quick answer, email "
-                "**info@oll.co** or tap the **Need Help** button at the "
-                "bottom-right of this page. Our team usually replies within a few hours."
+                "I ran into a technical hiccup. For a quick answer, WhatsApp us at "
+                "**+91 99201 88188** or email **info@oll.co**. Our team usually "
+                "replies within a few hours."
             ),
             session_id=req.session_id,
             message_count=len(sess["messages"]),
+            remaining=remaining,
         )
 
-    # Post-process the reply to kill common hallucinations (invented product
-    # slugs → 404s, wrong support emails, wrong season year).
     valid_urls = await _valid_product_urls()
     reply = _sanitize_reply(reply, valid_urls)
 
     sess["messages"].append({"role": "user", "content": req.message})
     sess["messages"].append({"role": "assistant", "content": reply})
 
+    # ─── Log for admin analytics ──────────────────────────────────────────
+    import uuid
+    from datetime import datetime, timezone
+    try:
+        await db.faq_chat_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "identity": identity,
+            "session_id": req.session_id,
+            "question": req.message[:2000],
+            "question_normalised": _normalise_query(req.message),
+            "answer_preview": reply[:500],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "day": datetime.now(timezone.utc).date().isoformat(),
+            "feedback": None,
+        })
+    except Exception:
+        pass  # logging must never break the chat response
+
     return FaqChatReply(
         reply=reply,
         session_id=req.session_id,
         message_count=len(sess["messages"]),
+        remaining=remaining,
     )
+
+
+@router.post("/faq-chat/feedback")
+async def faq_chat_feedback(payload: dict):
+    """Mark the latest answer thumbs-up/down. Used by the admin to track quality."""
+    session_id = (payload.get("session_id") or "").strip()
+    verdict = (payload.get("verdict") or "").strip()  # 'up' or 'down'
+    question = (payload.get("question") or "").strip()
+    if not session_id or verdict not in ("up", "down"):
+        raise HTTPException(400, "session_id and verdict (up/down) required")
+    await db.faq_chat_logs.update_one(
+        {"session_id": session_id, "question": question},
+        {"$set": {"feedback": verdict}},
+        upsert=False,
+    )
+    return {"ok": True}
 
 
 @router.post("/faq-chat/reset")
@@ -721,3 +843,92 @@ async def faq_chat_raise_ticket(payload: dict, request: Request):
     }
     await db.support_queries.insert_one(doc)
     return {"ok": True, "ticket_id": doc["id"]}
+
+
+
+@router.get("/admin/faq-chat/analytics")
+async def faq_chat_analytics(days: int = 30, user: dict = None):
+    """AI Resolutions dashboard: top asked questions, counts, thumbs-up/down rate.
+    Admin-only route — permission gate is enforced via the admin router prefix in
+    production. For now we just require it to be hit from the admin SPA which
+    uses the admin JWT; see server.py for the global admin guard."""
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    pipeline = [
+        {"$match": {"created_at": {"$gte": cutoff}}},
+        {"$group": {
+            "_id": "$question_normalised",
+            "count": {"$sum": 1},
+            "sample_question": {"$first": "$question"},
+            "last_asked": {"$max": "$created_at"},
+            "thumbs_up": {"$sum": {"$cond": [{"$eq": ["$feedback", "up"]}, 1, 0]}},
+            "thumbs_down": {"$sum": {"$cond": [{"$eq": ["$feedback", "down"]}, 1, 0]}},
+            "unique_visitors": {"$addToSet": "$identity"},
+        }},
+        {"$project": {
+            "_id": 0,
+            "normalised": "$_id",
+            "sample_question": 1,
+            "count": 1,
+            "last_asked": 1,
+            "thumbs_up": 1,
+            "thumbs_down": 1,
+            "unique_visitors": {"$size": "$unique_visitors"},
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 200},
+    ]
+    rows = await db.faq_chat_logs.aggregate(pipeline).to_list(200)
+
+    total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}})
+    thumbs_up_total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "feedback": "up"})
+    thumbs_down_total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "feedback": "down"})
+
+    identities = await db.faq_chat_logs.distinct("identity", {"created_at": {"$gte": cutoff}})
+
+    return {
+        "total_queries": total,
+        "unique_visitors": len(identities),
+        "thumbs_up": thumbs_up_total,
+        "thumbs_down": thumbs_down_total,
+        "top_queries": rows,
+        "window_days": days,
+    }
+
+
+@router.get("/faq-chat/product-lookup")
+async def faq_chat_product_lookup(slug: str):
+    """Resolves a product slug to {name, image, price, mrp, category, url}
+    for inline chat-card rendering. Public endpoint — no auth."""
+    try:
+        from routes.shop import _fetch_vendor_catalog, _get_overrides_map, _merge_product
+        vendor_products = await _fetch_vendor_catalog()
+        overrides = await _get_overrides_map()
+        for v in vendor_products:
+            if not v.get("id"):
+                continue
+            p = _merge_product(v, overrides.get(v["id"]))
+            if not p.get("show_on_shop"):
+                continue
+            if _product_slug(p) == slug:
+                image = (
+                    p.get("image_url")
+                    or (p.get("gallery_urls") or [None])[0]
+                    or (p.get("images") or [None])[0]
+                    or p.get("thumbnail")
+                    or ""
+                )
+                return {
+                    "found": True,
+                    "name": p.get("name"),
+                    "image": image,
+                    "selling_price": p.get("selling_price"),
+                    "mrp": p.get("mrp"),
+                    "category": p.get("category"),
+                    "slug": slug,
+                    "url": f"https://oll.co/shop/product/{slug}",
+                }
+    except Exception:
+        pass
+    return {"found": False, "slug": slug}

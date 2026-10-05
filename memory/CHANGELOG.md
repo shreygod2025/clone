@@ -1,5 +1,54 @@
 # OLL Backend Changelog
 
+## 2026-10-05 — OLLBot v7 — rate limit · analytics · product cards · WhatsApp direct
+**Status: COMPLETE · verified end-to-end**
+
+Six user asks shipped in one pass:
+
+### 1) Query logging + AI Resolutions dashboard
+Every chat question is now logged to `faq_chat_logs` with: identity (user email / IP / session), question, normalised-question (for grouping), answer preview, timestamp, feedback. New admin page `/admin/faq-analytics` (also linked from `/admin/support` header) renders:
+- 4 KPI cards: total queries, unique visitors, thumbs-up, thumbs-down (%).
+- Top-200 questions grouped by similarity (lowercase + punctuation-stripped), sorted by frequency, with per-query count, unique-visitor count, thumbs-up/down split, and last-asked timestamp. Window selectable: 24h / 7d / 30d / 90d.
+- "Edit chatbot" shortcut to jump straight to the knowledge-base editor.
+
+### 2) Rate limit — 3 questions/day/visitor
+Atomic `$inc` on `faq_chat_rate` keyed by identity + ISO date. Identity priority: authed email > authed user_id > client IP > session_id (so an anon user can't bypass by rotating sessionStorage). On the 4th request the backend returns `rate_limited: true` plus a friendly block message pointing to WhatsApp +91 99201 88188 and info@oll.co.
+
+### 3) Thumbs feedback POST'd to backend
+New `POST /api/faq-chat/feedback` endpoint; frontend fires it fire-and-forget on every thumbs-up / thumbs-down tap. Powers the thumbs columns in the admin analytics table.
+
+### 4) Raise ticket + WhatsApp + Email buttons on every answer
+Under every assistant reply the chat UI now renders 3 one-tap buttons:
+- **WhatsApp** (green pill, opens `wa.me/919920188188?text=<question-prefilled>` in new tab)
+- **Email** (grey pill, opens `mailto:info@oll.co?subject=...&body=<question-prefilled>`)
+- **Raise ticket** (red pill, opens the existing escalation modal with the last user question auto-prefilled)
+All three carry the user's last question as prefill — so a 2-tap handoff from "I'm stuck" to "ticket raised".
+
+### 5) Shop product cards in chat
+Backend added `GET /api/faq-chat/product-lookup?slug=…` returning `{name, image_url, selling_price, mrp, category, url}` for inline card rendering. Frontend `mdToHtml` now detects any `https://oll.co/shop/product/<slug>` URL on its own line and emits a hydratable placeholder; `MessageRow` fetches metadata and swaps the placeholder for a full product card with image + category + name + price + MRP strikethrough + "See details" (grey) + "Buy now" (red) buttons. System prompt tells the LLM: "when recommending a product, put the FULL URL on its own line — the frontend builds the card for you."
+
+Also fixed CSS specificity bug where `.pdp-rich a { color: #D63031 }` was turning the white-on-red "Buy now" text invisible.
+
+### 6) Mobile iframe + overlap polish
+- YouTube iframe wrapper now has `max-width:100%` so it never overflows the chat bubble on narrow devices.
+- (Already shipped in v6) global "Need Help?" floating button hidden on `/faq` via `body.faq-chatbot-open`.
+- WhatsApp number `+91 99201 88188` + email `info@oll.co` baked into the hard rules so the bot ALWAYS mentions them when a visitor needs a human (and the rate-limit message surfaces both too).
+
+### Files touched
+- `backend/routes/faq_chat.py` — rate limiter, query logger, feedback endpoint, product-lookup endpoint, analytics endpoint, system-prompt rules updated with WhatsApp
+- `frontend/src/pages/FAQPage.jsx` — new quick-action buttons on every answer, feedback POSTs, prefilled handoffs
+- `frontend/src/utils/richContent.js` — detect product URLs → emit placeholder; existing YouTube iframe unchanged
+- `frontend/src/pages/admin/AdminFaqAnalytics.jsx` (new) — AI Resolutions dashboard
+- `frontend/src/pages/admin/AdminSupportUnified.jsx` — AI Resolutions nav link in header
+- `frontend/src/App.js` — new `/admin/faq-analytics` route
+- `frontend/src/index.css` — product-card button text overrides
+
+### Verified
+- Rate limit: Q1→Q2→Q3 return `remaining 2→1→0`, Q4 returns `rate_limited: true` with WhatsApp/email fallback.
+- Analytics endpoint: 4 queries → 2 unique visitors → top-queries grouped and sorted.
+- Mobile screenshot: product card shows image + category + name + ₹6,999 + "See details" + "Buy now" (visible, white-on-red); WhatsApp/Email/Raise-ticket row under every reply.
+
+
 ## 2026-10-05 — OLLBot v6 — Official PDF rulebook + YouTube video embeds + mobile fixes
 **Status: COMPLETE · verified end-to-end · all user asks shipped**
 

@@ -55,7 +55,7 @@ export const mdToHtml = (raw = '') => {
       const vid = youtubeIdFromUrl(ytMatch[1]);
       if (vid) {
         out.push(
-          `<div class="faq-yt-embed" style="position:relative;width:100%;padding-bottom:56.25%;margin:12px 0;border-radius:12px;overflow:hidden;background:#000;">
+          `<div class="faq-yt-embed" style="position:relative;width:100%;max-width:100%;padding-bottom:56.25%;margin:12px 0;border-radius:12px;overflow:hidden;background:#000;">
             <iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1"
               style="position:absolute;inset:0;width:100%;height:100%;border:0;"
               title="YouTube video"
@@ -66,6 +66,23 @@ export const mdToHtml = (raw = '') => {
         );
         continue;
       }
+    }
+
+    // Shop product short-circuit: a block containing ONLY an OLL product URL
+    // (optionally prefixed with "- " or wrapped in markdown) becomes a
+    // hydratable product-card placeholder. The MessageRow then fetches the
+    // product metadata via /api/faq-chat/product-lookup and renders the full
+    // card (image, name, price, "See Details" + "Add to Cart" buttons).
+    const prodMatch = block.trim().match(
+      /^(?:[-*]\s*)?\[?(https?:\/\/(?:www\.)?oll\.co\/shop\/product\/([a-z0-9][a-z0-9-]+))\]?\(?\1?\)?\s*$/i,
+    );
+    if (prodMatch) {
+      const url = prodMatch[1];
+      const slug = prodMatch[2];
+      out.push(
+        `<div class="faq-product-card" data-slug="${slug}" data-url="${url}" data-pending="1"></div>`,
+      );
+      continue;
     }
 
     const isUl = lines.every((l) => /^\s*[-*]\s+/.test(l));

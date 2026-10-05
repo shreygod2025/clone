@@ -24,6 +24,7 @@ import axios from 'axios';
 import {
   Send, Sparkles, MessageSquare, Loader2, ThumbsUp, ThumbsDown,
   Lightbulb, RotateCcw, CheckCircle2, ExternalLink, ArrowRight,
+  MessageCircle, Mail, Ticket,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
@@ -196,6 +197,15 @@ const FAQPage = () => {
   const markFeedback = (idx, value) => {
     setMessages((m) => m.map((msg, i) => i === idx ? { ...msg, feedback: value } : msg));
     if (value === 'down') setEscalateFor(idx);
+    // Fire-and-forget feedback log to backend.
+    try {
+      const lastUserQ = messages.slice(0, idx).reverse().find((x) => x.role === 'user')?.content || '';
+      axios.post(`${API}/faq-chat/feedback`, {
+        session_id: sessionId,
+        verdict: value,
+        question: lastUserQ,
+      }).catch(() => {});
+    } catch {}
   };
 
   return (
@@ -224,19 +234,24 @@ const FAQPage = () => {
             className="space-y-5 pr-1 min-h-[320px]"
             data-testid="faq-chat-log"
           >
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                ref={(el) => { messageRefs.current[i] = el; }}
-              >
-                <MessageRow
-                  msg={m}
-                  index={i}
-                  onFeedback={markFeedback}
-                  data-testid={`faq-msg-${i}`}
-                />
-              </div>
-            ))}
+            {messages.map((m, i) => {
+              const lastUserQuestion = messages.slice(0, i).reverse().find((x) => x.role === 'user')?.content || '';
+              return (
+                <div
+                  key={i}
+                  ref={(el) => { messageRefs.current[i] = el; }}
+                >
+                  <MessageRow
+                    msg={m}
+                    index={i}
+                    onFeedback={markFeedback}
+                    lastUserQuestion={lastUserQuestion}
+                    onEscalate={(idx) => setEscalateFor(idx)}
+                    data-testid={`faq-msg-${i}`}
+                  />
+                </div>
+              );
+            })}
             {sending && <ThinkingRow />}
 
             {/* Suggestion chips — right under the welcome message so users don't
@@ -343,9 +358,70 @@ const FAQPage = () => {
    Rendered row for one message. Assistant replies include a thumbs
    up/down bar that collapses to "Thanks for the feedback" when picked.
    ────────────────────────────────────────────────────────────────────── */
-const MessageRow = ({ msg, index, onFeedback }) => {
+const WHATSAPP_NUMBER = '919920188188';
+const SUPPORT_EMAIL = 'info@oll.co';
+
+const buildWaUrl = (prefillText) => {
+  const text = encodeURIComponent(prefillText || 'Hi OLL, I need help from the Techfest team.');
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
+};
+const buildMailUrl = (prefillText) => {
+  const subject = encodeURIComponent('Help request from oll.co/faq');
+  const body = encodeURIComponent(prefillText || 'Hi OLL team, I need help with the following —\n\n');
+  return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+};
+
+const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) => {
   const isUser = msg.role === 'user';
   const html = useMemo(() => (isUser ? '' : mdToHtml(msg.content)), [msg.content, isUser]);
+  const bubbleRef = useRef(null);
+  const prefillText = `Question: ${lastUserQuestion || ''}\n\nI'd like a human to help with this.`;
+
+  // Hydrate .faq-product-card placeholders by fetching product metadata and
+  // injecting an image + name + price + "See Details" / "Buy Now" buttons.
+  useEffect(() => {
+    if (isUser || !bubbleRef.current) return;
+    const placeholders = bubbleRef.current.querySelectorAll('.faq-product-card[data-pending="1"]');
+    placeholders.forEach(async (el) => {
+      el.setAttribute('data-pending', '0');
+      const slug = el.getAttribute('data-slug');
+      const url = el.getAttribute('data-url') || `https://oll.co/shop/product/${slug}`;
+      el.innerHTML = `<div class="animate-pulse rounded-xl bg-slate-100 h-24 w-full"></div>`;
+      try {
+        const r = await axios.get(`${API}/faq-chat/product-lookup`, { params: { slug } });
+        const p = r.data;
+        if (!p?.found) {
+          // Fallback: render a plain external link so the user can still click through.
+          el.innerHTML = `<a href="${url}" target="_blank" rel="noreferrer" class="text-[#D63031] font-semibold underline">${url}</a>`;
+          return;
+        }
+        const img = (p.image || '').replace(/"/g, '&quot;');
+        const priceStr = typeof p.selling_price === 'number' ? `₹${p.selling_price.toLocaleString('en-IN')}` : 'Price on request';
+        const mrpStr = (typeof p.mrp === 'number' && typeof p.selling_price === 'number' && p.mrp > p.selling_price)
+          ? `<span class="text-slate-400 line-through text-xs ml-1">₹${p.mrp.toLocaleString('en-IN')}</span>` : '';
+        el.outerHTML = `
+          <div class="faq-product-card not-prose my-3 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            <div class="flex gap-3 p-3">
+              <a href="${p.url}" target="_blank" rel="noreferrer" class="flex-shrink-0 w-20 h-20 sm:w-28 sm:h-28 bg-slate-50 rounded-lg overflow-hidden border border-slate-100">
+                ${img ? `<img src="${img}" alt="${(p.name || '').replace(/"/g, '&quot;')}" loading="lazy" class="w-full h-full object-cover" />` : ''}
+              </a>
+              <div class="flex-1 min-w-0">
+                ${p.category ? `<div class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">${p.category}</div>` : ''}
+                <a href="${p.url}" target="_blank" rel="noreferrer" class="text-sm font-bold text-[#0A1F44] hover:text-[#D63031] block mb-1 leading-tight break-words">${p.name || ''}</a>
+                <div class="text-base font-black text-[#D63031]">${priceStr}${mrpStr}</div>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  <a href="${p.url}" target="_blank" rel="noreferrer" class="inline-flex items-center text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full px-2.5 py-1">See details</a>
+                  <a href="${p.url}" target="_blank" rel="noreferrer" class="inline-flex items-center text-[11px] font-semibold bg-[#D63031] hover:bg-[#B91C1C] text-white rounded-full px-2.5 py-1">Buy now</a>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      } catch (e) {
+        el.innerHTML = `<a href="${url}" target="_blank" rel="noreferrer" class="text-[#D63031] font-semibold underline">${url}</a>`;
+      }
+    });
+  }, [html, isUser]);
+
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`} data-testid={`faq-msg-${index}`}>
       {!isUser && (
@@ -353,8 +429,9 @@ const MessageRow = ({ msg, index, onFeedback }) => {
           <Sparkles className="w-4 h-4 text-white" />
         </div>
       )}
-      <div className={`${isUser ? 'max-w-[82%]' : 'max-w-[85%]'}`}>
+      <div className={`${isUser ? 'max-w-[82%]' : 'max-w-[88%] w-full'}`}>
         <div
+          ref={bubbleRef}
           className={`${
             isUser
               ? 'bg-[#0A1F44] text-white rounded-2xl rounded-tr-sm'
@@ -368,29 +445,57 @@ const MessageRow = ({ msg, index, onFeedback }) => {
           )}
         </div>
         {!isUser && !msg.isWelcome && (
-          <div className="mt-1.5 flex items-center gap-1 pl-1 text-xs">
-            {msg.feedback === null ? (
-              <>
-                <span className="text-slate-400 mr-1">Was this helpful?</span>
-                <button
-                  onClick={() => onFeedback(index, 'up')}
-                  className="p-1 rounded hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 transition"
-                  data-testid={`faq-msg-${index}-thumbs-up`}
-                  aria-label="Helpful"
-                ><ThumbsUp className="w-3.5 h-3.5" /></button>
-                <button
-                  onClick={() => onFeedback(index, 'down')}
-                  className="p-1 rounded hover:bg-red-50 text-slate-500 hover:text-red-600 transition"
-                  data-testid={`faq-msg-${index}-thumbs-down`}
-                  aria-label="Not helpful"
-                ><ThumbsDown className="w-3.5 h-3.5" /></button>
-              </>
-            ) : msg.feedback === 'up' ? (
-              <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Thanks for the feedback</span>
-            ) : (
-              <span className="text-slate-500">A human will reach out shortly — form below.</span>
-            )}
-          </div>
+          <>
+            {/* Quick-action buttons under every answer */}
+            <div className="mt-2 flex flex-wrap gap-1.5 pl-1">
+              <a
+                href={buildWaUrl(prefillText)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] rounded-full px-2.5 py-1 transition"
+                data-testid={`faq-msg-${index}-whatsapp`}
+              >
+                <MessageCircle className="w-3 h-3" /> WhatsApp
+              </a>
+              <a
+                href={buildMailUrl(prefillText)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full px-2.5 py-1 transition"
+                data-testid={`faq-msg-${index}-email`}
+              >
+                <Mail className="w-3 h-3" /> Email
+              </a>
+              <button
+                onClick={() => onEscalate(index)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#D63031]/10 hover:bg-[#D63031]/20 text-[#D63031] rounded-full px-2.5 py-1 transition"
+                data-testid={`faq-msg-${index}-raise-ticket`}
+              >
+                <Ticket className="w-3 h-3" /> Raise ticket
+              </button>
+            </div>
+            <div className="mt-1.5 flex items-center gap-1 pl-1 text-xs">
+              {msg.feedback === null ? (
+                <>
+                  <span className="text-slate-400 mr-1">Was this helpful?</span>
+                  <button
+                    onClick={() => onFeedback(index, 'up')}
+                    className="p-1 rounded hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 transition"
+                    data-testid={`faq-msg-${index}-thumbs-up`}
+                    aria-label="Helpful"
+                  ><ThumbsUp className="w-3.5 h-3.5" /></button>
+                  <button
+                    onClick={() => onFeedback(index, 'down')}
+                    className="p-1 rounded hover:bg-red-50 text-slate-500 hover:text-red-600 transition"
+                    data-testid={`faq-msg-${index}-thumbs-down`}
+                    aria-label="Not helpful"
+                  ><ThumbsDown className="w-3.5 h-3.5" /></button>
+                </>
+              ) : msg.feedback === 'up' ? (
+                <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Thanks!</span>
+              ) : (
+                <span className="text-slate-500">Noted — raise a ticket above and we'll follow up.</span>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
