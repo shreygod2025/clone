@@ -110,7 +110,12 @@ const AdminFaqSettings = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axios.get(`${API}/admin/faq-settings`, { headers: getAuthHeaders() });
+      // Cache-buster query param defeats any browser/proxy cache that could
+      // otherwise serve a stale copy of the settings and make a Save look
+      // like it "reverted" on the next page load.
+      const r = await axios.get(`${API}/admin/faq-settings?t=${Date.now()}`, {
+        headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' },
+      });
       setSettings(r.data);
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to load FAQ settings');
@@ -142,10 +147,17 @@ const AdminFaqSettings = () => {
     if (!settings) return;
     setSaving(true);
     try {
-      await axios.put(`${API}/admin/faq-settings`, settings, { headers: getAuthHeaders() });
-      toast.success('FAQ chatbot updated — changes are live now');
+      const r = await axios.put(`${API}/admin/faq-settings`, settings, { headers: getAuthHeaders() });
+      // Backend returns the authoritative saved doc — re-sync state so what you
+      // see is what's actually in the DB (no optimistic / cached mismatch).
+      if (r.data?.settings) setSettings(r.data.settings);
+      const stamp = r.data?.updated_at ? new Date(r.data.updated_at).toLocaleTimeString() : '';
+      toast.success(stamp ? `Saved at ${stamp} — changes are live now` : 'FAQ chatbot updated — changes are live now');
     } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Save failed');
+      const msg = e?.response?.data?.detail || e?.message || 'Save failed';
+      toast.error(`Save failed: ${msg}`);
+      // Log full error so admins can share the Network tab response if issues recur
+      console.error('[AdminFaqSettings] save failed:', e?.response?.status, e?.response?.data || e);
     } finally {
       setSaving(false);
     }
@@ -178,6 +190,15 @@ const AdminFaqSettings = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {settings.updated_at && (
+              <span
+                className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-1"
+                data-testid="admin-faq-last-saved"
+                title={`Last saved by ${settings.updated_by || 'admin'}`}
+              >
+                Saved · {new Date(settings.updated_at).toLocaleString()}
+              </span>
+            )}
             <a
               href="/faq"
               target="_blank"

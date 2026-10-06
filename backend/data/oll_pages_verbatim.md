@@ -22,7 +22,7 @@ Hero lede:
   The Robo Sumo competition at the OLL Robotics Championship 2026 — a
   wireless 1v1 push-out battle live at Techfest, IIT Bombay. Build an
   autonomous sumo bot, enter the regional qualifier in your city and
-  race for a prize pool of ₹1,50,000 at the Grand Finale.
+  race for a share of the ₹1,50,000 championship prize pool at the Grand Finale.
 
 Stats:
 - Arena: 100 cm (1 m) circular diameter
@@ -33,7 +33,7 @@ Stats:
 Why participate:
 - Compete head-to-head on India's biggest school tech-fest stage — Techfest, IIT Bombay — in front of thousands of students and recruiters.
 - Fully free entry — no registration fee for any of the three rounds. The only paid item is the optional (and strongly recommended) official OLL kit.
-- Prize money up to ₹1,50,000 split across top-3 finalists, plus Certificate of Participation and Certificate of Finalist Recognition.
+- Share of the ₹1,50,000 total championship prize pool (₹50,000 per competition split across Junior & Senior age groups, further shared across top-3 teams), plus Certificate of Participation and Certificate of Finalist Recognition.
 - Learn real embedded engineering — ESP32-S3 wireless control, high-torque Johnson 300 RPM motors, dual H-bridge motor drivers, LiPo battery safety and sheet-metal chassis design.
 
 Rounds:
@@ -57,10 +57,10 @@ Judging rubric:
 - Weight distribution & traction — 15% — How grounded the bot stays under opposing push.
 - Team strategy & sportsmanship — 10% — Tactics, respect for referee, clean restarts.
 
-Prizes:
-- Winner: ₹75,000
-- Runner-up: ₹50,000
-- 2nd Runner-up: ₹25,000
+Prizes (per competition — this competition only):
+- Competition pool: ₹50,000 (shared across 2 age groups)
+- Age-group pool: ₹25,000 (shared across top-3 teams in Junior Grades 4-7 and Senior Grades 8-12 separately)
+- Total championship prize pool across all 3 competitions: ₹1,50,000 (NOT ₹1.5 Lakh per track)
 
 Official kit — Robo Sumo · Battle-Ready Kit
   URL: https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a
@@ -84,7 +84,7 @@ Hero lede:
   The Robo Race competition at the OLL Robotics Championship 2026 — a
   wireless 1v1 head-to-head sprint on a 5 m straight track at Techfest,
   IIT Bombay. Build your own RC bot, qualify through the regional round
-  and race for ₹1,50,000 at the Grand Finale on 17 Dec 2026.
+  and race for a share of the ₹1,50,000 championship prize pool at the Grand Finale on 17 Dec 2026.
 
 Stats:
 - Track: 5 m · 2 lanes
@@ -95,7 +95,7 @@ Stats:
 Why participate:
 - Race your RC bot head-to-head on India's biggest school tech-fest arena — the Techfest, IIT Bombay main stage.
 - Fully free entry — no registration fee across Round 1 (online), Round 2 (regional qualifier) or the Grand Finale.
-- Prize pool up to ₹1,50,000 across top-3 finalists + Certificates of Participation and Finalist Recognition.
+- Share of the ₹1,50,000 total championship prize pool (split across 3 competitions × 2 age groups × top-3 teams) + Certificates of Participation and Finalist Recognition.
 - Hands-on with real race engineering — ESP32-S3 wireless RC, tuned motor drivetrains, LiPo discharge rates, chassis aerodynamics, 5 m dual-lane track.
 
 Rounds:
@@ -119,10 +119,10 @@ Judging rubric:
 - Drivetrain tuning — 15%
 - Team strategy & sportsmanship — 10%
 
-Prizes:
-- Winner: ₹75,000
-- Runner-up: ₹50,000
-- 2nd Runner-up: ₹25,000
+Prizes (per competition — this competition only):
+- Competition pool: ₹50,000 (shared across 2 age groups)
+- Age-group pool: ₹25,000 (shared across top-3 teams in Junior Grades 4-7 and Senior Grades 8-12 separately)
+- Total championship prize pool across all 3 competitions: ₹1,50,000 (NOT ₹1.5 Lakh per track)
 
 Official kit — Robo Racer · Race-Ready Kit
   URL: https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc
@@ -153,7 +153,7 @@ Stats:
 - Format: Ideate · Prototype · Pitch
 - Rounds: 2 (Online + Finale)
 - Finale: IIT Bombay · 17 Dec 2026
-- Prize Pool: ₹1,50,000
+- Prize Pool: ₹50,000 (this competition's share of the ₹1,50,000 total championship pool, split across Junior & Senior age groups and shared across top-3 teams)
 
 Why participate:
 - Step out of head-to-head combat and compete on big thinking — judges look for ideas that could actually ship.
@@ -181,10 +181,10 @@ Judging rubric:
 - Pitch, demo & defense — 15%
 - Team collaboration — 10%
 
-Prizes:
-- Winner: ₹75,000
-- Runner-up: ₹50,000
-- 2nd Runner-up: ₹25,000
+Prizes (per competition — this competition only):
+- Competition pool: ₹50,000 (shared across 2 age groups)
+- Age-group pool: ₹25,000 (shared across top-3 teams in Junior Grades 4-7 and Senior Grades 8-12 separately)
+- Total championship prize pool across all 3 competitions: ₹1,50,000 (NOT ₹1.5 Lakh per track)
 
 
 ════════════════════════════════════════════════════════════════════════
@@ -192,7 +192,7 @@ CROSS-CUTTING TECHFEST FACTS (apply to all three tracks unless noted)
 ════════════════════════════════════════════════════════════════════════
 - Championship name: OLL × TechFest IIT Bombay — Season 2026-27
 - Participation is 100% FREE across all tracks and all rounds.
-- Prize pool: ₹1,50,000 per track (₹75k / ₹50k / ₹25k splits).
+- Prize pool: ₹1,50,000 TOTAL across the whole championship — ₹50,000 per competition (3 competitions), each competition split between Junior (Grades 4-7) and Senior (Grades 8-12) age groups (₹25,000 per age-group pool), shared across top-3 teams per age group. There is NO ₹1.5 Lakh per track.
 - Grand Finale date: 17 December 2026, at IIT Bombay Techfest.
 - Each student picks ONLY ONE track (RoboSumo, RoboRacer OR Innovation Challenge).
 - Eligibility: Grades 4-12 · school teams only · 3-5 students + 1 mentor (Innovation Challenge: 1-5 or individual).

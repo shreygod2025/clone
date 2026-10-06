@@ -217,7 +217,7 @@ const FAQS = [
   { q: 'Which cities host the Regional Qualifiers?', a: 'Regional Qualifiers run across 5 zones — West: IIT Bombay (17 Dec) · East: IIT Kanpur (24 Oct) · South: RVU College, Bangalore (26 Nov) · North: Delhi (dates TBA) · Central: Indore (dates TBA).' },
   { q: 'Can I participate as an individual or do I need a team?', a: 'RoboSumo and RoboRacer must be entered as a team of 3–5 students. The Robotics Innovation Challenge accepts teams of 1–5 (a solo entry is allowed).' },
   { q: 'How is the Innovation Challenge judged?', a: 'A weighted rubric — Originality & Idea Quality (20%), Technical Design & Engineering (25%), Working Prototype & Demonstration (25%), Real-World Impact & Feasibility (15%), Presentation & Q&A (15%). See the full rubric in the Pick your Battle section above.' },
-  { q: 'What are the prizes?', a: 'A prize pool of upto ₹1,50,000 is awarded across the top three teams of each track. Payouts are made via NEFT after winners submit their bank details in the on-site form, with final payment by May 2027.' },
+  { q: 'What are the prizes?', a: 'A total prize pool of ₹1,50,000 is split across the whole championship — ₹50,000 per competition (RoboSumo, RoboRacer, Innovation Challenge), and each competition is further split between Junior (Grades 4–7) and Senior (Grades 8–12) age groups, shared across the top three teams in each age group. Payouts are made via NEFT after winners submit their bank details in the on-site form, with final payment by May 2027.' },
   { q: 'What do participants receive?', a: 'Every participant with an accepted entry gets a Certificate of Participation. Grand Finale competitors additionally receive a Certificate of Finalist Recognition.' },
   { q: 'Where is the Grand Finale?', a: 'IIT Bombay, 17 December 2026 — the flagship Techfest campus edition.' },
   { q: 'What if my school wants to send multiple teams?', a: 'Use the "Register as a School" option and we\u2019ll onboard your institution with a dedicated coordinator, bulk kit pricing and a school-level dashboard to manage all your teams.' },
@@ -482,7 +482,7 @@ export default function TechfestPage() {
                 </button>
               </div>
               <div className="mt-8 flex flex-wrap items-center gap-6 text-xs text-white/70 font-semibold" style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif" }}>
-                <span className="inline-flex items-center gap-1.5"><Trophy className="w-4 h-4 text-[#FCA5A5]" /> Prize Money upto ₹1,50,000</span>
+                <span className="inline-flex items-center gap-1.5"><Trophy className="w-4 h-4 text-[#FCA5A5]" /> ₹1,50,000 Total Prize Pool</span>
                 <span className="inline-flex items-center gap-1.5"><Users className="w-4 h-4 text-[#FCA5A5]" /> Teams of 3–5</span>
               </div>
             </div>
@@ -800,16 +800,16 @@ export default function TechfestPage() {
             <div className="tf-eyebrow text-[#FCA5A5]">what winners take home</div>
             <h2 className="tf-section-title text-4xl md:text-5xl lg:text-6xl mt-2 text-white">Prizes &amp; Certificates.</h2>
             <p className="tf-body text-white/75 mt-3 max-w-2xl mx-auto">
-              A ₹1,50,000 prize pool, certificates for every participant and a spot on the biggest robotics stage in India.
+              A ₹1,50,000 total prize pool split across 3 competitions and 2 age groups, certificates for every participant and a spot on the biggest robotics stage in India.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 relative overflow-hidden rounded-3xl p-8 lg:p-10 text-white" style={{ background: 'linear-gradient(135deg, #DC2626 0%, #7f1d1d 100%)' }}>
             <Trophy className="absolute -right-6 -bottom-6 w-40 h-40 text-white/10" />
             <div className="tf-eyebrow text-white/80">Prize Money</div>
-            <h2 className="tf-h1 text-4xl md:text-5xl mt-2">Upto ₹1,50,000.</h2>
+            <h2 className="tf-h1 text-4xl md:text-5xl mt-2">₹1,50,000 Total.</h2>
             <p className="tf-body text-white/85 mt-4 max-w-xl">
-              Prize pool of upto ₹1,50,000 awarded across the top three teams of each track. Winners submit bank details via the on-site form after the finale; payouts via NEFT by May 2027.
+              A total prize pool of ₹1,50,000 across the whole championship — ₹50,000 per competition (RoboSumo · RoboRacer · Innovation Challenge), further split between Junior (Grades 4–7) and Senior (Grades 8–12) and shared across the top-3 teams in each age group. Winners submit bank details via the on-site form after the finale; payouts via NEFT by May 2027.
             </p>
           </div>
           <div className="rounded-3xl p-8 lg:p-10 tf-band-glass text-white">

@@ -14,6 +14,24 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — Prize-money correction + FAQ settings persistence fix
+- Corrected Techfest 2026 prize structure across all surfaces: ₹1,50,000 is now
+  the TOTAL championship pool (not "per track"). Split: ₹50,000 per competition
+  (3 competitions) → 2 age groups per competition (Junior Grades 4-7 / Senior
+  Grades 8-12) → shared across top-3 teams per age group.
+- Updated: `backend/routes/faq_settings.py` (techfest default + "prize money"
+  pre-canned), `backend/data/oll_pages_verbatim.md` (all 3 competition sections
+  + cross-cutting block + hero ledes), `frontend/src/pages/TechfestPage.jsx`
+  (prizes section hero/body, FAQ answer, hero chip).
+- Fixed FAQ settings persistence: added `Cache-Control: no-store` on
+  `GET /api/admin/faq-settings`, cache-buster `?t=` on frontend GET, PUT now
+  returns the authoritative saved doc so the frontend re-syncs state from DB
+  truth, admin PUT now auto-invalidates the in-memory FAQ response cache so new
+  settings take effect on the very next public /faq query.
+- Admin UI: added a visible "Saved · timestamp" badge next to the Save button;
+  stronger error toast + console log on save failure.
+
+
 ## 2026-10-05 — OLLBot v3 (admin-editable knowledge base + live shop catalog)
 - Bot no longer recommends external sellers (Robu.in, Amazon etc.) — hard rule in system prompt + live OLL product catalog injected on every reply.
 - Scroll bug fixed: new replies anchor the user's latest question near the top of the viewport (no more jump-to-footer).

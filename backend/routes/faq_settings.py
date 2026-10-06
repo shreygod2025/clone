@@ -32,7 +32,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from database import db
@@ -91,7 +91,10 @@ DEFAULT_SETTINGS = FaqSettings(
         "OLL × Techfest IIT Bombay 2026-27 Robotics Championship\n"
         "- Three tracks: RoboSumo (combat), RoboRacer (speed), Robotics Innovation Challenge (ideas).\n"
         "- Participation is COMPLETELY FREE across every track and every round.\n"
-        "- Prize pool: ₹1.5 Lakh across the top-3 teams per track.\n"
+        "- Prize pool: ₹1,50,000 TOTAL across the whole championship — split as ₹50,000 per competition "
+        "(3 competitions), and within each competition the ₹50,000 is further split between the two "
+        "age groups (Junior: Grades 4-7, Senior: Grades 8-12). The age-group pool is shared across "
+        "that competition's top-3 teams. There is NO ₹1.5 Lakh per track — it is ₹1.5 Lakh in total.\n"
         "- Target students: Grades 5-12.\n"
         "- Team size: 2-4 students + 1 mentor/teacher per team.\n"
         "\n"
@@ -405,14 +408,17 @@ DEFAULT_SETTINGS = FaqSettings(
         PreCannedAnswer(
             question="How much is the prize money?",
             answer=(
-                "**Prize pool: ₹1,50,000 per track** (3 tracks total).\n\n"
-                "Each track is split:\n"
-                "- 🥇 Winner: **₹75,000**\n"
-                "- 🥈 Runner-up: **₹50,000**\n"
-                "- 🥉 2nd Runner-up: **₹25,000**\n\n"
-                "Payouts via NEFT by May 2027. Bank-details form deadline: **31 December 2026**."
+                "**Total prize pool: ₹1,50,000** across the entire championship (not per track).\n\n"
+                "Split structure:\n"
+                "- ₹50,000 per competition — RoboSumo · RoboRacer · Robotics Innovation Challenge\n"
+                "- Each competition's ₹50,000 is further split between **2 age groups** — "
+                "Junior (Grades 4-7) and Senior (Grades 8-12)\n"
+                "- Within each age group, the pool is shared across the **top-3 teams**\n\n"
+                "Every finalist also gets a Certificate of Finalist Recognition and every "
+                "participant gets a Certificate of Participation.\n\n"
+                "Payouts via NEFT by May 2027 · bank-details form deadline **31 December 2026**."
             ),
-            keywords="prize money, prize pool, how much prize, winning amount, cash prize",
+            keywords="prize money, prize pool, how much prize, winning amount, cash prize, prizes",
         ),
         PreCannedAnswer(
             question="What is the team size for Techfest?",
@@ -452,10 +458,15 @@ async def read_settings() -> FaqSettings:
 
 
 @router.get("/admin/faq-settings")
-async def get_faq_settings(user: dict = Depends(get_current_user)):
+async def get_faq_settings(response: Response, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("admin", "super_admin"):
         if "settings" not in (user.get("permissions") or []):
             raise HTTPException(status_code=403, detail="Not authorised")
+    # Prevent any browser / CDN / proxy from serving a stale copy of the settings
+    # after an admin saves — otherwise the next page-load would appear to "revert".
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     s = await read_settings()
     return s.model_dump()
 
@@ -470,4 +481,20 @@ async def update_faq_settings(payload: FaqSettings, user: dict = Depends(get_cur
     doc["updated_at"] = datetime.now(timezone.utc).isoformat()
     doc["updated_by"] = user.get("email") or user.get("id")
     await db.faq_settings.update_one({"id": "main"}, {"$set": doc}, upsert=True)
-    return {"ok": True, "updated_at": doc["updated_at"]}
+    # Invalidate the in-memory FAQ response cache so the next public /faq
+    # query uses the freshly saved content, not a stale cached reply.
+    try:
+        from routes.faq_chat import _RESPONSE_CACHE
+        _RESPONSE_CACHE.clear()
+    except Exception:
+        pass
+    # Read back from DB to prove the write succeeded and return the authoritative
+    # saved document — the frontend uses this to re-sync state so no cached /
+    # optimistic value can mask a failed save.
+    saved = await read_settings()
+    return {
+        "ok": True,
+        "updated_at": doc["updated_at"],
+        "updated_by": doc["updated_by"],
+        "settings": saved.model_dump(),
+    }
