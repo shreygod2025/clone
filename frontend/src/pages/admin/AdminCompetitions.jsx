@@ -7,10 +7,142 @@ import {
   Trophy, Building2, GraduationCap, User, Download, Upload, Search,
   Mail, Phone, MapPin, Loader2, ExternalLink, Pencil, Trash2, Link2, Plus, Copy, X,
   Layers, CheckSquare, Square, UserPlus, ChevronDown, ChevronRight, FileText,
+  Filter,
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
+
+// ── HeaderFilter ───────────────────────────────────────────────────────
+// Small funnel icon next to a column header that opens a popover with a
+// search input and a scrollable, single-select option list. Null-safe —
+// renders nothing if there are no options.
+const HeaderFilter = ({ label, value, options, onChange, testid }) => {
+  const [q, setQ] = useState('');
+  const filtered = useMemo(() => {
+    const n = q.trim().toLowerCase();
+    if (!n) return options;
+    return options.filter((o) => (o || '').toLowerCase().includes(n));
+  }, [q, options]);
+  if (!options || options.length === 0) return null;
+  const active = !!value;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`ml-1 inline-flex items-center justify-center w-5 h-5 rounded hover:bg-slate-200 ${active ? 'text-[#DC2626]' : 'text-slate-400'}`}
+          title={active ? `Filtered by ${label} = ${value}` : `Filter by ${label}`}
+          data-testid={testid}
+        >
+          <Filter className={`w-3 h-3 ${active ? 'fill-current' : ''}`} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="p-0 w-56" data-testid={`${testid}-popover`}>
+        <div className="p-2 border-b border-slate-100">
+          <div className="relative">
+            <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={`Search ${label.toLowerCase()}…`}
+              className="w-full h-7 pl-6 pr-2 text-xs rounded border border-slate-200 focus:outline-none focus:border-[#DC2626]"
+              data-testid={`${testid}-search`}
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto">
+          <button
+            type="button"
+            onClick={() => { onChange(''); setQ(''); }}
+            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-slate-50 ${!value ? 'bg-slate-50 font-bold' : ''}`}
+          >
+            All {label.toLowerCase()}
+          </button>
+          {filtered.map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => { onChange(o); setQ(''); }}
+              className={`w-full text-left text-xs px-3 py-1.5 hover:bg-slate-50 truncate ${value === o ? 'bg-slate-50 font-bold text-[#DC2626]' : ''}`}
+              title={o}
+            >
+              {o}
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-[11px] text-slate-400 italic px-3 py-2">No matches</div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+// ── SearchableSelect ───────────────────────────────────────────────────
+// Dropdown with a type-to-filter input. Used in the bulk / edit dialogs.
+// `options` is Array<{ value: any, label: string, hint?: string }>.
+const SearchableSelect = ({ value, options, onChange, placeholder = 'Select…', testid }) => {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const filtered = useMemo(() => {
+    const n = q.trim().toLowerCase();
+    if (!n) return options;
+    return options.filter((o) => (o.label + ' ' + (o.hint || '')).toLowerCase().includes(n));
+  }, [q, options]);
+  const selected = options.find((o) => o.value === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1 flex items-center justify-between text-left text-sm hover:border-slate-300"
+          data-testid={testid}
+        >
+          <span className={selected ? 'text-slate-900 truncate' : 'text-slate-400'}>
+            {selected ? selected.label : placeholder}
+          </span>
+          <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="p-0 w-[var(--radix-popover-trigger-width)]" data-testid={`${testid}-popover`}>
+        <div className="p-2 border-b border-slate-100">
+          <div className="relative">
+            <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Type to search…"
+              className="w-full h-8 pl-6 pr-2 text-sm rounded border border-slate-200 focus:outline-none focus:border-[#DC2626]"
+              autoFocus
+              data-testid={`${testid}-search`}
+            />
+          </div>
+        </div>
+        <div className="max-h-64 overflow-y-auto">
+          {filtered.map((o) => (
+            <button
+              key={JSON.stringify(o.value)}
+              type="button"
+              onClick={() => { onChange(o.value); setQ(''); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 hover:bg-slate-50 ${value === o.value ? 'bg-emerald-50' : ''}`}
+              data-testid={`${testid}-opt-${o.value}`}
+            >
+              <div className="text-sm font-semibold text-slate-900 truncate">{o.label}</div>
+              {o.hint && <div className="text-[11px] text-slate-500 truncate">{o.hint}</div>}
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-xs text-slate-400 italic px-3 py-2">No matches</div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TECHFEST_URL = '/techfest';
@@ -780,48 +912,25 @@ export default function AdminCompetitions() {
             </div>
           )}
 
-          {/* ── Filter bar (zone · city · source · competition · coord · status) ── */}
-          {isRegistrationTab && (
-            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-slate-100 bg-white" data-testid="admin-competitions-filterbar">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-1">Filters</span>
-              {[
-                { key: 'zone',        label: 'Zone',        options: filterOptions.zones },
-                { key: 'city',        label: 'City',        options: filterOptions.cities },
-                { key: 'source',      label: 'Source',      options: filterOptions.sources },
-                { key: 'competition', label: 'Competition', options: filterOptions.competitions },
-                { key: 'coordinator', label: 'Coordinator', options: filterOptions.coordinators },
-                { key: 'status',      label: 'Status',      options: filterOptions.statuses },
-              ].filter((f) => f.options.length > 0).map((f) => (
-                <select
-                  key={f.key}
-                  value={filters[f.key]}
-                  onChange={(e) => setFilters((p) => ({ ...p, [f.key]: e.target.value }))}
-                  className="h-8 text-xs rounded-lg border border-slate-200 bg-white px-2 pr-6 text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#DC2626]"
-                  data-testid={`admin-competitions-filter-${f.key}`}
-                >
-                  <option value="">{f.label} · all</option>
-                  {f.options.map((v) => (<option key={v} value={v}>{v}</option>))}
-                </select>
+          {/* ── Active-filters strip (shown only when at least one filter is set) ── */}
+          {isRegistrationTab && (activeFilterCount > 0 || sortBy) && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50/60" data-testid="admin-competitions-active-filters">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active</span>
+              {Object.entries(filters).filter(([, v]) => v).map(([k, v]) => (
+                <span key={k} className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-full pl-2 pr-1 py-0.5">
+                  {k}: {v}
+                  <button type="button" onClick={() => setFilters((p) => ({ ...p, [k]: '' }))} className="w-4 h-4 rounded-full hover:bg-slate-200 flex items-center justify-center">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
               ))}
               {sortBy && (
-                <button
-                  type="button"
-                  className="h-8 text-xs rounded-lg bg-slate-100 border border-slate-200 px-2 text-slate-700 hover:bg-slate-200"
-                  onClick={() => { setSortBy(''); setSortDir('asc'); }}
-                  data-testid="admin-competitions-sort-clear"
-                >
-                  Sort: {sortBy} {sortDir === 'asc' ? '↑' : '↓'} · clear
-                </button>
-              )}
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  className="h-8 text-xs rounded-lg bg-red-50 border border-red-200 px-2 text-red-700 hover:bg-red-100"
-                  onClick={() => setFilters({ zone: '', city: '', source: '', competition: '', coordinator: '', status: '' })}
-                  data-testid="admin-competitions-filter-clear"
-                >
-                  <X className="w-3 h-3 inline mr-0.5" /> Clear {activeFilterCount}
-                </button>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#DC2626] bg-white border border-red-200 rounded-full pl-2 pr-1 py-0.5">
+                  sort: {sortBy} {sortDir === 'asc' ? '↑' : '↓'}
+                  <button type="button" onClick={() => { setSortBy(''); setSortDir('asc'); }} className="w-4 h-4 rounded-full hover:bg-red-50 flex items-center justify-center">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
               )}
               <span className="ml-auto text-[11px] text-slate-500">{filtered.length} result{filtered.length === 1 ? '' : 's'}</span>
             </div>
@@ -1031,22 +1140,47 @@ export default function AdminCompetitions() {
                         </button>
                       </th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Sr.</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort('name')} data-testid="admin-competitions-sort-name">
-                        Name {sortBy === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">
+                        <span className="inline-flex items-center">
+                          <button type="button" onClick={() => toggleSort('name')} className="hover:text-[#DC2626]" data-testid="admin-competitions-sort-name">
+                            Name {sortBy === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                          </button>
+                        </span>
                       </th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Email</th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Phone</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer" onClick={() => toggleSort('city')}>
-                        City {sortBy === 'city' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">
+                        <span className="inline-flex items-center">
+                          <button type="button" onClick={() => toggleSort('city')} className="hover:text-[#DC2626]">City {sortBy === 'city' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</button>
+                          <HeaderFilter label="City" value={filters.city} options={filterOptions.cities} onChange={(v) => setFilters((p) => ({ ...p, city: v }))} testid="admin-competitions-headfilter-city" />
+                        </span>
                       </th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">School / Institute</th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Assigned School</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer" onClick={() => toggleSort('zone')}>
-                        Zone {sortBy === 'zone' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">
+                        <span className="inline-flex items-center">
+                          <button type="button" onClick={() => toggleSort('zone')} className="hover:text-[#DC2626]">Zone {sortBy === 'zone' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</button>
+                          <HeaderFilter label="Zone" value={filters.zone} options={filterOptions.zones} onChange={(v) => setFilters((p) => ({ ...p, zone: v }))} testid="admin-competitions-headfilter-zone" />
+                        </span>
                       </th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Status</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Coordinator</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Competition</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">
+                        <span className="inline-flex items-center">
+                          Status
+                          <HeaderFilter label="Status" value={filters.status} options={filterOptions.statuses} onChange={(v) => setFilters((p) => ({ ...p, status: v }))} testid="admin-competitions-headfilter-status" />
+                        </span>
+                      </th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">
+                        <span className="inline-flex items-center">
+                          Coordinator
+                          <HeaderFilter label="Coordinator" value={filters.coordinator} options={filterOptions.coordinators} onChange={(v) => setFilters((p) => ({ ...p, coordinator: v }))} testid="admin-competitions-headfilter-coord" />
+                        </span>
+                      </th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">
+                        <span className="inline-flex items-center">
+                          Competition
+                          <HeaderFilter label="Competition" value={filters.competition} options={filterOptions.competitions} onChange={(v) => setFilters((p) => ({ ...p, competition: v }))} testid="admin-competitions-headfilter-competition" />
+                        </span>
+                      </th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Role</th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Techfest ID</th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer" onClick={() => toggleSort('registration_date')}>
@@ -1137,7 +1271,12 @@ export default function AdminCompetitions() {
                       <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('created_at')}>Registered {sortBy === 'created_at' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
                       <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('name')}>Name {sortBy === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
                       <th className="text-left px-3 py-3 font-bold">Contact</th>
-                      <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('city')}>City {sortBy === 'city' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
+                      <th className="text-left px-3 py-3 font-bold">
+                        <span className="inline-flex items-center">
+                          <button type="button" onClick={() => toggleSort('city')} className="hover:text-[#DC2626]">City {sortBy === 'city' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</button>
+                          <HeaderFilter label="City" value={filters.city} options={filterOptions.cities} onChange={(v) => setFilters((p) => ({ ...p, city: v }))} testid={`admin-competitions-headfilter-city-${tab}`} />
+                        </span>
+                      </th>
                       {tab === 'school' ? (
                         <>
                           <th className="text-left px-3 py-3 font-bold">School</th>
@@ -1156,17 +1295,42 @@ export default function AdminCompetitions() {
                       )}
                       <th className="text-left px-3 py-3 font-bold">{tab === 'student' ? 'Team size' : 'Students'}</th>
                       <th className="text-left px-3 py-3 font-bold">Robotics</th>
-                      <th className="text-left px-3 py-3 font-bold">Source</th>
+                      <th className="text-left px-3 py-3 font-bold">
+                        <span className="inline-flex items-center">
+                          Source
+                          <HeaderFilter label="Source" value={filters.source} options={filterOptions.sources} onChange={(v) => setFilters((p) => ({ ...p, source: v }))} testid={`admin-competitions-headfilter-source-${tab}`} />
+                        </span>
+                      </th>
                       <th className="text-left px-3 py-3 font-bold">School Address</th>
                       <th className="text-left px-3 py-3 font-bold">School Contact</th>
                       {(tab === 'school' || tab === 'educator') && (
                         <>
-                          <th className="text-left px-3 py-3 font-bold">Competition</th>
-                          <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('zone')}>Zone {sortBy === 'zone' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
-                          <th className="text-left px-3 py-3 font-bold">Coordinator</th>
+                          <th className="text-left px-3 py-3 font-bold">
+                            <span className="inline-flex items-center">
+                              Competition
+                              <HeaderFilter label="Competition" value={filters.competition} options={filterOptions.competitions} onChange={(v) => setFilters((p) => ({ ...p, competition: v }))} testid={`admin-competitions-headfilter-competition-${tab}`} />
+                            </span>
+                          </th>
+                          <th className="text-left px-3 py-3 font-bold">
+                            <span className="inline-flex items-center">
+                              <button type="button" onClick={() => toggleSort('zone')} className="hover:text-[#DC2626]">Zone {sortBy === 'zone' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</button>
+                              <HeaderFilter label="Zone" value={filters.zone} options={filterOptions.zones} onChange={(v) => setFilters((p) => ({ ...p, zone: v }))} testid={`admin-competitions-headfilter-zone-${tab}`} />
+                            </span>
+                          </th>
+                          <th className="text-left px-3 py-3 font-bold">
+                            <span className="inline-flex items-center">
+                              Coordinator
+                              <HeaderFilter label="Coordinator" value={filters.coordinator} options={filterOptions.coordinators} onChange={(v) => setFilters((p) => ({ ...p, coordinator: v }))} testid={`admin-competitions-headfilter-coord-${tab}`} />
+                            </span>
+                          </th>
                         </>
                       )}
-                      <th className="text-left px-3 py-3 font-bold">Status</th>
+                      <th className="text-left px-3 py-3 font-bold">
+                        <span className="inline-flex items-center">
+                          Status
+                          <HeaderFilter label="Status" value={filters.status} options={filterOptions.statuses} onChange={(v) => setFilters((p) => ({ ...p, status: v }))} testid={`admin-competitions-headfilter-status-${tab}`} />
+                        </span>
+                      </th>
                       <th className="text-right px-3 py-3 font-bold">Actions</th>
                     </tr>
                   </thead>
@@ -1711,15 +1875,13 @@ export default function AdminCompetitions() {
             {bulkDialog === 'zone' && (
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Zone</label>
-                <select
+                <SearchableSelect
                   value={bulkValue}
-                  onChange={(e) => setBulkValue(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
-                  data-testid="admin-competitions-bulk-zone-select"
-                >
-                  <option value="">Select a zone…</option>
-                  {ZONE_OPTIONS.map((z) => <option key={z.slug} value={z.slug}>{z.label}</option>)}
-                </select>
+                  onChange={setBulkValue}
+                  options={ZONE_OPTIONS.map((z) => ({ value: z.slug, label: z.label }))}
+                  placeholder="Select a zone…"
+                  testid="admin-competitions-bulk-zone-select"
+                />
               </div>
             )}
 
@@ -1760,19 +1922,17 @@ export default function AdminCompetitions() {
             {bulkDialog === 'team' && (
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Pick an existing team</label>
-                <select
+                <SearchableSelect
                   value={bulkValue}
-                  onChange={(e) => setBulkValue(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
-                  data-testid="admin-competitions-bulk-team-select"
-                >
-                  <option value="">Select a team…</option>
-                  {teamsList.map((t) => (
-                    <option key={t.team_id} value={JSON.stringify({ team_id: t.team_id, team_name: t.team_name, team_leader_name: t.team_leader_name, team_leader_email: t.team_leader_email, team_leader_phone: t.team_leader_phone })}>
-                      {t.team_name} · {t.team_id} · {t.member_count} member{t.member_count === 1 ? '' : 's'}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setBulkValue}
+                  options={teamsList.map((t) => ({
+                    value: JSON.stringify({ team_id: t.team_id, team_name: t.team_name, team_leader_name: t.team_leader_name, team_leader_email: t.team_leader_email, team_leader_phone: t.team_leader_phone }),
+                    label: `${t.team_name} · ${t.team_id}`,
+                    hint: `${t.member_count} member${t.member_count === 1 ? '' : 's'}${t.school ? ' · ' + t.school : ''}`,
+                  }))}
+                  placeholder="Search teams…"
+                  testid="admin-competitions-bulk-team-select"
+                />
                 <div className="text-[11px] text-slate-500 mt-1.5">The selected students will be moved to this team (team_id, team_name and team_leader fields updated).</div>
               </div>
             )}
@@ -1880,66 +2040,62 @@ export default function AdminCompetitions() {
               <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Zone</label>
-                  <select
+                  <SearchableSelect
                     value={editStudentForm.zone || ''}
-                    onChange={(e) => setEditStudentForm((p) => ({ ...p, zone: e.target.value }))}
-                    className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
-                    data-testid="admin-competitions-edit-student-zone"
-                  >
-                    <option value="">—</option>
-                    {ZONE_OPTIONS.map((z) => <option key={z.slug} value={z.slug}>{z.label}</option>)}
-                  </select>
+                    onChange={(v) => setEditStudentForm((p) => ({ ...p, zone: v }))}
+                    options={[{ value: '', label: '— no zone —' }, ...ZONE_OPTIONS.map((z) => ({ value: z.slug, label: z.label }))]}
+                    placeholder="Select zone…"
+                    testid="admin-competitions-edit-student-zone"
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</label>
-                  <select
+                  <SearchableSelect
                     value={editStudentForm.status || ''}
-                    onChange={(e) => setEditStudentForm((p) => ({ ...p, status: e.target.value }))}
-                    className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
-                  >
-                    <option value="">—</option>
-                    <option value="active">active</option>
-                    <option value="confirmed">confirmed</option>
-                    <option value="pending">pending</option>
-                    <option value="disqualified">disqualified</option>
-                  </select>
+                    onChange={(v) => setEditStudentForm((p) => ({ ...p, status: v }))}
+                    options={[
+                      { value: '', label: '— no status —' },
+                      { value: 'active', label: 'active' },
+                      { value: 'confirmed', label: 'confirmed' },
+                      { value: 'pending', label: 'pending' },
+                      { value: 'disqualified', label: 'disqualified' },
+                    ]}
+                    placeholder="Select status…"
+                    testid="admin-competitions-edit-student-status"
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Team Role</label>
-                  <select
+                  <SearchableSelect
                     value={editStudentForm.team_role || ''}
-                    onChange={(e) => setEditStudentForm((p) => ({ ...p, team_role: e.target.value }))}
-                    className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
-                  >
-                    <option value="">—</option>
-                    <option value="Lead">Lead</option>
-                    <option value="Member">Member</option>
-                  </select>
+                    onChange={(v) => setEditStudentForm((p) => ({ ...p, team_role: v }))}
+                    options={[
+                      { value: '', label: '— no role —' },
+                      { value: 'Lead', label: 'Lead' },
+                      { value: 'Member', label: 'Member' },
+                    ]}
+                    placeholder="Select role…"
+                    testid="admin-competitions-edit-student-role"
+                  />
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-100">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Move to existing team (optional)</label>
-                <select
+                <SearchableSelect
                   value={editStudentForm.team_id || ''}
-                  onChange={(e) => {
-                    const tid = e.target.value;
+                  onChange={(tid) => {
                     const t = teamsList.find((x) => x.team_id === tid);
                     if (!tid) { setEditStudentForm((p) => ({ ...p, team_id: '', team_name: '' })); return; }
-                    setEditStudentForm((p) => ({
-                      ...p,
-                      team_id: tid,
-                      team_name: t?.team_name || p.team_name,
-                    }));
+                    setEditStudentForm((p) => ({ ...p, team_id: tid, team_name: t?.team_name || p.team_name }));
                   }}
-                  className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
-                  data-testid="admin-competitions-edit-student-team"
-                >
-                  <option value="">— Keep current ({editStudent?.team_name || 'no team'}) —</option>
-                  {teamsList.map((t) => (
-                    <option key={t.team_id} value={t.team_id}>{t.team_name} · {t.team_id} · {t.member_count} members</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: `— Keep current (${editStudent?.team_name || 'no team'}) —` },
+                    ...teamsList.map((t) => ({ value: t.team_id, label: `${t.team_name} · ${t.team_id}`, hint: `${t.member_count} member${t.member_count === 1 ? '' : 's'}${t.school ? ' · ' + t.school : ''}` })),
+                  ]}
+                  placeholder="Search teams…"
+                  testid="admin-competitions-edit-student-team"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">

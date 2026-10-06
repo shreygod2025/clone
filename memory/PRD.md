@@ -14,6 +14,27 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — Header-column filters + searchable dropdowns everywhere
+- **Moved filters INTO column headers**: the standalone "Filters" toolbar
+  was replaced by a tiny funnel icon next to each filterable column header
+  (City, Zone, Status, Coordinator, Competition, Source). The funnel turns
+  red when a filter is active. One click opens a popover with a search
+  input and the live-filtered option list; selecting an option applies it
+  immediately and closes. Builder: new `HeaderFilter` component in
+  `AdminCompetitions.jsx`.
+- **All dropdowns are now searchable**: bulk Assign-Zone / Add-to-Team
+  pickers and the Edit-Student Zone / Status / Team-Role / Move-to-Team
+  pickers were migrated from plain `<select>` to a new reusable
+  `SearchableSelect` component (type-to-filter input + scrollable option
+  list with optional hint lines). Required for large teams rosters where
+  a native `<select>` would be unusable.
+- **Active-filters strip** at the top of each tab shows removable chips for
+  every active filter + the current sort, with a one-click X on each.
+- Verified via Playwright: funnel icon on the City column opens a
+  searchable popover with 3 cities for the live Students tab; search
+  filter works; team grouping and bulk/edit flows still render correctly.
+
+
 ## 2026-10-06 — Techfest copy · Competitions filters/sorting/bulk · Students team-grouping · School-assign + Export fix
 - **Public Techfest Register copy**: "Register as an Individual" → "Register
   as a Student" (`TechfestRegisterPage.jsx` + the meta description + the
