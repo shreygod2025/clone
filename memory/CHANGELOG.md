@@ -1,5 +1,21 @@
 # OLL Backend Changelog
 
+## 2026-10-06 — OLLBot v8 — chrome-free FAQ + one-line placeholder + voice input
+**Status: COMPLETE · verified on mobile**
+
+### 1) Footer removed on /faq
+Dropped `<Footer />` and its import from `FAQPage.jsx`. The page now ends with the sticky composer — same behaviour on mobile and desktop. The chatbot is a focused tool, not a landing page.
+
+### 2) Composer placeholder shortened
+Changed from `Type your question… (Shift+Enter for a new line)` → `Type your question…`. The Shift-Enter hint was cramping the input on 390px-wide screens and was unnecessary (users intuit it). Reset button also hidden on mobile (`hidden sm:inline-flex`) to free up composer width.
+
+### 3) Voice input (Web Speech API)
+Tap the mic button → browser's built-in speech recognition starts. Live interim transcript streams into the input field as you speak (like WhatsApp voice-note dictation). Tap again to stop — the final text sits in the input ready for review and send. Visual: idle mic is grey, listening is a pulsing red Square button, placeholder changes to `Listening — speak now…`. Falls back gracefully: button is hidden entirely if browser doesn't support SpeechRecognition; permission-denied shows a toast, no-speech shows a gentle nudge toast.
+
+### Files touched
+- `frontend/src/pages/FAQPage.jsx` — Footer removed, voice-recognition state + handler, mic button in composer, placeholder simplified
+
+
 ## 2026-10-05 — OLLBot v7 — rate limit · analytics · product cards · WhatsApp direct
 **Status: COMPLETE · verified end-to-end**
 

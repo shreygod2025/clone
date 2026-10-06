@@ -24,11 +24,10 @@ import axios from 'axios';
 import {
   Send, Sparkles, MessageSquare, Loader2, ThumbsUp, ThumbsDown,
   Lightbulb, RotateCcw, CheckCircle2, ExternalLink, ArrowRight,
-  MessageCircle, Mail, Ticket,
+  MessageCircle, Mail, Ticket, Mic, Square,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import useSeo from '../hooks/useSeo';
 import { mdToHtml } from '../utils/richContent';
 
@@ -208,6 +207,68 @@ const FAQPage = () => {
     } catch {}
   };
 
+  // ─── Voice input (Web Speech API) ────────────────────────────────────
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const voiceSupported = typeof window !== 'undefined' && (
+    'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
+  );
+
+  const toggleVoiceInput = useCallback(() => {
+    if (!voiceSupported) {
+      toast.error('Voice input isn\'t supported in this browser. Try Chrome or Safari.');
+      return;
+    }
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.continuous = true;             // keep listening until user taps mic again
+    rec.interimResults = true;         // show live transcript as user speaks
+    rec.lang = 'en-IN';                // Indian English default — browser auto-falls-back if unsupported
+    rec.maxAlternatives = 1;
+
+    // Snapshot the input text at start so interim transcripts replace cleanly.
+    const baseInput = input.trim();
+
+    rec.onstart = () => setIsListening(true);
+    rec.onerror = (ev) => {
+      setIsListening(false);
+      if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
+        toast.error('Mic permission denied. Enable microphone in browser settings.');
+      } else if (ev?.error === 'no-speech') {
+        toast('I didn\'t catch that — tap the mic and try again.', { duration: 2500 });
+      }
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onresult = (ev) => {
+      let finalText = '';
+      let interimText = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
+        const r = ev.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interimText += r[0].transcript;
+      }
+      const combined = (baseInput + ' ' + finalText + interimText).trim();
+      setInput(combined);
+    };
+
+    recognitionRef.current = rec;
+    try {
+      rec.start();
+    } catch (e) {
+      setIsListening(false);
+      toast.error('Couldn\'t start the mic — try again.');
+    }
+  }, [input, isListening, voiceSupported]);
+
+  // Stop recognition when the page unmounts so it doesn\'t keep listening.
+  useEffect(() => () => {
+    try { recognitionRef.current?.stop(); } catch {}
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Navbar />
@@ -310,15 +371,31 @@ const FAQPage = () => {
               }
             }}
             rows={1}
-            placeholder="Type your question… (Shift+Enter for a new line)"
+            placeholder={isListening ? 'Listening — speak now…' : 'Type your question…'}
             className="flex-1 resize-none max-h-32 bg-transparent focus:outline-none text-sm px-3 py-2.5 min-h-[42px]"
             disabled={sending}
             data-testid="faq-input"
           />
+          {voiceSupported && (
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+              className={`p-2.5 rounded-xl transition flex-shrink-0 ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title={isListening ? 'Stop listening' : 'Speak your question'}
+              data-testid="faq-voice"
+            >
+              {isListening ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          )}
           <button
             type="button"
             onClick={resetChat}
-            className="text-slate-500 hover:text-slate-900 p-2.5 rounded-xl hover:bg-slate-100 transition"
+            className="hidden sm:inline-flex text-slate-500 hover:text-slate-900 p-2.5 rounded-xl hover:bg-slate-100 transition"
             title="New conversation"
             data-testid="faq-reset"
           >
@@ -348,8 +425,6 @@ const FAQPage = () => {
           }}
         />
       )}
-
-      <Footer />
     </div>
   );
 };
