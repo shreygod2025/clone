@@ -42,9 +42,18 @@ router = APIRouter()
 
 
 class YoutubeMapping(BaseModel):
-    youtube_url: str = ""      # Full YouTube URL or video ID
-    description: str = ""      # e.g. "RoboSumo build guide" — helps the LLM pick the right one
-    keywords: str = ""         # comma-separated — e.g. "robo sumo, sumo bot, how to build sumo"
+    youtube_url: str = ""
+    description: str = ""
+    keywords: str = ""
+
+
+class PreCannedAnswer(BaseModel):
+    """An admin-authored Q→A pair that bypasses the LLM entirely.
+    When a user's question matches `question` or any of `keywords` (comma-sep),
+    the cached `answer` is returned instantly — $0 cost, <50ms latency."""
+    question: str = ""
+    answer: str = ""
+    keywords: str = ""   # comma-separated — multiple phrasings/synonyms
 
 
 class FaqSettings(BaseModel):
@@ -70,6 +79,9 @@ class FaqSettings(BaseModel):
     include_live_centers: bool = True
     include_live_offerings: bool = True
     include_live_blogs: bool = True
+    # Instant-answer cache. Each entry bypasses the LLM when the user's
+    # question matches `question` or any `keywords`. Zero cost per hit.
+    pre_canned: List[PreCannedAnswer] = []
     updated_at: Optional[str] = None
     updated_by: Optional[str] = None
 
@@ -367,6 +379,60 @@ DEFAULT_SETTINGS = FaqSettings(
             youtube_url="https://youtu.be/AwgBPOTevpg",
             description="How to submit Round 1 project",
             keywords="submit, submission, round 1 submission, how to submit project",
+        ),
+    ],
+    pre_canned=[
+        PreCannedAnswer(
+            question="What is the registration deadline for Techfest 2026?",
+            answer=(
+                "The **Techfest 2026-27 registration deadline is October 10, 2026**. "
+                "Round 1 submission (video + abstract) is due by **October 20, 2026**.\n\n"
+                "Register here: https://oll.co/techfest\n\n"
+                "Registration is **completely free** — no fee for any track or round."
+            ),
+            keywords="registration deadline, when register, last date register, registration date, deadline to register",
+        ),
+        PreCannedAnswer(
+            question="When is the Techfest Grand Finale?",
+            answer=(
+                "The **Techfest Grand Finale** is on **16-18 December 2026 at IIT Bombay**. "
+                "Top teams from the five regional qualifiers compete across all three tracks "
+                "(RoboSumo, RoboRacer, Robotics Innovation Challenge).\n\n"
+                "Details: https://oll.co/techfest"
+            ),
+            keywords="grand finale, finale date, when finale, iit bombay date, december finale",
+        ),
+        PreCannedAnswer(
+            question="How much is the prize money?",
+            answer=(
+                "**Prize pool: ₹1,50,000 per track** (3 tracks total).\n\n"
+                "Each track is split:\n"
+                "- 🥇 Winner: **₹75,000**\n"
+                "- 🥈 Runner-up: **₹50,000**\n"
+                "- 🥉 2nd Runner-up: **₹25,000**\n\n"
+                "Payouts via NEFT by May 2027. Bank-details form deadline: **31 December 2026**."
+            ),
+            keywords="prize money, prize pool, how much prize, winning amount, cash prize",
+        ),
+        PreCannedAnswer(
+            question="What is the team size for Techfest?",
+            answer=(
+                "**Team size: 3 to 5 students** for RoboSumo and RoboRacer.\n\n"
+                "**Robotics Innovation Challenge** also allows individual participation or teams of 1-5 students.\n\n"
+                "Each team is accompanied by **1 teacher or 1 parent** as mentor. Each student picks ONLY ONE track."
+            ),
+            keywords="team size, how many members, team members, students per team, max team",
+        ),
+        PreCannedAnswer(
+            question="How do I contact support?",
+            answer=(
+                "You can reach the OLL team in three ways:\n\n"
+                "- 💬 **WhatsApp**: +91 99201 88188 (fastest)\n"
+                "- ✉️ **Email**: info@oll.co\n"
+                "- 🎫 **Raise a ticket** using the button below any of my answers\n\n"
+                "We usually reply within a few hours on business days."
+            ),
+            keywords="contact support, how contact, email support, whatsapp support, phone number, how reach",
         ),
     ],
 )

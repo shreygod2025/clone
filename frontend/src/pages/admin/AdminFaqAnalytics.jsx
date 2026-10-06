@@ -50,14 +50,19 @@ const AdminFaqAnalytics = () => {
     const tu = data.thumbs_up || 0;
     const feedbackRate = (td + tu) > 0 ? Math.round((td / (td + tu)) * 100) : 0;
     const costPerQuery = typeof data.inr_per_query === 'number' ? data.inr_per_query : 0;
+    const freeHits = (data.cache_hits || 0) + (data.pre_canned_hits || 0);
     return [
-      { label: 'Total queries', value: data.total_queries || 0, icon: MessageSquare, tint: 'bg-blue-50 text-blue-600' },
+      {
+        label: 'Total queries', value: data.total_queries || 0,
+        suffix: freeHits > 0 ? `${freeHits} free (${data.free_hit_rate || 0}%)` : '',
+        icon: MessageSquare, tint: 'bg-blue-50 text-blue-600',
+      },
       { label: 'Unique visitors', value: data.unique_visitors || 0, icon: Users, tint: 'bg-emerald-50 text-emerald-600' },
       { label: 'Thumbs up / down', value: `${tu} / ${td}`, suffix: td + tu > 0 ? `${feedbackRate}% ↓` : '', icon: ThumbsUp, tint: 'bg-amber-50 text-amber-600' },
       {
         label: 'Est. AI cost (INR)',
         value: `₹${(data.total_cost_inr || 0).toLocaleString('en-IN')}`,
-        suffix: `₹${costPerQuery.toFixed(2)}/query`,
+        suffix: `${data.billed_queries || 0} billed · ₹${costPerQuery.toFixed(2)}/query`,
         icon: Sparkles,
         tint: 'bg-red-50 text-red-600',
       },

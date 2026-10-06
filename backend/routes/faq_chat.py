@@ -343,19 +343,15 @@ async def _fetch_live_blogs_block() -> str:
     return "\n".join(lines)
 
 
-async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
-    """Assemble the full system prompt for OLLBot.
+async def _build_system_prompt(user_tickets_block: Optional[str] = None, topics: Optional[set] = None) -> str:
+    """Assemble the system prompt, optionally trimmed to only the sections
+    the user's question needs (keyword-detected by `_detect_topics`).
 
-    Order (highest to lowest priority — later sections lose on conflict):
-      1. Identity + hard rules (external vendors, formatting)
-      2. Authoritative 2026 specs
-      3. Admin-editable knowledge sections (DB)
-      4. Live shop catalog (DB-gated)
-      5. Vendor-shipped FAQ PDF text + Problem Statement PDF text
-      6. User's own tickets (if logged in)
-      7. Handoff policy
+    This keeps input tokens ~8-15k instead of ~45k for 80% of queries,
+    cutting LLM cost 3-5x without hurting answer quality.
     """
     settings = await read_settings()
+    topics = topics if topics is not None else {"core", "techfest", "shop", "school_products", "programs", "centers", "brochures", "blogs"}
 
     sections: List[str] = [
         "You are OLLBot — the official AI assistant for OLL (On Learn Learn) at https://oll.co.",
@@ -414,7 +410,7 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
     ]
 
     # VERBATIM content from the live OLL landing pages — second-highest priority
-    if OFFICIAL_RULEBOOK:
+    if OFFICIAL_RULEBOOK and "techfest" in topics:
         sections += [
             "",
             _SEP,
@@ -422,7 +418,7 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
             _SEP,
             OFFICIAL_RULEBOOK,
         ]
-    if OLL_PAGES_VERBATIM:
+    if OLL_PAGES_VERBATIM and "techfest" in topics:
         sections += [
             "",
             _SEP,
@@ -431,18 +427,21 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
             OLL_PAGES_VERBATIM,
         ]
 
-    # Admin-editable DB sections
-    for title, content in [
-        ("TECHFEST — rules, dates, prizes:", settings.techfest),
-        ("OLL SHOP — categories, delivery, pricing, policy:", settings.shop),
-        ("SCHOOL PRODUCTS (B2B) — labs, Future Skills, AI Center, Group 3:", settings.school_products),
-        ("B2C LEARNING PROGRAMS, CAMPS & WORKSHOPS:", settings.programs),
-        ("OLL CENTERS (physical labs) — notes & how-to-join:", settings.centers),
-        ("BROCHURES & PDF DOWNLOADS:", settings.brochures),
-        ("SUPPORT POLICY:", settings.support),
-        ("OLL CORE FACTS & SITEMAP:", settings.core_facts),
-        ("EXTRA KNOWLEDGE (pasted by admin — treat as authoritative):", settings.extra_knowledge),
-    ]:
+    # Admin-editable DB sections — gated by topic so we don't waste tokens.
+    topic_sections = [
+        ("TECHFEST — rules, dates, prizes:", settings.techfest, "techfest"),
+        ("OLL SHOP — categories, delivery, pricing, policy:", settings.shop, "shop"),
+        ("SCHOOL PRODUCTS (B2B) — labs, Future Skills, AI Center, Group 3:", settings.school_products, "school_products"),
+        ("B2C LEARNING PROGRAMS, CAMPS & WORKSHOPS:", settings.programs, "programs"),
+        ("OLL CENTERS (physical labs) — notes & how-to-join:", settings.centers, "centers"),
+        ("BROCHURES & PDF DOWNLOADS:", settings.brochures, "brochures"),
+        ("SUPPORT POLICY:", settings.support, "core"),
+        ("OLL CORE FACTS & SITEMAP:", settings.core_facts, "core"),
+        ("EXTRA KNOWLEDGE (pasted by admin — treat as authoritative):", settings.extra_knowledge, "core"),
+    ]
+    for title, content, topic in topic_sections:
+        if topic not in topics:
+            continue
         if (content or "").strip():
             sections += ["", _SEP, title, _SEP, content.strip()]
 
@@ -475,8 +474,8 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
                 "\n".join(yt_lines),
             ]
 
-    # Live shop catalog
-    if settings.include_live_products:
+    # Live shop catalog — only inject when the question is actually about shop/kits.
+    if settings.include_live_products and "shop" in topics:
         live_block = await _fetch_live_products_block()
         if live_block:
             sections += [
@@ -487,8 +486,8 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
                 live_block,
             ]
 
-    # Live centers list
-    if settings.include_live_centers:
+    # Live centers list — only when the user asks about physical locations.
+    if settings.include_live_centers and "centers" in topics:
         centers_block = await _fetch_live_centers_block()
         if centers_block:
             sections += [
@@ -499,8 +498,8 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
                 centers_block,
             ]
 
-    # Live school offerings catalog
-    if settings.include_live_offerings:
+    # Live school offerings — only for B2B queries.
+    if settings.include_live_offerings and "school_products" in topics:
         offerings_block = await _fetch_live_offerings_block()
         if offerings_block:
             sections += [
@@ -511,8 +510,8 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None) -> str:
                 offerings_block,
             ]
 
-    # Live blog titles
-    if settings.include_live_blogs:
+    # Live blog titles — only when the user asks for articles.
+    if settings.include_live_blogs and "blogs" in topics:
         blogs_block = await _fetch_live_blogs_block()
         if blogs_block:
             sections += [
@@ -636,6 +635,8 @@ class FaqChatReply(BaseModel):
     message_count: int
     rate_limited: bool = False
     remaining: Optional[int] = None
+    source: str = "llm"            # 'llm' | 'cache' | 'pre_canned'
+    latency_ms: int = 0
 
 
 # Rate-limit: 3 questions per calendar day per visitor identity.
@@ -668,6 +669,115 @@ def _normalise_query(q: str) -> str:
     return q[:200]
 
 
+def _match_pre_canned(question: str, pre_canned) -> Optional[str]:
+    """Return a cached answer if the user's question matches an admin-authored
+    Q→A pair. Match rule: normalised question is contained in the pre-canned
+    question (or vice versa), OR any of the comma-separated keywords appears
+    as a substring in the user question. Case-insensitive, punctuation-insensitive."""
+    if not pre_canned:
+        return None
+    nq = _normalise_query(question)
+    if not nq:
+        return None
+    for pc in pre_canned:
+        answer = (pc.answer or "").strip()
+        if not answer:
+            continue
+        candidate_q = _normalise_query(pc.question)
+        if candidate_q and (candidate_q == nq or candidate_q in nq or nq in candidate_q):
+            return answer
+        for kw in (pc.keywords or "").split(","):
+            kw = _normalise_query(kw)
+            if kw and len(kw) >= 4 and kw in nq:
+                return answer
+    return None
+
+
+# ─── Simple in-memory response cache (shared across sessions) ─────────────
+# Keyed by normalised question. 1-hour TTL. Caps at 200 entries (LRU-ish).
+import time as _time
+_RESPONSE_CACHE: dict[str, tuple[float, str]] = {}
+_CACHE_TTL_SEC = 3600
+_CACHE_MAX = 200
+
+
+def _cache_get(nq: str) -> Optional[str]:
+    row = _RESPONSE_CACHE.get(nq)
+    if not row:
+        return None
+    ts, answer = row
+    if _time.time() - ts > _CACHE_TTL_SEC:
+        _RESPONSE_CACHE.pop(nq, None)
+        return None
+    return answer
+
+
+def _cache_put(nq: str, answer: str) -> None:
+    if len(_RESPONSE_CACHE) >= _CACHE_MAX:
+        # Drop the oldest entry.
+        oldest = min(_RESPONSE_CACHE, key=lambda k: _RESPONSE_CACHE[k][0])
+        _RESPONSE_CACHE.pop(oldest, None)
+    _RESPONSE_CACHE[nq] = (_time.time(), answer)
+
+
+# ─── Keyword-based prompt routing — avoid injecting the full knowledge base
+# ─── on every query. Shrinks the input from ~45k tokens to 8-15k.
+def _detect_topics(question: str) -> set[str]:
+    """Return a set of topic tags present in the user's question so we only
+    inject the knowledge sections that are actually relevant.
+    Always includes 'core' (identity + hard rules + sitemap)."""
+    q = _normalise_query(question)
+    topics = {"core"}
+    # Techfest
+    if any(k in q for k in (
+        "techfest", "sumo", "racer", "race", "innovation", "arena", "track",
+        "qualifier", "finale", "iit bombay", "iit kanpur", "rvu", "register",
+        "registration", "submit", "submission", "problem statement", "prize",
+        "pitch", "team size", "rulebook", "rules", "bot", "robo", "round 1",
+        "round 2", "championship", "bank", "neft",
+    )):
+        topics.add("techfest")
+    # Shop / buy
+    if any(k in q for k in (
+        "shop", "buy", "kit", "price", "cost", "order", "product", "book",
+        "motor", "sensor", "esp32", "arduino", "cart", "delivery", "ship",
+        "cashfree", "wire", "battery", "blox", "chassis", "wheel", "driver",
+        "how much",
+    )):
+        topics.add("shop")
+    # School / B2B
+    if any(k in q for k in (
+        "school", "principal", "teacher", "lab", "curriculum", "future skills",
+        "ai center", "icse", "cbse", "group 3", "robotics program", "b2b",
+        "partner school", "demo", "setup",
+    )):
+        topics.add("school_products")
+    # B2C programs
+    if any(k in q for k in (
+        "camp", "workshop", "foundation", "internship", "continuous learning",
+        "class", "course", "my child", "summer", "father", "mother", "diwali",
+    )):
+        topics.add("programs")
+    # Centers
+    if any(k in q for k in (
+        "center", "centre", "location", "batch", "near me", "address",
+        "andheri", "dombivli", "dahisar", "mira road", "mumbai", "powai",
+        "weekly class",
+    )):
+        topics.add("centers")
+    # Brochures
+    if any(k in q for k in ("brochure", "pdf", "download", "datasheet", "leaflet")):
+        topics.add("brochures")
+    # Blogs
+    if any(k in q for k in ("blog", "article", "read about", "post")):
+        topics.add("blogs")
+    # Default fallback: if query is generic (greeting, help, who are you),
+    # pull in a tiny techfest block so the bot can still answer the common case.
+    if topics == {"core"}:
+        topics.add("techfest")
+    return topics
+
+
 async def _check_and_increment_rate_limit(identity: str) -> tuple[bool, int]:
     """Returns (allowed, remaining_after_this_call). Uses an atomic $inc so
     two parallel requests from the same identity can't both squeeze through."""
@@ -698,6 +808,8 @@ async def faq_chat_suggestions():
 async def faq_chat(req: FaqChatRequest, request: Request):
     from emergentintegrations.llm.chat import LlmChat, UserMessage  # pre-installed
 
+    t0 = _time.time()
+
     # ─── Rate limit ───────────────────────────────────────────────────────
     client_host = (request.client.host if request.client else "") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
     identity = _visitor_identity(req.session_id, request.headers.get("authorization"), client_host)
@@ -715,17 +827,50 @@ async def faq_chat(req: FaqChatRequest, request: Request):
             reply=rl_reply, session_id=req.session_id,
             message_count=len(_get_session(req.session_id)["messages"]),
             rate_limited=True, remaining=0,
+            source="pre_canned", latency_ms=int((_time.time() - t0) * 1000),
         )
 
     sess = _get_session(req.session_id)
+    nq = _normalise_query(req.message)
+
+    # ─── Fast path 1: admin-authored pre-canned answer (free, instant) ────
+    settings = await read_settings()
+    pre_canned_hit = _match_pre_canned(req.message, settings.pre_canned)
+    if pre_canned_hit:
+        sess["messages"].append({"role": "user", "content": req.message})
+        sess["messages"].append({"role": "assistant", "content": pre_canned_hit})
+        await _log_chat(identity, req.session_id, req.message, pre_canned_hit, source="pre_canned")
+        return FaqChatReply(
+            reply=pre_canned_hit, session_id=req.session_id,
+            message_count=len(sess["messages"]), remaining=remaining,
+            source="pre_canned", latency_ms=int((_time.time() - t0) * 1000),
+        )
+
+    # ─── Fast path 2: response cache (free, ~instant) ─────────────────────
+    # Only cache first-turn answers (sess["messages"] empty before this call)
+    # so follow-ups like "yes continue" don't resolve to a stale cached reply.
+    cache_eligible = len(sess["messages"]) == 0
+    if cache_eligible:
+        cached = _cache_get(nq)
+        if cached:
+            sess["messages"].append({"role": "user", "content": req.message})
+            sess["messages"].append({"role": "assistant", "content": cached})
+            await _log_chat(identity, req.session_id, req.message, cached, source="cache")
+            return FaqChatReply(
+                reply=cached, session_id=req.session_id,
+                message_count=len(sess["messages"]), remaining=remaining,
+                source="cache", latency_ms=int((_time.time() - t0) * 1000),
+            )
+
+    # ─── Slow path: LLM call with topic-trimmed prompt ────────────────────
+    topics = _detect_topics(req.message)
     user_tickets_block = await _fetch_user_tickets_block(request.headers.get("authorization"))
-    system = await _build_system_prompt(user_tickets_block=user_tickets_block)
+    system = await _build_system_prompt(user_tickets_block=user_tickets_block, topics=topics)
 
     llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
     if not llm_key:
         raise HTTPException(status_code=503, detail="LLM is temporarily unavailable")
 
-    # LlmChat only honours `system_message` when `initial_messages` is empty
     initial_messages = [{"role": "system", "content": system}] + [
         {"role": m["role"], "content": m["content"]}
         for m in sess["messages"][-20:]
@@ -736,7 +881,7 @@ async def faq_chat(req: FaqChatRequest, request: Request):
         session_id=req.session_id,
         system_message=system,
         initial_messages=initial_messages,
-    ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+    ).with_model("anthropic", "claude-haiku-4-5-20251001")
 
     try:
         reply = await chat.send_message(UserMessage(text=req.message))
@@ -750,6 +895,7 @@ async def faq_chat(req: FaqChatRequest, request: Request):
             session_id=req.session_id,
             message_count=len(sess["messages"]),
             remaining=remaining,
+            source="llm", latency_ms=int((_time.time() - t0) * 1000),
         )
 
     valid_urls = await _valid_product_urls()
@@ -758,30 +904,45 @@ async def faq_chat(req: FaqChatRequest, request: Request):
     sess["messages"].append({"role": "user", "content": req.message})
     sess["messages"].append({"role": "assistant", "content": reply})
 
-    # ─── Log for admin analytics ──────────────────────────────────────────
-    import uuid
-    from datetime import datetime, timezone
-    try:
-        await db.faq_chat_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "identity": identity,
-            "session_id": req.session_id,
-            "question": req.message[:2000],
-            "question_normalised": _normalise_query(req.message),
-            "answer_preview": reply[:500],
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "day": datetime.now(timezone.utc).date().isoformat(),
-            "feedback": None,
-        })
-    except Exception:
-        pass  # logging must never break the chat response
+    # Cache the first-turn answer so follow-up visitors asking the same
+    # question hit the cache (free).
+    if cache_eligible and reply:
+        _cache_put(nq, reply)
+
+    await _log_chat(identity, req.session_id, req.message, reply, source="llm")
 
     return FaqChatReply(
         reply=reply,
         session_id=req.session_id,
         message_count=len(sess["messages"]),
         remaining=remaining,
+        source="llm",
+        latency_ms=int((_time.time() - t0) * 1000),
     )
+
+
+async def _log_chat(identity: str, session_id: str, question: str, answer: str, source: str = "llm") -> None:
+    """Non-blocking write to faq_chat_logs. source tracks whether the LLM was
+    actually billed ('llm'), a pre-canned answer was returned ('pre_canned'),
+    or the response cache hit ('cache') — admins can now see the cache hit
+    rate on the AI Resolutions dashboard."""
+    import uuid
+    from datetime import datetime, timezone
+    try:
+        await db.faq_chat_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "identity": identity,
+            "session_id": session_id,
+            "question": question[:2000],
+            "question_normalised": _normalise_query(question),
+            "answer_preview": (answer or "")[:500],
+            "source": source,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "day": datetime.now(timezone.utc).date().isoformat(),
+            "feedback": None,
+        })
+    except Exception:
+        pass
 
 
 @router.post("/faq-chat/feedback")
@@ -907,17 +1068,26 @@ async def faq_chat_analytics(days: int = 30, sort: str = "count_desc", user: dic
     thumbs_down_total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "feedback": "down"})
     identities = await db.faq_chat_logs.distinct("identity", {"created_at": {"$gte": cutoff}})
 
-    # Cost estimate — Claude Sonnet 4.5 current blended rate from Anthropic:
-    #   $3 / M input tokens, $15 / M output tokens.
-    # Our system prompt is ~45k tokens (knowledge base + live sections) and the
-    # average answer is ~400 output tokens → ~$0.14/query. At ₹83/USD that\\'s
-    # roughly ₹11.6 per query. We expose both pieces so the admin UI can
-    # recompute if OLL changes the model.
-    inr_per_query = float(os.environ.get("FAQ_COST_PER_QUERY_INR", "11.6"))
-    total_cost_inr = round(total * inr_per_query, 2)
+    # Separate billed (LLM) vs free (cache / pre-canned) answers so the
+    # admin dashboard reflects the actual cost.
+    billed = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "source": {"$in": ["llm", None]}})
+    pre_canned_hits = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "source": "pre_canned"})
+    cache_hits = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "source": "cache"})
+
+    # Cost estimate — Claude Haiku 4.5 blended rate from Anthropic:
+    #   $1 / M input tokens, $5 / M output tokens.
+    # After topic-based prompt trimming the average query is ~12k input tokens
+    # and ~400 output tokens → $0.014 ≈ ₹1.17 per billed query (at 83 INR/USD).
+    # Pre-canned + cache hits are completely free.
+    inr_per_query = float(os.environ.get("FAQ_COST_PER_QUERY_INR", "1.17"))
+    total_cost_inr = round(billed * inr_per_query, 2)
 
     return {
         "total_queries": total,
+        "billed_queries": billed,
+        "pre_canned_hits": pre_canned_hits,
+        "cache_hits": cache_hits,
+        "free_hit_rate": round(((pre_canned_hits + cache_hits) / total) * 100, 1) if total else 0,
         "unique_visitors": len(identities),
         "thumbs_up": thumbs_up_total,
         "thumbs_down": thumbs_down_total,

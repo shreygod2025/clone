@@ -291,6 +291,77 @@ const AdminFaqSettings = () => {
           );
         })}
 
+        {/* Pre-canned answers — bypass the LLM entirely for common questions.
+            Zero cost + <5 ms latency vs ~₹1.17 + 3-6 s for an LLM call. */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4" data-testid="admin-faq-pre-canned">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[#0A1F44] text-sm">Pre-canned answers (instant, FREE)</div>
+              <p className="text-xs text-slate-500">
+                When a user&apos;s question matches the question text or any keyword below,
+                the bot returns the canned answer in &lt;5 ms with zero AI cost. Perfect for
+                FAQ-style questions you already have perfect answers for.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2 mb-3">
+            {(settings.pre_canned || []).map((pc, idx) => (
+              <div key={idx} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Input
+                    value={pc.question || ''}
+                    onChange={(e) => {
+                      const copy = [...settings.pre_canned];
+                      copy[idx] = { ...copy[idx], question: e.target.value };
+                      update('pre_canned', copy);
+                    }}
+                    placeholder="Question (e.g. 'What is the registration deadline?')"
+                    className="text-xs flex-1"
+                  />
+                  <button
+                    onClick={() => update('pre_canned', (settings.pre_canned || []).filter((_, i) => i !== idx))}
+                    className="p-1.5 text-slate-400 hover:text-red-600"
+                    aria-label="Remove"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <Input
+                  value={pc.keywords || ''}
+                  onChange={(e) => {
+                    const copy = [...settings.pre_canned];
+                    copy[idx] = { ...copy[idx], keywords: e.target.value };
+                    update('pre_canned', copy);
+                  }}
+                  placeholder="Trigger keywords (comma-separated phrasings)"
+                  className="text-xs"
+                />
+                <Textarea
+                  value={pc.answer || ''}
+                  onChange={(e) => {
+                    const copy = [...settings.pre_canned];
+                    copy[idx] = { ...copy[idx], answer: e.target.value };
+                    update('pre_canned', copy);
+                  }}
+                  rows={4}
+                  placeholder="Full markdown answer (supports links, bold, bullet lists, YouTube URLs, product URLs)"
+                  className="text-xs font-mono"
+                />
+              </div>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => update('pre_canned', [...(settings.pre_canned || []), { question: '', answer: '', keywords: '' }])}
+            data-testid="admin-faq-pre-canned-add"
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> Add pre-canned Q&amp;A
+          </Button>
+        </div>
+
         {/* YouTube video library */}
         <div className="bg-white border border-slate-200 rounded-xl p-4" data-testid="admin-faq-youtube">
           <div className="flex items-start gap-3 mb-3">
