@@ -55,7 +55,12 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 ## FORBIDDEN MESSAGE PATTERNS (never write these in the `message` field)
 - `✅ ACTIONS COMPLETED:` headers or lists
 - `1. Created Lead ... 2. Raised Ticket ... 3. Created Task` numbered action logs
+- `✅ **TICKET RAISED** #TECH-002` or `**LEAD CREATED** #L-xxx` receipt-style blocks
 - Any claim like "I have created / raised / scheduled" that is NOT backed by a matching entry in the `actions` array
+- **ANY raw JSON code block** inside the message (```json {"action": "raise_ticket" ...} ``` is FORBIDDEN — JSON lives ONLY in the top-level `actions` array)
+- Phrases like "I can emit the action payload", "I'll emit the action", "action payload you asked for", "pending missing fields" — if you have enough info, just emit the action; if you don't, ask ONE short question instead
+- "I don't currently have the attached image" / "image not available in this chat" — the backend AUTOMATICALLY replays the admin's most recently uploaded image on every follow-up turn, so if a prior turn had an image, THIS turn has it too. Re-read it and act. Never claim the image is missing when a prior turn uploaded one.
+
 If you did not emit a `create_lead` action, you MUST NOT say "Created lead". The UI only trusts the `actions` array — writing it in text without emitting the action means the admin sees "done" while nothing was actually done. This is a critical bug. If the right action is unclear, ask ONE short question instead.
 
 ## CAPABILITIES — produce actions in the "actions" array:
@@ -1301,12 +1306,73 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
     prior = await db.ai_chat_sessions.find_one(
         {"session_id": session_id}, {"_id": 0, "messages": 1},
     )
+    prior_messages = ((prior or {}).get("messages") or [])
     initial_messages: list[dict] = []
-    for m in ((prior or {}).get("messages") or [])[-30:]:
+    for m in prior_messages[-30:]:
         role = m.get("role")
         content = (m.get("content") or "").strip()
-        if role in ("user", "assistant") and content:
+        if role == "assistant":
+            # Reconstruct the JSON shape of past assistant turns so the LLM sees
+            # its own prior output as valid structured JSON (not plain prose).
+            # Without this, Claude mirrors the plain-text format of recent
+            # messages and stops emitting the actions[] array.
+            shadow_actions = []
+            for a in (m.get("actions") or []):
+                if isinstance(a, dict):
+                    shadow_actions.append(
+                        {k: v for k, v in a.items() if k != "execution"}
+                    )
+            try:
+                content = json.dumps(
+                    {"message": content, "actions": shadow_actions},
+                    ensure_ascii=False,
+                )
+            except Exception:
+                pass
             initial_messages.append({"role": role, "content": content})
+        elif role == "user" and content:
+            initial_messages.append({"role": role, "content": content})
+
+    # ── IMAGE CARRY-FORWARD ──────────────────────────────────────────────
+    # If this turn has no fresh attachments but the admin's IMMEDIATELY
+    # previous turn uploaded images (e.g. they uploaded a WhatsApp screenshot,
+    # then typed "raise ticket" to correct the classification), replay those
+    # images on this turn so the vision model can re-read them. Without this
+    # the LLM responds with "I don't have the image available" and emits a
+    # payload full of nulls.
+    _replayed_images = False
+    if not attachments:
+        for m in reversed(prior_messages):
+            if m.get("role") == "user":
+                prev_atts = m.get("attachments") or []
+                if prev_atts:
+                    attachments = [
+                        {
+                            "content_type": a.get("content_type") or "image/png",
+                            "data_base64": a.get("data_base64") or "",
+                            "filename": a.get("filename") or "upload",
+                        }
+                        for a in prev_atts
+                        if (a.get("data_base64") or "").strip()
+                    ]
+                    if attachments:
+                        _replayed_images = True
+                        logging.info(
+                            "ai_chat: replaying %d image(s) from prior turn for session %s",
+                            len(attachments), session_id,
+                        )
+                break
+
+    if _replayed_images:
+        enriched_text = (
+            f"[The admin's previous turn uploaded {len(attachments)} image(s) which "
+            f"have been re-attached to THIS turn for you. Treat them as fully "
+            f"available — read every detail, classify, and emit exactly ONE action. "
+            f"NEVER say the image is missing. "
+            f"RESPOND ONLY WITH VALID JSON matching the exact format "
+            f'{{"message":"...","actions":[{{"type":"raise_ticket",...}}]}} — '
+            f"no markdown, no plain prose, no code fences.]\n{enriched_text}"
+        )
 
     # LLM call. GPT-5.2 is the default for text — but emergentintegrations only
     # wraps PDFs for the OpenAI provider ('messages[].content[].file.file_data'),
@@ -1358,24 +1424,25 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
     actions = parsed.get("actions", [])
 
     # ── Hallucination guard ──────────────────────────────────────────────
-    # The LLM has been caught writing an "ACTIONS COMPLETED" narrative in the
-    # message field — "Created Lead ... Raised Ticket ... Created Task" — while
-    # emitting ZERO actions in the actions array. The frontend only renders
-    # action chips from the array, so the admin sees "completed" text but no
-    # record is ever written to Mongo.
-    #
-    # Policy: if the message makes action-completion claims that are NOT backed
-    # by matching entries in the actions array, we strip those claims and
-    # append a plain error so the admin knows nothing actually ran.
+    # The LLM has been caught (a) writing an "ACTIONS COMPLETED" narrative,
+    # (b) writing "TICKET RAISED #TECH-002" style completion claims,
+    # (c) pasting raw JSON action payloads in markdown fences, and
+    # (d) saying "I can emit the action payload you asked for" instead of
+    # actually emitting the action — all while the actions[] array is empty.
+    # The frontend only renders chips from the array, so the admin sees
+    # "completed" text but nothing is written to Mongo. We detect any of
+    # these patterns and overwrite the message with a plain warning.
+    _entities = r'(?:lead|ticket|task|follow[- ]?up|meeting|note|proposal|invoice|mou|project)s?'
+    _verbs = r'(?:created|raised|scheduled|added|updated|emitted|generated|opened|logged)'
     narrative_patterns = [
-        r'actions\s+completed',
-        r'created\s+lead',
-        r'raised\s+ticket',
-        r'created\s+task',
-        r'scheduled\s+follow[- ]?up',
-        r'scheduled\s+meeting',
-        r'added\s+note',
-        r'updated\s+lead',
+        r'actions?\s+(?:completed|taken|performed|executed)',
+        rf'{_verbs}\s+{_entities}',           # "Created Lead", "Raised Ticket"
+        rf'{_entities}\s+{_verbs}',           # "LEAD CREATED", "TICKET RAISED"
+        r'ticket\s*#\s*[a-z]+-?\d+',          # "Ticket #TECH-002", "#TECH-001"
+        r'lead\s*id\s*[:#]',
+        r'i\s+(?:have|just|will|can|can\'?t)\s+(?:emit|emitted|create|created|raise|raised)',
+        r'action\s+payload',
+        r'"\s*action\s*"\s*:\s*"(?:create_|raise_|schedule_|update_|generate_|add_)',  # raw JSON
     ]
     narrative_regex = re.compile("|".join(narrative_patterns), re.IGNORECASE)
     emitted_types = {a.get("type") for a in actions if isinstance(a, dict)}
@@ -1389,12 +1456,14 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
     if narrative_regex.search(message or "") and not emitted_any_write:
         logging.warning(
             "ai_chat hallucination: message narrates completion but actions array is empty. "
-            "message=%r raw=%r", (message or "")[:200], (raw or "")[:400]
+            "attachments=%d message=%r raw=%r",
+            len(attachments or []), (message or "")[:300], (raw or "")[:500],
         )
         message = (
-            "⚠️ I was about to act but couldn't produce a valid action — nothing was saved. "
-            "Please clarify what you want me to do with this image (create a lead, raise a ticket, "
-            "create a task, or just note it) and I'll execute it in one go."
+            "⚠️ I couldn't commit a real action — nothing was saved to the system. "
+            "Please re-upload the image (or paste the details as text) and tell me "
+            "which single action you want: **create lead**, **raise ticket**, "
+            "**create task**, or **just note it**. I'll execute it in one go."
         )
 
     # Execute backend actions, chaining school_id from create_lead to subsequent actions
@@ -1417,24 +1486,24 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
                 created_ids[name_key] = exec_result["school_id"]
 
     # Save to DB for UI history (save original user_text + attachment thumbnails
-    # so the chat replay reconstructs what the admin uploaded).
+    # so the chat replay reconstructs what the admin uploaded). When images
+    # were REPLAYED from a prior turn (image carry-forward), we don't re-store
+    # them on this turn — they already live on the earlier user message.
     now = datetime.now(timezone.utc).isoformat()
-    # Store a lightweight preview of each attachment (first 200kB) so history
-    # replay can show the thumbnail without re-fetching. The actual bytes are
-    # NOT re-sent to the LLM on subsequent turns — that already happened above.
     stored_attachments = []
-    for att in (attachments or []):
-        data_b64 = (att.get("data_base64") or "")
-        if data_b64.startswith("data:"):
-            _, _, data_b64 = data_b64.partition(",")
-        # cap at ~1MB base64 (~750KB original) to keep the session doc small
-        if len(data_b64) > 1_400_000:
-            continue
-        stored_attachments.append({
-            "content_type": att.get("content_type") or "image/png",
-            "data_base64": data_b64,
-            "filename": att.get("filename") or "upload",
-        })
+    if not _replayed_images:
+        for att in (attachments or []):
+            data_b64 = (att.get("data_base64") or "")
+            if data_b64.startswith("data:"):
+                _, _, data_b64 = data_b64.partition(",")
+            # cap at ~1MB base64 (~750KB original) to keep the session doc small
+            if len(data_b64) > 1_400_000:
+                continue
+            stored_attachments.append({
+                "content_type": att.get("content_type") or "image/png",
+                "data_base64": data_b64,
+                "filename": att.get("filename") or "upload",
+            })
     await db.ai_chat_sessions.update_one(
         {"session_id": session_id},
         {"$push": {"messages": {"$each": [

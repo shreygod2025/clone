@@ -14,6 +14,37 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — AI Chat image-context + action-execution fix (round 2)
+- Fixed 3 critical bugs in `/admin/ai-chat` reported by the user:
+  1. **Image context lost across turns** — When the admin uploaded an image
+     in turn 1 and typed a refinement ("raise ticket", "make it a lead") in
+     turn 2, the LLM would respond "I don't currently have the attached
+     image in this chat thread" and emit a payload with all nulls. Fixed by
+     **image carry-forward**: `run_ai_chat_turn` now auto-replays the
+     attachments from the admin's most recent prior user turn whenever the
+     current turn has no fresh attachments. The vision model is kept
+     routed to Claude Sonnet 4.5 so the image is actually re-read.
+  2. **LLM reverted to plain-text markdown on turn 2** — Because only the
+     parsed `message` field was saved to session history, Claude saw its
+     own prior assistant turns as prose and mirrored that format, breaking
+     the required `{message, actions}` JSON envelope. Fixed by
+     **reconstructing JSON** for every past assistant turn in
+     `initial_messages` using `message` + stored `actions[]`.
+  3. **"TICKET RAISED #TECH-002" style narrative with empty actions[]**
+     — The old hallucination regex only matched verb-noun patterns
+     ("Raised Ticket"), not noun-verb ("TICKET RAISED"). Broadened to
+     catch both orders plus "Ticket #TECH-00X", "action payload",
+     "I can emit", and raw-JSON `"action":"raise_ticket"` patterns.
+     Also added a FORBIDDEN MESSAGE PATTERNS block to the system prompt
+     explicitly banning raw JSON code blocks in `message` and claims that
+     "the image is missing".
+- Prevented DB bloat: replayed attachments are NOT re-stored on the
+  current turn's user message (they already live on the earlier turn).
+- Verified: upload WhatsApp screenshot → turn 1 raises ticket + writes to
+  Mongo; turn 2 "make it a lead instead" → image replayed, lead created
+  in Mongo. Clean messages, one action per turn, no hallucination.
+
+
 ## 2026-10-06 — AI Chat classification + hallucination guard
 - Fixed Admin AI Chat (`/admin/ai-chat`) image-upload bug where the LLM was
   (a) emitting all 3 actions (lead + ticket + task) for every screenshot and
