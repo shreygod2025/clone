@@ -9,7 +9,7 @@ import {
   Send, Plus, Bot, CheckCircle, XCircle,
   Download, FileText, Building2, Mail, Tag, StickyNote,
   UserCheck, Ticket, Loader2, Sparkles, Trash2, Calendar, CalendarCheck,
-  Mic, MicOff
+  Mic, MicOff, Paperclip, Image as ImageIcon, X,
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -88,12 +88,36 @@ function ActionCard({ action, onGeneratePDF }) {
 
 function UserBubble({ msg }) {
   const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+  const atts = Array.isArray(msg.attachments) ? msg.attachments : [];
   return (
     <div className="flex justify-end mb-3 px-4">
       <div className="max-w-[72%]">
-        <div className="bg-[#dcf8c6] text-slate-900 rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-sm text-sm leading-relaxed">
-          {msg.content}
-        </div>
+        {atts.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
+            {atts.map((a, i) => {
+              const src = a.data_base64
+                ? `data:${a.content_type || 'image/png'};base64,${a.data_base64}`
+                : (a.preview_url || '');
+              return (
+                <a
+                  key={i}
+                  href={src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-28 h-28 rounded-lg overflow-hidden border border-slate-200 bg-white shadow-sm block"
+                  title={a.filename || 'attachment'}
+                >
+                  <img src={src} alt={a.filename || 'attachment'} className="w-full h-full object-cover" />
+                </a>
+              );
+            })}
+          </div>
+        )}
+        {msg.content && (
+          <div className="bg-[#dcf8c6] text-slate-900 rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-sm text-sm leading-relaxed">
+            {msg.content}
+          </div>
+        )}
         <p className="text-[10px] text-slate-400 text-right mt-0.5 pr-1">{time}</p>
       </div>
     </div>
@@ -153,6 +177,11 @@ export default function AdminAIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  // Pending image attachments for the next outgoing message. Each item:
+  // { id, filename, content_type, data_base64, preview_url } where preview_url
+  // is the data: URL used in the <img>.
+  const [attachments, setAttachments] = useState([]);
+  const fileInputRef = useRef(null);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
   const bottomRef = useRef(null);
@@ -209,13 +238,22 @@ export default function AdminAIChat() {
 
   const sendMessage = useCallback(async (text) => {
     const msg = (text ?? input).trim();
-    if (!msg || loading) return;
+    if ((!msg && attachments.length === 0) || loading) return;
+
+    // Snapshot attachments for THIS turn then clear the composer tray.
+    const outgoingAttachments = attachments;
+    setAttachments([]);
 
     // Add user message to chat immediately
     const userMsg = {
       id: `u-${Date.now()}`,
       role: 'user',
       content: msg,
+      attachments: outgoingAttachments.map((a) => ({
+        content_type: a.content_type,
+        filename: a.filename,
+        data_base64: a.data_base64,
+      })),
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg]);
@@ -229,7 +267,15 @@ export default function AdminAIChat() {
     try {
       const res = await axios.post(
         `${API}/ai-chat/message`,
-        { session_id: sessionId, message: msg },
+        {
+          session_id: sessionId,
+          message: msg,
+          attachments: outgoingAttachments.map((a) => ({
+            content_type: a.content_type,
+            filename: a.filename,
+            data_base64: a.data_base64,
+          })),
+        },
         { headers: getAuthHeaders() }
       );
 
@@ -343,7 +389,76 @@ export default function AdminAIChat() {
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, loading, sessionId]);
+  }, [input, loading, sessionId, attachments]);
+
+  // ─── Image attachments (paperclip) ──────────────────────────────────
+  const MAX_FILES = 6;
+  const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB each
+  const addFiles = useCallback(async (fileList) => {
+    const files = Array.from(fileList || []).filter((f) => f.type.startsWith('image/'));
+    if (!files.length) return;
+    const remaining = MAX_FILES - attachments.length;
+    if (remaining <= 0) {
+      toast.error(`You can attach at most ${MAX_FILES} images per message.`);
+      return;
+    }
+    const slice = files.slice(0, remaining);
+    const next = [];
+    for (const f of slice) {
+      if (f.size > MAX_FILE_BYTES) {
+        toast.error(`${f.name} is larger than 8 MB — skipped.`);
+        continue;
+      }
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+      // Strip the data: prefix so backend gets raw base64.
+      const base64 = String(dataUrl).split(',')[1] || '';
+      next.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        filename: f.name,
+        content_type: f.type || 'image/png',
+        data_base64: base64,
+        preview_url: dataUrl,
+      });
+    }
+    setAttachments((prev) => [...prev, ...next]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [attachments.length]);
+
+  const removeAttachment = useCallback((id) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  // Allow drag-and-drop onto the composer.
+  const onComposerDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+  };
+  const preventDefault = (e) => e.preventDefault();
+
+  // Paste images directly from clipboard (common when copying a WhatsApp screenshot).
+  useEffect(() => {
+    const handler = (e) => {
+      const items = e.clipboardData?.items || [];
+      const files = [];
+      for (const it of items) {
+        if (it.kind === 'file' && it.type.startsWith('image/')) {
+          const f = it.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length) {
+        e.preventDefault();
+        addFiles(files);
+      }
+    };
+    document.addEventListener('paste', handler);
+    return () => document.removeEventListener('paste', handler);
+  }, [addFiles]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -566,20 +681,63 @@ export default function AdminAIChat() {
         </div>
 
         {/* ── Input bar ───────────────────────────────────────────────── */}
-        <div className="shrink-0 bg-[#f0f2f5] px-4 py-2.5 flex items-end gap-2 border-t border-slate-200">
-          <div className="flex-1 bg-white rounded-2xl border border-slate-200 flex items-end px-3 py-2 shadow-sm">
+        <div
+          className="shrink-0 bg-[#f0f2f5] px-4 pt-2 pb-2.5 border-t border-slate-200"
+          onDragOver={preventDefault}
+          onDrop={onComposerDrop}
+        >
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2" data-testid="ai-chat-attachment-tray">
+              {attachments.map((a) => (
+                <div key={a.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-white shadow-sm">
+                  <img src={a.preview_url} alt={a.filename} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => removeAttachment(a.id)}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    aria-label={`Remove ${a.filename}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <div className="text-[10px] text-slate-500 self-end mb-1">
+                {attachments.length}/{MAX_FILES} images · the AI will read these and act
+              </div>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <div className="flex-1 bg-white rounded-2xl border border-slate-200 flex items-end px-3 py-2 shadow-sm">
             <textarea
               ref={inputRef}
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? 'Listening…' : 'Ask anything — try pasting Minutes of Meeting to auto-create tasks…'}
+              placeholder={isListening ? 'Listening…' : (attachments.length ? 'Add context (optional) or hit send to let AI act on the image…' : 'Ask anything — try pasting Minutes of Meeting to auto-create tasks…')}
               rows={1}
               style={{ height: 'auto', overflowY: 'hidden' }}
               className="flex-1 text-sm text-slate-800 bg-transparent outline-none resize-none leading-5 placeholder:text-slate-400"
               data-testid="ai-chat-input"
             />
           </div>
+          {/* Paperclip — multi-image attach */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => addFiles(e.target.files)}
+            className="hidden"
+            data-testid="ai-chat-file-input"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            title="Attach images (business cards, screenshots, invites — AI will read & act)"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-slate-400 hover:bg-slate-500 disabled:bg-slate-300 transition-colors shadow-sm shrink-0"
+            data-testid="ai-chat-attach-btn"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
           {/* Mic button */}
           <button
             onClick={startListening}
@@ -596,7 +754,7 @@ export default function AdminAIChat() {
           {/* Send button */}
           <button
             onClick={() => sendMessage()}
-            disabled={!input.trim() || loading}
+            disabled={(!input.trim() && attachments.length === 0) || loading}
             className="w-10 h-10 rounded-full bg-[#075E54] hover:bg-[#128C7E] disabled:bg-slate-300 flex items-center justify-center text-white transition-colors shadow-sm shrink-0"
             data-testid="ai-chat-send-btn"
           >
@@ -604,6 +762,7 @@ export default function AdminAIChat() {
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : <Send className="w-4 h-4" />}
           </button>
+          </div>
         </div>
       </div>
     </AdminLayout>

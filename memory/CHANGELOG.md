@@ -1,5 +1,43 @@
 # OLL Backend Changelog
 
+## 2026-10-06 — Admin AI Chat v11 — multi-image vision + autonomous actions
+**Status: COMPLETE · verified end-to-end**
+
+Admins can now drop business cards, WhatsApp screenshots, enquiry forms, invites and receipts straight into the AI Chat composer. The AI reads every detail with Claude Sonnet 4.5 vision and emits the right action (create_lead / create_task / raise_ticket / add_note / schedule_followup) **in the same turn** — no "should I proceed?" friction.
+
+### 1) Composer: multi-image attach
+- New paperclip button next to mic → native file picker, `accept="image/*"`, `multiple`.
+- Drag-and-drop onto the composer works.
+- Paste-from-clipboard works (common for WhatsApp screenshots copied with ⌘-V).
+- Preview tray shows up to 6 thumbnails with per-item remove (× overlay); counter "N/6 images".
+- Attachments cleared after send; the sent images render inline above the user's text bubble so chat replay is faithful.
+- Server-side cap: 8 MB per image, 6 per message.
+
+### 2) Backend: vision via `ImageContent`
+Switched the LLM call to send images via `emergentintegrations.llm.chat.ImageContent(image_base64=...)` — the library wraps that correctly as a vision content block for both OpenAI and Anthropic. Routed vision requests to **Claude Sonnet 4.5** (`claude-sonnet-4-5-20250929`) because `gpt-5.2` + the current emergentintegrations wrapper only accepts PDF under `FileContent`. Pure-text turns still use GPT-5.2.
+
+### 3) System-prompt rule 13 — "Extract & Act"
+Added an explicit rule telling the AI to:
+- Read every visible detail (names, phones, emails, school names, cities, boards, dates, amounts, follow-up asks, grade bands, student counts)
+- Immediately emit the correct action in the same response (never ask "should I proceed?")
+- Pick the action by content type: business card → create_lead · receipt → add_note · follow-up ask → schedule_followup · complaint → raise_ticket · event invite → create_task · multiple cards in one image → multiple create_lead actions
+- Reply with a short "Extracted" summary + the action name (e.g. "✅ Created lead for Lotus Valley Academy")
+
+### 4) Chat history preserves attachments
+`UserBubble` renders attached image thumbnails above the text bubble; the backend persists each attachment's base64 (capped at ~1 MB per file) on the session doc so refresh / history replay reconstructs what was uploaded.
+
+### Verified via smoke test
+Uploaded a PIL-generated business card (name, designation, school, city, phone, email, board, student count):
+
+> **Request**: 1 image + empty text  
+> **Response**: `✅ Created lead for Lotus Valley Academy` + 7 extracted fields  
+> **Action emitted**: `create_lead` with `school_name=Lotus Valley Academy, contact_name=Priya Sharma, phone=+919123456789, email=priya@lotusvalley.in, board=ICSE, city=Pune`  
+> **Execution**: `success` with real `school_id=f4e88aa8-304…` in the CRM.
+
+### Files touched
+- `backend/routes/ai_chat.py` — accept `attachments` on POST /ai-chat/message, build `ImageContent[]`, route vision turns to Claude Sonnet, persist attachments in history, new system-prompt rule 13
+- `frontend/src/pages/admin/AdminAIChat.jsx` — paperclip button, file-reader-to-base64 helper, drag/drop + paste listeners, preview tray with remove, attachments on send, UserBubble renders image thumbnails
+
 ## 2026-10-06 — OLLBot v10 — 10× cheaper + 1000× faster for common Q&A
 **Status: COMPLETE · verified · ₹11.6/query → ₹1.17/query**
 

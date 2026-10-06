@@ -38,6 +38,18 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
     - "the lead I just created", "the new one", "same school" → the last school that was created/updated/mentioned.
     - NEVER ask "which school?" if there was a school mentioned in the last 5 messages. Look back through the conversation and use it.
     - If someone says "generate proposal for this" right after creating/mentioning a school, that IS the school — act on it immediately.
+13. **IMAGE INPUTS — EXTRACT & ACT (DO NOT ASK FOR CONFIRMATION)** — When the user attaches images (business cards, WhatsApp screenshots, enquiry forms, event invites, receipts, demo-request slips, visiting cards, emails):
+    - Read EVERY visible detail: names, phone numbers, emails, school/organisation names, cities, boards (ICSE/CBSE/state), designations, dates, amounts, follow-up asks, demo preferences, grade bands, student counts.
+    - **IMMEDIATELY emit the correct action in the same response** — do NOT ask "Should I proceed?" or "Confirm?". Rule 1 (ACT IMMEDIATELY) overrides any instinct to double-check with the user. The admin uploaded the image specifically so you would act.
+    - Decide the single best primary action based on content:
+       • Visiting card / business card / contact form → `create_lead` with every field you can read (school_name, contact_name, phone, email, city, source="image_upload").
+       • Receipt / payment proof / invoice snippet → `add_note` on the matching school with a line like "Receipt uploaded on <date> for ₹<amount>, UTR <ref>".
+       • Follow-up ask / "please call me" screenshot → `schedule_followup` with the stated date, or 2 days from today if no date given, + `add_note` with the raw request.
+       • Complaint / dissatisfaction screenshot → `raise_ticket` with the full extracted complaint as the message.
+       • Event invite / meeting slip / calendar screenshot → `create_task` with title, due_date and matched school/project if present.
+       • Multiple cards in one image → emit multiple `create_lead` actions in one response.
+    - In your `message` field, write a short "Extracted" summary (one line per field) THEN state the action you just emitted (e.g. "Created lead for Greenfield International School."). Never ask for confirmation.
+    - If the image is genuinely unreadable (blurry, no text), say so plainly and ask for a clearer upload — this is the ONLY case where asking is OK.
 
 ## CAPABILITIES — produce actions in the "actions" array:
 - create_lead: { type, school_name, city?, board?, contact_name?, phone?, email?, source?, notes? }
@@ -1192,18 +1204,38 @@ async def _execute(action: dict, user: dict) -> dict:
 async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
     session_id = payload.get("session_id") or str(uuid.uuid4())
     user_text = (payload.get("message") or "").strip()
-    if not user_text:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-    return await run_ai_chat_turn(session_id=session_id, user_text=user_text, user=user)
+    # Optional attached images (base64, data URLs or vendor file urls).
+    # Each item: {"content_type": "image/png", "data_base64": "<...>",
+    #             "filename": "whiteboard.jpg"}  — frontend sends from the paperclip
+    attachments = payload.get("attachments") or []
+    if not user_text and not attachments:
+        raise HTTPException(status_code=400, detail="Message or an image is required")
+    # If the user ONLY attached images, give the LLM a nudge to actually look at them.
+    if not user_text and attachments:
+        n = len(attachments)
+        subj = "an image" if n == 1 else f"{n} images"
+        user_text = (
+            f"I've attached {subj}. Extract every detail (names, phones, emails, "
+            "school names, dates, amounts, requests) and IMMEDIATELY emit the "
+            "right action (create_lead / create_task / raise_ticket / add_note / "
+            "schedule_followup). Do NOT ask me to confirm — just do it and tell me "
+            "what you did."
+        )
+    return await run_ai_chat_turn(
+        session_id=session_id,
+        user_text=user_text,
+        user=user,
+        attachments=attachments,
+    )
 
 
-async def run_ai_chat_turn(session_id: str, user_text: str, user: dict) -> dict:
+async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachments: list | None = None) -> dict:
     """Core AI-chat turn — extracted from the HTTP route so non-HTTP callers
     (e.g. the Twilio WhatsApp webhook) can invoke the same logic without
     round-tripping through FastAPI. Returns
     ``{"session_id", "message", "actions"}``.
     """
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 
     # ── Pronoun resolution: inject last-mentioned school into message ──────
@@ -1269,16 +1301,49 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict) -> dict:
         if role in ("user", "assistant") and content:
             initial_messages.append({"role": role, "content": content})
 
-    # LLM call
+    # LLM call. GPT-5.2 is the default for text — but emergentintegrations only
+    # wraps PDFs for the OpenAI provider ('messages[].content[].file.file_data'),
+    # which 400s on images. When the user attaches images we route to
+    # Claude Sonnet 4.5 instead — Anthropic's provider handler sends them as
+    # proper vision content blocks.
     llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
+    use_vision = bool(attachments)
     chat = LlmChat(
         api_key=llm_key,
         session_id=session_id,
         system_message=system,
         initial_messages=initial_messages or None,
-    ).with_model("openai", "gpt-5.2")
+    )
+    if use_vision:
+        chat = chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
+    else:
+        chat = chat.with_model("openai", "gpt-5.2")
 
-    raw = await chat.send_message(UserMessage(text=enriched_text))
+    # Build the user message with any attached images so the vision-capable
+    # model can read business cards, event invites, WhatsApp screenshots, etc.
+    file_contents = []
+    for att in (attachments or []):
+        ctype = (att.get("content_type") or "image/png").strip() or "image/png"
+        data_b64 = (att.get("data_base64") or "").strip()
+        if not data_b64:
+            continue
+        # Accept both raw base64 and full data URLs — normalise to raw base64.
+        if data_b64.startswith("data:"):
+            try:
+                _, _, data_b64 = data_b64.partition(",")
+            except Exception:
+                continue
+        try:
+            file_contents.append(ImageContent(image_base64=data_b64))
+        except Exception:
+            continue
+
+    user_msg = (
+        UserMessage(text=enriched_text, file_contents=file_contents)
+        if file_contents
+        else UserMessage(text=enriched_text)
+    )
+    raw = await chat.send_message(user_msg)
 
     # Parse response
     parsed = _parse_response(raw)
@@ -1304,12 +1369,29 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict) -> dict:
             if name_key and exec_result.get("school_id"):
                 created_ids[name_key] = exec_result["school_id"]
 
-    # Save to DB for UI history (save original user_text, not enriched)
+    # Save to DB for UI history (save original user_text + attachment thumbnails
+    # so the chat replay reconstructs what the admin uploaded).
     now = datetime.now(timezone.utc).isoformat()
+    # Store a lightweight preview of each attachment (first 200kB) so history
+    # replay can show the thumbnail without re-fetching. The actual bytes are
+    # NOT re-sent to the LLM on subsequent turns — that already happened above.
+    stored_attachments = []
+    for att in (attachments or []):
+        data_b64 = (att.get("data_base64") or "")
+        if data_b64.startswith("data:"):
+            _, _, data_b64 = data_b64.partition(",")
+        # cap at ~1MB base64 (~750KB original) to keep the session doc small
+        if len(data_b64) > 1_400_000:
+            continue
+        stored_attachments.append({
+            "content_type": att.get("content_type") or "image/png",
+            "data_base64": data_b64,
+            "filename": att.get("filename") or "upload",
+        })
     await db.ai_chat_sessions.update_one(
         {"session_id": session_id},
         {"$push": {"messages": {"$each": [
-            {"id": str(uuid.uuid4()), "role": "user", "content": user_text, "timestamp": now},
+            {"id": str(uuid.uuid4()), "role": "user", "content": user_text, "attachments": stored_attachments, "timestamp": now},
             {"id": str(uuid.uuid4()), "role": "assistant", "content": message,
              "actions": results, "timestamp": now}
         ]}},
