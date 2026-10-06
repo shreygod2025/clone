@@ -25,12 +25,13 @@ const AdminFaqAnalytics = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [sort, setSort] = useState('count_desc');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await axios.get(`${API}/admin/faq-chat/analytics`, {
-        params: { days },
+        params: { days, sort },
         headers: getAuthHeaders(),
       });
       setData(r.data);
@@ -39,7 +40,7 @@ const AdminFaqAnalytics = () => {
     } finally {
       setLoading(false);
     }
-  }, [days, getAuthHeaders]);
+  }, [days, sort, getAuthHeaders]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -48,11 +49,18 @@ const AdminFaqAnalytics = () => {
     const td = data.thumbs_down || 0;
     const tu = data.thumbs_up || 0;
     const feedbackRate = (td + tu) > 0 ? Math.round((td / (td + tu)) * 100) : 0;
+    const costPerQuery = typeof data.inr_per_query === 'number' ? data.inr_per_query : 0;
     return [
       { label: 'Total queries', value: data.total_queries || 0, icon: MessageSquare, tint: 'bg-blue-50 text-blue-600' },
       { label: 'Unique visitors', value: data.unique_visitors || 0, icon: Users, tint: 'bg-emerald-50 text-emerald-600' },
-      { label: 'Thumbs up', value: tu, icon: ThumbsUp, tint: 'bg-emerald-50 text-emerald-600' },
-      { label: 'Thumbs down', value: td, suffix: `${feedbackRate}%`, icon: ThumbsDown, tint: 'bg-red-50 text-red-600' },
+      { label: 'Thumbs up / down', value: `${tu} / ${td}`, suffix: td + tu > 0 ? `${feedbackRate}% ↓` : '', icon: ThumbsUp, tint: 'bg-amber-50 text-amber-600' },
+      {
+        label: 'Est. AI cost (INR)',
+        value: `₹${(data.total_cost_inr || 0).toLocaleString('en-IN')}`,
+        suffix: `₹${costPerQuery.toFixed(2)}/query`,
+        icon: Sparkles,
+        tint: 'bg-red-50 text-red-600',
+      },
     ];
   }, [data]);
 
@@ -70,7 +78,7 @@ const AdminFaqAnalytics = () => {
               to tune the chatbot knowledge base at Admin → Settings → FAQ Chatbot.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <select
               value={days}
               onChange={(e) => setDays(parseInt(e.target.value))}
@@ -81,6 +89,19 @@ const AdminFaqAnalytics = () => {
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
               <option value={90}>Last 90 days</option>
+            </select>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+              data-testid="admin-faq-analytics-sort"
+            >
+              <option value="count_desc">Most asked first</option>
+              <option value="count_asc">Least asked first</option>
+              <option value="latest">Latest first</option>
+              <option value="oldest">Earliest first</option>
+              <option value="most_liked">Most liked (👍)</option>
+              <option value="most_disliked">Most disliked (👎)</option>
             </select>
             <Button variant="outline" onClick={load} disabled={loading} data-testid="admin-faq-analytics-reload">
               <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
@@ -156,10 +177,13 @@ const AdminFaqAnalytics = () => {
                         <span className="text-slate-300 mx-1">/</span>
                         <span className="text-red-600 font-semibold">{q.thumbs_down}</span>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-500 text-xs">
+                      <td className="px-4 py-3 text-right text-slate-500 text-xs whitespace-nowrap">
                         <span className="inline-flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {q.last_asked ? new Date(q.last_asked).toLocaleDateString() : '—'}
+                          {q.last_asked ? new Date(q.last_asked).toLocaleString('en-IN', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          }) : '—'}
                         </span>
                       </td>
                     </tr>

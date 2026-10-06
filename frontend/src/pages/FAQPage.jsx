@@ -18,13 +18,13 @@
  *   FAQPage JSON-LD block emitted below so Google still ranks the page
  *   for competition / registration / kit queries.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   Send, Sparkles, MessageSquare, Loader2, ThumbsUp, ThumbsDown,
   Lightbulb, RotateCcw, CheckCircle2, ExternalLink, ArrowRight,
-  MessageCircle, Mail, Ticket, Mic, Square,
+  MessageCircle, Mail, Ticket, Mic, Square, Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
@@ -178,7 +178,7 @@ const FAQPage = () => {
     } catch (e) {
       setMessages((m) => [...m, {
         role: 'assistant',
-        content: "I couldn't reach the server. Please email **support@oll.co** or tap **Need Help** at the bottom-right of this page.",
+        content: "I couldn't reach the server. Please email **info@oll.co** or WhatsApp **+91 99201 88188**.",
         feedback: null,
       }]);
     } finally {
@@ -193,19 +193,28 @@ const FAQPage = () => {
     setEscalateFor(null);
   };
 
-  const markFeedback = (idx, value) => {
+  // Use a ref so markFeedback (useCallback) can read the latest messages
+  // without being invalidated — keeping the callback stable means
+  // React.memo(MessageRow) works and the YouTube iframe / shop card no
+  // longer flash on every keystroke in the composer.
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  const markFeedback = useCallback((idx, value) => {
     setMessages((m) => m.map((msg, i) => i === idx ? { ...msg, feedback: value } : msg));
     if (value === 'down') setEscalateFor(idx);
-    // Fire-and-forget feedback log to backend.
     try {
-      const lastUserQ = messages.slice(0, idx).reverse().find((x) => x.role === 'user')?.content || '';
+      const latest = messagesRef.current;
+      const lastUserQ = latest.slice(0, idx).reverse().find((x) => x.role === 'user')?.content || '';
       axios.post(`${API}/faq-chat/feedback`, {
         session_id: sessionId,
         verdict: value,
         question: lastUserQ,
       }).catch(() => {});
     } catch {}
-  };
+  }, [sessionId]);
+
+  const handleEscalate = useCallback((idx) => setEscalateFor(idx), []);
 
   // ─── Voice input (Web Speech API) ────────────────────────────────────
   const [isListening, setIsListening] = useState(false);
@@ -307,7 +316,7 @@ const FAQPage = () => {
                     index={i}
                     onFeedback={markFeedback}
                     lastUserQuestion={lastUserQuestion}
-                    onEscalate={(idx) => setEscalateFor(idx)}
+                    onEscalate={handleEscalate}
                     data-testid={`faq-msg-${i}`}
                   />
                 </div>
@@ -446,16 +455,21 @@ const buildMailUrl = (prefillText) => {
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
 };
 
-const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) => {
+const MessageRow = React.memo(function MessageRow({ msg, index, onFeedback, lastUserQuestion, onEscalate }) {
   const isUser = msg.role === 'user';
   const html = useMemo(() => (isUser ? '' : mdToHtml(msg.content)), [msg.content, isUser]);
   const bubbleRef = useRef(null);
+  const hydratedRef = useRef(false);
   const prefillText = `Question: ${lastUserQuestion || ''}\n\nI'd like a human to help with this.`;
 
-  // Hydrate .faq-product-card placeholders by fetching product metadata and
-  // injecting an image + name + price + "See Details" / "Buy Now" buttons.
+  // Hydrate .faq-product-card placeholders ONCE per message. Guarding with
+  // hydratedRef so parent re-renders (e.g. input typing, opening the ticket
+  // modal) don't wipe & re-fetch the card — that was causing the "card
+  // disappears when I click Raise ticket" and the "YouTube iframe flashes on
+  // every keystroke" bugs.
   useEffect(() => {
-    if (isUser || !bubbleRef.current) return;
+    if (isUser || !bubbleRef.current || hydratedRef.current) return;
+    hydratedRef.current = true;
     const placeholders = bubbleRef.current.querySelectorAll('.faq-product-card[data-pending="1"]');
     placeholders.forEach(async (el) => {
       el.setAttribute('data-pending', '0');
@@ -466,7 +480,6 @@ const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) =>
         const r = await axios.get(`${API}/faq-chat/product-lookup`, { params: { slug } });
         const p = r.data;
         if (!p?.found) {
-          // Fallback: render a plain external link so the user can still click through.
           el.innerHTML = `<a href="${url}" target="_blank" rel="noreferrer" class="text-[#D63031] font-semibold underline">${url}</a>`;
           return;
         }
@@ -495,7 +508,29 @@ const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) =>
         el.innerHTML = `<a href="${url}" target="_blank" rel="noreferrer" class="text-[#D63031] font-semibold underline">${url}</a>`;
       }
     });
-  }, [html, isUser]);
+  }, [isUser]);
+
+  const copyAnswer = async () => {
+    try {
+      const plain = String(msg.content || '')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
+        .replace(/[*_`#>]+/g, '')
+        .trim();
+      await navigator.clipboard.writeText(plain);
+      toast.success('Answer copied');
+    } catch {
+      toast.error('Could not copy — long-press to select instead.');
+    }
+  };
+
+  const copyToClipboard = async (text, successMsg) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(successMsg || 'Copied');
+    } catch {
+      toast.error('Could not copy — try tapping and holding the link.');
+    }
+  };
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`} data-testid={`faq-msg-${index}`}>
@@ -521,8 +556,10 @@ const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) =>
         </div>
         {!isUser && !msg.isWelcome && (
           <>
-            {/* Quick-action buttons under every answer */}
-            <div className="mt-2 flex flex-wrap gap-1.5 pl-1">
+            {/* Quick-action buttons under every answer — each primary action
+                has a tiny copy-link button next to it so users can share
+                the exact URL instead of clicking through. */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1">
               <a
                 href={buildWaUrl(prefillText)}
                 target="_blank"
@@ -532,6 +569,12 @@ const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) =>
               >
                 <MessageCircle className="w-3 h-3" /> WhatsApp
               </a>
+              <button
+                onClick={() => copyToClipboard(buildWaUrl(prefillText), 'WhatsApp link copied')}
+                className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                aria-label="Copy WhatsApp link"
+                data-testid={`faq-msg-${index}-whatsapp-copy`}
+              ><Copy className="w-3 h-3" /></button>
               <a
                 href={buildMailUrl(prefillText)}
                 className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full px-2.5 py-1 transition"
@@ -540,11 +583,24 @@ const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) =>
                 <Mail className="w-3 h-3" /> Email
               </a>
               <button
+                onClick={() => copyToClipboard('info@oll.co', 'Email copied')}
+                className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                aria-label="Copy email"
+                data-testid={`faq-msg-${index}-email-copy`}
+              ><Copy className="w-3 h-3" /></button>
+              <button
                 onClick={() => onEscalate(index)}
                 className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#D63031]/10 hover:bg-[#D63031]/20 text-[#D63031] rounded-full px-2.5 py-1 transition"
                 data-testid={`faq-msg-${index}-raise-ticket`}
               >
                 <Ticket className="w-3 h-3" /> Raise ticket
+              </button>
+              <button
+                onClick={copyAnswer}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full px-2.5 py-1 transition"
+                data-testid={`faq-msg-${index}-copy-answer`}
+              >
+                <Copy className="w-3 h-3" /> Copy answer
               </button>
             </div>
             <div className="mt-1.5 flex items-center gap-1 pl-1 text-xs">
@@ -575,7 +631,7 @@ const MessageRow = ({ msg, index, onFeedback, lastUserQuestion, onEscalate }) =>
       </div>
     </div>
   );
-};
+});
 
 const ThinkingRow = () => (
   <div className="flex gap-3 justify-start" data-testid="faq-thinking">
@@ -596,10 +652,22 @@ const ThinkingRow = () => (
    support_queries with the full chat transcript so the support team
    can pick up where OLLBot gave up.
    ────────────────────────────────────────────────────────────────────── */
+const TICKET_CATEGORIES = {
+  Techfest: ['Registration', 'Rules & specs', 'Submission', 'Regional round', 'Grand Finale', 'Prize money', 'Other'],
+  Shop: ['Product details', 'Order status', 'Payment', 'Delivery', 'Return / refund', 'Other'],
+  'School programs': ['Robotics & AI Program', 'Future Skills (ICSE/CBSE)', 'AI Center', 'Group 3', 'Workshops', 'Pricing / demo', 'Other'],
+  'B2C programs': ['AI Foundations', 'Summer Camp', 'Continuous Learning', 'Workshops', 'Other'],
+  Account: ['Login / password', 'Billing', 'My orders', 'Profile update', 'Other'],
+  Other: ['General question'],
+};
+
 const EscalateDialog = ({ sessionId, messages, onClose, onDone }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [category, setCategory] = useState('Techfest');
+  const [subcategory, setSubcategory] = useState('Registration');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -609,29 +677,42 @@ const EscalateDialog = ({ sessionId, messages, onClose, onDone }) => {
     if (lastUserMsg) setMessage(lastUserMsg.content);
   }, [messages]);
 
+  // Keep subcategory consistent when category changes.
+  useEffect(() => {
+    const list = TICKET_CATEGORIES[category] || [];
+    if (list.length && !list.includes(subcategory)) {
+      setSubcategory(list[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!email || !message.trim()) {
-      toast.error('Please enter your email and a short description.');
-      return;
-    }
+    if (!name.trim()) { toast.error('Please enter your name.'); return; }
+    if (!email.trim()) { toast.error('Please enter your email.'); return; }
+    if (!phone.trim()) { toast.error('Please enter your phone number.'); return; }
+    if (!schoolName.trim()) { toast.error('Please enter your school name.'); return; }
+    if (!message.trim()) { toast.error('Please add a short description.'); return; }
     setSubmitting(true);
     try {
       await axios.post(`${API}/faq-chat/raise-ticket`, {
         session_id: sessionId,
-        name, email, phone, message,
+        name, email, phone, school_name: schoolName,
+        category, subcategory, message,
       });
       onDone();
     } catch (err) {
-      toast.error('Could not raise ticket. Please email support@oll.co directly.');
+      toast.error('Could not raise ticket. Please email info@oll.co directly.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const subList = TICKET_CATEGORIES[category] || [];
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" data-testid="faq-escalate-dialog">
-      <form onSubmit={submit} className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-5">
+      <form onSubmit={submit} className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest text-[#D63031]">We&apos;ll take it from here</div>
@@ -645,7 +726,8 @@ const EscalateDialog = ({ sessionId, messages, onClose, onDone }) => {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
+            placeholder="Your name *"
+            required
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none"
             data-testid="faq-escalate-name"
           />
@@ -660,12 +742,40 @@ const EscalateDialog = ({ sessionId, messages, onClose, onDone }) => {
           />
           <input
             type="tel"
+            required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone (optional)"
+            placeholder="Phone number *"
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none"
             data-testid="faq-escalate-phone"
           />
+          <input
+            type="text"
+            required
+            value={schoolName}
+            onChange={(e) => setSchoolName(e.target.value)}
+            placeholder="School name *"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none"
+            data-testid="faq-escalate-school"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none bg-white"
+              data-testid="faq-escalate-category"
+            >
+              {Object.keys(TICKET_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-[#D63031] focus:outline-none bg-white"
+              data-testid="faq-escalate-subcategory"
+            >
+              {subList.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
           <textarea
             required
             value={message}
@@ -678,11 +788,11 @@ const EscalateDialog = ({ sessionId, messages, onClose, onDone }) => {
         </div>
         <div className="mt-4 flex items-center justify-between gap-2">
           <a
-            href="mailto:support@oll.co"
+            href="mailto:info@oll.co"
             className="text-xs text-slate-500 hover:text-[#D63031] inline-flex items-center gap-1"
             data-testid="faq-escalate-email-link"
           >
-            Or email support@oll.co <ExternalLink className="w-3 h-3" />
+            Or email info@oll.co <ExternalLink className="w-3 h-3" />
           </a>
           <button
             type="submit"

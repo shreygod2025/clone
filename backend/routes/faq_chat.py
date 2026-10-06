@@ -812,10 +812,13 @@ async def faq_chat_raise_ticket(payload: dict, request: Request):
     name = (payload.get("name") or "").strip()
     email = (payload.get("email") or "").strip()
     phone = (payload.get("phone") or "").strip()
+    school_name = (payload.get("school_name") or "").strip()
+    category = (payload.get("category") or "").strip()
+    subcategory = (payload.get("subcategory") or "").strip()
     message = (payload.get("message") or "").strip()
     session_id = payload.get("session_id") or ""
-    if not email or not message:
-        raise HTTPException(status_code=400, detail="Email and message are required")
+    if not (email and message and name and phone and school_name):
+        raise HTTPException(status_code=400, detail="Name, phone, email, school and message are all required")
 
     sess = _SESSIONS.get(session_id, {"messages": []})
     transcript = "\n\n".join(
@@ -825,14 +828,19 @@ async def faq_chat_raise_ticket(payload: dict, request: Request):
     import uuid
     from datetime import datetime, timezone
 
+    subject_bits = [b for b in (category, subcategory) if b]
+    subject_prefix = " · ".join(subject_bits) or "FAQ Bot escalation"
     doc = {
         "id": str(uuid.uuid4()),
-        "subject": f"[FAQ Bot escalation] {message[:60]}",
+        "subject": f"[{subject_prefix}] {message[:60]}",
         "message": message,
         "transcript": transcript,
-        "name": name or email.split("@")[0],
+        "name": name,
         "email": email,
         "phone": phone,
+        "school_name": school_name,
+        "category": category,
+        "subcategory": subcategory,
         "source": "faq_chatbot",
         "status": "open",
         "priority": "normal",
@@ -847,13 +855,24 @@ async def faq_chat_raise_ticket(payload: dict, request: Request):
 
 
 @router.get("/admin/faq-chat/analytics")
-async def faq_chat_analytics(days: int = 30, user: dict = None):
-    """AI Resolutions dashboard: top asked questions, counts, thumbs-up/down rate.
-    Admin-only route — permission gate is enforced via the admin router prefix in
-    production. For now we just require it to be hit from the admin SPA which
-    uses the admin JWT; see server.py for the global admin guard."""
+async def faq_chat_analytics(days: int = 30, sort: str = "count_desc", user: dict = None):
+    """AI Resolutions dashboard. `sort` ∈ {count_desc, count_asc, latest, oldest,
+    most_liked, most_disliked}. Returns totals, per-query aggregates, and an
+    estimated INR cost of running the AI agent in the selected window."""
     from datetime import datetime, timezone, timedelta
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    sort_stage = {"count": -1}
+    if sort == "count_asc":
+        sort_stage = {"count": 1}
+    elif sort == "latest":
+        sort_stage = {"last_asked": -1}
+    elif sort == "oldest":
+        sort_stage = {"last_asked": 1}
+    elif sort == "most_liked":
+        sort_stage = {"thumbs_up": -1}
+    elif sort == "most_disliked":
+        sort_stage = {"thumbs_down": -1}
 
     pipeline = [
         {"$match": {"created_at": {"$gte": cutoff}}},
@@ -862,6 +881,7 @@ async def faq_chat_analytics(days: int = 30, user: dict = None):
             "count": {"$sum": 1},
             "sample_question": {"$first": "$question"},
             "last_asked": {"$max": "$created_at"},
+            "first_asked": {"$min": "$created_at"},
             "thumbs_up": {"$sum": {"$cond": [{"$eq": ["$feedback", "up"]}, 1, 0]}},
             "thumbs_down": {"$sum": {"$cond": [{"$eq": ["$feedback", "down"]}, 1, 0]}},
             "unique_visitors": {"$addToSet": "$identity"},
@@ -872,11 +892,12 @@ async def faq_chat_analytics(days: int = 30, user: dict = None):
             "sample_question": 1,
             "count": 1,
             "last_asked": 1,
+            "first_asked": 1,
             "thumbs_up": 1,
             "thumbs_down": 1,
             "unique_visitors": {"$size": "$unique_visitors"},
         }},
-        {"$sort": {"count": -1}},
+        {"$sort": sort_stage},
         {"$limit": 200},
     ]
     rows = await db.faq_chat_logs.aggregate(pipeline).to_list(200)
@@ -884,8 +905,16 @@ async def faq_chat_analytics(days: int = 30, user: dict = None):
     total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}})
     thumbs_up_total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "feedback": "up"})
     thumbs_down_total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "feedback": "down"})
-
     identities = await db.faq_chat_logs.distinct("identity", {"created_at": {"$gte": cutoff}})
+
+    # Cost estimate — Claude Sonnet 4.5 current blended rate from Anthropic:
+    #   $3 / M input tokens, $15 / M output tokens.
+    # Our system prompt is ~45k tokens (knowledge base + live sections) and the
+    # average answer is ~400 output tokens → ~$0.14/query. At ₹83/USD that\\'s
+    # roughly ₹11.6 per query. We expose both pieces so the admin UI can
+    # recompute if OLL changes the model.
+    inr_per_query = float(os.environ.get("FAQ_COST_PER_QUERY_INR", "11.6"))
+    total_cost_inr = round(total * inr_per_query, 2)
 
     return {
         "total_queries": total,
@@ -894,6 +923,9 @@ async def faq_chat_analytics(days: int = 30, user: dict = None):
         "thumbs_down": thumbs_down_total,
         "top_queries": rows,
         "window_days": days,
+        "sort": sort,
+        "inr_per_query": inr_per_query,
+        "total_cost_inr": total_cost_inr,
     }
 
 

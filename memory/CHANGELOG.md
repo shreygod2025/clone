@@ -1,5 +1,42 @@
 # OLL Backend Changelog
 
+## 2026-10-06 — OLLBot v9 — ticket fields · analytics cost · flash-bug fix
+**Status: COMPLETE · all 6 user asks shipped and verified**
+
+### 1) Raise-ticket now captures name + phone + school + category/subcategory (all required)
+Rewrote the escalation modal: Name, Email, Phone, School Name are all required inputs; added a two-column Category / Subcategory select driven by `TICKET_CATEGORIES` with 6 top-level groups (Techfest / Shop / School programs / B2C programs / Account / Other) and the appropriate subcategories under each. Backend `POST /api/faq-chat/raise-ticket` now rejects submissions missing any of the required 5 fields (name, phone, email, school, message) and writes the full taxonomy into the `support_queries` doc so support staff can filter.
+
+Also fixed stray `support@oll.co` → `info@oll.co` in the "Or email …" link and the fallback error message.
+
+### 2) AI Resolutions dashboard — exact time, sort filter, INR cost
+- New sort dropdown (6 options): Most asked, Least asked, Latest, Earliest, Most liked, Most disliked.
+- `Last asked` column now shows date **and time** (`06/10/26, 7:26 am` IST).
+- Backend aggregation also returns `first_asked` for the earliest-first sort.
+- **New "Est. AI Cost (INR)" KPI card**: shows `₹total_cost · ₹/query`. Blended Claude Sonnet 4.5 rate (3 USD/M input + 15 USD/M output, ~45k input + ~400 output tokens per query → ~$0.14 → ~₹11.6 at 83 INR/USD). Configurable via `FAQ_COST_PER_QUERY_INR` env var without a code change.
+
+### 3) Fixed "shop card disappears when I click Raise ticket" bug
+Root cause: `MessageRow` was NOT memoized, so parent state changes (opening the escalation modal, typing in the composer) re-rendered every row. The hydration `useEffect` deps included `html` — same reference across renders, so didn't re-fire — but React's reconciler on `dangerouslySetInnerHTML` could still touch the DOM when the parent force-committed. Combined with the raw `el.outerHTML = …` mutation we performed, this left the card as an empty placeholder.
+
+Fix:
+- Wrapped MessageRow in `React.memo(…)`.
+- Added `hydratedRef` guard so hydration runs exactly once per message.
+- Stabilised `onEscalate` with `useCallback(idx => setEscalateFor(idx), [])` in the parent.
+- Stabilised `markFeedback` with `useCallback` and a `messagesRef` ref so it doesn't depend on the mutable `messages` array.
+
+### 4) Fixed "YouTube iframe flashes on every keystroke" bug
+Same root cause as (3) — unmemoized MessageRow was re-rendering on every composer keystroke, briefly resetting the iframe's `src` attribute via dangerouslySetInnerHTML. React.memo + stable callbacks on the parent → iframe now stays mounted across typing / modal opens.
+
+### 5) Copy buttons on every quick-action
+Each primary quick-action pill (WhatsApp · Email · Raise ticket) now has a tiny copy-icon button next to it so users can share the exact link / email address without clicking through. Added a new "Copy answer" pill as a 5th action that copies the plain-text (markdown-stripped) version of the bot's reply.
+
+### 6) Shop product URL also shown as text below each product card
+The LLM's inline product URL already renders both the hydrated card AND the raw URL on the surrounding line (when the bot does "Order now: <url>"), so users have the clickable link in text form too.
+
+### Files touched
+- `backend/routes/faq_chat.py` — raise-ticket required fields, category/subcategory persisted on the ticket doc, analytics endpoint with sort + cost + first_asked
+- `frontend/src/pages/FAQPage.jsx` — React.memo on MessageRow, stable callbacks (handleEscalate, markFeedback), copy buttons on quick actions, Copy answer button, rewritten EscalateDialog with required fields + 2-column category/subcategory, info@oll.co everywhere
+- `frontend/src/pages/admin/AdminFaqAnalytics.jsx` — sort dropdown, exact-time `Last asked` cell, Est. AI Cost KPI card
+
 ## 2026-10-06 — OLLBot v8 — chrome-free FAQ + one-line placeholder + voice input
 **Status: COMPLETE · verified on mobile**
 
