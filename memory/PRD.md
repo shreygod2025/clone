@@ -14,6 +14,27 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — AI Chat classification + hallucination guard
+- Fixed Admin AI Chat (`/admin/ai-chat`) image-upload bug where the LLM was
+  (a) emitting all 3 actions (lead + ticket + task) for every screenshot and
+  (b) writing a fake "ACTIONS COMPLETED" narrative in the message text while
+  the `actions[]` array was empty — admin saw "done" but no record was ever
+  written to Mongo.
+- Rewrote system-prompt rule #13 ("IMAGE INPUTS") to force a single
+  classification step: lead | ticket | task | note | followup → emit exactly
+  ONE primary action per image. Multiple actions only allowed when the image
+  literally contains multiple contacts (e.g. 3 business cards side-by-side).
+- Added a backend hallucination guard: if the LLM's `message` contains
+  completion-narrative patterns ("Created Lead", "Raised Ticket",
+  "Created Task", "ACTIONS COMPLETED", etc.) but the `actions[]` array has
+  zero write-actions, the message is overwritten with a plain error so the
+  admin knows nothing was actually saved. Logs the raw response to
+  `backend.err.log` for inspection.
+- Added a FORBIDDEN MESSAGE PATTERNS block to the prompt — the UI already
+  renders action chips from the `actions` array, so narrating "ACTIONS
+  COMPLETED" lists in the message is wasted + misleading output.
+
+
 ## 2026-10-06 — Prize-money correction + FAQ settings persistence fix
 - Corrected Techfest 2026 prize structure across all surfaces: ₹1,50,000 is now
   the TOTAL championship pool (not "per track"). Split: ₹50,000 per competition

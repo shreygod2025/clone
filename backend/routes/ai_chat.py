@@ -38,18 +38,25 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
     - "the lead I just created", "the new one", "same school" → the last school that was created/updated/mentioned.
     - NEVER ask "which school?" if there was a school mentioned in the last 5 messages. Look back through the conversation and use it.
     - If someone says "generate proposal for this" right after creating/mentioning a school, that IS the school — act on it immediately.
-13. **IMAGE INPUTS — EXTRACT & ACT (DO NOT ASK FOR CONFIRMATION)** — When the user attaches images (business cards, WhatsApp screenshots, enquiry forms, event invites, receipts, demo-request slips, visiting cards, emails):
+13. **IMAGE INPUTS — CLASSIFY ONCE, EMIT ONE ACTION** — When the user attaches images (business cards, WhatsApp screenshots, enquiry forms, event invites, receipts, demo-request slips, visiting cards, emails):
     - Read EVERY visible detail: names, phone numbers, emails, school/organisation names, cities, boards (ICSE/CBSE/state), designations, dates, amounts, follow-up asks, demo preferences, grade bands, student counts.
-    - **IMMEDIATELY emit the correct action in the same response** — do NOT ask "Should I proceed?" or "Confirm?". Rule 1 (ACT IMMEDIATELY) overrides any instinct to double-check with the user. The admin uploaded the image specifically so you would act.
-    - Decide the single best primary action based on content:
-       • Visiting card / business card / contact form → `create_lead` with every field you can read (school_name, contact_name, phone, email, city, source="image_upload").
-       • Receipt / payment proof / invoice snippet → `add_note` on the matching school with a line like "Receipt uploaded on <date> for ₹<amount>, UTR <ref>".
-       • Follow-up ask / "please call me" screenshot → `schedule_followup` with the stated date, or 2 days from today if no date given, + `add_note` with the raw request.
-       • Complaint / dissatisfaction screenshot → `raise_ticket` with the full extracted complaint as the message.
-       • Event invite / meeting slip / calendar screenshot → `create_task` with title, due_date and matched school/project if present.
-       • Multiple cards in one image → emit multiple `create_lead` actions in one response.
-    - In your `message` field, write a short "Extracted" summary (one line per field) THEN state the action you just emitted (e.g. "Created lead for Greenfield International School."). Never ask for confirmation.
+    - **STEP 1 — CLASSIFY the image into exactly ONE primary intent (never multiple):**
+       • `lead`     — contact details for a NEW school/person we don't yet have (visiting card, business card, enquiry form, registration slip, demo-booking screenshot, inbound WhatsApp intro).  → emit ONE `create_lead` only.
+       • `ticket`   — a complaint, grievance, problem report, "not working", "can't register", "QR not scanning", "payment failed", "please help", complaints forwarded by someone, support screenshot where the sender is asking us to RESOLVE something.  → emit ONE `raise_ticket` only.
+       • `task`     — a to-do, action-item, reminder, meeting invite, event invite, calendar screenshot, internal MoM, "please follow up on", "need to do".  → emit ONE `create_task` only.
+       • `note`     — receipt / payment proof / UTR screenshot / invoice snippet for a KNOWN school → emit ONE `add_note` on the matching school.
+       • `followup` — a "please call me back", "follow up on <date>" screenshot for a KNOWN school → emit ONE `schedule_followup` on the matching school.
+    - **STEP 2 — EMIT that single action** with every field you can extract. Do NOT also emit a lead + a task + a ticket. Pick ONE.
+    - **STEP 3 — EXCEPTION: multiple contacts in one image** (e.g. a photo of 3 business cards side-by-side, or a group WhatsApp list with 5 people). ONLY in that case emit multiple `create_lead` actions — one per person. Still never mix action types.
+    - **STEP 4 — WRITE A SHORT HUMAN MESSAGE** confirming what you did. ONE sentence like `"Created lead for Greenfield International School (Saravanan Shekar, +91 80970 77709)."` or `"Raised ticket #TBD for Gokul Public School — QR code registration issue."`. The UI auto-renders the action chip; do NOT paste an "ACTIONS COMPLETED" block or a numbered list.
+    - **DISAMBIGUATION** — If a WhatsApp screenshot has both contact info AND a problem description (e.g. "I'm Priya from Delhi School, my registration QR is broken"), the primary intent is `ticket` because they are asking us to RESOLVE something. If the message is purely introductory ("I'm Priya from Delhi School, we're interested in the robotics program"), the primary intent is `lead`.
     - If the image is genuinely unreadable (blurry, no text), say so plainly and ask for a clearer upload — this is the ONLY case where asking is OK.
+
+## FORBIDDEN MESSAGE PATTERNS (never write these in the `message` field)
+- `✅ ACTIONS COMPLETED:` headers or lists
+- `1. Created Lead ... 2. Raised Ticket ... 3. Created Task` numbered action logs
+- Any claim like "I have created / raised / scheduled" that is NOT backed by a matching entry in the `actions` array
+If you did not emit a `create_lead` action, you MUST NOT say "Created lead". The UI only trusts the `actions` array — writing it in text without emitting the action means the admin sees "done" while nothing was actually done. This is a critical bug. If the right action is unclear, ask ONE short question instead.
 
 ## CAPABILITIES — produce actions in the "actions" array:
 - create_lead: { type, school_name, city?, board?, contact_name?, phone?, email?, source?, notes? }
@@ -1349,6 +1356,46 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
     parsed = _parse_response(raw)
     message = parsed.get("message", raw)
     actions = parsed.get("actions", [])
+
+    # ── Hallucination guard ──────────────────────────────────────────────
+    # The LLM has been caught writing an "ACTIONS COMPLETED" narrative in the
+    # message field — "Created Lead ... Raised Ticket ... Created Task" — while
+    # emitting ZERO actions in the actions array. The frontend only renders
+    # action chips from the array, so the admin sees "completed" text but no
+    # record is ever written to Mongo.
+    #
+    # Policy: if the message makes action-completion claims that are NOT backed
+    # by matching entries in the actions array, we strip those claims and
+    # append a plain error so the admin knows nothing actually ran.
+    narrative_patterns = [
+        r'actions\s+completed',
+        r'created\s+lead',
+        r'raised\s+ticket',
+        r'created\s+task',
+        r'scheduled\s+follow[- ]?up',
+        r'scheduled\s+meeting',
+        r'added\s+note',
+        r'updated\s+lead',
+    ]
+    narrative_regex = re.compile("|".join(narrative_patterns), re.IGNORECASE)
+    emitted_types = {a.get("type") for a in actions if isinstance(a, dict)}
+    emitted_any_write = bool(emitted_types & {
+        "create_lead", "update_lead", "delete_lead", "change_status", "add_note",
+        "convert_lead", "send_email", "raise_ticket", "schedule_meeting",
+        "schedule_followup", "generate_proposal", "generate_mou", "generate_invoice",
+        "create_task", "update_task", "delete_task", "assign_task", "remind_task",
+        "create_project", "update_project", "delete_project",
+    })
+    if narrative_regex.search(message or "") and not emitted_any_write:
+        logging.warning(
+            "ai_chat hallucination: message narrates completion but actions array is empty. "
+            "message=%r raw=%r", (message or "")[:200], (raw or "")[:400]
+        )
+        message = (
+            "⚠️ I was about to act but couldn't produce a valid action — nothing was saved. "
+            "Please clarify what you want me to do with this image (create a lead, raise a ticket, "
+            "create a task, or just note it) and I'll execute it in one go."
+        )
 
     # Execute backend actions, chaining school_id from create_lead to subsequent actions
     results = []
