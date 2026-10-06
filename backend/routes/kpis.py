@@ -25,12 +25,11 @@ KPI_CATALOG = [
     # this user's plate during the bucket), so we use max() across buckets
     # instead of sum() to avoid double-counting a backlog ticket in every
     # week it stayed open.
-    {"id": "support_tickets_assigned", "label": "No. of tickets assigned", "category": "Support Center", "unit": "count", "aggregation": "max"},
+    {"id": "support_tickets_assigned", "label": "No. of tickets assigned", "category": "Support Center", "unit": "count"},
     {"id": "support_tickets_resolved", "label": "No. of tickets resolved", "category": "Support Center", "unit": "count"},
     {"id": "support_avg_resolution_hours", "label": "Avg resolution time (hours)", "category": "Support Center", "unit": "hours"},
-    {"id": "support_first_response_hours", "label": "Avg first-response time (hours)", "category": "Support Center", "unit": "hours"},
     {"id": "support_resolution_rate", "label": "Resolution rate (%)", "category": "Support Center", "unit": "%"},
-    {"id": "support_sla_breach_over_3d", "label": "Tickets pending > 3 days", "category": "Support Center", "unit": "count", "aggregation": "snapshot"},
+    {"id": "support_overdue_queries", "label": "Overdue queries (open > 24h)", "category": "Support Center", "unit": "count", "aggregation": "snapshot"},
 
     # Sales B2B — sourced from `school_inquiries`
     {"id": "b2b_leads_assigned", "label": "No. of school leads assigned", "category": "Sales — B2B", "unit": "count"},
@@ -183,84 +182,50 @@ def _scope_bounds_iso(scope: str, ref_iso: Optional[str] = None) -> tuple[str, s
 async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
     """Metrics from `support_queries` where assigned_to == user_id.
 
-    - `assigned` counts tickets that were on this user's plate at any point
-      during the period: created on or before `end_iso` AND either still open
-      OR resolved on/after `start_iso`. The old implementation only counted
-      tickets *created* in the window, which under-counted dramatically for
-      support agents carrying a backlog (e.g. Kirti had 100+ open tickets
-      from previous months but the Oct dashboard showed only 8 = new
-      tickets created in Oct).
-    - `resolved` counts tickets whose `resolved_at` (fallback `updated_at`
-      when `resolved_at` is missing on older docs) falls inside the range
-      AND whose current status is resolved/closed. Timezone-safe because
-      all timestamps are stored as ISO strings.
+    Semantics (rewritten 2026-10-06 per user spec):
+    - `assigned`         — queries whose `created_at` falls in [start, end]
+                           AND are assigned to this user. The "query date"
+                           anchors the window; a backlog ticket from last
+                           month does NOT count toward this month.
+    - `resolved`         — of the assigned subset, how many are now resolved
+                           or closed (regardless of when they were resolved).
+    - `resolution_rate`  — resolved / assigned.
+    - `avg_resolution`   — among the resolved subset, average
+                           (resolved_at − created_at) in hours.
+    - `overdue_queries`  — of the assigned subset, how many are STILL open
+                           (status not in resolved/closed) AND were created
+                           more than 24h ago (so a brand-new ticket raised
+                           10 min ago is NOT already "overdue").
     """
     coll = db.support_queries
 
-    # "On this user's plate during the period" = ticket existed by period end
-    # AND (still open OR resolved during-or-after period start).
-    #
-    # We also honour `assigned_at` when the doc has it — a ticket re-assigned
-    # mid-period should still show up as the user's workload for that period.
+    # "Assigned in window" = created in window + assigned to this user.
     assigned_query = {
-        "assigned_to": user_id,
-        "created_at": {"$lte": end_iso},
-        "$or": [
-            # Still open at the time of the query → was on their plate end of period
-            {"status": {"$nin": ["resolved", "closed"]}},
-            # Resolved on or after period start → was on their plate during period
-            {"resolved_at": {"$gte": start_iso}},
-            # Fallback for docs with no resolved_at — use updated_at
-            {
-                "resolved_at": {"$in": [None, ""]},
-                "updated_at": {"$gte": start_iso},
-            },
-            {
-                "resolved_at": {"$exists": False},
-                "updated_at": {"$gte": start_iso},
-            },
-        ],
-    }
-    assigned = await coll.count_documents(assigned_query)
-
-    # Kept for the first-response calculation below (which should look only
-    # at tickets NEWLY created in-period — a first response on a 3-month-old
-    # ticket is noise for this period's metric).
-    newly_created_query = {
         "assigned_to": user_id,
         "created_at": {"$gte": start_iso, "$lte": end_iso},
     }
-
-    # Resolved-in-range: prefer `resolved_at`; fall back to `updated_at`
-    # for pre-`resolved_at` rows (matches daily_report.py convention).
-    resolved_query = {
-        "assigned_to": user_id,
-        "status": {"$in": ["resolved", "closed"]},
-        "$or": [
-            {"resolved_at": {"$gte": start_iso, "$lte": end_iso}},
-            {
-                "resolved_at": {"$in": [None, ""]},
-                "updated_at": {"$gte": start_iso, "$lte": end_iso},
-            },
-            {
-                "resolved_at": {"$exists": False},
-                "updated_at": {"$gte": start_iso, "$lte": end_iso},
-            },
-        ],
-    }
-    resolved_docs = await coll.find(
-        resolved_query,
-        {"_id": 0, "created_at": 1, "updated_at": 1, "resolved_at": 1, "replies": 1},
+    assigned_docs = await coll.find(
+        assigned_query,
+        {"_id": 0, "created_at": 1, "resolved_at": 1, "updated_at": 1, "status": 1},
     ).to_list(5000)
+    assigned = len(assigned_docs)
+
+    # Resolved subset — same set, filtered to resolved/closed status.
+    resolved_docs = [
+        d for d in assigned_docs
+        if (d.get("status") or "").lower() in ("resolved", "closed")
+    ]
     resolved = len(resolved_docs)
 
-    # Avg resolution time (hours) — resolved_at (or updated_at) − created_at
+    # Avg resolution time (hours) — resolved_at (fallback updated_at) − created_at.
     total_hrs = 0.0
     counted = 0
     for d in resolved_docs:
         try:
-            c = datetime.fromisoformat(d.get("created_at").replace("Z", "+00:00"))
+            c = datetime.fromisoformat(str(d.get("created_at")).replace("Z", "+00:00"))
             end_ts = d.get("resolved_at") or d.get("updated_at")
+            if not end_ts:
+                continue
             u = datetime.fromisoformat(str(end_ts).replace("Z", "+00:00"))
             hrs = (u - c).total_seconds() / 3600.0
             if hrs >= 0:
@@ -270,46 +235,19 @@ async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -
             continue
     avg_resolution_hours = round(total_hrs / counted, 2) if counted else 0
 
-    # First response time (hours) — first reply timestamp - created_at (over
-    # tickets assigned during the same period, so it stays comparable to
-    # `assigned` above).
-    first_response_hours = 0.0
-    fr_count = 0
-    fr_docs = await coll.find(newly_created_query, {"_id": 0, "created_at": 1, "replies": 1}).to_list(2000)
-    for d in fr_docs:
-        replies = d.get("replies") or []
-        if not replies:
-            continue
-        try:
-            c = datetime.fromisoformat(d.get("created_at").replace("Z", "+00:00"))
-            r0 = replies[0]
-            ts = r0.get("created_at") or r0.get("timestamp") or r0.get("at")
-            if not ts:
-                continue
-            r = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-            hrs = (r - c).total_seconds() / 3600.0
-            if hrs >= 0:
-                first_response_hours += hrs
-                fr_count += 1
-        except Exception:
-            continue
-    avg_first_response = round(first_response_hours / fr_count, 2) if fr_count else 0
-
     resolution_rate = round((resolved / assigned * 100.0), 1) if assigned else 0.0
 
-    # SLA breach: tickets currently open AND created_at > 3 days ago (regardless of month filter for realtime pending)
-    three_days_ago = datetime.now(timezone.utc).timestamp() - (3 * 86400)
-    sla_query = {
-        "assigned_to": user_id,
-        "status": {"$nin": ["resolved", "closed"]},
-    }
-    all_open = await coll.find(sla_query, {"_id": 0, "created_at": 1}).to_list(2000)
-    breach = 0
-    for d in all_open:
+    # Overdue — of the assigned subset, open + created > 24h ago.
+    now_utc = datetime.now(timezone.utc)
+    overdue = 0
+    for d in assigned_docs:
+        status = (d.get("status") or "").lower()
+        if status in ("resolved", "closed"):
+            continue
         try:
-            c = datetime.fromisoformat(d.get("created_at").replace("Z", "+00:00"))
-            if c.timestamp() < three_days_ago:
-                breach += 1
+            c = datetime.fromisoformat(str(d.get("created_at")).replace("Z", "+00:00"))
+            if (now_utc - c).total_seconds() > 24 * 3600:
+                overdue += 1
         except Exception:
             continue
 
@@ -317,9 +255,8 @@ async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -
         "support_tickets_assigned": assigned,
         "support_tickets_resolved": resolved,
         "support_avg_resolution_hours": avg_resolution_hours,
-        "support_first_response_hours": avg_first_response,
         "support_resolution_rate": resolution_rate,
-        "support_sla_breach_over_3d": breach,
+        "support_overdue_queries": overdue,
     }
 
 

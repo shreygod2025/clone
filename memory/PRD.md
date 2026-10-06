@@ -14,6 +14,41 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — FAQ limit 10 · Week-nav timezone fix · Support metrics rework
+- **FAQ daily limit**: Raised public FAQ chatbot daily cap from 3 → 10
+  questions per visitor. Updated `faq_chat.py` DAILY_LIMIT constant and
+  the limit-reached message copy ("come back tomorrow for 10 more").
+- **Week navigator timezone bug** on
+  `/admin/users/:id/performance`: the right arrow was skipping the
+  28-Sept-to-04-Oct boundary week — root cause was
+  `toISOString().slice(0,10)` which converts to UTC and rolls dates
+  back a day for IST (UTC+5:30) when parsed at local midnight. Replaced
+  with a `toLocalISO` helper on both the initial `_thisMon` state seed
+  and the `shift(deltaDays)` prev/next handler. Verified via Playwright
+  that 3×prev → 3×next produces the exact same sequence of weeks with
+  no duplicates and no skipped weeks.
+- **Support Center metrics rewrite** per user spec
+  (`backend/routes/kpis.py` → `_compute_support_metrics`):
+  - `support_tickets_assigned` — now strict: tickets whose `created_at`
+    falls in the window AND are assigned to this user (no more backlog
+    carry-forward).
+  - `support_tickets_resolved` — subset of assigned with
+    `status in [resolved, closed]`.
+  - `support_resolution_rate` — resolved / assigned.
+  - `support_avg_resolution_hours` — avg(resolved_at − created_at) over
+    the resolved subset.
+  - **NEW**: `support_overdue_queries` — of the assigned subset, how
+    many are still open AND were created > 24h ago. Replaces the old
+    `support_sla_breach_over_3d` (3-day threshold).
+  - **REMOVED**: `support_first_response_hours` ("Avg first-response time").
+- **Idempotent migration** on server startup (`_migrate_support_kpis`)
+  rewrites every role's / user's stored `kpis` array to replace
+  `support_sla_breach_over_3d` with `support_overdue_queries` and drop
+  `support_first_response_hours`, so the role-filtered performance view
+  starts returning the new KPI immediately after deploy — no manual
+  reassignment needed.
+
+
 ## 2026-10-06 — AI Chat "add query" → raise_ticket + "QUERY ADDED" hallucination fix
 - Fixed the user flow: upload image → type "add query" was producing a
   hallucinated "✅ QUERY ADDED TO TICKET #TECH-002" markdown block with ZERO

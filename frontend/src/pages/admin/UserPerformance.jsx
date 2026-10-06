@@ -77,7 +77,10 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
   const [selYear, setSelYear] = useState(now.getFullYear());
   // For week scope — anchor is the Monday of the selected week (defaults = this Monday)
   const _thisMon = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1)); return d; })();
-  const [selWeekRef, setSelWeekRef] = useState(_thisMon.toISOString().slice(0, 10));
+  // Serialise using LOCAL date (not UTC) — `toISOString()` rolls back a day
+  // for IST (UTC+5:30) at local midnight, breaking the week picker.
+  const _toLocalISO = (dd) => `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+  const [selWeekRef, setSelWeekRef] = useState(_toLocalISO(_thisMon));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -230,10 +233,20 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
               const sunday = new Date(monday);
               sunday.setDate(monday.getDate() + 6);
               const fmt = (dd) => dd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+              // LOCAL-DATE serialiser — `toISOString()` converts to UTC which
+              // rolls dates back a day for IST (UTC+5:30), causing the right
+              // arrow to appear to "skip" a week (actually jumping to the
+              // Sunday of the same week).
+              const toLocalISO = (dd) => {
+                const y = dd.getFullYear();
+                const m = String(dd.getMonth() + 1).padStart(2, '0');
+                const day = String(dd.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+              };
               const shift = (deltaDays) => {
                 const nd = new Date(monday);
                 nd.setDate(monday.getDate() + deltaDays);
-                setSelWeekRef(nd.toISOString().slice(0, 10));
+                setSelWeekRef(toLocalISO(nd));
               };
               const isThisWeek = (() => {
                 const now = new Date(); const nowDow = now.getDay();

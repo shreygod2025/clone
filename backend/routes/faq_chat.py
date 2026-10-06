@@ -639,8 +639,8 @@ class FaqChatReply(BaseModel):
     latency_ms: int = 0
 
 
-# Rate-limit: 3 questions per calendar day per visitor identity.
-DAILY_LIMIT = 3
+# Rate-limit: 10 questions per calendar day per visitor identity.
+DAILY_LIMIT = 10
 
 
 def _visitor_identity(session_id: str, authorization: Optional[str], client_host: str) -> str:
@@ -821,7 +821,7 @@ async def faq_chat(req: FaqChatRequest, request: Request):
             "- 💬 WhatsApp us at **+91 99201 88188** (fastest)\n"
             "- ✉️ Email **info@oll.co**\n"
             "- 🎫 Or tap *Raise a ticket* below and our team will reach out\n\n"
-            "Come back tomorrow and I'll be happy to help with 3 more questions!"
+            f"Come back tomorrow and I'll be happy to help with {DAILY_LIMIT} more questions!"
         )
         return FaqChatReply(
             reply=rl_reply, session_id=req.session_id,

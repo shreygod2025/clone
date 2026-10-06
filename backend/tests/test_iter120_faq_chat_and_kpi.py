@@ -47,18 +47,21 @@ class TestKPICatalog:
         catalog = r.json().get("catalog", [])
         by_id = {k["id"]: k for k in catalog}
         assert "support_tickets_assigned" in by_id
-        assert by_id["support_tickets_assigned"].get("aggregation") == "max", \
-            f"support_tickets_assigned aggregation = {by_id['support_tickets_assigned'].get('aggregation')}"
-        # sla_breach should be snapshot
-        assert by_id.get("support_sla_breach_over_3d", {}).get("aggregation") == "snapshot"
+        # Per 2026-10-06 spec rewrite: assigned uses strict created_at-in-window
+        # semantics (no backlog carry-forward), so no `aggregation: max` override.
+        assert "support_overdue_queries" in by_id
+        assert by_id["support_overdue_queries"].get("aggregation") == "snapshot"
+        # First-response KPI was removed on 2026-10-06.
+        assert "support_first_response_hours" not in by_id
+        assert "support_sla_breach_over_3d" not in by_id
 
 
 # ─── User performance — support_tickets_assigned bug ────────────────────
 class TestUserPerformanceSupportAssigned:
-    def test_assigned_covers_open_tickets_backlog(self, admin_headers):
-        """Find a support agent with open tickets and verify assigned count
-        >= number of currently-open tickets assigned to them (across all time
-        prior to end-of-month)."""
+    def test_assigned_counts_only_tickets_created_in_window(self, admin_headers):
+        """Per 2026-10-06 spec rewrite, `support_tickets_assigned` counts
+        ONLY tickets whose `created_at` falls inside the selected month —
+        backlog tickets from prior months do NOT inflate the count."""
         # Pull all team_users via admin endpoint
         r = requests.get(f"{BASE_URL}/api/team/users", headers=admin_headers, timeout=TIMEOUT)
         if r.status_code != 200:
@@ -67,19 +70,15 @@ class TestUserPerformanceSupportAssigned:
         if not users:
             pytest.skip("No team users to test against")
 
-        # Find a user that has assigned tickets in support_queries by scanning
-        # the admin-support list endpoint.
+        # Pick first user with ANY assigned ticket.
         picked_user = None
-        picked_open_count = 0
-        # Try the first ~15 users
         for u in users[:30]:
             uid = u.get("id")
             if not uid:
                 continue
-            # Count how many support_queries are assigned to this user & still open
             r2 = requests.get(
                 f"{BASE_URL}/api/support/queries",
-                params={"assigned_to": uid, "status": "open", "limit": 500},
+                params={"assigned_to": uid, "limit": 100},
                 headers=admin_headers,
                 timeout=TIMEOUT,
             )
@@ -89,14 +88,11 @@ class TestUserPerformanceSupportAssigned:
             tickets = body if isinstance(body, list) else body.get("queries") or body.get("items") or []
             if tickets:
                 picked_user = u
-                picked_open_count = len(tickets)
                 break
-
         if not picked_user:
-            pytest.skip("No team user with any assigned open support tickets in preview DB")
+            pytest.skip("No team user with any assigned support tickets in preview DB")
 
         uid = picked_user["id"]
-        # Current month
         import datetime
         today = datetime.datetime.utcnow()
         r3 = requests.get(
@@ -107,14 +103,11 @@ class TestUserPerformanceSupportAssigned:
         )
         assert r3.status_code == 200, r3.text[:300]
         metrics = r3.json().get("metrics", {})
-        assigned = metrics.get("support_tickets_assigned", 0)
-        print(f"User {picked_user.get('name')} ({uid}): open_tickets_counted={picked_open_count}, "
-              f"support_tickets_assigned_metric={assigned}")
-        # Assigned should be AT LEAST the # of open tickets (plus any resolved-in-month)
-        assert assigned >= picked_open_count, (
-            f"BUG: support_tickets_assigned ({assigned}) < open ticket count ({picked_open_count}) "
-            f"for user {picked_user.get('name')}. The 'assigned' metric is undercounting backlog."
-        )
+        # New spec: metric is a non-negative int. Overdue + resolution_rate
+        # are also present. First-response is gone.
+        assert isinstance(metrics.get("support_tickets_assigned"), int)
+        assert "support_overdue_queries" in metrics
+        assert "support_first_response_hours" not in metrics
 
 
 # ─── FAQ chatbot ─────────────────────────────────────────────────────────

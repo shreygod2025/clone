@@ -4354,6 +4354,48 @@ async def _create_db_indexes():
         print(f"[STARTUP] Warning: Could not create some indexes: {e}")
 
 
+async def _migrate_support_kpis():
+    """Idempotent one-off migration (2026-10-06) that updates every role's
+    stored `kpis` array to replace the deprecated Support Center KPI ids
+    with the current ones:
+        support_sla_breach_over_3d  →  support_overdue_queries
+        support_first_response_hours → (removed)
+    Safe to re-run — a doc with the new ids is left untouched.
+    """
+    OLD_TO_NEW = {"support_sla_breach_over_3d": "support_overdue_queries"}
+    DEPRECATED = {"support_first_response_hours"}
+    touched_total = 0
+    try:
+        for coll_name in ("roles", "team_users", "admins"):
+            coll = db[coll_name]
+            docs = await coll.find(
+                {"kpis": {"$exists": True, "$type": "array"}},
+                {"_id": 1, "kpis": 1},
+            ).to_list(5000)
+            for d in docs:
+                kpis = d.get("kpis") or []
+                new_kpis = []
+                seen = set()
+                dirty = False
+                for k in kpis:
+                    if k in DEPRECATED:
+                        dirty = True
+                        continue
+                    new_k = OLD_TO_NEW.get(k, k)
+                    if new_k != k:
+                        dirty = True
+                    if new_k not in seen:
+                        new_kpis.append(new_k)
+                        seen.add(new_k)
+                if dirty:
+                    await coll.update_one({"_id": d["_id"]}, {"$set": {"kpis": new_kpis}})
+                    touched_total += 1
+        if touched_total:
+            print(f"[STARTUP] Migrated support KPI ids on {touched_total} doc(s)")
+    except Exception as e:
+        print(f"[STARTUP] _migrate_support_kpis failed: {e}")
+
+
 @app.on_event("startup")
 async def startup_db_client():
     """Start schedulers and kick off background index creation.
@@ -4371,6 +4413,14 @@ async def startup_db_client():
         asyncio.create_task(ensure_default_coupons())
     except Exception as e:
         print(f"[STARTUP] ensure_default_coupons scheduling failed: {e}")
+
+    # Idempotent one-time KPI migration (2026-10-06):
+    #   support_sla_breach_over_3d  →  support_overdue_queries
+    #   support_first_response_hours → removed
+    try:
+        asyncio.create_task(_migrate_support_kpis())
+    except Exception as e:
+        print(f"[STARTUP] support-kpi migration scheduling failed: {e}")
 
     # Seed the default "Admin" system role — a role that, when assigned to a
     # team member, elevates them to full admin access (all CRMs, all tasks,
