@@ -134,6 +134,63 @@ export default function AdminCompetitions() {
   const [teamUsers, setTeamUsers] = useState([]);
   const [coordQuery, setCoordQuery] = useState('');
 
+  // ── Filters + sorting (all 3 registration tabs) ─────────────────────────
+  // Columns the user asked for: Zone · City · Source · Competition · Coord · Status.
+  // Reset filters when switching tabs so stale selections don't apply across data shapes.
+  const [filters, setFilters] = useState({
+    zone: '', city: '', source: '', competition: '', coordinator: '', status: '',
+  });
+  const [sortBy, setSortBy] = useState('');       // column key or '' for insertion order
+  const [sortDir, setSortDir] = useState('asc');  // 'asc' | 'desc'
+  useEffect(() => {
+    setFilters({ zone: '', city: '', source: '', competition: '', coordinator: '', status: '' });
+    setSortBy('');
+    setSortDir('asc');
+  }, [tab]);
+  const toggleSort = (key) => {
+    if (sortBy === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(key); setSortDir('asc'); }
+  };
+
+  // ── Students: multi-select + bulk actions + team modal ──────────────────
+  const [studentSelected, setStudentSelected] = useState(() => new Set());
+  // Educators (and other shared registrations) multi-select — same bulk-bar
+  // routed through POST /admin/techfest/registrations/bulk-update.
+  const [educatorSelected, setEducatorSelected] = useState(() => new Set());
+  const [bulkDialog, setBulkDialog] = useState(null);  // null | 'zone' | 'coordinator' | 'team'
+  const [bulkValue, setBulkValue] = useState('');
+  const [bulkCoordQuery, setBulkCoordQuery] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  // Clear selections whenever tab changes OR rows reload
+  useEffect(() => { setStudentSelected(new Set()); setEducatorSelected(new Set()); }, [tab, rows]);
+
+  // Edit-student modal state
+  const [editStudent, setEditStudent] = useState(null);         // row being edited
+  const [editStudentForm, setEditStudentForm] = useState({});
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [savingStudent, setSavingStudent] = useState(false);
+  const openEditStudent = (row) => {
+    setEditStudent(row);
+    setEditStudentForm({
+      name: row.name || '', email: row.email || '', phone: row.phone || '',
+      school: row.school || '', city: row.city || '', state: row.state || '',
+      team_id: row.team_id || '', team_name: row.team_name || '', team_role: row.team_role || '',
+      zone: row.zone || '', status: row.status || '',
+      assigned_school_id: row.assigned_school_id || '',
+      assigned_school_name: row.assigned_school_name || row.school || '',
+    });
+    setSchoolSearch(row.assigned_school_name || row.school || '');
+  };
+
+  // Teams list for the "Add to Team" picker
+  const [teamsList, setTeamsList] = useState([]);
+  const loadTeams = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/techfest/students/teams`, { headers: getAuthHeaders() });
+      setTeamsList(res.data?.items || []);
+    } catch { /* non-fatal */ }
+  };
+
   const visibleTabs = isAdmin ? TABS : TABS.filter((t) => t.key !== 'referrers');
   const isRegistrationTab = tab === 'school' || tab === 'educator' || tab === 'student';
 
@@ -216,6 +273,14 @@ export default function AdminCompetitions() {
      
   }, [tab, subCompFilter]);
 
+  // Load teams list whenever we're on the Students tab (used by the bulk
+  // "Add to existing team" picker + the edit-student modal).
+  useEffect(() => { if (tab === 'student') loadTeams();  }, [tab, rows]);
+  // Load combined-schools once the admin starts editing a student (needed by
+  // the "Assign School" picker). Also populate it when switching to Students
+  // so the picker opens with a warm list.
+  useEffect(() => { if (tab === 'student' && combined.length === 0) loadCombined();  }, [tab]);
+
   // Team users are only needed for the coordinator picker in the edit
   // modal — admin-only, fetch once.
   useEffect(() => {
@@ -244,36 +309,219 @@ export default function AdminCompetitions() {
   // Refresh my counts whenever the registrations list refreshes.
   useEffect(() => { if (isRegistrationTab && !loading) loadMyRef();  }, [rows, loading]);
 
+  // Distinct filter options derived from the currently loaded rows. Each
+  // tab has different data shape, so we read every plausible field.
+  const filterOptions = useMemo(() => {
+    const pick = (keys) => {
+      const s = new Set();
+      rows.forEach((r) => keys.forEach((k) => { const v = (r?.[k] || '').toString().trim(); if (v) s.add(v); }));
+      return Array.from(s).sort((a, b) => a.localeCompare(b));
+    };
+    return {
+      zones: pick(['zone', 'zonal_city']),
+      cities: pick(['city']),
+      sources: pick(['source']),
+      competitions: pick(['competition_code', 'competition_name']),
+      coordinators: pick(['coordinator_name', 'coordinator_user_id']),
+      statuses: pick(['status']),
+    };
+  }, [rows]);
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
   const filtered = useMemo(() => {
-    if (!q.trim()) return rows;
-    const needle = q.toLowerCase();
-    return rows.filter((r) => [
-      r.name, r.email, r.phone, r.city, r.school_name, r.school_or_institute,
-      r.role_designation, r.grade_taught, r.school_email, r.school_phone, r.school_address,
-      r.source, r.source_details, r.referrer_slug,
-      r.robotics_format, r.robotics_external_company,
-      // Student-import fields
-      r.school, r.address, r.state, r.pincode, r.country, r.gender,
-      r.techfest_id, r.compi_reg_id, r.competition_name, r.competition_code,
-      r.team_id, r.team_name, r.team_role,
-      r.team_leader_name, r.team_leader_email, r.team_leader_phone,
-      r.zonal_city, r.zonal_college,
-    ].some((v) => (v || '').toString().toLowerCase().includes(needle)));
-  }, [rows, q]);
+    const needle = q.trim().toLowerCase();
+    let out = rows.filter((r) => {
+      if (needle) {
+        const hit = [
+          r.name, r.email, r.phone, r.city, r.school_name, r.school_or_institute,
+          r.role_designation, r.grade_taught, r.school_email, r.school_phone, r.school_address,
+          r.source, r.source_details, r.referrer_slug,
+          r.robotics_format, r.robotics_external_company,
+          r.school, r.address, r.state, r.pincode, r.country, r.gender,
+          r.techfest_id, r.compi_reg_id, r.competition_name, r.competition_code,
+          r.team_id, r.team_name, r.team_role,
+          r.team_leader_name, r.team_leader_email, r.team_leader_phone,
+          r.zonal_city, r.zonal_college, r.coordinator_name, r.assigned_school_name,
+          r.zone, r.status,
+        ].some((v) => (v || '').toString().toLowerCase().includes(needle));
+        if (!hit) return false;
+      }
+      if (filters.zone && !([r.zone, r.zonal_city].includes(filters.zone))) return false;
+      if (filters.city && (r.city || '') !== filters.city) return false;
+      if (filters.source && (r.source || '') !== filters.source) return false;
+      if (filters.competition) {
+        const cv = filters.competition;
+        if ((r.competition_code || '') !== cv && (r.competition_name || '') !== cv) return false;
+      }
+      if (filters.coordinator) {
+        const cv = filters.coordinator;
+        if ((r.coordinator_name || '') !== cv && (r.coordinator_user_id || '') !== cv) return false;
+      }
+      if (filters.status && (r.status || '') !== filters.status) return false;
+      return true;
+    });
+    if (sortBy) {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      out = [...out].sort((a, b) => {
+        const av = (a?.[sortBy] || '').toString().toLowerCase();
+        const bv = (b?.[sortBy] || '').toString().toLowerCase();
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+    }
+    return out;
+  }, [rows, q, filters, sortBy, sortDir]);
+
+  // Group students by team_id so team members render adjacent. Students with
+  // no team_id go to a trailing "No team" bucket. Groups preserve the
+  // filtered sort order (first-seen within each team wins).
+  const studentGroups = useMemo(() => {
+    if (tab !== 'student') return [];
+    const map = new Map();
+    const noTeam = [];
+    filtered.forEach((r) => {
+      const tid = (r.team_id || '').trim();
+      if (!tid) { noTeam.push(r); return; }
+      if (!map.has(tid)) map.set(tid, { team_id: tid, team_name: r.team_name || tid, members: [] });
+      map.get(tid).members.push(r);
+    });
+    const groups = Array.from(map.values()).sort((a, b) => (a.team_name || '').localeCompare(b.team_name || ''));
+    if (noTeam.length) groups.push({ team_id: '__noteam__', team_name: 'No team', members: noTeam });
+    return groups;
+  }, [filtered, tab]);
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      const res = await axios.get(`${API}/admin/techfest/registrations/export`, {
-        headers: getAuthHeaders(), params: { type: tab }, responseType: 'blob',
+      // Students live in a dedicated collection — the combined /registrations/export
+      // endpoint doesn't read it so the Students tab was downloading empty CSVs.
+      const url = tab === 'student'
+        ? `${API}/admin/techfest/students/export`
+        : `${API}/admin/techfest/registrations/export`;
+      const params = tab === 'student' ? {} : { type: tab };
+      const res = await axios.get(url, {
+        headers: getAuthHeaders(), params, responseType: 'blob',
       });
       const blob = new Blob([res.data], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
+      const bUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-      a.href = url; a.download = `techfest-${tab}-${stamp}.csv`; a.click();
-      URL.revokeObjectURL(url);
+      a.href = bUrl; a.download = `techfest-${tab}-${stamp}.csv`; a.click();
+      URL.revokeObjectURL(bUrl);
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
+  };
+
+  // ── Bulk + edit handlers for students ───────────────────────────────────
+  const applyStudentBulkPatch = async (patch) => {
+    const ids = Array.from(studentSelected);
+    if (!ids.length) { toast.error('Select at least one student'); return; }
+    setBulkSaving(true);
+    try {
+      const res = await axios.post(
+        `${API}/admin/techfest/students/bulk-update`,
+        { ids, patch },
+        { headers: getAuthHeaders() },
+      );
+      toast.success(`Updated ${res.data?.modified_count || 0} student(s)`);
+      setBulkDialog(null); setBulkValue(''); setBulkCoordQuery('');
+      setStudentSelected(new Set());
+      await load();
+      await loadTeams();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Bulk update failed');
+    } finally { setBulkSaving(false); }
+  };
+
+  const saveEditStudent = async () => {
+    if (!editStudent?._id) return;
+    setSavingStudent(true);
+    try {
+      await axios.patch(
+        `${API}/admin/techfest/students/${editStudent._id}`,
+        editStudentForm,
+        { headers: getAuthHeaders() },
+      );
+      toast.success('Student updated');
+      setEditStudent(null); setEditStudentForm({});
+      await load();
+      await loadTeams();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Save failed');
+    } finally { setSavingStudent(false); }
+  };
+
+  // Toggle a single student checkbox / toggle all visible on current filter
+  const toggleStudent = (id) => {
+    setStudentSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleStudentAll = () => {
+    const allIds = filtered.map((r) => r._id).filter(Boolean);
+    const allSelected = allIds.length > 0 && allIds.every((id) => studentSelected.has(id));
+    setStudentSelected(allSelected ? new Set() : new Set(allIds));
+  };
+  const toggleEducator = (id) => {
+    setEducatorSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleEducatorAll = () => {
+    const allIds = filtered.map((r) => r._id).filter(Boolean);
+    const allSelected = allIds.length > 0 && allIds.every((id) => educatorSelected.has(id));
+    setEducatorSelected(allSelected ? new Set() : new Set(allIds));
+  };
+
+  const applyEducatorBulkPatch = async (patch) => {
+    const ids = Array.from(educatorSelected);
+    if (!ids.length) { toast.error('Select at least one row'); return; }
+    setBulkSaving(true);
+    try {
+      const body = { reg_ids: ids, ...patch };
+      const res = await axios.post(
+        `${API}/admin/techfest/registrations/bulk-update`,
+        body,
+        { headers: getAuthHeaders() },
+      );
+      toast.success(`Updated ${res.data?.modified_count || 0} row(s)`);
+      setBulkDialog(null); setBulkValue(''); setBulkCoordQuery('');
+      setEducatorSelected(new Set());
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Bulk update failed');
+    } finally { setBulkSaving(false); }
+  };
+
+  // Schools (combined) bulk — translates school_keys back to the matching
+  // school_reg_ids (or educator_reg_ids as a fallback) and calls the shared
+  // registration bulk endpoint.
+  const applySchoolBulkPatch = async (patch) => {
+    const regIds = [];
+    combined.forEach((row) => {
+      if (!combinedSelected.has(row.school_key)) return;
+      if (row.school_reg_id) regIds.push(row.school_reg_id);
+      (row.educator_reg_ids || []).forEach((id) => regIds.push(id));
+    });
+    if (!regIds.length) { toast.error('Selected schools have no registration ids'); return; }
+    setBulkSaving(true);
+    try {
+      const res = await axios.post(
+        `${API}/admin/techfest/registrations/bulk-update`,
+        { reg_ids: regIds, ...patch },
+        { headers: getAuthHeaders() },
+      );
+      toast.success(`Updated ${res.data?.modified_count || 0} registration(s) across selected schools`);
+      setBulkDialog(null); setBulkValue(''); setBulkCoordQuery('');
+      setCombinedSelected(new Set());
+      await loadCombined();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Bulk update failed');
+    } finally { setBulkSaving(false); }
   };
 
   const handleImportClick = () => fileInputRef.current?.click();
@@ -532,6 +780,110 @@ export default function AdminCompetitions() {
             </div>
           )}
 
+          {/* ── Filter bar (zone · city · source · competition · coord · status) ── */}
+          {isRegistrationTab && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-slate-100 bg-white" data-testid="admin-competitions-filterbar">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-1">Filters</span>
+              {[
+                { key: 'zone',        label: 'Zone',        options: filterOptions.zones },
+                { key: 'city',        label: 'City',        options: filterOptions.cities },
+                { key: 'source',      label: 'Source',      options: filterOptions.sources },
+                { key: 'competition', label: 'Competition', options: filterOptions.competitions },
+                { key: 'coordinator', label: 'Coordinator', options: filterOptions.coordinators },
+                { key: 'status',      label: 'Status',      options: filterOptions.statuses },
+              ].filter((f) => f.options.length > 0).map((f) => (
+                <select
+                  key={f.key}
+                  value={filters[f.key]}
+                  onChange={(e) => setFilters((p) => ({ ...p, [f.key]: e.target.value }))}
+                  className="h-8 text-xs rounded-lg border border-slate-200 bg-white px-2 pr-6 text-slate-700 hover:border-slate-300 focus:outline-none focus:border-[#DC2626]"
+                  data-testid={`admin-competitions-filter-${f.key}`}
+                >
+                  <option value="">{f.label} · all</option>
+                  {f.options.map((v) => (<option key={v} value={v}>{v}</option>))}
+                </select>
+              ))}
+              {sortBy && (
+                <button
+                  type="button"
+                  className="h-8 text-xs rounded-lg bg-slate-100 border border-slate-200 px-2 text-slate-700 hover:bg-slate-200"
+                  onClick={() => { setSortBy(''); setSortDir('asc'); }}
+                  data-testid="admin-competitions-sort-clear"
+                >
+                  Sort: {sortBy} {sortDir === 'asc' ? '↑' : '↓'} · clear
+                </button>
+              )}
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  className="h-8 text-xs rounded-lg bg-red-50 border border-red-200 px-2 text-red-700 hover:bg-red-100"
+                  onClick={() => setFilters({ zone: '', city: '', source: '', competition: '', coordinator: '', status: '' })}
+                  data-testid="admin-competitions-filter-clear"
+                >
+                  <X className="w-3 h-3 inline mr-0.5" /> Clear {activeFilterCount}
+                </button>
+              )}
+              <span className="ml-auto text-[11px] text-slate-500">{filtered.length} result{filtered.length === 1 ? '' : 's'}</span>
+            </div>
+          )}
+
+          {/* ── Students bulk-action bar (zone · coordinator · team) ── */}
+          {tab === 'student' && studentSelected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-amber-200 bg-amber-50" data-testid="admin-competitions-student-bulkbar">
+              <CheckSquare className="w-4 h-4 text-amber-700" />
+              <span className="text-sm font-bold text-amber-900">{studentSelected.size} student{studentSelected.size === 1 ? '' : 's'} selected</span>
+              <div className="flex-1" />
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('zone'); setBulkValue(''); }} data-testid="admin-competitions-bulk-zone-btn">
+                <MapPin className="w-3.5 h-3.5 mr-1" /> Assign Zone
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('coordinator'); setBulkValue(''); setBulkCoordQuery(''); }} data-testid="admin-competitions-bulk-coord-btn">
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Assign Coordinator
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('team'); setBulkValue(''); }} data-testid="admin-competitions-bulk-team-btn">
+                <Layers className="w-3.5 h-3.5 mr-1" /> Add to Team
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setStudentSelected(new Set())} data-testid="admin-competitions-bulk-clear">
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {/* ── Educators / Mentors bulk-action bar ── */}
+          {tab === 'educator' && educatorSelected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-red-200 bg-red-50" data-testid="admin-competitions-educator-bulkbar">
+              <CheckSquare className="w-4 h-4 text-red-700" />
+              <span className="text-sm font-bold text-red-900">{educatorSelected.size} educator{educatorSelected.size === 1 ? '' : 's'} selected</span>
+              <div className="flex-1" />
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('zone'); setBulkValue(''); }} data-testid="admin-competitions-edu-bulk-zone-btn">
+                <MapPin className="w-3.5 h-3.5 mr-1" /> Assign Zone
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('coordinator'); setBulkValue(''); setBulkCoordQuery(''); }} data-testid="admin-competitions-edu-bulk-coord-btn">
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Assign Coordinator
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEducatorSelected(new Set())}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {/* ── Schools (combined) bulk-action bar — reuses combinedSelected ── */}
+          {tab === 'combined' && combinedSelected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-blue-200 bg-blue-50" data-testid="admin-competitions-school-bulkbar">
+              <CheckSquare className="w-4 h-4 text-blue-700" />
+              <span className="text-sm font-bold text-blue-900">{combinedSelected.size} school{combinedSelected.size === 1 ? '' : 's'} selected</span>
+              <div className="flex-1" />
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('zone'); setBulkValue(''); }} data-testid="admin-competitions-school-bulk-zone-btn">
+                <MapPin className="w-3.5 h-3.5 mr-1" /> Assign Zone
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setBulkDialog('coordinator'); setBulkValue(''); setBulkCoordQuery(''); }} data-testid="admin-competitions-school-bulk-coord-btn">
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Assign Coordinator
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setCombinedSelected(new Set())}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+
           {tab === 'referrers' && (
             <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
               <div className="text-sm text-slate-600">
@@ -670,88 +1022,122 @@ export default function AdminCompetitions() {
                   )}
                 </div>
               ) : tab === 'student' ? (
-                <table className="w-full text-sm min-w-[2400px]" data-testid="admin-competitions-table-student">
+                <table className="w-full text-sm min-w-[2600px]" data-testid="admin-competitions-table-student">
                   <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
                     <tr>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap sticky left-0 bg-slate-50 z-10">
+                        <button type="button" onClick={toggleStudentAll} className="hover:text-[#DC2626]" data-testid="admin-competitions-student-select-all">
+                          {filtered.length > 0 && filtered.every((r) => r._id && studentSelected.has(r._id)) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                        </button>
+                      </th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Sr.</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Registration Date</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Techfest ID</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Compi Reg ID</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Competition</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Name</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort('name')} data-testid="admin-competitions-sort-name">
+                        Name {sortBy === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      </th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Email</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Phone No</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Gender</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">College / School</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Pincode</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">City</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">State</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Country</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Address</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Zonal City</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Zonal College</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team ID</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Name</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Phone</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer" onClick={() => toggleSort('city')}>
+                        City {sortBy === 'city' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      </th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">School / Institute</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Assigned School</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer" onClick={() => toggleSort('zone')}>
+                        Zone {sortBy === 'zone' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      </th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Status</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Coordinator</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Competition</th>
                       <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Role</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Leader Name</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Leader Email</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Leader Phone</th>
-                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Team Joined Date</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Techfest ID</th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap cursor-pointer" onClick={() => toggleSort('registration_date')}>
+                        Registered {sortBy === 'registration_date' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      </th>
+                      <th className="text-left px-3 py-3 font-bold whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((r, i) => (
-                      <tr key={r._id || `${r.email}-${r.team_id}-${i}`} className="border-b border-slate-100 hover:bg-slate-50/70 align-top" data-testid={`admin-competitions-row-student-${r._id || i}`}>
-                        <td className="px-3 py-3 text-slate-500 tabular-nums whitespace-nowrap">{i + 1}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.registration_date || fmtDateTime(r.created_at || r.imported_at)}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.techfest_id || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.compi_reg_id || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 text-[12px]">
-                          <div>{r.competition_name || '—'}</div>
-                          {r.competition_code && <div className="text-slate-500 text-[11px]">{r.competition_code}</div>}
-                        </td>
-                        <td className="px-3 py-3 font-semibold text-slate-900 whitespace-nowrap">{r.name || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
-                          {r.email ? <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1 text-[13px] hover:text-[#DC2626]"><Mail className="w-3 h-3" />{r.email}</a> : '—'}
-                        </td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
-                          {r.phone ? <span className="inline-flex items-center gap-1 text-[12px]"><Phone className="w-3 h-3" />{r.phone}</span> : '—'}
-                        </td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.gender || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700">{r.school || r.school_name || r.school_or_institute || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.pincode || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.city || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.state || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.country || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 max-w-[260px] text-[12px]">{r.address || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.zonal_city || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.zonal_college || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.team_id || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_name || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
-                          {r.team_role ? (
-                            <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${/lead/i.test(r.team_role) ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>{r.team_role}</span>
-                          ) : '—'}
-                        </td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_leader_name || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
-                          {r.team_leader_email ? <a href={`mailto:${r.team_leader_email}`} className="text-[12px] hover:text-[#DC2626]">{r.team_leader_email}</a> : '—'}
-                        </td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_leader_phone || '—'}</td>
-                        <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.team_joined_date || '—'}</td>
-                      </tr>
-                    ))}
+                    {(() => { let sr = 0; return studentGroups.map((grp) => (
+                      <React.Fragment key={grp.team_id}>
+                        {/* Team header row — spans all columns, shows team name + member count */}
+                        <tr className="bg-gradient-to-r from-amber-50 via-amber-50 to-transparent border-b border-amber-200" data-testid={`admin-competitions-team-row-${grp.team_id}`}>
+                          <td colSpan={16} className="px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-4 h-4 text-amber-700" />
+                              <span className="text-sm font-bold text-amber-900">{grp.team_name || '(unnamed team)'}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-white border border-amber-200 rounded-full px-2 py-0.5">
+                                {grp.team_id === '__noteam__' ? 'solo' : grp.team_id}
+                              </span>
+                              <span className="text-xs text-amber-700">· {grp.members.length} member{grp.members.length === 1 ? '' : 's'}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {grp.members.map((r) => { sr += 1; return (
+                          <tr key={r._id || `${r.email}-${sr}`} className={`border-b border-slate-100 hover:bg-slate-50/70 align-top ${r._id && studentSelected.has(r._id) ? 'bg-amber-50/60' : ''}`} data-testid={`admin-competitions-row-student-${r._id || sr}`}>
+                            <td className="px-3 py-3 sticky left-0 bg-white z-10">
+                              {r._id && (
+                                <button type="button" onClick={() => toggleStudent(r._id)} className="hover:text-[#DC2626]" data-testid={`admin-competitions-student-toggle-${r._id}`}>
+                                  {studentSelected.has(r._id) ? <CheckSquare className="w-4 h-4 text-amber-700" /> : <Square className="w-4 h-4 text-slate-400" />}
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-slate-500 tabular-nums whitespace-nowrap">{sr}</td>
+                            <td className="px-3 py-3 font-semibold text-slate-900 whitespace-nowrap">{r.name || '—'}</td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
+                              {r.email ? <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1 text-[13px] hover:text-[#DC2626]"><Mail className="w-3 h-3" />{r.email}</a> : '—'}
+                            </td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap">
+                              {r.phone ? <span className="inline-flex items-center gap-1 text-[12px]"><Phone className="w-3 h-3" />{r.phone}</span> : '—'}
+                            </td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.city || '—'}</td>
+                            <td className="px-3 py-3 text-slate-700 max-w-[260px] truncate" title={r.school || ''}>{r.school || '—'}</td>
+                            <td className="px-3 py-3 text-slate-700 max-w-[220px] truncate" title={r.assigned_school_name || ''}>
+                              {r.assigned_school_name
+                                ? <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5"><CheckSquare className="w-3 h-3" />{r.assigned_school_name}</span>
+                                : <span className="text-slate-400 text-[11px] italic">not assigned</span>}
+                            </td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.zone ? <span className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">{r.zone}</span> : '—'}</td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.status || <span className="text-slate-400">—</span>}</td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{r.coordinator_name || <span className="text-slate-400">—</span>}</td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap text-[12px]">{r.competition_code || r.competition_name || '—'}</td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {r.team_role ? (
+                                <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${/lead/i.test(r.team_role) ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>{r.team_role}</span>
+                              ) : '—'}
+                            </td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap font-mono text-[12px]">{r.techfest_id || '—'}</td>
+                            <td className="px-3 py-3 text-slate-700 whitespace-nowrap text-[12px]">{r.registration_date || fmtDateTime(r.created_at || r.imported_at)}</td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => openEditStudent(r)}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#DC2626] hover:text-[#B91C1C]"
+                                data-testid={`admin-competitions-student-edit-${r._id}`}
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ); })}
+                      </React.Fragment>
+                    )); })()}
                   </tbody>
                 </table>
               ) : (
                 <table className="w-full text-sm" data-testid={`admin-competitions-table-${tab}`}>
                   <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
                     <tr>
+                      {tab === 'educator' && (
+                        <th className="text-left px-3 py-3 font-bold w-8">
+                          <button type="button" onClick={toggleEducatorAll} className="hover:text-[#DC2626]" data-testid="admin-competitions-educator-select-all">
+                            {filtered.length > 0 && filtered.every((r) => r._id && educatorSelected.has(r._id)) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        </th>
+                      )}
                       <th className="text-left px-3 py-3 font-bold">Sr.</th>
-                      <th className="text-left px-3 py-3 font-bold">Registered</th>
-                      <th className="text-left px-3 py-3 font-bold">Name</th>
+                      <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('created_at')}>Registered {sortBy === 'created_at' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
+                      <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('name')}>Name {sortBy === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
                       <th className="text-left px-3 py-3 font-bold">Contact</th>
-                      <th className="text-left px-3 py-3 font-bold">City</th>
+                      <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('city')}>City {sortBy === 'city' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
                       {tab === 'school' ? (
                         <>
                           <th className="text-left px-3 py-3 font-bold">School</th>
@@ -776,7 +1162,7 @@ export default function AdminCompetitions() {
                       {(tab === 'school' || tab === 'educator') && (
                         <>
                           <th className="text-left px-3 py-3 font-bold">Competition</th>
-                          <th className="text-left px-3 py-3 font-bold">Zone</th>
+                          <th className="text-left px-3 py-3 font-bold cursor-pointer" onClick={() => toggleSort('zone')}>Zone {sortBy === 'zone' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>
                           <th className="text-left px-3 py-3 font-bold">Coordinator</th>
                         </>
                       )}
@@ -786,7 +1172,16 @@ export default function AdminCompetitions() {
                   </thead>
                   <tbody>
                     {filtered.map((r, i) => (
-                      <tr key={r._id} className="border-b border-slate-100 hover:bg-slate-50/70 align-top" data-testid={`admin-competitions-row-${r._id}`}>
+                      <tr key={r._id} className={`border-b border-slate-100 hover:bg-slate-50/70 align-top ${tab === 'educator' && r._id && educatorSelected.has(r._id) ? 'bg-red-50/60' : ''}`} data-testid={`admin-competitions-row-${r._id}`}>
+                        {tab === 'educator' && (
+                          <td className="px-3 py-3">
+                            {r._id && (
+                              <button type="button" onClick={() => toggleEducator(r._id)} className="hover:text-[#DC2626]" data-testid={`admin-competitions-educator-toggle-${r._id}`}>
+                                {educatorSelected.has(r._id) ? <CheckSquare className="w-4 h-4 text-red-700" /> : <Square className="w-4 h-4 text-slate-400" />}
+                              </button>
+                            )}
+                          </td>
+                        )}
                         <td className="px-3 py-3 text-slate-500 tabular-nums">{i + 1}</td>
                         <td className="px-3 py-3 whitespace-nowrap text-slate-700">{fmtDateTime(r.created_at)}</td>
                         <td className="px-3 py-3 font-semibold text-slate-900">{r.name || '—'}</td>
@@ -1295,6 +1690,266 @@ export default function AdminCompetitions() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Student bulk-action dialog (Zone / Coordinator / Team) ── */}
+      <Dialog open={!!bulkDialog} onOpenChange={() => !bulkSaving && setBulkDialog(null)}>
+        <DialogContent data-testid="admin-competitions-bulk-dialog" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {bulkDialog === 'zone' && 'Assign Zone to Students'}
+              {bulkDialog === 'coordinator' && 'Assign Coordinator'}
+              {bulkDialog === 'team' && 'Add to Existing Team'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-slate-600">
+              Applying to <strong>{studentSelected.size}</strong> selected student{studentSelected.size === 1 ? '' : 's'}.
+            </div>
+
+            {bulkDialog === 'zone' && (
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Zone</label>
+                <select
+                  value={bulkValue}
+                  onChange={(e) => setBulkValue(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
+                  data-testid="admin-competitions-bulk-zone-select"
+                >
+                  <option value="">Select a zone…</option>
+                  {ZONE_OPTIONS.map((z) => <option key={z.slug} value={z.slug}>{z.label}</option>)}
+                </select>
+              </div>
+            )}
+
+            {bulkDialog === 'coordinator' && (
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Search team member</label>
+                <Input
+                  value={bulkCoordQuery}
+                  onChange={(e) => setBulkCoordQuery(e.target.value)}
+                  placeholder="Name or email"
+                  className="mt-1"
+                  data-testid="admin-competitions-bulk-coord-search"
+                />
+                <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-lg mt-2 divide-y divide-slate-100">
+                  {teamUsers
+                    .filter((u) => {
+                      const n = bulkCoordQuery.toLowerCase().trim();
+                      if (!n) return true;
+                      return (u.name || '').toLowerCase().includes(n) || (u.email || '').toLowerCase().includes(n);
+                    })
+                    .slice(0, 25)
+                    .map((u) => (
+                      <button
+                        key={u.id || u.email}
+                        type="button"
+                        onClick={() => setBulkValue(JSON.stringify({ coordinator_user_id: u.id, coordinator_name: u.name }))}
+                        className={`w-full text-left px-3 py-2 hover:bg-slate-50 ${bulkValue && JSON.parse(bulkValue).coordinator_user_id === u.id ? 'bg-emerald-50' : ''}`}
+                        data-testid={`admin-competitions-bulk-coord-opt-${u.id}`}
+                      >
+                        <div className="text-sm font-semibold text-slate-900">{u.name}</div>
+                        <div className="text-[11px] text-slate-500">{u.email}</div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {bulkDialog === 'team' && (
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Pick an existing team</label>
+                <select
+                  value={bulkValue}
+                  onChange={(e) => setBulkValue(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
+                  data-testid="admin-competitions-bulk-team-select"
+                >
+                  <option value="">Select a team…</option>
+                  {teamsList.map((t) => (
+                    <option key={t.team_id} value={JSON.stringify({ team_id: t.team_id, team_name: t.team_name, team_leader_name: t.team_leader_name, team_leader_email: t.team_leader_email, team_leader_phone: t.team_leader_phone })}>
+                      {t.team_name} · {t.team_id} · {t.member_count} member{t.member_count === 1 ? '' : 's'}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-[11px] text-slate-500 mt-1.5">The selected students will be moved to this team (team_id, team_name and team_leader fields updated).</div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button variant="outline" onClick={() => setBulkDialog(null)} disabled={bulkSaving}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (!bulkValue) return;
+                  let patch = {};
+                  if (bulkDialog === 'zone') patch = { zone: bulkValue };
+                  else if (bulkDialog === 'coordinator') patch = JSON.parse(bulkValue);
+                  else if (bulkDialog === 'team') patch = JSON.parse(bulkValue);
+                  // Route the bulk call based on the active tab.
+                  if (tab === 'student') applyStudentBulkPatch(patch);
+                  else if (tab === 'educator') applyEducatorBulkPatch(patch);
+                  else if (tab === 'combined') applySchoolBulkPatch(patch);
+                }}
+                disabled={bulkSaving || !bulkValue}
+                className="bg-[#DC2626] hover:bg-[#B91C1C]"
+                data-testid="admin-competitions-bulk-apply"
+              >
+                {bulkSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null} Apply to {tab === 'student' ? studentSelected.size : tab === 'educator' ? educatorSelected.size : combinedSelected.size}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit single student dialog (with school picker) ── */}
+      <Dialog open={!!editStudent} onOpenChange={() => !savingStudent && setEditStudent(null)}>
+        <DialogContent data-testid="admin-competitions-edit-student-dialog" className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Student — {editStudent?.name}</DialogTitle>
+          </DialogHeader>
+          {editStudent && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Name</label>
+                  <Input value={editStudentForm.name || ''} onChange={(e) => setEditStudentForm((p) => ({ ...p, name: e.target.value }))} className="mt-1" data-testid="admin-competitions-edit-student-name" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">City</label>
+                  <Input value={editStudentForm.city || ''} onChange={(e) => setEditStudentForm((p) => ({ ...p, city: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Email</label>
+                  <Input value={editStudentForm.email || ''} onChange={(e) => setEditStudentForm((p) => ({ ...p, email: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Phone</label>
+                  <Input value={editStudentForm.phone || ''} onChange={(e) => setEditStudentForm((p) => ({ ...p, phone: e.target.value }))} className="mt-1" />
+                </div>
+              </div>
+
+              {/* School picker — searchable autocomplete over combined-schools */}
+              <div className="pt-2 border-t border-slate-100">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Assign School (from combined data)</label>
+                <Input
+                  value={schoolSearch}
+                  onChange={(e) => {
+                    setSchoolSearch(e.target.value);
+                    setEditStudentForm((p) => ({ ...p, assigned_school_name: e.target.value, assigned_school_id: '' }));
+                  }}
+                  placeholder="Type to search schools…"
+                  className="mt-1"
+                  data-testid="admin-competitions-edit-student-school-search"
+                />
+                <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg mt-1.5 divide-y divide-slate-100 bg-white">
+                  {(() => {
+                    const needle = (schoolSearch || '').toLowerCase().trim();
+                    const matches = combined.filter((s) => (s.name || '').toLowerCase().includes(needle));
+                    if (matches.length === 0 && needle) {
+                      return (
+                        <div className="px-3 py-2 text-[12px] text-amber-700 bg-amber-50">
+                          <Square className="w-3 h-3 inline mr-1" />
+                          No existing school matches "<strong>{schoolSearch}</strong>" — will save as a new / free-text school entry.
+                        </div>
+                      );
+                    }
+                    return matches.slice(0, 12).map((s) => {
+                      const picked = (editStudentForm.assigned_school_name || '').toLowerCase() === (s.name || '').toLowerCase();
+                      return (
+                        <button
+                          key={s.key || s.name}
+                          type="button"
+                          onClick={() => setEditStudentForm((p) => ({ ...p, assigned_school_id: s.school_reg_id || s.key || '', assigned_school_name: s.name || '' }))}
+                          className={`w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 ${picked ? 'bg-emerald-50' : ''}`}
+                          data-testid={`admin-competitions-edit-student-school-opt-${s.key || s.name}`}
+                        >
+                          {picked ? <CheckSquare className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" /> : <Square className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-slate-900 truncate">{s.name}</div>
+                            <div className="text-[11px] text-slate-500 truncate">{s.city || '—'}{s.zone ? ` · ${s.zone}` : ''}</div>
+                          </div>
+                          {picked && <span className="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-full px-1.5 py-0.5">matched</span>}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Zone</label>
+                  <select
+                    value={editStudentForm.zone || ''}
+                    onChange={(e) => setEditStudentForm((p) => ({ ...p, zone: e.target.value }))}
+                    className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
+                    data-testid="admin-competitions-edit-student-zone"
+                  >
+                    <option value="">—</option>
+                    {ZONE_OPTIONS.map((z) => <option key={z.slug} value={z.slug}>{z.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</label>
+                  <select
+                    value={editStudentForm.status || ''}
+                    onChange={(e) => setEditStudentForm((p) => ({ ...p, status: e.target.value }))}
+                    className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
+                  >
+                    <option value="">—</option>
+                    <option value="active">active</option>
+                    <option value="confirmed">confirmed</option>
+                    <option value="pending">pending</option>
+                    <option value="disqualified">disqualified</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Team Role</label>
+                  <select
+                    value={editStudentForm.team_role || ''}
+                    onChange={(e) => setEditStudentForm((p) => ({ ...p, team_role: e.target.value }))}
+                    className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
+                  >
+                    <option value="">—</option>
+                    <option value="Lead">Lead</option>
+                    <option value="Member">Member</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Move to existing team (optional)</label>
+                <select
+                  value={editStudentForm.team_id || ''}
+                  onChange={(e) => {
+                    const tid = e.target.value;
+                    const t = teamsList.find((x) => x.team_id === tid);
+                    if (!tid) { setEditStudentForm((p) => ({ ...p, team_id: '', team_name: '' })); return; }
+                    setEditStudentForm((p) => ({
+                      ...p,
+                      team_id: tid,
+                      team_name: t?.team_name || p.team_name,
+                    }));
+                  }}
+                  className="w-full h-10 rounded-lg border border-slate-200 px-3 bg-white mt-1"
+                  data-testid="admin-competitions-edit-student-team"
+                >
+                  <option value="">— Keep current ({editStudent?.team_name || 'no team'}) —</option>
+                  {teamsList.map((t) => (
+                    <option key={t.team_id} value={t.team_id}>{t.team_name} · {t.team_id} · {t.member_count} members</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button variant="outline" onClick={() => setEditStudent(null)} disabled={savingStudent}>Cancel</Button>
+                <Button onClick={saveEditStudent} disabled={savingStudent} className="bg-[#DC2626] hover:bg-[#B91C1C]" data-testid="admin-competitions-edit-student-save">
+                  {savingStudent ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null} Save
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </AdminLayout>

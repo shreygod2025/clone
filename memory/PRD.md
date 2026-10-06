@@ -14,6 +14,45 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — Techfest copy · Competitions filters/sorting/bulk · Students team-grouping · School-assign + Export fix
+- **Public Techfest Register copy**: "Register as an Individual" → "Register
+  as a Student" (`TechfestRegisterPage.jsx` + the meta description + the
+  Techfest FAQ answer on `/techfest`).
+- **AdminCompetitions filters + sorting** on all 3 registration tabs
+  (Students, Educators, Schools): adaptive dropdowns for Zone · City · Source
+  · Competition · Coordinator · Status (options derived from loaded rows,
+  blank filters hidden). Click any sortable column header to toggle asc / desc.
+  Reset on tab change.
+- **Students export FIXED**: `handleExport` now routes to the new
+  `/admin/techfest/students/export` endpoint when tab=student (previously
+  pointed at `/registrations/export` which only reads `techfest_registrations`
+  — the Students CSV was always empty).
+- **Students team-grouping**: students with the same `team_id` render as
+  contiguous rows under an amber "Team · XYZ · N members" header; students
+  with no team land in a trailing "No team" bucket.
+- **Students multi-select + bulk actions**: Assign Zone · Assign Coordinator
+  · Add to Existing Team. Backed by new
+  `POST /admin/techfest/students/bulk-update`.
+- **Educators + Schools multi-select + bulk actions**: same Assign Zone +
+  Assign Coordinator buttons on both tabs. Backed by new
+  `POST /admin/techfest/registrations/bulk-update` (admin-scoped; team users
+  only patch their own referred records).
+- **Edit-single-student dialog**: new per-row edit modal with Name / Email /
+  Phone / City editable AND an "Assign School (from combined data)" searchable
+  autocomplete over the combined-schools view — matching options get a
+  green ✓ "matched" chip, free-text (no match) saves as a new school name.
+  Zone · Status · Team Role · Move-to-team pickers included.
+- **New backend endpoints** on `routes/techfest.py`:
+  - `GET  /admin/techfest/students/export`
+  - `PATCH /admin/techfest/students/{id}`
+  - `POST /admin/techfest/students/bulk-update`
+  - `GET  /admin/techfest/students/teams`
+  - `POST /admin/techfest/registrations/bulk-update`
+- Verified end-to-end via curl: export returns full header + rows, bulk-patch
+  writes zone to Mongo, teams-aggregation returns 3 teams. UI smoke-tested in
+  Playwright — team headers render with correct TM-xxx badges + member counts.
+
+
 ## 2026-10-06 — FAQ limit 10 · Week-nav timezone fix · Support metrics rework
 - **FAQ daily limit**: Raised public FAQ chatbot daily cap from 3 → 10
   questions per visitor. Updated `faq_chat.py` DAILY_LIMIT constant and

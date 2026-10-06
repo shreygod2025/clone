@@ -1479,3 +1479,229 @@ async def list_techfest_student_registrations(
         doc["_id"] = str(doc["_id"])
         out.append(doc)
     return {"items": out, "count": len(out)}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Student-specific admin endpoints (CSV-imported students collection)
+# ─────────────────────────────────────────────────────────────────────
+
+STUDENT_EXPORT_COLS = [
+    "sr_no", "name", "email", "phone", "gender", "school",
+    "city", "state", "pincode", "country", "address",
+    "zonal_city", "zonal_college",
+    "team_id", "team_name", "team_role",
+    "team_leader_name", "team_leader_email", "team_leader_phone",
+    "competition_code", "competition_name", "techfest_id", "compi_reg_id",
+    "registration_date", "team_joined_date",
+    "zone", "coordinator_name", "coordinator_user_id", "status",
+    "assigned_school_id", "assigned_school_name",
+    "source", "source_details",
+]
+
+
+class StudentPatch(BaseModel):
+    """All fields optional — admin patches any subset. `assigned_school_name`
+    is free-text so unmatched schools can still be captured."""
+    class Config:
+        extra = "ignore"
+
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    gender: Optional[str] = None
+    school: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
+    team_id: Optional[str] = None
+    team_name: Optional[str] = None
+    team_role: Optional[str] = None
+    zone: Optional[str] = None
+    coordinator_user_id: Optional[str] = None
+    coordinator_name: Optional[str] = None
+    status: Optional[str] = None
+    assigned_school_id: Optional[str] = None
+    assigned_school_name: Optional[str] = None
+    source: Optional[str] = None
+    source_details: Optional[str] = None
+
+
+class StudentBulkPatch(BaseModel):
+    ids: List[str]
+    patch: StudentPatch
+
+
+class RegistrationBulkPatch(BaseModel):
+    """Bulk patch for techfest_registrations (educator + school tabs).
+    Each id is a Mongo _id string. Only zone / coordinator / status are
+    writable via bulk-apply — all other fields require the per-row PATCH."""
+    reg_ids: List[str]
+    zone: Optional[str] = None
+    coordinator_user_id: Optional[str] = None
+    coordinator_name: Optional[str] = None
+    status: Optional[str] = None
+
+
+@router.get("/admin/techfest/students/export")
+async def export_techfest_students_csv(user: dict = Depends(_admin_or_team)):
+    """CSV export of techfest_student_registrations (the Students tab).
+    The combined export endpoint only reads techfest_registrations so student
+    rows were empty — this is the dedicated student export."""
+    cursor = db.techfest_student_registrations.find({}).sort("registration_date", 1)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(STUDENT_EXPORT_COLS)
+    sr = 1
+    async for doc in cursor:
+        row = []
+        for col in STUDENT_EXPORT_COLS:
+            if col == "sr_no":
+                row.append(sr)
+            else:
+                row.append(doc.get(col, "") or "")
+        writer.writerow(row)
+        sr += 1
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    filename = f"techfest-students-{stamp}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.patch("/admin/techfest/students/{student_id}")
+async def update_techfest_student(
+    student_id: str,
+    payload: StudentPatch,
+    user: dict = Depends(_admin_or_team),
+):
+    """Admin edit a single student row. student_id is the Mongo _id string."""
+    from bson import ObjectId
+    try:
+        oid = ObjectId(student_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid student id")
+    existing = await db.techfest_student_registrations.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Student not found")
+    updates = {}
+    for k, v in payload.model_dump(exclude_none=True).items():
+        if isinstance(v, str):
+            v = v.strip()
+        updates[k] = v if v != "" else None
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.techfest_student_registrations.update_one({"_id": oid}, {"$set": updates})
+    return {"ok": True}
+
+
+@router.post("/admin/techfest/students/bulk-update")
+async def bulk_update_techfest_students(
+    payload: StudentBulkPatch,
+    user: dict = Depends(_admin_or_team),
+):
+    """Apply the same patch (e.g. assign zone, coordinator, team) to many
+    students at once. Returns modified_count."""
+    from bson import ObjectId
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="No student ids provided")
+    oids = []
+    for sid in payload.ids:
+        try:
+            oids.append(ObjectId(sid))
+        except Exception:
+            continue
+    if not oids:
+        raise HTTPException(status_code=400, detail="No valid student ids")
+    updates = {}
+    for k, v in payload.patch.model_dump(exclude_none=True).items():
+        if isinstance(v, str):
+            v = v.strip()
+        updates[k] = v if v != "" else None
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.techfest_student_registrations.update_many(
+        {"_id": {"$in": oids}}, {"$set": updates}
+    )
+    return {"ok": True, "modified_count": res.modified_count, "ids_count": len(oids)}
+
+
+@router.get("/admin/techfest/students/teams")
+async def list_techfest_student_teams(user: dict = Depends(_admin_or_team)):
+    """Distinct team_id → team_name + member count. Used by the
+    "Add student to existing team" picker in the admin UI."""
+    pipeline = [
+        {"$match": {"team_id": {"$exists": True, "$nin": ["", None]}}},
+        {"$group": {
+            "_id": "$team_id",
+            "team_name": {"$first": "$team_name"},
+            "member_count": {"$sum": 1},
+            "team_leader_name": {"$first": "$team_leader_name"},
+            "team_leader_email": {"$first": "$team_leader_email"},
+            "team_leader_phone": {"$first": "$team_leader_phone"},
+            "school": {"$first": "$school"},
+            "competition_code": {"$first": "$competition_code"},
+        }},
+        {"$sort": {"team_name": 1}},
+    ]
+    items = []
+    async for doc in db.techfest_student_registrations.aggregate(pipeline):
+        items.append({
+            "team_id": doc.get("_id"),
+            "team_name": doc.get("team_name") or "",
+            "member_count": doc.get("member_count", 0),
+            "team_leader_name": doc.get("team_leader_name") or "",
+            "team_leader_email": doc.get("team_leader_email") or "",
+            "team_leader_phone": doc.get("team_leader_phone") or "",
+            "school": doc.get("school") or "",
+            "competition_code": doc.get("competition_code") or "",
+        })
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/admin/techfest/registrations/bulk-update")
+async def bulk_update_techfest_registrations(
+    payload: RegistrationBulkPatch,
+    user: dict = Depends(_admin_or_team),
+):
+    """Bulk patch zone / coordinator / status on techfest_registrations by
+    _id list. Used by the Schools + Educators tab bulk actions."""
+    from bson import ObjectId
+    if not payload.reg_ids:
+        raise HTTPException(status_code=400, detail="No registration ids provided")
+    oids = []
+    for rid in payload.reg_ids:
+        try:
+            oids.append(ObjectId(rid))
+        except Exception:
+            continue
+    if not oids:
+        raise HTTPException(status_code=400, detail="No valid registration ids")
+    updates = {}
+    for k in ("zone", "coordinator_user_id", "coordinator_name", "status"):
+        v = getattr(payload, k, None)
+        if v is None:
+            continue
+        if isinstance(v, str):
+            v = v.strip()
+        updates[k] = v if v != "" else None
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    # Non-admins can only touch records they're scoped to (same logic as the
+    # single-row PATCH endpoint). For admins, this is a straight update_many.
+    query = {"_id": {"$in": oids}}
+    if not _is_admin(user):
+        slugs = await _user_scope_slugs(user)
+        uid = user.get("id") or user.get("user_id")
+        query["$or"] = [
+            {"referrer_slug": {"$in": list(slugs)}},
+            {"coordinator_user_id": uid},
+        ]
+    res = await db.techfest_registrations.update_many(query, {"$set": updates})
+    return {"ok": True, "modified_count": res.modified_count, "ids_count": len(oids)}

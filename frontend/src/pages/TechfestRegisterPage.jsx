@@ -52,7 +52,7 @@ export default function TechfestRegisterPage() {
 
   useEffect(() => {
     document.title = 'Register · OLL Robotics Championship · Techfest IIT Bombay 2026';
-    upsertMeta('description', 'Register for the OLL Robotics Championship at Techfest IIT Bombay 2026. Individual, Educator/Mentor and School flows available.');
+    upsertMeta('description', 'Register for the OLL Robotics Championship at Techfest IIT Bombay 2026. Student, Educator/Mentor and School flows available.');
     upsertMeta('robots', 'noindex, nofollow');
   }, []);
 
@@ -437,7 +437,7 @@ export default function TechfestRegisterPage() {
                       <User className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="trp-h1 text-xl text-[#0A1F44]">Register as an Individual</div>
+                      <div className="trp-h1 text-xl text-[#0A1F44]">Register as a Student</div>
                       <div className="text-sm text-slate-600 mt-1 font-light">Redirects to techfest.org where you can enter your team and pick your track directly.</div>
                     </div>
                     <ArrowRight className="w-5 h-5 text-slate-400 mt-3 group-hover:text-[#DC2626] group-hover:translate-x-1 transition" />

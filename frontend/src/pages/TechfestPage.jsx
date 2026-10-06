@@ -209,7 +209,7 @@ const ROUND_PATHS = [
 
 const FAQS = [
   { q: 'Who can participate?', a: 'RoboSumo and RoboRacer are open to all school students in teams of 3–5. The Robotics Innovation Challenge has Junior (Grades 4–7) and Senior (Grades 8–12) categories.' },
-  { q: 'How do I register?', a: 'Click any "Register Now" button on this page and pick one of three flows — Individual (redirects to techfest.org/competitions/oll), Educator/Mentor (we\u2019ll get in touch to help you enter your students), or School (we\u2019ll onboard your school for group participation).' },
+  { q: 'How do I register?', a: 'Click any "Register Now" button on this page and pick one of three flows — Student (redirects to techfest.org/competitions/oll), Educator/Mentor (we\u2019ll get in touch to help you enter your students), or School (we\u2019ll onboard your school for group participation).' },
   { q: 'Is there a registration fee?', a: 'No. The OLL Robotics Championship is completely FREE across all rounds — Online submission, Regional Qualifier and the Grand Finale at IIT Bombay. Only the official OLL kits (for RoboSumo & RoboRacer) are sold separately and are strongly recommended for those tracks.' },
   { q: 'Can I participate in more than one competition/track?', a: 'No. A student can pick only one competition from RoboSumo, RoboRacer or the Robotics Innovation Challenge. Choose the track that best matches your interest and register for that one only.' },
   { q: 'Do I need to buy the OLL kit?', a: 'The OLL Robo Sumo and Robo Racer kits are officially designed for the competition. They give you the exact metal body, motors, wheels, controller and arena/track needed to compete. Innovation Challenge teams may build with any hardware.' },
