@@ -42,14 +42,15 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
     - Read EVERY visible detail: names, phone numbers, emails, school/organisation names, cities, boards (ICSE/CBSE/state), designations, dates, amounts, follow-up asks, demo preferences, grade bands, student counts.
     - **STEP 1 — CLASSIFY the image into exactly ONE primary intent (never multiple):**
        • `lead`     — contact details for a NEW school/person we don't yet have (visiting card, business card, enquiry form, registration slip, demo-booking screenshot, inbound WhatsApp intro).  → emit ONE `create_lead` only.
-       • `ticket`   — a complaint, grievance, problem report, "not working", "can't register", "QR not scanning", "payment failed", "please help", complaints forwarded by someone, support screenshot where the sender is asking us to RESOLVE something.  → emit ONE `raise_ticket` only.
+       • `ticket`   — a complaint, grievance, problem report, "not working", "can't register", "QR not scanning", "payment failed", "please help", "need help", complaints forwarded by someone, support screenshot where the sender is asking us to RESOLVE something, or ANY user instruction containing the Indian support word **"query"** ("add query", "raise query", "log a query", "create a query", "add this as a query", "support query") — in Indian CRM parlance a "query" IS a support ticket.  → emit ONE `raise_ticket` only. Never say "query added to ticket #TECH-xxx" without emitting `raise_ticket` — the ticket ID is assigned by the backend after you emit the action, you must never invent one.
        • `task`     — a to-do, action-item, reminder, meeting invite, event invite, calendar screenshot, internal MoM, "please follow up on", "need to do".  → emit ONE `create_task` only.
        • `note`     — receipt / payment proof / UTR screenshot / invoice snippet for a KNOWN school → emit ONE `add_note` on the matching school.
        • `followup` — a "please call me back", "follow up on <date>" screenshot for a KNOWN school → emit ONE `schedule_followup` on the matching school.
     - **STEP 2 — EMIT that single action** with every field you can extract. Do NOT also emit a lead + a task + a ticket. Pick ONE.
     - **STEP 3 — EXCEPTION: multiple contacts in one image** (e.g. a photo of 3 business cards side-by-side, or a group WhatsApp list with 5 people). ONLY in that case emit multiple `create_lead` actions — one per person. Still never mix action types.
-    - **STEP 4 — WRITE A SHORT HUMAN MESSAGE** confirming what you did. ONE sentence like `"Created lead for Greenfield International School (Saravanan Shekar, +91 80970 77709)."` or `"Raised ticket #TBD for Gokul Public School — QR code registration issue."`. The UI auto-renders the action chip; do NOT paste an "ACTIONS COMPLETED" block or a numbered list.
+    - **STEP 4 — WRITE A SHORT HUMAN MESSAGE** confirming what you did. ONE sentence like `"Created lead for Greenfield International School (Saravanan Shekar, +91 80970 77709)."` or `"Raised ticket for Gokul Public School — QR code registration issue."`. The UI auto-renders the action chip; do NOT paste an "ACTIONS COMPLETED" block, a numbered list, or a "QUERY ADDED TO TICKET #TECH-xxx" block.
     - **DISAMBIGUATION** — If a WhatsApp screenshot has both contact info AND a problem description (e.g. "I'm Priya from Delhi School, my registration QR is broken"), the primary intent is `ticket` because they are asking us to RESOLVE something. If the message is purely introductory ("I'm Priya from Delhi School, we're interested in the robotics program"), the primary intent is `lead`.
+    - **USER REFINEMENT OVERRIDES YOUR CLASSIFICATION** — If a prior turn uploaded an image and this turn says "raise ticket" / "add query" / "log a query" / "create a query" / "make this a ticket", you MUST emit `raise_ticket` with details from the (replayed) image. If it says "make it a lead" / "add as lead", emit `create_lead`. If "make it a task", emit `create_task`. Treat the current turn's text as the final classifier override.
     - If the image is genuinely unreadable (blurry, no text), say so plainly and ask for a clearer upload — this is the ONLY case where asking is OK.
 
 ## FORBIDDEN MESSAGE PATTERNS (never write these in the `message` field)
@@ -1294,6 +1295,26 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
         if last_school:
             enriched_text = f'[Context: the user is referring to "{last_school}" based on conversation history]\n{user_text}'
 
+    # ── "query" → raise_ticket hint ──────────────────────────────────────
+    # In Indian CRM parlance a "query" IS a support ticket. If the admin
+    # types "add query" / "raise query" / "log a query" / "create a query"
+    # / "support query", explicitly tell the LLM to emit `raise_ticket` so
+    # it doesn't fabricate a "QUERY ADDED TO TICKET #TECH-xxx" narrative
+    # without actually executing anything.
+    _QUERY_RE = re.compile(
+        r'\b(?:add|raise|log|create|note|file|open|submit|send)\s+(?:a\s+|this\s+(?:as\s+a\s+)?)?quer(?:y|ies)\b'
+        r'|\bquery\s+(?:this|it|for\s+)',
+        re.IGNORECASE,
+    )
+    if _QUERY_RE.search(user_text or ""):
+        enriched_text = (
+            "[The user said 'query' — in Indian support parlance this means a "
+            "support TICKET. Emit a `raise_ticket` action with the full details "
+            "from the (replayed) image or message. Do NOT invent a ticket ID "
+            "like '#TECH-002' — the backend assigns the real ID after you "
+            "emit the action.]\n" + enriched_text
+        )
+
     # Build system prompt with live CRM data + tasks/projects/team snapshot
     crm_ctx = await _crm_context()
     tp_ctx  = await _tasks_projects_context()
@@ -1432,15 +1453,17 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
     # The frontend only renders chips from the array, so the admin sees
     # "completed" text but nothing is written to Mongo. We detect any of
     # these patterns and overwrite the message with a plain warning.
-    _entities = r'(?:lead|ticket|task|follow[- ]?up|meeting|note|proposal|invoice|mou|project)s?'
+    _entities = r'(?:lead|ticket|task|follow[- ]?up|meeting|note|proposal|invoice|mou|project|quer(?:y|ies))s?'
     _verbs = r'(?:created|raised|scheduled|added|updated|emitted|generated|opened|logged)'
     narrative_patterns = [
         r'actions?\s+(?:completed|taken|performed|executed)',
-        rf'{_verbs}\s+{_entities}',           # "Created Lead", "Raised Ticket"
-        rf'{_entities}\s+{_verbs}',           # "LEAD CREATED", "TICKET RAISED"
-        r'ticket\s*#\s*[a-z]+-?\d+',          # "Ticket #TECH-002", "#TECH-001"
+        rf'{_verbs}\s+{_entities}',           # "Created Lead", "Raised Ticket", "Added Query"
+        rf'{_entities}\s+{_verbs}',           # "LEAD CREATED", "TICKET RAISED", "QUERY ADDED"
+        r'query\s+added\s+to\s+ticket',       # "QUERY ADDED TO TICKET #TECH-002"
+        r'ticket\s*#\s*[a-z]+-?\d+',          # "Ticket #TECH-002", "#TECH-001" invented IDs
+        r'quer(?:y|ies)\s*#\s*[a-z0-9-]+',    # "Query #Q-123" invented IDs
         r'lead\s*id\s*[:#]',
-        r'i\s+(?:have|just|will|can|can\'?t)\s+(?:emit|emitted|create|created|raise|raised)',
+        r'i\s+(?:have|just|will|can|can\'?t)\s+(?:emit|emitted|create|created|raise|raised|add|added|log|logged)',
         r'action\s+payload',
         r'"\s*action\s*"\s*:\s*"(?:create_|raise_|schedule_|update_|generate_|add_)',  # raw JSON
     ]

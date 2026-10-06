@@ -14,6 +14,30 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-06 — AI Chat "add query" → raise_ticket + "QUERY ADDED" hallucination fix
+- Fixed the user flow: upload image → type "add query" was producing a
+  hallucinated "✅ QUERY ADDED TO TICKET #TECH-002" markdown block with ZERO
+  real action emitted (no DB write, invented ticket ID). Also "raise query",
+  "log a query", "create a query", "support query" all suffered the same bug
+  — the LLM treated "query" as "add a comment to an existing ticket" instead
+  of raising a new one.
+- Three-layer fix:
+  1. **System-prompt**: Rule #13 now explicitly maps the Indian support
+     word "query" to `raise_ticket` and documents that user text on the
+     current turn overrides the LLM's own prior classification.
+  2. **Backend pre-hint**: new `_QUERY_RE` detects "add/raise/log/create/
+     file/open/submit/send a query" patterns in the user text and
+     prepends an explicit directive telling Claude to emit `raise_ticket`
+     and NEVER invent a `#TECH-xxx` ticket ID (backend assigns the real
+     one after the action runs).
+  3. **Hallucination guard**: broadened to catch "QUERY ADDED TO TICKET",
+     "Query Added / Raised / Logged", "Query #Q-123" invented IDs, and
+     "log a query" speculative phrasings.
+- Verified end-to-end: upload WhatsApp screenshot → turn 2 "add query"
+  → image replayed → `raise_ticket` emitted → real ticket #0367 written
+  to Mongo with full extracted details (name, phone, school, issue).
+
+
 ## 2026-10-06 — AI Chat image-context + action-execution fix (round 2)
 - Fixed 3 critical bugs in `/admin/ai-chat` reported by the user:
   1. **Image context lost across turns** — When the admin uploaded an image
