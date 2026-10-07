@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
 import useSeo from '../hooks/useSeo';
 import { mdToHtml } from '../utils/richContent';
+import { getVisitorId } from '../utils/visitorId';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -172,7 +173,7 @@ const FAQPage = () => {
       const r = await axios.post(
         `${API}/faq-chat`,
         { session_id: sessionId, message },
-        { headers: { ...authHeader() }, timeout: 60000 },
+        { headers: { ...authHeader(), 'X-Visitor-Id': getVisitorId() }, timeout: 60000 },
       );
       setMessages((m) => [...m, { role: 'assistant', content: r.data?.reply || '…', feedback: null }]);
     } catch (e) {

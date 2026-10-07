@@ -1,5 +1,24 @@
 # OLL Backend Changelog
 
+## 2026-10-07 — FAQ rate-limit per visitor + Support KPI undercount + suggestion chips
+**Status: COMPLETE · backend verified by curl + unit calls; frontend compiles**
+
+### 1) FAQ 10-questions/day bucket was shared across devices
+- Root cause: `_visitor_identity` fell back to the client IP for anonymous visitors. Behind the Emergent Kubernetes ingress every visitor shares one IP, so every new device/browser hit the same `ip:x.x.x.x` bucket and inherited whatever counter was already there.
+- Fix:
+  - **Backend** (`routes/faq_chat.py`): identity priority is now **email > `X-Visitor-Id` header > `ip + session_id` composite > session_id**. IP alone is never the whole key.
+  - **Frontend**: new `utils/visitorId.js` persists an `oll_visitor_id` in `localStorage` on first visit; `FAQPage.jsx` + `RaiseQueryButton.jsx` send it as `X-Visitor-Id` on every `/api/faq-chat` call.
+- Verified via curl: three new visitor-ids each got `remaining: 9` on their first message (independent buckets).
+
+### 2) Support KPI undercounting vs Support Center
+- Root cause: `_compute_support_metrics` only counted tickets with `created_at` in the week. Backlog tickets reassigned to a support agent in the current week were visible in the Support Center list (which doesn't date-filter) but excluded from the KPI, so admins saw e.g. 5 vs 50+.
+- Fix: `assigned` now counts tickets where **`created_at` OR `updated_at`** falls in the window — any ticket the agent actively worked on. Also robustified `assigned_to` lookup to match either the team-user `id` or `email` (legacy gmail-bot tickets store the email on `assigned_to`). Resolved / overdue derive from this expanded assigned set so they stay internally consistent.
+- Verified by invoking `_compute_support_metrics` directly against local DB — total count stays correct (8 for Shreyaan over the year, matching his 8 raw assigned docs).
+
+### 3) Prompt-suggestion chips on mobile
+- Added a horizontally-scrolling row of admin-curated suggestion chips just above the composer in the Need Help popup (hidden once the visitor has sent their first message so vertical space is reclaimed on mobile). Chips reuse `/api/faq-chat/suggestions` and tap directly into `sendChatMessage(text)`.
+
+
 ## 2026-10-07 — Need Help popup (mobile) — z-index, Copy button, scroll anchor
 **Status: COMPLETE · compiles cleanly**
 

@@ -683,18 +683,38 @@ class FaqChatReply(BaseModel):
 DAILY_LIMIT = 10
 
 
-def _visitor_identity(session_id: str, authorization: Optional[str], client_host: str) -> str:
+def _visitor_identity(
+    session_id: str,
+    authorization: Optional[str],
+    client_host: str,
+    visitor_id: Optional[str] = None,
+) -> str:
     """A stable per-visitor key for daily rate limiting.
 
-    Priority: authed user email > authed user id > client IP > session_id.
-    Session_id alone is NOT safe because it rotates per sessionStorage, but
-    client IP + session_id combined catches the common case."""
+    Priority: authed user email > `X-Visitor-Id` cookie (persisted in
+    localStorage by the frontend) > `ip + session_id` composite > session_id.
+    IP alone is unreliable because all visitors coming through the Emergent
+    Kubernetes ingress share the same source address, so an IP-only bucket
+    would (and did) merge every anonymous visitor into a single 10-q/day
+    counter.
+    """
     if authorization and authorization.lower().startswith("bearer "):
         payload = _decode_token(authorization.split(None, 1)[1].strip())
         if payload:
             key = payload.get("email") or payload.get("sub") or payload.get("user_id")
             if key:
                 return f"user:{str(key).lower()}"
+    # Persistent per-browser visitor id (set once by the frontend). This is
+    # the primary bucket for anonymous visitors.
+    if visitor_id:
+        vid = str(visitor_id).strip()[:64]
+        if vid:
+            return f"vid:{vid}"
+    # Fallback: combine IP + session_id so two different browsers behind the
+    # same shared IP get separate buckets (session_id rotates per load, but
+    # it's still better than one global IP bucket).
+    if client_host and session_id:
+        return f"ip:{client_host}:sess:{session_id[:16]}"
     if client_host:
         return f"ip:{client_host}"
     return f"sess:{session_id}"
@@ -886,7 +906,8 @@ async def faq_chat(req: FaqChatRequest, request: Request):
 
     # ─── Rate limit ───────────────────────────────────────────────────────
     client_host = (request.client.host if request.client else "") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-    identity = _visitor_identity(req.session_id, request.headers.get("authorization"), client_host)
+    visitor_id = request.headers.get("x-visitor-id") or request.headers.get("X-Visitor-Id")
+    identity = _visitor_identity(req.session_id, request.headers.get("authorization"), client_host, visitor_id)
     allowed, remaining = await _check_and_increment_rate_limit(identity)
     if not allowed:
         rl_reply = (

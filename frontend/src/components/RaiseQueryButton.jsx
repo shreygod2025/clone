@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink, Send, Mail, Phone, ThumbsUp, ThumbsDown, Copy } from 'lucide-react';
 import { BubbleContent } from '../pages/FAQPage';
+import { getVisitorId } from '../utils/visitorId';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -752,6 +753,17 @@ const RaiseQueryButton = () => {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const [chatSuggestions, setChatSuggestions] = useState([]);
+  // Fetch admin-curated suggestion chips once when the component mounts;
+  // these render just above the composer so visitors can tap a question
+  // instead of typing (mirrors the /faq page UX, requested on mobile).
+  React.useEffect(() => {
+    const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
+    fetch(`${API_BASE}/faq-chat/suggestions`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setChatSuggestions((d?.suggestions || []).slice(0, 6)))
+      .catch(() => {});
+  }, []);
   const chatBottomRef = React.useRef(null);
   const lastAssistantRef = React.useRef(null);
   // When a user sends a message, scroll to bottom so they can see their
@@ -768,8 +780,8 @@ const RaiseQueryButton = () => {
     }
   }, [chatMessages, chatSending]);
 
-  const sendChatMessage = async () => {
-    const text = (chatInput || '').trim();
+  const sendChatMessage = async (overrideText) => {
+    const text = ((overrideText != null ? overrideText : chatInput) || '').trim();
     if (!text || chatSending) return;
     setChatInput('');
     setChatMessages((prev) => [...prev, { role: 'user', text }]);
@@ -778,7 +790,7 @@ const RaiseQueryButton = () => {
       const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
       const res = await fetch(`${API_BASE}/faq-chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Visitor-Id': getVisitorId() },
         body: JSON.stringify({ message: text, session_id: chatSessionId }),
       });
       const data = await res.json();
@@ -1254,6 +1266,26 @@ const RaiseQueryButton = () => {
                     )}
                     <div ref={chatBottomRef} />
                   </div>
+
+                  {/* Suggestion chips — show only until the visitor has sent
+                      their first question. After that we hide them to free
+                      vertical space on mobile. */}
+                  {chatSuggestions.length > 0 && !chatMessages.some((m) => m.role === 'user') && (
+                    <div className="px-2.5 pt-2 pb-1 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto no-scrollbar" data-testid="need-help-suggestions">
+                      {chatSuggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => sendChatMessage(s)}
+                          disabled={chatSending}
+                          className="flex-shrink-0 text-[11px] font-medium text-[#1E3A5F] bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-3 py-1.5 whitespace-nowrap transition disabled:opacity-50"
+                          data-testid={`need-help-suggestion-${i}`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Composer */}
                   <div className="p-2.5 border-t border-slate-200 bg-white flex items-center gap-2">

@@ -182,11 +182,16 @@ def _scope_bounds_iso(scope: str, ref_iso: Optional[str] = None) -> tuple[str, s
 async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
     """Metrics from `support_queries` where assigned_to == user_id.
 
-    Semantics (rewritten 2026-10-06 per user spec):
-    - `assigned`         — queries whose `created_at` falls in [start, end]
-                           AND are assigned to this user. The "query date"
-                           anchors the window; a backlog ticket from last
-                           month does NOT count toward this month.
+    Semantics (rewritten 2026-10-07 — fixes undercount vs Support Center UI):
+    - `assigned`         — tickets assigned to this user that had ANY activity
+                           in [start, end]. Activity = `created_at` in window
+                           OR `updated_at` in window. This catches both
+                           brand-new tickets AND older tickets reassigned to
+                           / replied to by this user during the window.
+                           The previous rule (`created_at in window` only)
+                           undercounted massively when backlog tickets were
+                           reassigned to a user — they'd appear in the
+                           Support Center list but never in the KPI.
     - `resolved`         — of the assigned subset, how many are now resolved
                            or closed (regardless of when they were resolved).
     - `resolution_rate`  — resolved / assigned.
@@ -194,15 +199,27 @@ async def _compute_support_metrics(user_id: str, start_iso: str, end_iso: str) -
                            (resolved_at − created_at) in hours.
     - `overdue_queries`  — of the assigned subset, how many are STILL open
                            (status not in resolved/closed) AND were created
-                           more than 24h ago (so a brand-new ticket raised
-                           10 min ago is NOT already "overdue").
+                           more than 24h ago.
+
+    `assigned_to` can be either a team_user `id` OR the user's email string
+    depending on how the ticket was assigned (support-router vs legacy
+    gmail-bot path). We look up both to avoid dropping either half.
     """
     coll = db.support_queries
 
-    # "Assigned in window" = created in window + assigned to this user.
+    # Resolve both the user's id and email so we match either shape of
+    # `assigned_to` stored on legacy tickets.
+    user_doc = await db.team_users.find_one({"id": user_id}, {"_id": 0, "id": 1, "email": 1})
+    assignee_values: list = [user_id]
+    if user_doc and user_doc.get("email"):
+        assignee_values.append(user_doc["email"])
+
     assigned_query = {
-        "assigned_to": user_id,
-        "created_at": {"$gte": start_iso, "$lte": end_iso},
+        "assigned_to": {"$in": assignee_values},
+        "$or": [
+            {"created_at": {"$gte": start_iso, "$lte": end_iso}},
+            {"updated_at": {"$gte": start_iso, "$lte": end_iso}},
+        ],
     }
     assigned_docs = await coll.find(
         assigned_query,
