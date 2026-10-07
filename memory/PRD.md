@@ -14,6 +14,34 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-07 — Multi-value filters · Need-Help AI chat · Public /admin/live
+- **Multi-value column-header filters**: Admin Competitions header funnels
+  now accept multiple selected values per column (checkbox list) — e.g.
+  City = Mumbai + Delhi filters rows matching either. Filter state is
+  array-based with proper clear-all and per-chip remove on the active
+  strip. Supports type-to-filter inside the popover for long option lists.
+- **Need-Help popup rewritten** (`RaiseQueryButton.jsx`): clicking the
+  floating "Need Help?" button on any page now opens an inline AI FAQ bot
+  (same `/api/faq-chat` engine as the public /faq page) with session
+  continuity and pre-canned-answer indicator. Persistent 3-button footer:
+  **Raise a Ticket** (switches into the existing 4-step wizard),
+  **WhatsApp** (deeplinks `wa.me/919920188188`), **Email**
+  (`mailto:info@oll.co`). Wizard mode now has a "Back to chat" shortcut.
+- **/admin/live is now PUBLIC**: dropped the `ProtectedRoute` wrapper, the
+  in-page `isAuthenticated` guard, and the backend auth dependency on
+  `GET /api/live-dashboard/snapshot`. The dashboard can now be opened
+  without login — intended for lobby TVs and public share.
+- **Removed the India Map section** from `/admin/live`. The map was taking
+  50% of the screen; the real signal is in the ops metrics. Grid is now
+  6/6 (left + right) instead of 3/6/3. Metric values bumped `text-2xl →
+  text-4xl` and hero numbers `text-3xl → text-5xl` to fill the reclaimed
+  real estate on wall TVs.
+- Verified end-to-end: public snapshot JSON returns all blocks; Playwright
+  confirms URL stays at /admin/live without login; chat popup renders
+  with messages, composer and 3 footer actions; column funnels now show
+  numeric badges for selected count.
+
+
 ## 2026-10-06 — Header-column filters + searchable dropdowns everywhere
 - **Moved filters INTO column headers**: the standalone "Filters" toolbar
   was replaced by a tiny funnel icon next to each filterable column header

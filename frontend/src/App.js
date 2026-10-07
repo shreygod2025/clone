@@ -469,7 +469,9 @@ function App() {
               <Route path="/admin/reports" element={<ProtectedRoute permission="reports"><AdminReports /></ProtectedRoute>} />
               <Route path="/admin/data-center" element={<ProtectedRoute permission="data_center"><AdminDataCenter /></ProtectedRoute>} />
               <Route path="/admin/central-database" element={<ProtectedRoute permission="central_database"><AdminCentralDatabase /></ProtectedRoute>} />
-              <Route path="/admin/live" element={<ProtectedRoute><AdminLive /></ProtectedRoute>} />
+              {/* Live Operations is a PUBLIC command-center dashboard (TV / lobby display) —
+                  no login required. The /api/live-dashboard/snapshot endpoint is already public. */}
+              <Route path="/admin/live" element={<AdminLive />} />
               <Route path="/admin/field-reports" element={<ProtectedRoute permission="field_reports"><AdminFieldReports /></ProtectedRoute>} />
               <Route path="/admin/telecalling" element={<ProtectedRoute permission="telecalling"><AdminTelecalling /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute permission="blogs"><AdminBlogs /></ProtectedRoute>} />

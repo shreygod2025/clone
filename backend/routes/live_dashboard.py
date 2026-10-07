@@ -806,12 +806,13 @@ async def _activity_feed(limit: int = 25) -> List[Dict[str, Any]]:
 
 # ─── Public endpoint ────────────────────────────────────────────────────
 @router.get("/snapshot")
-async def live_snapshot(user: dict = Depends(get_current_user)):
-    """One-shot payload for the office TV dashboard."""
-    role = user.get("role")
-    if role not in ("admin", "super_admin"):
-        raise HTTPException(status_code=403, detail="Live dashboard is admin-only")
+async def live_snapshot():
+    """One-shot payload for the office TV / public live dashboard.
 
+    PUBLIC — no auth required. The dashboard is intentionally public so it
+    can be shown on a lobby TV or shared externally. All metrics returned
+    here are aggregate counts and vanity numbers (never PII).
+    """
     stories, support, school_crm, student_fs, sessions, map_data, ticker, tasks_projects, outreach, hiring = await asyncio.gather(
         _success_stories_block(),
         _support_block(),

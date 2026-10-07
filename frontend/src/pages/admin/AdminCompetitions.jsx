@@ -16,9 +16,11 @@ import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/pop
 
 // ── HeaderFilter ───────────────────────────────────────────────────────
 // Small funnel icon next to a column header that opens a popover with a
-// search input and a scrollable, single-select option list. Null-safe —
-// renders nothing if there are no options.
+// search input and a scrollable checkbox list — supports MULTIPLE selected
+// values on the same column (e.g. City = Mumbai + Delhi). Null-safe —
+// renders nothing if there are no options. `value` is `string[]`.
 const HeaderFilter = ({ label, value, options, onChange, testid }) => {
+  const selected = Array.isArray(value) ? value : (value ? [value] : []);
   const [q, setQ] = useState('');
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();
@@ -26,22 +28,33 @@ const HeaderFilter = ({ label, value, options, onChange, testid }) => {
     return options.filter((o) => (o || '').toLowerCase().includes(n));
   }, [q, options]);
   if (!options || options.length === 0) return null;
-  const active = !!value;
+  const active = selected.length > 0;
+  const toggle = (opt) => {
+    const next = selected.includes(opt)
+      ? selected.filter((v) => v !== opt)
+      : [...selected, opt];
+    onChange(next);
+  };
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`ml-1 inline-flex items-center justify-center w-5 h-5 rounded hover:bg-slate-200 ${active ? 'text-[#DC2626]' : 'text-slate-400'}`}
-          title={active ? `Filtered by ${label} = ${value}` : `Filter by ${label}`}
+          className={`ml-1 inline-flex items-center justify-center min-w-5 h-5 rounded hover:bg-slate-200 ${active ? 'text-[#DC2626]' : 'text-slate-400'}`}
+          title={active ? `Filtered by ${label}: ${selected.join(', ')}` : `Filter by ${label}`}
           data-testid={testid}
         >
           <Filter className={`w-3 h-3 ${active ? 'fill-current' : ''}`} />
+          {active && (
+            <span className="ml-0.5 text-[9px] font-bold bg-[#DC2626] text-white rounded-full px-1 min-w-[14px] text-center">
+              {selected.length}
+            </span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="p-0 w-56" data-testid={`${testid}-popover`}>
-        <div className="p-2 border-b border-slate-100">
-          <div className="relative">
+        <div className="p-2 border-b border-slate-100 flex items-center gap-1.5">
+          <div className="relative flex-1">
             <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -52,26 +65,35 @@ const HeaderFilter = ({ label, value, options, onChange, testid }) => {
               data-testid={`${testid}-search`}
             />
           </div>
+          {active && (
+            <button
+              type="button"
+              onClick={() => { onChange([]); setQ(''); }}
+              className="text-[10px] text-slate-500 hover:text-[#DC2626] px-1.5 py-1 rounded hover:bg-slate-100"
+              data-testid={`${testid}-clear`}
+            >
+              clear
+            </button>
+          )}
         </div>
         <div className="max-h-56 overflow-y-auto">
-          <button
-            type="button"
-            onClick={() => { onChange(''); setQ(''); }}
-            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-slate-50 ${!value ? 'bg-slate-50 font-bold' : ''}`}
-          >
-            All {label.toLowerCase()}
-          </button>
-          {filtered.map((o) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => { onChange(o); setQ(''); }}
-              className={`w-full text-left text-xs px-3 py-1.5 hover:bg-slate-50 truncate ${value === o ? 'bg-slate-50 font-bold text-[#DC2626]' : ''}`}
-              title={o}
-            >
-              {o}
-            </button>
-          ))}
+          {filtered.map((o) => {
+            const picked = selected.includes(o);
+            return (
+              <button
+                key={o}
+                type="button"
+                onClick={() => toggle(o)}
+                className={`w-full text-left text-xs px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 truncate ${picked ? 'bg-slate-50 font-bold' : ''}`}
+                title={o}
+              >
+                {picked
+                  ? <CheckSquare className="w-3.5 h-3.5 text-[#DC2626] flex-shrink-0" />
+                  : <Square className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
+                <span className="truncate">{o}</span>
+              </button>
+            );
+          })}
           {filtered.length === 0 && (
             <div className="text-[11px] text-slate-400 italic px-3 py-2">No matches</div>
           )}
@@ -267,15 +289,15 @@ export default function AdminCompetitions() {
   const [coordQuery, setCoordQuery] = useState('');
 
   // ── Filters + sorting (all 3 registration tabs) ─────────────────────────
-  // Columns the user asked for: Zone · City · Source · Competition · Coord · Status.
-  // Reset filters when switching tabs so stale selections don't apply across data shapes.
+  // Each filter is an array of selected values. Empty array = "all".
+  // Multi-value: e.g. filters.city = ['Mumbai', 'Delhi'] matches both.
   const [filters, setFilters] = useState({
-    zone: '', city: '', source: '', competition: '', coordinator: '', status: '',
+    zone: [], city: [], source: [], competition: [], coordinator: [], status: [],
   });
   const [sortBy, setSortBy] = useState('');       // column key or '' for insertion order
   const [sortDir, setSortDir] = useState('asc');  // 'asc' | 'desc'
   useEffect(() => {
-    setFilters({ zone: '', city: '', source: '', competition: '', coordinator: '', status: '' });
+    setFilters({ zone: [], city: [], source: [], competition: [], coordinator: [], status: [] });
     setSortBy('');
     setSortDir('asc');
   }, [tab]);
@@ -458,10 +480,16 @@ export default function AdminCompetitions() {
       statuses: pick(['status']),
     };
   }, [rows]);
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount = Object.values(filters).filter((v) => Array.isArray(v) ? v.length > 0 : !!v).length;
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const hasFilter = (arr) => Array.isArray(arr) ? arr.length > 0 : !!arr;
+    const matchesFilter = (arr, candidates) => {
+      if (!hasFilter(arr)) return true;
+      const list = Array.isArray(arr) ? arr : [arr];
+      return candidates.some((c) => list.includes(c));
+    };
     let out = rows.filter((r) => {
       if (needle) {
         const hit = [
@@ -478,18 +506,12 @@ export default function AdminCompetitions() {
         ].some((v) => (v || '').toString().toLowerCase().includes(needle));
         if (!hit) return false;
       }
-      if (filters.zone && !([r.zone, r.zonal_city].includes(filters.zone))) return false;
-      if (filters.city && (r.city || '') !== filters.city) return false;
-      if (filters.source && (r.source || '') !== filters.source) return false;
-      if (filters.competition) {
-        const cv = filters.competition;
-        if ((r.competition_code || '') !== cv && (r.competition_name || '') !== cv) return false;
-      }
-      if (filters.coordinator) {
-        const cv = filters.coordinator;
-        if ((r.coordinator_name || '') !== cv && (r.coordinator_user_id || '') !== cv) return false;
-      }
-      if (filters.status && (r.status || '') !== filters.status) return false;
+      if (!matchesFilter(filters.zone, [r.zone, r.zonal_city])) return false;
+      if (!matchesFilter(filters.city, [r.city])) return false;
+      if (!matchesFilter(filters.source, [r.source])) return false;
+      if (!matchesFilter(filters.competition, [r.competition_code, r.competition_name])) return false;
+      if (!matchesFilter(filters.coordinator, [r.coordinator_name, r.coordinator_user_id])) return false;
+      if (!matchesFilter(filters.status, [r.status])) return false;
       return true;
     });
     if (sortBy) {
@@ -916,14 +938,17 @@ export default function AdminCompetitions() {
           {isRegistrationTab && (activeFilterCount > 0 || sortBy) && (
             <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50/60" data-testid="admin-competitions-active-filters">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active</span>
-              {Object.entries(filters).filter(([, v]) => v).map(([k, v]) => (
-                <span key={k} className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-full pl-2 pr-1 py-0.5">
-                  {k}: {v}
-                  <button type="button" onClick={() => setFilters((p) => ({ ...p, [k]: '' }))} className="w-4 h-4 rounded-full hover:bg-slate-200 flex items-center justify-center">
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </span>
-              ))}
+              {Object.entries(filters).flatMap(([k, arr]) => {
+                const vals = Array.isArray(arr) ? arr : (arr ? [arr] : []);
+                return vals.map((v) => (
+                  <span key={`${k}-${v}`} className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-full pl-2 pr-1 py-0.5">
+                    {k}: {v}
+                    <button type="button" onClick={() => setFilters((p) => ({ ...p, [k]: (Array.isArray(p[k]) ? p[k].filter((x) => x !== v) : '') }))} className="w-4 h-4 rounded-full hover:bg-slate-200 flex items-center justify-center">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ));
+              })}
               {sortBy && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#DC2626] bg-white border border-red-200 rounded-full pl-2 pr-1 py-0.5">
                   sort: {sortBy} {sortDir === 'asc' ? '↑' : '↓'}

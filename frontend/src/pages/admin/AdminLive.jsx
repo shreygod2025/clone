@@ -92,10 +92,12 @@ const Metric = ({ label, value, tone = 'cyan', testId }) => {
   };
   return (
     <div className="text-center min-w-0" data-testid={testId}>
-      <div className={`text-2xl font-black leading-none ${toneMap[tone]} tabular-nums`}>
+      {/* Bumped from 2xl → 4xl now that we have ~2× the screen real estate
+          after dropping the map section. */}
+      <div className={`text-4xl font-black leading-none ${toneMap[tone]} tabular-nums`}>
         {value ?? 0}
       </div>
-      <div className="mt-0.5 text-[9px] tracking-widest uppercase text-slate-400">
+      <div className="mt-1 text-[11px] tracking-widest uppercase text-slate-400">
         {label}
       </div>
     </div>
@@ -202,15 +204,12 @@ export default function AdminLive() {
     }
   };
 
-  // Poll snapshot every POLL_MS
+  // Poll snapshot every POLL_MS. This dashboard is PUBLIC — no auth required.
   useEffect(() => {
-    if (!isAuthenticated) return;
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await axios.get(`${API}/live-dashboard/snapshot`, {
-          headers: getAuthHeaders(),
-        });
+        const res = await axios.get(`${API}/live-dashboard/snapshot`);
         if (!cancelled) {
           setData(res.data);
           setLastUpdated(new Date());
@@ -228,7 +227,7 @@ export default function AdminLive() {
       cancelled = true;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isAuthenticated, getAuthHeaders]);
+  }, []);
 
   const clockStr = useMemo(() => nowIST.toLocaleTimeString('en-IN', {
     hour: 'numeric', minute: '2-digit', second: '2-digit',
@@ -256,11 +255,8 @@ export default function AdminLive() {
       </div>
     );
   }
-  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
-  const role = user?.role;
-  if (role !== 'admin' && role !== 'super_admin') {
-    return <Navigate to="/admin/access-denied" replace />;
-  }
+  // PUBLIC dashboard — no auth required. Any user, logged-in or not, can
+  // see this (it's intended for lobby TVs / public share).
 
   const map = data?.map || { cities: [], grand_total: 0 };
   const stories = data?.success_stories || {};
@@ -298,7 +294,7 @@ export default function AdminLive() {
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-violet-500 grid place-items-center shadow-[0_0_40px_-8px_rgba(6,182,212,0.7)] group-hover:scale-110 transition-transform">
             <Maximize2 className="w-10 h-10 text-white" />
           </div>
-          <div className="text-3xl font-black tracking-tight">Enter Fullscreen</div>
+          <div className="text-5xl font-black tracking-tight">Enter Fullscreen</div>
           <div className="text-sm text-slate-400 tracking-widest uppercase">
             Click anywhere · or press <kbd className="px-2 py-0.5 mx-1 rounded bg-slate-800 border border-slate-700 text-cyan-300 font-mono text-xs">F</kbd>
           </div>
@@ -382,14 +378,15 @@ export default function AdminLive() {
         </div>
       ) : null}
 
-      {/* Main grid — takes remaining height */}
-      <main className="relative z-10 grid grid-cols-12 gap-3 px-4 py-3 flex-1 min-h-0">
+      {/* Main grid — takes remaining height. Map section removed per 2026-10-07 spec;
+          left + right columns are now equal (6/6) and each tile has more breathing room. */}
+      <main className="relative z-10 grid grid-cols-12 gap-4 px-5 py-4 flex-1 min-h-0">
         {/* LEFT COLUMN */}
-        <section className="col-span-3 flex flex-col gap-3 min-h-0">
+        <section className="col-span-6 flex flex-col gap-4 min-h-0">
           {/* Success Stories — slim */}
           <Card title="Verified Success Stories" icon={Trophy} accent="emerald" testId="card-success-stories" className="flex-shrink-0">
             <div className="flex items-center gap-3 mb-2">
-              <div className="text-3xl font-black text-emerald-300 tabular-nums leading-none">
+              <div className="text-5xl font-black text-emerald-300 tabular-nums leading-none">
                 {stories.total ?? 0}
               </div>
               <div className="text-[10px] text-slate-400 leading-tight">
@@ -528,66 +525,12 @@ export default function AdminLive() {
           </Card>
         </section>
 
-        {/* CENTER — MAP */}
-        <section className="col-span-6 flex min-h-0">
-          <Card title="Central Database · Live View" icon={MapPin} accent="violet" testId="card-map" className="flex-1 min-h-0">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="text-3xl font-black text-violet-300 tabular-nums leading-none">
-                {map.grand_total?.toLocaleString?.() ?? map.grand_total ?? 0}
-              </div>
-              <div className="text-[10px] text-slate-400 leading-tight">
-                <div>{map.cities?.length ?? 0} cities mapped</div>
-                <div className="text-violet-400/80">across India</div>
-              </div>
-              <div className="ml-auto text-[9px] uppercase tracking-widest text-slate-500">
-                Tap a city dot for details
-              </div>
-            </div>
-            <div
-              className="flex-1 min-h-0 rounded-lg overflow-hidden border border-cyan-500/20 relative"
-              data-testid="live-map"
-            >
-              <MapContainer
-                center={INDIA_CENTER}
-                zoom={4}
-                minZoom={3}
-                maxZoom={7}
-                style={{ height: '100%', width: '100%', background: '#020617' }}
-                zoomControl={false}
-                scrollWheelZoom={false}
-                attributionControl={false}
-              >
-                <TileLayer
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                />
-                {(map.cities || []).map((c) => (
-                  <CircleMarker
-                    key={c.city_key}
-                    center={[c.lat, c.lng]}
-                    radius={markerRadius(c.total)}
-                    pathOptions={{
-                      color: c.total >= 50 ? '#22d3ee' : '#a78bfa',
-                      weight: 2,
-                      fillColor: c.total >= 50 ? '#22d3ee' : '#a78bfa',
-                      fillOpacity: 0.4,
-                    }}
-                  >
-                    <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
-                      <div className="font-bold text-slate-900">{c.city}</div>
-                      <div className="text-[10px] text-slate-700">{c.total} entities · click for details</div>
-                    </Tooltip>
-                    <Popup>
-                      <CityPopup city={c} />
-                    </Popup>
-                  </CircleMarker>
-                ))}
-              </MapContainer>
-            </div>
-          </Card>
-        </section>
+        {/* CENTER MAP REMOVED (2026-10-07) — the lobby TV / public live dashboard
+            now shows ops data only. The map was taking 50% of the screen but
+            the live-dashboard CTA value is in the metrics, not the geo-view. */}
 
         {/* RIGHT COLUMN */}
-        <section className="col-span-3 flex flex-col gap-3 min-h-0">
+        <section className="col-span-6 flex flex-col gap-4 min-h-0">
           {/* School CRM */}
           <Card title="Today · School CRM" icon={SchoolIcon} accent="violet" testId="card-school-crm" className="flex-shrink-0">
             <div className="grid grid-cols-3 gap-2 mb-2">
@@ -606,7 +549,7 @@ export default function AdminLive() {
                     <span className="text-[10px] font-bold tabular-nums text-emerald-300">{pct}%</span>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-violet-300 tabular-nums leading-none" data-testid="school-total-count">
+                    <span className="text-5xl font-black text-violet-300 tabular-nums leading-none" data-testid="school-total-count">
                       {converted}
                     </span>
                     <span className="text-sm text-slate-500 font-semibold tabular-nums">/ {goal}</span>

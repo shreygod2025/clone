@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink } from 'lucide-react';
+import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink, Send, Mail, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -739,6 +739,48 @@ const RaiseQueryButton = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [quickAction, setQuickAction] = useState(null); // For smart routing
+
+  // ── AI FAQ chat mode (default when the help popup opens) ────────────────
+  // Shows an inline AI chat (same /api/faq-chat engine as /faq) with a
+  // persistent footer giving the visitor Raise-Ticket / WhatsApp / Email.
+  // Clicking "Raise Ticket" switches to the existing 4-step wizard.
+  const [mode, setMode] = useState('chat');        // 'chat' | 'wizard'
+  const [chatSessionId] = useState(() => `nh-${Math.random().toString(36).slice(2, 10)}-${Date.now()}`);
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'assistant', text: "Hi 👋 I'm OLL's AI help bot. Ask me anything about courses, Techfest, payments, our programs — or tap **Raise a Ticket** below to talk to a human." },
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const chatBottomRef = React.useRef(null);
+  React.useEffect(() => {
+    if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chatMessages, chatSending]);
+
+  const sendChatMessage = async () => {
+    const text = (chatInput || '').trim();
+    if (!text || chatSending) return;
+    setChatInput('');
+    setChatMessages((prev) => [...prev, { role: 'user', text }]);
+    setChatSending(true);
+    try {
+      const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
+      const res = await fetch(`${API_BASE}/faq-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, session_id: chatSessionId }),
+      });
+      const data = await res.json();
+      const reply = data?.reply || "Sorry, I couldn't fetch an answer. Please try again or raise a ticket below.";
+      setChatMessages((prev) => [...prev, { role: 'assistant', text: reply, source: data?.source }]);
+    } catch (err) {
+      setChatMessages((prev) => [...prev, { role: 'assistant', text: 'Network error — please try again or raise a ticket below.' }]);
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  const WA_NUMBER = '919920188188';
+  const SUPPORT_EMAIL = 'info@oll.co';
   
   const [formData, setFormData] = useState({
     query_type: '',
@@ -806,12 +848,14 @@ const RaiseQueryButton = () => {
     setAudioBlob(null);
     setAudioUrl(null);
     setStep(1);
+    setMode('chat');
     setIsOpen(true);
   };
 
   const handleClose = () => {
     setIsOpen(false);
     setStep(1);
+    setMode('chat');
     setSubmitted(false);
     setQuickAction(null);
   };
@@ -1062,14 +1106,15 @@ const RaiseQueryButton = () => {
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-base font-semibold flex items-center gap-2">
                     <MessageCircleQuestion className="w-4 h-4" />
-                    {step === 1 ? 'How can we help?' : currentPageConfig.label}
+                    {mode === 'chat' ? 'OLL Help · Ask Anything' : (step === 1 ? 'How can we help?' : currentPageConfig.label)}
                   </h2>
-                  <button onClick={handleClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors">
+                  <button onClick={handleClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" data-testid="need-help-close">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                
-                {/* Progress Steps */}
+
+                {/* Progress Steps — only in wizard mode */}
+                {mode === 'wizard' && (
                 <div className="flex items-center gap-1.5">
                   {Array.from({ length: totalSteps }, (_, i) => (
                     <React.Fragment key={i}>
@@ -1086,8 +1131,92 @@ const RaiseQueryButton = () => {
                     </React.Fragment>
                   ))}
                 </div>
+                )}
               </div>
 
+              {/* ── AI CHAT MODE (default) ──────────────────────────── */}
+              {mode === 'chat' && (
+                <>
+                  <div className="p-3 h-[380px] overflow-y-auto bg-slate-50/60 flex flex-col gap-2.5" data-testid="need-help-chat-messages">
+                    {chatMessages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${m.role === 'user' ? 'bg-[#1E3A5F] text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
+                          <div className="whitespace-pre-wrap">{m.text}</div>
+                          {m.source && m.role === 'assistant' && (
+                            <div className="text-[9px] uppercase tracking-widest mt-1.5 opacity-60">
+                              {m.source === 'pre_canned' ? 'Instant answer' : m.source === 'cache' ? 'Cached' : 'AI'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {chatSending && (
+                      <div className="flex justify-start">
+                        <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 text-sm text-slate-500 italic rounded-bl-sm">
+                          <span className="inline-flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Thinking…
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatBottomRef} />
+                  </div>
+
+                  {/* Composer */}
+                  <div className="p-2.5 border-t border-slate-200 bg-white flex items-center gap-2">
+                    <input
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                      placeholder="Ask about Techfest, courses, payments…"
+                      className="flex-1 h-9 px-3 text-sm rounded-full border border-slate-200 focus:outline-none focus:border-[#1E3A5F]"
+                      data-testid="need-help-chat-input"
+                      disabled={chatSending}
+                    />
+                    <button
+                      type="button"
+                      onClick={sendChatMessage}
+                      disabled={!chatInput.trim() || chatSending}
+                      className="w-9 h-9 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#2d5a8a]"
+                      data-testid="need-help-chat-send"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Persistent footer: Raise Ticket · WhatsApp · Email */}
+                  <div className="grid grid-cols-3 gap-2 p-2.5 bg-slate-100 border-t border-slate-200" data-testid="need-help-footer-actions">
+                    <button
+                      type="button"
+                      onClick={() => setMode('wizard')}
+                      className="h-10 rounded-lg bg-[#FF6B35] hover:bg-[#e85d2a] text-white text-xs font-bold inline-flex items-center justify-center gap-1 transition"
+                      data-testid="need-help-raise-ticket"
+                    >
+                      <MessageCircleQuestion className="w-3.5 h-3.5" /> Raise a Ticket
+                    </button>
+                    <a
+                      href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hi OLL team, I need help with ')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="h-10 rounded-lg bg-[#25D366] hover:bg-[#1DA851] text-white text-xs font-bold inline-flex items-center justify-center gap-1 transition"
+                      data-testid="need-help-whatsapp"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> WhatsApp
+                    </a>
+                    <a
+                      href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Need help — OLL')}`}
+                      className="h-10 rounded-lg bg-[#1E3A5F] hover:bg-[#2d5a8a] text-white text-xs font-bold inline-flex items-center justify-center gap-1 transition"
+                      data-testid="need-help-email"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Email
+                    </a>
+                  </div>
+                </>
+              )}
+
+              {/* ── WIZARD MODE (click "Raise a Ticket" to enter) ──── */}
+              {mode === 'wizard' && (
+              <>
               {/* Step Content */}
               <div className={`p-4 ${step === 1 ? 'min-h-[180px]' : 'min-h-[240px]'}`}>
                 {/* Step 1: Select Query Type */}
@@ -1305,7 +1434,20 @@ const RaiseQueryButton = () => {
                     Submit
                   </Button>
                 )}
+                {/* Back-to-chat shortcut lets the visitor retreat to the AI
+                    bot without closing + reopening the dialog. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMode('chat')}
+                  className="h-9 text-slate-500 hover:text-[#1E3A5F]"
+                  data-testid="need-help-back-to-chat"
+                >
+                  Back to chat
+                </Button>
               </div>
+              </>
+              )}
             </>
           )}
         </DialogContent>
