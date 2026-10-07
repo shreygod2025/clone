@@ -14,6 +14,35 @@ trials/renewals were not being auto-promoted to "Active Customers".
 - Payments Ops — reconciles Cashfree state with app state.
 
 
+## 2026-10-07 — Need-Help popup rich rendering + thumbs feedback + shop-card-persistence fix
+- **Extracted `BubbleContent` as a shared component** from
+  `FAQPage.jsx` so the Need-Help popup can reuse the exact same
+  markdown-to-HTML pipeline (clickable links, bold/italic, bullet lists,
+  product-card hydration, YouTube iframe short-circuit). Component is
+  wrapped in a tight `React.memo` keyed on `content` only — parent
+  re-renders triggered by thumbs-up/down clicks, composer typing, or any
+  other sibling state change no longer wipe the hydrated DOM.
+- **Fixed the "shop card disappears when I thumbs-up" bug** on `/faq`:
+  previously the whole `MessageRow` re-rendered on feedback flip, and
+  although `useMemo` returned a cached html string, the `__html` prop
+  object reference changed every render which was causing React to
+  re-apply `innerHTML`, wiping the hydrated card. By moving the bubble
+  into a nested memo'd component that ignores feedback state, the
+  hydrated card stays in the DOM across any number of thumbs clicks.
+- **Need-Help popup now has all /faq features**:
+  - Markdown bold / lists render as HTML
+  - Links are clickable `<a>` tags
+  - Shop URLs become rich product cards (image · price · See details · Buy now)
+  - YouTube URLs on their own line become responsive iframes
+  - Thumbs up / down under every AI reply, POST to `/api/faq-chat/feedback`
+  - Thumbs bar collapses to "Thanks" after one click
+  - Greeting message is flagged `isGreeting: true` so the thumbs don't
+    appear on it (nothing to rate yet).
+- Verified Playwright: ask "I want to buy robo sumo kit" → shop card
+  renders with product image → click thumbs-up → card STILL rendered
+  after the re-render (assertion green).
+
+
 ## 2026-10-07 — Multi-value filters · Need-Help AI chat · Public /admin/live
 - **Multi-value column-header filters**: Admin Competitions header funnels
   now accept multiple selected values per column (checkbox list) — e.g.

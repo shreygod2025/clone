@@ -455,18 +455,19 @@ const buildMailUrl = (prefillText) => {
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
 };
 
-const MessageRow = React.memo(function MessageRow({ msg, index, onFeedback, lastUserQuestion, onEscalate }) {
-  const isUser = msg.role === 'user';
-  const html = useMemo(() => (isUser ? '' : mdToHtml(msg.content)), [msg.content, isUser]);
+/* ──────────────────────────────────────────────────────────────────────
+   BubbleContent — pure markdown bubble with product-card hydration.
+   Memoised on `content` ONLY so parent re-renders (feedback thumbs clicks,
+   composer typing, ticket-modal opens) don't wipe the hydrated product
+   card or re-mount the YouTube iframe.
+
+   Shared between FAQPage and the Need-Help popup (RaiseQueryButton).
+   ────────────────────────────────────────────────────────────────────── */
+export const BubbleContent = React.memo(function BubbleContent({ content, isUser }) {
+  const html = useMemo(() => (isUser ? '' : mdToHtml(content)), [content, isUser]);
   const bubbleRef = useRef(null);
   const hydratedRef = useRef(false);
-  const prefillText = `Question: ${lastUserQuestion || ''}\n\nI'd like a human to help with this.`;
 
-  // Hydrate .faq-product-card placeholders ONCE per message. Guarding with
-  // hydratedRef so parent re-renders (e.g. input typing, opening the ticket
-  // modal) don't wipe & re-fetch the card — that was causing the "card
-  // disappears when I click Raise ticket" and the "YouTube iframe flashes on
-  // every keystroke" bugs.
   useEffect(() => {
     if (isUser || !bubbleRef.current || hydratedRef.current) return;
     hydratedRef.current = true;
@@ -510,6 +511,16 @@ const MessageRow = React.memo(function MessageRow({ msg, index, onFeedback, last
     });
   }, [isUser]);
 
+  if (isUser) {
+    return <p className="whitespace-pre-wrap">{content}</p>;
+  }
+  return <div ref={bubbleRef} className="pdp-rich" dangerouslySetInnerHTML={{ __html: html }} />;
+}, (prev, next) => prev.content === next.content && prev.isUser === next.isUser);
+
+const MessageRow = React.memo(function MessageRow({ msg, index, onFeedback, lastUserQuestion, onEscalate }) {
+  const isUser = msg.role === 'user';
+  const prefillText = `Question: ${lastUserQuestion || ''}\n\nI'd like a human to help with this.`;
+
   const copyAnswer = async () => {
     try {
       const plain = String(msg.content || '')
@@ -541,18 +552,13 @@ const MessageRow = React.memo(function MessageRow({ msg, index, onFeedback, last
       )}
       <div className={`${isUser ? 'max-w-[82%]' : 'max-w-[88%] w-full'}`}>
         <div
-          ref={bubbleRef}
           className={`${
             isUser
               ? 'bg-[#0A1F44] text-white rounded-2xl rounded-tr-sm'
               : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm shadow-sm'
           } px-4 py-3 text-sm leading-relaxed break-words`}
         >
-          {isUser ? (
-            <p className="whitespace-pre-wrap">{msg.content}</p>
-          ) : (
-            <div className="pdp-rich" dangerouslySetInnerHTML={{ __html: html }} />
-          )}
+          <BubbleContent content={msg.content} isUser={isUser} />
         </div>
         {!isUser && !msg.isWelcome && (
           <>

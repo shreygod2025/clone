@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink, Send, Mail, Phone } from 'lucide-react';
+import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink, Send, Mail, Phone, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { BubbleContent } from '../pages/FAQPage';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -747,7 +748,7 @@ const RaiseQueryButton = () => {
   const [mode, setMode] = useState('chat');        // 'chat' | 'wizard'
   const [chatSessionId] = useState(() => `nh-${Math.random().toString(36).slice(2, 10)}-${Date.now()}`);
   const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', text: "Hi 👋 I'm OLL's AI help bot. Ask me anything about courses, Techfest, payments, our programs — or tap **Raise a Ticket** below to talk to a human." },
+    { role: 'assistant', text: "Hi 👋 I'm OLL's AI help bot. Ask me anything about courses, Techfest, payments, our programs — or tap **Raise a Ticket** below to talk to a human.", isGreeting: true },
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatSending, setChatSending] = useState(false);
@@ -771,12 +772,27 @@ const RaiseQueryButton = () => {
       });
       const data = await res.json();
       const reply = data?.reply || "Sorry, I couldn't fetch an answer. Please try again or raise a ticket below.";
-      setChatMessages((prev) => [...prev, { role: 'assistant', text: reply, source: data?.source }]);
+      setChatMessages((prev) => [...prev, { role: 'assistant', text: reply, source: data?.source, feedback: null }]);
     } catch (err) {
-      setChatMessages((prev) => [...prev, { role: 'assistant', text: 'Network error — please try again or raise a ticket below.' }]);
+      setChatMessages((prev) => [...prev, { role: 'assistant', text: 'Network error — please try again or raise a ticket below.', feedback: null }]);
     } finally {
       setChatSending(false);
     }
+  };
+
+  // Thumbs up/down on an assistant message. Fire-and-forget to the FAQ
+  // feedback endpoint; local state collapses the thumbs bar to "Thanks".
+  const markChatFeedback = (idx, verdict) => {
+    setChatMessages((prev) => prev.map((m, i) => i === idx ? { ...m, feedback: verdict } : m));
+    try {
+      const lastUserQ = chatMessages.slice(0, idx).reverse().find((x) => x.role === 'user')?.text || '';
+      const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
+      fetch(`${API_BASE}/faq-chat/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: chatSessionId, verdict, question: lastUserQ }),
+      }).catch(() => {});
+    } catch {}
   };
 
   const WA_NUMBER = '919920188188';
@@ -1139,15 +1155,50 @@ const RaiseQueryButton = () => {
                 <>
                   <div className="p-3 h-[380px] overflow-y-auto bg-slate-50/60 flex flex-col gap-2.5" data-testid="need-help-chat-messages">
                     {chatMessages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${m.role === 'user' ? 'bg-[#1E3A5F] text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
-                          <div className="whitespace-pre-wrap">{m.text}</div>
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} ${m.role === 'assistant' ? 'flex-col items-start' : ''}`}>
+                        <div className={`max-w-[90%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${m.role === 'user' ? 'bg-[#1E3A5F] text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm w-full'}`}>
+                          {/* BubbleContent handles markdown, clickable links,
+                              product-card hydration AND YouTube iframe render.
+                              The React.memo on `content` keeps the hydrated
+                              card alive across thumbs-up/down re-renders. */}
+                          <BubbleContent content={m.text} isUser={m.role === 'user'} />
                           {m.source && m.role === 'assistant' && (
                             <div className="text-[9px] uppercase tracking-widest mt-1.5 opacity-60">
                               {m.source === 'pre_canned' ? 'Instant answer' : m.source === 'cache' ? 'Cached' : 'AI'}
                             </div>
                           )}
                         </div>
+                        {/* Thumbs under every assistant answer */}
+                        {m.role === 'assistant' && !m.isGreeting && (
+                          <div className="mt-1 pl-1">
+                            {m.feedback == null ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => markChatFeedback(i, 'up')}
+                                  className="p-1 rounded-full text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition"
+                                  title="Helpful"
+                                  data-testid={`need-help-msg-${i}-thumbs-up`}
+                                >
+                                  <ThumbsUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => markChatFeedback(i, 'down')}
+                                  className="p-1 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                  title="Not helpful"
+                                  data-testid={`need-help-msg-${i}-thumbs-down`}
+                                >
+                                  <ThumbsDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-slate-500 italic">
+                                {m.feedback === 'up' ? '👍 Thanks for the feedback' : '👎 Thanks — we\'ll improve this'}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                     {chatSending && (
