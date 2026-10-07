@@ -1,5 +1,24 @@
 # OLL Backend Changelog
 
+## 2026-10-07 — FAQ Chat polish — YouTube iframe + product-name recognition
+**Status: COMPLETE · backend + frontend fixes verified via curl & unit test**
+
+### 1) YouTube iframe rendered even when URL sits under preceding text
+Before: LLM output like `"For a visual walkthrough, check this video:\nhttps://youtu.be/5GsFOwR2gj4"` kept the URL glued to the same paragraph block, so the iframe short-circuit never matched and the URL rendered as a plain red link.
+Fix: `/app/frontend/src/utils/richContent.js :: mdToHtml` now promotes any line that ends with a YouTube URL (or OLL shop-product URL) into its own paragraph block via a pre-processing regex, so the existing iframe / product-card short-circuits catch them. The iframe regex also accepts Markdown-link wrappers `[url](url)` now.
+
+### 2) Shop products now matched by exact name (e.g. "BO Shaft", "MM coupler", "FF wire")
+Before: `_detect_topics` keyword list missed many component names, so queries that are *just* a product name never loaded the LIVE OLL SHOP CATALOG into the prompt. The bot then asked the user to clarify instead of returning the product card.
+Fix: `/app/backend/routes/faq_chat.py`
+- `_detect_topics` is now `async` and consults a cached `_fetch_product_name_tokens` set built from every live product name (full-string + each ≥2-char word, dash/space-insensitive variants). If any token matches the query the "shop" topic is injected, giving the LLM the full catalog to answer from.
+- Expanded the keyword list with robotics-component terms: shaft, coupler, jumper, led, resistor, breadboard, servo, ultrasonic, l298, mg90, sg90, hc-sr04, pir, mpu, lipo, m-m, m-f, f-f, mm/ff/mf shorthand, "oll shop", etc.
+- Strengthened the system-prompt rule: if a user types ONLY a product name/shorthand ("BO Shaft", "MM coupler"), the bot MUST reply with the product URL on its own line (which renders as a card) — never ask to clarify.
+
+### Verification
+- Curl: "BO Shaft" → `https://oll.co/shop/product/bo-shaft-61d18672` · "M-M coupler" → `m-m-coupler-6c2e1de1` · "FF wire" → `f-f-wire-8a05e874` · "MF jumper wire" → `m-f-wire-da96a00e` — all return product URL on its own line.
+- Node unit test on `richContent.mdToHtml` with the user's exact LLM output: the `youtu.be/5GsFOwR2gj4` URL correctly renders inside `<div class="faq-yt-embed"><iframe …></iframe></div>` while the surrounding text and product URL render as expected.
+
+
 ## 2026-10-06 — Admin AI Chat v11 — multi-image vision + autonomous actions
 **Status: COMPLETE · verified end-to-end**
 

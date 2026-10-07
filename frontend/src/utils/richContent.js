@@ -38,7 +38,22 @@ const BR_SENTINEL = '\u0001BR\u0001';
 
 export const mdToHtml = (raw = '') => {
   if (!raw) return '';
-  const text = String(raw).replace(/\r\n?/g, '\n').trim();
+  let text = String(raw).replace(/\r\n?/g, '\n').trim();
+  // Promote any YouTube URL that sits on its own line into a standalone
+  // paragraph block (double-newline separated) so the iframe short-circuit
+  // below matches it. Without this, LLM output like
+  //   "Watch this video:\nhttps://youtu.be/XXXX"
+  // keeps the URL glued to the preceding line and renders as a plain link.
+  text = text.replace(
+    /([^\n])\n(\s*(?:[-*]\s*)?(?:Video|Watch)?\s*:?\s*\[?https?:\/\/(?:www\.)?(?:youtu\.be|youtube\.com|youtube-nocookie\.com)\/\S+\]?\(?[^\n]*?)(?=\s*(?:\n|$))/g,
+    '$1\n\n$2',
+  );
+  // Also promote OLL shop-product URLs onto their own block so the product-card
+  // short-circuit below hydrates them into a card (same reason as YouTube).
+  text = text.replace(
+    /([^\n])\n(\s*(?:[-*]\s*)?\[?https?:\/\/(?:www\.)?oll\.co\/shop\/product\/[a-z0-9][a-z0-9-]+\]?\(?[^\n]*?)(?=\s*(?:\n|$))/gi,
+    '$1\n\n$2',
+  );
   const blocks = text.split(/\n{2,}/);
   const out = [];
 
@@ -46,10 +61,11 @@ export const mdToHtml = (raw = '') => {
     const lines = block.split('\n');
 
     // YouTube iframe short-circuit: if a block is ONLY a YouTube URL (ignoring
-    // optional surrounding whitespace or a leading "Video:" / "- " marker),
-    // render it as a responsive iframe instead of a text link.
+    // optional surrounding whitespace, leading markers like "Video:"/"- ", or
+    // a Markdown-link wrapper like `[url](url)`), render it as a responsive
+    // iframe instead of a text link.
     const ytMatch = block.trim().match(
-      /^(?:(?:Video|Watch)\s*:\s*|[-*]\s*)?(https?:\/\/(?:www\.)?(?:youtu\.be|youtube\.com|youtube-nocookie\.com)\/\S+?)\s*$/,
+      /^(?:(?:Video|Watch)\s*:\s*|[-*]\s*)?\[?(https?:\/\/(?:www\.)?(?:youtu\.be|youtube\.com|youtube-nocookie\.com)\/\S+?)\]?(?:\((?:https?:\/\/[^)]+)\))?\s*$/,
     );
     if (ytMatch) {
       const vid = youtubeIdFromUrl(ytMatch[1]);

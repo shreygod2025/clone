@@ -24,6 +24,7 @@ Persistence:
 from __future__ import annotations
 
 import os
+import re
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -163,6 +164,40 @@ async def _fetch_live_products_block() -> str:
         return _format_live_products(merged)
     except Exception:
         return ""
+
+
+@_ttl_cached
+async def _fetch_product_name_tokens() -> set[str]:
+    """Build a set of lowercase tokens drawn from live product names + categories
+    so `_detect_topics` can recognise shop queries by exact product name
+    (e.g. "BO Shaft", "M-M coupler", "FF wire") even when the user doesn't
+    include generic words like "shop" or "buy"."""
+    try:
+        from routes.shop import _fetch_vendor_catalog, _get_overrides_map, _merge_product
+        vendor_products = await _fetch_vendor_catalog()
+        overrides = await _get_overrides_map()
+        tokens: set[str] = set()
+        for v in vendor_products:
+            if not v.get("id"):
+                continue
+            p = _merge_product(v, overrides.get(v["id"]))
+            if not p.get("show_on_shop"):
+                continue
+            name = (p.get("name") or "").lower().strip()
+            if not name:
+                continue
+            # Full name (lowercase) + each word of length >= 2 so partial
+            # queries like "shaft" or "coupler" still trigger the shop topic.
+            tokens.add(name)
+            # Also add dash/space variants: "m-m coupler" ↔ "mm coupler".
+            tokens.add(name.replace("-", " "))
+            tokens.add(name.replace("-", ""))
+            for word in re.split(r"[^a-z0-9]+", name):
+                if len(word) >= 2:
+                    tokens.add(word)
+        return tokens
+    except Exception:
+        return set()
 
 
 @_ttl_cached
@@ -387,6 +422,11 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None, topics:
         "     OWN LINE (nothing else on that line). The frontend auto-converts this",
         "     into a product card with image, price and Buy Now button — so you don\\'t",
         "     need to describe the kit in prose, the card does it.",
+        "   • If the user types ONLY a product name or shorthand (e.g. 'BO Shaft',",
+        "     'MM coupler', 'FF wire', 'jumper wires', 'L298', 'MG90S'), do NOT ask",
+        "     them to clarify. Treat it as a shop lookup: find the closest matching",
+        "     product in the LIVE CATALOG below and reply with the product URL on",
+        "     its OWN line (which renders as a card). Add 1-2 lines of context only.",
         "   • Valid category pages: /shop/category/curriculum-books · /curriculum-robotic-kits",
         "     · /competition-and-advanced-kits · /individual-components.",
         "   • DO NOT invent product slugs. Writing `/shop/product/robo-sumo-kit-b8176a8d`",
@@ -722,7 +762,7 @@ def _cache_put(nq: str, answer: str) -> None:
 
 # ─── Keyword-based prompt routing — avoid injecting the full knowledge base
 # ─── on every query. Shrinks the input from ~45k tokens to 8-15k.
-def _detect_topics(question: str) -> set[str]:
+async def _detect_topics(question: str) -> set[str]:
     """Return a set of topic tags present in the user's question so we only
     inject the knowledge sections that are actually relevant.
     Always includes 'core' (identity + hard rules + sitemap)."""
@@ -740,9 +780,16 @@ def _detect_topics(question: str) -> set[str]:
     # Shop / buy
     if any(k in q for k in (
         "shop", "buy", "kit", "price", "cost", "order", "product", "book",
-        "motor", "sensor", "esp32", "arduino", "cart", "delivery", "ship",
-        "cashfree", "wire", "battery", "blox", "chassis", "wheel", "driver",
-        "how much",
+        "motor", "sensor", "esp32", "esp8266", "arduino", "cart", "delivery",
+        "ship", "cashfree", "wire", "battery", "blox", "chassis", "wheel",
+        "driver", "how much", "shaft", "coupler", "jumper", "led", "resistor",
+        "component", "breadboard", "servo", "ultrasonic", "ir sensor", "nut",
+        "bolt", "screw", "bearing", "gear", "pulley", "frame", "l298", "l293",
+        "relay", "capacitor", "transistor", "diode", "oled", "lcd",
+        "potentiometer", "buzzer", "speaker", "gyro", "accelerometer", "lipo",
+        "n20", "stepper", "mg90", "mg995", "sg90", "hcsr04", "hc-sr04", "pir",
+        "mpu", "bluetooth", " bo ", "oll shop", "mm ", " mm", "m-m", "ff ",
+        " ff", "m-f", "f-f", " mf ",
     )):
         topics.add("shop")
     # School / B2B
@@ -771,6 +818,33 @@ def _detect_topics(question: str) -> set[str]:
     # Blogs
     if any(k in q for k in ("blog", "article", "read about", "post")):
         topics.add("blogs")
+
+    # ─── Catalog-aware fallback ──────────────────────────────────────────
+    # If "shop" wasn't already added, check if any live product-name token
+    # (e.g. "shaft", "coupler", "bo motor") appears in the query. This
+    # catches queries that are just a product name without any generic
+    # shop/buy keyword. The tokens set is cached for 10 minutes.
+    if "shop" not in topics:
+        try:
+            tokens = await _fetch_product_name_tokens()
+            # Pad the query so we can match whole-word tokens against boundaries.
+            padded = f" {q} "
+            for tok in tokens:
+                if not tok:
+                    continue
+                # For short tokens (<= 3 chars) require word-boundary match to
+                # avoid false positives like 'bo' matching 'book' or 'about'.
+                if len(tok) <= 3:
+                    if f" {tok} " in padded or padded.startswith(f"{tok} ") or padded.endswith(f" {tok}"):
+                        topics.add("shop")
+                        break
+                else:
+                    if tok in q:
+                        topics.add("shop")
+                        break
+        except Exception:
+            pass
+
     # Default fallback: if query is generic (greeting, help, who are you),
     # pull in a tiny techfest block so the bot can still answer the common case.
     if topics == {"core"}:
@@ -863,7 +937,7 @@ async def faq_chat(req: FaqChatRequest, request: Request):
             )
 
     # ─── Slow path: LLM call with topic-trimmed prompt ────────────────────
-    topics = _detect_topics(req.message)
+    topics = await _detect_topics(req.message)
     user_tickets_block = await _fetch_user_tickets_block(request.headers.get("authorization"))
     system = await _build_system_prompt(user_tickets_block=user_tickets_block, topics=topics)
 
