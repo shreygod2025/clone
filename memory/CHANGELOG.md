@@ -1,5 +1,20 @@
 # OLL Backend Changelog
 
+## 2026-10-07 — Need Help popup (mobile) — z-index, Copy button, scroll anchor
+**Status: COMPLETE · compiles cleanly**
+
+### Fixes
+1. **Navbar bleeding over the popup on mobile**
+   - Navbar is `sticky top-0 z-50 backdrop-blur-lg` which creates its own stacking context, so the shared Radix Dialog (also `z-50`) could not reliably cover it on mobile where sticky layering interacts badly with portals.
+   - Bumped `DialogOverlay` and `DialogContent` to `z-[70]` in `/app/frontend/src/components/ui/dialog.jsx`. Modals now sit above any sticky navbar app-wide.
+
+2. **Copy-answer button missing on mobile**
+   - Added a pill-style **Copy** button next to the thumbs-up/down row under every AI reply in `RaiseQueryButton.jsx` (same strip-and-copy helper as the full `/faq` page). Aligned with `ml-auto` so it's always visible, and uses `data-testid="need-help-msg-{i}-copy"`.
+
+3. **Chat auto-scrolled to the bottom of long answers**
+   - Reworked the scroll effect: when the user just sent a message (or we're mid-send), scroll the bottom into view so the user sees their bubble + "Thinking…" indicator. When the AI's reply lands, scroll so the TOP of that assistant message is in view via a new `lastAssistantRef` and `scrollIntoView({ block: 'start' })`. Users no longer land at the bottom of a long answer with no context.
+
+
 ## 2026-10-07 — FAQ Chat polish — YouTube iframe + product-name recognition
 **Status: COMPLETE · backend + frontend fixes verified via curl & unit test**
 
