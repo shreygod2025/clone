@@ -38,6 +38,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
     { path: '/admin/success-stories', icon: Trophy, label: 'Success Stories', permission: null },
+    { path: '/admin/blogs', icon: FileText, label: 'Blogs', permission: 'blogs' },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'reports' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'users' },
     { path: '/admin/central-database', icon: Database, label: 'Central Database', permission: 'central_database' },
@@ -46,7 +47,6 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings' },
     // ── Moved into Settings tabs (not shown in sidebar):
     //   Future Skills      → lives under Student CRM
-    //   Blogs              → Settings → Blogs tab
     //   Bulk Email         → Settings → Bulk Email tab
     //   Data Center        → Settings → Data Center tab
     //   Data Export        → Settings → Data Export tab

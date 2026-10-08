@@ -7,6 +7,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
 import SeoImage from './tiptap/SeoImage';
 import Callout from './tiptap/Callout';
 import { common, createLowlight } from 'lowlight';
@@ -18,6 +20,7 @@ import {
   Link as LinkIcon, Image as ImageIcon, Youtube as YoutubeIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Code2, Highlighter, Info, AlertTriangle, Lightbulb, CheckCircle,
+  Palette, Upload,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -61,6 +64,8 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
       }),
       Underline,
       Highlight.configure({ multicolor: true }),
+      TextStyle,
+      Color,
       SeoImage.configure({
         HTMLAttributes: {
           class: 'rounded-lg max-w-full my-4',
@@ -145,23 +150,40 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const response = await axios.post(`${API}/upload/image`, formData, {
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
+      // Instead of silently inserting the image, open the Image modal
+      // pre-filled with the uploaded URL so the admin can set alt +
+      // caption + optional link before it lands in the body. The alt
+      // text is critical for both SEO and screen-reader accessibility.
       if (response.data.url) {
-        editor.chain().focus().setImage({ src: response.data.url }).run();
+        setImageForm({
+          src: response.data.url,
+          alt: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 120),
+          title: '',
+          linkHref: '',
+        });
+        setShowImageModal(true);
       }
     } catch (error) {
       console.error('Image upload failed:', error);
-      // Fallback to base64 if upload fails
+      // Fallback — base64 inline so the editor never leaves the admin
+      // stuck with a half-finished upload. Also opens the modal.
       const reader = new FileReader();
       reader.onload = () => {
-        editor.chain().focus().setImage({ src: reader.result }).run();
+        setImageForm({
+          src: reader.result,
+          alt: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 120),
+          title: '',
+          linkHref: '',
+        });
+        setShowImageModal(true);
       };
       reader.readAsDataURL(file);
     } finally {
@@ -272,6 +294,28 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
           >
             <Highlighter className="w-4 h-4" />
           </MenuButton>
+          {/* Text colour picker. The native <input type=color> is wrapped
+              around a Palette icon so the whole chip is clickable and
+              applies the colour instantly on change. */}
+          <label
+            title="Text colour"
+            className="relative inline-flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 cursor-pointer"
+          >
+            <Palette className="w-4 h-4" style={{ color: editor.getAttributes('textStyle').color || '#0A1F44' }} />
+            <input
+              type="color"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              value={editor.getAttributes('textStyle').color || '#000000'}
+              onInput={(e) => editor.chain().focus().setColor(e.target.value).run()}
+              data-testid="rte-text-color"
+            />
+          </label>
+          <MenuButton
+            onClick={() => editor.chain().focus().unsetColor().run()}
+            title="Reset text colour"
+          >
+            <Palette className="w-4 h-4 text-slate-400 line-through" />
+          </MenuButton>
           <MenuButton
             onClick={() => editor.chain().focus().toggleCallout('info').run()}
             isActive={editor.isActive('callout', { variant: 'info' })}
@@ -359,15 +403,19 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
           <MenuButton
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            title="Upload Image (opens file picker)"
+            title="Upload image from your computer (then set alt + caption)"
           >
-            <ImageIcon className="w-4 h-4" />
+            {uploading ? (
+              <Upload className="w-4 h-4 animate-pulse" />
+            ) : (
+              <ImageIcon className="w-4 h-4" />
+            )}
           </MenuButton>
           <MenuButton
             onClick={() => setShowImageModal(true)}
-            title="Insert Image from URL (with alt + caption + link)"
+            title="Insert image from URL instead"
           >
-            <ImageIcon className="w-4 h-4 opacity-60" />
+            <LinkIcon className="w-4 h-4 opacity-60" />
           </MenuButton>
           <MenuButton
             onClick={() => setShowYoutubeModal(true)}

@@ -1,5 +1,20 @@
 # OLL Backend Changelog
 
+## 2026-10-08 — Blog admin polish — sidebar + upload-first + text colour
+**Status: COMPLETE · frontend compiles cleanly**
+
+### 1) "Blogs" tab missing from admin sidebar
+- `AdminDashboard.jsx` had Blogs commented out and moved to Settings → Blogs tab. Added it back as a top-level sidebar entry: `{ path: '/admin/blogs', icon: FileText, label: 'Blogs', permission: 'blogs' }`. Super_admin (admin@oll.co) sees it automatically; scoped admins need the `blogs` permission.
+
+### 2) Image insertion is now upload-first, modal-second
+- `RichTextEditor.jsx :: handleImageUpload` no longer silently inserts the uploaded image. Instead it opens the Image modal pre-filled with the server URL AND a smart default `alt` derived from the filename, so admins can polish alt + caption + optional link before the image lands in the body.
+- Toolbar now shows the Upload button (file picker) prominently; the small 🔗 icon next to it opens the "Insert from URL" path for pasting a remote URL. The modal is identical for both flows.
+
+### 3) Text colour picker
+- Added `@tiptap/extension-text-style` + `@tiptap/extension-color` to the editor. The toolbar now has a Palette chip (native `<input type=color>` overlay) that applies colour on change plus a reset button. Marks round-trip through `getHTML()` as inline `<span style="color:…">` which DOMPurify already permits in the published renderer.
+- Named exports (`{ TextStyle }` / `{ Color }`) — the 3.26.1 build changed from default to named exports; using the default import crashed webpack.
+
+
 ## 2026-10-08 — Permanent Blog system (CRUD + rich editor + SEO + rendering)
 **Status: COMPLETE · backend verified end-to-end · frontend compiles cleanly**
 
