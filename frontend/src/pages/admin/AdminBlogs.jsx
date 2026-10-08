@@ -10,6 +10,7 @@ import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import axios from 'axios';
 import RichTextEditor from '../../components/RichTextEditor';
+import ImageUploadField from '../../components/admin/ImageUploadField';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -46,6 +47,10 @@ const AdminBlogs = () => {
     canonical_url: '',
     keywords: [],
     og_image: '',
+    // Header CTAs — admin can configure up to 2 of each type per post.
+    hero_eyebrow: '',
+    navbar_ctas: [],
+    hero_ctas: [],
   });
 
   useEffect(() => {
@@ -138,6 +143,9 @@ const AdminBlogs = () => {
       canonical_url: '',
       keywords: [],
       og_image: '',
+      hero_eyebrow: '',
+      navbar_ctas: [],
+      hero_ctas: [],
     });
   };
 
@@ -161,6 +169,9 @@ const AdminBlogs = () => {
       canonical_url: blog.canonical_url || '',
       keywords: blog.keywords || [],
       og_image: blog.og_image || '',
+      hero_eyebrow: blog.hero_eyebrow || '',
+      navbar_ctas: blog.navbar_ctas || [],
+      hero_ctas: blog.hero_ctas || [],
     });
     setShowForm(true);
   };
@@ -408,20 +419,14 @@ const AdminBlogs = () => {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Cover Image URL</label>
-              <Input
-                value={formData.cover_image}
-                onChange={(e) => setFormData({...formData, cover_image: e.target.value})}
-                placeholder="https://..."
-                data-testid="blog-cover-image"
-              />
-              {formData.cover_image && (
-                <div className="mt-2 rounded-lg overflow-hidden border border-slate-200">
-                  <img src={formData.cover_image} alt="Cover preview" className="w-full h-32 object-cover" />
-                </div>
-              )}
-            </div>
+            <ImageUploadField
+              label="Cover Image"
+              hint="Shown on blog listing + hero. Recommended 1600×900 (16:9)."
+              value={formData.cover_image}
+              onChange={(url) => setFormData({ ...formData, cover_image: url })}
+              testId="blog-cover-image"
+              getAuthHeaders={getAuthHeaders}
+            />
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Excerpt / Summary *</label>
@@ -504,19 +509,114 @@ const AdminBlogs = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Social preview image (OG)</label>
-                  <Input
+                  <ImageUploadField
+                    hint="1200×630 — falls back to the cover image if blank."
                     value={formData.og_image}
-                    onChange={(e) => setFormData({ ...formData, og_image: e.target.value })}
-                    placeholder="1200×630 PNG/JPG — falls back to cover image if blank"
-                    data-testid="blog-og-image"
+                    onChange={(url) => setFormData({ ...formData, og_image: url })}
+                    testId="blog-og-image"
+                    getAuthHeaders={getAuthHeaders}
                   />
-                  {formData.og_image && (
-                    <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-xs">
-                      <img src={formData.og_image} alt="OG preview" className="w-full h-24 object-cover" />
-                    </div>
-                  )}
                 </div>
               </div>
+            </details>
+
+            {/* ─────────── Header CTA buttons ─────────── */}
+            <details className="rounded-xl border border-slate-200 bg-slate-50 p-4" open>
+              <summary className="cursor-pointer text-sm font-bold text-[#1E3A5F] uppercase tracking-widest">
+                Header &amp; Hero CTA Buttons
+              </summary>
+              <p className="text-xs text-slate-500 mt-1 mb-4">
+                These buttons appear on the blog page itself — up to 2 pills in the sticky top navbar
+                and up to 2 big buttons in the navy hero. Leave empty to hide.
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Hero eyebrow label</label>
+                <Input
+                  value={formData.hero_eyebrow}
+                  onChange={(e) => setFormData({ ...formData, hero_eyebrow: e.target.value })}
+                  placeholder="e.g. CISCE GROUP 3 · SUBJECT CODE 66 · CLASSES 9 & 10"
+                  data-testid="blog-hero-eyebrow"
+                />
+                <div className="text-[10px] text-slate-400 mt-1">Small uppercase badge shown just above the hero title.</div>
+              </div>
+
+              {[
+                { field: 'navbar_ctas', title: 'Navbar CTAs', hint: 'Up to 2 pill buttons in the sticky top navbar.' },
+                { field: 'hero_ctas',   title: 'Hero CTAs',   hint: 'Up to 2 large buttons under the hero text.' },
+              ].map(({ field, title, hint }) => (
+                <div key={field} className="mb-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">{title}</div>
+                      <div className="text-[10px] text-slate-400">{hint}</div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={(formData[field] || []).length >= 2}
+                      onClick={() => setFormData({
+                        ...formData,
+                        [field]: [...(formData[field] || []), { label: '', url: '', variant: 'primary' }],
+                      })}
+                      data-testid={`blog-${field}-add`}
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </Button>
+                  </div>
+
+                  {(formData[field] || []).map((cta, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2 mb-2" data-testid={`blog-${field}-${idx}`}>
+                      <Input
+                        className="col-span-4"
+                        value={cta.label}
+                        onChange={(e) => {
+                          const next = [...formData[field]];
+                          next[idx] = { ...next[idx], label: e.target.value };
+                          setFormData({ ...formData, [field]: next });
+                        }}
+                        placeholder="Button label"
+                      />
+                      <Input
+                        className="col-span-6"
+                        value={cta.url}
+                        onChange={(e) => {
+                          const next = [...formData[field]];
+                          next[idx] = { ...next[idx], url: e.target.value };
+                          setFormData({ ...formData, [field]: next });
+                        }}
+                        placeholder="https://… or /path"
+                      />
+                      <select
+                        value={cta.variant || 'primary'}
+                        onChange={(e) => {
+                          const next = [...formData[field]];
+                          next[idx] = { ...next[idx], variant: e.target.value };
+                          setFormData({ ...formData, [field]: next });
+                        }}
+                        className="col-span-1 h-10 border border-slate-200 rounded-md px-1 text-xs bg-white"
+                      >
+                        <option value="primary">Red</option>
+                        <option value="secondary">Dark</option>
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="col-span-1 !px-2"
+                        onClick={() => {
+                          const next = formData[field].filter((_, i) => i !== idx);
+                          setFormData({ ...formData, [field]: next });
+                        }}
+                        aria-label="Remove CTA"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </details>
 
             <div>

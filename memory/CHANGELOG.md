@@ -1,5 +1,34 @@
 # OLL Backend Changelog
 
+## 2026-10-08 — Blog uploads, hero redesign, CTA system, YouTube iframe fix
+**Status: COMPLETE · backend verified end-to-end · frontend compiles cleanly**
+
+### Admin form upgrades (`AdminBlogs.jsx` + new `ImageUploadField`)
+- Cover Image + OG Image fields swapped from text inputs to a new `ImageUploadField` component that supports click-to-upload, drag-and-drop, and (behind a toggle) a "paste URL instead" fallback.
+- New `Header & Hero CTA Buttons` section:
+  - `hero_eyebrow` — small uppercase label above the hero title.
+  - `navbar_ctas[]` — up to 2 pills on the sticky top navbar.
+  - `hero_ctas[]` — up to 2 big buttons in the navy hero.
+  - Each CTA has label + url + variant (`primary` red / `secondary` dark). Repeater UI with Add / Trash controls.
+
+### Rich editor (`RichTextEditor.jsx`)
+- New toolbar button → opens an **Insert CTA Button** modal (label + URL + style preview). Inserts `<a class="blog-cta blog-cta-{variant}">` so the admin never touches HTML.
+- Image upload flow unchanged (click → file picker → modal with alt + caption + link).
+
+### Public blog page (`BlogDetailPage.jsx` — full rewrite)
+- Navy gradient hero with the admin-configurable OLL **pill navbar** (white rounded shell + CTAs on the right).
+- Hero content: breadcrumbs, eyebrow badge, title, excerpt, date / read-time / author row, and up to 2 hero CTAs.
+- Right-side **sticky TOC** ("On this page") replaces the inline TOC — appears when ≥ 2 H2/H3 headings exist.
+- YouTube URLs that TipTap didn't convert to iframes are **post-processed into responsive 16:9 iframes** before DOMPurify runs (handles both `youtu.be/<id>` and `youtube.com/watch?v=<id>`, bare or `<a>`-wrapped).
+- DOMPurify sanitize profile unchanged — `blog-cta` + `callout` classes already survive via `ALLOWED_URI_REGEXP` + attribute allowlist. CTA buttons styled via a global `blog-prose a.blog-cta-*` CSS rule.
+
+### Backend (`routes/educators.py`)
+- Blog model extended with `hero_eyebrow`, `navbar_ctas: List[CTAItem]`, `hero_ctas: List[CTAItem]` where `CTAItem = { label, url, variant }`. Verified round-trip via curl POST.
+
+### Hardcoded ICSE / RoboSumo blog pages
+- Not auto-migrated — the two existing JSX pages (`ICSECode66BlogPage.jsx`, `RoboSumoBuildGuideBlog.jsx`) are 1400+ line React landing pages with bespoke components, animations and layout that would lose fidelity if blindly converted to HTML. They remain code-managed. A dedicated migration task can port each one section-by-section into DB blogs when the user is ready.
+
+
 ## 2026-10-08 — Blog admin polish — sidebar + upload-first + text colour
 **Status: COMPLETE · frontend compiles cleanly**
 

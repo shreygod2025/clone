@@ -20,7 +20,7 @@ import {
   Link as LinkIcon, Image as ImageIcon, Youtube as YoutubeIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Code2, Highlighter, Info, AlertTriangle, Lightbulb, CheckCircle,
-  Palette, Upload,
+  Palette, Upload, MousePointerClick,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -54,6 +54,8 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
   // Image modal state — alt is required for SEO & accessibility.
   const [imageForm, setImageForm] = useState({ src: '', alt: '', title: '', linkHref: '' });
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [showButtonModal, setShowButtonModal] = useState(false);
+  const [buttonForm, setButtonForm] = useState({ label: '', url: '', variant: 'primary' });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -134,6 +136,20 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
     setShowImageModal(false);
     setImageForm({ src: '', alt: '', title: '', linkHref: '' });
   }, [editor, imageForm]);
+
+  const addButton = useCallback(() => {
+    if (!buttonForm.label || !buttonForm.url || !editor) return;
+    // Insert a styled anchor as raw HTML. The sanitizer on BlogDetailPage
+    // whitelists the `blog-cta` + `blog-cta-{variant}` class names so the
+    // button survives DOMPurify and renders via the published prose CSS.
+    const safeLabel = buttonForm.label.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeUrl = buttonForm.url.replace(/"/g, '&quot;');
+    const variant = buttonForm.variant === 'secondary' ? 'secondary' : 'primary';
+    const html = `<p><a href="${safeUrl}" class="blog-cta blog-cta-${variant}" target="_blank" rel="noopener">${safeLabel}</a></p>`;
+    editor.chain().focus().insertContent(html).run();
+    setShowButtonModal(false);
+    setButtonForm({ label: '', url: '', variant: 'primary' });
+  }, [editor, buttonForm]);
 
   const addYoutube = useCallback(() => {
     if (!youtubeUrl) return;
@@ -423,6 +439,12 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
           >
             <YoutubeIcon className="w-4 h-4" />
           </MenuButton>
+          <MenuButton
+            onClick={() => setShowButtonModal(true)}
+            title="Insert CTA button (label + link)"
+          >
+            <MousePointerClick className="w-4 h-4" />
+          </MenuButton>
         </div>
 
         {/* Undo/Redo */}
@@ -597,6 +619,71 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
               </Button>
               <Button onClick={addYoutube} className="btn-primary flex-1">
                 Add Video
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Button / CTA Modal — inserts a styled <a class="blog-cta"> so
+          admins can drop call-to-action buttons anywhere in the body
+          without writing HTML. The sanitizer on BlogDetailPage keeps
+          the class names so the published renderer picks them up. */}
+      <Dialog open={showButtonModal} onOpenChange={setShowButtonModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Insert CTA Button</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Button label *</label>
+              <Input
+                placeholder="e.g. Book a Free Demo"
+                value={buttonForm.label}
+                onChange={(e) => setButtonForm({ ...buttonForm, label: e.target.value })}
+                data-testid="rte-button-label"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Link URL *</label>
+              <Input
+                placeholder="https://… or /student"
+                value={buttonForm.url}
+                onChange={(e) => setButtonForm({ ...buttonForm, url: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && addButton()}
+                data-testid="rte-button-url"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Style</label>
+              <div className="flex gap-2">
+                {[
+                  { v: 'primary', label: 'Red / Primary', bg: '#D63031', fg: '#fff' },
+                  { v: 'secondary', label: 'Dark / Secondary', bg: '#0A1F44', fg: '#fff' },
+                ].map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setButtonForm({ ...buttonForm, variant: opt.v })}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border-2 transition ${buttonForm.variant === opt.v ? 'border-[#D63031]' : 'border-slate-200'}`}
+                    style={{ background: opt.bg, color: opt.fg }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowButtonModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={addButton}
+                disabled={!buttonForm.label || !buttonForm.url}
+                className="btn-primary flex-1"
+                data-testid="rte-button-insert"
+              >
+                Insert Button
               </Button>
             </div>
           </div>

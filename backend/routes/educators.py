@@ -521,6 +521,13 @@ class FAQUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 # Blog Models
+class CTAItem(BaseModel):
+    """A single call-to-action button rendered in the blog header or hero."""
+    label: str = ""
+    url: str = ""
+    variant: str = "primary"  # 'primary' | 'secondary'
+
+
 class Blog(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -543,6 +550,12 @@ class Blog(BaseModel):
     keywords: List[str] = []      # Rendered into <meta name="keywords">.
     og_image: str = ""            # Falls back to `cover_image` when empty.
     reading_time_minutes: int = 0 # Shown in UI; auto-computed on save if 0.
+    # ── Blog header CTAs — admin configurable per post ───────────────
+    #   `navbar_ctas` → up to 2 pills on the sticky top navbar.
+    #   `hero_ctas`   → up to 2 big buttons in the navy hero section.
+    navbar_ctas: List[CTAItem] = []
+    hero_ctas: List[CTAItem] = []
+    hero_eyebrow: str = ""        # Small uppercase label above the title.
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -565,6 +578,9 @@ class BlogCreate(BaseModel):
     keywords: List[str] = []
     og_image: str = ""
     reading_time_minutes: int = 0
+    navbar_ctas: List[CTAItem] = []
+    hero_ctas: List[CTAItem] = []
+    hero_eyebrow: str = ""
 
 class BlogUpdate(BaseModel):
     title: Optional[str] = None
@@ -584,6 +600,9 @@ class BlogUpdate(BaseModel):
     keywords: Optional[List[str]] = None
     og_image: Optional[str] = None
     reading_time_minutes: Optional[int] = None
+    navbar_ctas: Optional[List[CTAItem]] = None
+    hero_ctas: Optional[List[CTAItem]] = None
+    hero_eyebrow: Optional[str] = None
 
 # ── Email helper functions ─────────────────────────────────────────────────────
 async def send_educator_application_received_email(doc: dict):
