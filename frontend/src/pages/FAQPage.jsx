@@ -31,6 +31,7 @@ import Navbar from '../components/Navbar';
 import useSeo from '../hooks/useSeo';
 import { mdToHtml } from '../utils/richContent';
 import { getVisitorId } from '../utils/visitorId';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -218,66 +219,13 @@ const FAQPage = () => {
   const handleEscalate = useCallback((idx) => setEscalateFor(idx), []);
 
   // ─── Voice input (Web Speech API) ────────────────────────────────────
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
-  const voiceSupported = typeof window !== 'undefined' && (
-    'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
-  );
-
-  const toggleVoiceInput = useCallback(() => {
-    if (!voiceSupported) {
-      toast.error('Voice input isn\'t supported in this browser. Try Chrome or Safari.');
-      return;
-    }
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      return;
-    }
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SpeechRecognition();
-    rec.continuous = true;             // keep listening until user taps mic again
-    rec.interimResults = true;         // show live transcript as user speaks
-    rec.lang = 'en-IN';                // Indian English default — browser auto-falls-back if unsupported
-    rec.maxAlternatives = 1;
-
-    // Snapshot the input text at start so interim transcripts replace cleanly.
-    const baseInput = input.trim();
-
-    rec.onstart = () => setIsListening(true);
-    rec.onerror = (ev) => {
-      setIsListening(false);
-      if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
-        toast.error('Mic permission denied. Enable microphone in browser settings.');
-      } else if (ev?.error === 'no-speech') {
-        toast('I didn\'t catch that — tap the mic and try again.', { duration: 2500 });
-      }
-    };
-    rec.onend = () => setIsListening(false);
-    rec.onresult = (ev) => {
-      let finalText = '';
-      let interimText = '';
-      for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
-        const r = ev.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interimText += r[0].transcript;
-      }
-      const combined = (baseInput + ' ' + finalText + interimText).trim();
-      setInput(combined);
-    };
-
-    recognitionRef.current = rec;
-    try {
-      rec.start();
-    } catch (e) {
-      setIsListening(false);
-      toast.error('Couldn\'t start the mic — try again.');
-    }
-  }, [input, isListening, voiceSupported]);
-
-  // Stop recognition when the page unmounts so it doesn\'t keep listening.
-  useEffect(() => () => {
-    try { recognitionRef.current?.stop(); } catch {}
-  }, []);
+  // See /app/frontend/src/hooks/useVoiceInput.js for the cumulative-buffer
+  // + auto-restart fixes that stop dictation from "replacing itself" on
+  // every pause.
+  const { isListening, toggle: toggleVoiceInput, voiceSupported } = useVoiceInput({
+    getBaseText: () => input,
+    setText: setInput,
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">

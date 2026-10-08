@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink, Send, Mail, Phone, ThumbsUp, ThumbsDown, Copy } from 'lucide-react';
 import { BubbleContent } from '../pages/FAQPage';
 import { getVisitorId } from '../utils/visitorId';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -766,6 +767,13 @@ const RaiseQueryButton = () => {
   }, []);
   const chatBottomRef = React.useRef(null);
   const lastAssistantRef = React.useRef(null);
+  // Voice input for the popup composer — same cumulative-buffer hook as
+  // the /faq page so dictation never "replaces itself" on silent pauses.
+  const {
+    isListening: chatListening,
+    toggle: toggleChatVoice,
+    voiceSupported: chatVoiceSupported,
+  } = useVoiceInput({ getBaseText: () => chatInput, setText: setChatInput });
   // When a user sends a message, scroll to bottom so they can see their
   // bubble + the "Thinking…" indicator. When the AI reply lands, scroll
   // so the TOP of that answer is visible (users complained the chat kept
@@ -1293,14 +1301,27 @@ const RaiseQueryButton = () => {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
-                      placeholder="Ask about Techfest, courses, payments…"
+                      placeholder={chatListening ? 'Listening — speak now…' : 'Ask about Techfest, courses, payments…'}
                       className="flex-1 h-9 px-3 text-sm rounded-full border border-slate-200 focus:outline-none focus:border-[#1E3A5F]"
                       data-testid="need-help-chat-input"
                       disabled={chatSending}
                     />
+                    {chatVoiceSupported && (
+                      <button
+                        type="button"
+                        onClick={toggleChatVoice}
+                        disabled={chatSending}
+                        aria-label={chatListening ? 'Stop voice input' : 'Start voice input'}
+                        title={chatListening ? 'Stop voice input' : 'Start voice input'}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition disabled:opacity-40 ${chatListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        data-testid="need-help-chat-mic"
+                      >
+                        {chatListening ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={sendChatMessage}
+                      onClick={() => sendChatMessage()}
                       disabled={!chatInput.trim() || chatSending}
                       className="w-9 h-9 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#2d5a8a]"
                       data-testid="need-help-chat-send"

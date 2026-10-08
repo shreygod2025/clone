@@ -1,5 +1,24 @@
 # OLL Backend Changelog
 
+## 2026-10-08 — Need Help popup send button + voice input polish
+**Status: COMPLETE · frontend compiles cleanly**
+
+### 1) Send button broken in Need Help popup
+- Root cause: `onClick={sendChatMessage}` was passing the SyntheticEvent as the newly-added `overrideText` arg (introduced when the suggestion chips started calling `sendChatMessage(text)`). `.trim()` on an event object quietly produced an empty string, so nothing sent.
+- Fix: wrapped the handler in an arrow — `onClick={() => sendChatMessage()}` — in `/app/frontend/src/components/RaiseQueryButton.jsx`.
+
+### 2) Voice input missing in Need Help popup
+- Added a mic button to the popup composer, mirroring the `/faq` page UX. Only shown when `window.SpeechRecognition || window.webkitSpeechRecognition` exists.
+
+### 3) Voice dictation "replaced itself" on every pause (both popup and /faq)
+- Root cause: the old `onresult` handler rebuilt the input from `baseInput + currentChunk` where `currentChunk` was computed from `ev.results[ev.resultIndex..]`. Once Chrome marked a chunk final and advanced `resultIndex`, the next event's chunk no longer included the earlier finalized text — it got dropped. Combined with Chrome's auto-stop on silence, the composer "restarted" every few seconds.
+- Fix: new shared hook `/app/frontend/src/hooks/useVoiceInput.js` that
+  - keeps a persistent `finalBuf` ref accumulating every finalized chunk across every `onresult` event AND every engine-level restart,
+  - silently restarts recognition on `onend` unless the user tapped the mic to stop (so a mid-sentence silence doesn't drop context),
+  - cleans up on unmount.
+- Both `FAQPage.jsx` and `RaiseQueryButton.jsx` now consume the hook — identical behaviour, single source of truth.
+
+
 ## 2026-10-07 — FAQ rate-limit per visitor + Support KPI undercount + suggestion chips
 **Status: COMPLETE · backend verified by curl + unit calls; frontend compiles**
 
