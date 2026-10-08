@@ -178,6 +178,7 @@ const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
 const TechfestPage = lazy(() => import("./pages/TechfestPage"));
 const TechfestRegisterPage = lazy(() => import("./pages/TechfestRegisterPage"));
 const TechfestSubmitPage = lazy(() => import("./pages/TechfestSubmitPage"));
+const TechfestSubmissionPortalPage = lazy(() => import("./pages/TechfestSubmissionPortalPage"));
 const RoboSumoCompetitionPage = lazy(() => import("./pages/techfest/RoboSumoCompetitionPage"));
 const RoboRacerCompetitionPage = lazy(() => import("./pages/techfest/RoboRacerCompetitionPage"));
 const RoboInnovationCompetitionPage = lazy(() => import("./pages/techfest/RoboInnovationCompetitionPage"));
@@ -390,6 +391,7 @@ function App() {
               <Route path="/techfest" element={<TechfestPage />} />
               <Route path="/techfest/register" element={<TechfestRegisterPage />} />
               <Route path="/techfest/submit" element={<TechfestSubmitPage />} />
+              <Route path="/techfest/my-submission" element={<TechfestSubmissionPortalPage />} />
               {/* ─── IIT Bombay Techfest SEO landing pages ────────────────
                    One keyword-targeted HTML page per competition track plus
                    an HTML Problem-Statement page (replaces the orphaned PDF

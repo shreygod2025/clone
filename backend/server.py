@@ -4213,6 +4213,8 @@ api_router.include_router(public_receipts_router)
 # Techfest × OLL Robotics Championship — lead capture
 from routes.techfest import router as techfest_router
 api_router.include_router(techfest_router)
+from routes.techfest_submission_portal import router as techfest_portal_router
+api_router.include_router(techfest_portal_router)
 
 from routes.central_database import router as central_database_router
 api_router.include_router(central_database_router)

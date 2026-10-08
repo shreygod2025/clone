@@ -507,7 +507,7 @@ async def list_techfest_submissions(
     query: dict = {}
     if zone: query["zone"] = zone
     if competition: query["competition"] = competition
-    cursor = db.techfest_submissions.find(query).sort("created_at", -1).limit(1000)
+    cursor = db.techfest_submissions.find(query).sort("created_at", -1).limit(10000)
     out = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -643,7 +643,7 @@ async def list_techfest_registrations(
         if uid:
             or_clauses.append({"coordinator_user_id": uid})
         query["$or"] = or_clauses
-    cursor = db.techfest_registrations.find(query).sort("created_at", -1).limit(1000)
+    cursor = db.techfest_registrations.find(query).sort("created_at", -1).limit(10000)
     out = []
     async for doc in cursor:
         doc["_id"] = str(doc["_id"])
@@ -1469,10 +1469,15 @@ async def import_techfest_students_csv(
 
 @router.get("/admin/techfest/students")
 async def list_techfest_student_registrations(
-    limit: int = 2000,
+    limit: int = 50000,
     user: dict = Depends(_admin_or_team),
 ):
-    """Return the flat student registrations table (from the CSV import)."""
+    """Return the flat student registrations table (from the CSV import).
+
+    Default limit is 50k so admins importing the full OLL dataset (4k+
+    rows and growing) see every student without pagination. The frontend
+    does its own client-side filtering + virtualization so a wider payload
+    is fine."""
     cursor = db.techfest_student_registrations.find({}).sort("registration_date", -1).limit(limit)
     out: List[dict] = []
     async for doc in cursor:

@@ -1,5 +1,26 @@
 # OLL Backend Changelog
 
+## 2026-10-08 — Techfest Submission Portal + 4k+ student import
+**Status: COMPLETE · backend verified end-to-end via curl**
+
+### 1) Submission confirmation page + OTP-gated self-service portal
+Students can now access and edit their Techfest submission any time until **20 Oct 2026 11:59 PM IST** without an account.
+
+**New backend module** `/app/backend/routes/techfest_submission_portal.py` adds:
+- `POST /api/techfest/submission-portal/request-otp` → 6-digit code, SHA-256-hashed in `techfest_portal_otps` with a 10-minute TTL and 30-second resend cooldown. Email delivered via Resend; WhatsApp sent best-effort via **AiSensy** (`AISENSY_API_KEY` + `AISENSY_OTP_TEMPLATE=techfest_portal_otp`) when the submission has a phone on file.
+- `POST /api/techfest/submission-portal/verify-otp` → issues a 24-hour JWT (scope `techfest_submission_portal`) signed with `JWT_SECRET`.
+- `GET  /api/techfest/submission-portal/my` → list this email's submissions with `edit_cutoff_utc` + `edit_window_open`.
+- `PATCH /api/techfest/submission-portal/submission/{id}` → whitelisted update, blocks when cutoff passed, enforces email match on the record.
+
+**Frontend**
+- `TechfestSubmitPage.jsx` success state now shows the submission reference ID, confirms the email was sent, and surfaces a prominent **"View / Update Submission"** CTA linking to the portal.
+- New page `/techfest/my-submission` (`TechfestSubmissionPortalPage.jsx`) implements the 3-step flow: email → OTP → list/edit form. Token + email persisted in `localStorage` so a return visit stays signed in until expiry.
+- Verified via curl: request-otp returns `ok+expires_in`, invalid OTP is rejected, valid OTP mints a JWT, `my` returns the submissions with the correct `edit_cutoff_utc=2026-10-20T18:29:59+00:00` (20 Oct 23:59 IST).
+
+### 2) Student import 2000-row cap lifted
+`GET /api/admin/techfest/students` default `limit` raised from **2000 → 50000** so the full 4k+ OLL dataset renders in one shot. Admin registrations + submissions list limits also bumped to 10k.
+
+
 ## 2026-10-08 — Need Help popup send button + voice input polish
 **Status: COMPLETE · frontend compiles cleanly**
 

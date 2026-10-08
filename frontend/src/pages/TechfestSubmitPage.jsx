@@ -80,6 +80,7 @@ export default function TechfestSubmitPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [submissionRef, setSubmissionRef] = useState(''); // id returned by backend on successful submit
   const [error, setError] = useState('');
   const [draftSavedAt, setDraftSavedAt] = useState(null);
 
@@ -272,6 +273,7 @@ export default function TechfestSubmitPage() {
       if (!res.ok) throw new Error(data?.detail || 'Submission failed');
       // Success — clear the saved draft so refreshing doesn't repopulate.
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
+      setSubmissionRef(data?.id || '');
       setDone(true);
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
     } catch (err) {
@@ -303,17 +305,33 @@ export default function TechfestSubmitPage() {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         {done ? (
-          <div className="text-center py-16" data-testid="techfest-submit-success">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-9 h-9 text-emerald-600" />
+          <div className="py-12" data-testid="techfest-submit-success">
+            <div className="max-w-xl mx-auto text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-9 h-9 text-emerald-600" />
+              </div>
+              <h1 className="trp-h1 text-3xl text-[#0A1F44]">Project submitted!</h1>
+              <p className="text-slate-600 mt-3 font-light">
+                We've emailed a confirmation to <strong>{form.email}</strong> with your submission details. The OLL team &amp; Techfest jury will review and share the next update on your email + WhatsApp.
+              </p>
+              {submissionRef && (
+                <div className="mt-6 inline-block rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-left">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Submission reference</div>
+                  <div className="font-mono text-sm text-[#0A1F44] mt-1" data-testid="techfest-submission-ref">{submissionRef}</div>
+                </div>
+              )}
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 text-left">
+                <strong>Need to edit later?</strong> You can update your project details any time until <strong>20 Oct 2026, 11:59 PM IST</strong>. Head to the submission portal and verify via a one-time code sent to your email.
+              </div>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <Link to="/techfest/my-submission" className="trp-btn primary inline-flex" data-testid="techfest-view-submission">
+                  View / Update Submission <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link to="/techfest" className="trp-btn inline-flex border border-slate-200 text-[#0A1F44]">
+                  Back to Techfest
+                </Link>
+              </div>
             </div>
-            <h1 className="trp-h1 text-3xl text-[#0A1F44]">Project submitted!</h1>
-            <p className="text-slate-600 mt-3 max-w-md mx-auto font-light">
-              Thanks for uploading your project. The OLL team &amp; Techfest jury will review it and share the next update on your email + WhatsApp.
-            </p>
-            <Link to="/techfest" className="trp-btn primary mt-6 inline-flex">
-              Back to Techfest <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
         ) : (
           <>
