@@ -1,5 +1,46 @@
 # OLL Backend Changelog
 
+## 2026-10-08 — Permanent Blog system (CRUD + rich editor + SEO + rendering)
+**Status: COMPLETE · backend verified end-to-end · frontend compiles cleanly**
+
+### Scope
+Replaced the half-finished blog subsystem with a permanent, SEO-first setup across backend model, admin UI, rich-text editor, and public rendering.
+
+### Backend (`/app/backend/routes/educators.py`)
+- Blog model extended with `meta_title`, `meta_description`, `canonical_url`, `keywords[]`, `og_image`, and `reading_time_minutes` (auto-computed from word count on create/update when admin leaves it 0).
+- Cache invalidated on create + delete (list cache was already cleared on update).
+
+### Rich text editor (`/app/frontend/src/components/RichTextEditor.jsx`)
+TipTap-powered with new extensions:
+- **Highlight** (coloured text background, multicolor-enabled) — yellow by default; mark saved as `data-color` for lossless round-trip.
+- **Callout** block Node (`/app/frontend/src/components/tiptap/Callout.js`) with 4 variants — info (blue), success (green), warning (amber), note (purple). Rendered as `<div class="callout callout-{variant}" data-variant="{variant}">…</div>` with a left border + tinted background.
+- **SeoImage** extension (`/app/frontend/src/components/tiptap/SeoImage.js`) that extends `@tiptap/extension-image` to require `alt`, accept `title` (caption/hover tooltip), and optionally wrap the `<img>` in an `<a>` when a `linkHref` is provided (common SEO pattern for citing sources).
+- Image modal rewritten to collect `src` + `alt` (required) + `title` + optional `linkHref`.
+- Toolbar gains buttons for Highlight, 4 Callout variants, and "Insert Image from URL" (next to the existing file-upload button).
+- Editor styles updated to visually preview callouts and highlights so admins see the final rendering while editing.
+
+### Admin UI (`/app/frontend/src/pages/admin/AdminBlogs.jsx`)
+Added a collapsible **SEO & Social Preview** section inside the create/edit form with char-counted inputs for meta_title (0/70) and meta_description (0/170), canonical URL, keywords (comma-separated), and OG image preview thumbnail. `resetForm` + `openEditForm` carry the new fields through.
+
+### Public blog page (`/app/frontend/src/pages/BlogDetailPage.jsx`)
+Full rewrite:
+- Uses the shared `Navbar` + `Footer`.
+- DOMPurify-sanitized HTML output with a strict allowlist (iframes + img + anchor + callout div with `data-variant` + mark/code/pre). Blocks `javascript:` payloads via `ALLOWED_URI_REGEXP`.
+- Full `<Helmet>` block: `<title>`, meta description, `<link rel="canonical">`, Open Graph (`og:type`, `og:title`, `og:description`, `og:url`, `og:image`, `article:*`), Twitter card, and a JSON-LD `BlogPosting` script with publisher, author, dates and keywords.
+- Automatic TOC (table-of-contents) from H2/H3 headings when the post has ≥ 3 of them, with anchor links.
+- Prose styles mirror the editor so previews match published pages. Callouts, highlights, iframes, images, blockquotes, code blocks all render with the exact same look & feel as inside the editor.
+
+### Navbar (`/app/frontend/src/components/Navbar.jsx`)
+`Blog` menu item now routes to the in-app `/blogs` page (previously it was a hard link to the WordPress mirror). The admin-managed posts are the canonical source going forward.
+
+### Dependencies
+`yarn add dompurify @tiptap/extension-highlight@3.26.1` — pinned to match the installed `@tiptap/core@3.26.1`; a floating `^3.26` picked up 3.31 which broke build with a missing `isValidCSSStyleValue` export.
+
+### Verification
+- Backend: POST `/api/blogs` with every new SEO field persists correctly and auto-computes `reading_time_minutes=1` from the body. Returned payload includes all fields verbatim.
+- Frontend: webpack compiled with 1 warning (unrelated hook-deps), 0 errors after cache clear.
+
+
 ## 2026-10-08 — Techfest Submission Portal + 4k+ student import
 **Status: COMPLETE · backend verified end-to-end via curl**
 

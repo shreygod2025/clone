@@ -1,21 +1,23 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Youtube from '@tiptap/extension-youtube';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
+import Highlight from '@tiptap/extension-highlight';
+import SeoImage from './tiptap/SeoImage';
+import Callout from './tiptap/Callout';
 import { common, createLowlight } from 'lowlight';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { 
-  Bold, Italic, Underline as UnderlineIcon, Strikethrough, 
-  Code, Heading1, Heading2, Heading3, 
-  List, ListOrdered, Quote, Minus, 
+import {
+  Bold, Italic, Underline as UnderlineIcon, Strikethrough,
+  Code, Heading1, Heading2, Heading3,
+  List, ListOrdered, Quote, Minus,
   Link as LinkIcon, Image as ImageIcon, Youtube as YoutubeIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Undo, Redo, Code2
+  Undo, Redo, Code2, Highlighter, Info, AlertTriangle, Lightbulb, CheckCircle,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -46,7 +48,8 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
   const [showImageModal, setShowImageModal] = useState(false);
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  // Image modal state — alt is required for SEO & accessibility.
+  const [imageForm, setImageForm] = useState({ src: '', alt: '', title: '', linkHref: '' });
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -57,11 +60,13 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
         codeBlock: false,
       }),
       Underline,
-      Image.configure({
+      Highlight.configure({ multicolor: true }),
+      SeoImage.configure({
         HTMLAttributes: {
           class: 'rounded-lg max-w-full my-4',
         },
       }),
+      Callout,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -110,11 +115,20 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
   }, [editor, linkUrl]);
 
   const addImage = useCallback(() => {
-    if (!imageUrl) return;
-    editor.chain().focus().setImage({ src: imageUrl }).run();
+    if (!imageForm.src) return;
+    editor
+      .chain()
+      .focus()
+      .setImage({
+        src: imageForm.src,
+        alt: imageForm.alt || '',
+        title: imageForm.title || '',
+        linkHref: imageForm.linkHref || '',
+      })
+      .run();
     setShowImageModal(false);
-    setImageUrl('');
-  }, [editor, imageUrl]);
+    setImageForm({ src: '', alt: '', title: '', linkHref: '' });
+  }, [editor, imageForm]);
 
   const addYoutube = useCallback(() => {
     if (!youtubeUrl) return;
@@ -252,6 +266,41 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
             <Quote className="w-4 h-4" />
           </MenuButton>
           <MenuButton
+            onClick={() => editor.chain().focus().toggleHighlight({ color: '#FEF3C7' }).run()}
+            isActive={editor.isActive('highlight')}
+            title="Highlight text (coloured background)"
+          >
+            <Highlighter className="w-4 h-4" />
+          </MenuButton>
+          <MenuButton
+            onClick={() => editor.chain().focus().toggleCallout('info').run()}
+            isActive={editor.isActive('callout', { variant: 'info' })}
+            title="Insert Info callout (blue)"
+          >
+            <Info className="w-4 h-4" />
+          </MenuButton>
+          <MenuButton
+            onClick={() => editor.chain().focus().toggleCallout('success').run()}
+            isActive={editor.isActive('callout', { variant: 'success' })}
+            title="Insert Success callout (green)"
+          >
+            <CheckCircle className="w-4 h-4" />
+          </MenuButton>
+          <MenuButton
+            onClick={() => editor.chain().focus().toggleCallout('warning').run()}
+            isActive={editor.isActive('callout', { variant: 'warning' })}
+            title="Insert Warning callout (amber)"
+          >
+            <AlertTriangle className="w-4 h-4" />
+          </MenuButton>
+          <MenuButton
+            onClick={() => editor.chain().focus().toggleCallout('note').run()}
+            isActive={editor.isActive('callout', { variant: 'note' })}
+            title="Insert Note callout (purple)"
+          >
+            <Lightbulb className="w-4 h-4" />
+          </MenuButton>
+          <MenuButton
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
             isActive={editor.isActive('codeBlock')}
             title="Code Block"
@@ -310,9 +359,15 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
           <MenuButton
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            title="Upload Image"
+            title="Upload Image (opens file picker)"
           >
             <ImageIcon className="w-4 h-4" />
+          </MenuButton>
+          <MenuButton
+            onClick={() => setShowImageModal(true)}
+            title="Insert Image from URL (with alt + caption + link)"
+          >
+            <ImageIcon className="w-4 h-4 opacity-60" />
           </MenuButton>
           <MenuButton
             onClick={() => setShowYoutubeModal(true)}
@@ -351,8 +406,8 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
       />
 
       {/* Editor Content */}
-      <EditorContent 
-        editor={editor} 
+      <EditorContent
+        editor={editor}
         className="prose prose-slate max-w-none p-4 min-h-[400px] focus:outline-none
           [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[350px]
           [&_.ProseMirror_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]
@@ -370,6 +425,12 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
           [&_.ProseMirror_code]:bg-slate-100 [&_.ProseMirror_code]:text-[#D63031] [&_.ProseMirror_code]:px-1.5 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:text-sm
           [&_.ProseMirror_hr]:border-slate-200 [&_.ProseMirror_hr]:my-6
           [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:max-w-full
+          [&_.ProseMirror_.callout]:rounded-xl [&_.ProseMirror_.callout]:px-4 [&_.ProseMirror_.callout]:py-3 [&_.ProseMirror_.callout]:my-4 [&_.ProseMirror_.callout]:border-l-4
+          [&_.ProseMirror_.callout-info]:bg-blue-50 [&_.ProseMirror_.callout-info]:border-blue-400 [&_.ProseMirror_.callout-info]:text-blue-900
+          [&_.ProseMirror_.callout-success]:bg-emerald-50 [&_.ProseMirror_.callout-success]:border-emerald-400 [&_.ProseMirror_.callout-success]:text-emerald-900
+          [&_.ProseMirror_.callout-warning]:bg-amber-50 [&_.ProseMirror_.callout-warning]:border-amber-400 [&_.ProseMirror_.callout-warning]:text-amber-900
+          [&_.ProseMirror_.callout-note]:bg-purple-50 [&_.ProseMirror_.callout-note]:border-purple-400 [&_.ProseMirror_.callout-note]:text-purple-900
+          [&_.ProseMirror_mark]:bg-yellow-100 [&_.ProseMirror_mark]:rounded [&_.ProseMirror_mark]:px-1
         "
       />
 
@@ -401,28 +462,64 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
         </DialogContent>
       </Dialog>
 
-      {/* Image URL Modal */}
+      {/* Image URL Modal — collects ALT (required for SEO + a11y) + an
+          optional caption/title and an optional link URL so the image
+          renders as `<a href=…><img alt title></a>` on the public page. */}
       <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Image from URL</DialogTitle>
+            <DialogTitle>Insert Image</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Image URL</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Image URL *</label>
               <Input
                 placeholder="https://example.com/image.jpg"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addImage()}
+                value={imageForm.src}
+                onChange={(e) => setImageForm((f) => ({ ...f, src: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Alt text <span className="text-red-500">*</span>
+                <span className="text-xs font-normal text-slate-400 ml-1">(for SEO & screen-readers)</span>
+              </label>
+              <Input
+                placeholder="A student soldering a robot chassis"
+                value={imageForm.alt}
+                onChange={(e) => setImageForm((f) => ({ ...f, alt: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Caption / title <span className="text-xs font-normal text-slate-400">(hover tooltip)</span>
+              </label>
+              <Input
+                placeholder="Round 1 build day — RoboRacer kit"
+                value={imageForm.title}
+                onChange={(e) => setImageForm((f) => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Link URL <span className="text-xs font-normal text-slate-400">(wraps the image in &lt;a&gt;)</span>
+              </label>
+              <Input
+                placeholder="https://oll.co/shop/product/… (optional)"
+                value={imageForm.linkHref}
+                onChange={(e) => setImageForm((f) => ({ ...f, linkHref: e.target.value }))}
               />
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowImageModal(false)} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={addImage} className="btn-primary flex-1">
-                Add Image
+              <Button
+                onClick={addImage}
+                disabled={!imageForm.src || !imageForm.alt}
+                className="btn-primary flex-1"
+              >
+                Insert Image
               </Button>
             </div>
           </div>

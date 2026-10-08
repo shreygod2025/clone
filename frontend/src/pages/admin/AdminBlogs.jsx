@@ -39,7 +39,13 @@ const AdminBlogs = () => {
     // Resource-specific fields
     parent_id: null, // For nested resources
     order: 0,
-    tags: []
+    tags: [],
+    // ── SEO fields (fall back to title/excerpt/cover_image on empty) ─
+    meta_title: '',
+    meta_description: '',
+    canonical_url: '',
+    keywords: [],
+    og_image: '',
   });
 
   useEffect(() => {
@@ -126,7 +132,12 @@ const AdminBlogs = () => {
       is_published: false,
       parent_id: null,
       order: 0,
-      tags: []
+      tags: [],
+      meta_title: '',
+      meta_description: '',
+      canonical_url: '',
+      keywords: [],
+      og_image: '',
     });
   };
 
@@ -144,7 +155,12 @@ const AdminBlogs = () => {
       is_published: blog.is_published,
       parent_id: blog.parent_id || null,
       order: blog.order || 0,
-      tags: blog.tags || []
+      tags: blog.tags || [],
+      meta_title: blog.meta_title || '',
+      meta_description: blog.meta_description || '',
+      canonical_url: blog.canonical_url || '',
+      keywords: blog.keywords || [],
+      og_image: blog.og_image || '',
     });
     setShowForm(true);
   };
@@ -430,6 +446,78 @@ const AdminBlogs = () => {
                 data-testid="blog-tags"
               />
             </div>
+
+            {/* ─────────── SEO fields ─────────── */}
+            <details className="rounded-xl border border-slate-200 bg-slate-50 p-4" open>
+              <summary className="cursor-pointer text-sm font-bold text-[#1E3A5F] uppercase tracking-widest">
+                SEO & Social Preview
+              </summary>
+              <p className="text-xs text-slate-500 mt-1 mb-4">
+                These fields power Google search results and LinkedIn / WhatsApp / Twitter preview cards.
+                Leaving a field empty falls back to the title / excerpt / cover image above.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Meta title</label>
+                  <Input
+                    value={formData.meta_title}
+                    onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
+                    placeholder="60 chars max · appears as the blue <title> link on Google"
+                    maxLength={70}
+                    data-testid="blog-meta-title"
+                  />
+                  <div className="text-[10px] text-slate-400 mt-1">{formData.meta_title.length}/70</div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Meta description</label>
+                  <Textarea
+                    value={formData.meta_description}
+                    onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+                    placeholder="155 chars max · the grey snippet shown under the title on Google"
+                    maxLength={170}
+                    className="min-h-[70px]"
+                    data-testid="blog-meta-description"
+                  />
+                  <div className="text-[10px] text-slate-400 mt-1">{formData.meta_description.length}/170</div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Canonical URL</label>
+                  <Input
+                    value={formData.canonical_url}
+                    onChange={(e) => setFormData({ ...formData, canonical_url: e.target.value })}
+                    placeholder="https://oll.co/blogs/<slug>  — leave blank to auto-generate"
+                    data-testid="blog-canonical-url"
+                  />
+                  <div className="text-[10px] text-slate-400 mt-1">Prevents duplicate-content SEO penalties when the same post lives on multiple URLs.</div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Keywords (comma separated)</label>
+                  <Input
+                    value={formData.keywords?.join(', ') || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      keywords: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
+                    })}
+                    placeholder="robotics for kids, STEM education, learn Python"
+                    data-testid="blog-seo-keywords"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Social preview image (OG)</label>
+                  <Input
+                    value={formData.og_image}
+                    onChange={(e) => setFormData({ ...formData, og_image: e.target.value })}
+                    placeholder="1200×630 PNG/JPG — falls back to cover image if blank"
+                    data-testid="blog-og-image"
+                  />
+                  {formData.og_image && (
+                    <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-xs">
+                      <img src={formData.og_image} alt="OG preview" className="w-full h-24 object-cover" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </details>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Content *</label>

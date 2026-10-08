@@ -218,10 +218,10 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
     { path: '/about', label: 'About' },
     { path: '/centers', label: 'Centers' },
     { path: '/techfest', label: 'Techfest', highlight: true },
-    // Blog lives on WordPress (oll.co/blogs) — link out so Google indexes
-    // the canonical SSR-rendered posts and we don't fragment SEO with a
-    // React SPA duplicate.
-    { path: 'https://oll.co/blogs/', label: 'Blog', external: true },
+    // In-app blog pages: served by React + <Helmet> for SEO. We moved
+    // off the WordPress mirror so the editor-controlled posts here are
+    // the canonical source (prerender/SSR via Helmet + canonical tag).
+    { path: '/blogs', label: 'Blog' },
   ];
 
   const isActive = (path) => location.pathname === path;

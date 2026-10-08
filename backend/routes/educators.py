@@ -536,6 +536,13 @@ class Blog(BaseModel):
     parent_id: Optional[str] = None  # For nested resources
     order: int = 0
     tags: List[str] = []
+    # ── SEO fields (used by the public BlogDetailPage <Helmet> block) ──
+    meta_title: str = ""          # Overrides <title>; defaults to `title` if empty.
+    meta_description: str = ""    # Overrides <meta description>; defaults to `excerpt`.
+    canonical_url: str = ""       # Full URL for <link rel="canonical">.
+    keywords: List[str] = []      # Rendered into <meta name="keywords">.
+    og_image: str = ""            # Falls back to `cover_image` when empty.
+    reading_time_minutes: int = 0 # Shown in UI; auto-computed on save if 0.
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -552,6 +559,12 @@ class BlogCreate(BaseModel):
     parent_id: Optional[str] = None
     order: int = 0
     tags: List[str] = []
+    meta_title: str = ""
+    meta_description: str = ""
+    canonical_url: str = ""
+    keywords: List[str] = []
+    og_image: str = ""
+    reading_time_minutes: int = 0
 
 class BlogUpdate(BaseModel):
     title: Optional[str] = None
@@ -565,6 +578,12 @@ class BlogUpdate(BaseModel):
     parent_id: Optional[str] = None
     order: Optional[int] = None
     tags: Optional[List[str]] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    canonical_url: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    og_image: Optional[str] = None
+    reading_time_minutes: Optional[int] = None
 
 # ── Email helper functions ─────────────────────────────────────────────────────
 async def send_educator_application_received_email(doc: dict):
@@ -3757,15 +3776,29 @@ async def get_blog(slug: str):
 @router.post("/blogs", response_model=Blog)
 async def create_blog(data: BlogCreate, user: dict = Depends(get_current_user)):
     blog = Blog(**data.model_dump())
+    # Auto-compute reading time from the HTML content if admin didn't set one.
+    if not blog.reading_time_minutes:
+        import re as _re
+        plain = _re.sub(r"<[^>]+>", " ", blog.content or "")
+        words = len([w for w in plain.split() if w])
+        blog.reading_time_minutes = max(1, round(words / 200))
     doc = blog.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.blogs.insert_one(doc)
+    clear_cache("blogs_")
     return blog
 
 @router.patch("/blogs/{blog_id}", response_model=Blog)
 async def update_blog(blog_id: str, data: BlogUpdate, user: dict = Depends(get_current_user)):
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    # Recompute reading time whenever the body changed and the caller didn't
+    # explicitly set a value.
+    if "content" in update_data and "reading_time_minutes" not in update_data:
+        import re as _re
+        plain = _re.sub(r"<[^>]+>", " ", update_data["content"] or "")
+        words = len([w for w in plain.split() if w])
+        update_data["reading_time_minutes"] = max(1, round(words / 200))
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     await db.blogs.update_one({"id": blog_id}, {"$set": update_data})
     # Clear blog cache
@@ -3781,6 +3814,8 @@ async def update_blog(blog_id: str, data: BlogUpdate, user: dict = Depends(get_c
 @router.delete("/blogs/{blog_id}")
 async def delete_blog(blog_id: str, user: dict = Depends(get_current_user)):
     await db.blogs.delete_one({"id": blog_id})
+    clear_cache("blog_")
+    clear_cache("blogs_")
     return {"message": "Deleted successfully"}
 
 # ========================
