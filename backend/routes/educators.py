@@ -3794,6 +3794,7 @@ async def get_blog(slug: str):
 
 @router.post("/blogs", response_model=Blog)
 async def create_blog(data: BlogCreate, user: dict = Depends(get_current_user)):
+    from pymongo.errors import DuplicateKeyError
     blog = Blog(**data.model_dump())
     # Auto-compute reading time from the HTML content if admin didn't set one.
     if not blog.reading_time_minutes:
@@ -3804,12 +3805,22 @@ async def create_blog(data: BlogCreate, user: dict = Depends(get_current_user)):
     doc = blog.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
-    await db.blogs.insert_one(doc)
+    try:
+        await db.blogs.insert_one(doc)
+    except DuplicateKeyError as exc:
+        # `blogs.slug` has a unique index — surface a readable error so the
+        # admin UI shows "Save failed — slug already exists" instead of a
+        # generic 500. The admin can then tweak the slug and retry.
+        detail = "A blog with this slug already exists. Please change the slug and try again."
+        if "id" in str(exc.details or {}).lower() and "slug" not in str(exc.details or {}).lower():
+            detail = "A blog with this id already exists. Please refresh and try again."
+        raise HTTPException(status_code=409, detail=detail)
     clear_cache("blogs_")
     return blog
 
 @router.patch("/blogs/{blog_id}", response_model=Blog)
 async def update_blog(blog_id: str, data: BlogUpdate, user: dict = Depends(get_current_user)):
+    from pymongo.errors import DuplicateKeyError
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     # Recompute reading time whenever the body changed and the caller didn't
     # explicitly set a value.
@@ -3819,7 +3830,10 @@ async def update_blog(blog_id: str, data: BlogUpdate, user: dict = Depends(get_c
         words = len([w for w in plain.split() if w])
         update_data["reading_time_minutes"] = max(1, round(words / 200))
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
-    await db.blogs.update_one({"id": blog_id}, {"$set": update_data})
+    try:
+        await db.blogs.update_one({"id": blog_id}, {"$set": update_data})
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="A blog with this slug already exists. Please change the slug and try again.")
     # Clear blog cache
     clear_cache("blog_")
     clear_cache("blogs_")

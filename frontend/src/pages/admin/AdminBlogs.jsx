@@ -106,7 +106,18 @@ const AdminBlogs = () => {
       resetForm();
       fetchBlogs();
     } catch (error) {
-      toast.error('Failed to save content');
+      // Surface the real server message so admins (and we) can tell
+      // whether it was a Pydantic validation issue, duplicate slug, auth
+      // problem, or something else. Previously this silently showed
+      // "Failed to save content" which gave zero signal.
+      const detail = error?.response?.data?.detail;
+      const msg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d) => `${(d.loc || []).slice(-1)[0]}: ${d.msg}`).join(' · ')
+          : (error?.response?.data?.message || error?.message || 'Failed to save content');
+      console.error('Blog save failed:', error?.response?.data || error);
+      toast.error(`Save failed — ${msg}`);
     }
   };
 

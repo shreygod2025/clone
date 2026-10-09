@@ -1,5 +1,20 @@
 # OLL Backend Changelog
 
+## 2026-10-09 — Blog save failure fix (duplicate slug + opaque error toast)
+**Status: COMPLETE · verified via curl**
+
+### Root cause
+`blogs.slug` has a unique Mongo index. When the admin saved a blog whose slug (auto-generated from the title or manually entered) already existed, Mongo raised `DuplicateKeyError` → FastAPI returned a generic 500 → the frontend swallowed the real reason behind `toast.error('Failed to save content')`. From the admin's perspective, there was no actionable signal.
+
+### Fix
+- **Backend** (`routes/educators.py`): wrapped both `POST /blogs` and `PATCH /blogs/{id}` in `try: … except DuplicateKeyError` → `HTTPException(409, detail="A blog with this slug already exists. Please change the slug and try again.")`. Also removed a leftover duplicate `update_one` call that was accidentally re-saving after the error path.
+- **Frontend** (`AdminBlogs.jsx :: handleSubmit`): the catch now unpacks `error.response.data.detail` (string OR Pydantic array OR fallback `.message`) and shows it inside the toast — so admins see the real reason (duplicate slug, validation failure, etc.) instead of the generic "Failed to save content".
+
+### Verification
+- `POST /api/blogs` with duplicate slug now returns `409` and body `{"detail":"A blog with this slug already exists…"}`.
+- Fresh creates still return `200` with the full blog payload including the new CTA/eyebrow fields.
+
+
 ## 2026-10-08 — Blog uploads, hero redesign, CTA system, YouTube iframe fix
 **Status: COMPLETE · backend verified end-to-end · frontend compiles cleanly**
 
