@@ -33,7 +33,7 @@ from routes.techfest_emails import _shell as techfest_shell
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-FROM_EMAIL = os.environ.get("TECHFEST_BULK_FROM", "OLL × Techfest <techfest@oll.co>")
+FROM_EMAIL = os.environ.get("TECHFEST_BULK_FROM", "OLL x IIT Bombay <techfest@oll.co>")
 REPLY_TO = "techfest@oll.co"
 
 # ────────────────────────────────────────────────────────────
@@ -146,14 +146,23 @@ _CHECKLIST_BODY_HTML = """
       <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin:4px 0 8px 0;">Registration guide videos</div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
         <tr>
-          <td width="33%" style="padding-right:6px;">
-            <a href="https://youtu.be/AwgBPOTevpg" style="display:block;padding:12px;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#0A1F44;text-align:center;font-weight:600;background:#f8fafc;">For Schools</a>
+          <td width="33%" style="padding-right:6px;vertical-align:top;">
+            <a href="https://youtu.be/Qdqs0hCc1bY" style="display:block;padding:12px 10px;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#0A1F44;text-align:center;font-weight:600;background:#f8fafc;font-size:13px;line-height:1.3;">
+              <div style="font-size:18px;line-height:1;margin-bottom:4px;">▶</div>
+              School Login
+            </a>
           </td>
-          <td width="33%" style="padding:0 3px;">
-            <a href="https://youtu.be/AwgBPOTevpg" style="display:block;padding:12px;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#0A1F44;text-align:center;font-weight:600;background:#f8fafc;">For Educators</a>
+          <td width="33%" style="padding:0 3px;vertical-align:top;">
+            <a href="https://youtu.be/5GsFOwR2gj4" style="display:block;padding:12px 10px;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#0A1F44;text-align:center;font-weight:600;background:#f8fafc;font-size:13px;line-height:1.3;">
+              <div style="font-size:18px;line-height:1;margin-bottom:4px;">▶</div>
+              Student Registration
+            </a>
           </td>
-          <td width="33%" style="padding-left:6px;">
-            <a href="https://youtu.be/AwgBPOTevpg" style="display:block;padding:12px;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#0A1F44;text-align:center;font-weight:600;background:#f8fafc;">For Students</a>
+          <td width="33%" style="padding-left:6px;vertical-align:top;">
+            <a href="https://youtu.be/Q-L4rruIe-Y" style="display:block;padding:12px 10px;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#0A1F44;text-align:center;font-weight:600;background:#f8fafc;font-size:13px;line-height:1.3;">
+              <div style="font-size:18px;line-height:1;margin-bottom:4px;">▶</div>
+              Mentor Registration<br/><span style="font-weight:500;color:#64748b;font-size:11px;">(Teacher / Parent)</span>
+            </a>
           </td>
         </tr>
       </table>
@@ -169,22 +178,30 @@ _CHECKLIST_BODY_HTML = """
       </table>
 
       <!-- 4. Kits -->
-      <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin:4px 0 8px 0;">Robotics kits — last 10 available</div>
-      <p style="font-size:14px;color:#334155;margin:0 0 10px 0;">Order before <strong>20 October</strong> for guaranteed delivery.</p>
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin:4px 0 6px 0;">Robotics kits — last 10 available</div>
+      <p style="font-size:14px;color:#0A1F44;margin:0 0 12px 0;font-weight:700;">Order Today to get delivery before 20th October.</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
         <tr>
           <td width="50%" style="padding-right:6px;vertical-align:top;">
-            <div style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#ffffff;">
-              <div style="font-size:14px;font-weight:700;color:#0A1F44;margin-bottom:6px;">🤖 Robo Sumo kit</div>
-              <a href="https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a" style="display:block;padding:9px;background:#DC2626;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:600;margin-bottom:6px;">Purchase kit →</a>
-              <a href="https://youtu.be/qCyF9I3IXCM" style="display:block;padding:9px;background:#f1f5f9;color:#0A1F44;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:600;">▶ Making video</a>
+            <div style="padding:0;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;overflow:hidden;">
+              <img src="https://camp-lead-capture.preview.emergentagent.com/techfest/robo-sumo-kit.png" alt="Robo Sumo official kit" style="display:block;width:100%;height:auto;background:#f1f5f9;" />
+              <div style="padding:12px 14px;">
+                <div style="font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#DC2626;margin-bottom:4px;">Robo Sumo official kit</div>
+                <div style="font-size:14px;font-weight:700;color:#0A1F44;margin-bottom:10px;">Build · Battle · Win</div>
+                <a href="https://oll.co/shop/product/robo-sumo-kit-specially-for-techfest-iit-bombay-22b5228a" style="display:block;padding:10px;background:#DC2626;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:700;margin-bottom:6px;">Purchase kit →</a>
+                <a href="https://youtu.be/qCyF9I3IXCM" style="display:block;padding:10px;background:#f1f5f9;color:#0A1F44;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:600;">▶ Making video</a>
+              </div>
             </div>
           </td>
           <td width="50%" style="padding-left:6px;vertical-align:top;">
-            <div style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#ffffff;">
-              <div style="font-size:14px;font-weight:700;color:#0A1F44;margin-bottom:6px;">🏁 Robo Race kit</div>
-              <a href="https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc" style="display:block;padding:9px;background:#DC2626;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:600;margin-bottom:6px;">Purchase kit →</a>
-              <a href="https://youtu.be/n24iJFNf0C0" style="display:block;padding:9px;background:#f1f5f9;color:#0A1F44;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:600;">▶ Making video</a>
+            <div style="padding:0;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;overflow:hidden;">
+              <img src="https://camp-lead-capture.preview.emergentagent.com/techfest/robo-race-kit.png" alt="Robo Race official kit" style="display:block;width:100%;height:auto;background:#f1f5f9;" />
+              <div style="padding:12px 14px;">
+                <div style="font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:#DC2626;margin-bottom:4px;">Robo Race official kit</div>
+                <div style="font-size:14px;font-weight:700;color:#0A1F44;margin-bottom:10px;">Build · Code · Race · Win</div>
+                <a href="https://oll.co/shop/product/robo-racer-kit-specially-made-for-iit-bombay-8bf545dc" style="display:block;padding:10px;background:#DC2626;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:700;margin-bottom:6px;">Purchase kit →</a>
+                <a href="https://youtu.be/n24iJFNf0C0" style="display:block;padding:10px;background:#f1f5f9;color:#0A1F44;text-decoration:none;border-radius:6px;font-size:13px;text-align:center;font-weight:600;">▶ Making video</a>
+              </div>
             </div>
           </td>
         </tr>
@@ -235,7 +252,7 @@ _CHECKLIST_BODY_HTML = """
 
 
 def _default_subject() -> str:
-    return "⏰ Your OLL × Techfest Championship Checklist — Registration closes tomorrow"
+    return "Important : Final checklist for OLL Robotics Championship — Registration closes tomorrow"
 
 
 def _default_html() -> str:
