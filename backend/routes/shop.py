@@ -955,6 +955,83 @@ async def get_shop_order(order_id: str):
     return {"order": order, "purchase_orders": pos}
 
 
+@router.get("/shop/my-orders")
+async def shop_my_orders(email: Optional[str] = None, phone: Optional[str] = None):
+    """Return paid shop orders for a logged-in customer so the /my-bookings
+    page can show tracking links + refund request CTAs.
+
+    Keyed on either `email` OR `phone` — whatever the account has. Returns
+    only orders where `payment_status == 'PAID'` so pending/failed carts
+    don't clutter the list."""
+    if not email and not phone:
+        raise HTTPException(status_code=400, detail="`email` or `phone` is required")
+    or_clauses = []
+    if email:
+        or_clauses.append({"customer.email": email.lower().strip()})
+    if phone:
+        or_clauses.append({"customer.phone": phone.strip()})
+    q = {"$or": or_clauses, "payment_status": "PAID"} if or_clauses else {}
+    cursor = db.shop_orders.find(q, {"_id": 0}).sort("created_at", -1).limit(100)
+    orders = await cursor.to_list(100)
+    # Overlay any already-requested refunds so the UI can show "requested"
+    # state instead of a fresh button.
+    order_ids = [o.get("id") for o in orders if o.get("id")]
+    refund_map: dict = {}
+    if order_ids:
+        async for r in db.shop_refund_requests.find({"order_id": {"$in": order_ids}}, {"_id": 0}):
+            refund_map.setdefault(r["order_id"], []).append(r)
+    for o in orders:
+        o["refund_requests"] = refund_map.get(o.get("id"), [])
+    return {"orders": orders}
+
+
+@router.post("/shop/refund-request")
+async def shop_refund_request(body: dict):
+    """A logged-in customer flags a paid order for refund review.
+    Admin picks it up from /admin/shop and processes it manually."""
+    order_id = (body.get("order_id") or "").strip()
+    reason = (body.get("reason") or "").strip()
+    contact_email = (body.get("email") or "").strip().lower()
+    contact_phone = (body.get("phone") or "").strip()
+    if not order_id:
+        raise HTTPException(status_code=400, detail="`order_id` required")
+    if not reason or len(reason) < 10:
+        raise HTTPException(status_code=400, detail="Please share a short reason (10+ chars).")
+    order = await db.shop_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    # Owner check — must match either the customer email or phone on the order
+    cust = order.get("customer") or {}
+    owns = (
+        (contact_email and (cust.get("email") or "").lower() == contact_email)
+        or (contact_phone and (cust.get("phone") or "") == contact_phone)
+    )
+    if not owns:
+        raise HTTPException(status_code=403, detail="This order is not linked to your account.")
+    import uuid as _uuid
+    now_iso = datetime.now(timezone.utc).isoformat()
+    existing = await db.shop_refund_requests.find_one({"order_id": order_id, "status": {"$in": ["requested", "processing"]}})
+    if existing:
+        raise HTTPException(status_code=409, detail="A refund request is already open for this order.")
+    doc = {
+        "id": str(_uuid.uuid4()),
+        "order_id": order_id,
+        "customer_email": contact_email or cust.get("email") or "",
+        "customer_phone": contact_phone or cust.get("phone") or "",
+        "reason": reason[:1000],
+        "status": "requested",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    await db.shop_refund_requests.insert_one(doc)
+    # Flag the order so admin tables show the requested state at a glance.
+    await db.shop_orders.update_one(
+        {"id": order_id},
+        {"$set": {"refund_requested": True, "refund_requested_at": now_iso}},
+    )
+    return {"ok": True, "refund_id": doc["id"]}
+
+
 # ── Admin endpoints ─────────────────────────────────────────────────────────
 
 

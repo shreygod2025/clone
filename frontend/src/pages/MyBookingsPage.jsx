@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home, PlayCircle, CheckCircle2, Circle, CreditCard, Loader2, AlertCircle, Download } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home, PlayCircle, CheckCircle2, Circle, CreditCard, Loader2, AlertCircle, Download, Package, Truck, ReceiptText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -46,6 +46,11 @@ const MyBookingsPage = () => {
   
   // Payment-related state
   const [paymentInfo, setPaymentInfo] = useState(null);
+  const [shopOrders, setShopOrders] = useState([]);
+  const [shopOrdersLoading, setShopOrdersLoading] = useState(false);
+  const [refundOrder, setRefundOrder] = useState(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [cashfreeReady, setCashfreeReady] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
@@ -85,7 +90,7 @@ const MyBookingsPage = () => {
   useEffect(() => {
     // Wait for auth loading to complete
     if (authLoading) return;
-    
+
     if (!isLoggedIn) {
       navigate('/login');
       return;
@@ -99,10 +104,20 @@ const MyBookingsPage = () => {
         fetchSessions();
         fetchPaymentInfo();
         fetchSchoolReceipts();
+        fetchShopOrders();
+      }
+    } else if (isLoggedIn && !user?.phone) {
+      // Account has no phone on file — don't spin forever on the loader.
+      // Still try to pull shop orders (keyed by email) so email-only
+      // learners see their orders.
+      setLoading(false);
+      if (!hasFetched.current) {
+        hasFetched.current = true;
+        fetchShopOrders();
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, navigate, user?.phone, authLoading]);
+  }, [isLoggedIn, navigate, user?.phone, user?.email, authLoading]);
 
   // Fetch payment info for logged-in student
   const fetchPaymentInfo = async () => {
@@ -131,6 +146,54 @@ const MyBookingsPage = () => {
         console.error('Failed to fetch school receipts:', error);
       }
       setSchoolReceipts({ payments: [] });
+    }
+  };
+
+  // Pull paid shop orders for the signed-in learner so they can track
+  // deliveries and raise refund requests directly from /my-bookings.
+  // Keyed by email first (more stable), falls back to phone.
+  const fetchShopOrders = async () => {
+    const email = (user?.email || '').trim();
+    const phone = (user?.phone || '').trim();
+    if (!email && !phone) return;
+    setShopOrdersLoading(true);
+    try {
+      const params = {};
+      if (email) params.email = email;
+      if (phone) params.phone = phone;
+      const response = await axios.get(`${API}/shop/my-orders`, { params });
+      setShopOrders(response.data?.orders || []);
+    } catch (err) {
+      // 404s or empty responses are fine — just show nothing.
+      setShopOrders([]);
+    } finally {
+      setShopOrdersLoading(false);
+    }
+  };
+
+  const submitRefundRequest = async () => {
+    if (!refundOrder) return;
+    const reason = (refundReason || '').trim();
+    if (reason.length < 10) {
+      toast.error('Please add a short reason (10+ characters).');
+      return;
+    }
+    setRefundSubmitting(true);
+    try {
+      await axios.post(`${API}/shop/refund-request`, {
+        order_id: refundOrder.id,
+        reason,
+        email: user?.email || '',
+        phone: user?.phone || '',
+      });
+      toast.success("Refund request submitted — our team will reach out within 2 working days.");
+      setRefundOrder(null);
+      setRefundReason('');
+      await fetchShopOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not submit refund request.');
+    } finally {
+      setRefundSubmitting(false);
     }
   };
 
@@ -784,6 +847,20 @@ const MyBookingsPage = () => {
                   School Receipts ({schoolReceipts.payments.filter(p => ['PAID', 'REFUNDED', 'paid', 'refunded'].includes(p.status)).length})
                 </button>
               )}
+              {shopOrders.length > 0 && (
+                <button
+                  onClick={() => setActiveTab('shop_orders')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === 'shop_orders'
+                      ? 'bg-[#1E3A5F] text-white'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                  }`}
+                  data-testid="shop-orders-tab"
+                >
+                  <Package className="w-4 h-4 inline-block mr-1.5" />
+                  Shop Orders ({shopOrders.length})
+                </button>
+              )}
             </div>
           )}
 
@@ -1227,7 +1304,108 @@ const MyBookingsPage = () => {
             </div>
           )}
 
-          {/* Other Courses Section - Show for all logged in users (except schools) */}
+          {/* Shop Orders View */}
+          {activeTab === 'shop_orders' && (
+            <div className="space-y-4" data-testid="shop-orders-list">
+              {shopOrdersLoading && shopOrders.length === 0 && (
+                <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-slate-100">
+                  <Loader2 className="w-6 h-6 text-slate-300 animate-spin mx-auto mb-2" />
+                  <p className="text-slate-500 text-sm">Loading orders…</p>
+                </div>
+              )}
+              {!shopOrdersLoading && shopOrders.length === 0 && (
+                <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-slate-100">
+                  <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500">No shop orders yet</p>
+                  <Link to="/shop" className="btn-primary mt-4 inline-flex items-center gap-2 text-sm">
+                    Explore the Shop <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              )}
+              {shopOrders.map((order) => {
+                const tracking = order.tracking_link || order.tracking_url || order.shiprocket_tracking_url;
+                const items = order.items || order.cart || [];
+                const hasOpenRefund = (order.refund_requests || []).some(
+                  (r) => ['requested', 'processing'].includes(r.status),
+                );
+                const status = (order.fulfillment_status || order.payment_status || 'PAID').toUpperCase();
+                return (
+                  <div key={order.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100" data-testid={`shop-order-${order.id}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          Order #{(order.id || '').slice(0, 8)} · {order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        </div>
+                        <div className="font-black text-[#0A1F44] text-lg mt-1">
+                          ₹{(order.total_amount ?? order.amount ?? 0).toLocaleString('en-IN')}
+                        </div>
+                        <div className="text-xs text-slate-600 mt-0.5">
+                          {items.length} item{items.length === 1 ? '' : 's'} · {status}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {tracking ? (
+                          <a
+                            href={tracking}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-full px-3 py-1.5"
+                            data-testid={`shop-order-track-${order.id}`}
+                          >
+                            <Truck className="w-3.5 h-3.5" /> Track order
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-3 py-1.5">
+                            <Clock className="w-3.5 h-3.5" /> Awaiting dispatch
+                          </span>
+                        )}
+                        {order.invoice_url && (
+                          <a
+                            href={order.invoice_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full px-3 py-1.5"
+                          >
+                            <ReceiptText className="w-3.5 h-3.5" /> Invoice
+                          </a>
+                        )}
+                        {hasOpenRefund ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-3 py-1.5">
+                            Refund requested
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setRefundOrder(order); setRefundReason(''); }}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-full px-3 py-1.5"
+                            data-testid={`shop-order-refund-${order.id}`}
+                          >
+                            Request refund
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {items.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        {items.slice(0, 6).map((it, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                            {it.image_url && (
+                              <img src={it.image_url} alt="" className="w-10 h-10 object-cover rounded" />
+                            )}
+                            <div>
+                              <div className="text-xs font-semibold text-[#0A1F44] max-w-[180px] truncate">{it.name || it.title}</div>
+                              <div className="text-[11px] text-slate-500">Qty {it.quantity || it.qty || 1} · ₹{(it.price ?? it.unit_price ?? 0).toLocaleString('en-IN')}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {user?.user_type !== 'school' && (
             <div className="mt-12" data-testid="other-courses-section">
               <div className="mb-6">
@@ -1393,6 +1571,51 @@ const MyBookingsPage = () => {
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 {cancelling ? 'Cancelling...' : 'Confirm Cancel'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refund Request modal — opens when learner clicks "Request refund"
+          on any paid shop order. Backend validates ownership + 10+ char
+          reason, then flags the order for admin review. */}
+      <Dialog open={!!refundOrder} onOpenChange={(open) => { if (!open) { setRefundOrder(null); setRefundReason(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request a refund</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-slate-600">
+              For order <strong className="font-mono text-[#0A1F44]">#{(refundOrder?.id || '').slice(0, 8)}</strong> · ₹{(refundOrder?.total_amount ?? refundOrder?.amount ?? 0).toLocaleString('en-IN')}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Reason (10+ characters)
+              </label>
+              <Textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Tell us briefly why you'd like a refund — damaged items, wrong product, delayed delivery, etc."
+                className="min-h-[110px]"
+                data-testid="refund-reason-input"
+              />
+            </div>
+            <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              Our ops team reviews refund requests within 2 working days and reaches out on <strong>{user?.email || user?.phone}</strong> with the next steps.
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => { setRefundOrder(null); setRefundReason(''); }} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={submitRefundRequest}
+                disabled={refundSubmitting || refundReason.trim().length < 10}
+                className="btn-primary flex-1"
+                data-testid="refund-submit"
+              >
+                {refundSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Submit request
               </Button>
             </div>
           </div>

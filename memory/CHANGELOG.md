@@ -1,5 +1,30 @@
 # OLL Backend Changelog
 
+## 2026-10-09 — My Bookings loader fix + Shop Orders tab + Login type rework
+**Status: COMPLETE · backend + frontend verified**
+
+### 1) `/my-bookings` stuck on "Loading your bookings…"
+- Root cause: the `useEffect` only called `fetchBookings` when `user.phone` existed. For accounts without a phone on file (common for email-login learners), the fetch never fired and the initial `loading=true` state hung forever.
+- Fix (`MyBookingsPage.jsx`): a second branch — if logged-in but phone is missing, `setLoading(false)` immediately and still kick off `fetchShopOrders` so the learner at least sees their shop activity.
+
+### 2) Shop Orders inside My Bookings
+- New backend endpoints in `routes/shop.py`:
+  - `GET /api/shop/my-orders?email=…&phone=…` returns PAID shop orders for the signed-in learner (matches by `customer.email` OR `customer.phone`). Payload includes a `refund_requests` array per order so the UI can show "requested" state without a second roundtrip.
+  - `POST /api/shop/refund-request { order_id, reason, email, phone }` — validates ownership against the stored customer email/phone, enforces 10-char-min reason, blocks duplicate open requests, and flags `shop_orders.refund_requested=true` so admins see it in `/admin/shop`.
+- New frontend state + fetcher `fetchShopOrders` in `MyBookingsPage.jsx` + a **Shop Orders** tab button (visible only when the account has at least one paid order).
+- Each order card shows: order id, date, total, item count, status, tracking button (opens the shiprocket URL in a new tab), invoice link, and a **Request refund** button that opens a modal with a textarea; a refund request already in flight renders a "Refund requested" pill instead of the button.
+
+### 3) Login page: Learner · School · Educator
+- Replaced the 3-way `Learner / School · Educator · Summer Camp Parent` picker with the requested `Learner · School · Educator` layout.
+- "Learner" now explicitly mentions bookings + sessions + shop orders; "School" uses the Building2 icon + emerald tint and routes to the same `/my-bookings` page (the page already surfaces school receipts).
+- Removed all `summer_camp` branches in the LoginPage (routing, prompts, footer link, Sun icon import). Educator → `/educator-dashboard`, everyone else → `/my-bookings`.
+- Added `data-testid`s: `login-type-learner`, `login-type-school`, `login-type-educator`.
+
+### Verification
+- `GET /api/shop/my-orders?email=…` returns `{orders:[]}` for an unknown email → 200.
+- Frontend compiles cleanly (1 unrelated hook-deps warning).
+
+
 ## 2026-10-09 — FAQ Analytics: AI reply inline + thumbs-up / thumbs-down training
 **Status: COMPLETE · verified end-to-end via curl**
 
