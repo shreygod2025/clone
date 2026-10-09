@@ -37,6 +37,7 @@ export default function TechfestBulkEmailDialog({ open, onClose, getAuthHeaders 
   const [sendingSample, setSendingSample] = useState(false);
   const [sendingBlast, setSendingBlast] = useState(false);
   const [confirmBlast, setConfirmBlast] = useState(false);
+  const [activeCampaign, setActiveCampaign] = useState(null); // {id, total, sent, failed, status}
 
   // Campaigns history
   const [campaigns, setCampaigns] = useState([]);
@@ -147,12 +148,30 @@ export default function TechfestBulkEmailDialog({ open, onClose, getAuthHeaders 
         { types, zones, competitions, subject, html, name },
         { headers: getAuthHeaders() },
       );
-      toast.success(`Blast queued for ${data.total} recipients`, {
-        description: `Campaign ID: ${data.campaign_id.slice(0, 8)}… — sending in background.`,
+      toast.success(`Blast started for ${data.total} recipients`, {
+        description: `Live progress shown below. Sending ~5 emails / second.`,
       });
       setConfirmBlast(false);
+      setActiveCampaign({ id: data.campaign_id, total: data.total, sent: 0, failed: 0, status: 'running' });
+      // Live poller — refreshes every 1.5s until completed
+      const pollId = data.campaign_id;
+      const tick = async () => {
+        try {
+          const { data: c } = await axios.get(
+            `${API}/admin/techfest/bulk-email/campaigns/${pollId}`,
+            { headers: getAuthHeaders() },
+          );
+          setActiveCampaign({ id: c.id, total: c.total, sent: c.sent || 0, failed: c.failed || 0, status: c.status });
+          if (c.status === 'completed') {
+            toast.success(`Blast complete — ${c.sent}/${c.total} delivered${c.failed ? `, ${c.failed} failed` : ''}`);
+            loadCampaigns();
+            return;
+          }
+        } catch (e) { /* keep polling */ }
+        setTimeout(tick, 1500);
+      };
+      setTimeout(tick, 1500);
       setShowHistory(true);
-      loadCampaigns();
     } catch (e) {
       toast.error('Failed to start blast', { description: e.response?.data?.detail || e.message });
     } finally {
@@ -392,6 +411,36 @@ export default function TechfestBulkEmailDialog({ open, onClose, getAuthHeaders 
             </div>
           )}
         </div>
+
+        {/* ─── Live blast progress banner ─── */}
+        {activeCampaign && activeCampaign.status === 'running' && (
+          <div className="px-6 py-3 border-t border-slate-100 bg-amber-50">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+              <div className="flex-1">
+                <div className="text-xs font-bold uppercase tracking-wider text-amber-800">
+                  Sending in progress — {activeCampaign.sent} / {activeCampaign.total} delivered
+                  {activeCampaign.failed > 0 && <span className="text-red-600 ml-1">({activeCampaign.failed} failed)</span>}
+                </div>
+                <div className="mt-1.5 h-2 bg-amber-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-600 transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.round(((activeCampaign.sent + activeCampaign.failed) / activeCampaign.total) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeCampaign && activeCampaign.status === 'completed' && (
+          <div className="px-6 py-3 border-t border-slate-100 bg-emerald-50">
+            <div className="flex items-center gap-3 text-sm text-emerald-800">
+              <CheckCircle2 className="w-4 h-4" />
+              <span><strong>Delivered {activeCampaign.sent}/{activeCampaign.total}</strong>{activeCampaign.failed > 0 ? ` · ${activeCampaign.failed} failed` : ''}</span>
+              <button onClick={() => setActiveCampaign(null)} className="ml-auto text-xs text-emerald-700 hover:underline">Dismiss</button>
+            </div>
+          </div>
+        )}
 
         {/* ─── Footer actions ─── */}
         <div className="px-6 py-4 border-t border-slate-100 bg-white flex flex-wrap items-center gap-3">

@@ -847,20 +847,19 @@ const MyBookingsPage = () => {
                   School Receipts ({schoolReceipts.payments.filter(p => ['PAID', 'REFUNDED', 'paid', 'refunded'].includes(p.status)).length})
                 </button>
               )}
-              {shopOrders.length > 0 && (
-                <button
-                  onClick={() => setActiveTab('shop_orders')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === 'shop_orders'
-                      ? 'bg-[#1E3A5F] text-white'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-                  }`}
-                  data-testid="shop-orders-tab"
-                >
-                  <Package className="w-4 h-4 inline-block mr-1.5" />
-                  Shop Orders ({shopOrders.length})
-                </button>
-              )}
+              {/* Always show Shop Orders tab so learners know where to track orders */}
+              <button
+                onClick={() => setActiveTab('shop_orders')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === 'shop_orders'
+                    ? 'bg-[#1E3A5F] text-white'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                }`}
+                data-testid="shop-orders-tab"
+              >
+                <Package className="w-4 h-4 inline-block mr-1.5" />
+                Shop Orders ({shopOrders.length})
+              </button>
             </div>
           )}
 

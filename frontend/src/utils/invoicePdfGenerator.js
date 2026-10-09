@@ -543,7 +543,8 @@ export async function generateInvoicePDF(payment, schoolData, {
   };
 
   if (gst.isBookGST || isExclusiveGST) {
-    // Book GST = 0% tax. Exclusive = GST totals shown in summary only (not per item).
+    // Book GST = 0% tax. Exclusive = GST shown ONLY as CGST/SGST lines beneath
+    // subtotal — table stays simple (base amounts only, no per-row GST cols).
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'Amount']];
     columnStyles = simpleColumnStyles;
     tableBody = useGradeRows
@@ -551,7 +552,9 @@ export async function generateInvoicePDF(payment, schoolData, {
       : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr, formatINR(gst.baseAmount)]];
 
   } else if (gst.isIntraState) {
-    // Inclusive intra-state: show CGST/SGST breakdown per line item
+    // Inclusive intra-state: show CGST/SGST breakdown per line item AND the
+    // row "Amount" is the INCLUSIVE total (base + CGST + SGST) so there's no
+    // need to re-add GST beneath subtotal.
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'CGST %', 'CGST Amt', 'SGST %', 'SGST Amt', 'Amount']];
     columnStyles = {
       0: { halign: 'center', cellWidth: 8 },
@@ -570,15 +573,15 @@ export async function generateInvoicePDF(payment, schoolData, {
           String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.scaledRate),
           `${gst.cgstRate}%`, formatINR(r.rowCGST),
           `${gst.sgstRate}%`, formatINR(r.rowSGST),
-          formatINR(r.rowBase),
+          formatINR(r.rowBase + r.rowCGST + r.rowSGST),
         ])
       : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr,
           `${gst.cgstRate}%`, formatINR(gst.cgstAmount),
           `${gst.sgstRate}%`, formatINR(gst.sgstAmount),
-          formatINR(gst.baseAmount)]];
+          formatINR(gst.baseAmount + gst.cgstAmount + gst.sgstAmount)]];
 
   } else {
-    // Inter-state: show IGST breakdown per line item (only for inclusive; exclusive handled above)
+    // Inter-state inclusive: IGST per line item, Amount column inclusive.
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'IGST %', 'IGST Amt', 'Amount']];
     columnStyles = {
       0: { halign: 'center', cellWidth: 10 },
@@ -594,11 +597,11 @@ export async function generateInvoicePDF(payment, schoolData, {
       ? gradeRows.map(r => [
           String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.scaledRate),
           `${gst.igstRate}%`, formatINR(r.rowIGST),
-          formatINR(r.rowBase),
+          formatINR(r.rowBase + r.rowIGST),
         ])
       : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr,
           `${gst.igstRate}%`, formatINR(gst.igstAmount),
-          formatINR(gst.baseAmount)]];
+          formatINR(gst.baseAmount + gst.igstAmount)]];
   }
 
   doc.autoTable({
@@ -643,12 +646,18 @@ export async function generateInvoicePDF(payment, schoolData, {
     y += 6;
   };
 
-  addTotalRow('Sub Total', formatINR(gst.baseAmount), false);
+  // For INCLUSIVE GST the per-row Amount column already includes CGST+SGST,
+  // so Subtotal matches the gross total and we skip the CGST/SGST breakdown
+  // rows beneath to avoid double-charging the viewer's eye.
+  // For EXCLUSIVE GST the table shows base-only amounts, Subtotal is the
+  // base sum and CGST+SGST (or IGST) are added as separate rows beneath.
+  const subtotalForDisplay = isExclusiveGST ? gst.baseAmount : gst.totalWithGST;
+  addTotalRow('Sub Total', formatINR(subtotalForDisplay), false);
 
-  if (!gst.isBookGST) {
+  if (!gst.isBookGST && isExclusiveGST) {
     if (gst.isIntraState) {
-      addTotalRow(`CGST9 (${gst.cgstRate}%)`, formatINR(gst.cgstAmount), false);
-      addTotalRow(`SGST9 (${gst.sgstRate}%)`, formatINR(gst.sgstAmount), false);
+      addTotalRow(`CGST (${gst.cgstRate}%)`, formatINR(gst.cgstAmount), false);
+      addTotalRow(`SGST (${gst.sgstRate}%)`, formatINR(gst.sgstAmount), false);
     } else {
       addTotalRow(`IGST (${gst.igstRate}%)`, formatINR(gst.igstAmount), false);
     }

@@ -62,38 +62,72 @@ async def _build_audience(
     zones: Optional[List[str]] = None,
     competitions: Optional[List[str]] = None,
 ) -> List[dict]:
-    """Return a de-duplicated list of {name, email, type, school} rows from
-    techfest_registrations matching the filters."""
+    """Return a de-duplicated list of {name, email, type, school} rows.
+    Educators + schools live in ``techfest_registrations`` keyed by ``type``.
+    Students live in a separate collection ``techfest_student_registrations``
+    (imported via CSV from the IIT Techfest portal export) — merge both."""
     allowed_types = {"student", "school", "educator"}
     types = [t for t in (types or []) if t in allowed_types]
     if not types:
         return []
-    query: dict = {
-        "deleted_at": {"$exists": False},
-        "type": {"$in": types},
-    }
-    if zones:
-        query["zone"] = {"$in": zones}
-    if competitions:
-        query["selected_competitions"] = {"$in": competitions}
 
-    seen = set()
+    seen: set = set()
     out: List[dict] = []
-    cursor = db.techfest_registrations.find(query, projection={
-        "name": 1, "email": 1, "type": 1,
-        "school_name": 1, "school_or_institute": 1,
-    }).limit(50000)
-    async for doc in cursor:
-        email = _norm_email(doc.get("email"))
-        if not email or email in seen:
-            continue
-        seen.add(email)
-        out.append({
-            "name": (doc.get("name") or "").strip() or "there",
-            "email": email,
-            "type": doc.get("type"),
-            "school": doc.get("school_name") or doc.get("school_or_institute") or "",
-        })
+
+    # ── 1. Schools + Educators from techfest_registrations ──
+    reg_types = [t for t in types if t in ("school", "educator")]
+    if reg_types:
+        query: dict = {
+            "deleted_at": {"$exists": False},
+            "type": {"$in": reg_types},
+        }
+        if zones:
+            query["zone"] = {"$in": zones}
+        if competitions:
+            query["selected_competitions"] = {"$in": competitions}
+        cursor = db.techfest_registrations.find(query, projection={
+            "name": 1, "email": 1, "type": 1,
+            "school_name": 1, "school_or_institute": 1,
+        }).limit(50000)
+        async for doc in cursor:
+            email = _norm_email(doc.get("email"))
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            out.append({
+                "name": (doc.get("name") or "").strip() or "there",
+                "email": email,
+                "type": doc.get("type"),
+                "school": doc.get("school_name") or doc.get("school_or_institute") or "",
+            })
+
+    # ── 2. Students from techfest_student_registrations (CSV import) ──
+    if "student" in types:
+        s_query: dict = {}
+        # Zones map to the "zonal_city"/"state"/"zone" fields in the student CSV
+        if zones:
+            s_query["$or"] = [
+                {"zone": {"$in": zones}},
+                {"zonal_city": {"$in": zones}},
+            ]
+        if competitions:
+            # Students CSV uses `competition_code` or `competition_name`
+            s_query.setdefault("$or", []).append({"competition_code": {"$in": competitions}})
+        cursor = db.techfest_student_registrations.find(s_query, projection={
+            "name": 1, "email": 1, "school": 1, "college": 1,
+        }).limit(50000)
+        async for doc in cursor:
+            email = _norm_email(doc.get("email"))
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            out.append({
+                "name": (doc.get("name") or "").strip() or "there",
+                "email": email,
+                "type": "student",
+                "school": doc.get("school") or doc.get("college") or "",
+            })
+
     return out
 
 
