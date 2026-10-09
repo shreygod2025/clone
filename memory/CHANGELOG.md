@@ -1,5 +1,33 @@
 # OLL Backend Changelog
 
+## 2026-10-09 — FAQ Analytics: AI reply inline + thumbs-up / thumbs-down training
+**Status: COMPLETE · verified end-to-end via curl**
+
+### Scope
+Reworked the admin FAQ analytics dashboard to show each question's AI reply inline, let admins approve or correct it, and short-circuit the public chat with those admin-trained answers next time the same question is asked.
+
+### Backend (`routes/faq_chat.py`)
+- **Log full answer** — `_log_chat` now stores `answer_text` (up to 20k chars) alongside the 500-char `answer_preview` so the admin UI can show the entire reply.
+- **Analytics aggregation extended** — `/admin/faq-chat/analytics` now groups by `question_normalised` (which already collapses same-session follow-ups + near-duplicate wording) and returns per-row `latest_answer`, `latest_source`, `latest_log_id`, `session_count`, plus any admin-trained `canonical_answer` / `canonical_verdict` / `canonical_updated_at` overlaid from the new collection.
+- **Canonical-answer endpoints**:
+  - `POST /api/admin/faq-chat/canonical-answer { question, answer, verdict: approved|corrected, log_id? }` — upserts into `faq_canonical_answers` keyed on `question_normalised`.
+  - `DELETE /api/admin/faq-chat/canonical-answer?question=…` — removes a trained override.
+- **Fast path 0 in public chat** — before pre-canned and cache lookups, the public `/faq-chat` endpoint now checks `faq_canonical_answers` for the normalised question. If present, it returns the admin-trained answer verbatim (zero LLM cost, `source='pre_canned'`).
+
+### Admin UI (`AdminFaqAnalytics.jsx`)
+- Each row is a question card: click to expand and see the AI reply rendered as sanitised markdown HTML.
+- Collapsed preview still shows the first ~180 chars of the reply alongside the question.
+- **Thumbs-up** → saves the current reply as `approved` canonical answer (next visitors get it instantly).
+- **Thumbs-down** → opens an inline textarea pre-filled with the current reply so the admin edits in place → saves as `corrected` canonical answer.
+- Rows that already have a trained override show a pill badge ("Approved" / "Trained · corrected") and a "Remove override" action to revert.
+- Sort options unchanged (most asked / least asked / latest / oldest / most liked / most disliked) — all were already present.
+- Session count and source (`llm` / `cache` / `pre_canned`) shown in the expanded footer for context.
+
+### Verification
+- `POST /admin/faq-chat/canonical-answer` returns `{ok:true, verdict:'corrected'}` and persists to `faq_canonical_answers`.
+- Subsequent public `/faq-chat` for the same question returns `source='pre_canned'` with the admin-trained text — confirmed via curl against the local backend.
+
+
 ## 2026-10-09 — Blog save failure fix (duplicate slug + opaque error toast)
 **Status: COMPLETE · verified via curl**
 

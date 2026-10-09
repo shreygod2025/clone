@@ -928,6 +928,24 @@ async def faq_chat(req: FaqChatRequest, request: Request):
     sess = _get_session(req.session_id)
     nq = _normalise_query(req.message)
 
+    # ─── Fast path 0: admin-trained canonical answer ─────────────────────
+    # If an admin has thumbed-up or hand-corrected a reply for THIS exact
+    # question (normalised), serve that verbatim. Zero LLM cost, instant,
+    # and guarantees the admin's trained answer is what the public sees.
+    canonical = await db.faq_canonical_answers.find_one(
+        {"question_normalised": nq}, {"_id": 0, "answer": 1, "verdict": 1},
+    )
+    if canonical and canonical.get("answer"):
+        trained = canonical["answer"]
+        sess["messages"].append({"role": "user", "content": req.message})
+        sess["messages"].append({"role": "assistant", "content": trained})
+        await _log_chat(identity, req.session_id, req.message, trained, source="pre_canned")
+        return FaqChatReply(
+            reply=trained, session_id=req.session_id,
+            message_count=len(sess["messages"]), remaining=remaining,
+            source="pre_canned", latency_ms=int((_time.time() - t0) * 1000),
+        )
+
     # ─── Fast path 1: admin-authored pre-canned answer (free, instant) ────
     settings = await read_settings()
     pre_canned_hit = _match_pre_canned(req.message, settings.pre_canned)
@@ -1031,6 +1049,10 @@ async def _log_chat(identity: str, session_id: str, question: str, answer: str, 
             "question": question[:2000],
             "question_normalised": _normalise_query(question),
             "answer_preview": (answer or "")[:500],
+            # Full answer kept so the admin analytics "See full reply" expand
+            # has the complete markdown/HTML. Capped at 20k chars which comfortably
+            # fits every current OLL FAQ answer and keeps Mongo doc sizes sane.
+            "answer_text": (answer or "")[:20000],
             "source": source,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "day": datetime.now(timezone.utc).date().isoformat(),
@@ -1132,15 +1154,24 @@ async def faq_chat_analytics(days: int = 30, sort: str = "count_desc", user: dic
 
     pipeline = [
         {"$match": {"created_at": {"$gte": cutoff}}},
+        # Sort first so `$first` / `$last` pick the latest record for each
+        # question. Mongo evaluates aggregation stages in order.
+        {"$sort": {"created_at": -1}},
         {"$group": {
             "_id": "$question_normalised",
             "count": {"$sum": 1},
             "sample_question": {"$first": "$question"},
+            "latest_answer": {"$first": "$answer_text"},
+            "latest_answer_preview": {"$first": "$answer_preview"},
+            "latest_source": {"$first": "$source"},
+            "latest_log_id": {"$first": "$id"},
+            "latest_feedback": {"$first": "$feedback"},
             "last_asked": {"$max": "$created_at"},
             "first_asked": {"$min": "$created_at"},
             "thumbs_up": {"$sum": {"$cond": [{"$eq": ["$feedback", "up"]}, 1, 0]}},
             "thumbs_down": {"$sum": {"$cond": [{"$eq": ["$feedback", "down"]}, 1, 0]}},
             "unique_visitors": {"$addToSet": "$identity"},
+            "sessions": {"$addToSet": "$session_id"},
         }},
         {"$project": {
             "_id": 0,
@@ -1149,14 +1180,37 @@ async def faq_chat_analytics(days: int = 30, sort: str = "count_desc", user: dic
             "count": 1,
             "last_asked": 1,
             "first_asked": 1,
+            "latest_answer": 1,
+            "latest_answer_preview": 1,
+            "latest_source": 1,
+            "latest_log_id": 1,
+            "latest_feedback": 1,
             "thumbs_up": 1,
             "thumbs_down": 1,
             "unique_visitors": {"$size": "$unique_visitors"},
+            "session_count": {"$size": "$sessions"},
         }},
         {"$sort": sort_stage},
         {"$limit": 200},
     ]
     rows = await db.faq_chat_logs.aggregate(pipeline).to_list(200)
+
+    # Overlay canonical answers so the admin sees "trained" rows marked.
+    normalised_set = [r.get("normalised") for r in rows if r.get("normalised")]
+    canon_map: dict = {}
+    if normalised_set:
+        async for c in db.faq_canonical_answers.find({"question_normalised": {"$in": normalised_set}}):
+            canon_map[c.get("question_normalised")] = {
+                "answer": c.get("answer") or "",
+                "verdict": c.get("verdict") or "trained",
+                "updated_at": c.get("updated_at"),
+            }
+    for r in rows:
+        canon = canon_map.get(r.get("normalised"))
+        if canon:
+            r["canonical_answer"] = canon["answer"]
+            r["canonical_verdict"] = canon["verdict"]
+            r["canonical_updated_at"] = canon["updated_at"]
 
     total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}})
     thumbs_up_total = await db.faq_chat_logs.count_documents({"created_at": {"$gte": cutoff}, "feedback": "up"})
@@ -1192,6 +1246,74 @@ async def faq_chat_analytics(days: int = 30, sort: str = "count_desc", user: dic
         "inr_per_query": inr_per_query,
         "total_cost_inr": total_cost_inr,
     }
+
+
+@router.post("/admin/faq-chat/canonical-answer")
+async def faq_chat_save_canonical_answer(request: Request):
+    """Save a trusted answer for a specific normalised question.
+
+    Two flows:
+      • **Approve** — admin thumbs-up the AI's current reply → `verdict='approved'`.
+        We store the AI's answer verbatim so the public chat can short-circuit
+        to it on the next matching question (zero LLM cost, instant response).
+      • **Correct** — admin thumbs-down + types the correct answer → stored with
+        `verdict='corrected'`. Same short-circuit, but marked for review in the
+        admin dashboard so you know which answers you've manually trained.
+
+    Writes to `faq_canonical_answers` collection, keyed on `question_normalised`.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Body must be a JSON object")
+    question = (payload.get("question") or "").strip()
+    answer = (payload.get("answer") or "").strip()
+    verdict = (payload.get("verdict") or "approved").strip()
+    log_id = (payload.get("log_id") or "").strip()
+    if not question or not answer:
+        raise HTTPException(400, "`question` and `answer` are required")
+    if verdict not in ("approved", "corrected"):
+        verdict = "approved"
+    normalised = _normalise_query(question)
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
+    editor = ""
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        decoded = _decode_token(auth.split(None, 1)[1].strip())
+        if decoded:
+            editor = decoded.get("email") or decoded.get("sub") or ""
+    await db.faq_canonical_answers.update_one(
+        {"question_normalised": normalised},
+        {"$set": {
+            "question_normalised": normalised,
+            "question": question[:500],
+            "answer": answer[:20000],
+            "verdict": verdict,
+            "updated_at": now_iso,
+            "updated_by": editor or "admin",
+        }, "$setOnInsert": {"created_at": now_iso}},
+        upsert=True,
+    )
+    if log_id:
+        await db.faq_chat_logs.update_one(
+            {"id": log_id},
+            {"$set": {"feedback": "up" if verdict == "approved" else "down", "admin_trained": True}},
+        )
+    return {"ok": True, "verdict": verdict, "normalised": normalised}
+
+
+@router.delete("/admin/faq-chat/canonical-answer")
+async def faq_chat_delete_canonical_answer(question: str = ""):
+    """Remove a trained override so Claude goes back to generating its own
+    answer for this question."""
+    if not question:
+        raise HTTPException(400, "`question` query param required")
+    normalised = _normalise_query(question)
+    res = await db.faq_canonical_answers.delete_one({"question_normalised": normalised})
+    return {"ok": True, "deleted": res.deleted_count}
 
 
 @router.get("/faq-chat/product-lookup")
