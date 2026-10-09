@@ -7,12 +7,13 @@ import {
   Trophy, Building2, GraduationCap, User, Download, Upload, Search,
   Mail, Phone, MapPin, Loader2, ExternalLink, Pencil, Trash2, Link2, Plus, Copy, X,
   Layers, CheckSquare, Square, UserPlus, ChevronDown, ChevronRight, FileText,
-  Filter,
+  Filter, Megaphone,
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
+import TechfestBulkEmailDialog from './TechfestBulkEmailDialog';
 
 // ── HeaderFilter ───────────────────────────────────────────────────────
 // Small funnel icon next to a column header that opens a popover with a
@@ -247,6 +248,7 @@ export default function AdminCompetitions() {
   const [q, setQ] = useState('');
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
   const fileInputRef = useRef(null);
 
   // My referral link (for non-admins & shown as a helper card for everyone)
@@ -925,6 +927,16 @@ export default function AdminCompetitions() {
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={handleImportClick} disabled={importing} data-testid="admin-competitions-import-btn">
                     {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />} Import CSV
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowBulkEmail(true)}
+                    className="bg-[#DC2626] hover:bg-[#B91C1C]"
+                    data-testid="admin-competitions-bulk-email-btn"
+                  >
+                    <Megaphone className="w-4 h-4 mr-1" /> Email Blast
                   </Button>
                 )}
                 <Button size="sm" onClick={handleExport} disabled={exporting} className="bg-[#0A1F44] hover:bg-[#1E3A5F]" data-testid="admin-competitions-export-btn">
@@ -2133,6 +2145,13 @@ export default function AdminCompetitions() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Email Blast */}
+      <TechfestBulkEmailDialog
+        open={showBulkEmail}
+        onClose={() => setShowBulkEmail(false)}
+        getAuthHeaders={getAuthHeaders}
+      />
     </AdminLayout>
   );
 }

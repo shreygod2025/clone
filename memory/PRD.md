@@ -1,3 +1,8 @@
+# Latest update (2026-02-10)
+- **Techfest Bulk Email broadcaster** shipped in Admin → Competitions. Admins can blast the OLL × Techfest "Important Checklist" (editable HTML + subject) to any combination of Students / Schools / Educators, optionally filtered by zone and competition. Includes live audience preview, sample-send flow (default `shreyaan@oll.co`), background sender with 5 emails/sec throttle, and campaign history logged to `techfest_bulk_campaigns`.
+- Files: `backend/routes/techfest_bulk_email.py`, `frontend/src/pages/admin/TechfestBulkEmailDialog.jsx`, `frontend/src/pages/admin/AdminCompetitions.jsx` (toolbar button + dialog mount).
+
+
 # Future Skills / Multi-Vertical CRM — PRD
 
 ## Original Problem Statement

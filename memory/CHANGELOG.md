@@ -1,3 +1,24 @@
+## 2026-02-10 — Techfest Bulk Email broadcaster (Admin → Competitions)
+
+- **New backend route** `routes/techfest_bulk_email.py` with:
+  - `GET /api/admin/techfest/bulk-email/default-template` — the OLL × Techfest "Important Checklist" HTML + subject.
+  - `POST /api/admin/techfest/bulk-email/preview` — audience count + sample for filters `{types[], zones[], competitions[]}`.
+  - `POST /api/admin/techfest/bulk-email/send-sample` — one-off test (default `shreyaan@oll.co`).
+  - `POST /api/admin/techfest/bulk-email/send` — background blast, logs to new `techfest_bulk_campaigns` collection.
+  - `GET /api/admin/techfest/bulk-email/campaigns` — history (last 50).
+- **Audience source**: `techfest_registrations` collection, filtered by `type ∈ {student,school,educator}` + optional `zone` + `selected_competitions`. De-dup by lowercase email.
+- **Email render**: reuses the branded `_shell` from `routes/techfest_emails.py` (OLL × Techfest IIT Bombay 2026 masthead). Personalisation tokens: `{{first_name}}`, `{{name}}`, `{{school}}`.
+- **Checklist template** matches the exact copy requested by the user: deadline card, registration guide buttons, WhatsApp CTA, kit purchase+video pairs, submission guide, regional rounds table, finale callout, help/FAQ footer.
+- **Frontend**: new `pages/admin/TechfestBulkEmailDialog.jsx` + "Email Blast" (Megaphone icon) button in the Admin Competitions toolbar. Dialog has:
+  - Audience chips with live count + per-type tally; "Custom segment" expander for zones + competitions.
+  - Compose / Preview tabs (preview rendered in sandboxed iframe).
+  - Prefilled subject + HTML body, "Reset to default" link.
+  - "Send sample" with tester email prefilled to `shreyaan@oll.co`.
+  - "Send to N recipients" with explicit confirmation modal.
+  - Toggleable History panel showing recent campaigns, status, sent/total/failed counts.
+- **Verified**: sample email delivered to `shreyaan@oll.co` (Resend ID `01a12051-c501-72a4-ac81-c574f97a6dd9`). Audience preview returns 8 recipients (4 schools + 4 educators) from the current test data.
+
+
 # OLL Backend Changelog
 
 ## 2026-10-09 — My Bookings loader fix + Shop Orders tab + Login type rework
