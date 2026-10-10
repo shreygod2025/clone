@@ -1327,23 +1327,35 @@ const MyBookingsPage = () => {
                 const hasOpenRefund = (order.refund_requests || []).some(
                   (r) => ['requested', 'processing'].includes(r.status),
                 );
-                const status = (order.fulfillment_status || order.payment_status || 'PAID').toUpperCase();
+                const fulfillment = (order.fulfillment_status || 'pending').toLowerCase();
+                const fulfillmentUi = {
+                  pending:    { label: 'Order placed · awaiting dispatch', cls: 'text-amber-700 bg-amber-50',       icon: Clock },
+                  dispatched: { label: 'Dispatched · on the way',          cls: 'text-indigo-700 bg-indigo-50',     icon: Truck },
+                  delivered:  { label: 'Delivered',                        cls: 'text-emerald-700 bg-emerald-50',   icon: Package },
+                  cancelled:  { label: 'Cancelled',                        cls: 'text-slate-600 bg-slate-100',      icon: XCircle },
+                }[fulfillment] || { label: fulfillment.toUpperCase(), cls: 'text-slate-700 bg-slate-100', icon: Package };
+                const FulfillmentIcon = fulfillmentUi.icon;
                 return (
                   <div key={order.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100" data-testid={`shop-order-${order.id}`}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          Order #{(order.id || '').slice(0, 8)} · {order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                          {order.order_no || `Order #${(order.id || '').slice(0, 8)}`} · {order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                         </div>
                         <div className="font-black text-[#0A1F44] text-lg mt-1">
-                          ₹{(order.total_amount ?? order.amount ?? 0).toLocaleString('en-IN')}
+                          ₹{(order.total ?? order.total_amount ?? order.amount ?? 0).toLocaleString('en-IN')}
                         </div>
-                        <div className="text-xs text-slate-600 mt-0.5">
-                          {items.length} item{items.length === 1 ? '' : 's'} · {status}
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-2.5 py-1 w-fit ${fulfillmentUi.cls}" style={{}}>
+                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-2.5 py-1 ${fulfillmentUi.cls}`} data-testid={`shop-order-status-${order.id}`}>
+                            <FulfillmentIcon className="w-3.5 h-3.5" /> {fulfillmentUi.label}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-600 mt-1.5">
+                          {items.length} item{items.length === 1 ? '' : 's'}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {tracking ? (
+                        {tracking && (
                           <a
                             href={tracking}
                             target="_blank"
@@ -1353,21 +1365,20 @@ const MyBookingsPage = () => {
                           >
                             <Truck className="w-3.5 h-3.5" /> Track order
                           </a>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-3 py-1.5">
-                            <Clock className="w-3.5 h-3.5" /> Awaiting dispatch
-                          </span>
                         )}
-                        {order.invoice_url && (
-                          <a
-                            href={order.invoice_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full px-3 py-1.5"
-                          >
-                            <ReceiptText className="w-3.5 h-3.5" /> Invoice
-                          </a>
-                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const { downloadShopOrderInvoice } = await import('../utils/shopInvoicePdf');
+                              downloadShopOrderInvoice(order);
+                            } catch (e) { toast.error('Could not generate invoice'); }
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full px-3 py-1.5"
+                          data-testid={`shop-order-invoice-${order.id}`}
+                        >
+                          <ReceiptText className="w-3.5 h-3.5" /> Download invoice
+                        </button>
                         {hasOpenRefund ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-3 py-1.5">
                             Refund requested

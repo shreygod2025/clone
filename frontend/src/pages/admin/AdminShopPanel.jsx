@@ -49,6 +49,26 @@ const OrdersTab = ({ embedded = false }) => {
   const [verifyingId, setVerifyingId] = useState(null);
   const [refundOrder, setRefundOrder] = useState(null);
   const [posByOrderId, setPosByOrderId] = useState({});
+  const [updatingDelivery, setUpdatingDelivery] = useState({}); // {orderId: true}
+
+  const updateDeliveryStatus = async (order, newStatus) => {
+    if (!newStatus || newStatus === order.fulfillment_status) return;
+    setUpdatingDelivery((m) => ({ ...m, [order.id]: true }));
+    try {
+      const { data } = await axios.patch(
+        `${API}/admin/shop/orders/${order.id}`,
+        { fulfillment_status: newStatus },
+        { headers: getAuthHeaders() },
+      );
+      // Optimistic replace in local state
+      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...data.order } : o)));
+      toast.success(`Delivery updated to ${newStatus}`);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not update delivery status');
+    } finally {
+      setUpdatingDelivery((m) => { const n = { ...m }; delete n[order.id]; return n; });
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -370,6 +390,7 @@ const OrdersTab = ({ embedded = false }) => {
                 <th className="px-4 py-3 text-left">Items</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3 text-center">Payment</th>
+                <th className="px-4 py-3 text-center">Delivery</th>
                 <th className="px-4 py-3 text-left">Tracking</th>
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
@@ -415,6 +436,29 @@ const OrdersTab = ({ embedded = false }) => {
                         label={o.payment_status}
                         color={o.payment_status === 'paid' ? 'green' : o.payment_status === 'refunded' ? 'purple' : 'amber'}
                       />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <select
+                        value={o.fulfillment_status || 'pending'}
+                        onChange={(e) => updateDeliveryStatus(o, e.target.value)}
+                        disabled={!!updatingDelivery[o.id] || o.payment_status !== 'paid'}
+                        className={`text-xs font-semibold rounded-full px-2.5 py-1 border focus:outline-none focus:ring-2 focus:ring-[#D63031] disabled:opacity-50 ${
+                          o.fulfillment_status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : o.fulfillment_status === 'dispatched' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          : o.fulfillment_status === 'cancelled' ? 'bg-slate-100 text-slate-600 border-slate-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}
+                        title={o.payment_status !== 'paid' ? 'Payment must be PAID before updating delivery' : 'Update delivery status — reflects in learner\'s My Bookings'}
+                        data-testid={`shop-order-delivery-${o.id}`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="dispatched">Dispatched</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      {updatingDelivery[o.id] && (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin inline ml-1.5 text-slate-400" />
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {trackable.length === 0 ? (

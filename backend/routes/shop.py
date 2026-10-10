@@ -451,7 +451,7 @@ class ShopCartItem(BaseModel):
 
 class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=2, max_length=80)
-    email: Optional[EmailStr] = None
+    email: EmailStr  # required — needed for order confirmation + invoice copy
     phone: str = Field(min_length=10, max_length=15)
     line1: Optional[str] = ""
     line2: Optional[str] = ""
@@ -960,16 +960,25 @@ async def shop_my_orders(email: Optional[str] = None, phone: Optional[str] = Non
     """Return paid shop orders for a logged-in customer so the /my-bookings
     page can show tracking links + refund request CTAs.
 
-    Keyed on either `email` OR `phone` — whatever the account has. Returns
-    only orders where `payment_status == 'PAID'` so pending/failed carts
-    don't clutter the list."""
+    Keyed on either `email` OR `phone` — whatever the account has. Phones are
+    matched on the LAST 10 DIGITS so a profile stored as `9699188188` still
+    finds orders checked out as `09699188188`, `+919699188188`, etc."""
     if not email and not phone:
         raise HTTPException(status_code=400, detail="`email` or `phone` is required")
     or_clauses = []
     if email:
         or_clauses.append({"customer.email": email.lower().strip()})
+        # Shop checkout stores email under `shipping.email` for guest orders,
+        # so also match that path.
+        or_clauses.append({"shipping.email": email.lower().strip()})
     if phone:
-        or_clauses.append({"customer.phone": phone.strip()})
+        digits = re.sub(r"\D", "", phone or "")[-10:]
+        if len(digits) == 10:
+            tail = re.compile(rf"{digits}$")
+            or_clauses.append({"customer.phone": tail})
+            or_clauses.append({"shipping.phone": tail})
+        else:
+            or_clauses.append({"customer.phone": phone.strip()})
     q = {"$or": or_clauses, "payment_status": "PAID"} if or_clauses else {}
     cursor = db.shop_orders.find(q, {"_id": 0}).sort("created_at", -1).limit(100)
     orders = await cursor.to_list(100)
@@ -1091,6 +1100,39 @@ async def admin_update_po(
         raise HTTPException(status_code=404, detail="PO not found")
     po = await db.shop_purchase_orders.find_one({"id": po_id}, {"_id": 0})
     return {"purchase_order": po}
+
+
+class ShopOrderPatchBody(BaseModel):
+    fulfillment_status: Optional[str] = None
+    tracking_url: Optional[str] = None
+    admin_notes: Optional[str] = None
+
+
+@router.patch("/admin/shop/orders/{order_id}")
+async def admin_update_shop_order(
+    order_id: str, body: ShopOrderPatchBody, user: dict = Depends(get_current_user)
+):
+    """Admin: update the customer-facing fulfillment status of a shop order
+    (pending → dispatched → delivered → cancelled) and optionally add a
+    tracking URL. The learner's /my-bookings page reads these fields
+    directly, so updates reflect instantly for the customer."""
+    update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if body.fulfillment_status:
+        if body.fulfillment_status not in ("pending", "dispatched", "delivered", "cancelled"):
+            raise HTTPException(status_code=400, detail="Invalid fulfillment_status")
+        update["fulfillment_status"] = body.fulfillment_status
+        update["fulfillment_status_updated_at"] = datetime.now(timezone.utc).isoformat()
+    if body.tracking_url is not None:
+        update["tracking_url"] = (body.tracking_url or "").strip() or None
+    if body.admin_notes is not None:
+        update["admin_notes"] = body.admin_notes
+    if len(update) == 1:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    res = await db.shop_orders.update_one({"id": order_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order = await db.shop_orders.find_one({"id": order_id}, {"_id": 0})
+    return {"order": order}
 
 
 class ProductOverrideBody(BaseModel):
