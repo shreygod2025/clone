@@ -4,6 +4,7 @@ import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Qu
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import WordPressBlogsSection from '../components/WordPressBlogsSection';
+import { STI, STI_BG, STI_LOGO, STI_YF_LOGO, STI_CONTACT, STI_DISPLAY_FONT } from '../components/sharkTankTheme';
 import { useUserAuth } from '../context/UserAuthContext';
 
 // ── Shared assets from Robotics Beginner (theme parity) ────────────────────
@@ -671,73 +672,56 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── SHARK TANK INDIA YOUNG FOUNDERS SPECIAL — informational card ── */}
-      <section data-testid="homepage-sti6-yf" style={{
-        padding: '4.5rem 1.25rem',
-        background: 'linear-gradient(135deg, #0A1F44 0%, #0E1B3E 55%, #7F1D1D 100%)',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div aria-hidden style={{ position: 'absolute', top: -120, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, transparent 70%)' }} />
-        <div aria-hidden style={{ position: 'absolute', bottom: -140, left: -60, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.35) 0%, transparent 70%)' }} />
-        <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <Link
-            to="/shark-tank-young-founders"
-            data-testid="homepage-sti6-yf-card"
-            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-          >
-            <div style={{
-              display: 'grid',
-              gap: '1.5rem',
-              padding: '2rem',
-              background: 'rgba(255,255,255,0.98)',
-              borderRadius: 24,
-              border: '1px solid rgba(255,255,255,0.5)',
-              boxShadow: '0 30px 80px -20px rgba(0,0,0,0.5)',
-              transition: 'transform 0.25s ease, box-shadow 0.25s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-                <img src="https://prd-emss3.sonyliv.com/Creatives/ST/Shark-Tank-India-S6-Logo.png" alt="Shark Tank India Season 6" style={{ height: 56, width: 'auto' }} />
-                <div style={{ width: 1, height: 44, background: '#E2E8F0' }} />
-                <img src="https://prd-emss3.sonyliv.com/Creatives/ST/YOUNF-FOUNDERS-SPECIAL-_PNG.png" alt="Young Founders Special" style={{ height: 64, width: 'auto' }} />
-                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 999, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#B91C1C' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', animation: 'pulse 2s infinite' }} />
-                  Registrations Open
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
-                <div>
-                  <h3 style={{ fontSize: 'clamp(1.5rem, 3.6vw, 2.2rem)', fontWeight: 900, color: '#0A1F44', margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
-                    Entrepreneurship, for 6–15 year olds.
-                  </h3>
-                  <p style={{ marginTop: '0.9rem', color: '#475569', lineHeight: 1.6, fontSize: '0.95rem' }}>
-                    An entrepreneurial platform where young innovators can apply with just a business idea — an established company isn't required. Registrations run <strong style={{color:'#0A1F44'}}>12 Oct – 11 Nov 2026</strong>.
-                  </p>
-                  <div style={{ marginTop: '1.25rem', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: '#DC2626', color: '#fff', borderRadius: 999, fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.03em' }}>
-                    Read the full info page →
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-                  {[
-                    ['AGES', '6 – 15 yrs'],
-                    ['CITIZENSHIP', 'Indian'],
-                    ['REGISTRATION', '12 Oct – 11 Nov'],
-                    ['FEE', 'Free'],
-                  ].map(([k, v]) => (
-                    <div key={k} style={{ padding: 14, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: '#DC2626' }}>{k}</div>
-                      <div style={{ marginTop: 4, fontSize: '0.95rem', fontWeight: 800, color: '#0A1F44' }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ fontSize: 11, color: '#94A3B8', borderTop: '1px solid #F1F5F9', paddingTop: 12 }}>
-                Information shared by OLL as a community resource. Not affiliated with Sony Pictures / SonyLIV. Always verify on the official page.
-              </div>
+      {/* ── SHARK TANK INDIA YOUNG FOUNDERS SPECIAL — poster-style banner ── */}
+      <section data-testid="homepage-sti6-yf" style={{ ...STI_BG, padding: '4.5rem 1.25rem', position: 'relative', overflow: 'hidden' }}>
+        <style>{`
+          .home-sti-grid { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 3rem; align-items: center; position: relative; z-index: 1; }
+          .home-sti-logos { display: flex; align-items: center; justify-content: center; gap: 2rem; }
+          .home-sti-logos img { display: block; width: auto; filter: drop-shadow(0 18px 30px rgba(0,0,0,0.35)); }
+          .home-sti-logos .st { height: 300px; }
+          .home-sti-logos .yf { height: 220px; }
+          .home-sti-knowmore { display: inline-flex; align-items: center; gap: 8px; padding: 13px 26px; border-radius: 999px; background: transparent; color: ${STI.yellow}; border: 2px solid ${STI.yellow}; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.85rem; text-decoration: none; transition: background-color 0.2s, color 0.2s, transform 0.2s; }
+          .home-sti-knowmore:hover { background: ${STI.yellow}; color: ${STI.ink}; transform: translateY(-2px); }
+          @media (max-width: 900px) {
+            .home-sti-grid { grid-template-columns: 1fr; gap: 2rem; }
+            .home-sti-logos .st { height: 200px; }
+            .home-sti-logos .yf { height: 150px; }
+          }
+          @media (max-width: 480px) {
+            .home-sti-logos { gap: 1rem; }
+            .home-sti-logos .st { height: 160px; }
+            .home-sti-logos .yf { height: 112px; }
+          }
+        `}</style>
+        <div className="home-sti-grid">
+          <div className="home-sti-logos">
+            <img className="st" src={STI_LOGO} alt="Shark Tank India Season 6" loading="lazy" data-testid="homepage-sti6-logo" />
+            <img className="yf" src={STI_YF_LOGO} alt="Young Founders Special" loading="lazy" data-testid="homepage-sti6-yf-logo" />
+          </div>
+          <div style={{ color: '#fff' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 999, border: '1px solid rgba(255,225,77,0.55)', color: STI.yellow, fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: STI.yellow, animation: 'pulse 2s infinite' }} /> Registrations Open
             </div>
-          </Link>
+            <h2 data-testid="homepage-sti6-title" style={{ fontFamily: STI_DISPLAY_FONT, fontWeight: 400, textTransform: 'uppercase', fontSize: 'clamp(2rem, 4.4vw, 3.4rem)', lineHeight: 1.02, margin: '1rem 0 0', letterSpacing: '0.01em' }}>
+              Shark Tank India Season 6 <span style={{ color: STI.yellow }}>Young Founders Special</span>
+            </h2>
+            <h3 style={{ marginTop: '1.25rem', fontSize: '1.15rem', fontWeight: 800, color: STI.yellow }}>An Exciting Opportunity for Our School&apos;s Students</h3>
+            <p style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontSize: '0.98rem' }}>
+              Young founders with innovative business ideas or existing ventures now have an opportunity to apply for a chance to present their business ideas on national television through this special initiative.
+            </p>
+            <p style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontSize: '0.98rem' }}>
+              Students who dream of building something of their own, have already started a venture, or are actively turning their ideas into reality are encouraged to explore this opportunity.
+            </p>
+            <p data-testid="homepage-sti6-contact" style={{ marginTop: '1rem', fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>
+              For queries: <a href={`tel:+91${STI_CONTACT.phone}`} style={{ color: STI.yellow, textDecoration: 'none' }}>{STI_CONTACT.phone}</a> | <a href={`mailto:${STI_CONTACT.email}`} style={{ color: STI.yellow, textDecoration: 'none' }}>{STI_CONTACT.email}</a>
+            </p>
+            <Link to="/shark-tank-young-founders" className="home-sti-knowmore" data-testid="homepage-sti6-know-more" style={{ marginTop: '1.5rem' }}>
+              Know More <ArrowRight className="w-4 h-4" />
+            </Link>
+            <p style={{ marginTop: '1.25rem', fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
+              Information shared by OLL as a community resource. Not affiliated with Sony Pictures / SonyLIV.
+            </p>
+          </div>
         </div>
       </section>
 

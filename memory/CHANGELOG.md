@@ -2685,3 +2685,8 @@ Bucket logic (`_buckets_for_scope`):
 
 ### New Env Var
 - `WEBHOOK_CRON_SECRET` added to `backend/.env` (auto-generated 32-byte token)
+
+## 2026-06 — Shark Tank YF poster redesign
+- Homepage STI6 section: royal-blue doodle/glow poster bg, no white card, large cropped logos (/sti6-logo.png, /sti6-yf-logo.png), new copy + queries line, "Know More" outline CTA.
+- /shark-tank-young-founders: sticky pill nav without ST logos; poster hero (big logos + glowing-bulb "Registration Open" block); all sections re-themed blue/yellow/cream with YOUNG accent colours (red/maroon removed); contact line in hero + CTA.
+- Shared theme: frontend/src/components/sharkTankTheme.js; Anton + Bebas Neue fonts added in public/index.html.

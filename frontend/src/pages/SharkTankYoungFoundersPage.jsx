@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Calendar, Users, GraduationCap, Lightbulb, UserCheck, Flag, FileText, Info, ChevronDown, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Calendar, Users, GraduationCap, Lightbulb, UserCheck, Flag, FileText, Info, ChevronDown, Phone, Mail } from 'lucide-react';
+import { STI, STI_ACCENTS, STI_BG, STI_LOGO, STI_YF_LOGO, STI_CONTACT, STI_DISPLAY_FONT } from '../components/sharkTankTheme';
 
 const OFFICIAL_URL = 'https://sharktank.sonyliv.com/youngfounder/oll';
 const ST_LOGO = 'https://prd-emss3.sonyliv.com/Creatives/ST/Shark-Tank-India-S6-Logo.png';
@@ -103,6 +104,18 @@ function useDocumentMeta() {
   }, []);
 }
 
+const H2 = ({ children, color = STI.ink }) => (
+  <h2 style={{ fontFamily: STI_DISPLAY_FONT, fontWeight: 400, textTransform: 'uppercase', fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.02, letterSpacing: '0.01em', color, margin: '10px 0 0' }}>{children}</h2>
+);
+
+const Contact = ({ dark }) => (
+  <div data-testid="stf-contact" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1.25rem', fontWeight: 700, fontSize: '0.95rem', color: dark ? '#fff' : STI.ink }}>
+    <span>For queries:</span>
+    <a href={`tel:+91${STI_CONTACT.phone}`} data-testid="stf-contact-phone" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: dark ? STI.yellow : STI.blue, textDecoration: 'none' }}><Phone className="w-4 h-4" />{STI_CONTACT.phone}</a>
+    <a href={`mailto:${STI_CONTACT.email}`} data-testid="stf-contact-email" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: dark ? STI.yellow : STI.blue, textDecoration: 'none' }}><Mail className="w-4 h-4" />{STI_CONTACT.email}</a>
+  </div>
+);
+
 export default function SharkTankYoungFoundersPage() {
   useDocumentMeta();
   const [openFaq, setOpenFaq] = useState(0);
@@ -110,139 +123,104 @@ export default function SharkTankYoungFoundersPage() {
   return (
     <div className="stf-page" data-testid="shark-tank-yf-page">
       <style>{`
-        .stf-page { font-family: 'Proxima Nova', 'Montserrat', -apple-system, sans-serif; color: #0A1F44; background: #fff; }
-        .stf-hero-bg {
-          background: linear-gradient(135deg, #0A1F44 0%, #0E1B3E 45%, #4C1D1D 85%, #7F1D1D 100%);
-          position: relative; overflow: hidden;
-        }
-        .stf-hero-bg::before {
-          content: ''; position: absolute; inset: 0;
-          background:
-            radial-gradient(circle at 15% 20%, rgba(245,158,11,0.18), transparent 55%),
-            radial-gradient(circle at 85% 70%, rgba(220,38,38,0.42), transparent 55%);
-          pointer-events: none;
-        }
-        /* Pill nav — same shape as techfest */
-        .stf-pillnav { position: sticky; top: 12px; z-index: 60; margin: 0 auto; padding: 12px 12px 0; }
-        .stf-pillnav-inner {
-          max-width: 1180px; margin: 0 auto;
-          background: rgba(255,255,255,0.96);
-          -webkit-backdrop-filter: saturate(180%) blur(14px);
-          backdrop-filter: saturate(180%) blur(14px);
-          border: 1px solid rgba(255,255,255,0.5);
-          box-shadow: 0 20px 44px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.12);
-          border-radius: 999px;
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 8px 10px 8px 18px;
-        }
-        .stf-pillnav-brands { display: flex; align-items: center; gap: 14px; min-width: 0; }
-        .stf-pillnav-brands .divider { width: 1px; height: 36px; background: rgba(10,31,68,0.15); }
-        .stf-pillnav-brands img { display: block; height: 40px; width: auto; }
-        .stf-pillnav-brands img.stf-yf { height: 48px; }
-        .stf-btn {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 10px 18px; border-radius: 999px;
-          font-weight: 800; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase;
-          transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
-          cursor: pointer; text-decoration: none; border: none;
-        }
-        .stf-btn.primary { background: #DC2626; color: #fff; box-shadow: 0 12px 22px rgba(220,38,38,0.35); }
-        .stf-btn.primary:hover { background: #B91C1C; transform: translateY(-1px); }
-        .stf-btn.ghost-dark { background: transparent; color: #0A1F44; border: 1.5px solid rgba(10,31,68,0.28); }
-        .stf-btn.ghost-dark:hover { background: #0A1F44; color: #fff; border-color: #0A1F44; }
-        .stf-btn.gold { background: #F59E0B; color: #0A1F44; box-shadow: 0 12px 22px rgba(245,158,11,0.4); }
-        .stf-btn.gold:hover { background: #D97706; color: #fff; transform: translateY(-1px); }
-        .stf-h1 { font-weight: 900; letter-spacing: -0.02em; line-height: 1.04; }
+        .stf-page { font-family: 'Manrope', 'Proxima Nova', 'Montserrat', sans-serif; color: ${STI.ink}; background: ${STI.blue}; }
+        .stf-pillnav { position: sticky; top: 12px; z-index: 60; padding: 12px 12px 0; }
+        .stf-pillnav-inner { max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.95); -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 20px 44px rgba(3,20,80,0.35); border-radius: 999px; display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 8px 20px; }
+        .stf-pillnav-inner img { display: block; height: 34px; width: auto; }
+        .stf-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 999px; font-weight: 800; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s, color 0.2s; cursor: pointer; text-decoration: none; border: none; }
+        .stf-btn.primary { background: ${STI.blue}; color: #fff; box-shadow: 0 12px 22px rgba(11,63,176,0.35); }
+        .stf-btn.primary:hover { background: ${STI.deep}; transform: translateY(-1px); }
+        .stf-btn.ghost-dark { background: transparent; color: ${STI.ink}; border: 1.5px solid rgba(10,31,92,0.25); }
+        .stf-btn.ghost-dark:hover { background: ${STI.ink}; color: #fff; }
+        .stf-btn.gold { background: ${STI.yellow}; color: ${STI.ink}; box-shadow: 0 14px 28px rgba(255,225,77,0.35); }
+        .stf-btn.gold:hover { background: #fff; transform: translateY(-2px); }
+        .stf-btn.ghost-light { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.45); }
+        .stf-btn.ghost-light:hover { background: rgba(255,255,255,0.12); }
         .stf-eyebrow { font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; font-size: 0.72rem; }
-        .stf-faq-item { border: 1.5px solid #E2E8F0; border-radius: 14px; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; }
-        .stf-faq-item.open { border-color: #DC2626; box-shadow: 0 10px 24px -12px rgba(220,38,38,0.35); }
-        .stf-faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.1rem 1.3rem; background: transparent; border: none; cursor: pointer; text-align: left; font-weight: 700; color: #0A1F44; font-size: 1rem; }
-        .stf-faq-a { padding: 0 1.3rem 1.1rem; color: #475569; line-height: 1.6; font-size: 0.95rem; }
-        @keyframes stf-pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+        .stf-hero-logos { display: flex; align-items: center; justify-content: center; gap: clamp(1.25rem, 4vw, 3.5rem); flex-wrap: wrap; }
+        .stf-hero-logos img { display: block; width: auto; filter: drop-shadow(0 22px 36px rgba(0,0,0,0.4)); animation: stf-rise 0.7s ease both; }
+        .stf-hero-logos .st { height: clamp(200px, 30vw, 380px); }
+        .stf-hero-logos .yf { height: clamp(140px, 21vw, 270px); animation-delay: 0.15s; }
+        .stf-bulb { position: relative; margin: 2.5rem auto 0; max-width: 760px; padding: 2.25rem 1.5rem; border-radius: 48% 48% 36% 36% / 60% 60% 40% 40%; background: radial-gradient(ellipse at 50% 45%, #FFFDF0 0%, #FFF4B8 45%, rgba(255,225,77,0.55) 70%, transparent 100%); box-shadow: 0 0 120px 30px rgba(255,236,150,0.35); animation: stf-rise 0.7s 0.3s ease both; }
+        .stf-bulb-big { font-family: ${STI_DISPLAY_FONT}; text-transform: uppercase; color: #1544C0; line-height: 0.95; margin: 0; font-weight: 400; }
+        .stf-card { padding: 22px; background: #fff; border-radius: 18px; border: 2px solid ${STI.ink}; box-shadow: 6px 6px 0 ${STI.ink}; transition: transform 0.2s, box-shadow 0.2s; }
+        .stf-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 ${STI.ink}; }
+        .stf-faq-item { border: 2px solid rgba(255,255,255,0.18); border-radius: 16px; background: rgba(255,255,255,0.08); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: border-color 0.2s, background-color 0.2s; }
+        .stf-faq-item.open { border-color: ${STI.yellow}; background: rgba(255,255,255,0.14); }
+        .stf-faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.1rem 1.3rem; background: transparent; border: none; cursor: pointer; text-align: left; font-weight: 800; color: #fff; font-size: 1rem; font-family: inherit; }
+        .stf-faq-a { padding: 0 1.3rem 1.2rem; color: rgba(255,255,255,0.85); line-height: 1.65; font-size: 0.95rem; }
+        @keyframes stf-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+        @keyframes stf-pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
         @media (max-width: 640px) {
           .stf-pillnav { top: 8px; padding: 8px 8px 0; }
-          .stf-pillnav-inner { padding: 6px 6px 6px 10px; }
-          .stf-pillnav-brands { gap: 8px; }
-          .stf-pillnav-brands img { height: 28px; }
-          .stf-pillnav-brands img.stf-yf { height: 34px; }
-          .stf-pillnav-brands .divider { height: 24px; }
-          .stf-btn { padding: 8px 10px; font-size: 0.65rem; letter-spacing: 0.03em; gap: 4px; }
+          .stf-pillnav-inner { padding: 6px 6px 6px 12px; }
+          .stf-pillnav-inner img { height: 26px; }
+          .stf-btn { padding: 8px 12px; font-size: 0.66rem; gap: 4px; }
           .stf-btn .stf-hide-sm { display: none; }
+          .stf-bulb { border-radius: 32px; }
+          .stf-date-row { grid-template-columns: 36px 1fr !important; }
+          .stf-date-row > div:last-child { grid-column: 2; }
         }
       `}</style>
 
-      {/* ── Hero section with pill nav floating on top ── */}
-      <section className="stf-hero-bg">
-        <nav className="stf-pillnav" aria-label="Primary navigation" data-testid="stf-pillnav">
-          <div className="stf-pillnav-inner">
-            <div className="stf-pillnav-brands">
-              <Link to="/" aria-label="OLL Home" data-testid="stf-nav-oll">
-                <img src={OLL_LOGO} alt="OLL" />
-              </Link>
-              <span className="divider" aria-hidden="true" />
-              <img src={ST_LOGO} alt="Shark Tank India Season 6" />
-              <span className="divider" aria-hidden="true" />
-              <img className="stf-yf" src={YF_LOGO} alt="Young Founders Special" />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Link to="/" className="stf-btn ghost-dark" data-testid="stf-nav-home">
-                <span className="stf-hide-sm">OLL </span>Home
-              </Link>
-              <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn primary" data-testid="stf-nav-apply">
-                Official<span className="stf-hide-sm"> Site</span> <ArrowUpRight className="w-3.5 h-3.5" />
+      <nav className="stf-pillnav" aria-label="Primary navigation" data-testid="stf-pillnav" style={{ marginBottom: -80 }}>
+        <div className="stf-pillnav-inner">
+          <Link to="/" aria-label="OLL Home" data-testid="stf-nav-oll"><img src={OLL_LOGO} alt="OLL" /></Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link to="/" className="stf-btn ghost-dark" data-testid="stf-nav-home"><span className="stf-hide-sm">OLL </span>Home</Link>
+            <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn primary" data-testid="stf-nav-apply">
+              Official<span className="stf-hide-sm"> Site</span> <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Poster hero ── */}
+      <section data-testid="stf-hero" style={{ ...STI_BG, padding: '8rem 1.25rem 5rem', textAlign: 'center', color: '#fff' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+          <h1 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Shark Tank India Season 6 — Young Founders Special</h1>
+          <div className="stf-hero-logos">
+            <img className="st" src={STI_LOGO} alt="Shark Tank India Season 6" data-testid="stf-hero-st-logo" />
+            <img className="yf" src={STI_YF_LOGO} alt="Young Founders Special" data-testid="stf-hero-yf-logo" />
+          </div>
+
+          <div className="stf-bulb" data-testid="stf-registration-open">
+            <p className="stf-bulb-big" style={{ fontSize: 'clamp(2.8rem, 8vw, 6rem)' }}>Registration Open</p>
+            <p className="stf-bulb-big" style={{ fontSize: 'clamp(1.8rem, 4.6vw, 3.4rem)', marginTop: 10 }}>12<sup style={{ fontSize: '0.45em' }}>th</sup> Oct – 11<sup style={{ fontSize: '0.45em' }}>th</sup> Nov</p>
+            <p className="stf-bulb-big" style={{ fontSize: 'clamp(1.3rem, 3.2vw, 2.3rem)', marginTop: 8, color: STI.deep }}>Ages 6 – 15 Years</p>
+          </div>
+
+          <div style={{ maxWidth: 720, margin: '2.75rem auto 0' }}>
+            <h2 style={{ fontFamily: STI_DISPLAY_FONT, fontWeight: 400, textTransform: 'uppercase', fontSize: 'clamp(1.6rem, 3.4vw, 2.4rem)', color: STI.yellow, margin: 0 }}>An Exciting Opportunity for Our School&apos;s Students</h2>
+            <p style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', lineHeight: 1.7 }}>
+              Young founders with innovative business ideas or existing ventures now have an opportunity to apply for a chance to present their business ideas on national television through this special initiative.
+            </p>
+            <p style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', lineHeight: 1.7 }}>
+              Students who dream of building something of their own, have already started a venture, or are actively turning their ideas into reality are encouraged to explore this opportunity.
+            </p>
+            <div style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+              <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn gold" style={{ padding: '14px 26px', fontSize: '0.88rem' }} data-testid="stf-hero-apply">
+                Visit the Official Page <ArrowUpRight className="w-4 h-4" />
               </a>
+              <a href="#eligibility" className="stf-btn ghost-light" style={{ padding: '14px 26px', fontSize: '0.88rem' }} data-testid="stf-hero-eligibility">Who can apply?</a>
             </div>
-          </div>
-        </nav>
-
-        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', padding: '3.5rem 1.5rem 5rem', zIndex: 1 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '6px 14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 999, color: '#fff', backdropFilter: 'blur(10px)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', animation: 'stf-pulse 2s infinite' }} />
-            <span className="stf-eyebrow" style={{ color: 'rgba(255,255,255,0.9)' }}>Informational · External Opportunity</span>
-          </div>
-
-          <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem', alignItems: 'center' }}>
-            <div>
-              <h1 className="stf-h1" style={{ fontSize: 'clamp(2.5rem, 5.5vw, 4.5rem)', color: '#fff', margin: 0 }}>
-                Young <span style={{ color: '#F59E0B' }}>Founders</span><br />
-                Special — Season 6
-              </h1>
-              <p style={{ marginTop: '1.25rem', color: 'rgba(255,255,255,0.85)', fontSize: '1.1rem', lineHeight: 1.6, maxWidth: 560 }}>
-                A quick, no-nonsense guide to the Shark Tank India Young Founders Special — who can apply, important dates, and where to register. We're sharing this because we think young builders deserve to know it exists.
-              </p>
-              <div style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn gold" data-testid="stf-hero-apply">
-                  Visit the Official Page <ArrowUpRight className="w-4 h-4" />
-                </a>
-                <a href="#eligibility" className="stf-btn ghost-dark" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
-                  Who can apply?
-                </a>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-              {[
-                ['AGES', '6 – 15 yrs', '#F59E0B'],
-                ['CITIZENSHIP', 'Indian', '#DC2626'],
-                ['REGISTRATIONS', '12 Oct – 11 Nov', '#F59E0B'],
-                ['APPLICATION FEE', 'Free', '#DC2626'],
-              ].map(([k, v, c]) => (
-                <div key={k} style={{ padding: 16, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 14 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: c }}>{k}</div>
-                  <div style={{ marginTop: 6, fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{v}</div>
-                </div>
-              ))}
-            </div>
+            <div style={{ marginTop: '1.75rem' }}><Contact dark /></div>
           </div>
         </div>
       </section>
 
       {/* ── What is it ── */}
-      <section style={{ padding: '4rem 1.25rem', background: '#fff' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto' }}>
-          <span className="stf-eyebrow" style={{ color: '#DC2626' }}>About the Initiative</span>
-          <h2 className="stf-h1" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.4rem)', marginTop: 10 }}>What is the Young Founders Special?</h2>
-          <div style={{ marginTop: '1.25rem', color: '#334155', lineHeight: 1.7, fontSize: '1rem' }}>
-            <p>Shark Tank India is a business reality show where entrepreneurs present their businesses to a panel of investors — the Sharks. Founders explain what they are building, the problem they solve, their customers, and how they plan to grow. The Sharks evaluate these opportunities and may offer financial support under agreed terms.</p>
+      <section style={{ padding: '5rem 1.25rem', background: STI.cream }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
+          <div>
+            <span className="stf-eyebrow" style={{ color: STI.orange }}>About the Initiative</span>
+            <H2>What is the <span style={{ color: STI.blue }}>Young Founders</span> Special?</H2>
+            <div style={{ marginTop: 18, display: 'flex', gap: 6 }}>
+              {STI_ACCENTS.map(c => <span key={c} style={{ width: 34, height: 8, borderRadius: 4, background: c, border: `1.5px solid ${STI.ink}` }} />)}
+            </div>
+          </div>
+          <div style={{ color: '#26325A', lineHeight: 1.75, fontSize: '1rem' }}>
+            <p style={{ margin: 0 }}>Shark Tank India is a business reality show where entrepreneurs present their businesses to a panel of investors — the Sharks. Founders explain what they are building, the problem they solve, their customers, and how they plan to grow. The Sharks evaluate these opportunities and may offer financial support under agreed terms.</p>
             <p style={{ marginTop: 14 }}>The <strong>Young Founders Special for Season 6</strong> brings this entrepreneurial platform to younger aspiring founders. Unlike the assumption that you need years of business experience to pursue entrepreneurship, this initiative welcomes eligible children who have a business idea or an early-stage venture they want to develop.</p>
             <p style={{ marginTop: 14 }}>The opportunity is not limited to children who already operate established companies. According to the official FAQs, applicants can apply with a business idea, including one that is still at the pre-revenue stage.</p>
           </div>
@@ -250,49 +228,53 @@ export default function SharkTankYoungFoundersPage() {
       </section>
 
       {/* ── Who can apply ── */}
-      <section id="eligibility" style={{ padding: '4rem 1.25rem', background: 'linear-gradient(180deg, #FEF2F2 0%, #fff 100%)' }}>
+      <section id="eligibility" style={{ ...STI_BG, padding: '5rem 1.25rem' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <span className="stf-eyebrow" style={{ color: '#DC2626' }}>Eligibility</span>
-          <h2 className="stf-h1" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.4rem)', marginTop: 10 }}>Who can apply?</h2>
-          <p style={{ marginTop: 12, color: '#475569', maxWidth: 620, lineHeight: 1.6 }}>
+          <span className="stf-eyebrow" style={{ color: STI.yellow }}>Eligibility</span>
+          <H2 color="#fff">Who can <span style={{ color: STI.yellow }}>apply?</span></H2>
+          <p style={{ marginTop: 12, color: 'rgba(255,255,255,0.85)', maxWidth: 620, lineHeight: 1.65 }}>
             Before beginning the application, families should check whether the applicant meets the eligibility requirements listed on the official FAQs.
           </p>
-          <img src={INFOGRAPHIC} alt="Eligibility — ages 6–15, Indian citizens, school-going/homeschooled/dropouts, idea-stage, parent registers" style={{ marginTop: 28, width: '100%', borderRadius: 20, border: '1px solid rgba(220,38,38,0.15)', boxShadow: '0 20px 50px -20px rgba(10,31,68,0.3)' }} loading="lazy" />
-          <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-            {ELIGIBILITY.map((c, i) => (
-              <div key={i} style={{ padding: 20, background: '#fff', borderRadius: 14, border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: i % 2 ? '#DC2626' : '#F59E0B' }} />
-                <div style={{ width: 42, height: 42, borderRadius: 10, background: i % 2 ? 'linear-gradient(135deg, #DC2626, #991B1B)' : 'linear-gradient(135deg, #0A1F44, #1E3A5F)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                  <c.icon className="w-5 h-5" />
+          <img src={INFOGRAPHIC} alt="Eligibility — ages 6–15, Indian citizens, school-going/homeschooled/dropouts, idea-stage, parent registers" style={{ marginTop: 28, width: '100%', borderRadius: 20, border: `3px solid ${STI.yellow}`, boxShadow: '0 24px 60px -20px rgba(0,0,0,0.5)' }} loading="lazy" />
+          <div style={{ marginTop: 36, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
+            {ELIGIBILITY.map((c, i) => {
+              const accent = STI_ACCENTS[i % STI_ACCENTS.length];
+              return (
+                <div key={c.title} className="stf-card" data-testid={`stf-eligibility-${i}`}>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: accent, border: `2px solid ${STI.ink}`, color: STI.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                    <c.icon className="w-5 h-5" />
+                  </div>
+                  <div style={{ fontFamily: STI_DISPLAY_FONT, fontSize: '1.35rem', textTransform: 'uppercase', color: STI.ink, letterSpacing: '0.02em' }}>{c.title}</div>
+                  <p style={{ marginTop: 6, fontSize: '0.9rem', color: '#3B4670', lineHeight: 1.6 }}>{c.body}</p>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#DC2626' }}>{c.title}</div>
-                <p style={{ marginTop: 6, fontSize: '0.9rem', color: '#475569', lineHeight: 1.55 }}>{c.body}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── Important dates ── */}
-      <section style={{ padding: '4rem 1.25rem', background: '#fff' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <span className="stf-eyebrow" style={{ color: '#DC2626' }}>Important Info</span>
-          <h2 className="stf-h1" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.4rem)', marginTop: 10 }}>Dates &amp; details</h2>
-          <p style={{ marginTop: 12, color: '#475569', lineHeight: 1.6 }}>
-            Registrations opened on <strong style={{color:'#0A1F44'}}>12 October 2026</strong> and are scheduled to close on <strong style={{color:'#0A1F44'}}>11 November 2026</strong>. The selection process runs between <strong>12 October and 23 December 2026</strong>. Organisers reserve the right to change timelines.
+      <section style={{ padding: '5rem 1.25rem', background: STI.cream }}>
+        <div style={{ maxWidth: 920, margin: '0 auto' }}>
+          <span className="stf-eyebrow" style={{ color: STI.pink }}>Important Info</span>
+          <H2>Dates &amp; <span style={{ color: STI.blue }}>details</span></H2>
+          <p style={{ marginTop: 12, color: '#3B4670', lineHeight: 1.65 }}>
+            Registrations opened on <strong>12 October 2026</strong> and are scheduled to close on <strong>11 November 2026</strong>. The selection process runs between <strong>12 October and 23 December 2026</strong>. Organisers reserve the right to change timelines.
           </p>
-          <div style={{ marginTop: 24, borderRadius: 16, overflow: 'hidden', border: '1.5px solid #E2E8F0' }}>
+          <div style={{ marginTop: 26, borderRadius: 18, overflow: 'hidden', border: `2px solid ${STI.ink}`, boxShadow: `6px 6px 0 ${STI.ink}`, background: '#fff' }}>
             {FACTS.map((f, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 2fr', alignItems: 'center', padding: '14px 20px', background: i % 2 === 0 ? '#fff' : '#F8FAFC', borderBottom: i < FACTS.length - 1 ? '1px solid #E2E8F0' : 'none' }}>
-                <f.icon className="w-5 h-5" style={{ color: i % 3 === 0 ? '#DC2626' : i % 3 === 1 ? '#0A1F44' : '#F59E0B' }} aria-hidden="true" />
-                <div style={{ fontWeight: 700, color: '#64748B', fontSize: '0.85rem', letterSpacing: '0.02em' }}>{f.label}</div>
-                <div style={{ fontWeight: 700, color: '#0A1F44', fontSize: '0.95rem' }}>{f.value}</div>
+              <div key={f.label} className="stf-date-row" style={{ display: 'grid', gridTemplateColumns: '56px 1fr 2fr', alignItems: 'center', gap: 6, padding: '14px 20px', background: i % 2 === 0 ? '#fff' : '#F4F7FF', borderBottom: i < FACTS.length - 1 ? '1px solid #E3E8F5' : 'none' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 8, background: STI_ACCENTS[i % STI_ACCENTS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${STI.ink}` }}>
+                  <f.icon className="w-4 h-4" style={{ color: STI.ink }} aria-hidden="true" />
+                </span>
+                <div style={{ fontWeight: 700, color: '#5A6488', fontSize: '0.85rem' }}>{f.label}</div>
+                <div style={{ fontWeight: 800, color: STI.ink, fontSize: '0.95rem' }}>{f.value}</div>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 20, padding: 16, background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <Info className="w-5 h-5" style={{ color: '#B45309', flexShrink: 0, marginTop: 2 }} />
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350F' }}>
+          <div style={{ marginTop: 22, padding: 16, background: '#FFF3B0', border: `2px solid ${STI.ink}`, borderRadius: 14, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <Info className="w-5 h-5" style={{ color: STI.ink, flexShrink: 0, marginTop: 2 }} />
+            <p style={{ margin: 0, fontSize: '0.9rem', color: STI.ink }}>
               <strong>Important:</strong> Dates and selection timelines may change. Always verify the latest information on the official SonyLIV registration page before applying.
             </p>
           </div>
@@ -300,19 +282,19 @@ export default function SharkTankYoungFoundersPage() {
       </section>
 
       {/* ── FAQ accordion ── */}
-      <section style={{ padding: '4rem 1.25rem', background: 'linear-gradient(180deg, #F8FAFC 0%, #fff 100%)' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto' }}>
-          <span className="stf-eyebrow" style={{ color: '#DC2626' }}>Frequently Asked</span>
-          <h2 className="stf-h1" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.4rem)', marginTop: 10 }}>Common questions</h2>
-          <p style={{ marginTop: 12, color: '#475569', lineHeight: 1.6 }}>
+      <section style={{ ...STI_BG, padding: '5rem 1.25rem' }}>
+        <div style={{ maxWidth: 840, margin: '0 auto' }}>
+          <span className="stf-eyebrow" style={{ color: STI.yellow }}>Frequently Asked</span>
+          <H2 color="#fff">Common <span style={{ color: STI.yellow }}>questions</span></H2>
+          <p style={{ marginTop: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
             Based on the official Shark Tank India Season 6 Young Founders Special FAQs (dated 12 October 2026).
           </p>
           <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {FAQS.map((f, i) => (
-              <div key={i} className={`stf-faq-item ${openFaq === i ? 'open' : ''}`} data-testid={`stf-faq-${i}`}>
-                <button className="stf-faq-q" onClick={() => setOpenFaq(openFaq === i ? -1 : i)} aria-expanded={openFaq === i}>
+              <div key={f.q} className={`stf-faq-item ${openFaq === i ? 'open' : ''}`} data-testid={`stf-faq-${i}`}>
+                <button className="stf-faq-q" onClick={() => setOpenFaq(openFaq === i ? -1 : i)} aria-expanded={openFaq === i} data-testid={`stf-faq-toggle-${i}`}>
                   <span>{f.q}</span>
-                  <ChevronDown className="w-5 h-5" style={{ color: openFaq === i ? '#DC2626' : '#94A3B8', transition: 'transform 0.2s', transform: openFaq === i ? 'rotate(180deg)' : 'rotate(0)' }} />
+                  <ChevronDown className="w-5 h-5" style={{ flexShrink: 0, color: openFaq === i ? STI.yellow : 'rgba(255,255,255,0.6)', transition: 'transform 0.2s', transform: openFaq === i ? 'rotate(180deg)' : 'rotate(0)' }} />
                 </button>
                 {openFaq === i && <div className="stf-faq-a">{f.a}</div>}
               </div>
@@ -321,28 +303,26 @@ export default function SharkTankYoungFoundersPage() {
         </div>
       </section>
 
-      {/* ── Where to register — Shark Tank themed CTA block ── */}
-      <section style={{ padding: '5rem 1.25rem', background: 'linear-gradient(135deg, #0A1F44 0%, #4C1D1D 55%, #DC2626 100%)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, rgba(245,158,11,0.25), transparent 60%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 720, margin: '0 auto' }}>
-          <Sparkles className="w-10 h-10" style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
-          <h2 style={{ fontSize: 'clamp(1.75rem, 4vw, 2.6rem)', color: '#fff', fontWeight: 900, margin: 0, letterSpacing: '-0.015em' }}>
-            Where to register
-          </h2>
-          <p style={{ marginTop: 16, color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontSize: '1.05rem' }}>
+      {/* ── Where to register ── */}
+      <section style={{ padding: '5rem 1.25rem', background: STI.cream, textAlign: 'center' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <Lightbulb className="w-10 h-10" style={{ color: STI.orange, margin: '0 auto 8px' }} />
+          <H2>Where to <span style={{ color: STI.blue }}>register</span></H2>
+          <p style={{ marginTop: 16, color: '#3B4670', lineHeight: 1.7, fontSize: '1.05rem' }}>
             All applications are submitted online through SonyLIV's official registration route. There is no application fee. For any changes to timelines, rules, or eligibility, the official page is the single source of truth.
           </p>
-          <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn gold" style={{ marginTop: 32, padding: '14px 26px', fontSize: '0.9rem' }} data-testid="stf-cta-bottom">
+          <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn primary" style={{ marginTop: 28, padding: '14px 28px', fontSize: '0.9rem' }} data-testid="stf-cta-bottom">
             Open the Official Page <ArrowUpRight className="w-4 h-4" />
           </a>
-          <p style={{ marginTop: 16, fontSize: 12, color: 'rgba(255,255,255,0.6)', wordBreak: 'break-all' }}>{OFFICIAL_URL}</p>
+          <p style={{ marginTop: 14, fontSize: 12, color: '#5A6488', wordBreak: 'break-all' }}>{OFFICIAL_URL}</p>
+          <div style={{ marginTop: 26 }}><Contact /></div>
         </div>
       </section>
 
       {/* ── Disclaimer ── */}
-      <section style={{ padding: '2.5rem 1.25rem', background: '#F8FAFC' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto', fontSize: '0.78rem', color: '#64748B', lineHeight: 1.6 }}>
-          <strong style={{ color: '#334155' }}>Disclaimer:</strong> OLL (Online Learning Launchpad) is sharing this information as a community resource for young founders and their families. We are not the organiser of this programme. "Shark Tank India", the Shark Tank India Season 6 logo and "Young Founders Special" belong to their respective owners (Sony Pictures Networks India / SonyLIV). Logos are used solely for informational reference. Always refer to the official Shark Tank India Young Founders Special FAQs and registration page for authoritative information. Content on this page is based on the publicly released FAQs dated 12 October 2026 and may be out of date; verify before applying.
+      <section style={{ padding: '2.5rem 1.25rem', background: STI.deep }}>
+        <div style={{ maxWidth: 840, margin: '0 auto', fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
+          <strong style={{ color: '#fff' }}>Disclaimer:</strong> OLL (Online Learning Launchpad) is sharing this information as a community resource for young founders and their families. We are not the organiser of this programme. "Shark Tank India", the Shark Tank India Season 6 logo and "Young Founders Special" belong to their respective owners (Sony Pictures Networks India / SonyLIV). Logos are used solely for informational reference. Always refer to the official Shark Tank India Young Founders Special FAQs and registration page for authoritative information. Content on this page is based on the publicly released FAQs dated 12 October 2026 and may be out of date; verify before applying.
         </div>
       </section>
     </div>
