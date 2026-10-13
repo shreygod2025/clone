@@ -5,12 +5,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
+  MessageCircle as MessageCircleIcon,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
   Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2, Send, ShoppingBag,
   CheckSquare, FolderKanban, Bell, Trophy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
+import WhatsAppLinkDialog from '../../components/admin/WhatsAppLinkDialog';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -19,6 +21,7 @@ const AdminLayout = ({ children, title }) => {
   const navigate = useNavigate();
   const { user, logout, getAuthHeaders } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showWhatsAppLink, setShowWhatsAppLink] = useState(false);
   const isAIChat = location.pathname === '/admin/ai-chat';
 
   // All navigation items with permission keys
@@ -157,7 +160,15 @@ const AdminLayout = ({ children, title }) => {
           ))}
         </nav>
 
-        <div className="p-2 border-t border-white/10 shrink-0">
+        <div className="p-2 border-t border-white/10 shrink-0 space-y-1">
+          <button
+            onClick={() => setShowWhatsAppLink(true)}
+            className="admin-nav-item w-full text-emerald-300 hover:bg-emerald-500/20"
+            data-testid="connect-whatsapp-btn"
+          >
+            <MessageCircleIcon className="w-5 h-5" />
+            <span>Connect WhatsApp</span>
+          </button>
           <button
             onClick={handleLogout}
             className="admin-nav-item w-full text-red-300 hover:bg-red-500/20"
@@ -168,6 +179,12 @@ const AdminLayout = ({ children, title }) => {
           </button>
         </div>
       </aside>
+
+      <WhatsAppLinkDialog
+        open={showWhatsAppLink}
+        onClose={() => setShowWhatsAppLink(false)}
+        getAuthHeaders={getAuthHeaders}
+      />
 
       {/* Main Content */}
       <main className={`lg:ml-64 ${isAIChat ? 'pt-0' : 'pt-14'} lg:pt-0 min-h-screen`}>

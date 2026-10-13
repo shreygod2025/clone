@@ -74,6 +74,30 @@ async def whatsapp_bridge(
     # Session is stable per WhatsApp contact so history + follow-ups work.
     session_id = payload.session_id or f"wa-{re.sub(r'[^0-9]', '', phone)[-10:]}"
 
+    # ── Pairing code? Short-circuit to link the admin account and reply ──
+    # The `## Connect WhatsApp` modal issued a 6-char code like `A3F-K9P`.
+    # If this inbound message is just that code (dash/space/case-insensitive),
+    # consume it to attach `whatsapp_phone` to the owning admin so future
+    # messages route to the admin brain instead of the FAQ fallback.
+    try:
+        from routes.whatsapp_link import _consume_link_code, _canonical
+        canon = _canonical(message)
+        if 6 <= len(canon) <= 8 and canon.isalnum():
+            linked = await _consume_link_code(message, phone)
+            if linked:
+                return {
+                    "reply": (
+                        f"✅ WhatsApp linked to your OLL admin account "
+                        f"({linked.get('name') or linked.get('email')}). "
+                        "From now on, every message here will run through the "
+                        "admin AI brain — try `how many leads do I have?`"
+                    ),
+                    "session_id": session_id,
+                    "mode": "linked",
+                }
+    except Exception as e:
+        logging.warning("[whatsapp-bridge] pairing-code check failed: %s", e)
+
     user = await _resolve_wa_user(phone)
     if user:
         try:
