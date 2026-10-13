@@ -979,7 +979,7 @@ async def shop_my_orders(email: Optional[str] = None, phone: Optional[str] = Non
             or_clauses.append({"shipping.phone": tail})
         else:
             or_clauses.append({"customer.phone": phone.strip()})
-    q = {"$or": or_clauses, "payment_status": "PAID"} if or_clauses else {}
+    q = {"$or": or_clauses, "payment_status": {"$in": ["PAID", "paid"]}} if or_clauses else {}
     cursor = db.shop_orders.find(q, {"_id": 0}).sort("created_at", -1).limit(100)
     orders = await cursor.to_list(100)
     # Overlay any already-requested refunds so the UI can show "requested"

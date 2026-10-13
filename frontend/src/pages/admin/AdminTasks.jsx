@@ -10,7 +10,7 @@ import {
   Plus, Calendar, Trash2, X, Search,
   CheckCircle2, Circle, Clock, MessageSquare, ChevronDown, ChevronRight,
   Check, XCircle, Send, ListChecks, Link2, MoreHorizontal, AlertCircle,
-  Sparkles, Paperclip, FileText, Edit2, Play
+  Sparkles, Paperclip, FileText, Edit2, Play, Mail
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -755,6 +755,27 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
               >
                 <MessageSquare className="w-3.5 h-3.5" /> Open detail
               </button>
+              {isAdmin && (
+                <button
+                  onClick={async () => {
+                    setMenuOpen(false);
+                    try {
+                      const { data } = await axios.post(
+                        `${API}/admin/tasks/${task.id}/send-reminder`,
+                        {},
+                        { headers: getAuthHeaders() },
+                      );
+                      toast.success(`Reminder emailed to ${data.to}`);
+                    } catch (e) {
+                      toast.error(e.response?.data?.detail || 'Could not send reminder');
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  data-testid={`task-send-reminder-${task.id}`}
+                >
+                  <Mail className="w-3.5 h-3.5" /> Send reminder
+                </button>
+              )}
               <div className="h-px bg-slate-100 my-1" />
               {canDelete && (
                 <button

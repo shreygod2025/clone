@@ -435,12 +435,9 @@ export default function TechfestPage() {
             <button onClick={scrollToKits} className="tf-btn ghost-dark" data-testid="techfest-nav-buy-kits">
               <ShieldCheck className="w-3.5 h-3.5" /> <span className="tf-hide-sm">Buy </span>Kits
             </button>
-            <button onClick={openRegister} className="tf-btn primary" data-testid="techfest-nav-register">
-              <Flag className="w-3.5 h-3.5" /> Register<span className="tf-hide-sm"> Now</span>
-            </button>
             <button
               onClick={() => navigate('/techfest/submit')}
-              className="tf-btn ghost-dark"
+              className="tf-btn primary"
               data-testid="techfest-nav-submit"
             >
               <Upload className="w-3.5 h-3.5" /> Submit<span className="tf-hide-sm"> Project</span>
@@ -669,14 +666,11 @@ export default function TechfestPage() {
                     <Cpu className="w-4 h-4" /> Build Guide
                   </Link>
                 )}
-                <button onClick={openRegister} className="tf-btn ghost-dark" data-testid={`techfest-track-register-${track.key}`}>
-                  Register Now
-                </button>
               </div>
             ) : (
               <div className="mt-8 flex flex-wrap gap-3">
-                <button onClick={openRegister} className="tf-btn primary" data-testid={`techfest-track-register-${track.key}`}>
-                  Register Now <ArrowRight className="w-4 h-4" />
+                <button onClick={scrollToKits} className="tf-btn primary" data-testid={`techfest-track-kit-${track.key}`}>
+                  Get the Kit <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             )}

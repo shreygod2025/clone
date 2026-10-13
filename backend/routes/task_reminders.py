@@ -345,30 +345,45 @@ async def admin_run_reminders_now(stage: str = "6h"):
     if stage == "24h":
         tasks = await _tasks_due_for_reminder(24, "reminder_24h_sent_at", prereq_field="reminder_6h_sent_at")
         return await _send_reminder_batch(tasks, "24h")
-    if stage == "digest":
-        # inline, same as cron body but synchronous
-        cursor = db.tasks.find({"status": {"$in": list(OPEN_STATUSES)}}, {"_id": 0})
-        buckets: dict[str, list[dict]] = {}
-        async for t in cursor:
-            uid = (t.get("assigned_to") or "").strip()
-            if not uid:
-                continue
-            buckets.setdefault(uid, []).append(t)
-        sent, failed, skipped = 0, 0, 0
-        for uid, tasks in buckets.items():
-            u = await _lookup_user(uid)
-            email = (u.get("email") or "").strip()
-            if not email:
-                skipped += 1
-                continue
-            name = u.get("name") or email.split("@")[0]
-            html = _render_shell("Your tasks for today", f"{len(tasks)} open · daily digest", _digest_body_html(name, tasks))
-            overdue_in_bucket = sum(1 for t in tasks if (_days_overdue(t.get('due_date')) or -1) > 0)
-            subject = f"Your tasks today — {len(tasks)} open" + (f" ({overdue_in_bucket} overdue)" if overdue_in_bucket else "")
-            ok = await _send_email(email, subject, html)
-            if ok:
-                sent += 1
-            else:
-                failed += 1
-        return {"sent": sent, "failed": failed, "skipped": skipped, "assignees": len(buckets)}
-    raise HTTPException(status_code=400, detail="stage must be 6h, 24h, or digest")
+# ────────────────────────────────────────────────────────────
+# Admin: send a one-off reminder for a specific task from the UI
+# ────────────────────────────────────────────────────────────
+
+from fastapi import Depends
+from routes.shared import get_current_user
+
+
+@router.post("/admin/tasks/{task_id}/send-reminder")
+async def admin_send_task_reminder(task_id: str, user: dict = Depends(get_current_user)):
+    """Fire a single reminder email to the task's assignee right now,
+    irrespective of 6h / 24h timers. Used by the per-task "Send Reminder"
+    button on `/admin/tasks`."""
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    assignee = await _lookup_user(task.get("assigned_to", ""))
+    email = (assignee.get("email") or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Assignee has no email on file")
+    assigner = await _lookup_user(task.get("assigned_by", ""))
+    assigner_name = assigner.get("name") or assigner.get("email", "") or (user.get("name") or user.get("email", ""))
+
+    body = f"""
+    <div style="font-size:14px;color:#334155;line-height:1.6;">
+      Friendly reminder — the task below is still open. Please update the status when you've made progress.
+    </div>
+    {_single_task_card(task, assigner_name)}
+    <a href="{APP_BASE_URL}/admin/tasks" style="display:inline-block;margin-top:8px;padding:10px 18px;background:#DC2626;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:13px;">Open task →</a>
+    """
+    html = _render_shell("Reminder from your manager", task.get("title", ""), body)
+    subject = f"Reminder: {task.get('title','your task')}"
+    ok = await _send_email(email, subject, html)
+    if not ok:
+        raise HTTPException(status_code=502, detail="Email provider unreachable")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.tasks.update_one(
+        {"id": task_id},
+        {"$set": {"last_manual_reminder_at": now_iso}, "$inc": {"manual_reminder_count": 1}},
+    )
+    return {"ok": True, "to": email, "sent_at": now_iso}
+
