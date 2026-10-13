@@ -2688,5 +2688,6 @@ Bucket logic (`_buckets_for_scope`):
 
 ## 2026-06 — Shark Tank YF poster redesign
 - Homepage STI6 section: royal-blue doodle/glow poster bg, no white card, large cropped logos (/sti6-logo.png, /sti6-yf-logo.png), new copy + queries line, "Know More" outline CTA.
-- /shark-tank-young-founders: sticky pill nav without ST logos; poster hero (big logos + glowing-bulb "Registration Open" block); all sections re-themed blue/yellow/cream with YOUNG accent colours (red/maroon removed); contact line in hero + CTA.
+- /shark-tank-young-founders (now /shark-tank-india-season-6-young-founders-special): sticky pill nav without ST logos; poster hero (big logos + glowing-bulb "Registration Open" block); all sections re-themed blue/yellow/cream with YOUNG accent colours (red/maroon removed); contact line in hero + CTA.
 - Shared theme: frontend/src/components/sharkTankTheme.js; Anton + Bebas Neue fonts added in public/index.html.
+- 2026-06 follow-up: canonical URL /shark-tank-india-season-6-young-founders-special (old slugs redirect); darker blue bg (#061F6B/#020E3A) for logo contrast; About section concise + Read more toggle; all "Official site/page" CTAs -> "Register Now"; navbar now position:fixed top (sticky was broken by ancestor overflow).

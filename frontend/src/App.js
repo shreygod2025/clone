@@ -268,8 +268,9 @@ function App() {
               <Route path="/educator/apply/:reqId" element={<EducatorApplyPage />} />
               <Route path="/educator/interview/:applicationId" element={<EducatorInterviewPage />} />
               <Route path="/for-schools" element={<SchoolLandingPage />} />
-              <Route path="/shark-tank-young-founders" element={<SharkTankYoungFoundersPage />} />
-              <Route path="/shark-tank-india-young-founders" element={<SharkTankYoungFoundersPage />} />
+              <Route path="/shark-tank-india-season-6-young-founders-special" element={<SharkTankYoungFoundersPage />} />
+              <Route path="/shark-tank-young-founders" element={<Navigate to="/shark-tank-india-season-6-young-founders-special" replace />} />
+              <Route path="/shark-tank-india-young-founders" element={<Navigate to="/shark-tank-india-season-6-young-founders-special" replace />} />
               <Route path="/school" element={<SchoolFunnel />} />
               <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
               <Route path="/school-offerings/:categoryId/:offeringId" element={<SchoolOfferingDetailPage />} />

@@ -9,7 +9,7 @@ const YF_LOGO = 'https://prd-emss3.sonyliv.com/Creatives/ST/YOUNF-FOUNDERS-SPECI
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 const INFOGRAPHIC = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/bbe3d9a70d71debb_image.png';
 
-const PAGE_URL = 'https://oll.co/shark-tank-young-founders';
+const PAGE_URL = 'https://oll.co/shark-tank-india-season-6-young-founders-special';
 const META_TITLE = 'Shark Tank India Young Founders Special 2026 — Eligibility, Dates & Info | OLL';
 const META_DESC = 'Everything you need to know about the Shark Tank India Season 6 Young Founders Special. Eligibility (ages 6–15), key dates (registrations 12 Oct – 11 Nov 2026), and the official registration route. Information page by OLL — Online Learning Launchpad.';
 
@@ -119,12 +119,13 @@ const Contact = ({ dark }) => (
 export default function SharkTankYoungFoundersPage() {
   useDocumentMeta();
   const [openFaq, setOpenFaq] = useState(0);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
     <div className="stf-page" data-testid="shark-tank-yf-page">
       <style>{`
         .stf-page { font-family: 'Manrope', 'Proxima Nova', 'Montserrat', sans-serif; color: ${STI.ink}; background: ${STI.blue}; }
-        .stf-pillnav { position: sticky; top: 12px; z-index: 60; padding: 12px 12px 0; }
+        .stf-pillnav { position: fixed; top: 0; left: 0; right: 0; z-index: 60; padding: 12px 12px 0; }
         .stf-pillnav-inner { max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.95); -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 20px 44px rgba(3,20,80,0.35); border-radius: 999px; display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 8px 20px; }
         .stf-pillnav-inner img { display: block; height: 34px; width: auto; }
         .stf-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 999px; font-weight: 800; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s, color 0.2s; cursor: pointer; text-decoration: none; border: none; }
@@ -152,7 +153,7 @@ export default function SharkTankYoungFoundersPage() {
         @keyframes stf-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
         @keyframes stf-pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
         @media (max-width: 640px) {
-          .stf-pillnav { top: 8px; padding: 8px 8px 0; }
+          .stf-pillnav { padding: 8px 8px 0; }
           .stf-pillnav-inner { padding: 6px 6px 6px 12px; }
           .stf-pillnav-inner img { height: 26px; }
           .stf-btn { padding: 8px 12px; font-size: 0.66rem; gap: 4px; }
@@ -163,13 +164,13 @@ export default function SharkTankYoungFoundersPage() {
         }
       `}</style>
 
-      <nav className="stf-pillnav" aria-label="Primary navigation" data-testid="stf-pillnav" style={{ marginBottom: -80 }}>
+      <nav className="stf-pillnav" aria-label="Primary navigation" data-testid="stf-pillnav">
         <div className="stf-pillnav-inner">
           <Link to="/" aria-label="OLL Home" data-testid="stf-nav-oll"><img src={OLL_LOGO} alt="OLL" /></Link>
           <div style={{ display: 'flex', gap: 8 }}>
             <Link to="/" className="stf-btn ghost-dark" data-testid="stf-nav-home"><span className="stf-hide-sm">OLL </span>Home</Link>
             <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn primary" data-testid="stf-nav-apply">
-              Official<span className="stf-hide-sm"> Site</span> <ArrowUpRight className="w-3.5 h-3.5" />
+              Register Now <ArrowUpRight className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
@@ -200,7 +201,7 @@ export default function SharkTankYoungFoundersPage() {
             </p>
             <div style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn gold" style={{ padding: '14px 26px', fontSize: '0.88rem' }} data-testid="stf-hero-apply">
-                Visit the Official Page <ArrowUpRight className="w-4 h-4" />
+                Register Now <ArrowUpRight className="w-4 h-4" />
               </a>
               <a href="#eligibility" className="stf-btn ghost-light" style={{ padding: '14px 26px', fontSize: '0.88rem' }} data-testid="stf-hero-eligibility">Who can apply?</a>
             </div>
@@ -219,10 +220,20 @@ export default function SharkTankYoungFoundersPage() {
               {STI_ACCENTS.map(c => <span key={c} style={{ width: 34, height: 8, borderRadius: 4, background: c, border: `1.5px solid ${STI.ink}` }} />)}
             </div>
           </div>
-          <div style={{ color: '#26325A', lineHeight: 1.75, fontSize: '1rem' }}>
-            <p style={{ margin: 0 }}>Shark Tank India is a business reality show where entrepreneurs present their businesses to a panel of investors — the Sharks. Founders explain what they are building, the problem they solve, their customers, and how they plan to grow. The Sharks evaluate these opportunities and may offer financial support under agreed terms.</p>
-            <p style={{ marginTop: 14 }}>The <strong>Young Founders Special for Season 6</strong> brings this entrepreneurial platform to younger aspiring founders. Unlike the assumption that you need years of business experience to pursue entrepreneurship, this initiative welcomes eligible children who have a business idea or an early-stage venture they want to develop.</p>
-            <p style={{ marginTop: 14 }}>The opportunity is not limited to children who already operate established companies. According to the official FAQs, applicants can apply with a business idea, including one that is still at the pre-revenue stage.</p>
+          <div style={{ color: '#26325A', lineHeight: 1.75, fontSize: '1rem' }} data-testid="stf-about">
+            <p style={{ margin: 0 }}>A Season 6 special that gives young founders aged 6–15 the chance to pitch their business idea to the Sharks on national TV — no established company needed.</p>
+            {aboutOpen && (
+              <div data-testid="stf-about-details">
+                <p style={{ marginTop: 14 }}>Shark Tank India is a business reality show where entrepreneurs present their businesses to a panel of investors — the Sharks. Founders explain what they are building, the problem they solve, their customers, and how they plan to grow. The Sharks evaluate these opportunities and may offer financial support under agreed terms.</p>
+                <p style={{ marginTop: 14 }}>The <strong>Young Founders Special for Season 6</strong> brings this platform to younger aspiring founders. Eligible children with a business idea or an early-stage venture they want to develop are welcome to apply.</p>
+                <p style={{ marginTop: 14 }}>According to the official FAQs, applicants can apply with just an idea, including one that is still at the pre-revenue stage.</p>
+              </div>
+            )}
+            <button type="button" onClick={() => setAboutOpen(o => !o)} aria-expanded={aboutOpen} data-testid="stf-about-read-more"
+              style={{ marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: STI.blue, fontWeight: 800, fontSize: '0.9rem', letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'inherit' }}>
+              {aboutOpen ? 'Read less' : 'Read more'}
+              <ChevronDown className="w-4 h-4" style={{ transition: 'transform 0.2s', transform: aboutOpen ? 'rotate(180deg)' : 'none' }} />
+            </button>
           </div>
         </div>
       </section>
@@ -312,7 +323,7 @@ export default function SharkTankYoungFoundersPage() {
             All applications are submitted online through SonyLIV's official registration route. There is no application fee. For any changes to timelines, rules, or eligibility, the official page is the single source of truth.
           </p>
           <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn primary" style={{ marginTop: 28, padding: '14px 28px', fontSize: '0.9rem' }} data-testid="stf-cta-bottom">
-            Open the Official Page <ArrowUpRight className="w-4 h-4" />
+            Register Now <ArrowUpRight className="w-4 h-4" />
           </a>
           <p style={{ marginTop: 14, fontSize: 12, color: '#5A6488', wordBreak: 'break-all' }}>{OFFICIAL_URL}</p>
           <div style={{ marginTop: 26 }}><Contact /></div>

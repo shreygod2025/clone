@@ -3,7 +3,7 @@ export const STI_YF_LOGO = '/sti6-yf-logo.png';
 export const STI_CONTACT = { phone: '9920188188', email: 'info@oll.co' };
 
 export const STI = {
-  blue: '#0B3FB0', deep: '#06247A', sky: '#1E9BD0', yellow: '#FFE14D', cream: '#FFF8DC',
+  blue: '#061F6B', deep: '#020E3A', sky: '#1E9BD0', yellow: '#FFE14D', cream: '#FFF8DC',
   orange: '#FF6A00', pink: '#D6007F', green: '#00D45A', ink: '#0A1F5C',
 };
 export const STI_ACCENTS = [STI.yellow, STI.orange, STI.pink, STI.green, STI.sky];
@@ -15,6 +15,6 @@ export const STI_DOODLE = `url("data:image/svg+xml,${encodeURIComponent(doodle)}
 
 export const STI_BG = {
   backgroundColor: STI.blue,
-  backgroundImage: `radial-gradient(ellipse at 50% 38%, rgba(255,240,170,0.32) 0%, rgba(80,140,255,0.18) 30%, transparent 62%), ${STI_DOODLE}, radial-gradient(circle at 50% 0%, #1B5BE0 0%, ${STI.blue} 45%, ${STI.deep} 100%)`,
+  backgroundImage: `radial-gradient(ellipse at 50% 70%, rgba(255,240,170,0.16) 0%, rgba(60,110,230,0.10) 30%, transparent 60%), ${STI_DOODLE}, radial-gradient(circle at 50% 0%, #0A2A80 0%, ${STI.blue} 45%, ${STI.deep} 100%)`,
   backgroundSize: 'auto, 260px 260px, auto',
 };

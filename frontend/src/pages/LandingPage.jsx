@@ -715,7 +715,7 @@ const LandingPage = () => {
             <p data-testid="homepage-sti6-contact" style={{ marginTop: '1rem', fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>
               For queries: <a href={`tel:+91${STI_CONTACT.phone}`} style={{ color: STI.yellow, textDecoration: 'none' }}>{STI_CONTACT.phone}</a> | <a href={`mailto:${STI_CONTACT.email}`} style={{ color: STI.yellow, textDecoration: 'none' }}>{STI_CONTACT.email}</a>
             </p>
-            <Link to="/shark-tank-young-founders" className="home-sti-knowmore" data-testid="homepage-sti6-know-more" style={{ marginTop: '1.5rem' }}>
+            <Link to="/shark-tank-india-season-6-young-founders-special" className="home-sti-knowmore" data-testid="homepage-sti6-know-more" style={{ marginTop: '1.5rem' }}>
               Know More <ArrowRight className="w-4 h-4" />
             </Link>
             <p style={{ marginTop: '1.25rem', fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
