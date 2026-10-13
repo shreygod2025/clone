@@ -2692,3 +2692,4 @@ Bucket logic (`_buckets_for_scope`):
 - Shared theme: frontend/src/components/sharkTankTheme.js; Anton + Bebas Neue fonts added in public/index.html.
 - 2026-06 follow-up: canonical URL /shark-tank-india-season-6-young-founders-special (old slugs redirect); darker blue bg (#061F6B/#020E3A) for logo contrast; About section concise + Read more toggle; all "Official site/page" CTAs -> "Register Now"; navbar now position:fixed top (sticky was broken by ancestor overflow).
 - 2026-06: Homepage + STI page hero descriptions merged to one paragraph; mobile logos smaller; removed "Online Learning Launchpad" (OLL has NO full form) from STI page + shop invoice PDF.
+- 2026-06: STI page "Registration Open" glow block -> fit-content pill (fixes desktop text overflow); standard OLL <Footer /> added to STI page.

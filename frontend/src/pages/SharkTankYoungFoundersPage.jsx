@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Footer from '../components/Footer';
 import { ArrowUpRight, Calendar, Users, GraduationCap, Lightbulb, UserCheck, Flag, FileText, Info, ChevronDown, Phone, Mail } from 'lucide-react';
 import { STI, STI_ACCENTS, STI_BG, STI_LOGO, STI_YF_LOGO, STI_CONTACT, STI_DISPLAY_FONT } from '../components/sharkTankTheme';
 
@@ -142,7 +143,7 @@ export default function SharkTankYoungFoundersPage() {
         .stf-hero-logos img { display: block; width: auto; filter: drop-shadow(0 22px 36px rgba(0,0,0,0.4)); animation: stf-rise 0.7s ease both; }
         .stf-hero-logos .st { height: clamp(150px, 30vw, 380px); }
         .stf-hero-logos .yf { height: clamp(105px, 21vw, 270px); animation-delay: 0.15s; }
-        .stf-bulb { position: relative; margin: 2.5rem auto 0; max-width: 760px; padding: 2.25rem 1.5rem; border-radius: 48% 48% 36% 36% / 60% 60% 40% 40%; background: radial-gradient(ellipse at 50% 45%, #FFFDF0 0%, #FFF4B8 45%, rgba(255,225,77,0.55) 70%, transparent 100%); box-shadow: 0 0 120px 30px rgba(255,236,150,0.35); animation: stf-rise 0.7s 0.3s ease both; }
+        .stf-bulb { position: relative; margin: 2.5rem auto 0; width: fit-content; max-width: 100%; padding: 2.5rem clamp(1.5rem, 6vw, 5.5rem); border-radius: 999px; background: radial-gradient(ellipse at 50% 50%, #FFFDF0 0%, #FFF4B8 50%, rgba(255,225,77,0.6) 78%, rgba(255,225,77,0.2) 100%); box-shadow: 0 0 120px 30px rgba(255,236,150,0.3); animation: stf-rise 0.7s 0.3s ease both; }
         .stf-bulb-big { font-family: ${STI_DISPLAY_FONT}; text-transform: uppercase; color: #1544C0; line-height: 0.95; margin: 0; font-weight: 400; }
         .stf-card { padding: 22px; background: #fff; border-radius: 18px; border: 2px solid ${STI.ink}; box-shadow: 6px 6px 0 ${STI.ink}; transition: transform 0.2s, box-shadow 0.2s; }
         .stf-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 ${STI.ink}; }
@@ -158,7 +159,7 @@ export default function SharkTankYoungFoundersPage() {
           .stf-pillnav-inner img { height: 26px; }
           .stf-btn { padding: 8px 12px; font-size: 0.66rem; gap: 4px; }
           .stf-btn .stf-hide-sm { display: none; }
-          .stf-bulb { border-radius: 32px; }
+          .stf-bulb { border-radius: 32px; width: auto; }
           .stf-date-row { grid-template-columns: 36px 1fr !important; }
           .stf-date-row > div:last-child { grid-column: 2; }
         }
@@ -186,7 +187,7 @@ export default function SharkTankYoungFoundersPage() {
           </div>
 
           <div className="stf-bulb" data-testid="stf-registration-open">
-            <p className="stf-bulb-big" style={{ fontSize: 'clamp(2.8rem, 8vw, 6rem)' }}>Registration Open</p>
+            <p className="stf-bulb-big" style={{ fontSize: 'clamp(2.6rem, 6.5vw, 5.2rem)' }}>Registration Open</p>
             <p className="stf-bulb-big" style={{ fontSize: 'clamp(1.8rem, 4.6vw, 3.4rem)', marginTop: 10 }}>12<sup style={{ fontSize: '0.45em' }}>th</sup> Oct – 11<sup style={{ fontSize: '0.45em' }}>th</sup> Nov</p>
             <p className="stf-bulb-big" style={{ fontSize: 'clamp(1.3rem, 3.2vw, 2.3rem)', marginTop: 8, color: STI.deep }}>Ages 6 – 15 Years</p>
           </div>
@@ -333,6 +334,7 @@ export default function SharkTankYoungFoundersPage() {
           <strong style={{ color: '#fff' }}>Disclaimer:</strong> OLL is sharing this information as a community resource for young founders and their families. We are not the organiser of this programme. "Shark Tank India", the Shark Tank India Season 6 logo and "Young Founders Special" belong to their respective owners (Sony Pictures Networks India / SonyLIV). Logos are used solely for informational reference. Always refer to the official Shark Tank India Young Founders Special FAQs and registration page for authoritative information. Content on this page is based on the publicly released FAQs dated 12 October 2026 and may be out of date; verify before applying.
         </div>
       </section>
+      <Footer />
     </div>
   );
 }
