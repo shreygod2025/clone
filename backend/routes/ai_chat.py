@@ -7,7 +7,8 @@ DELETE /api/ai-chat/session/{sid}— delete a session
 """
 import os, uuid, json, re, logging, asyncio
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
+from pydantic import BaseModel
 from database import db
 from routes.auth import get_current_user
 from routes.shared import get_next_ticket_number
@@ -16,6 +17,104 @@ from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# WhatsApp (AiSensy) bridge — maps an inbound WhatsApp message to the SAME
+# agentic AI chat the admin UI uses, so sending "create a lead for Shreyaan,
+# phone 9699188188, St Marys school" from WhatsApp does the exact same thing
+# as typing it in /admin/ai-chat.
+# ═════════════════════════════════════════════════════════════════════════════
+
+class WhatsAppChatIn(BaseModel):
+    phone: str          # E.164 or any format — we normalise to last-10
+    message: str
+    session_id: str | None = None
+
+
+async def _resolve_wa_user(phone: str) -> dict | None:
+    """Return the team_user / admin doc whose phone matches the last-10 digits
+    of the WhatsApp sender. Returns ``None`` if no admin match (callers can
+    then fall back to the public FAQ brain)."""
+    digits = re.sub(r"\D", "", phone or "")[-10:]
+    if len(digits) != 10:
+        return None
+    tail = re.compile(f"{digits}$")
+    for col, uid_field in (("team_users", "id"), ("admins", "id")):
+        doc = await db[col].find_one({"phone": tail}, {"_id": 0})
+        if doc:
+            # Normalise to the shape `run_ai_chat_turn` expects on `user`
+            return {
+                "id": doc.get(uid_field) or doc.get("id") or doc.get("user_id") or "",
+                "email": doc.get("email", ""),
+                "name": doc.get("name", ""),
+                "role": doc.get("role", "team_member"),
+                "phone": doc.get("phone", ""),
+            }
+    return None
+
+
+@router.post("/ai-chat/whatsapp")
+async def whatsapp_bridge(
+    payload: WhatsAppChatIn,
+    x_aisensy_secret: str | None = Header(None),
+):
+    """Public endpoint that AiSensy (or any WhatsApp provider) calls.
+    Shared-secret auth so random internet traffic can't drive the AI brain.
+    Response shape is `{"reply": "..."}` so AiSensy's response-mapping
+    (`reply` → `ai_answer`) wires up without transformation."""
+    expected = os.environ.get("AISENSY_WEBHOOK_SECRET", "").strip()
+    if expected and x_aisensy_secret != expected:
+        raise HTTPException(status_code=403, detail="Bad secret")
+    phone = (payload.phone or "").strip()
+    message = (payload.message or "").strip()
+    if not phone or not message:
+        raise HTTPException(status_code=400, detail="phone and message required")
+
+    # Session is stable per WhatsApp contact so history + follow-ups work.
+    session_id = payload.session_id or f"wa-{re.sub(r'[^0-9]', '', phone)[-10:]}"
+
+    user = await _resolve_wa_user(phone)
+    if user:
+        try:
+            result = await run_ai_chat_turn(
+                session_id=session_id,
+                user_text=message,
+                user=user,
+                attachments=[],
+            )
+            reply = (result.get("message") or "").strip() or "On it — I'll follow up shortly."
+            actions = result.get("actions", [])
+            return {
+                "reply": reply,
+                "session_id": session_id,
+                "actor": user.get("name") or user.get("email"),
+                "actions_count": len(actions),
+                "mode": "admin",
+            }
+        except Exception as e:
+            logging.exception("[whatsapp-bridge] admin turn failed: %s", e)
+            return {"reply": "Hit a snag on my side — please retry in a moment.", "mode": "admin_error"}
+
+    # Unknown phone → treat as a public user and route to the FAQ brain so
+    # customers also get instant help instead of a silent drop.
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            r = await client.post(
+                f"http://localhost:8001/api/faq-chat",
+                json={"session_id": session_id, "message": message},
+            )
+            data = r.json() if r.status_code == 200 else {}
+        reply = (data.get("reply") or "").strip()
+        if not reply:
+            reply = "Thanks for your message! A team member will get back to you shortly."
+        return {"reply": reply, "session_id": session_id, "mode": "faq", "source": data.get("source")}
+    except Exception as e:
+        logging.exception("[whatsapp-bridge] faq fallback failed: %s", e)
+        return {"reply": "Thanks for your message! A team member will get back to you shortly.", "mode": "faq_error"}
+
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 AI_SYSTEM_PROMPT = """\
