@@ -216,13 +216,44 @@ const AdminTasks = ({ embedded = false }) => {
               {counts.pending_approval > 0 && <> • <span className="text-amber-600 font-medium">{counts.pending_approval}</span> awaiting approval</>}
             </p>
           </div>
-          <button
-            onClick={() => openCreate(null)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium shadow-sm shadow-blue-500/20 transition-colors"
-            data-testid="new-task-btn"
-          >
-            <Plus className="w-4 h-4" /> New Task
-          </button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Email every assignee with overdue tasks right now?')) return;
+                  try {
+                    const { data } = await axios.post(
+                      `${API}/admin/tasks/send-reminders-overdue`,
+                      {},
+                      { headers: getAuthHeaders() },
+                    );
+                    if (data.overdue_tasks_total === 0) {
+                      toast.success('No overdue tasks — your team is on top of things.');
+                    } else {
+                      toast.success(
+                        `Nudged ${data.assignees_notified} assignee${data.assignees_notified === 1 ? '' : 's'} (${data.overdue_tasks_total} overdue tasks)`,
+                      );
+                    }
+                    loadTasks();
+                  } catch (e) {
+                    toast.error(e.response?.data?.detail || 'Could not send reminders');
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-xl text-sm font-medium transition-colors"
+                title="Email every assignee with at least one overdue task"
+                data-testid="nudge-all-overdue-btn"
+              >
+                <Mail className="w-4 h-4" /> Nudge Overdue
+              </button>
+            )}
+            <button
+              onClick={() => openCreate(null)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium shadow-sm shadow-blue-500/20 transition-colors"
+              data-testid="new-task-btn"
+            >
+              <Plus className="w-4 h-4" /> New Task
+            </button>
+          </div>
         </div>
 
         {/* Toolbar: Scope + Status chips + Search */}
@@ -701,6 +732,30 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
               data-testid={`task-complete-${task.id}`}
             >
               <CheckCircle2 className="w-5 h-5" />
+            </button>
+          )}
+          {isAdmin && task.status !== 'completed' && task.status !== 'cancelled' && task.assigned_to !== currentUserId && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  const { data } = await axios.post(
+                    `${API}/admin/tasks/${task.id}/send-reminder`,
+                    {},
+                    { headers: getAuthHeaders() },
+                  );
+                  toast.success(`Reminder sent to ${data.to}`);
+                } catch (err) {
+                  toast.error(err.response?.data?.detail || 'Could not send reminder');
+                }
+              }}
+              title={task.last_manual_reminder_at
+                ? `Send another reminder (last sent ${new Date(task.last_manual_reminder_at).toLocaleString()})`
+                : 'Send reminder email to assignee'}
+              className="p-1.5 rounded-lg transition-all opacity-70 group-hover:opacity-100 text-slate-400 hover:bg-amber-50 hover:text-amber-700"
+              data-testid={`task-remind-${task.id}`}
+            >
+              <Mail className="w-5 h-5" />
             </button>
           )}
         </div>

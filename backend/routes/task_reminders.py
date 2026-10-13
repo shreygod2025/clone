@@ -387,3 +387,81 @@ async def admin_send_task_reminder(task_id: str, user: dict = Depends(get_curren
     )
     return {"ok": True, "to": email, "sent_at": now_iso}
 
+
+@router.post("/admin/tasks/send-reminders-overdue")
+async def admin_send_reminders_overdue(
+    assignee_id: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Fire a one-off reminder for every open task that is OVERDUE (due date
+    strictly before today).
+
+    - `assignee_id` (optional) scopes the sweep to a single team member —
+      used by the per-member "Nudge Overdue" button in `/admin/my-team`.
+    - Without it, sweeps every assignee — used by the global toolbar
+      button in `/admin/tasks`.
+
+    Groups tasks per assignee and sends ONE email with every overdue task
+    in a tidy card list, so a person with 5 overdue tasks gets a single
+    nudge instead of 5 separate emails.
+    """
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.date().isoformat()
+
+    q: dict = {
+        "status": {"$in": list(OPEN_STATUSES)},
+        "due_date": {"$ne": None, "$lt": today},
+    }
+    if assignee_id:
+        q["assigned_to"] = assignee_id
+
+    buckets: dict[str, list[dict]] = {}
+    async for t in db.tasks.find(q, {"_id": 0}):
+        uid = (t.get("assigned_to") or "").strip()
+        if not uid:
+            continue
+        buckets.setdefault(uid, []).append(t)
+
+    sent, failed, skipped = 0, 0, 0
+    now_iso = now_utc.isoformat()
+    actor = user.get("name") or user.get("email", "your manager")
+
+    for uid, tasks in buckets.items():
+        u = await _lookup_user(uid)
+        email = (u.get("email") or "").strip()
+        if not email:
+            skipped += 1
+            continue
+        name = u.get("name") or email.split("@")[0]
+        cards = "".join(_single_task_card(t) for t in tasks)
+        overdue_count = len(tasks)
+        body = f"""
+        <div style="font-size:14px;color:#334155;line-height:1.6;">
+          Hey {name.split(' ')[0]} — <strong>{overdue_count}</strong> of your task{'s are' if overdue_count != 1 else ' is'} past the due date.
+          A quick nudge from {actor} to update the status today.
+        </div>
+        {cards}
+        <a href="{APP_BASE_URL}/admin/tasks" style="display:inline-block;margin-top:8px;padding:10px 18px;background:#DC2626;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:13px;">Open my tasks →</a>
+        """
+        subject = f"Overdue nudge — {overdue_count} task{'s' if overdue_count != 1 else ''} need{'s' if overdue_count == 1 else ''} attention"
+        html = _render_shell(f"{overdue_count} overdue task{'s' if overdue_count != 1 else ''}", subject, body)
+        ok = await _send_email(email, subject, html)
+        if ok:
+            sent += 1
+            # Mark each task so admins can see "last manual reminder" in UI
+            ids = [t.get("id") for t in tasks if t.get("id")]
+            if ids:
+                await db.tasks.update_many(
+                    {"id": {"$in": ids}},
+                    {"$set": {"last_manual_reminder_at": now_iso}, "$inc": {"manual_reminder_count": 1}},
+                )
+        else:
+            failed += 1
+    return {
+        "ok": True,
+        "assignees_notified": sent,
+        "assignees_failed": failed,
+        "assignees_skipped_no_email": skipped,
+        "overdue_tasks_total": sum(len(v) for v in buckets.values()),
+    }
+

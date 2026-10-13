@@ -31,6 +31,7 @@ const AdminMyTeam = () => {
   const [taskFor, setTaskFor] = useState(null); // team_user object to assign a task to
   const [period, setPeriod] = useState('weekly'); // 'weekly' | 'monthly' | 'quarterly'
   const [downloadingId, setDownloadingId] = useState(null);
+  const [nudgingId, setNudgingId] = useState(null);
   // Ref anchor for the report window — used only when period=weekly to let
   // managers step back through earlier weeks before downloading.
   const _thisMonday = (() => {
@@ -71,6 +72,48 @@ const AdminMyTeam = () => {
     }
   };
 
+  const handleNudgeOverdue = async (member) => {
+    setNudgingId(member.id);
+    try {
+      const { data: res } = await axios.post(
+        `${API}/admin/tasks/send-reminders-overdue?assignee_id=${encodeURIComponent(member.id)}`,
+        {},
+        { headers: getAuthHeaders() },
+      );
+      if (res.overdue_tasks_total === 0) {
+        toast.success(`${member.name} has no overdue tasks — all good!`);
+      } else {
+        toast.success(
+          `Reminder sent to ${member.name} for ${res.overdue_tasks_total} overdue task${res.overdue_tasks_total === 1 ? '' : 's'}`,
+        );
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Could not send reminder');
+    } finally {
+      setNudgingId(null);
+    }
+  };
+
+  const handleNudgeAll = async () => {
+    if (!window.confirm('Send an overdue-task reminder email to every team member with overdue tasks?')) return;
+    try {
+      const { data: res } = await axios.post(
+        `${API}/admin/tasks/send-reminders-overdue`,
+        {},
+        { headers: getAuthHeaders() },
+      );
+      if (res.overdue_tasks_total === 0) {
+        toast.success('No overdue tasks across your team — your team is on top of things.');
+      } else {
+        toast.success(
+          `Nudged ${res.assignees_notified} team member${res.assignees_notified === 1 ? '' : 's'} (${res.overdue_tasks_total} overdue tasks)`,
+        );
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Could not send bulk reminders');
+    }
+  };
+
   const members = (data?.members || []).filter(m => {
     if (!query.trim()) return true;
     const s = query.toLowerCase();
@@ -103,6 +146,16 @@ const AdminMyTeam = () => {
               {data?.count || 0} member{(data?.count || 0) === 1 ? '' : 's'}
               {!data?.is_admin && data?.scope === 'none' && ' • You have no direct reports yet'}
             </p>
+            {totals.open > 0 && (
+              <button
+                onClick={handleNudgeAll}
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-medium transition-colors"
+                title="Email every team member with overdue tasks"
+                data-testid="team-nudge-all-overdue-btn"
+              >
+                <Mail className="w-3.5 h-3.5" /> Nudge all overdue
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 md:ml-auto">
@@ -205,10 +258,12 @@ const AdminMyTeam = () => {
                 member={m}
                 period={period}
                 downloading={downloadingId === m.id}
+                nudging={nudgingId === m.id}
                 onAssignTask={() => setTaskFor(m)}
                 onViewPerformance={() => navigate(`/admin/users/${m.id}/performance`)}
                 onViewTasks={() => navigate(`/admin/tasks?assignee=${m.id}`)}
                 onDownloadPDF={() => handleDownloadPDF(m)}
+                onNudge={() => handleNudgeOverdue(m)}
               />
             ))}
           </div>
@@ -241,7 +296,7 @@ const SummaryTile = ({ label, value, icon: Icon, color }) => (
 );
 
 // ── Member Card ─────────────────────────────────────────────────────────────
-const MemberCard = ({ member, period, downloading, onAssignTask, onViewPerformance, onViewTasks, onDownloadPDF }) => (
+const MemberCard = ({ member, period, downloading, nudging, onAssignTask, onViewPerformance, onViewTasks, onDownloadPDF, onNudge }) => (
   <Card className="p-4 bg-white flex flex-col gap-3" data-testid={`member-card-${member.id}`}>
     {/* Header */}
     <div className="flex items-start gap-3">
@@ -303,6 +358,16 @@ const MemberCard = ({ member, period, downloading, onAssignTask, onViewPerforman
       >
         {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
         <span className="hidden sm:inline capitalize">{period} PDF</span>
+      </button>
+      <button
+        onClick={onNudge}
+        disabled={nudging || !member.tasks_assigned_open}
+        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed border border-amber-200 disabled:border-slate-200 text-amber-700 text-xs font-medium rounded-lg"
+        title={member.tasks_assigned_open ? 'Email a reminder for every overdue task of this member' : 'No open tasks'}
+        data-testid={`nudge-overdue-${member.id}`}
+      >
+        {nudging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+        <span className="hidden sm:inline">Nudge</span>
       </button>
       <button
         onClick={onViewPerformance}
