@@ -689,8 +689,8 @@ const LandingPage = () => {
           }
           @media (max-width: 480px) {
             .home-sti-logos { gap: 1rem; }
-            .home-sti-logos .st { height: 160px; }
-            .home-sti-logos .yf { height: 112px; }
+            .home-sti-logos .st { height: 136px; }
+            .home-sti-logos .yf { height: 96px; }
           }
         `}</style>
         <div className="home-sti-grid">
@@ -706,11 +706,8 @@ const LandingPage = () => {
               Shark Tank India Season 6 <span style={{ color: STI.yellow }}>Young Founders Special</span>
             </h2>
             <h3 style={{ marginTop: '1.25rem', fontSize: '1.15rem', fontWeight: 800, color: STI.yellow }}>An Exciting Opportunity for Our School&apos;s Students</h3>
-            <p style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontSize: '0.98rem' }}>
-              Young founders with innovative business ideas or existing ventures now have an opportunity to apply for a chance to present their business ideas on national television through this special initiative.
-            </p>
-            <p style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontSize: '0.98rem' }}>
-              Students who dream of building something of their own, have already started a venture, or are actively turning their ideas into reality are encouraged to explore this opportunity.
+            <p data-testid="homepage-sti6-desc" style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontSize: '0.98rem' }}>
+              Young founders with innovative business ideas or existing ventures can now apply for a chance to present them on national television — whether you dream of building something of your own, have already started a venture, or are turning your ideas into reality.
             </p>
             <p data-testid="homepage-sti6-contact" style={{ marginTop: '1rem', fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>
               For queries: <a href={`tel:+91${STI_CONTACT.phone}`} style={{ color: STI.yellow, textDecoration: 'none' }}>{STI_CONTACT.phone}</a> | <a href={`mailto:${STI_CONTACT.email}`} style={{ color: STI.yellow, textDecoration: 'none' }}>{STI_CONTACT.email}</a>

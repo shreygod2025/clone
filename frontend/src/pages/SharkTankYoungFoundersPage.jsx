@@ -11,7 +11,7 @@ const INFOGRAPHIC = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8c
 
 const PAGE_URL = 'https://oll.co/shark-tank-india-season-6-young-founders-special';
 const META_TITLE = 'Shark Tank India Young Founders Special 2026 — Eligibility, Dates & Info | OLL';
-const META_DESC = 'Everything you need to know about the Shark Tank India Season 6 Young Founders Special. Eligibility (ages 6–15), key dates (registrations 12 Oct – 11 Nov 2026), and the official registration route. Information page by OLL — Online Learning Launchpad.';
+const META_DESC = 'Everything you need to know about the Shark Tank India Season 6 Young Founders Special. Eligibility (ages 6–15), key dates (registrations 12 Oct – 11 Nov 2026), and the official registration route. Information page by OLL.';
 
 const FACTS = [
   { icon: Flag, label: 'Initiative', value: 'Shark Tank India Season 6 — Young Founders Special' },
@@ -40,7 +40,7 @@ const FAQS = [
   { q: 'Is there an application fee?', a: 'No. Applications are free of charge.' },
   { q: 'Where do I register?', a: 'All applications are submitted online through SonyLIV\'s official registration page at sharktank.sonyliv.com/youngfounder/oll.' },
   { q: 'What happens after I register?', a: 'The selection process is scheduled to run between 12 October and 23 December 2026. The organisers reserve the right to change timelines, so applicants should keep an eye on the official platform for updates.' },
-  { q: 'Is OLL affiliated with Shark Tank India?', a: 'No. OLL (Online Learning Launchpad) is sharing this information as a community resource for young founders and their families. "Shark Tank India" and related marks belong to Sony Pictures Networks India / SonyLIV. For authoritative information, refer to the official FAQs and registration page.' },
+  { q: 'Is OLL affiliated with Shark Tank India?', a: 'No. OLL is sharing this information as a community resource for young founders and their families. "Shark Tank India" and related marks belong to Sony Pictures Networks India / SonyLIV. For authoritative information, refer to the official FAQs and registration page.' },
 ];
 
 function useDocumentMeta() {
@@ -140,8 +140,8 @@ export default function SharkTankYoungFoundersPage() {
         .stf-eyebrow { font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; font-size: 0.72rem; }
         .stf-hero-logos { display: flex; align-items: center; justify-content: center; gap: clamp(1.25rem, 4vw, 3.5rem); flex-wrap: wrap; }
         .stf-hero-logos img { display: block; width: auto; filter: drop-shadow(0 22px 36px rgba(0,0,0,0.4)); animation: stf-rise 0.7s ease both; }
-        .stf-hero-logos .st { height: clamp(200px, 30vw, 380px); }
-        .stf-hero-logos .yf { height: clamp(140px, 21vw, 270px); animation-delay: 0.15s; }
+        .stf-hero-logos .st { height: clamp(150px, 30vw, 380px); }
+        .stf-hero-logos .yf { height: clamp(105px, 21vw, 270px); animation-delay: 0.15s; }
         .stf-bulb { position: relative; margin: 2.5rem auto 0; max-width: 760px; padding: 2.25rem 1.5rem; border-radius: 48% 48% 36% 36% / 60% 60% 40% 40%; background: radial-gradient(ellipse at 50% 45%, #FFFDF0 0%, #FFF4B8 45%, rgba(255,225,77,0.55) 70%, transparent 100%); box-shadow: 0 0 120px 30px rgba(255,236,150,0.35); animation: stf-rise 0.7s 0.3s ease both; }
         .stf-bulb-big { font-family: ${STI_DISPLAY_FONT}; text-transform: uppercase; color: #1544C0; line-height: 0.95; margin: 0; font-weight: 400; }
         .stf-card { padding: 22px; background: #fff; border-radius: 18px; border: 2px solid ${STI.ink}; box-shadow: 6px 6px 0 ${STI.ink}; transition: transform 0.2s, box-shadow 0.2s; }
@@ -193,11 +193,8 @@ export default function SharkTankYoungFoundersPage() {
 
           <div style={{ maxWidth: 720, margin: '2.75rem auto 0' }}>
             <h2 style={{ fontFamily: STI_DISPLAY_FONT, fontWeight: 400, textTransform: 'uppercase', fontSize: 'clamp(1.6rem, 3.4vw, 2.4rem)', color: STI.yellow, margin: 0 }}>An Exciting Opportunity for Our School&apos;s Students</h2>
-            <p style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', lineHeight: 1.7 }}>
-              Young founders with innovative business ideas or existing ventures now have an opportunity to apply for a chance to present their business ideas on national television through this special initiative.
-            </p>
-            <p style={{ marginTop: '0.75rem', color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', lineHeight: 1.7 }}>
-              Students who dream of building something of their own, have already started a venture, or are actively turning their ideas into reality are encouraged to explore this opportunity.
+            <p data-testid="stf-hero-desc" style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', lineHeight: 1.7 }}>
+              Young founders with innovative business ideas or existing ventures can now apply for a chance to present them on national television — whether you dream of building something of your own, have already started a venture, or are turning your ideas into reality.
             </p>
             <div style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               <a href={OFFICIAL_URL} target="_blank" rel="noopener noreferrer" className="stf-btn gold" style={{ padding: '14px 26px', fontSize: '0.88rem' }} data-testid="stf-hero-apply">
@@ -333,7 +330,7 @@ export default function SharkTankYoungFoundersPage() {
       {/* ── Disclaimer ── */}
       <section style={{ padding: '2.5rem 1.25rem', background: STI.deep }}>
         <div style={{ maxWidth: 840, margin: '0 auto', fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
-          <strong style={{ color: '#fff' }}>Disclaimer:</strong> OLL (Online Learning Launchpad) is sharing this information as a community resource for young founders and their families. We are not the organiser of this programme. "Shark Tank India", the Shark Tank India Season 6 logo and "Young Founders Special" belong to their respective owners (Sony Pictures Networks India / SonyLIV). Logos are used solely for informational reference. Always refer to the official Shark Tank India Young Founders Special FAQs and registration page for authoritative information. Content on this page is based on the publicly released FAQs dated 12 October 2026 and may be out of date; verify before applying.
+          <strong style={{ color: '#fff' }}>Disclaimer:</strong> OLL is sharing this information as a community resource for young founders and their families. We are not the organiser of this programme. "Shark Tank India", the Shark Tank India Season 6 logo and "Young Founders Special" belong to their respective owners (Sony Pictures Networks India / SonyLIV). Logos are used solely for informational reference. Always refer to the official Shark Tank India Young Founders Special FAQs and registration page for authoritative information. Content on this page is based on the publicly released FAQs dated 12 October 2026 and may be out of date; verify before applying.
         </div>
       </section>
     </div>

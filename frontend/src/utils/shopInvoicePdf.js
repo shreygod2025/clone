@@ -19,7 +19,7 @@ export function downloadShopOrderInvoice(order) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('OLL — Online Learning Launchpad', page.left, 14);
+  doc.text('OLL', page.left, 14);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text('103, Kshitij Building, Veera Desai Rd, Andheri West, Mumbai 400053', page.left, 20);

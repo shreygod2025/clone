@@ -768,3 +768,4 @@ See `/app/memory/test_credentials.md`.
   * Verified end-to-end via pytest suite `/app/backend/tests/test_iter115_retest_fixes.py` (12/12) + prior regression (19/19) + Playwright UI walk-through: Add Batch → Grade 3 / 5 / ₹1000 → Save → toast + Grand Total jumps from 5,000 → 10,000, new "(Extra)" row appears, new tranche visible on `/admin/orders`.
 
 - 2026-06: Shark Tank India S6 Young Founders — homepage poster banner + /shark-tank-young-founders full blue/yellow poster re-theme (see CHANGELOG). Pending P0: vendor API URL (blocked on user), P1: Sync Expenses button, file modularisation.
+- BRAND RULE: OLL has NO full form — never write "Online Learning Launchpad".
