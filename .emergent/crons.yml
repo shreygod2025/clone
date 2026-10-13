@@ -16,3 +16,29 @@ crons:
     endpoint: "{{BASE_URL}}/api/cron/educator-salary-materialize"
     method: POST
     enabled: true
+
+  - name: task-daily-digest
+    description: "Emails each assignee a 9AM IST digest of their open tasks with days overdue"
+    cron: "0 9 * * *"
+    timezone: "Asia/Kolkata"
+    endpoint: "{{BASE_URL}}/api/cron/task-daily-digest"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true
+
+  - name: task-reminder-6h
+    description: "Email reminder every 2h — nudges assignees whose task has been open 6h without an update"
+    # Every 2 hours UTC; TZ doesn't matter — handler uses a 2h slack window.
+    cron: "0 */2 * * *"
+    endpoint: "{{BASE_URL}}/api/cron/task-reminder-6h"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true
+
+  - name: task-reminder-24h
+    description: "Email reminder every 2h — second nudge when a task has been open 24h after the 6h ping"
+    cron: "30 */2 * * *"
+    endpoint: "{{BASE_URL}}/api/cron/task-reminder-24h"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

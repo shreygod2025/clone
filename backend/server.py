@@ -4217,6 +4217,8 @@ from routes.techfest_submission_portal import router as techfest_portal_router
 api_router.include_router(techfest_portal_router)
 from routes.techfest_bulk_email import router as techfest_bulk_email_router
 api_router.include_router(techfest_bulk_email_router)
+from routes.task_reminders import router as task_reminders_router
+api_router.include_router(task_reminders_router)
 
 from routes.central_database import router as central_database_router
 api_router.include_router(central_database_router)

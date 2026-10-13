@@ -189,19 +189,24 @@ const RichTextEditor = ({ content, onChange, placeholder = 'Start writing...', g
       }
     } catch (error) {
       console.error('Image upload failed:', error);
-      // Fallback — base64 inline so the editor never leaves the admin
-      // stuck with a half-finished upload. Also opens the modal.
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImageForm({
-          src: reader.result,
-          alt: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 120),
-          title: '',
-          linkHref: '',
-        });
-        setShowImageModal(true);
-      };
-      reader.readAsDataURL(file);
+      // SAFE FALLBACK — only inline small images as base64 (<500 KB) so
+      // phone photos don't bloat the blog HTML past Mongo's 16 MB doc
+      // limit and silently break the save.
+      if (file.size <= 500 * 1024) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setImageForm({
+            src: reader.result,
+            alt: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 120),
+            title: '',
+            linkHref: '',
+          });
+          setShowImageModal(true);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        toast.error('Image upload failed. Please try again or paste an image URL manually.');
+      }
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

@@ -66,6 +66,7 @@ const FutureSkillsSuccessPage = () => {
     const centre  = params.get('centre') || '';
     const address = params.get('address') || '';
     const maps    = params.get('maps')    || '';
+    const pendingSchedule = params.get('pending_schedule') === '1';
     const nextDate = nextDateForDays(days);
 
     return (
@@ -77,17 +78,37 @@ const FutureSkillsSuccessPage = () => {
               <CheckCircle2 className="w-12 h-12 text-emerald-600" />
             </div>
             <h1 className="text-3xl lg:text-4xl font-black text-[#0F1E33]" data-testid="success-welcome">
-              Welcome to OLL!
+              {pendingSchedule ? 'Demo Booked!' : 'Welcome to OLL!'}
             </h1>
-            <p className="text-slate-500 mt-2">Your free trial is booked.</p>
+            <p className="text-slate-500 mt-2">
+              {pendingSchedule
+                ? "Our contact person will reach out with the date and timing shortly."
+                : 'Your free trial is booked.'}
+            </p>
 
-            {(days || start) && (
+            {!pendingSchedule && (days || start) && (
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {days && <InfoTile icon={Calendar} label="Day" value={days} testid="success-day" />}
                 {nextDate && <InfoTile icon={Calendar} label="Date" value={nextDate} testid="success-date" />}
                 {(start || end) && (
                   <InfoTile icon={Clock} label="Time" value={`${start || '—'}${end ? ` – ${end}` : ''}`} testid="success-time" />
                 )}
+              </div>
+            )}
+
+            {pendingSchedule && (
+              <div className="mt-8 rounded-2xl border border-amber-100 bg-amber-50/60 p-5 text-left" data-testid="success-pending-note">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-[#0F1E33]">What happens next?</div>
+                    <div className="text-sm text-slate-600 mt-1 leading-snug">
+                      Our contact person will call or WhatsApp you within the next <strong>24 hours</strong> to confirm your trial date and timing at the chosen centre.
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -1854,6 +1854,22 @@ async def upload_file(
         file_url = f"/api/files/{unique_filename}"
         return {"url": file_url, "filename": unique_filename, "fallback": True}
 
+
+# Alias used by the admin blog form + RichTextEditor — same payload shape so
+# both the ImageUploadField and TipTap inline uploader "just work".
+@router.post("/upload/image")
+async def upload_image(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """Thin wrapper over `/upload` that pins `type=images` so blog uploads
+    land in the images folder and the client gets a stable public URL
+    back. Previously the admin blog editor hit this path, got a 404 and
+    silently fell back to inlining the photo as base64 — which broke
+    `POST /api/blogs` because the content payload bloated past Mongo's
+    16 MB document limit."""
+    return await upload_file(file=file, type="images", user=user)
+
 # Proxy endpoint - fetches a Cloudinary/uploaded URL via the backend and re-serves it
 # with the correct Content-Type and filename. Fixes the case where Cloudinary stripped
 # the extension from public_id (raw uploads) and serves files as application/octet-stream

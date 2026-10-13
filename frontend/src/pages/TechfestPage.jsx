@@ -467,9 +467,14 @@ export default function TechfestPage() {
                 India&apos;s biggest school tech fest. Compete across three flagship robotics tracks at Techfest 2026-27, powered by OLL. Regional qualifiers across India. Grand Finale live at IIT Bombay <strong style={{ fontWeight: 700, color: '#fff' }}>17 December 2026</strong>.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button onClick={openRegister} className="tf-btn primary" data-testid="techfest-register-btn">
-                  Register Now <ArrowRight className="w-4 h-4" />
-                </button>
+                <div
+                  className="tf-btn primary cursor-not-allowed opacity-80"
+                  style={{ background: '#64748B', pointerEvents: 'none' }}
+                  data-testid="techfest-registrations-closed"
+                  aria-disabled="true"
+                >
+                  Registrations Closed
+                </div>
                 <button
                   onClick={() => navigate('/techfest/submit')}
                   className="tf-btn ghost-light"

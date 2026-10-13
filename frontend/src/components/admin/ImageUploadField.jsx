@@ -39,13 +39,20 @@ export default function ImageUploadField({ value, onChange, label, hint, testId,
         throw new Error('No URL returned');
       }
     } catch (err) {
-      // Fall back to base64 inline so the admin isn't stuck.
-      const reader = new FileReader();
-      reader.onload = () => {
-        onChange(reader.result);
-        toast.warning('Upload service unreachable — stored inline. Replace with CDN URL soon.');
-      };
-      reader.readAsDataURL(file);
+      // SAFE FALLBACK — only inline small images as base64 (<500 KB) so a
+      // phone photo doesn't bloat the blog HTML past Mongo's 16 MB doc
+      // limit and silently break the save. Anything bigger: hard-fail
+      // with a visible error so the admin knows to retry.
+      if (file.size <= 500 * 1024) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          onChange(reader.result);
+          toast.warning('Upload service unreachable — stored inline. Replace with a CDN URL before publishing.');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        toast.error('Image upload failed. Please try again or paste a CDN URL.');
+      }
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';

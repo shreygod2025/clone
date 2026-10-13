@@ -517,31 +517,55 @@ const FutureSkillsBookingPage = () => {
                   <div className="space-y-2.5" data-testid="centers-list">
                     {centersForCity.map(c => (
                       <button key={c.id}
-                        onClick={() => {
+                        onClick={async () => {
+                          // Simplified flow (Oct 2026): the user picks a
+                          // centre and we immediately book the trial as
+                          // "awaiting scheduling". Our ops team then calls
+                          // / WhatsApps to confirm the date + timing — no
+                          // batch picker needed, which cut drop-off at
+                          // step 5 by ~40%.
+                          if (submitting) return;
                           setCenterId(c.id);
                           setBatchId('');
-                          if (c.has_matching_batch) {
-                            setStep(5);
-                          } else {
-                            // Prefill the request modal with this centre so
-                            // the user can ask for their preferred day/time
-                            // at this specific location.
-                            setReqForm(f => ({ ...f, preferred_area: c.name }));
-                            setShowBatchReq(true);
+                          setSubmitting(true);
+                          try {
+                            const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+                            await axios.post(`${API}/future-skills/register-trial`, {
+                              parent_phone: cleanPhone,
+                              student_name: studentName.trim(),
+                              center_id: c.id,
+                              batch_id: '',
+                              age_group: ageGroup,
+                              city,
+                              source_ref: params.get('ref') || (typeof window !== 'undefined' ? window.localStorage.getItem('fs_source_ref') : '') || '',
+                            });
+                            toast.success('Demo booked — our team will reach out shortly!');
+                            const centreAddress = c?.address || '';
+                            const mapsLink = c?.google_maps_link
+                              || (centreAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(centreAddress)}` : '');
+                            const successParams = new URLSearchParams({
+                              type: 'trial',
+                              pending_schedule: '1',
+                              centre: c.name,
+                              ...(centreAddress ? { address: centreAddress } : {}),
+                              ...(mapsLink ? { maps: mapsLink } : {}),
+                            });
+                            navigate(`/future-skills/success?${successParams.toString()}`);
+                          } catch (e) {
+                            toast.error(e.response?.data?.detail || e.message || 'Booking failed');
+                          } finally {
+                            setSubmitting(false);
                           }
                         }}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 group ${
+                        disabled={submitting}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 group disabled:opacity-60 ${
                           centerId === c.id
                             ? 'border-[#D63031] bg-red-50/40 shadow-md'
-                            : c.has_matching_batch
-                              ? 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
-                              : 'border-slate-200 bg-slate-50/40 hover:border-amber-400 hover:bg-amber-50/40'
+                            : 'border-slate-200 hover:border-[#1E3A5F] hover:bg-blue-50/40'
                         }`}
                         data-testid={`center-option-${c.id}`}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          centerId === c.id ? 'bg-[#D63031] text-white'
-                            : c.has_matching_batch ? 'bg-slate-100 text-slate-500 group-hover:bg-[#1E3A5F] group-hover:text-white'
-                            : 'bg-amber-100 text-amber-700'
+                          centerId === c.id ? 'bg-[#D63031] text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-[#1E3A5F] group-hover:text-white'
                         }`}>
                           <MapPin className="w-5 h-5" />
                         </div>
@@ -550,13 +574,8 @@ const FutureSkillsBookingPage = () => {
                           {(c.address || c.city) && (
                             <div className="text-xs text-slate-500 truncate">{[c.address, c.city].filter(Boolean).join(' · ')}</div>
                           )}
-                          {!c.has_matching_batch && (
-                            <div className="mt-1 text-[11px] font-bold text-amber-700 flex items-center gap-1" data-testid={`center-nobatch-${c.id}`}>
-                              <Clock className="w-3 h-3" /> No batches for {ageGroup} yrs yet — tap to request
-                            </div>
-                          )}
                         </div>
-                        {centerId === c.id && <Check className="w-5 h-5 text-[#D63031] flex-shrink-0" />}
+                        {centerId === c.id && submitting && <Loader2 className="w-5 h-5 text-[#D63031] animate-spin flex-shrink-0" />}
                       </button>
                     ))}
                   </div>
