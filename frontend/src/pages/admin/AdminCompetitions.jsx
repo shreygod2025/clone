@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
 import TechfestBulkEmailDialog from './TechfestBulkEmailDialog';
+import SubmissionReviewDialog, { ReviewStatusBadge, ReviewActions } from './SubmissionReviewDialog';
 
 // ── HeaderFilter ───────────────────────────────────────────────────────
 // Small funnel icon next to a column header that opens a popover with a
@@ -265,6 +266,18 @@ export default function AdminCompetitions() {
   const [submissions, setSubmissions] = useState([]);
   const [subLoading, setSubLoading] = useState(false);
   const [subCompFilter, setSubCompFilter] = useState('');
+  const [subZoneFilter, setSubZoneFilter] = useState('');
+  const [subAgeFilter, setSubAgeFilter] = useState('');
+  const [subStatusFilter, setSubStatusFilter] = useState('');
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const visibleSubmissions = useMemo(() => submissions.filter((s) => {
+    if (subZoneFilter && s.zone !== subZoneFilter) return false;
+    if (subAgeFilter && s.age_category !== subAgeFilter) return false;
+    if (subStatusFilter === 'duplicate') return !!s.is_duplicate;
+    if (subStatusFilter && (s.review_status || 'pending') !== subStatusFilter) return false;
+    return true;
+  }), [submissions, subZoneFilter, subAgeFilter, subStatusFilter]);
+  const onReviewSaved = (id, data) => setSubmissions((prev) => prev.map((x) => (x._id === id ? { ...x, ...data } : x)));
 
   // Combined-view state
   const [combined, setCombined] = useState([]);
@@ -1486,20 +1499,38 @@ export default function AdminCompetitions() {
               ) : (
                 <>
                   <div className="px-3 py-2 flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Filter by competition:</span>
-                    <select
-                      className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white"
-                      value={subCompFilter}
-                      onChange={(e) => setSubCompFilter(e.target.value)}
-                      data-testid="admin-submissions-filter"
-                    >
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Track:</span>
+                    <select className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white" value={subCompFilter} onChange={(e) => setSubCompFilter(e.target.value)} data-testid="admin-submissions-filter">
                       <option value="">All</option>
                       <option value="robo_sumo">Robo Sumo</option>
                       <option value="robo_race">Robo Race</option>
                       <option value="robo_innovation">Robo Innovation Challenge</option>
                     </select>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-2">Region:</span>
+                    <select className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white" value={subZoneFilter} onChange={(e) => setSubZoneFilter(e.target.value)} data-testid="admin-submissions-filter-region">
+                      <option value="">All</option>
+                      <option value="north">North</option>
+                      <option value="south">South</option>
+                      <option value="east">East</option>
+                      <option value="west">West</option>
+                      <option value="central">Central</option>
+                    </select>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-2">Age:</span>
+                    <select className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white" value={subAgeFilter} onChange={(e) => setSubAgeFilter(e.target.value)} data-testid="admin-submissions-filter-age">
+                      <option value="">All</option>
+                      <option value="junior">Junior</option>
+                      <option value="senior">Senior</option>
+                    </select>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-2">Status:</span>
+                    <select className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white" value={subStatusFilter} onChange={(e) => setSubStatusFilter(e.target.value)} data-testid="admin-submissions-filter-status">
+                      <option value="">All</option>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="duplicate">Duplicates</option>
+                    </select>
                     <div className="flex-1" />
-                    <span className="text-[11px] text-slate-500">{submissions.length} submissions</span>
+                    <span className="text-[11px] text-slate-500" data-testid="admin-submissions-count">{visibleSubmissions.length} of {submissions.length} submissions</span>
                   </div>
                   <table className="w-full text-sm" data-testid="admin-competitions-submissions-table">
                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
@@ -1515,10 +1546,15 @@ export default function AdminCompetitions() {
                         <th className="text-left px-3 py-3 font-bold">Drive</th>
                         <th className="text-left px-3 py-3 font-bold">Permission</th>
                         <th className="text-left px-3 py-3 font-bold">Submitted</th>
+                        <th className="text-left px-3 py-3 font-bold">Status</th>
+                        <th className="text-left px-3 py-3 font-bold">Judge Review</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {submissions.map((s, i) => {
+                      {visibleSubmissions.length === 0 && (
+                        <tr><td colSpan={13} className="p-8 text-center text-sm text-slate-500" data-testid="admin-submissions-empty-filtered">No submissions match these filters.</td></tr>
+                      )}
+                      {visibleSubmissions.map((s, i) => {
                         const isOpen = expandedSub.has(s._id);
                         return (
                         <React.Fragment key={s._id}>
@@ -1559,10 +1595,12 @@ export default function AdminCompetitions() {
                             ) : <span className="text-slate-400 text-[11px]">—</span>}
                           </td>
                           <td className="px-3 py-3 text-slate-600 text-[11px]">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}</td>
+                          <td className="px-3 py-3"><ReviewStatusBadge s={s} /></td>
+                          <td className="px-3 py-3"><ReviewActions s={s} onReview={(sub, decision) => setReviewTarget({ sub, decision })} /></td>
                         </tr>
                         {isOpen && (
                           <tr data-testid={`admin-submission-detail-${s._id}`}>
-                            <td colSpan={11} className="p-0 bg-slate-50 border-b border-slate-200">
+                            <td colSpan={13} className="p-0 bg-slate-50 border-b border-slate-200">
                               <SubmissionDetail s={s} />
                             </td>
                           </tr>
@@ -1572,6 +1610,7 @@ export default function AdminCompetitions() {
                       })}
                     </tbody>
                   </table>
+                  <SubmissionReviewDialog target={reviewTarget} onClose={() => setReviewTarget(null)} onSaved={onReviewSaved} headers={getAuthHeaders()} />
                 </>
               )
             )}

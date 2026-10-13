@@ -314,6 +314,13 @@ async def submission_portal_update(
     updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if not updates:
         return {"ok": True, "modified": 0, "note": "No changes submitted."}
+    from .techfest import find_duplicate_submission, _norm_id, DUPLICATE_SUBMISSION_MSG
+    changed = {f: updates[f].strip() for f in ("team_id", "competition_id")
+               if f in updates and _norm_id(updates[f]) != _norm_id(doc.get(f))}
+    if changed:
+        if await find_duplicate_submission(changed.get("team_id"), changed.get("competition_id"), exclude_oid=oid):
+            raise HTTPException(status_code=409, detail=DUPLICATE_SUBMISSION_MSG)
+        updates.update(changed)
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     updates["last_edited_by_student_at"] = updates["updated_at"]
     await db.techfest_submissions.update_one({"_id": oid}, {"$set": updates})

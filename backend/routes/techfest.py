@@ -332,6 +332,35 @@ class TechfestSubmissionIn(BaseModel):
     school_permission_url: Optional[str] = Field(None, max_length=500)
 
 
+DUPLICATE_SUBMISSION_MSG = (
+    "This Team ID / Student ID has already submitted a project. Each team or student "
+    "can submit only once across all categories. For queries: 9920188188 | info@oll.co"
+)
+
+
+def _norm_id(v: Optional[str]) -> str:
+    return re.sub(r"\s+", "", (v or "")).lower()
+
+
+def _id_regex(v: str) -> dict:
+    # Tolerates legacy rows saved with stray whitespace / different casing.
+    pattern = r"^\s*" + r"\s*".join(re.escape(c) for c in v) + r"\s*$"
+    return {"$regex": pattern, "$options": "i"}
+
+
+async def find_duplicate_submission(team_id: Optional[str], competition_id: Optional[str], exclude_oid=None):
+    ors = []
+    for field, val in (("team_id", _norm_id(team_id)), ("competition_id", _norm_id(competition_id))):
+        if val:
+            ors.append({field: _id_regex(val)})
+    if not ors:
+        return None
+    query: dict = {"$or": ors}
+    if exclude_oid is not None:
+        query["_id"] = {"$ne": exclude_oid}
+    return await db.techfest_submissions.find_one(query, {"_id": 1})
+
+
 @router.post("/techfest/submissions")
 async def create_techfest_submission(payload: TechfestSubmissionIn, background_tasks: BackgroundTasks):
     """Public submission endpoint — no auth required."""
@@ -350,10 +379,16 @@ async def create_techfest_submission(payload: TechfestSubmissionIn, background_t
     if payload.age_category and payload.age_category not in ALLOWED_AGE_CATS:
         raise HTTPException(status_code=400, detail="Invalid age category")
 
+    if await find_duplicate_submission(payload.team_id, payload.competition_id):
+        raise HTTPException(status_code=409, detail=DUPLICATE_SUBMISSION_MSG)
+
     doc = payload.model_dump()
+    doc["team_id"] = payload.team_id.strip()
+    doc["competition_id"] = payload.competition_id.strip()
     doc["zone"] = zone_val
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     doc["status"] = "submitted"
+    doc["review_status"] = "pending"
     result = await db.techfest_submissions.insert_one(doc)
     reference_id = str(result.inserted_id)
 
@@ -504,15 +539,57 @@ async def list_techfest_submissions(
     # Same "admin or team member with email" gate used elsewhere.
     if user.get("role") not in ("admin", "super_admin") and not user.get("email"):
         raise HTTPException(status_code=403, detail="Access denied")
-    query: dict = {}
-    if zone: query["zone"] = zone
-    if competition: query["competition"] = competition
-    cursor = db.techfest_submissions.find(query).sort("created_at", -1).limit(10000)
-    out = []
-    async for doc in cursor:
+    # Duplicates are computed across ALL submissions (any category) — the
+    # earliest entry per Team ID / Competition ID is the original.
+    first_seen: dict[str, str] = {}
+    all_docs = []
+    async for doc in db.techfest_submissions.find({}).sort("created_at", 1).limit(10000):
         doc["_id"] = str(doc["_id"])
-        out.append(doc)
+        dup_of = None
+        for field in ("team_id", "competition_id"):
+            key = _norm_id(doc.get(field))
+            if not key:
+                continue
+            k = f"{field}:{key}"
+            if k in first_seen and first_seen[k] != doc["_id"]:
+                dup_of = dup_of or first_seen[k]
+            else:
+                first_seen.setdefault(k, doc["_id"])
+        doc["is_duplicate"] = bool(dup_of)
+        doc["duplicate_of"] = dup_of
+        doc["review_status"] = doc.get("review_status") or "pending"
+        all_docs.append(doc)
+    out = [
+        d for d in reversed(all_docs)
+        if (not zone or d.get("zone") == zone) and (not competition or d.get("competition") == competition)
+    ]
     return {"items": out, "count": len(out)}
+
+
+class SubmissionReviewIn(BaseModel):
+    decision: Literal["approved", "rejected"]
+    remarks: str = Field(..., max_length=2000)
+
+
+@router.patch("/admin/techfest/submissions/{submission_id}/review")
+async def review_techfest_submission(submission_id: str, payload: SubmissionReviewIn, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin") and not user.get("email"):
+        raise HTTPException(status_code=403, detail="Access denied")
+    remarks = payload.remarks.strip()
+    if len(remarks) < 3:
+        raise HTTPException(status_code=400, detail="Judge's remarks are mandatory — please state the reason.")
+    oid = _oid(submission_id)
+    now = datetime.now(timezone.utc).isoformat()
+    reviewer = user.get("name") or user.get("email") or "admin"
+    entry = {"decision": payload.decision, "remarks": remarks, "by": reviewer, "at": now}
+    res = await db.techfest_submissions.update_one(
+        {"_id": oid},
+        {"$set": {"review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now},
+         "$push": {"review_history": entry}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return {"ok": True, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now}
 
 
 # ── Public upload for Techfest submitters ──────────────────────────
