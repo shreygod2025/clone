@@ -570,67 +570,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── SHARK TANK INDIA YOUNG FOUNDERS SPECIAL — informational card ── */}
-      <section data-testid="homepage-sti6-yf" style={{ padding: '3.5rem 1.25rem', background: '#F8FAFC' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <Link
-            to="/shark-tank-young-founders"
-            data-testid="homepage-sti6-yf-card"
-            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-          >
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr)',
-              gap: '1.5rem',
-              padding: '1.75rem',
-              background: '#fff',
-              borderRadius: 20,
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 10px 30px -15px rgba(10,31,68,0.15)',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 20px 40px -15px rgba(10,31,68,0.25)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px -15px rgba(10,31,68,0.15)'; }}
-            >
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 999, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#B45309', width: 'fit-content' }}>
-                Opportunity to know about
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
-                <div>
-                  <h3 style={{ fontSize: 'clamp(1.4rem, 3.4vw, 2rem)', fontWeight: 900, color: '#0A1F44', margin: 0, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
-                    Shark Tank India Young Founders Special — Season 6
-                  </h3>
-                  <p style={{ marginTop: '0.75rem', color: '#475569', lineHeight: 1.6, fontSize: '0.95rem' }}>
-                    An entrepreneurial opportunity for children aged <strong>6–15</strong>. Applicants can apply with just a business
-                    idea — an existing company isn't needed. Registrations are open from <strong>12 Oct – 11 Nov 2026</strong>.
-                  </p>
-                  <div style={{ marginTop: '1.25rem', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.9rem', fontWeight: 700, color: '#0A1F44' }}>
-                    Read the full info page
-                    <span aria-hidden style={{ fontSize: '1.1rem', lineHeight: 1 }}>→</span>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-                  {[
-                    ['AGES', '6 – 15 yrs'],
-                    ['CITIZENSHIP', 'Indian'],
-                    ['REGISTRATION', '12 Oct – 11 Nov 2026'],
-                    ['FEE', 'Free'],
-                  ].map(([k, v]) => (
-                    <div key={k} style={{ padding: 12, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: '#64748B' }}>{k}</div>
-                      <div style={{ marginTop: 4, fontSize: '0.95rem', fontWeight: 700, color: '#0A1F44' }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ fontSize: 11, color: '#94A3B8' }}>
-                Information shared by OLL. Not affiliated with Sony Pictures / SonyLIV. Always verify on the official page.
-              </div>
-            </div>
-          </Link>
-        </div>
-      </section>
-
 
       {/* ── SCHOOL PRODUCTS ────────────────────────────
           Two flagship product families sold to schools — Robotics + Computer
@@ -729,6 +668,76 @@ const LandingPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── SHARK TANK INDIA YOUNG FOUNDERS SPECIAL — informational card ── */}
+      <section data-testid="homepage-sti6-yf" style={{
+        padding: '4.5rem 1.25rem',
+        background: 'linear-gradient(135deg, #0A1F44 0%, #0E1B3E 55%, #7F1D1D 100%)',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div aria-hidden style={{ position: 'absolute', top: -120, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, transparent 70%)' }} />
+        <div aria-hidden style={{ position: 'absolute', bottom: -140, left: -60, width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.35) 0%, transparent 70%)' }} />
+        <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <Link
+            to="/shark-tank-young-founders"
+            data-testid="homepage-sti6-yf-card"
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+          >
+            <div style={{
+              display: 'grid',
+              gap: '1.5rem',
+              padding: '2rem',
+              background: 'rgba(255,255,255,0.98)',
+              borderRadius: 24,
+              border: '1px solid rgba(255,255,255,0.5)',
+              boxShadow: '0 30px 80px -20px rgba(0,0,0,0.5)',
+              transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+                <img src="https://prd-emss3.sonyliv.com/Creatives/ST/Shark-Tank-India-S6-Logo.png" alt="Shark Tank India Season 6" style={{ height: 56, width: 'auto' }} />
+                <div style={{ width: 1, height: 44, background: '#E2E8F0' }} />
+                <img src="https://prd-emss3.sonyliv.com/Creatives/ST/YOUNF-FOUNDERS-SPECIAL-_PNG.png" alt="Young Founders Special" style={{ height: 64, width: 'auto' }} />
+                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 999, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#B91C1C' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', animation: 'pulse 2s infinite' }} />
+                  Registrations Open
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+                <div>
+                  <h3 style={{ fontSize: 'clamp(1.5rem, 3.6vw, 2.2rem)', fontWeight: 900, color: '#0A1F44', margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
+                    Entrepreneurship, for 6–15 year olds.
+                  </h3>
+                  <p style={{ marginTop: '0.9rem', color: '#475569', lineHeight: 1.6, fontSize: '0.95rem' }}>
+                    An entrepreneurial platform where young innovators can apply with just a business idea — an established company isn't required. Registrations run <strong style={{color:'#0A1F44'}}>12 Oct – 11 Nov 2026</strong>.
+                  </p>
+                  <div style={{ marginTop: '1.25rem', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: '#DC2626', color: '#fff', borderRadius: 999, fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.03em' }}>
+                    Read the full info page →
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                  {[
+                    ['AGES', '6 – 15 yrs'],
+                    ['CITIZENSHIP', 'Indian'],
+                    ['REGISTRATION', '12 Oct – 11 Nov'],
+                    ['FEE', 'Free'],
+                  ].map(([k, v]) => (
+                    <div key={k} style={{ padding: 14, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: '#DC2626' }}>{k}</div>
+                      <div style={{ marginTop: 4, fontSize: '0.95rem', fontWeight: 800, color: '#0A1F44' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#94A3B8', borderTop: '1px solid #F1F5F9', paddingTop: 12 }}>
+                Information shared by OLL as a community resource. Not affiliated with Sony Pictures / SonyLIV. Always verify on the official page.
+              </div>
+            </div>
+          </Link>
         </div>
       </section>
 
