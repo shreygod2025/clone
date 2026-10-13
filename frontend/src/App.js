@@ -45,6 +45,7 @@ const SchoolOfferingDetailPage = lazy(() => import("./pages/SchoolOfferingDetail
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const BlogsPage = lazy(() => import("./pages/BlogsPage"));
 const BlogDetailPage = lazy(() => import("./pages/BlogDetailPage"));
+const SharkTankYoungFoundersPage = lazy(() => import("./pages/SharkTankYoungFoundersPage"));
 const RoboSumoBuildGuideBlog = lazy(() => import("./pages/blogs/RoboSumoBuildGuideBlog"));
 const ICSECode66BlogPage = lazy(() => import("./pages/blogs/ICSECode66BlogPage"));
 const SuccessStoriesPage = lazy(() => import("./pages/SuccessStoriesPage"));
@@ -267,6 +268,8 @@ function App() {
               <Route path="/educator/apply/:reqId" element={<EducatorApplyPage />} />
               <Route path="/educator/interview/:applicationId" element={<EducatorInterviewPage />} />
               <Route path="/for-schools" element={<SchoolLandingPage />} />
+              <Route path="/shark-tank-young-founders" element={<SharkTankYoungFoundersPage />} />
+              <Route path="/shark-tank-india-young-founders" element={<SharkTankYoungFoundersPage />} />
               <Route path="/school" element={<SchoolFunnel />} />
               <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
               <Route path="/school-offerings/:categoryId/:offeringId" element={<SchoolOfferingDetailPage />} />

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Quote as QuoteIcon, Video, Sparkles, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -567,6 +567,67 @@ const LandingPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── SHARK TANK INDIA YOUNG FOUNDERS SPECIAL — informational card ── */}
+      <section data-testid="homepage-sti6-yf" style={{ padding: '3.5rem 1.25rem', background: '#F8FAFC' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <Link
+            to="/shark-tank-young-founders"
+            data-testid="homepage-sti6-yf-card"
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+          >
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr)',
+              gap: '1.5rem',
+              padding: '1.75rem',
+              background: '#fff',
+              borderRadius: 20,
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 10px 30px -15px rgba(10,31,68,0.15)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 20px 40px -15px rgba(10,31,68,0.25)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px -15px rgba(10,31,68,0.15)'; }}
+            >
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 999, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#B45309', width: 'fit-content' }}>
+                Opportunity to know about
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+                <div>
+                  <h3 style={{ fontSize: 'clamp(1.4rem, 3.4vw, 2rem)', fontWeight: 900, color: '#0A1F44', margin: 0, lineHeight: 1.15, letterSpacing: '-0.01em' }}>
+                    Shark Tank India Young Founders Special — Season 6
+                  </h3>
+                  <p style={{ marginTop: '0.75rem', color: '#475569', lineHeight: 1.6, fontSize: '0.95rem' }}>
+                    An entrepreneurial opportunity for children aged <strong>6–15</strong>. Applicants can apply with just a business
+                    idea — an existing company isn't needed. Registrations are open from <strong>12 Oct – 11 Nov 2026</strong>.
+                  </p>
+                  <div style={{ marginTop: '1.25rem', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.9rem', fontWeight: 700, color: '#0A1F44' }}>
+                    Read the full info page
+                    <span aria-hidden style={{ fontSize: '1.1rem', lineHeight: 1 }}>→</span>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                  {[
+                    ['AGES', '6 – 15 yrs'],
+                    ['CITIZENSHIP', 'Indian'],
+                    ['REGISTRATION', '12 Oct – 11 Nov 2026'],
+                    ['FEE', 'Free'],
+                  ].map(([k, v]) => (
+                    <div key={k} style={{ padding: 12, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: '#64748B' }}>{k}</div>
+                      <div style={{ marginTop: 4, fontSize: '0.95rem', fontWeight: 700, color: '#0A1F44' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#94A3B8' }}>
+                Information shared by OLL. Not affiliated with Sony Pictures / SonyLIV. Always verify on the official page.
+              </div>
+            </div>
+          </Link>
         </div>
       </section>
 
