@@ -16,7 +16,7 @@ const COMPETITIONS = [
   { slug: 'robo_innovation',  label: 'Robo Innovation Challenge', zonal: false },
 ];
 const ZONES = [
-  { slug: 'north',   label: 'North · Delhi (Date TBA)'                     },
+  { slug: 'north',   label: 'North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov 2026'},
   { slug: 'south',   label: 'South · RVU College, Bangalore · 26 Nov 2026' },
   { slug: 'east',    label: 'East · IIT Kanpur · 24 Oct 2026'              },
   { slug: 'west',    label: 'West · IIT Bombay · 17 Dec 2026'              },
