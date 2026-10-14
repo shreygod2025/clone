@@ -1,0 +1,25 @@
+{
+  "summary": "Tested all 7 requested features: Submissions XLSX export, Project Earnings CRUD + GST calc + totals, Projects P&L tab (summary cards, per-project earned/net, expand earnings+expenses), /admin/live Today's Sessions card (checked-in = on-time + late, not-in, scheduled total). All backend (8/8 pytest) and all frontend flows passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_project_earnings_and_live.py",
+    "/app/test_reports/pytest/earnings_live.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ProjectEarnings.jsx GST compute uses Math.round(amount*pct)/100 which handles 18% of 5000 -> 900 exactly, but for amounts with decimals this rounds to nearest paisa pair (acceptable). Backend uses round(amount*pct/100, 2) - two formulas agree for integer amounts (verified).",
+    "Project earnings uses PUT (not PATCH) for update - requires full EarningIn payload. Frontend sends full form so OK. Keep consistent naming (earnings uses PUT, milestones/kb use PATCH) - minor inconsistency.",
+    "live_dashboard _sessions_block: checked_in=on_time+late invariant enforced by construction - verified via snapshot API (23 checked-in = 19 on-time + 4 late; 31 total = 23 checked-in + 8 not-in).",
+    "ProjectsPnLTab fetches /earnings for every project in parallel via Promise.all - fine for small N but will N+1 scale badly if projects count grows large; consider a single aggregated endpoint later.",
+    "AdminLive /admin/live route is public (no auth required per code comment) which is intentional per code - FYI."
+  ],
+  "updated_files": ["/app/backend/tests/test_project_earnings_and_live.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / GodisGreat@2026",
+  "seed_data_creation": "No persistent seed changes - pytest created & deleted its own earnings; UI flow created 'Test Client UI' earning then deleted it (clean). Only remaining earning is the pre-existing 'Test Client' / 12,000 on project 7ff3645b.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Verified live-dashboard sessions block (today 2026-10-14): checked_in=23 (on_time=19 + late=4), not_checked_in=8, total=31. Projects P&L sign convention: grandNet<0 renders 'Net Loss' with -prefix amount; per-project net uses teal (positive) / red (negative). Export XLSX filename format: techfest-submissions-YYYY-MM-DD.xlsx. ProjectEarnings endpoints: POST /api/projects/{pid}/earnings, PUT /api/projects/earnings/{id}, DELETE /api/projects/earnings/{id}, GET /api/projects/{pid}/earnings - all return gst_amount & total_amount computed server-side.",
+  "rca of the issue": "N/A - no issues found."
+}
