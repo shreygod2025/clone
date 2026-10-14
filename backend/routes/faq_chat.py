@@ -404,8 +404,9 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None, topics:
         "1. The current season is **TechFest IIT Bombay 2026-27**. NEVER mention",
         "   'TechFest 2025' or earlier years. The Grand Finale is on **17 December 2026**.",
         "   Regional qualifiers: East IIT Kanpur 24 Oct 2026 · North Modern Public School, Shalimar Bagh, Delhi 21 Nov 2026",
-        "   · South RVU Bangalore 26 Nov 2026",
+        "   · South RVCE College, Bangalore 26 Nov 2026",
         "   · West IIT Bombay 17 Dec 2026. These dates are AUTHORITATIVE.",
+        "   Always write the South venue exactly as **RVCE College, Bangalore** (never 'RV University').",
         "2. The ONLY support channels are:",
         "   • WhatsApp: **+91 99201 88188** (fastest · wa.me/919920188188)",
         "   • Email: **info@oll.co**",
@@ -792,7 +793,7 @@ async def _detect_topics(question: str) -> set[str]:
     # Techfest
     if any(k in q for k in (
         "techfest", "sumo", "racer", "race", "innovation", "arena", "track",
-        "qualifier", "finale", "iit bombay", "iit kanpur", "rvu", "register",
+        "qualifier", "finale", "iit bombay", "iit kanpur", "rvu", "rvce", "register",
         "registration", "submit", "submission", "problem statement", "prize",
         "pitch", "team size", "rulebook", "rules", "bot", "robo", "round 1",
         "round 2", "championship", "bank", "neft",

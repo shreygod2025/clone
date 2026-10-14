@@ -106,7 +106,7 @@ DEFAULT_SETTINGS = FaqSettings(
         "REGIONAL QUALIFIER ROUNDS (physical, Round 2):\n"
         "- East Qualifier  — IIT Kanpur             — Saturday, 24 October 2026\n"
         "- North Qualifier — Modern Public School, Shalimar Bagh, Delhi — Saturday, 21 November 2026\n"
-        "- South Qualifier — RV University, Bangalore — Thursday, 26 November 2026\n"
+        "- South Qualifier — RVCE College, Bangalore — Thursday, 26 November 2026\n"
         "- West Qualifier  — IIT Bombay             — Thursday, 17 December 2026\n"
         "- Teams unable to attend their regional qualifier can request a video submission —\n"
         "  reach out to the organisers via info@oll.co.\n"
@@ -456,7 +456,8 @@ async def read_settings() -> FaqSettings:
         if key in merged and val is not None:
             merged[key] = val
     # Saved docs pre-date the North qualifier announcement — splice it in.
-    tf = merged.get("techfest") or ""
+    tf = (merged.get("techfest") or "").replace("RV University, Bangalore", "RVCE College, Bangalore")
+    merged["techfest"] = tf
     if "Shalimar" not in tf and "- South Qualifier" in tf:
         merged["techfest"] = tf.replace(
             "- South Qualifier",
