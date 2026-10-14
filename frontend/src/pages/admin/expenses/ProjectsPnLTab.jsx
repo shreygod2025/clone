@@ -52,9 +52,12 @@ export default function ProjectsPnLTab() {
       await Promise.all(items.map(async (p) => {
         try {
           const r = await axios.get(`${API}/school-expenses/project/${p.id}`, { headers: getAuthHeaders() });
-          nextTotals[p.id] = { total: r.data.total || 0, count: r.data.count || 0, expenses: r.data.expenses || [] };
+          const er = await axios.get(`${API}/projects/${p.id}/earnings`, { headers: getAuthHeaders() })
+            .catch(() => ({ data: { total: 0, earnings: [] } }));
+          nextTotals[p.id] = { total: r.data.total || 0, count: r.data.count || 0, expenses: r.data.expenses || [],
+            earned: er.data.total || 0, earnings: er.data.earnings || [] };
         } catch {
-          nextTotals[p.id] = { total: 0, count: 0, expenses: [] };
+          nextTotals[p.id] = { total: 0, count: 0, expenses: [], earned: 0, earnings: [] };
         }
       }));
       setTotals(nextTotals);
@@ -71,17 +74,31 @@ export default function ProjectsPnLTab() {
 
   const grandTotal = projects.reduce((s, p) => s + (totals[p.id]?.total || 0), 0);
   const grandCount = projects.reduce((s, p) => s + (totals[p.id]?.count || 0), 0);
+  const grandEarned = projects.reduce((s, p) => s + (totals[p.id]?.earned || 0), 0);
+  const grandNet = grandEarned - grandTotal;
 
   return (
     <div className="space-y-6" data-testid="projects-pnl-tab">
       {/* Toolbar + summary */}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 flex-1">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 flex-1">
           <div className="rounded-xl border border-slate-100 p-4 bg-slate-50">
             <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1">
               <Briefcase className="w-3.5 h-3.5" /> Projects
             </div>
             <div className="mt-1 text-2xl font-black text-slate-900">{projects.length}</div>
+          </div>
+          <div className="rounded-xl border border-slate-100 p-4 bg-emerald-50" data-testid="projects-pnl-total-earnings">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 flex items-center gap-1">
+              <IndianRupee className="w-3.5 h-3.5" /> Total Earnings
+            </div>
+            <div className="mt-1 text-2xl font-black text-emerald-900">{fmtINR(grandEarned)}</div>
+          </div>
+          <div className={`rounded-xl border border-slate-100 p-4 ${grandNet >= 0 ? 'bg-teal-50' : 'bg-red-50'}`} data-testid="projects-pnl-net">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-slate-600 flex items-center gap-1">
+              <IndianRupee className="w-3.5 h-3.5" /> Net {grandNet >= 0 ? 'Profit' : 'Loss'}
+            </div>
+            <div className={`mt-1 text-2xl font-black ${grandNet >= 0 ? 'text-teal-800' : 'text-red-700'}`}>{fmtINR(grandNet)}</div>
           </div>
           <div className="rounded-xl border border-slate-100 p-4 bg-rose-50">
             <div className="text-[11px] font-bold uppercase tracking-widest text-rose-700 flex items-center gap-1">
@@ -104,7 +121,7 @@ export default function ProjectsPnLTab() {
       {/* Projects table */}
       <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 font-black text-[#1E3A5F]">
-          Project-wise Expenses
+          Project-wise P&amp;L (earnings excl. GST − expenses)
         </div>
 
         {loading ? (
@@ -147,9 +164,17 @@ export default function ProjectsPnLTab() {
                         <div className="text-xs text-slate-500 truncate">{p.description}</div>
                       )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-black text-[#0F1E33]">{fmtINR(t.total)}</div>
-                      <div className="text-[11px] text-slate-500">{t.count} {t.count === 1 ? 'entry' : 'entries'}</div>
+                    <div className="text-right min-w-[90px]" data-testid={`project-earned-${p.id}`}>
+                      <div className="text-[10px] uppercase tracking-wide text-emerald-700 font-bold">Earned</div>
+                      <div className="text-sm font-black text-emerald-800">{fmtINR(t.earned)}</div>
+                    </div>
+                    <div className="text-right min-w-[90px]">
+                      <div className="text-[10px] uppercase tracking-wide text-rose-700 font-bold">Spent · {t.count}</div>
+                      <div className="text-sm font-black text-rose-800">{fmtINR(t.total)}</div>
+                    </div>
+                    <div className="text-right min-w-[100px]" data-testid={`project-net-${p.id}`}>
+                      <div className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Net</div>
+                      <div className={`text-lg font-black ${(t.earned || 0) - t.total >= 0 ? 'text-teal-700' : 'text-red-600'}`}>{fmtINR((t.earned || 0) - t.total)}</div>
                     </div>
                     <Link
                       to={`/admin/projects/${p.id}`}
@@ -163,7 +188,35 @@ export default function ProjectsPnLTab() {
                   </button>
 
                   {isOpen && (
-                    <div className="bg-slate-50 px-4 py-3" data-testid={`project-expenses-${p.id}`}>
+                    <div className="bg-slate-50 px-4 py-3 space-y-3" data-testid={`project-expenses-${p.id}`}>
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">Earnings</div>
+                      {(t.earnings || []).length === 0 ? (
+                        <div className="text-sm text-slate-500 italic">No earnings recorded for this project yet.</div>
+                      ) : (
+                        <table className="w-full text-sm bg-white rounded-lg overflow-hidden" data-testid={`project-earnings-list-${p.id}`}>
+                          <thead className="bg-emerald-50 text-emerald-800 text-xs uppercase tracking-wider">
+                            <tr>
+                              <th className="px-3 py-2 text-left">Date</th>
+                              <th className="px-3 py-2 text-left">Client / Source</th>
+                              <th className="px-3 py-2 text-left">Invoice</th>
+                              <th className="px-3 py-2 text-right">Base</th>
+                              <th className="px-3 py-2 text-right">Incl. GST</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {t.earnings.map((e) => (
+                              <tr key={e.id} className="border-t border-slate-100">
+                                <td className="px-3 py-2 text-xs">{fmtDate(e.earning_date)}</td>
+                                <td className="px-3 py-2 text-xs font-semibold">{e.source || '—'}{e.description ? <span className="font-normal text-slate-500"> · {e.description}</span> : null}</td>
+                                <td className="px-3 py-2 text-xs">{e.invoice_number || '—'}{e.invoice_url && <a href={e.invoice_url} target="_blank" rel="noreferrer" className="ml-1 text-blue-600 underline">file</a>}</td>
+                                <td className="px-3 py-2 text-right font-bold text-emerald-800">{fmtINR(e.amount)}</td>
+                                <td className="px-3 py-2 text-right text-slate-600">{fmtINR(e.total_amount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-rose-700">Expenses</div>
                       {t.expenses.length === 0 ? (
                         <div className="text-sm text-slate-500 italic py-2">
                           No expenses logged against this project yet.

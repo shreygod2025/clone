@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
@@ -11,6 +12,45 @@ const STATUS_STYLES = {
   approved: 'bg-emerald-100 text-emerald-800',
   rejected: 'bg-red-100 text-red-800',
   pending: 'bg-amber-100 text-amber-800',
+};
+
+const fmtDT = (v) => (v ? new Date(v).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+
+export const exportSubmissionsXlsx = (rows) => {
+  const data = rows.map((s) => ({
+    'Submitted On': fmtDT(s.created_at),
+    'Full Name': s.full_name || '',
+    'Date of Birth': s.date_of_birth || '',
+    Age: s.age ?? '',
+    'Age Category': s.age_category || '',
+    Email: s.email || '',
+    Phone: s.phone || '',
+    'School / College': s.school_or_college || '',
+    City: s.city || '',
+    State: s.state || '',
+    Pincode: s.pincode || '',
+    Country: s.country || '',
+    Track: (s.competition || '').replace(/_/g, ' '),
+    Region: s.zone || '',
+    'Project Category': s.project_category || '',
+    'Project Theme': s.project_theme || '',
+    'Team ID': s.team_id || '',
+    'Competition ID': s.competition_id || '',
+    'Team Members': (s.team_members || []).map((m) => [m.name || m.full_name, m.email, m.phone].filter(Boolean).join(' / ')).join('; '),
+    'Drive Link': s.drive_link || '',
+    'ID Proof Type': s.id_proof_type || '',
+    'ID Proof URL': s.id_proof_url || '',
+    'School Permission URL': s.school_permission_url || '',
+    Status: s.review_status || 'pending',
+    Duplicate: s.is_duplicate ? 'Yes' : 'No',
+    'Judge Remarks': s.judge_remarks || '',
+    'Reviewed By': s.reviewed_by || '',
+    'Reviewed On': fmtDT(s.reviewed_at),
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
+  XLSX.writeFile(wb, `techfest-submissions-${new Date().toISOString().slice(0, 10)}.xlsx`);
 };
 
 export const ReviewStatusBadge = ({ s }) => (

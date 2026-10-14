@@ -78,6 +78,16 @@ class KbUpdate(BaseModel):
     is_pinned: Optional[bool] = None
 
 
+class EarningIn(BaseModel):
+    amount: float = Field(..., gt=0)          # base amount, excl. GST
+    gst_percent: float = Field(0, ge=0, le=28)
+    earning_date: str = Field(..., min_length=8, max_length=20)
+    source: str = Field("", max_length=200)   # client / payer
+    description: str = Field("", max_length=1000)
+    invoice_number: str = Field("", max_length=80)
+    invoice_url: str = Field("", max_length=500)
+
+
 def _current_user_id(user: dict) -> str:
     return user.get("id") or user.get("user_id") or ""
 
@@ -236,6 +246,7 @@ async def delete_project(project_id: str, user: dict = Depends(get_current_user)
     await db.tasks.update_many({"project_id": project_id}, {"$set": {"project_id": None}})
     await db.milestones.delete_many({"project_id": project_id})
     await db.project_kb.delete_many({"project_id": project_id})
+    await db.project_earnings.delete_many({"project_id": project_id})
     await db.projects.delete_one({"id": project_id})
     return {"ok": True}
 
@@ -290,6 +301,78 @@ async def delete_milestone(milestone_id: str, user: dict = Depends(get_current_u
     res = await db.milestones.delete_one({"id": milestone_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Milestone not found")
+    return {"ok": True}
+
+
+# ── Earnings ──────────────────────────────────────────────────────────────────
+async def _project_for_finance(project_id: str, user: dict) -> dict:
+    p = await db.projects.find_one({"id": project_id}, {"_id": 0, "id": 1, "lead_id": 1, "created_by": 1, "member_ids": 1})
+    if not p:
+        raise HTTPException(status_code=404, detail="Project not found")
+    uid = _current_user_id(user)
+    if user.get("role") != "admin" and uid not in (p.get("lead_id"), p.get("created_by")) and uid not in (p.get("member_ids") or []):
+        raise HTTPException(status_code=403, detail="You are not a member of this project")
+    return p
+
+
+def _earning_doc(data: EarningIn) -> dict:
+    gst_amount = round(data.amount * data.gst_percent / 100, 2)
+    return {
+        **data.model_dump(),
+        "source": data.source.strip(),
+        "invoice_number": data.invoice_number.strip(),
+        "gst_amount": gst_amount,
+        "total_amount": round(data.amount + gst_amount, 2),
+    }
+
+
+@router.get("/{project_id}/earnings")
+async def list_earnings(project_id: str, user: dict = Depends(get_current_user)):
+    await _project_for_finance(project_id, user)
+    docs = await db.project_earnings.find({"project_id": project_id}, {"_id": 0}).sort("earning_date", -1).to_list(2000)
+    return {
+        "earnings": docs,
+        "count": len(docs),
+        "total": round(sum(d.get("amount", 0) for d in docs), 2),
+        "total_gst": round(sum(d.get("gst_amount", 0) for d in docs), 2),
+        "total_with_gst": round(sum(d.get("total_amount", 0) for d in docs), 2),
+    }
+
+
+@router.post("/{project_id}/earnings")
+async def create_earning(project_id: str, data: EarningIn, user: dict = Depends(get_current_user)):
+    await _project_for_finance(project_id, user)
+    doc = {
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        **_earning_doc(data),
+        "created_by": _current_user_id(user),
+        "created_by_name": user.get("name") or user.get("email") or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.project_earnings.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.put("/earnings/{earning_id}")
+async def update_earning(earning_id: str, data: EarningIn, user: dict = Depends(get_current_user)):
+    e = await db.project_earnings.find_one({"id": earning_id}, {"_id": 0, "project_id": 1})
+    if not e:
+        raise HTTPException(status_code=404, detail="Earning not found")
+    await _project_for_finance(e["project_id"], user)
+    updates = {**_earning_doc(data), "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.project_earnings.update_one({"id": earning_id}, {"$set": updates})
+    return await db.project_earnings.find_one({"id": earning_id}, {"_id": 0})
+
+
+@router.delete("/earnings/{earning_id}")
+async def delete_earning(earning_id: str, user: dict = Depends(get_current_user)):
+    e = await db.project_earnings.find_one({"id": earning_id}, {"_id": 0, "project_id": 1})
+    if not e:
+        raise HTTPException(status_code=404, detail="Earning not found")
+    await _project_for_finance(e["project_id"], user)
+    await db.project_earnings.delete_one({"id": earning_id})
     return {"ok": True}
 
 

@@ -398,32 +398,36 @@ async def _sessions_block() -> Dict[str, Any]:
     now_ist = _ist_now().replace(tzinfo=None)
     on_time = late = absent = upcoming = 0
 
+    # Checked-in sessions are split strictly into on-time vs late so that
+    # on_time + late == checked_in (every punctual_* / late_* tag folds in).
     for s in todays:
         cls = _classify_admin_status(s.get("admin_status"))
-        if cls == "on_time":
-            on_time += 1
-            continue
-        if cls == "late":
-            late += 1
+        if s.get("check_in_time") or cls in ("on_time", "late"):
+            if cls == "late":
+                late += 1
+            else:
+                on_time += 1
             continue
         if cls == "absent":
             absent += 1
             continue
-        # No admin_status yet — decide via schedule vs current time
         try:
             st = (s.get("start_time") or "00:00:00").split(".")[0][:8]
+            if len(st) == 5:
+                st += ":00"
             sched = datetime.strptime(f"{s.get('session_date')} {st}", "%Y-%m-%d %H:%M:%S")
             if sched > now_ist:
                 upcoming += 1
-            elif s.get("check_in_time"):
-                on_time += 1
             else:
                 absent += 1
         except Exception:
             upcoming += 1
 
+    checked_in = on_time + late
     return {
         "total": len(todays),
+        "checked_in": checked_in,
+        "not_checked_in": len(todays) - checked_in,
         "on_time": on_time,
         "late": late,
         "absent": absent,

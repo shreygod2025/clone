@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
 import TechfestBulkEmailDialog from './TechfestBulkEmailDialog';
-import SubmissionReviewDialog, { ReviewStatusBadge, ReviewActions } from './SubmissionReviewDialog';
+import SubmissionReviewDialog, { ReviewStatusBadge, ReviewActions, exportSubmissionsXlsx } from './SubmissionReviewDialog';
 
 // ── HeaderFilter ───────────────────────────────────────────────────────
 // Small funnel icon next to a column header that opens a popover with a
@@ -1531,6 +1531,9 @@ export default function AdminCompetitions() {
                     </select>
                     <div className="flex-1" />
                     <span className="text-[11px] text-slate-500" data-testid="admin-submissions-count">{visibleSubmissions.length} of {submissions.length} submissions</span>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" disabled={!visibleSubmissions.length} onClick={() => exportSubmissionsXlsx(visibleSubmissions)} data-testid="admin-submissions-export-xlsx">
+                      <Download className="w-3.5 h-3.5 mr-1" /> Export XLSX
+                    </Button>
                   </div>
                   <table className="w-full text-sm" data-testid="admin-competitions-submissions-table">
                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">

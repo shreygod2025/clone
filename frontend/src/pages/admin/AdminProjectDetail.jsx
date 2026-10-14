@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/card';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
 import { TaskCard } from './AdminTasks';
 import UserPicker from '../../components/UserPicker';
+import ProjectEarnings from '../../components/projects/ProjectEarnings';
 import {
   ArrowLeft, Plus, Trash2, Users as UsersIcon, Calendar, CheckCircle2,
   Circle, Clock, Pin, ExternalLink, Edit2, StickyNote, Link2, X, ListChecks,
@@ -181,6 +182,11 @@ const AdminProjectDetail = () => {
         <section data-testid="project-section-kb">
           <SectionHeader title="Knowledge Base" count={kb.length} />
           <KbTab entries={kb} projectId={id} onRefresh={load} getAuthHeaders={getAuthHeaders} />
+        </section>
+
+        <section data-testid="project-section-earnings">
+          <SectionHeader title="Earnings" />
+          <ProjectEarnings projectId={id} getAuthHeaders={getAuthHeaders} />
         </section>
 
         <section data-testid="project-section-expenses">

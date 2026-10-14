@@ -415,10 +415,10 @@ export default function AdminLive() {
           {/* Today's Sessions */}
           <Card title="Today's Sessions" icon={Clock} accent="cyan" testId="card-sessions" className="flex-shrink-0">
             <div className="grid grid-cols-4 gap-1 mb-2">
-              <Metric label="Total" value={sessions.total} tone="slate" testId="sessions-total" />
+              <Metric label="Checked-in" value={sessions.checked_in} tone="slate" testId="sessions-checked-in" />
               <Metric label="On-time" value={sessions.on_time} tone="emerald" testId="sessions-on-time" />
               <Metric label="Late" value={sessions.late} tone="amber" testId="sessions-late" />
-              <Metric label="Absent" value={sessions.absent} tone="rose" testId="sessions-absent" />
+              <Metric label="Not in" value={sessions.not_checked_in} tone="rose" testId="sessions-not-checked-in" />
             </div>
             <SessionBar
               total={sessions.total || 0}
@@ -428,7 +428,7 @@ export default function AdminLive() {
               upcoming={sessions.upcoming || 0}
             />
             <div className="mt-1.5 text-[9px] text-slate-500 flex justify-between">
-              <span>{sessions.upcoming || 0} upcoming</span>
+              <span data-testid="sessions-total">{sessions.total || 0} scheduled · {sessions.upcoming || 0} upcoming · {sessions.absent || 0} missed</span>
               <span>src: {sessions.source || 'checkin'}</span>
             </div>
           </Card>
