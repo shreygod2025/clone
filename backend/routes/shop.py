@@ -70,6 +70,7 @@ from .expenses import (
     VENDOR_PUBLIC_API,
     PO_API_BASE_URL,
     PO_API_KEY,
+    PO_TRACKING_PROD_URL,
     transform_tracking_url,
 )
 
@@ -191,7 +192,7 @@ async def _fetch_vendor_catalog(force: bool = False) -> List[dict]:
         return _VENDOR_CACHE["products"]
     try:
         async with httpx.AsyncClient(follow_redirects=True) as client:
-            resp = await client.get(f"{VENDOR_PUBLIC_API}/products", timeout=10.0)
+            resp = await client.get(f"{VENDOR_PUBLIC_API}/products", timeout=60.0)
             resp.raise_for_status()
             products = resp.json() or []
             _VENDOR_CACHE["products"] = products
@@ -737,7 +738,7 @@ async def _submit_vendor_pos(order: dict) -> List[dict]:
                 resp = await client.post(
                     f"{VENDOR_PUBLIC_API}/po-request",
                     json=payload,
-                    timeout=20.0,
+                    timeout=60.0,
                 )
                 if resp.status_code in (200, 201):
                     data = resp.json() or {}
@@ -746,7 +747,7 @@ async def _submit_vendor_pos(order: dict) -> List[dict]:
                     po_doc["vendor_tracking_token"] = token
                     if token:
                         po_doc["vendor_tracking_url"] = transform_tracking_url(
-                            f"https://vendorplus-4.emergent.host/track/{token}"
+                            f"{PO_TRACKING_PROD_URL}/track/{token}"
                         )
                     po_doc["vendor_submission_status"] = "submitted"
                 else:

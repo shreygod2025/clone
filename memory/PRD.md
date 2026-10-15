@@ -769,3 +769,4 @@ See `/app/memory/test_credentials.md`.
 
 - 2026-06: Shark Tank India S6 Young Founders — homepage poster banner + /shark-tank-young-founders full blue/yellow poster re-theme (see CHANGELOG). Pending P0: vendor API URL (blocked on user), P1: Sync Expenses button, file modularisation.
 - BRAND RULE: OLL has NO full form — never write "Online Learning Launchpad".
+- RESOLVED 2026-06: Vendor Panel API mismatch — now on https://vendor-panel-6kjc.onrender.com/api.

@@ -1243,12 +1243,12 @@ async def clear_auto_synced_expenses(user: dict = Depends(get_current_user)):
 # PO API INTEGRATION (PROCUREWAY)
 # ========================
 
-PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendorplus-4.emergent.host/api/external")
+PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendor-panel-6kjc.onrender.com/api/external")
 # SEC-004: no fallback API key. If the env var is unset, `fetch_po_data`
 # fails closed with a clear 503 so we never expose a baked-in key.
 PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "")
 # Production tracking URL domain (replace preview URLs with production)
-PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendorplus-4.emergent.host")
+PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendor-panel-1rt3.vercel.app")
 
 def transform_tracking_url(url: str) -> str:
     """Transform preview tracking URLs to production URLs"""
@@ -1257,9 +1257,11 @@ def transform_tracking_url(url: str) -> str:
     # Replace any *.preview.emergentagent.com or *.stage-preview.emergentagent.com with production domain
     url = re.sub(r'https?://[^/]*\.preview\.emergentagent\.com', PO_TRACKING_PROD_URL, url)
     url = re.sub(r'https?://[^/]*\.stage-preview\.emergentagent\.com', PO_TRACKING_PROD_URL, url)
+    # Old vendor host retired for tracking pages — new panel serves /track/*.
+    url = re.sub(r'https?://vendorplus-4\.emergent\.host(?=/track/)', PO_TRACKING_PROD_URL, url)
     return url
 
-async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.0):
+async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 60.0):
     """Helper function to fetch data from PO API"""
     if not PO_API_KEY:
         # SEC-004: fail closed when the env var isn't set instead of
@@ -1274,7 +1276,7 @@ async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.
                 f"{PO_API_BASE_URL}/{endpoint}",
                 headers={"X-API-Key": PO_API_KEY},
                 params=params,
-                timeout=timeout
+                timeout=timeout,  # default 60s: vendor host cold-starts
             )
             response.raise_for_status()
             return response.json()
@@ -1286,7 +1288,7 @@ async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.
             return None
 
 
-VENDOR_PUBLIC_API = os.environ.get("VENDOR_PUBLIC_API", "https://vendorplus-4.emergent.host/api/public")
+VENDOR_PUBLIC_API = os.environ.get("VENDOR_PUBLIC_API", "https://vendor-panel-6kjc.onrender.com/api/public")
 
 
 async def fetch_vendor_products():
@@ -1295,7 +1297,7 @@ async def fetch_vendor_products():
         try:
             response = await client.get(
                 f"{VENDOR_PUBLIC_API}/products",
-                timeout=10.0
+                timeout=60.0
             )
             response.raise_for_status()
             return response.json()
