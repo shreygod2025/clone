@@ -4,12 +4,11 @@ import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Qu
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import WordPressBlogsSection from '../components/WordPressBlogsSection';
+import { NewsStrip } from '../components/home/NewsStrip';
 import { STI, STI_BG, STI_LOGO, STI_YF_LOGO, STI_CONTACT, STI_DISPLAY_FONT } from '../components/sharkTankTheme';
 import { useUserAuth } from '../context/UserAuthContext';
 
 // ── Shared assets from Robotics Beginner (theme parity) ────────────────────
-const KBC_IMG        = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png';
-const SHARK_TANK_IMG = 'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
 const PARTNER_LOGOS  = Array.from({ length: 46 }, (_, i) => `/school-logos/${i + 1}.png`);
 const SCHOOL_VIDEOS = [
   { name: 'Parle Tilak Vidyalay',            id: 'xHhMLBzB_GU' },
@@ -89,9 +88,6 @@ const MEDIA_LOGOS = [
   { src: '/media-logos/pinkvilla.svg',       alt: 'Pinkvilla' },
 ];
 
-// Shark Tank & KBC YouTube targets (sourced from the About page)
-const SHARK_TANK_YT = 'https://www.youtube.com/watch?v=aVzl6yzPPTw';
-const KBC_YT        = 'https://www.youtube.com/watch?v=8M3A_InpVKw&t=883s';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -496,51 +492,7 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
-            <a
-              href={KBC_YT}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="homepage-media-kbc"
-              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)', textDecoration: 'none', display: 'block', transition: 'transform 0.3s ease, box-shadow 0.3s ease' }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 40px 70px rgba(0,0,0,0.45)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.35)'; }}
-            >
-              <img src={KBC_IMG} alt="Kaun Banega Crorepati" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
-              {/* Watch pill (top-right) — STEM.ORG-style badge */}
-              <div className="home-watch-pill" data-testid="homepage-kbc-watch-pill" style={{ position: 'absolute', bottom: 20, right: 20, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
-                <Play size={13} fill="#fff" strokeWidth={0} /> Watch
-              </div>
-              <div className="home-media-caption">
-                <div style={{ fontSize: '0.7rem', color: '#FCA5A5', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony · KBC</div>
-                <div className="home-media-title" style={{ color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Kaun Banega Crorepati</div>
-                <div className="home-media-sub" style={{ color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Featured as India&apos;s leading EdTech for kids</div>
-              </div>
-            </a>
-
-            <a
-              href={SHARK_TANK_YT}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="homepage-media-shark-tank"
-              style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', height: 300, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 30px 60px rgba(0,0,0,0.35)', textDecoration: 'none', display: 'block', transition: 'transform 0.3s ease, box-shadow 0.3s ease' }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 40px 70px rgba(0,0,0,0.45)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.35)'; }}
-            >
-              <img src={SHARK_TANK_IMG} alt="Shark Tank India" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.94) 100%)' }} />
-              {/* Watch pill (top-right) — STEM.ORG-style badge */}
-              <div className="home-watch-pill" data-testid="homepage-shark-tank-watch-pill" style={{ position: 'absolute', bottom: 20, right: 20, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 999, background: 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)', color: '#fff', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', boxShadow: '0 14px 28px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.35)', border: '2px solid rgba(255,255,255,0.55)' }}>
-                <Play size={13} fill="#fff" strokeWidth={0} /> Watch
-              </div>
-              <div className="home-media-caption">
-                <div style={{ fontSize: '0.7rem', color: '#60A5FA', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: "'Proxima Nova', sans-serif" }}>Sony LIV · Season Finale</div>
-                <div className="home-media-title" style={{ color: '#fff', fontWeight: 700, marginTop: 4, fontFamily: "'Proxima Nova', 'Montserrat', sans-serif" }}>Shark Tank India</div>
-                <div className="home-media-sub" style={{ color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Pitched to India&apos;s top investors on national TV</div>
-              </div>
-            </a>
-          </div>
+          <NewsStrip />
 
           {/* ── Media houses infinite scroll ticker ────────────────────── */}
           <div data-testid="homepage-media-logos" style={{ marginTop: '2.75rem' }}>
