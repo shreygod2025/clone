@@ -373,6 +373,7 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         "additional_info": additional_info,
         "dimensions": dimensions,
         "show_on_shop": show_on_shop,
+        "vendor_category": (v.get("category") or "").strip() or None,
         "category": ov.get("category")
         or ("IoT Kits" if "iot" in name.lower() else "Robotics Kits"),
     }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
@@ -54,6 +54,24 @@ const ProductDetailPage = () => {
   const [notFound, setNotFound] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [descOverflow, setDescOverflow] = useState(false);
+  const [ctaInView, setCtaInView] = useState(true);
+  const descRef = useRef(null);
+  const ctaRef = useRef(null);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) setDescOverflow(el.scrollHeight > DESC_COLLAPSED_PX + 24);
+    setDescExpanded(false);
+  }, [product]);
+
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([e]) => setCtaInView(e.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [product]);
   const techfestKind = isTechfestSlug(slug);
   const isTechfest = !!techfestKind;
 
@@ -361,8 +379,16 @@ const ProductDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px]" data-testid="product-detail-page">
+    <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px] pb-24 sm:pb-0" data-testid="product-detail-page">
       {helmetNode}
+      <PurchaseBar
+        product={product}
+        qty={qty}
+        setQty={setQty}
+        onAdd={handleAdd}
+        onBuy={handleBuyNow}
+        desktopVisible={!ctaInView}
+      />
 
       {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={handleBuyNow} onAdd={handleAdd} /> : <NavBar count={count} openDrawer={openDrawer} />}
 
@@ -481,30 +507,57 @@ const ProductDetailPage = () => {
           </div>
           <p className="mt-1 text-xs text-slate-500">Inclusive of all taxes · Flat ₹150 shipping</p>
 
+          {/* Quantity + CTA — above the fold on desktop; mobile uses the fixed bottom bar */}
+          <div ref={ctaRef} className="mt-5 hidden sm:flex items-stretch gap-3" data-testid="pdp-cta-inline">
+            <QtyStepper qty={qty} setQty={setQty} />
+            <button
+              onClick={handleAdd}
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold uppercase tracking-wider py-3 rounded-lg transition-colors"
+              data-testid="pdp-add-to-cart"
+            >
+              <ShoppingCart className="w-4 h-4" /> Add to Cart
+            </button>
+            <button
+              onClick={handleBuyNow}
+              className="inline-flex items-center justify-center gap-2 bg-[#D63031] hover:bg-red-700 text-white text-sm font-bold uppercase tracking-wider px-6 rounded-lg transition-colors"
+              data-testid="pdp-buy-now"
+            >
+              Buy Now
+            </button>
+          </div>
+
+
           {/* Description — vendor-supplied HTML/Markdown when present (bullets,
               bold, links), else plain text with mobile truncation. */}
           <div className="mt-6" data-testid="pdp-description">
-            {descriptionHtml ? (
-              <div
-                className={`pdp-rich prose prose-sm sm:prose-base max-w-none text-slate-700 leading-relaxed ${!descExpanded ? 'line-clamp-6 sm:line-clamp-none' : ''}`}
-                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                data-testid="pdp-description-html"
-              />
-            ) : (
-              <p
-                className={`text-slate-700 leading-relaxed text-xs sm:text-sm md:text-base ${!descExpanded ? 'line-clamp-4 sm:line-clamp-none' : ''}`}
-              >
-                {product.description || 'A curated OLL Robotics kit built for hands-on learning.'}
-              </p>
-            )}
-            {(product.description || '').length > 220 && (
+            <div
+              ref={descRef}
+              className="relative overflow-hidden transition-[max-height] duration-300"
+              style={{ maxHeight: descExpanded || !descOverflow ? 'none' : DESC_COLLAPSED_PX }}
+            >
+              {descriptionHtml ? (
+                <div
+                  className="pdp-rich prose prose-sm sm:prose-base max-w-none text-slate-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                  data-testid="pdp-description-html"
+                />
+              ) : (
+                <p className="text-slate-700 leading-relaxed text-sm md:text-base">
+                  {product.description || 'A curated OLL Robotics kit built for hands-on learning.'}
+                </p>
+              )}
+              {descOverflow && !descExpanded && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-slate-50 to-transparent" />
+              )}
+            </div>
+            {descOverflow && (
               <button
                 type="button"
                 onClick={() => setDescExpanded((v) => !v)}
-                className="sm:hidden mt-1 text-xs font-bold text-[#D63031] uppercase tracking-wider"
+                className="mt-2 text-xs font-bold text-[#D63031] uppercase tracking-wider hover:underline"
                 data-testid="pdp-description-toggle"
               >
-                {descExpanded ? 'View less ↑' : 'View more ↓'}
+                {descExpanded ? 'Read less ↑' : 'Read more ↓'}
               </button>
             )}
           </div>
@@ -527,55 +580,6 @@ const ProductDetailPage = () => {
               </div>
             )}
           </dl>
-
-          {/* Quantity + CTA */}
-          <div className="mt-7 flex items-stretch gap-3">
-            <div className="inline-flex items-stretch rounded-lg border border-slate-300 overflow-hidden bg-white">
-              <button
-                type="button"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="px-3 text-slate-600 hover:bg-slate-50"
-                aria-label="Decrease quantity"
-                data-testid="pdp-qty-dec"
-              >−</button>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={qty}
-                onChange={(e) => setQty(Math.max(1, Math.min(20, Number(e.target.value || 1))))}
-                className="w-12 text-center text-sm font-semibold focus:outline-none"
-                data-testid="pdp-qty-input"
-              />
-              <button
-                type="button"
-                onClick={() => setQty((q) => Math.min(20, q + 1))}
-                className="px-3 text-slate-600 hover:bg-slate-50"
-                aria-label="Increase quantity"
-                data-testid="pdp-qty-inc"
-              >+</button>
-            </div>
-            <button
-              onClick={handleAdd}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold uppercase tracking-wider py-3 rounded-lg transition-colors"
-              data-testid="pdp-add-to-cart"
-            >
-              <ShoppingCart className="w-4 h-4" /> Add to Cart
-            </button>
-            <button
-              onClick={handleBuyNow}
-              className="hidden sm:inline-flex items-center justify-center gap-2 bg-[#D63031] hover:bg-red-700 text-white text-sm font-bold uppercase tracking-wider px-6 rounded-lg transition-colors"
-              data-testid="pdp-buy-now"
-            >
-              Buy Now
-            </button>
-          </div>
-          <button
-            onClick={handleBuyNow}
-            className="sm:hidden mt-2 w-full inline-flex items-center justify-center gap-2 bg-[#D63031] hover:bg-red-700 text-white text-sm font-bold uppercase tracking-wider py-3 rounded-lg"
-          >
-            Buy Now
-          </button>
 
           {/* Trust badges */}
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
@@ -748,6 +752,44 @@ const TrustBadge = ({ icon, title, sub }) => (
     <div className="min-w-0">
       <p className="text-slate-900 font-semibold leading-tight truncate">{title}</p>
       <p className="text-[10px] text-slate-500 leading-tight truncate">{sub}</p>
+    </div>
+  </div>
+);
+
+const DESC_COLLAPSED_PX = 150;
+
+const QtyStepper = ({ qty, setQty, compact }) => (
+  <div className="inline-flex items-stretch rounded-lg border border-slate-300 overflow-hidden bg-white flex-shrink-0">
+    <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className={`${compact ? 'px-2.5' : 'px-3'} text-slate-600 hover:bg-slate-50`} aria-label="Decrease quantity" data-testid={compact ? 'pdp-bar-qty-dec' : 'pdp-qty-dec'}>−</button>
+    <input
+      type="number" min="1" max="20" value={qty}
+      onChange={(e) => setQty(Math.max(1, Math.min(20, Number(e.target.value || 1))))}
+      className={`${compact ? 'w-9' : 'w-12'} text-center text-sm font-semibold focus:outline-none`}
+      data-testid={compact ? 'pdp-bar-qty-input' : 'pdp-qty-input'}
+    />
+    <button type="button" onClick={() => setQty((q) => Math.min(20, q + 1))} className={`${compact ? 'px-2.5' : 'px-3'} text-slate-600 hover:bg-slate-50`} aria-label="Increase quantity" data-testid={compact ? 'pdp-bar-qty-inc' : 'pdp-qty-inc'}>+</button>
+  </div>
+);
+
+// Fixed bottom purchase bar — always on mobile, on desktop only once the inline CTA scrolls away.
+const PurchaseBar = ({ product, qty, setQty, onAdd, onBuy, desktopVisible }) => (
+  <div
+    className={`fixed inset-x-0 bottom-0 z-[60] bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-transform duration-300 ${desktopVisible ? 'sm:translate-y-0' : 'sm:translate-y-full'}`}
+    style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    data-testid="pdp-purchase-bar"
+  >
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 sm:gap-3">
+      <div className="hidden sm:block min-w-0 flex-1">
+        <p className="text-sm font-semibold text-slate-900 truncate">{product.name.trim()}</p>
+        <p className="text-sm font-bold text-slate-900">₹{Number(product.selling_price || 0).toLocaleString('en-IN')}</p>
+      </div>
+      <QtyStepper qty={qty} setQty={setQty} compact />
+      <button onClick={onAdd} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold uppercase tracking-wider py-3 sm:px-6 rounded-lg transition-colors" data-testid="pdp-bar-add-to-cart">
+        <ShoppingCart className="w-4 h-4" /> <span className="sm:hidden">Add</span><span className="hidden sm:inline">Add to Cart</span>
+      </button>
+      <button onClick={onBuy} className="flex-1 sm:flex-none inline-flex items-center justify-center bg-[#D63031] hover:bg-red-700 text-white text-xs sm:text-sm font-bold uppercase tracking-wider py-3 sm:px-6 rounded-lg transition-colors" data-testid="pdp-bar-buy-now">
+        Buy Now
+      </button>
     </div>
   </div>
 );

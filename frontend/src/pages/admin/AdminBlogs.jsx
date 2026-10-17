@@ -33,6 +33,7 @@ const AdminBlogs = () => {
     excerpt: '',
     content: '',
     cover_image: '',
+    cover_video: '',
     category: 'students',
     author: 'OLL Team',
     blog_type: 'blog', // 'blog' or 'resource'
@@ -142,6 +143,7 @@ const AdminBlogs = () => {
       excerpt: '',
       content: '',
       cover_image: '',
+    cover_video: '',
       category: 'students',
       author: 'OLL Team',
       blog_type: 'blog',
@@ -168,6 +170,7 @@ const AdminBlogs = () => {
       excerpt: blog.excerpt,
       content: blog.content,
       cover_image: blog.cover_image,
+      cover_video: blog.cover_video || '',
       category: blog.category,
       author: blog.author,
       blog_type: blog.blog_type || 'blog',
@@ -438,6 +441,16 @@ const AdminBlogs = () => {
               testId="blog-cover-image"
               getAuthHeaders={getAuthHeaders}
             />
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Cover Video (YouTube URL, optional)</label>
+              <Input
+                value={formData.cover_video || ''}
+                onChange={(e) => setFormData({ ...formData, cover_video: e.target.value })}
+                placeholder="https://www.youtube.com/watch?v=…  — shown in the hero instead of the cover image"
+                data-testid="blog-cover-video"
+              />
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Excerpt / Summary *</label>

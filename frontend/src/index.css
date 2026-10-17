@@ -7,7 +7,7 @@
 /* Prevent any accidental horizontal scroll on the whole app.
    Marquees / very-wide decorative elements should still animate freely
    inside their `overflow: hidden` wrappers. */
-html, body { overflow-x: hidden; max-width: 100vw; }
+html, body { overflow-x: hidden; overflow-x: clip; max-width: 100vw; }
 
 /* ── PDP rich description (vendor-provided Markdown/HTML) ─────────
    Styles the output of our tiny md→html renderer. We don't ship the

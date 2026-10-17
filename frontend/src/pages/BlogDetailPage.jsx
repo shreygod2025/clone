@@ -27,17 +27,19 @@ const SANITIZE_CONFIG = {
 // slipped through as text nodes into responsive iframes. TipTap's Youtube
 // extension already produces iframes natively, so this only kicks in for
 // legacy posts and copy-pasted links.
+const ytEmbed = (url) => {
+  try {
+    const u = new URL(url);
+    let id = '';
+    if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
+    else if (u.hostname.includes('youtube.com')) id = u.searchParams.get('v') || (u.pathname.match(/\/(?:embed|shorts|live)\/([^/?]+)/) || [])[1] || '';
+    id = (id || '').split(/[?&]/)[0];
+    return id ? `https://www.youtube.com/embed/${id}` : '';
+  } catch { return ''; }
+};
+
 const promoteYoutubeToIframes = (doc) => {
-  const toEmbed = (url) => {
-    try {
-      const u = new URL(url);
-      let id = '';
-      if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
-      else if (u.hostname.includes('youtube.com')) id = u.searchParams.get('v') || '';
-      id = (id || '').split(/[?&]/)[0];
-      return id ? `https://www.youtube.com/embed/${id}` : '';
-    } catch { return ''; }
-  };
+  const toEmbed = ytEmbed;
   // 1) Convert any <a href="…youtube…"> whose text is JUST the URL into an iframe.
   doc.querySelectorAll('a[href]').forEach((a) => {
     const href = a.getAttribute('href') || '';
@@ -199,6 +201,8 @@ const BlogDetailPage = () => {
 
   const navbarCtas = (blog.navbar_ctas || []).slice(0, 2);
   const heroCtas = (blog.hero_ctas || []).slice(0, 2);
+  const coverVideo = blog.cover_video ? ytEmbed(blog.cover_video) : '';
+  const hasCover = !!(coverVideo || blog.cover_image);
   const eyebrow = blog.hero_eyebrow || (blog.category ? blog.category.replace(/_/g, ' ') : '');
 
   return (
@@ -224,22 +228,9 @@ const BlogDetailPage = () => {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      {/* ─────────── Navy hero (navbar + title stack) ─────────── */}
-      <header className="relative bg-gradient-to-br from-[#0A1F44] via-[#1E3A5F] to-[#2d3a7d] text-white overflow-hidden">
-        {/* Decorative dot grid */}
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-20 pointer-events-none"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)',
-            backgroundSize: '24px 24px',
-          }}
-        />
-
-        {/* Pill navbar — white rounded shell with logo on the left and
-            admin-configurable CTAs on the right (matches the ICSE blog
-            reference screenshot the user shared). */}
-        <nav className="relative z-10 max-w-7xl mx-auto px-4 pt-6 pb-4">
+      {/* Sticky pill navbar — zero-height wrapper so it overlays the hero */}
+      <div className="sticky top-0 z-50 h-0">
+        <nav className="max-w-7xl mx-auto px-4 pt-4" data-testid="blog-sticky-nav">
           <div className="bg-white/95 backdrop-blur rounded-full shadow-xl flex items-center justify-between pl-5 pr-2 py-2">
             <Link to="/" className="flex items-center gap-2" aria-label="OLL home">
               <img src={OLL_LOGO} alt="OLL" className="h-8" />
@@ -256,7 +247,22 @@ const BlogDetailPage = () => {
           </div>
         </nav>
 
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pt-8 pb-16">
+      </div>
+
+      {/* ─────────── Blue → red hero (title stack + cover) ─────────── */}
+      <header className="relative text-white overflow-hidden" style={{ background: 'linear-gradient(120deg, #0A1F44 0%, #1E3A8A 42%, #7F1D3A 72%, #D63031 100%)' }} data-testid="blog-hero">
+        {/* Decorative dot grid */}
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)',
+            backgroundSize: '24px 24px',
+          }}
+        />
+
+        <div className={`relative z-10 mx-auto px-4 pt-28 pb-16 ${hasCover ? 'max-w-7xl grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center' : 'max-w-5xl'}`}>
+          <div className="min-w-0">
           {/* Breadcrumbs */}
           <nav className="flex items-center text-xs text-white/60 mb-6" aria-label="Breadcrumb">
             <Link to="/" className="hover:text-white">Home</Link>
@@ -310,6 +316,17 @@ const BlogDetailPage = () => {
               ))}
             </div>
           )}
+          </div>
+
+          {hasCover && (
+            <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20 bg-black/20" data-testid="blog-hero-cover">
+              {coverVideo ? (
+                <iframe src={coverVideo} title={blog.title} className="w-full h-full" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen data-testid="blog-hero-video" />
+              ) : (
+                <img src={blog.cover_image} alt={blog.title} className="w-full h-full object-cover" loading="eager" decoding="async" data-testid="blog-hero-image" />
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -317,12 +334,6 @@ const BlogDetailPage = () => {
       <main className="max-w-7xl mx-auto px-4 py-14">
         <div className="grid lg:grid-cols-[1fr_280px] gap-12">
           <article>
-            {blog.cover_image && (
-              <div className="aspect-video rounded-2xl overflow-hidden mb-10 shadow-lg">
-                <img src={blog.cover_image} alt={blog.title} className="w-full h-full object-cover" loading="eager" decoding="async" />
-              </div>
-            )}
-
             <div
               className="blog-prose max-w-none text-slate-700 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: safeHtml }}
@@ -341,7 +352,7 @@ const BlogDetailPage = () => {
           {/* Right-side sticky TOC */}
           {toc.length >= 2 && (
             <aside className="hidden lg:block">
-              <div className="sticky top-24">
+              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-1" data-testid="blog-toc">
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
                   On this page
                 </div>

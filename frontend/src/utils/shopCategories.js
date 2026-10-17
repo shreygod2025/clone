@@ -92,6 +92,23 @@ const RULES = [
   { slug: 'curriculum-robotic-kits', match: ['grade 1 robotics kit', 'grade 2  robotics kit', 'grade 2 robotics kit', 'grade 3 robotics kit', 'grade 4 robotics kit', 'grade 5 robotics kit', 'grade 6 robotics kit', 'grade 7  robotics kit', 'grade 7 robotics kit', 'grade 8 robotics kit', 'grade 9 rob kit', 'grade 10 rob kit'] },
 ];
 
+// Loose match of the vendor-panel `category` text → shop slug.
+const VENDOR_CATEGORY_RULES = [
+  { slug: 'curriculum-books', match: ['book'] },
+  { slug: 'competition-and-advanced-kits', match: ['competition', 'advanced'] },
+  { slug: 'curriculum-robotic-kits', match: ['curriculum', 'robotic kit', 'grade kit', 'grade'] },
+  { slug: 'individual-components', match: ['component', 'part', 'spare'] },
+];
+
+const fromVendorCategory = (raw) => {
+  const v = (raw || '').toLowerCase().trim();
+  if (!v) return null;
+  const slugified = v.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (CATEGORY_BY_SLUG[slugified]) return slugified;
+  const rule = VENDOR_CATEGORY_RULES.find((r) => r.match.some((m) => v.includes(m)));
+  return rule ? rule.slug : null;
+};
+
 /**
  * Classify a product → one of 4 shop category slugs.
  * Falls back to 'individual-components' which is the right bucket for
@@ -103,6 +120,8 @@ export const getShopCategorySlug = (product) => {
   if (product.shop_category && CATEGORY_BY_SLUG[product.shop_category]) {
     return product.shop_category;
   }
+  const vendorSlug = fromVendorCategory(product.vendor_category);
+  if (vendorSlug) return vendorSlug;
   const name = (product.name || '').toLowerCase().trim();
   for (const rule of RULES) {
     for (const needle of rule.match) {
