@@ -536,6 +536,7 @@ class Blog(BaseModel):
     excerpt: str
     content: str
     cover_image: str = ""
+    cover_video: str = ""
     category: str  # students, parents, educators, schools
     author: str
     blog_type: str = "blog"  # 'blog' or 'resource'
@@ -565,6 +566,7 @@ class BlogCreate(BaseModel):
     excerpt: str
     content: str
     cover_image: str = ""
+    cover_video: str = ""
     category: str
     author: str
     blog_type: str = "blog"
@@ -588,6 +590,7 @@ class BlogUpdate(BaseModel):
     excerpt: Optional[str] = None
     content: Optional[str] = None
     cover_image: Optional[str] = None
+    cover_video: Optional[str] = None
     category: Optional[str] = None
     blog_type: Optional[str] = None
     is_published: Optional[bool] = None

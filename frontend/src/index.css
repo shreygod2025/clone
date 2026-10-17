@@ -8,6 +8,7 @@
    Marquees / very-wide decorative elements should still animate freely
    inside their `overflow: hidden` wrappers. */
 html, body { overflow-x: hidden; overflow-x: clip; max-width: 100vw; }
+body.pdp-bar-active .raise-query-btn { bottom: 88px !important; }
 
 /* ── PDP rich description (vendor-provided Markdown/HTML) ─────────
    Styles the output of our tiny md→html renderer. We don't ship the

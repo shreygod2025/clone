@@ -66,6 +66,11 @@ const ProductDetailPage = () => {
   }, [product]);
 
   useEffect(() => {
+    document.body.classList.add('pdp-bar-active');
+    return () => document.body.classList.remove('pdp-bar-active');
+  }, []);
+
+  useEffect(() => {
     const el = ctaRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return undefined;
     const io = new IntersectionObserver(([e]) => setCtaInView(e.isIntersecting), { threshold: 0 });
@@ -379,7 +384,7 @@ const ProductDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px] pb-24 sm:pb-0" data-testid="product-detail-page">
+    <div className="min-h-screen bg-slate-50 pt-[64px] sm:pt-[72px] pb-24 sm:pb-20" data-testid="product-detail-page">
       {helmetNode}
       <PurchaseBar
         product={product}
@@ -387,7 +392,7 @@ const ProductDetailPage = () => {
         setQty={setQty}
         onAdd={handleAdd}
         onBuy={handleBuyNow}
-        desktopVisible={!ctaInView}
+        desktopVisible={!ctaInView && !isTechfest}
       />
 
       {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={handleBuyNow} onAdd={handleAdd} /> : <NavBar count={count} openDrawer={openDrawer} />}
@@ -474,7 +479,7 @@ const ProductDetailPage = () => {
         {/* Details */}
         <div className="flex flex-col">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#D63031]">
-            {product.category}
+            {CATEGORY_BY_SLUG[getShopCategorySlug(product)]?.name || product.category}
           </p>
           <h1 className="mt-1 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 leading-tight" data-testid="pdp-title">
             {product.name.trim()}

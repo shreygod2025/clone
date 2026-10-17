@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend E2E for blog hero/sticky nav/TOC/cover video, PDP collapse + purchase bar (desktop & mobile), techfest kits, shop categories and regressions (home, Shark Tank). Everything passed except Blog cover_video, which did not persist at first. Cause: cover_video had been added to the dead Blog models in server.py, but the active blog routes (routes/educators.py) use their own Blog/BlogCreate/BlogUpdate models, so Pydantic silently dropped the field. Testing agent added cover_video to the 3 models in routes/educators.py. After that, admin edit persists the field and the hero shows a YouTube iframe. Test blog was created via the admin UI and deleted afterwards.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PATCH/POST /api/blogs, GET /api/blogs/{slug}", "issue": "cover_video was silently dropped because the field existed only in the unused server.py models, not in routes/educators.py Blog/BlogCreate/BlogUpdate. FIXED by testing agent (added the field to all 3 models).", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PDP mobile 390px", "issues": ["The 'Need Help?' floating widget (top 776, bottom 820) sits behind pdp-purchase-bar (top 783, z-60). The bar stays fully clickable (elementFromPoint returns the bar), but a ~7px dark sliver of the widget sticks out above the bar and the widget can't be used on the PDP. Hide the widget or raise it above the bar (bottom offset ≈ bar height) on PDP."]},
+      {"screen": "PDP desktop", "issues": ["Once the bottom bar appears it also covers the Need Help widget at bottom-right.", "Page uses pb-24 sm:pb-0, so on desktop the visible bar covers the last ~65px of the footer at page bottom. Add bottom padding while the bar is visible."]},
+      {"screen": "Techfest kit PDP desktop", "issues": ["After scrolling, Add to Cart / Buy Now show twice: in the techfest top nav and in the bottom purchase bar. Optional: suppress one of them."]},
+      {"screen": "PDP", "issues": ["Eyebrow shows the raw backend category 'ROBOTICS KITS', but the breadcrumb shows 'Curriculum Robotic Kits' / 'Competition Kits & Advanced Kits'. The labels don't match."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Review the cover_video fix in /app/backend/routes/educators.py (lines ~539, ~569, ~592). Consider deleting or deduplicating the unused Blog models in server.py so this doesn't happen again.",
+    "Move or hide the Need Help widget on PDP pages so it isn't half-hidden behind the bottom purchase bar (mobile + desktop)",
+    "Add bottom padding on desktop PDP when the purchase bar is visible so the footer isn't covered"
+  ],
+  "critical_code_review_comments": [
+    "Duplicate Blog/BlogCreate/BlogUpdate models exist in server.py (unused by routes) and in routes/educators.py. This is what caused the cover_video miss.",
+    "shopCategories.fromVendorCategory: the 'robotic kit' substring doesn't match the common vendor text 'Robotics Kits' (because of the plural 's'), so such a value falls through to heuristics. 'part' would also match unrelated words like 'party'. Consider token/regex matching (e.g. /robotics?\\s+kits?/).",
+    "ProductDetailPage.jsx is 1078 lines; consider splitting out PurchaseBar/QtyStepper/TechfestKitNavBar.",
+    "Shop: 'Curriculum Books' shows 0 items (vendor category null; no products match the book heuristics). Confirm this is expected."
+  ],
+  "updated_files": ["/app/backend/routes/educators.py"],
+  "success_rate": {"backend": "n/a (frontend only; 1 backend model bug found & fixed)", "frontend": "95%"},
+  "seed_data_creation": "Created TEST blog 'test-sticky-hero-blog-t1' (id d09fc13c-...) via admin UI; deleted afterwards (GET returns 404).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified: blog-hero gradient blue→red; cover sits right of the title at 1920 (cover x=994, h1 x=336); no img in blog-body; blog-sticky-nav top=0 and blog-toc top=96 while scrolling 800–3000px; cover video renders an iframe with youtube.com/embed/dQw4w9WgXcQ; at 390px the cover sits below the title with scrollWidth=390. PDP grade-5 kit at 1920x800: pdp-cta-inline top=353 (visible); Read more → Read less (176→492px); purchase bar translate-y 65 → 0 on scroll and back. Mobile: bar always visible, qty stepper works, Add puts qty into localStorage oll_shop_cart_v1, Buy Now → /shop/checkout. Techfest sumo/racer kits work. /shop shows 4 cards: 0/8/6/90 = 104. Home and Shark Tank have no horizontal overflow at 1920/390."
+}
