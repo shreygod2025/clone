@@ -109,7 +109,8 @@ def _sample_image_for(product_id: str) -> str:
 # returns 404. The same file IDs ARE served by the active vendor host. Rewrite
 # the URL so images load on the storefront.
 _VENDOR_IMAGE_HOST_REWRITES = {
-    "oll-procure.preview.emergentagent.com": "vendorplus-4.emergent.host",
+    "oll-procure.preview.emergentagent.com": "vendor-panel-6kjc.onrender.com",
+    "vendorplus-4.emergent.host": "vendor-panel-6kjc.onrender.com",
 }
 
 
