@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the 3 requested features end to end. (1) The CBSE CT&AI brochure gate downloads the NEW PDF: the network request goes to the 3b00257a6b0c26d6_Brochure%20CT%20and%20AI_compressed.pdf URL and the file is 2,629,742 bytes, same size as the new S3 asset. (2) Techfest edit-submission portal: backend pytest 13/13 passed. Covered: Team ID login (case-insensitive) and unknown Team ID 404; phone OTP request, verify with a seeded OTP, OTP reuse rejected, unknown phone 404; email OTP flow; PATCH persists every field incl. team members and member ID proof; duplicate Team ID returns 409; same Team ID re-saved returns 200; team token PATCH on another submission returns 403; no token returns 401; cutoff labels west='1 Nov 2026, 11:59 PM IST' and east='20 Oct 2026, 11:59 PM IST'; edit_window_open present. UI: the Edit Submission button goes to /techfest/my-submission. Team ID login, unknown Team ID toast and phone OTP login (WhatsApp + masked email e1***@oll.co shown) all work. Editor: zone shows only for sumo/race and project category only for innovation. Edited city, school, age category, added/removed a member and uploaded a PNG ID proof (View current file link shown). Save showed toast 'Submission updated.' and values persisted after reload. Duplicate Team ID showed the duplicate error toast. (3) Admin Robotics Shop Export XLSX: toast 'Exported 8 orders' matches Total Orders stat 8; file oll-shop-orders-2026-10-19.xlsx downloaded. The >1000-order paging path was not exercised (only 8 orders); the code and API paging (limit/offset/total) were checked to be correct. Seed submission 6ab40f21… restored to its original values.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/schools/register (called by CBSE CT&AI brochure gate)", "issue": "Returns 404 Not Found: the route does not exist in the backend (only /schools/inquiry, /schools/onboard, /schools/onboarding exist). The PDF still downloads, but EVERY brochure lead (school name + phone) is silently lost. The frontend swallows the error. Probably existed before this change, but it is business-impacting."},
+      {"endpoint": "PATCH /api/techfest/submission-portal/submission/{id}", "issue": "Fields cannot be cleared: the frontend drops '' values and the backend drops None. A student cannot remove a Team ID / Competition ID / permission letter once set."},
+      {"endpoint": "PATCH /api/techfest/submission-portal/submission/{id}", "issue": "When the track changes from robo_sumo/race to a non-zonal track, the frontend deletes 'zone' from the body but the old zone stays in the DB. An old 'east' zone would keep applying the earlier cutoff and still shows in the card header."},
+      {"endpoint": "POST /api/techfest/submission-portal/request-otp", "issue": "The 30s cooldown is recorded before the 404 'No submission found' check, so a mistyped phone locks that IP+identity for 30s. Low impact."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SubmissionEditor ID Proof Type", "issue": "Shows 'Select…' when the original submission had no id_proof_type, even though an ID proof is uploaded. Cosmetic.", "selector": "[data-testid='portal-field-id_proof_type']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "CBSE CT&AI brochure lead capture", "issue": "Lead POST hits a non-existent /api/schools/register (404), so leads are not stored in the CRM", "affected_selectors": ["[data-testid='cbse-brochure-submit']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_techfest_submission_portal.py", "/app/backend/tests/insert_portal_otp.py", "/app/test_reports/pytest/pytest_portal.xml"],
+  "action_items": [
+    "Fix the CBSE CT&AI brochure lead capture: point it to an existing endpoint (e.g. /api/schools/inquiry with the right payload) or add /api/schools/register; currently 404 and leads are lost",
+    "Optional: allow clearing fields in the portal PATCH (send null and use exclude_unset semantics instead of dropping None)",
+    "Optional: when the track becomes non-zonal, explicitly unset zone so the east cutoff no longer applies"
+  ],
+  "critical_code_review_comments": [
+    "techfest_submission_portal.py: the module docstring still says the cutoff defaults to 2026-10-20; the actual default is 1 Nov (east 20 Oct). Stale comment.",
+    "The _jwt_secret fallback 'dev-techfest-portal-secret' is used if JWT_SECRET is unset: a weak default secret.",
+    "Team ID login gives full edit rights (including email and phone) to anyone who knows a Team ID. The user chose this, but it is a security trade-off worth noting.",
+    "An email-OTP token is scoped by email; if the student changes their email in the editor, they lose access in the current session."
+  ],
+  "updated_files": ["/app/backend/tests/test_techfest_submission_portal.py", "/app/backend/tests/insert_portal_otp.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% of requested flows (brochure lead-capture 404 is a separate issue found in passing)"},
+  "seed_data_creation": "Temporary TEST_ submissions (TEST-DUP-TEAM, TEST-EAST-TEAM, TEST-DUP-UI2) were created and deleted. Seed 6ab40f21fc0667aceb877bd6 was restored (full_name Test Lead, west, robo_sumo, TF-TEAM-1, city Pune, school E1 Test School, junior, original team member; id_proof_url unset). Portal OTP docs were cleaned up.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_techfest_submission_portal.py; it snapshots and restores the seed doc. For a phone-OTP UI test, run python3 /app/backend/tests/insert_portal_otp.py after the OTP step appears, then enter 123456. request-otp has a 30s per-IP cooldown. Server date is 19 Oct 2026, so the east window is still open."
+}

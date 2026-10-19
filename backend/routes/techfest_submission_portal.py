@@ -216,8 +216,6 @@ async def submission_portal_request_otp(payload: RequestOtpIn, request: Request)
     if now_ts - last < OTP_RESEND_COOLDOWN_SECONDS:
         wait = int(OTP_RESEND_COOLDOWN_SECONDS - (now_ts - last))
         raise HTTPException(status_code=429, detail=f"Please wait {wait}s before requesting another code.")
-    _otp_rate_limit[rkey] = now_ts
-
     if ident.startswith("phone:"):
         p10 = ident.split(":", 1)[1]
         sub = await db.techfest_submissions.find_one(_phone_query(p10), sort=[("created_at", -1)])
@@ -230,6 +228,7 @@ async def submission_portal_request_otp(payload: RequestOtpIn, request: Request)
         # Don't reveal whether an email exists.
         phone = (sub or {}).get("phone") or ""
     name = (sub or {}).get("full_name") or ""
+    _otp_rate_limit[rkey] = now_ts
 
     otp = f"{random.randint(0, 999999):06d}"
     await db.techfest_portal_otps.insert_one({
@@ -360,7 +359,7 @@ async def submission_portal_update(
         raise HTTPException(status_code=403, detail=f"Submission edits are closed for this zone (cutoff: {_cutoff_label(doc)}).")
 
     # Only persist fields the caller actually sent.
-    updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    updates = {k: (v.strip() if isinstance(v, str) else v) for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if "email" in updates:
         updates["email"] = updates["email"].lower().strip()
     if not updates:

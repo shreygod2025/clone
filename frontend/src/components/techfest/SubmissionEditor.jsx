@@ -16,6 +16,8 @@ const TEXT_FIELDS = [
 ];
 const ALL_KEYS = [...TEXT_FIELDS.map(([k]) => k), 'age_category', 'competition', 'zone', 'project_category', 'project_theme', 'id_proof_url', 'id_proof_type', 'school_permission_url'];
 
+const CLEARABLE = ['team_id', 'competition_id', 'school_permission_url', 'project_category', 'project_theme', 'state', 'city', 'pincode', 'country'];
+
 const uploadFile = async (file) => {
   const fd = new FormData();
   fd.append('file', file);
@@ -52,7 +54,7 @@ const FileField = ({ label, url, onPicked, busy, testid }) => (
 const ID_TYPES = [{ slug: 'aadhar', label: 'Aadhar card' }, { slug: 'pan', label: 'PAN card' }, { slug: 'other', label: 'Other' }];
 
 export default function SubmissionEditor({ sub, onCancel, onSaved }) {
-  const [form, setForm] = useState(() => Object.fromEntries(ALL_KEYS.map((k) => [k, sub[k] ?? ''])));
+  const [form, setForm] = useState(() => ({ ...Object.fromEntries(ALL_KEYS.map((k) => [k, sub[k] ?? ''])), id_proof_type: sub.id_proof_type || 'aadhar' }));
   const [members, setMembers] = useState(() => (sub.team_members || []).map((m) => ({ ...emptyMember(), ...m })));
   const [uploading, setUploading] = useState('');
   const [saving, setSaving] = useState(false);
@@ -71,8 +73,12 @@ export default function SubmissionEditor({ sub, onCancel, onSaved }) {
     setSaving(true);
     try {
       const body = {};
-      Object.entries(form).forEach(([k, v]) => { if (v !== '' && v !== null && v !== undefined) body[k] = k === 'age' ? Number(v) : v; });
-      if (!zonal) delete body.zone;
+      Object.entries(form).forEach(([k, v]) => {
+        if (v !== '' && v !== null && v !== undefined) body[k] = k === 'age' ? Number(v) : v;
+        else if (CLEARABLE.includes(k)) body[k] = '';
+      });
+      if (!zonal) body.zone = '';
+      if (!innovation) { body.project_category = ''; body.project_theme = ''; }
       body.team_members = members.filter((m) => m.name?.trim()).map((m) => ({ ...m, email: m.email?.trim() || null }));
       const res = await fetch(`${API_BASE}/techfest/submission-portal/submission/${sub.id}`, {
         method: 'PATCH',
