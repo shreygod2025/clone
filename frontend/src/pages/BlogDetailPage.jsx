@@ -230,7 +230,7 @@ const BlogDetailPage = () => {
 
       {/* Sticky pill navbar — zero-height wrapper so it overlays the hero */}
       <div className="sticky top-0 z-50 h-0">
-        <nav className="max-w-7xl mx-auto px-4 pt-4" data-testid="blog-sticky-nav">
+        <nav className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-4" data-testid="blog-sticky-nav">
           <div className="bg-white/95 backdrop-blur rounded-full shadow-xl flex items-center justify-between pl-5 pr-2 py-2">
             <Link to="/" className="flex items-center gap-2" aria-label="OLL home">
               <img src={OLL_LOGO} alt="OLL" className="h-8" />
@@ -261,7 +261,7 @@ const BlogDetailPage = () => {
           }}
         />
 
-        <div className={`relative z-10 mx-auto px-4 pt-28 pb-16 ${hasCover ? 'max-w-7xl grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center' : 'max-w-5xl'}`}>
+        <div className={`relative z-10 mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-28 pb-16 ${hasCover ? 'max-w-7xl grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center' : 'max-w-5xl'}`}>
           <div className="min-w-0">
           {/* Breadcrumbs */}
           <nav className="flex items-center text-xs text-white/60 mb-6" aria-label="Breadcrumb">
@@ -331,9 +331,9 @@ const BlogDetailPage = () => {
       </header>
 
       {/* ─────────── Body + sticky right TOC ─────────── */}
-      <main className="max-w-7xl mx-auto px-4 py-14">
-        <div className="grid lg:grid-cols-[1fr_280px] gap-12">
-          <article>
+      <main className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 py-14">
+        <div className="grid lg:grid-cols-[1fr_280px] gap-12 xl:gap-20">
+          <article className="min-w-0 max-w-[760px]">
             <div
               className="blog-prose max-w-none text-slate-700 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: safeHtml }}

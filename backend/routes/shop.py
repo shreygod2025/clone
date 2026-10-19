@@ -1056,11 +1056,52 @@ async def admin_list_orders(
 ):
     q: dict = {}
     if status:
-        q["payment_status"] = status
+        q["payment_status"] = {"$regex": f"^{re.escape(status)}$", "$options": "i"}
+    limit = max(1, min(limit, 5000))
     cursor = db.shop_orders.find(q, {"_id": 0}).sort("created_at", -1).skip(offset).limit(limit)
     orders = await cursor.to_list(limit)
+    for o in orders:
+        o["payment_status"] = (o.get("payment_status") or "pending").lower()
     total = await db.shop_orders.count_documents(q)
     return {"orders": orders, "total": total}
+
+
+@router.get("/admin/shop/orders/stats")
+async def admin_order_stats(user: dict = Depends(get_current_user)):
+    """Totals across ALL shop orders (not just the loaded page). Status is
+    matched case-insensitively — legacy rows were written as 'PAID'."""
+    rows = await db.shop_orders.aggregate([
+        {"$group": {
+            "_id": {"$toLower": {"$ifNull": ["$payment_status", "pending"]}},
+            "count": {"$sum": 1},
+            "total": {"$sum": {"$toDouble": {"$ifNull": ["$total", 0]}}},
+            "subtotal": {"$sum": {"$toDouble": {"$ifNull": ["$subtotal", 0]}}},
+            "refunded_amt": {"$sum": {"$toDouble": {"$ifNull": ["$refund_amount", 0]}}},
+        }},
+    ]).to_list(50)
+    by = {r["_id"]: r for r in rows}
+    def pick(key, field):
+        return round(by.get(key, {}).get(field, 0) or 0, 2)
+    paid_count = int(pick("paid", "count"))
+    paid_total = pick("paid", "total")
+    # Partial refunds leave money with us — count what was kept.
+    refund_retained = round(pick("refunded", "total") - pick("refunded", "refunded_amt"), 2)
+    net_revenue = round(paid_total + max(refund_retained, 0), 2)
+    return {
+        "net_revenue": net_revenue,
+        "refunded_amount": pick("refunded", "refunded_amt"),
+        "total_orders": int(sum(r["count"] for r in rows)),
+        "paid_count": paid_count,
+        "paid_revenue": paid_total,
+        "paid_subtotal": pick("paid", "subtotal"),
+        "paid_shipping": round(paid_total - pick("paid", "subtotal"), 2),
+        "aov": round(paid_total / paid_count, 2) if paid_count else 0,
+        "pending_count": int(pick("pending", "count")),
+        "pending_value": pick("pending", "total"),
+        "refunded_count": int(pick("refunded", "count")),
+        "refunded_value": pick("refunded", "total"),
+        "other": {k: {"count": v["count"], "total": round(v["total"], 2)} for k, v in by.items() if k not in ("paid", "pending", "refunded")},
+    }
 
 
 @router.get("/admin/shop/purchase-orders")

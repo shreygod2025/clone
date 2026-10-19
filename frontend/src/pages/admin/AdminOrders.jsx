@@ -1284,8 +1284,8 @@ const AdminOrders = () => {
           </div>
         )}
 
-        {/* Stats Cards - Show different stats based on active tab */}
-        {activeTab !== 'school-students' ? (
+        {/* Stats Cards - Show different stats based on active tab (shop tab has its own) */}
+        {activeTab === 'robotics-shop' ? null : activeTab !== 'school-students' ? (
           /* Stats for School Payments and Student Payments tabs */
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">

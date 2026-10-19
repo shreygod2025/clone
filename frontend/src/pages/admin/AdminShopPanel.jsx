@@ -6,6 +6,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const fmtINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
 /**
  * AdminShopPanel — Robotics Shop orders manager.
@@ -39,6 +40,7 @@ export const ShopOrdersSection = () => <OrdersTab embedded />;
 const OrdersTab = ({ embedded = false }) => {
   const { getAuthHeaders } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [serverStats, setServerStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
@@ -75,10 +77,12 @@ const OrdersTab = ({ embedded = false }) => {
     try {
       const res = await axios.get(`${API}/admin/shop/orders`, {
         headers: getAuthHeaders(),
-        params: { status: statusFilter || undefined, limit: 200 },
+        params: { status: statusFilter || undefined, limit: 2000 },
       });
       const list = res.data?.orders || [];
       setOrders(list);
+      axios.get(`${API}/admin/shop/orders/stats`, { headers: getAuthHeaders() })
+        .then((r) => setServerStats(r.data)).catch(() => setServerStats(null));
       // Bulk-fetch POs for paid orders so the table can show tracking inline.
       const paid = list.filter((o) => o.payment_status === 'paid' && (o.purchase_orders?.length || 0) > 0);
       if (paid.length) {
@@ -214,69 +218,18 @@ const OrdersTab = ({ embedded = false }) => {
     return sorted;
   }, [orders, search, productFilter, sortKey]);
 
-  // Stats are computed across ALL orders (not filtered) so admins always see
-  // the global picture even while drilling into a search.
-  const stats = useMemo(() => {
-    let totalRevenue = 0;
-    let paidCount = 0;
-    let pendingRevenue = 0;
-    let pendingCount = 0;
-    for (const o of orders) {
-      const total = Number(o.total) || 0;
-      if (o.payment_status === 'paid') {
-        totalRevenue += total;
-        paidCount += 1;
-      } else {
-        pendingRevenue += total;
-        pendingCount += 1;
-      }
-    }
-    return {
-      totalOrders: orders.length,
-      paidCount,
-      totalRevenue,
-      pendingCount,
-      pendingRevenue,
-    };
-  }, [orders]);
-
-  const copyTracking = async (url) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Tracking link copied');
-    } catch {
-      toast.error('Could not copy — please copy manually');
-    }
-  };
-
-  // Re-check payment status with Cashfree for a specific order.
-  const verifyWithCashfree = async (order) => {
-    setVerifyingId(order.id);
-    try {
-      const r = await axios.post(
-        `${API}/admin/shop/orders/${order.id}/verify`,
-        {},
-        { headers: getAuthHeaders() }
-      );
-      const { old_status, new_status, cashfree_status, status_changed, message } = r.data || {};
-      if (status_changed) {
-        toast.success(`Status updated: ${old_status} → ${new_status}`);
-        await load();
-      } else if (message) {
-        toast.info(message);
-      } else {
-        toast.info(`Cashfree says: ${cashfree_status || new_status}`);
-      }
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || 'Verify failed');
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
-  const onRefundDone = async () => {
-    setRefundOrder(null);
-    await load();
+  // Stats come from the server aggregate across ALL orders (not just the loaded list).
+  const stats = {
+    totalOrders: serverStats?.total_orders ?? 0,
+    paidCount: serverStats?.paid_count ?? 0,
+    totalRevenue: serverStats?.paid_revenue ?? 0,
+    paidShipping: serverStats?.paid_shipping ?? 0,
+    aov: serverStats?.aov ?? 0,
+    pendingCount: serverStats?.pending_count ?? 0,
+    pendingRevenue: serverStats?.pending_value ?? 0,
+    refundedCount: serverStats?.refunded_count ?? 0,
+    refundedValue: serverStats?.refunded_amount ?? 0,
+    netRevenue: serverStats?.net_revenue ?? 0,
   };
 
   return (
@@ -286,26 +239,27 @@ const OrdersTab = ({ embedded = false }) => {
         <StatCard
           label="Total Orders"
           value={stats.totalOrders}
+          sub={stats.refundedCount ? `${stats.refundedCount} refunded · ${fmtINR(stats.refundedValue)}` : undefined}
           accent="from-slate-700 to-slate-500"
           testId="shop-stat-total-orders"
         />
         <StatCard
           label="Revenue (Paid)"
-          value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`}
-          sub={`${stats.paidCount} order${stats.paidCount === 1 ? '' : 's'}`}
+          value={fmtINR(stats.totalRevenue)}
+          sub={`${stats.paidCount} paid order${stats.paidCount === 1 ? '' : 's'} · incl. ${fmtINR(stats.paidShipping)} shipping${stats.netRevenue !== stats.totalRevenue ? ` · net after refunds ${fmtINR(stats.netRevenue)}` : ''}`}
           accent="from-emerald-700 to-emerald-500"
           testId="shop-stat-revenue"
         />
         <StatCard
           label="Pending"
           value={stats.pendingCount}
-          sub={`₹${stats.pendingRevenue.toLocaleString('en-IN')} unpaid`}
+          sub={`${fmtINR(stats.pendingRevenue)} not yet paid`}
           accent="from-amber-600 to-amber-400"
           testId="shop-stat-pending"
         />
         <StatCard
           label="AOV (Paid)"
-          value={`₹${(stats.paidCount ? Math.round(stats.totalRevenue / stats.paidCount) : 0).toLocaleString('en-IN')}`}
+          value={fmtINR(stats.aov)}
           sub="avg order value"
           accent="from-indigo-700 to-indigo-500"
           testId="shop-stat-aov"
@@ -429,7 +383,7 @@ const OrdersTab = ({ embedded = false }) => {
                       </p>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
-                      ₹{o.total?.toLocaleString('en-IN')}
+                      {fmtINR(o.total)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Badge
@@ -716,14 +670,14 @@ const OrderDetailModal = ({ order, onClose }) => {
                     <p className="text-sm font-medium">{it.name}</p>
                     <p className="text-xs text-slate-500">Qty {it.quantity}</p>
                   </div>
-                  <span className="text-sm font-semibold">₹{it.line_total?.toLocaleString('en-IN')}</span>
+                  <span className="text-sm font-semibold">{fmtINR(it.line_total)}</span>
                 </div>
               ))}
             </div>
             <div className="text-sm mt-3 space-y-1 text-right">
-              <p>Subtotal: <strong>₹{order.subtotal?.toLocaleString('en-IN')}</strong></p>
+              <p>Subtotal: <strong>{fmtINR(order.subtotal)}</strong></p>
               <p>Delivery: <strong>₹{order.delivery_charge}</strong></p>
-              <p className="text-base">Total Paid: <strong>₹{order.total?.toLocaleString('en-IN')}</strong></p>
+              <p className="text-base">Total Paid: <strong>{fmtINR(order.total)}</strong></p>
             </div>
           </div>
 
