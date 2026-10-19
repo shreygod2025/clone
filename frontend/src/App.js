@@ -437,8 +437,8 @@ function App() {
               <Route path="/school/robotics/icse-9" element={<Navigate to="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" replace />} />
               <Route path="/school/robotics/icse-10" element={<Navigate to="/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th" replace />} />
               <Route path="/school/robotics/pre-school"    element={<StemPreschoolLanding />} />
-              <Route path="/school/cs/cbse"               element={<CBSECTAILanding />} />
-              <Route path="/school/cs/cbse-ct-ai"         element={<CBSECTAILanding />} />
+              <Route path="/school/cs/cbse"               element={<Navigate to="/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8" replace />} />
+              <Route path="/school/cs/cbse-ct-ai"         element={<Navigate to="/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8" replace />} />
               <Route path="/school/cs/future-skills-icse" element={<FutureSkillsLanding board="ICSE" />} />
               <Route path="/school/cs/future-skills-cbse" element={<FutureSkillsLanding board="CBSE" />} />
               {/* SEO-friendly keyword-rich canonicals for Future Skills funnels */}
@@ -449,7 +449,8 @@ function App() {
               <Route path="/school/icse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8" element={<FutureSkillsLanding board="ICSE" />} />
               <Route path="/school/stem-preschool" element={<StemPreschoolLanding />} />
               <Route path="/school/preschool/stem-jr-sr-kg" element={<StemPreschoolLanding />} />
-              <Route path="/school/cs/computational-thinking-and-ai-classes-3-to-8" element={<CBSECTAILanding />} />
+              <Route path="/school/cs/computational-thinking-and-ai-classes-3-to-8" element={<Navigate to="/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8" replace />} />
+              <Route path="/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8" element={<CBSECTAILanding />} />
               <Route path="/admin/schools/onboarding-tracker" element={<ProtectedRoute permission="schools"><AdminOnboardingTracker /></ProtectedRoute>} />
               <Route path="/admin/school-payments" element={<Navigate to="/admin/orders" replace />} />
               <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute permission="orders"><SchoolPaymentTracker /></ProtectedRoute>} />

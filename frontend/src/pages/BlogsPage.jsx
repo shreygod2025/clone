@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { BlogSuccessStories } from '../components/BlogSuccessStories';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -242,6 +243,8 @@ const BlogsPage = () => {
           )}
         </div>
       </main>
+
+      <BlogSuccessStories />
 
       <Footer />
     </div>

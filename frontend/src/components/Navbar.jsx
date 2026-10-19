@@ -1,3 +1,4 @@
+import { OfferingsMegaMenu } from './OfferingsMegaMenu';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogIn, GraduationCap, Users, Handshake, BookOpen, ArrowRight } from 'lucide-react';
@@ -337,7 +338,9 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
           {/* Center nav links */}
           <div className="oll-pillnav-links">
             {navLinks.map((link) => (
-              link.external ? (
+              link.path === '/offerings' ? (
+                <OfferingsMegaMenu key={link.path} className={isActive(link.path) ? 'active' : ''} testId="pill-nav-link-offerings" />
+              ) : link.external ? (
                 <a
                   key={link.path}
                   href={link.path}
@@ -421,7 +424,13 @@ const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free D
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map(link => (
-              link.external ? (
+              link.path === '/offerings' ? (
+                <OfferingsMegaMenu
+                  key={link.path}
+                  className={`font-medium transition-colors ${isActive(link.path) ? 'text-[#D63031]' : 'text-slate-600 hover:text-[#1E3A5F]'}`}
+                  testId="nav-link-offerings"
+                />
+              ) : link.external ? (
                 <a
                   key={link.path}
                   href={link.path}

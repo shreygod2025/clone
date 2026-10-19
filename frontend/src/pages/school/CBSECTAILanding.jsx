@@ -159,7 +159,7 @@ const SEO_IMAGE = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4
 // Keyword-rich canonical slug. The short `/school/cs/cbse-ct-ai` and `/school/cs/cbse`
 // routes still render the same page (see App.js) so any inbound backlinks keep working,
 // but Google is told the canonical URL is the long descriptive one for ranking equity.
-const CANONICAL_PATH = '/school/cs/computational-thinking-and-ai-classes-3-to-8';
+const CANONICAL_PATH = '/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8';
 
 const FAQ_ITEMS = [
   {

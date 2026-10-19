@@ -13,7 +13,7 @@ import { ArrowUpRight } from 'lucide-react';
 
 const ALL_PROGRAMS = {
   'cbse-ct-ai': {
-    href: '/school/cs/computational-thinking-and-ai-classes-3-to-8',
+    href: '/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8',
     title: 'CBSE Computational Thinking & AI',
     tag: 'CBSE · Classes 3-8',
     body: 'Books, Virtual Lab and Teacher LMS — mapped to CBSE Circular Acad-15/2026 (NEP 2020).',

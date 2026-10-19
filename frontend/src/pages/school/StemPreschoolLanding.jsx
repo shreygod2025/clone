@@ -15,6 +15,8 @@
  * coming soon" ribbon. To attach a video later, just paste the URL
  * into the module entry and hot-reload does the rest.
  */
+import LMSSection from '../../components/school/LMSSection';
+import { RbAboutOLL, RbRealSchools } from '../../components/school/RbTrustSections';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -370,113 +372,20 @@ export default function StemPreschoolLanding() {
         </p>
       </section>
 
-      {/* ═══════ LMS · one dashboard, three audiences ═══════ */}
-      <section id="lms" className="relative py-16 scroll-mt-24" style={{ background: 'linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)' }} data-testid="stem-lms">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-10 gap-3">
-            <div>
-              <div className="sp-eye text-[#DC2626] flex items-center gap-1.5">
-                <MonitorSmartphone className="w-3.5 h-3.5" /> LMS &amp; Parent App
-              </div>
-              <h2 className="sp-h2 text-3xl sm:text-4xl text-[#0A1F44] mt-1">
-                One <span className="text-[#DC2626]">dashboard</span> — Teachers, Principal, Parents
-              </h2>
-              <p className="sp-body text-slate-600 mt-2 max-w-xl">
-                Every session gets logged, every milestone alerts the parent, every principal sees the whole school in one view. No spreadsheets, no chase-ups.
-              </p>
-            </div>
-            <img
-              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=520&q=70"
-              alt="Teacher using OLL LMS on a tablet"
-              className="hidden md:block w-64 rounded-2xl shadow-lg object-cover"
-              style={{ height: 150 }}
-              loading="lazy"
-            />
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {LMS_FEATURES.map(({ Icon, title, body }) => (
-              <div key={title} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow" data-testid={`stem-lms-${title.replace(/\s+/g, '-').toLowerCase()}`}>
-                <div className="w-11 h-11 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center mb-3">
-                  <Icon className="w-5 h-5 text-blue-700" />
-                </div>
-                <div className="sp-h2 text-base text-[#0A1F44] leading-tight">{title}</div>
-                <div className="sp-body text-xs text-slate-600 mt-1.5">{body}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ═══════ LMS · same as Robotics & AI Program ═══════ */}
+      <div id="lms" className="scroll-mt-24">
+        <LMSSection
+          scriptClass="rb-hand"
+          displayClass="rb-h2"
+          lightClass="rb-serif"
+          eyebrowText="live analytics & resources"
+          testid="stem-lms"
+        />
+      </div>
 
-      {/* ═══════ ABOUT OLL ═══════ */}
-      <section id="about" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 scroll-mt-24" data-testid="stem-about">
-        <div className="grid lg:grid-cols-[1.05fr,1fr] gap-10 items-center">
-          <div>
-            <div className="sp-eye text-[#DC2626] flex items-center gap-1.5">
-              <Heart className="w-3.5 h-3.5" /> About OLL
-            </div>
-            <h2 className="sp-h2 text-3xl sm:text-4xl text-[#0A1F44] mt-1">Big-school skills, <span className="text-[#DC2626]">tiny-school heart.</span></h2>
-            <p className="sp-body text-slate-700 mt-4 max-w-xl">
-              OLL builds India's most joyful STEAM programme for schools. We ship the kits, train the teachers, and stay on-call so principals can focus on what they do best — running a wonderful school. Preschools are our favourite because that's where every big dream really starts.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-              {ABOUT_STATS.map((s) => (
-                <div key={s.label} className="rounded-2xl bg-white border border-slate-100 p-4 text-center shadow-sm">
-                  <div className="sp-h1 text-2xl text-[#DC2626]">{s.value}</div>
-                  <div className="sp-eye text-slate-500 mt-1">{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-[11px] font-bold text-emerald-800"><Award className="w-3.5 h-3.5" /> NEP 2020 aligned</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-[11px] font-bold text-blue-800"><ClipboardCheck className="w-3.5 h-3.5" /> ISO-certified curriculum</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-bold text-amber-800"><Trophy className="w-3.5 h-3.5" /> Techfest IIT-B partner</span>
-            </div>
-          </div>
-          <div className="relative">
-            <img
-              src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1000&q=75"
-              alt="Happy preschool classroom with STEM activities"
-              className="w-full h-[380px] object-cover rounded-3xl shadow-xl border border-slate-100"
-              loading="lazy"
-            />
-            <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl border border-slate-100 px-4 py-3 max-w-[220px]">
-              <div className="sp-caveat text-[#DC2626] text-2xl leading-none">Since 2018</div>
-              <div className="sp-body text-xs text-slate-600 mt-1">bringing hands-on STEAM to every classroom, every child.</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ SCHOOLS WE WORK WITH ═══════ */}
-      <section id="schools" className="relative py-16 scroll-mt-24" style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)' }} data-testid="stem-schools">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-8 gap-3">
-            <div>
-              <div className="sp-eye text-[#DC2626] flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5" /> Trusted by preschools across India
-              </div>
-              <h2 className="sp-h2 text-3xl sm:text-4xl text-[#0A1F44] mt-1">Schools we work with</h2>
-              <p className="sp-body text-slate-600 mt-2 max-w-xl">
-                From metros to tier-3 towns — leading preschool chains &amp; independent playschools have partnered with us for their STEAM curriculum.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {TRUSTED_SCHOOLS.map((s) => (
-              <div key={s.name} className="rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col items-center text-center gap-2" data-testid={`stem-school-${s.name.replace(/\s+/g, '-').toLowerCase()}`}>
-                <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: s.tint }}>
-                  <Building2 className="w-7 h-7 text-[#0A1F44]" />
-                </div>
-                <div className="sp-h2 text-sm text-[#0A1F44] leading-tight">{s.name}</div>
-                <div className="sp-eye text-slate-400">{s.city}</div>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[11px] sp-body text-slate-400 mt-8 uppercase tracking-widest">
-            …and 490+ more across 60+ cities.
-          </p>
-        </div>
-      </section>
+      {/* ═══════ ABOUT OLL + SCHOOLS WE WORK WITH · shared with Robotics & AI Program ═══════ */}
+      <div id="about" className="scroll-mt-24" data-testid="stem-about"><RbAboutOLL /></div>
+      <div id="schools" className="scroll-mt-24" data-testid="stem-schools"><RbRealSchools /></div>
 
       {/* ═══════ FINAL CTA ═══════ */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20" data-testid="stem-final-cta">

@@ -596,7 +596,7 @@ const LandingPage = () => {
                 {[
                   { label: 'ICSE — Future Skills',                 route: '/school/icse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', testid: 'school-cs-icse-future-skills' },
                   { label: 'CBSE — Future Skills',                 route: '/school/cbse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', testid: 'school-cs-cbse-future-skills' },
-                  { label: 'CBSE — Computational Thinking & AI',   route: '/school/cs/cbse-ct-ai',         sub: 'CBSE Acad-15/2026 elective · Grades 3-8',            testid: 'school-cs-cbse-ct-ai' },
+                  { label: 'CBSE — Computational Thinking & AI',   route: '/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8',         sub: 'CBSE Acad-15/2026 elective · Grades 3-8',            testid: 'school-cs-cbse-ct-ai' },
                 ].map(t => (
                   <button key={t.label}
                     onClick={() => navigate(t.route)}

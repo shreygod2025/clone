@@ -161,7 +161,7 @@ const SuccessStoriesPage = () => {
   );
 };
 
-const PublicStoryCard = ({ s, featured = false }) => {
+export const PublicStoryCard = ({ s, featured = false }) => {
   const lvl = LEVELS.find(l => l.n === s.level) || LEVELS[0];
   const href = `/success-stories/${s.slug || s.id}`;
   return (
