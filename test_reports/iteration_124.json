@@ -1,0 +1,34 @@
+{
+  "summary": "Frontend-only testing of 5 features via Playwright on the public URL. The Offerings mega-menu works on / and /blogs (3 columns, 10/10 thumbnails load, the panel stays open when the mouse moves into it, closes when the mouse leaves, mega-item-pre-school navigates, the Offerings click goes to /offerings, mega-view-all goes to /offerings). On /shop there is no mega-menu because the shop page uses its own navbar (shop-navbar) with no Offerings link. Mobile 390: the hamburger menu shows a plain Offerings link and no mega-menu renders. /blogs success-stories section renders and the view-all button goes to /success-stories. Pre-school page: stem-lms, stem-about (rb-about-oll with team and media cards) and stem-schools (rb-real-schools carousel with arrows and partner-logo marquee) render styled, with 0 broken images out of 125; hero, modules and final CTA are intact. Robotics & AI page: About OLL and Real Schools render. Curriculum gate passed for both rb-nav-download and rb-curr-download: an empty submit is blocked by native required validation, a short phone shows the custom error, a valid submit closes the modal, the PDF downloads (OLL-Robotics-Beginner-Curriculum-2026-27.pdf) and POST /api/schools/inquiry returns 200 with source robotics-ai-program-curriculum-download. Both leads were confirmed via GET /api/schools/inquiries and then deleted. All 3 legacy CBSE URLs redirect to the new slug and render cbse-ct-ai-landing; canonical is the new URL; the homepage card school-cs-cbse-ct-ai goes to the new URL.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ShopPage navbar", "issue": "/shop has its own navbar (shop-navbar: logo, search, cart) with no Offerings link, so there is no mega-menu on /shop. The review request expected hovering Offerings on /shop to work. Either add <OfferingsMegaMenu/> to the shop navbar or confirm this is intended.", "selector": "[data-testid='shop-navbar']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Offerings mega-menu", "issues": ["The 'View all offerings' pill sits below the white panel, floating over the page content, with no background behind it. It looks detached; consider moving it inside the white card (for example as a footer row)."]},
+      {"screen": "/blogs success stories", "issues": ["Only 1 published story exists (test seed 'Aarav Sharma'), and its image is broken (alt text is shown). The section shows a single card with empty space to the right. This is data, not code, but the image fallback could be better."]},
+      {"screen": "Real Schools carousel (shared RbRealSchools)", "issues": ["The autoplay interval (5.5s) is not reset after a manual arrow click, so the carousel can auto-advance right after the user clicks prev/next. Minor UX issue."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Decide whether /shop should get the Offerings mega-menu; if yes, add OfferingsMegaMenu to the ShopPage custom navbar",
+    "Optional: move the mega-view-all pill inside the white panel",
+    "Optional: reset the RbRealSchools autoplay interval when the user clicks an arrow"
+  ],
+  "critical_code_review_comments": [
+    "CurriculumGateModal: fake email lead_<phone>@pending.oll.co is sent to the backend. This is fine for dedupe, but repeated downloads with the same phone create duplicate CRM leads; there is no dedupe.",
+    "CurriculumGateModal: downloadPdf runs before the lead POST and the lead POST errors are swallowed silently. That is acceptable for UX, but failed leads are invisible.",
+    "CurriculumGateModal: the inputs have the HTML 'required' attribute, so an empty submit shows the browser-native tooltip, not the custom error. This is inconsistent but harmless.",
+    "Many leftover TEST_* school inquiries from earlier iterations remain in the School CRM (~70). They were not created this iteration; consider a cleanup."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "95% (all requested flows pass except the /shop mega-menu, which is absent because ShopPage has its own navbar)"},
+  "seed_data_creation": "Created 2 School CRM leads ('TEST Gate School Nav', 'TEST Gate School Curr') and deleted both via DELETE /api/schools/inquiry/{id} (200).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mega-menu triggers: pill-nav-link-offerings on the homepage pill nav, nav-link-offerings on other pages. The mega-menu is portaled to body (offerings-mega-menu). The gate modal testids use the rb-curriculum-gate-* prefix. The CBSE CT&AI canonical slug is /school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8.",
+  "test_credentials": "admin@oll.co / GodisGreat@2026 (from /app/memory/test_credentials.md) worked for /api/auth/login"
+}

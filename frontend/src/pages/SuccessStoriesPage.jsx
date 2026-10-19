@@ -172,7 +172,7 @@ export const PublicStoryCard = ({ s, featured = false }) => {
     >
       <div className={`relative bg-slate-100 ${featured ? 'aspect-[16/9]' : 'aspect-[16/10]'}`}>
         {s.image_url ? (
-          <img src={s.image_url} alt={s.student_name} className="w-full h-full object-cover" loading="lazy" />
+          <img src={s.image_url} alt={s.student_name} className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-300">
             <Trophy className="w-10 h-10" />

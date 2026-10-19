@@ -79,7 +79,7 @@ export const OfferingsMegaMenu = ({ className = '', testId = 'nav-link-offerings
           data-testid="offerings-mega-menu"
         >
           <div className="absolute -top-3 inset-x-0 h-3" />
-          <div className="rounded-2xl bg-white shadow-[0_24px_60px_rgba(10,31,68,0.22)] ring-1 ring-slate-200 p-5 grid grid-cols-3 gap-5 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="rounded-2xl bg-white shadow-[0_24px_60px_rgba(10,31,68,0.22)] ring-1 ring-slate-200 p-5 pb-6 grid grid-cols-3 gap-5 animate-in fade-in slide-in-from-top-1 duration-150">
             {MEGA_MENU.map((col) => (
               <div key={col.title} className="min-w-0" data-testid={`mega-col-${col.title.toLowerCase().replace(/\s+/g, '-')}`}>
                 <div className="px-2 pb-2 mb-1 border-b border-slate-100">
@@ -92,7 +92,8 @@ export const OfferingsMegaMenu = ({ className = '', testId = 'nav-link-offerings
               </div>
             ))}
           </div>
-          <div className="mt-2 text-center">
+          <div className="-mt-3 rounded-b-2xl bg-slate-50 ring-1 ring-slate-200 border-t border-slate-100 px-5 py-2.5 flex items-center justify-between">
+            <span className="text-[11.5px] text-slate-500">Explore every OLL program for schools and learners</span>
             <Link to="/offerings" onClick={() => setOpen(false)} className="inline-flex items-center gap-1 text-xs font-bold text-white bg-[#0A1F44] hover:bg-[#D63031] px-4 py-1.5 rounded-full transition-colors" data-testid="mega-view-all">
               View all offerings <ArrowRight className="w-3 h-3" />
             </Link>

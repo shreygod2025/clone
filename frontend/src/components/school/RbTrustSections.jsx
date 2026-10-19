@@ -201,9 +201,9 @@ export const RbAboutOLL = () => (
 export const RbRealSchools = () => {
   const [schoolsIdx, setSchoolsIdx] = useState(0);
   useEffect(() => {
-    const s = setInterval(() => setSchoolsIdx((i) => (i + 1) % SCHOOL_VIDEOS.length), 5500);
-    return () => clearInterval(s);
-  }, []);
+    const t = setTimeout(() => setSchoolsIdx((i) => (i + 1) % SCHOOL_VIDEOS.length), 5500);
+    return () => clearTimeout(t);
+  }, [schoolsIdx]);
   const goSchools = (i) => setSchoolsIdx((i + SCHOOL_VIDEOS.length) % SCHOOL_VIDEOS.length);
   return (
     <>
