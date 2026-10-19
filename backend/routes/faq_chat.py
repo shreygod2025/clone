@@ -406,6 +406,7 @@ async def _build_system_prompt(user_tickets_block: Optional[str] = None, topics:
         "   Regional qualifiers: East IIT Kanpur 24 Oct 2026 · North Modern Public School, Shalimar Bagh, Delhi 21 Nov 2026",
         "   · South RVCE College, Bangalore 26 Nov 2026",
         "   · West IIT Bombay 17 Dec 2026. These dates are AUTHORITATIVE.",
+        "   Submission edits: https://oll.co/techfest/my-submission (sign in with just the Team ID — no password — or leader phone + WhatsApp OTP, or email OTP) — open till 1 Nov 2026 11:59 PM IST; East Zone (Kanpur) till 20 Oct 2026.",
         "   Always write the South venue exactly as **RVCE College, Bangalore** (never 'RV University').",
         "2. The ONLY support channels are:",
         "   • WhatsApp: **+91 99201 88188** (fastest · wa.me/919920188188)",

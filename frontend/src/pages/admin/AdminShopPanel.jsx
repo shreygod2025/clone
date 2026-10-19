@@ -6,6 +6,12 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const matchesSearch = (o, s) =>
+  o.order_no?.toLowerCase().includes(s) ||
+  o.shipping?.email?.toLowerCase().includes(s) ||
+  o.shipping?.phone?.includes(s) ||
+  o.shipping?.full_name?.toLowerCase().includes(s) ||
+  (o.items || []).some((it) => (it.product_title || it.title || it.name || '').toLowerCase().includes(s));
 const fmtINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
 /**
@@ -118,10 +124,29 @@ const OrdersTab = ({ embedded = false }) => {
     }
   };
 
+  const fetchAllOrders = async () => {
+    const all = [];
+    for (let offset = 0; ; offset += 1000) {
+      const r = await axios.get(`${API}/admin/shop/orders`, {
+        headers: getAuthHeaders(),
+        params: { status: statusFilter || undefined, limit: 1000, offset },
+      });
+      const page = r.data?.orders || [];
+      all.push(...page);
+      if (page.length < 1000 || all.length >= (r.data?.total || 0)) break;
+    }
+    return all;
+  };
+
   const exportXlsx = async () => {
     try {
       const XLSX = await import('xlsx');
-      const rows = filtered.map((o) => {
+      const everything = await fetchAllOrders();
+      const q = search.trim().toLowerCase();
+      const source = everything
+        .filter((o) => !q || matchesSearch(o, q))
+        .filter((o) => !productFilter || (o.items || []).some((it) => (it.product_title || it.title || it.name) === productFilter));
+      const rows = source.map((o) => {
         const items = o.items || [];
         const productName = items.length === 1
           ? (items[0].product_title || items[0].title || items[0].name || '')
@@ -185,16 +210,7 @@ const OrdersTab = ({ embedded = false }) => {
     let rows = orders;
     if (search.trim()) {
       const s = search.trim().toLowerCase();
-      rows = rows.filter(
-        (o) =>
-          o.order_no?.toLowerCase().includes(s) ||
-          o.shipping?.email?.toLowerCase().includes(s) ||
-          o.shipping?.phone?.includes(s) ||
-          o.shipping?.full_name?.toLowerCase().includes(s) ||
-          (o.items || []).some((it) =>
-            (it.product_title || it.title || it.name || '').toLowerCase().includes(s),
-          ),
-      );
+      rows = rows.filter((o) => matchesSearch(o, s));
     }
     if (productFilter) {
       rows = rows.filter((o) =>

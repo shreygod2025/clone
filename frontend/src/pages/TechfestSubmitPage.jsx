@@ -14,28 +14,28 @@ import {
 const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
-const ZONES = [
+export const ZONES = [
   { slug: 'west',    label: 'West · IIT Bombay · 17 Dec 2026'              },
   { slug: 'east',    label: 'East · IIT Kanpur · 24 Oct 2026'              },
   { slug: 'north',   label: 'North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov 2026'},
   { slug: 'south',   label: 'South · RVCE College, Bangalore · 26 Nov 2026' },
   { slug: 'central', label: 'Central · Indore (Date TBA)'                  },
 ];
-const COMPETITIONS = [
+export const COMPETITIONS = [
   { slug: 'robo_sumo',       label: 'Robo Sumo',                 zonal: true  },
   { slug: 'robo_race',       label: 'Robo Race',                 zonal: true  },
   { slug: 'robo_innovation', label: 'Robo Innovation Challenge', zonal: false },
 ];
-const AGE_CATEGORIES = [
+export const AGE_CATEGORIES = [
   { slug: 'junior', label: 'Junior · Grade 4-7' },
   { slug: 'senior', label: 'Senior · Grade 8-12' },
 ];
-const INNOVATION_CATEGORIES = [
+export const INNOVATION_CATEGORIES = [
   'Healthcare', 'Education', 'Agriculture', 'Sustainability',
   'Assistive Tech', 'Smart Home', 'Transportation', 'Other',
 ];
-const MAX_TEAM_MEMBERS = 5;
-const emptyMember = () => ({ name: '', date_of_birth: '', email: '', phone: '', school: '', id_proof_url: '', id_proof_type: 'aadhar' });
+export const MAX_TEAM_MEMBERS = 5;
+export const emptyMember = () => ({ name: '', date_of_birth: '', email: '', phone: '', school: '', id_proof_url: '', id_proof_type: 'aadhar' });
 
 // Compute age from a Date-of-birth ISO string (YYYY-MM-DD)
 const ageFromDob = (dob) => {
@@ -321,7 +321,7 @@ export default function TechfestSubmitPage() {
                 </div>
               )}
               <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 text-left">
-                <strong>Need to edit later?</strong> You can update your project details any time until <strong>20 Oct 2026, 11:59 PM IST</strong>. Head to the submission portal and verify via a one-time code sent to your email.
+                <strong>Need to edit later?</strong> You can update your project details any time until <strong>1 Nov 2026, 11:59 PM IST</strong> (East Zone · Kanpur: <strong>20 Oct 2026</strong>). Head to the submission portal and sign in with your Team ID or the team leader's phone number.
               </div>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <Link to="/techfest/my-submission" className="trp-btn primary inline-flex" data-testid="techfest-view-submission">
@@ -341,6 +341,12 @@ export default function TechfestSubmitPage() {
               <p className="text-slate-600 mt-2 font-light">
                 Upload your final project details to be considered for the Grand Finale at IIT Bombay. Once submitted, our team will validate it and confirm your competition slot.
               </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <span className="text-sm text-slate-600">Already submitted? Update any detail of your entry.</span>
+                <Link to="/techfest/my-submission" className="trp-btn inline-flex border border-[#0A1F44] text-[#0A1F44] text-xs" data-testid="techfest-edit-submission-btn">
+                  Edit Submission <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
             {error && (

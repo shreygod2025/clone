@@ -102,6 +102,7 @@ DEFAULT_SETTINGS = FaqSettings(
         "- Registration opens: now (free, online).\n"
         "- Registration DEADLINE: October 10, 2026.\n"
         "- Round 1 submission (Innovation Challenge): October 20, 2026 — online 90-sec video + 3-slide PDF.\n"
+        "- Submission EDITS (portal https://oll.co/techfest/my-submission — sign in with just the Team ID (no password needed), OR the team leader phone number + WhatsApp OTP, OR email OTP; every field editable): open till 1 November 2026, 11:59 PM IST for all zones; East Zone (IIT Kanpur) till 20 October 2026, 11:59 PM IST.\n"
         "\n"
         "REGIONAL QUALIFIER ROUNDS (physical, Round 2):\n"
         "- East Qualifier  — IIT Kanpur             — Saturday, 24 October 2026\n"
@@ -458,6 +459,9 @@ async def read_settings() -> FaqSettings:
     # Saved docs pre-date the North qualifier announcement — splice it in.
     tf = (merged.get("techfest") or "").replace("RV University, Bangalore", "RVCE College, Bangalore")
     merged["techfest"] = tf
+    if "Submission EDITS" not in tf and "REGIONAL QUALIFIER ROUNDS" in tf:
+        tf = tf.replace("REGIONAL QUALIFIER ROUNDS", "- Submission EDITS (portal https://oll.co/techfest/my-submission — sign in with just the Team ID (no password needed), OR the team leader phone number + WhatsApp OTP, OR email OTP; every field editable): open till 1 November 2026, 11:59 PM IST for all zones; East Zone (IIT Kanpur) till 20 October 2026, 11:59 PM IST.\n\nREGIONAL QUALIFIER ROUNDS", 1)
+        merged["techfest"] = tf
     if "Shalimar" not in tf and "- South Qualifier" in tf:
         merged["techfest"] = tf.replace(
             "- South Qualifier",

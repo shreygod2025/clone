@@ -26,6 +26,7 @@ import hashlib
 import logging
 import os
 import random
+import re
 import secrets
 import time
 from datetime import datetime, timezone
@@ -46,7 +47,17 @@ logger = logging.getLogger(__name__)
 # Admins asked for an edit window that closes at 2026-10-20 23:59 IST
 # (which is 2026-10-20T18:29:59Z in UTC — IST is +05:30). Keep this
 # literal so a timezone library isn't required.
-SUBMISSION_EDIT_CUTOFF_UTC = datetime(2026, 10, 20, 18, 29, 59, tzinfo=timezone.utc)
+SUBMISSION_EDIT_CUTOFF_UTC = datetime(2026, 11, 1, 18, 29, 59, tzinfo=timezone.utc)   # 1 Nov 2026 23:59 IST
+EAST_EDIT_CUTOFF_UTC = datetime(2026, 10, 20, 18, 29, 59, tzinfo=timezone.utc)         # 20 Oct 2026 23:59 IST (Kanpur round 24 Oct)
+CUTOFF_LABELS = {"east": "20 Oct 2026, 11:59 PM IST", "default": "1 Nov 2026, 11:59 PM IST"}
+
+
+def _cutoff_for(doc: dict) -> datetime:
+    return EAST_EDIT_CUTOFF_UTC if (doc.get("zone") or "").lower() == "east" else SUBMISSION_EDIT_CUTOFF_UTC
+
+
+def _cutoff_label(doc: dict) -> str:
+    return CUTOFF_LABELS["east"] if (doc.get("zone") or "").lower() == "east" else CUTOFF_LABELS["default"]
 OTP_TTL_SECONDS = 10 * 60        # 10 minutes
 OTP_RESEND_COOLDOWN_SECONDS = 30  # at most 1 code every 30s per email
 JWT_ALG = "HS256"
@@ -117,12 +128,44 @@ async def _send_otp_whatsapp(phone: str, name: str, code: str) -> None:
 
 # ── Pydantic payloads ────────────────────────────────────────────────
 class RequestOtpIn(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20)
 
 
 class VerifyOtpIn(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20)
     otp: str = Field(..., min_length=4, max_length=10)
+
+
+class TeamLoginIn(BaseModel):
+    team_id: str = Field(..., min_length=2, max_length=60)
+
+
+def _phone10(v: Optional[str]) -> str:
+    return re.sub(r"\D", "", v or "")[-10:]
+
+
+def _phone_query(p10: str) -> dict:
+    return {"phone": {"$regex": re.escape(p10) + r"\s*$"}}
+
+
+def _identity(payload) -> str:
+    """OTP identity key: 'phone:<10 digits>' or the lower-cased email."""
+    if payload.phone and len(_phone10(payload.phone)) == 10:
+        return f"phone:{_phone10(payload.phone)}"
+    if payload.email:
+        return payload.email.lower().strip()
+    raise HTTPException(status_code=400, detail="Enter the team leader's phone number or email.")
+
+
+def _issue_token(sub: str, sids: Optional[list] = None) -> str:
+    now_ts = time.time()
+    claims = {"sub": sub, "scope": "techfest_submission_portal", "iat": int(now_ts),
+              "exp": int(now_ts + JWT_TTL_SECONDS), "jti": secrets.token_urlsafe(12)}
+    if sids is not None:
+        claims["sids"] = sids
+    return pyjwt.encode(claims, _jwt_secret(), algorithm=JWT_ALG)
 
 
 class TeamMemberPatchIn(BaseModel):
@@ -140,6 +183,7 @@ class SubmissionPatchIn(BaseModel):
     # explicitly list the whitelist here so a malicious client can't
     # overwrite status, created_at, id, etc.
     full_name: Optional[str] = Field(None, min_length=2, max_length=120)
+    email: Optional[EmailStr] = None
     date_of_birth: Optional[str] = Field(None, max_length=20)
     age: Optional[int] = Field(None, ge=3, le=120)
     phone: Optional[str] = Field(None, min_length=6, max_length=20)
@@ -165,68 +209,57 @@ class SubmissionPatchIn(BaseModel):
 # ── Endpoints ────────────────────────────────────────────────────────
 @router.post("/techfest/submission-portal/request-otp")
 async def submission_portal_request_otp(payload: RequestOtpIn, request: Request):
-    email = payload.email.lower().strip()
-
-    # Rate limit: no more than one OTP every 30s per (ip, email).
+    ident = _identity(payload)
     now_ts = time.time()
-    rkey = _rl_key(request, email)
+    rkey = _rl_key(request, ident)
     last = _otp_rate_limit.get(rkey, 0.0)
     if now_ts - last < OTP_RESEND_COOLDOWN_SECONDS:
         wait = int(OTP_RESEND_COOLDOWN_SECONDS - (now_ts - last))
         raise HTTPException(status_code=429, detail=f"Please wait {wait}s before requesting another code.")
     _otp_rate_limit[rkey] = now_ts
 
-    # Resolve the student's name + phone from their most-recent submission
-    # so we can personalise the email + optionally send WhatsApp.
-    sub = await db.techfest_submissions.find_one(
-        {"email": email},
-        sort=[("created_at", -1)],
-    )
-    # NOTE: we DELIBERATELY don't 404 here — telling an attacker whether
-    # an email exists is a disclosure. We still send the OTP so timing is
-    # consistent; it just won't be useful if no submission exists.
+    if ident.startswith("phone:"):
+        p10 = ident.split(":", 1)[1]
+        sub = await db.techfest_submissions.find_one(_phone_query(p10), sort=[("created_at", -1)])
+        if not sub:
+            raise HTTPException(status_code=404, detail="No submission found with this team leader phone number.")
+        email, phone = (sub.get("email") or "").lower(), p10
+    else:
+        email = ident
+        sub = await db.techfest_submissions.find_one({"email": email}, sort=[("created_at", -1)])
+        # Don't reveal whether an email exists.
+        phone = (sub or {}).get("phone") or ""
     name = (sub or {}).get("full_name") or ""
-    phone = (sub or {}).get("phone") or ""
 
     otp = f"{random.randint(0, 999999):06d}"
-    hashed = _hash_otp(email, otp)
     await db.techfest_portal_otps.insert_one({
-        "email": email,
-        "otp_hash": hashed,
+        "email": ident,
+        "otp_hash": _hash_otp(ident, otp),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at_ts": now_ts + OTP_TTL_SECONDS,
         "consumed": False,
     })
-    # Prune older unconsumed codes so a user doesn't accumulate dozens.
-    await db.techfest_portal_otps.delete_many({
-        "email": email,
-        "consumed": False,
-        "expires_at_ts": {"$lt": now_ts},
-    })
+    await db.techfest_portal_otps.delete_many({"email": ident, "consumed": False, "expires_at_ts": {"$lt": now_ts}})
 
-    # Fire email (always) + WhatsApp (best-effort).
-    try:
-        await _dispatch_email(
-            email,
-            f"Your Techfest submission code: {otp}",
-            _otp_email_html(name, otp),
-        )
-    except Exception as exc:
-        logger.warning("techfest portal OTP email failed for %s: %s", email, exc)
-    await _send_otp_whatsapp(phone, name, otp)
+    if email:
+        try:
+            await _dispatch_email(email, f"Your Techfest submission code: {otp}", _otp_email_html(name, otp))
+        except Exception as exc:
+            logger.warning("techfest portal OTP email failed for %s: %s", email, exc)
+    wa_phone = _phone10(phone)
+    await _send_otp_whatsapp(f"91{wa_phone}" if len(wa_phone) == 10 else phone, name, otp)
 
-    return {"ok": True, "expires_in": OTP_TTL_SECONDS}
+    masked = (email[:2] + "***" + email[email.find("@"):]) if "@" in email else ""
+    return {"ok": True, "expires_in": OTP_TTL_SECONDS, "sent_to_email": masked}
 
 
 @router.post("/techfest/submission-portal/verify-otp")
 async def submission_portal_verify_otp(payload: VerifyOtpIn):
-    email = payload.email.lower().strip()
-    otp = payload.otp.strip()
-    hashed = _hash_otp(email, otp)
+    ident = _identity(payload)
     now_ts = time.time()
     doc = await db.techfest_portal_otps.find_one({
-        "email": email,
-        "otp_hash": hashed,
+        "email": ident,
+        "otp_hash": _hash_otp(ident, payload.otp.strip()),
         "consumed": False,
         "expires_at_ts": {"$gte": now_ts},
     })
@@ -236,21 +269,27 @@ async def submission_portal_verify_otp(payload: VerifyOtpIn):
         {"_id": doc["_id"]},
         {"$set": {"consumed": True, "consumed_at": datetime.now(timezone.utc).isoformat()}},
     )
-    token = pyjwt.encode(
-        {
-            "sub": email,
-            "scope": "techfest_submission_portal",
-            "iat": int(now_ts),
-            "exp": int(now_ts + JWT_TTL_SECONDS),
-            "jti": secrets.token_urlsafe(12),
-        },
-        _jwt_secret(),
-        algorithm=JWT_ALG,
-    )
-    return {"ok": True, "token": token, "email": email, "expires_in": JWT_TTL_SECONDS}
+    sids = None
+    if ident.startswith("phone:"):
+        cursor = db.techfest_submissions.find(_phone_query(ident.split(":", 1)[1]), {"_id": 1})
+        sids = [str(d["_id"]) async for d in cursor]
+    return {"ok": True, "token": _issue_token(ident, sids), "email": ident, "expires_in": JWT_TTL_SECONDS}
 
 
-def _verify_portal_token(authorization: Optional[str]) -> str:
+@router.post("/techfest/submission-portal/team-login")
+async def submission_portal_team_login(payload: TeamLoginIn):
+    from .techfest import _id_regex, _norm_id
+    key = _norm_id(payload.team_id)
+    if not key:
+        raise HTTPException(status_code=400, detail="Enter your Team ID")
+    cursor = db.techfest_submissions.find({"team_id": _id_regex(key)}, {"_id": 1})
+    sids = [str(d["_id"]) async for d in cursor]
+    if not sids:
+        raise HTTPException(status_code=404, detail="No submission found for this Team ID.")
+    return {"ok": True, "token": _issue_token(f"team:{key}", sids), "email": f"Team ID {payload.team_id.strip()}", "expires_in": JWT_TTL_SECONDS}
+
+
+def _verify_portal_token(authorization: Optional[str]) -> dict:
     """Returns the verified email from the Bearer token; raises 401 otherwise."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing portal token")
@@ -263,29 +302,37 @@ def _verify_portal_token(authorization: Optional[str]) -> str:
         raise HTTPException(status_code=401, detail="Invalid portal token")
     if payload.get("scope") != "techfest_submission_portal":
         raise HTTPException(status_code=401, detail="Invalid portal token scope")
-    email = (payload.get("sub") or "").lower().strip()
-    if not email:
+    sub = (payload.get("sub") or "").lower().strip()
+    if not sub:
         raise HTTPException(status_code=401, detail="Invalid portal token subject")
-    return email
+    return {"sub": sub, "sids": payload.get("sids")}
+
+
+def _owner_query(auth: dict) -> dict:
+    if auth["sids"] is not None:
+        return {"_id": {"$in": [ObjectId(x) for x in auth["sids"]]}}
+    return {"email": auth["sub"]}
 
 
 def _serialise_submission(doc: dict) -> dict:
     out = {k: v for k, v in doc.items() if k != "_id"}
     out["id"] = str(doc.get("_id"))
+    out["edit_cutoff_utc"] = _cutoff_for(doc).isoformat()
+    out["edit_cutoff_label"] = _cutoff_label(doc)
+    out["edit_window_open"] = datetime.now(timezone.utc) < _cutoff_for(doc)
     return out
 
 
 @router.get("/techfest/submission-portal/my")
 async def submission_portal_my(authorization: Optional[str] = Header(None)):
-    email = _verify_portal_token(authorization)
-    cursor = db.techfest_submissions.find({"email": email}).sort("created_at", -1).limit(50)
+    auth = _verify_portal_token(authorization)
+    cursor = db.techfest_submissions.find(_owner_query(auth)).sort("created_at", -1).limit(50)
     items = [_serialise_submission(d) async for d in cursor]
     return {
         "ok": True,
-        "email": email,
+        "email": auth["sub"],
         "items": items,
-        "edit_cutoff_utc": SUBMISSION_EDIT_CUTOFF_UTC.isoformat(),
-        "edit_window_open": datetime.now(timezone.utc) < SUBMISSION_EDIT_CUTOFF_UTC,
+        "edit_window_open": any(i["edit_window_open"] for i in items),
     }
 
 
@@ -295,9 +342,7 @@ async def submission_portal_update(
     payload: SubmissionPatchIn,
     authorization: Optional[str] = Header(None),
 ):
-    email = _verify_portal_token(authorization)
-    if datetime.now(timezone.utc) >= SUBMISSION_EDIT_CUTOFF_UTC:
-        raise HTTPException(status_code=403, detail="Submission edits are closed (cutoff: 20 Oct 2026 23:59 IST).")
+    auth = _verify_portal_token(authorization)
     try:
         oid = ObjectId(submission_id)
     except Exception:
@@ -306,12 +351,18 @@ async def submission_portal_update(
     doc = await db.techfest_submissions.find_one({"_id": oid})
     if not doc:
         raise HTTPException(status_code=404, detail="Submission not found")
-    if (doc.get("email") or "").lower() != email:
-        # Prevents a verified user from editing someone else's submission.
+    owns = (submission_id in auth["sids"]) if auth["sids"] is not None else (doc.get("email") or "").lower() == auth["sub"]
+    if not owns:
         raise HTTPException(status_code=403, detail="This submission belongs to a different account.")
+    # Stricter of the current and requested zone, so moving out of East can't dodge its earlier cutoff.
+    cutoff = min(_cutoff_for(doc), _cutoff_for({"zone": payload.zone or doc.get("zone")}))
+    if datetime.now(timezone.utc) >= cutoff:
+        raise HTTPException(status_code=403, detail=f"Submission edits are closed for this zone (cutoff: {_cutoff_label(doc)}).")
 
     # Only persist fields the caller actually sent.
     updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if "email" in updates:
+        updates["email"] = updates["email"].lower().strip()
     if not updates:
         return {"ok": True, "modified": 0, "note": "No changes submitted."}
     from .techfest import find_duplicate_submission, _norm_id, DUPLICATE_SUBMISSION_MSG

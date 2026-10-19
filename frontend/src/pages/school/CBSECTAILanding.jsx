@@ -70,9 +70,8 @@ const SCHOOL_VIDEOS = [
   { name: 'Dosti Foundation School',         id: 'sqXE6tsUQ6g' },
 ];
 
-// Reuse existing curriculum brochure until CBSE CT&AI-specific one is ready.
 const BROCHURE_PDF =
-  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4cp6p9fa_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026%20%281%29_compressed.pdf';
+  'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/3b00257a6b0c26d6_Brochure%20CT%20and%20AI_compressed.pdf';
 const BROCHURE_PDF_NAME = 'OLL-CBSE-CT-AI-Curriculum-Brochure.pdf';
 
 // CBSE circular reference (public link included in the circular).
