@@ -23,12 +23,14 @@ import ProjectsPnLTab from './expenses/ProjectsPnLTab';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Normalize old ProcureWay/preview URLs to the current vendor host
-const VENDOR_HOST = 'https://vendorplus-4.emergent.host';
+const VENDOR_HOST = 'https://vendor-panel-1rt3.vercel.app';
+const VENDOR_API_HOST = 'https://vendor-panel-6kjc.onrender.com';
 const normalizeVendorUrl = (url) => {
   if (!url) return url;
+  const OLD = /https?:\/\/(?:[^/]*\.(?:stage-)?preview\.emergentagent\.com|vendorplus-4\.emergent\.host)/g;
   return url
-    .replace(/https?:\/\/[^/]*\.preview\.emergentagent\.com/g, VENDOR_HOST)
-    .replace(/https?:\/\/[^/]*\.stage-preview\.emergentagent\.com/g, VENDOR_HOST);
+    .replace(new RegExp(`${OLD.source}(?=/api/)`, 'g'), VENDOR_API_HOST)
+    .replace(OLD, VENDOR_HOST);
 };
 
 // Route all vendor/Cloudinary file URLs through backend proxy (handles auth headers).

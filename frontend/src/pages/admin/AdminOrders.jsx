@@ -73,7 +73,7 @@ const downloadFile = async (url, filename) => {
 
     // Route Cloudinary and VendorPlus/emergent.host URLs through the backend proxy
     // to avoid CORS + auth issues in the browser
-    const isTrusted = absoluteUrl.includes('cloudinary.com') || absoluteUrl.includes('emergent.host');
+    const isTrusted = absoluteUrl.includes('cloudinary.com') || absoluteUrl.includes('emergent.host') || absoluteUrl.includes('vendor-panel-6kjc.onrender.com');
     const fetchUrl = isTrusted
       ? `${API}/proxy/file?url=${encodeURIComponent(absoluteUrl)}&filename=${encodeURIComponent(filename || '')}`
       : absoluteUrl;

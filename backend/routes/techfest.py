@@ -589,7 +589,36 @@ async def review_techfest_submission(submission_id: str, payload: SubmissionRevi
     )
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Submission not found")
-    return {"ok": True, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now}
+    doc = await db.techfest_submissions.find_one({"_id": oid})
+    email_sent = await _send_review_result_email(doc, payload.decision, remarks)
+    await db.techfest_submissions.update_one({"_id": oid}, {"$set": {"review_email_sent_at": now if email_sent else None}})
+    return {"ok": True, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now, "email_sent": email_sent}
+
+
+async def _send_review_result_email(doc: dict, decision: str, remarks: str) -> bool:
+    from .techfest_emails import review_result_html
+    from .techfest_permission_letter import COMPETITION_LABELS, ZONE_LABELS
+    to = (doc.get("email") or "").strip().lower()
+    if not to:
+        return False
+    zone = doc.get("zone") or ""
+    html = review_result_html(
+        lead_name=(doc.get("full_name") or "Team lead").strip(),
+        decision=decision,
+        remarks=remarks,
+        competition_label=COMPETITION_LABELS.get(doc.get("competition") or "", doc.get("competition") or ""),
+        zone_label=ZONE_LABELS.get(zone) if doc.get("competition") in ("robo_sumo", "robo_race") else None,
+        team_id=doc.get("team_id") or None,
+        edit_deadline="20 Oct 2026, 11:59 PM IST" if zone == "east" else "1 Nov 2026, 11:59 PM IST",
+    )
+    subject = ("You've qualified! Submission approved — OLL Robotics Championship @ Techfest"
+               if decision == "approved" else "Action needed: edit & resubmit your Techfest project")
+    try:
+        await _dispatch_email(to, subject, html)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("techfest review email failed for %s: %s", to, exc)
+        return False
 
 
 # ── Public upload for Techfest submitters ──────────────────────────

@@ -298,6 +298,7 @@ def submission_confirmed_html(
         <li>If you qualify, an OLL coordinator will call you to help you prep the bot &amp; travel.</li>
       </ol>
 
+      <p style="font-size:13px;color:#334155;margin:0 0 8px 0;">Need to change something? Edit your submission any time at <a href="https://oll.co/techfest/my-submission" style="color:#DC2626;">oll.co/techfest/my-submission</a> using your Team ID (open till 1 Nov 2026; East Zone till 20 Oct 2026).</p>
       <div style="text-align:center;margin:22px 0 6px 0;">
         <a href="{WHATSAPP_URL}" style="display:inline-block;background:#25D366;color:#ffffff;padding:12px 22px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">Join the WhatsApp community →</a>
       </div>
@@ -312,3 +313,60 @@ def submission_confirmed_html(
         preheader="Your bot is officially in. Here's what happens next.",
         body_html=body,
     )
+
+
+PORTAL_URL = "https://oll.co/techfest/my-submission"
+
+
+def review_result_html(*, lead_name: str, decision: str, remarks: str, competition_label: str,
+                       zone_label: Optional[str] = None, team_id: Optional[str] = None,
+                       edit_deadline: str = "1 Nov 2026, 11:59 PM IST") -> str:
+    """Judge decision email — approved (qualification details) or rejected (edit & resubmit)."""
+    approved = decision == "approved"
+    rows = [("Track", competition_label or "—")]
+    if zone_label:
+        rows.append(("Regional Round", zone_label))
+    if team_id:
+        rows.append(("Team ID", team_id))
+    meta = "".join(f'<tr><td style="padding:4px 0;color:#64748b;width:38%;">{k}</td><td style="padding:4px 0;font-weight:700;">{v}</td></tr>' for k, v in rows)
+    remarks_html = (
+        f'<div style="background:{"#f0fdf4" if approved else "#fef2f2"};border-left:4px solid {"#16a34a" if approved else "#DC2626"};'
+        f'border-radius:8px;padding:12px 14px;margin:16px 0;font-size:14px;color:#0A1F44;">'
+        f'<div style="font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Judge&rsquo;s Remarks</div>{remarks}</div>'
+    )
+    if approved:
+        next_steps = (
+            f"<li>Report to your regional round: <strong>{zone_label}</strong>. Carry your bot, ID proof and the school permission letter.</li>"
+            if zone_label else
+            "<li>Your project moves to the next evaluation round — our team will share the schedule shortly.</li>"
+        ) + (
+            "<li>Winners of the regional rounds qualify for the <strong>Grand Finale at Techfest, IIT Bombay (Dec 2026)</strong>.</li>"
+            "<li>An OLL coordinator will call you to help you prep the bot &amp; plan travel.</li>"
+        )
+        body = f"""
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#16a34a;">Submission Approved · You&rsquo;ve Qualified</div>
+      <h1 style="font-size:26px;line-height:1.2;margin:6px 0 8px 0;color:#0A1F44;">Congratulations, {lead_name}!</h1>
+      <p style="font-size:15px;color:#334155;margin:0 0 12px 0;">Your project for the <strong>OLL Robotics Championship @ Techfest, IIT Bombay 2026</strong> has been <strong style="color:#16a34a;">approved</strong> by our judges.</p>
+      <table role="presentation" width="100%" style="font-size:13px;color:#0A1F44;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 14px;">{meta}</table>
+      {remarks_html}
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin-top:6px;">Qualification &amp; next steps</div>
+      <ol style="margin:8px 0 20px 0;padding:0 0 0 18px;color:#0A1F44;font-size:14px;line-height:1.7;">{next_steps}</ol>
+      <p style="font-size:14px;color:#334155;margin:24px 0 0 0;">See you at the arena,<br/><strong style="color:#0A1F44;">Team OLL</strong></p>
+    """
+        title, pre = "You've qualified — OLL Robotics Championship @ Techfest IIT Bombay", "Your submission is approved. Here are your qualification details."
+    else:
+        body = f"""
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#DC2626;">Submission Needs Changes</div>
+      <h1 style="font-size:26px;line-height:1.2;margin:6px 0 8px 0;color:#0A1F44;">Hi {lead_name}, your submission wasn&rsquo;t approved yet.</h1>
+      <p style="font-size:15px;color:#334155;margin:0 0 12px 0;">Our judges reviewed your project for the <strong>OLL Robotics Championship @ Techfest, IIT Bombay 2026</strong> and couldn&rsquo;t approve it in its current form. The good news: <strong>you can fix it and resubmit</strong>.</p>
+      <table role="presentation" width="100%" style="font-size:13px;color:#0A1F44;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 14px;">{meta}</table>
+      {remarks_html}
+      <p style="font-size:14px;color:#334155;">Open the submission portal, sign in with your <strong>Team ID</strong> or the team leader&rsquo;s phone number, update the details the judges flagged and save — your entry goes back for review automatically. Edits are open until <strong>{edit_deadline}</strong>.</p>
+      <div style="text-align:center;margin:22px 0 6px 0;">
+        <a href="{PORTAL_URL}" style="display:inline-block;background:#DC2626;color:#ffffff;padding:13px 24px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">Edit &amp; resubmit →</a>
+      </div>
+      <p style="font-size:13px;color:#64748b;margin-top:18px;">Questions? Call 9920188188 or write to info@oll.co.</p>
+      <p style="font-size:14px;color:#334155;margin:18px 0 0 0;">Rooting for you,<br/><strong style="color:#0A1F44;">Team OLL</strong></p>
+    """
+        title, pre = "Action needed: edit & resubmit your Techfest project", "Judge's remarks inside — you can edit and resubmit."
+    return _shell(title=title, preheader=pre, body_html=body)

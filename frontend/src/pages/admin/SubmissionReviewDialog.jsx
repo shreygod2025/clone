@@ -58,6 +58,9 @@ export const ReviewStatusBadge = ({ s }) => (
     <span data-testid={`admin-submission-status-${s._id}`} className={`text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 ${STATUS_STYLES[s.review_status] || STATUS_STYLES.pending}`}>
       {s.review_status || 'pending'}
     </span>
+    {s.resubmitted_at && (s.review_status || 'pending') === 'pending' && (
+      <span data-testid={`admin-submission-resubmitted-${s._id}`} className="text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 bg-blue-100 text-blue-800">Resubmitted</span>
+    )}
     {s.is_duplicate && (
       <span data-testid={`admin-submission-duplicate-${s._id}`} title={`Same Team ID / Competition ID as submission ${s.duplicate_of}`} className="text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 bg-slate-800 text-white">
         Duplicate
@@ -100,7 +103,7 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
     try {
       const res = await axios.patch(`${API}/admin/techfest/submissions/${target.sub._id}/review`,
         { decision: target.decision, remarks: remarks.trim() }, { headers });
-      toast.success(approve ? 'Submission approved' : 'Submission rejected');
+      toast.success(`${approve ? 'Submission approved' : 'Submission rejected'}${res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
       onSaved(target.sub._id, res.data);
       onClose();
     } catch (err) {

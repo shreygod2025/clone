@@ -4413,6 +4413,8 @@ async def startup_db_client():
     health-check response on slow/remote MongoDB Atlas connections).
     """
     global _db_index_task
+    from routes.vendor_link_migration import migrate_vendor_links
+    asyncio.create_task(migrate_vendor_links())
     # Fire-and-forget — indexes are built while the server is already live
     _db_index_task = asyncio.create_task(_create_db_indexes())
 

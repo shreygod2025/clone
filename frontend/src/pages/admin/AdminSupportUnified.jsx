@@ -262,6 +262,7 @@ const AdminSupportUnified = () => {
   const [legacyTickets, setLegacyTickets] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const loadedOnceRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [queryTypeFilter, setQueryTypeFilter] = useState('');
   const [activeTab, setActiveTab] = useState('new'); // 'new', 'overdue', 'closed'
@@ -680,7 +681,9 @@ const AdminSupportUnified = () => {
   // Initial effect handled above
 
   const fetchAllQueries = async () => {
-    setLoading(true);
+    // Only show the full-page loader on first load — refreshes after an action
+    // (close/assign/reply) must keep the list mounted so scroll + page stay put.
+    if (!loadedOnceRef.current) setLoading(true);
     try {
       // Fetch all sources: inquiry queries, user support queries, legacy tickets, and tracking page tickets
       const [inquiryResponse, supportQueriesResponse, legacyResponse, trackingTicketsResponse] = await Promise.all([
@@ -736,6 +739,7 @@ const AdminSupportUnified = () => {
       toast.error('Failed to fetch support queries');
     } finally {
       setLoading(false);
+      loadedOnceRef.current = true;
     }
   };
 

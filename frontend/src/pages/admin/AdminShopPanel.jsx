@@ -157,6 +157,7 @@ const OrdersTab = ({ embedded = false }) => {
           'Customer Name': o.shipping?.full_name || '',
           'Email': o.shipping?.email || '',
           'Phone': o.shipping?.phone || '',
+          'Address': [o.shipping?.line1, o.shipping?.line2].filter(Boolean).join(', '),
           'City': o.shipping?.city || '',
           'State': o.shipping?.state || '',
           'Pincode': o.shipping?.pincode || '',
@@ -357,6 +358,7 @@ const OrdersTab = ({ embedded = false }) => {
               <tr>
                 <th className="px-4 py-3 text-left">Order</th>
                 <th className="px-4 py-3 text-left">Customer</th>
+                <th className="px-4 py-3 text-left">Address · City</th>
                 <th className="px-4 py-3 text-left">Items</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3 text-center">Payment</th>
@@ -383,6 +385,10 @@ const OrdersTab = ({ embedded = false }) => {
                       <p className="font-medium text-slate-700">{o.shipping?.full_name}</p>
                       <p className="text-xs text-slate-500">{o.shipping?.email || '—'}</p>
                       <p className="text-xs text-slate-500">{o.shipping?.phone}</p>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600 max-w-[220px]" data-testid={`shop-order-address-${o.order_no}`}>
+                      <p className="line-clamp-2" title={[o.shipping?.line1, o.shipping?.line2].filter(Boolean).join(', ')}>{[o.shipping?.line1, o.shipping?.line2].filter(Boolean).join(', ') || '—'}</p>
+                      <p className="font-semibold text-slate-800 mt-0.5">{[o.shipping?.city, o.shipping?.state].filter(Boolean).join(', ')}{o.shipping?.pincode ? ` · ${o.shipping.pincode}` : ''}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
                       <p className="font-semibold text-slate-800 line-clamp-2 max-w-[280px]" title={(o.items || []).map((it) => `${it.product_title || it.title || it.name || ''} × ${it.quantity}`).join('\n')}>

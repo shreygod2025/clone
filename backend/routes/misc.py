@@ -2377,8 +2377,8 @@ async def proxy_file(
             # Fall through with original URL
 
     # ── VendorPlus / emergent.host: add API key ───────────────────────────────
-    elif "emergent.host" in url:
-        vp_key = os.environ.get("VENDORPLUS_API_KEY", "")
+    elif "emergent.host" in url or "vendor-panel-6kjc.onrender.com" in url:
+        vp_key = os.environ.get("PROCUREWAY_API_KEY", "") if "onrender.com" in url else os.environ.get("VENDORPLUS_API_KEY", "")
         if vp_key:
             fetch_headers["X-API-Key"] = vp_key
 

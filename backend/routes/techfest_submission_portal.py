@@ -314,7 +314,7 @@ def _owner_query(auth: dict) -> dict:
 
 
 def _serialise_submission(doc: dict) -> dict:
-    out = {k: v for k, v in doc.items() if k != "_id"}
+    out = {k: v for k, v in doc.items() if k not in ("_id", "review_history", "reviewed_by")}
     out["id"] = str(doc.get("_id"))
     out["edit_cutoff_utc"] = _cutoff_for(doc).isoformat()
     out["edit_cutoff_label"] = _cutoff_label(doc)
@@ -371,6 +371,10 @@ async def submission_portal_update(
         if await find_duplicate_submission(changed.get("team_id"), changed.get("competition_id"), exclude_oid=oid):
             raise HTTPException(status_code=409, detail=DUPLICATE_SUBMISSION_MSG)
         updates.update(changed)
+    if (doc.get("review_status") or "") == "rejected":
+        # Edit after rejection = resubmission → back into the judges' queue.
+        updates["review_status"] = "pending"
+        updates["resubmitted_at"] = datetime.now(timezone.utc).isoformat()
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     updates["last_edited_by_student_at"] = updates["updated_at"]
     await db.techfest_submissions.update_one({"_id": oid}, {"$set": updates})

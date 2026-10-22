@@ -251,6 +251,16 @@ export default function TechfestSubmissionPortalPage() {
                           </span>
                         )}
                       </div>
+                      {sub.review_status === 'rejected' && (
+                        <div className="mx-4 mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-testid={`portal-rejected-${sub.id}`}>
+                          <strong>Not approved yet.</strong> Judge&apos;s remarks: {sub.judge_remarks || '—'}. Edit the details below and save to resubmit for review.
+                        </div>
+                      )}
+                      {sub.review_status === 'approved' && (
+                        <div className="mx-4 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid={`portal-approved-${sub.id}`}>
+                          <strong>Approved — you&apos;ve qualified!</strong>{sub.judge_remarks ? ` Judge's remarks: ${sub.judge_remarks}` : ''}
+                        </div>
+                      )}
                       {isOpen && (
                         <SubmissionEditor sub={sub} onCancel={() => setExpandedId('')} onSaved={() => { setExpandedId(''); loadSubmissions(); }} />
                       )}
