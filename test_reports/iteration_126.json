@@ -1,0 +1,39 @@
+{
+  "summary": "Tested all 4 changes (backend + UI). 1) Techfest judge review: reject with remarks gives the toast 'Submission rejected · email sent to team lead'. Portal (Team ID TF-TEAM-1) then shows the portal-rejected banner with the remarks. Editing city and saving sets review_status=pending and resubmitted_at. Admin row shows PENDING plus the Resubmitted badge. Approve gives the toast 'email sent', the badge goes away and the portal shows the portal-approved banner. The API returns email_sent=true; portal /my and PATCH responses leave out review_history, reviewed_by and _id. 2) Robotics Shop tab has the 'Address · City' column (line1/line2 plus city, state · pincode, '—' for pickup orders); the exported XLSX has an 'Address' column between Phone and City. 3) Mongo has no 'vendorplus-4' or 'oll-procure' strings in any listed collection. The only PO vendor_tracking_url is https://vendor-panel-1rt3.vercel.app/track/A76B5C6A and that page returns 200. The /admin/expenses DOM has no old hosts and its PO PDF link goes through the proxy to vendor-panel-6kjc.onrender.com. /shop product images (weserv to onrender /api/files) return 200 webp; 8 images looked unloaded only because they are lazy-loaded below the fold. 4) Support Center: closing a ticket in the middle of the Overdue list (411 cards) kept scrollY the same (9672 before and after), the full-page spinner never appeared (MutationObserver count 0) and the active tab stayed. Closed tickets were reopened.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PATCH /api/admin/techfest/submissions/{id}/review", "issue": "The permission check is `role not in (admin, super_admin) and not user.get('email')`, so any logged-in user with an email can approve or reject submissions. It should use a real role or permission check (e.g. the 'competitions' permission)."},
+      {"endpoint": "techfest_emails.review_result_html", "issue": "remarks and lead_name (lead_name comes from the user) go into the email HTML without html.escape, which allows HTML injection in emails."},
+      {"endpoint": "_dispatch_email (techfest.py)", "issue": "Uses blocking smtplib inside an async handler, which blocks the event loop while email is sent (existing issue). email_sent=true only means no exception was raised."},
+      {"endpoint": "PATCH /api/techfest/submission-portal/submission/{id}", "issue": "Business question: editing an APPROVED submission keeps it approved with no re-review, so a team could change its project after approval. Confirm this is intended."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/techfest/my-submission after resubmitting", "issues": ["After saving a rejected submission the red banner disappears but nothing replaces it. The toast just says 'Submission updated.' Consider a 'Resubmitted — under review' badge or toast so the team knows it went back to the judges."]},
+      {"screen": "/admin/orders Robotics Shop", "issues": ["Two orders share order_no OLL-SHOP-1787306001 (test data), which gives duplicate data-testid shop-order-address-OLL-SHOP-1787306001."]},
+      {"screen": "/admin/support Overdue", "issues": ["All 411 overdue cards render with no pagination or virtualization. This is a performance concern, not a regression."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_techfest_review_iter126.py", "/app/backend/tests/test_techfest_submission_portal.py", "/app/test_reports/pytest/pytest_iter126.xml"],
+  "action_items": [
+    "Tighten the role/permission check on PATCH /api/admin/techfest/submissions/{id}/review",
+    "html.escape remarks and lead_name in review_result_html",
+    "Optional: show a 'Resubmitted / under review' state on the portal after editing a rejected entry"
+  ],
+  "critical_code_review_comments": [
+    "techfest.py is 1818 lines and AdminSupportUnified.jsx is 3389 lines; both should be split.",
+    "AdminExpenses normalizeVendorUrl regex matches ANY *.preview.emergentagent.com host, not just oll-procure. It is only applied to PO, invoice, logistics and delivery file URLs, so the risk is low, but a file stored on the app's own preview backend would be wrongly rewritten to onrender. Restrict it to oll-procure.",
+    "vendor_link_migration runs on every startup and scans whole collections (support_queries 382, school_inquiries 182 docs). Fine now, but it should be filtered with a $regex query or guarded by a one-time flag."
+  ],
+  "updated_files": ["/app/backend/tests/test_techfest_review_iter126.py"],
+  "success_rate": {"backend": "100% (27/27 incl. portal regression)", "frontend": "100% of requested flows"},
+  "test_credentials": "admin@oll.co / GodisGreat@2026 (from /app/memory/test_credentials.md); portal Team ID TF-TEAM-1",
+  "seed_data_creation": "None. Seed 6ab40f21fc0667aceb877bd6 restored to approved, city Pune (extra review_history entries were added by the UI run). Support tickets d772bbe8-33c4-4b73-9599-0f4c730554dc and 514c434f-8935-4d9e-ab61-1cac7c6c5ada were closed and then reopened to 'open'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_techfest_review_iter126.py; it snapshots and restores the seed doc. UI login works by POSTing /api/auth/login and setting localStorage oll_token and oll_user. Submissions tab: admin-competitions-tab-submissions. Shop tab: robotics-shop-orders-tab; export: shop-orders-export. Support tabs: tab-new, tab-overdue, tab-on-hold, tab-closed; status buttons: query-{id}-status-{value}. Server date is 22 Oct 2026."
+}

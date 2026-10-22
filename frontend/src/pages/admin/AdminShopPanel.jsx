@@ -386,7 +386,7 @@ const OrdersTab = ({ embedded = false }) => {
                       <p className="text-xs text-slate-500">{o.shipping?.email || '—'}</p>
                       <p className="text-xs text-slate-500">{o.shipping?.phone}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-600 max-w-[220px]" data-testid={`shop-order-address-${o.order_no}`}>
+                    <td className="px-4 py-3 text-xs text-slate-600 max-w-[220px]" data-testid={`shop-order-address-${o.id || o.order_no}`}>
                       <p className="line-clamp-2" title={[o.shipping?.line1, o.shipping?.line2].filter(Boolean).join(', ')}>{[o.shipping?.line1, o.shipping?.line2].filter(Boolean).join(', ') || '—'}</p>
                       <p className="font-semibold text-slate-800 mt-0.5">{[o.shipping?.city, o.shipping?.state].filter(Boolean).join(', ')}{o.shipping?.pincode ? ` · ${o.shipping.pincode}` : ''}</p>
                     </td>

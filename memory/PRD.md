@@ -770,3 +770,13 @@ See `/app/memory/test_credentials.md`.
 - 2026-06: Shark Tank India S6 Young Founders — homepage poster banner + /shark-tank-young-founders full blue/yellow poster re-theme (see CHANGELOG). Pending P0: vendor API URL (blocked on user), P1: Sync Expenses button, file modularisation.
 - BRAND RULE: OLL has NO full form — never write "Online Learning Launchpad".
 - RESOLVED 2026-06: Vendor Panel API mismatch — now on https://vendor-panel-6kjc.onrender.com/api.
+
+## 2026-06 (fork) updates
+- Fixed build-blocking lint error in AdminExpenses.jsx (PnLSheet now receives getAuthHeaders + onRefresh props).
+- "Sync Expenses (Educator Salaries)" button now always visible on School P&L Sheet (calls POST /api/school-expenses/import-educator-salaries); refreshes P&L after sync.
+- Techfest: APPROVED submissions are locked — PATCH returns 403; portal shows "Locked (approved)" instead of Edit.
+
+### Backlog
+- P1: Backend permission enforcement mirroring AdminDashboard UI permissions
+- P2: Split AdminCompetitions/AdminOrders/AdminTasks/AdminExpenses
+- Future: duplicate invoice warning, multi-currency invoices, per-school invite email, audit logs

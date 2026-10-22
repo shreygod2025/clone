@@ -90,7 +90,7 @@ export default function SubmissionEditor({ sub, onCancel, onSaved }) {
         const d = data?.detail;
         throw new Error(Array.isArray(d) ? `${d[0]?.loc?.slice(-1)[0]}: ${d[0]?.msg}` : d || 'Save failed.');
       }
-      toast.success('Submission updated.');
+      toast.success(sub.review_status === 'rejected' ? 'Resubmitted — your entry is back under review with the judges.' : 'Submission updated.');
       onSaved();
     } catch (err) { toast.error(err.message); } finally { setSaving(false); }
   };

@@ -528,7 +528,7 @@ const AdminExpenses = () => {
         ) : activeTab === 'projects-pnl' ? (
           <ProjectsPnLTab />
         ) : activeTab === 'pnl' ? (
-          <PnLSheet data={pnlData} loading={pnlLoading} />
+          <PnLSheet data={pnlData} loading={pnlLoading} getAuthHeaders={getAuthHeaders} onRefresh={fetchPnl} />
         ) : (<>
 
         {/* Summary Cards */}
@@ -1274,7 +1274,7 @@ const CostCell = ({ amount, p }) => (
   </td>
 );
 
-const PnLSheet = ({ data, loading }) => {
+const PnLSheet = ({ data, loading, getAuthHeaders, onRefresh }) => {
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -1347,7 +1347,6 @@ const PnLSheet = ({ data, loading }) => {
           ))}
         </div>
         {checkin_sync && (
-          <>
             <button
               onClick={() => setShowSyncModal(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap"
@@ -1362,13 +1361,14 @@ const PnLSheet = ({ data, loading }) => {
                 </span>
               )}
             </button>
+        )}
             <button
               onClick={async () => {
                 if (!window.confirm('Materialize every educator\'s monthly salary from CheckIn into the Expenses ledger?\n\n• One line item per (educator × school × month)\n• Dated the 7th of the following month\n• Backfill from April 2026\n• Safe to re-run — existing rows are updated, not duplicated')) return;
                 try {
                   const r = await axios.post(`${API}/school-expenses/import-educator-salaries?since_month=2026-04`, {}, { headers: getAuthHeaders() });
                   toast.success(`Materialized ${r.data.inserted} new + updated ${r.data.updated} (₹${(r.data.total_amount).toLocaleString('en-IN')}) — expense_date set to 7th of each following month.`);
-                  loadPnLData();
+                  onRefresh();
                 } catch (e) {
                   toast.error(e?.response?.data?.detail || 'Materialize failed');
                 }
@@ -1378,10 +1378,8 @@ const PnLSheet = ({ data, loading }) => {
               title="Create school_expenses line items — one per (educator × school × month), dated 7th of next month. Cron runs monthly on the 7th automatically."
             >
               <Users className="w-3.5 h-3.5" />
-              Materialize Salaries → Ledger
+              Sync Expenses (Educator Salaries)
             </button>
-          </>
-        )}
       </div>
 
       {showSyncModal && checkin_sync && (

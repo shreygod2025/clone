@@ -241,7 +241,11 @@ export default function TechfestSubmissionPortalPage() {
                             {sub.school_or_college} · {sub.city}{sub.updated_at ? ` · updated ${new Date(sub.updated_at).toLocaleString()}` : ''}
                           </div>
                         </div>
-                        {sub.edit_window_open ? (
+                        {sub.review_status === 'approved' ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid={`portal-locked-approved-${sub.id}`}>
+                            <Lock className="w-3.5 h-3.5" /> Locked (approved)
+                          </span>
+                        ) : sub.edit_window_open ? (
                           <button type="button" onClick={() => setExpandedId(isOpen ? '' : sub.id)} className="tpp-btn border border-slate-200 text-[#0A1F44] text-xs" data-testid={`portal-edit-${sub.id}`}>
                             <Pencil className="w-3.5 h-3.5" /> {isOpen ? 'Close' : 'Edit'}
                           </button>
@@ -261,7 +265,7 @@ export default function TechfestSubmissionPortalPage() {
                           <strong>Approved — you&apos;ve qualified!</strong>{sub.judge_remarks ? ` Judge's remarks: ${sub.judge_remarks}` : ''}
                         </div>
                       )}
-                      {isOpen && (
+                      {isOpen && sub.review_status !== 'approved' && (
                         <SubmissionEditor sub={sub} onCancel={() => setExpandedId('')} onSaved={() => { setExpandedId(''); loadSubmissions(); }} />
                       )}
                     </div>

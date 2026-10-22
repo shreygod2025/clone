@@ -322,7 +322,10 @@ def review_result_html(*, lead_name: str, decision: str, remarks: str, competiti
                        zone_label: Optional[str] = None, team_id: Optional[str] = None,
                        edit_deadline: str = "1 Nov 2026, 11:59 PM IST") -> str:
     """Judge decision email — approved (qualification details) or rejected (edit & resubmit)."""
+    import html as _html
     approved = decision == "approved"
+    lead_name, remarks = _html.escape(lead_name), _html.escape(remarks)
+    team_id = _html.escape(team_id) if team_id else team_id
     rows = [("Track", competition_label or "—")]
     if zone_label:
         rows.append(("Regional Round", zone_label))
