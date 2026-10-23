@@ -10,7 +10,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STATUS_STYLES = {
   approved: 'bg-emerald-100 text-emerald-800',
-  rejected: 'bg-red-100 text-red-800',
+  rejected: 'bg-orange-100 text-orange-800',
   pending: 'bg-amber-100 text-amber-800',
 };
 
@@ -41,7 +41,7 @@ export const exportSubmissionsXlsx = (rows) => {
     'ID Proof Type': s.id_proof_type || '',
     'ID Proof URL': s.id_proof_url || '',
     'School Permission URL': s.school_permission_url || '',
-    Status: s.review_status || 'pending',
+    Status: s.review_status === 'rejected' ? 'rework' : (s.review_status || 'pending'),
     Duplicate: s.is_duplicate ? 'Yes' : 'No',
     'Judge Remarks': s.judge_remarks || '',
     'Reviewed By': s.reviewed_by || '',
@@ -56,7 +56,7 @@ export const exportSubmissionsXlsx = (rows) => {
 export const ReviewStatusBadge = ({ s }) => (
   <div className="flex flex-col items-start gap-1">
     <span data-testid={`admin-submission-status-${s._id}`} className={`text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 ${STATUS_STYLES[s.review_status] || STATUS_STYLES.pending}`}>
-      {s.review_status || 'pending'}
+      {s.review_status === 'rejected' ? 'rework' : (s.review_status || 'pending')}
     </span>
     {s.resubmitted_at && (s.review_status || 'pending') === 'pending' && (
       <span data-testid={`admin-submission-resubmitted-${s._id}`} className="text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 bg-blue-100 text-blue-800">Resubmitted</span>
@@ -69,7 +69,7 @@ export const ReviewStatusBadge = ({ s }) => (
   </div>
 );
 
-export const ReviewActions = ({ s, onReview }) => (
+export const ReviewActions = ({ s, onReview, children }) => (
   <div className="min-w-[180px]">
     <div className="flex gap-1.5">
       <button type="button" onClick={() => onReview(s, 'approved')} data-testid={`admin-submission-approve-${s._id}`}
@@ -77,8 +77,8 @@ export const ReviewActions = ({ s, onReview }) => (
         <CheckCircle2 className="w-3.5 h-3.5" /> Approve
       </button>
       <button type="button" onClick={() => onReview(s, 'rejected')} data-testid={`admin-submission-reject-${s._id}`}
-        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 transition-colors">
-        <XCircle className="w-3.5 h-3.5" /> Reject
+        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">
+        <XCircle className="w-3.5 h-3.5" /> Rework
       </button>
     </div>
     {s.judge_remarks && (
@@ -87,6 +87,7 @@ export const ReviewActions = ({ s, onReview }) => (
         {s.reviewed_by && <div className="text-[10px] text-slate-400">— {s.reviewed_by}{s.reviewed_at ? `, ${new Date(s.reviewed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ''}</div>}
       </div>
     )}
+    {children}
   </div>
 );
 
@@ -94,6 +95,7 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
   const [remarks, setRemarks] = useState('');
   const [saving, setSaving] = useState(false);
   const approve = target?.decision === 'approved';
+  const bulkIds = target?.ids;
 
   useEffect(() => { setRemarks(target?.sub?.judge_remarks || ''); }, [target]);
 
@@ -101,10 +103,18 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
     if (remarks.trim().length < 3) { toast.error("Judge's remarks are mandatory — please state the reason."); return; }
     setSaving(true);
     try {
-      const res = await axios.patch(`${API}/admin/techfest/submissions/${target.sub._id}/review`,
-        { decision: target.decision, remarks: remarks.trim() }, { headers });
-      toast.success(`${approve ? 'Submission approved' : 'Submission rejected'}${res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
-      onSaved(target.sub._id, res.data);
+      if (bulkIds) {
+        const res = await axios.post(`${API}/admin/techfest/submissions/bulk-review`,
+          { ids: bulkIds, decision: target.decision, remarks: remarks.trim() }, { headers });
+        toast.success(`${res.data.updated} submission(s) marked ${approve ? 'approved' : 'rework'} · emails sending in background`);
+        const { review_status, judge_remarks, reviewed_by, reviewed_at } = res.data;
+        bulkIds.forEach((id) => onSaved(id, { review_status, judge_remarks, reviewed_by, reviewed_at }));
+      } else {
+        const res = await axios.patch(`${API}/admin/techfest/submissions/${target.sub._id}/review`,
+          { decision: target.decision, remarks: remarks.trim() }, { headers });
+        toast.success(`${approve ? 'Submission approved' : 'Sent back for rework'}${res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
+        onSaved(target.sub._id, { ...res.data, ...(res.data?.email_sent ? { review_email_sent_at: res.data.reviewed_at } : {}) });
+      }
       onClose();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Could not save review');
@@ -115,31 +125,33 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
     <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md" data-testid="admin-submission-review-dialog">
         <DialogHeader>
-          <DialogTitle>{approve ? 'Approve' : 'Reject'} submission</DialogTitle>
+          <DialogTitle>{approve ? 'Approve' : 'Send back for rework'} {bulkIds ? `${bulkIds.length} submissions` : 'submission'}</DialogTitle>
         </DialogHeader>
         {target && (
           <div className="space-y-3">
             <div className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-900">{target.sub.full_name}</span> · {target.sub.competition?.replace('_', ' ')} · Team ID {target.sub.team_id || '—'}
+              {bulkIds ? `The same remarks will be saved and emailed to all ${bulkIds.length} selected teams.` : (
+                <><span className="font-semibold text-slate-900">{target.sub.full_name}</span> · {target.sub.competition?.replace('_', ' ')} · Team ID {target.sub.team_id || '—'}</>
+              )}
             </div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
-              Judge&apos;s remarks <span className="text-red-600">*</span>
+              {approve ? <>Judge&apos;s remarks</> : <>Changes required (emailed to the team)</>} <span className="text-red-600">*</span>
             </label>
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows={4}
-              placeholder={approve ? 'Why is this project approved?' : 'Why is this project rejected?'}
+              placeholder={approve ? 'Why is this project approved?' : 'List the changes the team must make before resubmitting'}
               className="w-full rounded-lg border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
               data-testid="admin-submission-review-remarks"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={onClose} data-testid="admin-submission-review-cancel">Cancel</Button>
               <Button onClick={save} disabled={saving || remarks.trim().length < 3}
-                className={approve ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}
+                className={approve ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'}
                 data-testid="admin-submission-review-save">
                 {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                {approve ? 'Approve' : 'Reject'}
+                {approve ? 'Approve & email' : 'Send rework & email'}
               </Button>
             </div>
           </div>

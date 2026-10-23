@@ -404,7 +404,7 @@ async def create_techfest_submission(payload: TechfestSubmissionIn, background_t
     return {"ok": True, "id": reference_id}
 
 
-async def _send_submission_confirmations(*, submission: dict, reference_id: str) -> None:
+async def _send_submission_confirmations(*, submission: dict, reference_id: str, whatsapp: bool = True) -> int:
     """Fan-out submission confirmation email + WhatsApp to team lead and
     every team member with contact info. Swallows individual failures."""
     try:
@@ -441,9 +441,11 @@ async def _send_submission_confirmations(*, submission: dict, reference_id: str)
                 recipients.append((em, (m.get("name") or "Team member").strip()))
                 seen_emails.add(em)
 
+        sent = 0
         for to_email, _to_name in recipients:
             try:
-                await _dispatch_email(to_email, subject, html)
+                if (await _dispatch_email(to_email, subject, html)).get("success"):
+                    sent += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning("techfest submission email failed for %s: %s", to_email, exc)
 
@@ -454,7 +456,7 @@ async def _send_submission_confirmations(*, submission: dict, reference_id: str)
         except Exception:  # noqa: BLE001
             send_whatsapp_notification = None
 
-        if send_whatsapp_notification:
+        if whatsapp and send_whatsapp_notification:
             phones: list[tuple[str, str]] = []
             seen_phones: set[str] = set()
             lead_phone = _sanitise_phone(submission.get("phone") or "")
@@ -480,8 +482,10 @@ async def _send_submission_confirmations(*, submission: dict, reference_id: str)
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("techfest submission whatsapp failed for %s: %s", phone, exc)
+        return sent
     except Exception as exc:  # noqa: BLE001
         logger.exception("techfest submission confirmation dispatch failed: %s", exc)
+        return 0
 
 
 # ── Auto-filled School Permission Letter (.docx) ────────────────────
@@ -595,6 +599,72 @@ async def review_techfest_submission(submission_id: str, payload: SubmissionRevi
     return {"ok": True, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now, "email_sent": email_sent}
 
 
+class SubmissionEmailIn(BaseModel):
+    ids: List[str] = Field(..., min_length=1, max_length=2000)
+    kind: Literal["confirmation", "result"]
+
+
+class BulkReviewIn(SubmissionReviewIn):
+    ids: List[str] = Field(..., min_length=1, max_length=2000)
+
+
+async def _email_submission(doc: dict, kind: str) -> bool:
+    now = datetime.now(timezone.utc).isoformat()
+    if kind == "confirmation":
+        ok = (await _send_submission_confirmations(submission=doc, reference_id=str(doc["_id"]), whatsapp=False)) > 0
+        field = "confirmation_email_sent_at"
+    else:
+        if (doc.get("review_status") or "pending") not in ("approved", "rejected"):
+            return False
+        ok = await _send_review_result_email(doc, doc["review_status"], doc.get("judge_remarks") or "")
+        field = "review_email_sent_at"
+    if ok:
+        await db.techfest_submissions.update_one({"_id": doc["_id"]}, {"$set": {field: now}})
+    return ok
+
+
+async def _email_many(ids: List[str], kind: str) -> dict:
+    sent = failed = 0
+    async for doc in db.techfest_submissions.find({"_id": {"$in": [_oid(i) for i in ids]}}):
+        if await _email_submission(doc, kind):
+            sent += 1
+        else:
+            failed += 1
+    return {"sent": sent, "skipped_or_failed": failed}
+
+
+def _require_reviewer(user: dict) -> None:
+    if user.get("role") not in ("admin", "super_admin") and not user.get("email"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
+@router.post("/admin/techfest/submissions/send-emails")
+async def send_submission_emails(payload: SubmissionEmailIn, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    _require_reviewer(user)
+    [_oid(i) for i in payload.ids]
+    if len(payload.ids) > 3:
+        background_tasks.add_task(_email_many, payload.ids, payload.kind)
+        return {"ok": True, "queued": len(payload.ids)}
+    return {"ok": True, **(await _email_many(payload.ids, payload.kind))}
+
+
+@router.post("/admin/techfest/submissions/bulk-review")
+async def bulk_review_submissions(payload: BulkReviewIn, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    _require_reviewer(user)
+    remarks = payload.remarks.strip()
+    if len(remarks) < 3:
+        raise HTTPException(status_code=400, detail="Judge's remarks are mandatory — please state the reason.")
+    now = datetime.now(timezone.utc).isoformat()
+    reviewer = user.get("name") or user.get("email") or "admin"
+    res = await db.techfest_submissions.update_many(
+        {"_id": {"$in": [_oid(i) for i in payload.ids]}},
+        {"$set": {"review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now},
+         "$push": {"review_history": {"decision": payload.decision, "remarks": remarks, "by": reviewer, "at": now}}},
+    )
+    background_tasks.add_task(_email_many, payload.ids, "result")
+    return {"ok": True, "updated": res.modified_count, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now}
+
+
 async def _send_review_result_email(doc: dict, decision: str, remarks: str) -> bool:
     from .techfest_emails import review_result_html
     from .techfest_permission_letter import COMPETITION_LABELS, ZONE_LABELS
@@ -614,8 +684,7 @@ async def _send_review_result_email(doc: dict, decision: str, remarks: str) -> b
     subject = ("You've qualified! Submission approved — OLL Robotics Championship @ Techfest"
                if decision == "approved" else "Action needed: edit & resubmit your Techfest project")
     try:
-        await _dispatch_email(to, subject, html)
-        return True
+        return bool((await _dispatch_email(to, subject, html)).get("success"))
     except Exception as exc:  # noqa: BLE001
         logger.warning("techfest review email failed for %s: %s", to, exc)
         return False

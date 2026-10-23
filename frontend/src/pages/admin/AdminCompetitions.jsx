@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
 import TechfestBulkEmailDialog from './TechfestBulkEmailDialog';
 import SubmissionReviewDialog, { ReviewStatusBadge, ReviewActions, exportSubmissionsXlsx } from './SubmissionReviewDialog';
+import { RowEmailActions, BulkSubmissionBar } from './SubmissionEmailActions';
 
 // ── HeaderFilter ───────────────────────────────────────────────────────
 // Small funnel icon next to a column header that opens a popover with a
@@ -270,6 +271,8 @@ export default function AdminCompetitions() {
   const [subAgeFilter, setSubAgeFilter] = useState('');
   const [subStatusFilter, setSubStatusFilter] = useState('');
   const [reviewTarget, setReviewTarget] = useState(null);
+  const [subSelected, setSubSelected] = useState(new Set());
+  const toggleSubSelected = (id) => setSubSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const visibleSubmissions = useMemo(() => submissions.filter((s) => {
     if (subZoneFilter && s.zone !== subZoneFilter) return false;
     if (subAgeFilter && s.age_category !== subAgeFilter) return false;
@@ -1526,7 +1529,7 @@ export default function AdminCompetitions() {
                       <option value="">All</option>
                       <option value="pending">Pending</option>
                       <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
+                      <option value="rejected">Rework</option>
                       <option value="duplicate">Duplicates</option>
                     </select>
                     <div className="flex-1" />
@@ -1535,10 +1538,15 @@ export default function AdminCompetitions() {
                       <Download className="w-3.5 h-3.5 mr-1" /> Export XLSX
                     </Button>
                   </div>
+                  <BulkSubmissionBar ids={[...subSelected]} headers={getAuthHeaders()} onReview={(decision) => setReviewTarget({ ids: [...subSelected], decision })} onClear={() => setSubSelected(new Set())} />
                   <table className="w-full text-sm" data-testid="admin-competitions-submissions-table">
                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
                       <tr>
-                        <th className="text-left px-2 py-3 w-8"></th>
+                        <th className="text-left px-2 py-3 w-14">
+                          <input type="checkbox" className="w-4 h-4 accent-blue-600" data-testid="admin-submissions-select-all"
+                            checked={visibleSubmissions.length > 0 && visibleSubmissions.every((x) => subSelected.has(x._id))}
+                            onChange={(e) => setSubSelected(e.target.checked ? new Set(visibleSubmissions.map((x) => x._id)) : new Set())} />
+                        </th>
                         <th className="text-left px-3 py-3 font-bold">Sr.</th>
                         <th className="text-left px-3 py-3 font-bold">Team Lead</th>
                         <th className="text-left px-3 py-3 font-bold">School</th>
@@ -1562,7 +1570,8 @@ export default function AdminCompetitions() {
                         return (
                         <React.Fragment key={s._id}>
                         <tr className="border-b border-slate-100 hover:bg-slate-50/70" data-testid={`admin-submission-row-${s._id}`}>
-                          <td className="px-2 py-3">
+                          <td className="px-2 py-3 whitespace-nowrap">
+                            <input type="checkbox" className="w-4 h-4 accent-blue-600 mr-1.5 align-middle" checked={subSelected.has(s._id)} onChange={() => toggleSubSelected(s._id)} data-testid={`admin-submission-select-${s._id}`} />
                             <button
                               onClick={() => toggleExpandedSub(s._id)}
                               className="text-slate-500 hover:text-slate-900"
@@ -1599,7 +1608,7 @@ export default function AdminCompetitions() {
                           </td>
                           <td className="px-3 py-3 text-slate-600 text-[11px]">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}</td>
                           <td className="px-3 py-3"><ReviewStatusBadge s={s} /></td>
-                          <td className="px-3 py-3"><ReviewActions s={s} onReview={(sub, decision) => setReviewTarget({ sub, decision })} /></td>
+                          <td className="px-3 py-3"><ReviewActions s={s} onReview={(sub, decision) => setReviewTarget({ sub, decision })}><RowEmailActions s={s} headers={getAuthHeaders()} onSent={onReviewSaved} /></ReviewActions></td>
                         </tr>
                         {isOpen && (
                           <tr data-testid={`admin-submission-detail-${s._id}`}>

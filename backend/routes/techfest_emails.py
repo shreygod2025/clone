@@ -335,7 +335,7 @@ def review_result_html(*, lead_name: str, decision: str, remarks: str, competiti
     remarks_html = (
         f'<div style="background:{"#f0fdf4" if approved else "#fef2f2"};border-left:4px solid {"#16a34a" if approved else "#DC2626"};'
         f'border-radius:8px;padding:12px 14px;margin:16px 0;font-size:14px;color:#0A1F44;">'
-        f'<div style="font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Judge&rsquo;s Remarks</div>{remarks}</div>'
+        f'<div style="font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">{"Judge&rsquo;s Remarks" if decision == "approved" else "Changes Required"}</div>{remarks}</div>'
     )
     if approved:
         next_steps = (
