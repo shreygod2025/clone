@@ -780,3 +780,4 @@ See `/app/memory/test_credentials.md`.
 - P1: Backend permission enforcement mirroring AdminDashboard UI permissions
 - P2: Split AdminCompetitions/AdminOrders/AdminTasks/AdminExpenses
 - Future: duplicate invoice warning, multi-currency invoices, per-school invite email, audit logs
+- Techfest admin Submissions: per-row "Send confirmation" + "Send result mail" buttons, checkbox selection with bulk bar (Send confirmation, Send result mail, Approve + email, Rework + email). "Rejected" relabelled "Rework" in UI (DB value still `rejected`); rework remarks emailed as "Changes Required". Endpoints: POST /api/admin/techfest/submissions/send-emails {ids, kind}, POST /api/admin/techfest/submissions/bulk-review. Bulk (>3) runs in background, throttled 0.6s/submission; Gmail SMTP moved to thread.

@@ -51,7 +51,7 @@ export const RowEmailActions = ({ s, headers, onSent }) => {
   );
 };
 
-export const BulkSubmissionBar = ({ ids, headers, onReview, onClear }) => {
+export const BulkSubmissionBar = ({ ids, headers, onReview, onClear, onSent }) => {
   const [busy, setBusy] = useState('');
   if (!ids.length) return null;
   const send = async (kind) => {
@@ -59,6 +59,7 @@ export const BulkSubmissionBar = ({ ids, headers, onReview, onClear }) => {
     setBusy(kind);
     try {
       reportResult(await sendEmails(ids, kind, headers), kind === 'confirmation' ? 'Confirmation emails' : 'Result emails');
+      onSent();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Bulk email failed');
     } finally { setBusy(''); }

@@ -1,0 +1,37 @@
+{
+  "summary": "Tested the Techfest admin Submissions emails feature: per-row and bulk confirmation/result emails, bulk Approve/Rework, the 'Rejected' to 'Rework' relabel, and the portal lock regression. Backend: 11/11 pytest pass. Covers send-emails validation (no auth, invalid id 400, bad kind 422, empty ids 422), a synchronous confirmation send that stamps confirmation_email_sent_at, kind=result skipping pending rows (sent=1, skipped_or_failed=1), more than 3 ids returning {queued:4}, bulk-review validation and persistence, and PATCH on an approved submission returning 403 'locked'. Frontend (Playwright, desktop): checkboxes, header select-all, the bulk bar with count and all 5 buttons, window.confirm on bulk send, and Clear hiding the bar. Bulk Rework opens the dialog with label 'Changes required (emailed to the team)'; saving shows a toast and the badge changes to REWORK. Row Rework button text and 'Send rework & email' are correct. The Status filter has a 'Rework' option. The per-row result button is hidden for pending rows. The per-row confirmation and result labels update to '· 23 Oct'. Real emails were sent to test addresses only. Seed 6ab40f45... was restored to pending with no remarks and the added history entry removed. 6ab40f21... is still approved.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/techfest/submissions/send-emails", "issue": "A valid ObjectId that does not exist is not counted in sent or skipped_or_failed (silently ignored), so the counts can be less than len(ids)."},
+      {"endpoint": "_dispatch_email (bulk background sends)", "issue": "The Gmail path uses blocking smtplib inside an async function, which blocks the event loop for every mail. A bulk send of hundreds of submissions, each with a lead plus members, will stall the whole API while the background task runs. The Resend fallback has no throttle, and the backend log already shows a Resend 429 'only 5 requests per second'. Bulk sends can fail part-way and those rows are only counted as failed."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BulkSubmissionBar", "issue": "Bulk 'Send confirmation' / 'Send result mail' do not update row state (confirmation_email_sent_at / review_email_sent_at). After the bulk send, the approved row still showed 'Send confirmation' even though the DB had the timestamp, until the page was reloaded.", "selector": "[data-testid='admin-submissions-bulk-confirmation']", "priority": "LOW"},
+      {"component": "Submissions selection", "issue": "subSelected is not cleared or intersected when filters change. Rows that are selected but hidden by a filter are still included in bulk actions, and the count includes rows that are not visible. This risks emailing or approving teams the admin can't see.", "selector": "[data-testid='admin-submissions-select-all']", "priority": "MEDIUM"},
+      {"component": "SubmissionReviewDialog (bulk)", "issue": "The selection or bulk bar is not cleared after a successful bulk review. The title reads '1 submissions' (pluralisation).", "selector": "[data-testid='admin-submission-review-dialog']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_techfest_submission_emails_iter127.py", "/app/test_reports/pytest/pytest_iter127.xml"],
+  "action_items": [
+    "Clear subSelected (or intersect it with visibleSubmissions) when Track/Region/Age/Status filters change, so bulk actions only affect visible rows",
+    "After a bulk send-emails call that ran synchronously (<=3 ids) or after a successful bulk review, update the row timestamps and clear the selection",
+    "Bulk email path: run smtplib in asyncio.to_thread (or use aiosmtplib) and add a small delay or throttle between Resend calls (5 rps limit)",
+    "Optional: report not-found ids in the send-emails response; fix '1 submissions' pluralisation"
+  ],
+  "critical_code_review_comments": [
+    "_require_reviewer allows any authenticated user with an email (not only admins) to send bulk emails or bulk-review. This is the same gate as the existing endpoints, but consider restricting it to admin/judge roles.",
+    "Blocking smtplib in async _dispatch_email combined with BackgroundTasks for up to 2000 ids will freeze the event loop.",
+    "AdminCompetitions.jsx is 2437 lines and should be split further."
+  ],
+  "updated_files": ["/app/backend/tests/test_techfest_submission_emails_iter127.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "seed_data_creation": "None. Existing seeds were mutated and then restored (pytest fixture replace_one, plus a manual restore of 6ab40f45... to pending after the UI bulk rework).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin token can be injected via localStorage oll_token/oll_user after POST /api/auth/login. The Submissions tab is clicked via get_by_text('Submissions', exact=True). Only 2 submissions exist. Bulk-review runs the result emails in a background task. Sonner toasts disappear in about 4s, so check them quickly."
+}

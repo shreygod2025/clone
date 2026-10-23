@@ -49,9 +49,12 @@ async def _dispatch_email(to_email: str, subject: str, html: str) -> dict:
             msg['To'] = to_email
             msg['Reply-To'] = reply_to
             msg.attach(MIMEText(html, 'html'))
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-                server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
-                server.sendmail(GMAIL_EMAIL, to_email, msg.as_string())
+            def _smtp_send():
+                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                    server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+                    server.sendmail(GMAIL_EMAIL, to_email, msg.as_string())
+            import asyncio
+            await asyncio.to_thread(_smtp_send)
             return {"provider": "gmail", "success": True}
         gmail_err = "GMAIL_APP_PASSWORD missing"
     except Exception as exc:  # noqa: BLE001
@@ -624,13 +627,14 @@ async def _email_submission(doc: dict, kind: str) -> bool:
 
 
 async def _email_many(ids: List[str], kind: str) -> dict:
-    sent = failed = 0
+    import asyncio
+    sent = 0
     async for doc in db.techfest_submissions.find({"_id": {"$in": [_oid(i) for i in ids]}}):
         if await _email_submission(doc, kind):
             sent += 1
-        else:
-            failed += 1
-    return {"sent": sent, "skipped_or_failed": failed}
+        if len(ids) > 1:
+            await asyncio.sleep(0.6)  # stay under Resend's 5 req/s across lead + members
+    return {"sent": sent, "skipped_or_failed": len(ids) - sent}
 
 
 def _require_reviewer(user: dict) -> None:

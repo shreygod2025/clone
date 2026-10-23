@@ -109,6 +109,7 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
         toast.success(`${res.data.updated} submission(s) marked ${approve ? 'approved' : 'rework'} · emails sending in background`);
         const { review_status, judge_remarks, reviewed_by, reviewed_at } = res.data;
         bulkIds.forEach((id) => onSaved(id, { review_status, judge_remarks, reviewed_by, reviewed_at }));
+        target.onBulkDone?.();
       } else {
         const res = await axios.patch(`${API}/admin/techfest/submissions/${target.sub._id}/review`,
           { decision: target.decision, remarks: remarks.trim() }, { headers });
@@ -125,7 +126,7 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
     <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md" data-testid="admin-submission-review-dialog">
         <DialogHeader>
-          <DialogTitle>{approve ? 'Approve' : 'Send back for rework'} {bulkIds ? `${bulkIds.length} submissions` : 'submission'}</DialogTitle>
+          <DialogTitle>{approve ? 'Approve' : 'Send back for rework'} {bulkIds ? `${bulkIds.length} submission${bulkIds.length === 1 ? '' : 's'}` : 'submission'}</DialogTitle>
         </DialogHeader>
         {target && (
           <div className="space-y-3">

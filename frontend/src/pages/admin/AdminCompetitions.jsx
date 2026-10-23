@@ -280,6 +280,7 @@ export default function AdminCompetitions() {
     if (subStatusFilter && (s.review_status || 'pending') !== subStatusFilter) return false;
     return true;
   }), [submissions, subZoneFilter, subAgeFilter, subStatusFilter]);
+  const selectedVisibleSubIds = visibleSubmissions.filter((s) => subSelected.has(s._id)).map((s) => s._id);
   const onReviewSaved = (id, data) => setSubmissions((prev) => prev.map((x) => (x._id === id ? { ...x, ...data } : x)));
 
   // Combined-view state
@@ -1538,7 +1539,10 @@ export default function AdminCompetitions() {
                       <Download className="w-3.5 h-3.5 mr-1" /> Export XLSX
                     </Button>
                   </div>
-                  <BulkSubmissionBar ids={[...subSelected]} headers={getAuthHeaders()} onReview={(decision) => setReviewTarget({ ids: [...subSelected], decision })} onClear={() => setSubSelected(new Set())} />
+                  <BulkSubmissionBar ids={selectedVisibleSubIds} headers={getAuthHeaders()}
+                    onReview={(decision) => setReviewTarget({ ids: selectedVisibleSubIds, decision, onBulkDone: () => setSubSelected(new Set()) })}
+                    onClear={() => setSubSelected(new Set())}
+                    onSent={() => { setSubSelected(new Set()); setTimeout(loadSubmissions, 4000); }} />
                   <table className="w-full text-sm" data-testid="admin-competitions-submissions-table">
                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200">
                       <tr>
