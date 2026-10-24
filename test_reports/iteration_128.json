@@ -1,0 +1,32 @@
+{
+  "summary": "Tested the Future Skills CRM lead-assignee feature on both backend and frontend. Backend: 9/9 pytest pass. They cover the assignees endpoint, the assign rules (self-assign, 403 when grabbing someone else's lead, hand-over, unassign, admin reassign, 400 for an unknown assignee or invalid entity, 404 for a missing record), list scoping for members across leads/trials/subscriptions/renewals/lost, ?assignee filters, lead->trial carry-over, lead reassign propagating to the trial, and stats. Frontend (admin): the Assignee column and buttons show on all 5 tabs, the popover search works, assigning shows the toast and updates the label, 'Unassign' appears only once a row is assigned, and the toolbar filter has 13 options (all/me/unassigned plus members) and filters correctly. Frontend (member1): the lead assigned to member2 is hidden, the filter offers only the 3 base options, hand-over to member2 shows the toast, the row turns into a locked pill and disappears after refresh. All test data was cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/admin/future-skills/leads/{id}, DELETE /api/admin/future-skills/{entity_type}/{id}, POST leads/{id}/convert-to-trial, mark-lost, PUT lead/trial update, trial attend etc.", "issue": "These endpoints don't check who the lead is assigned to. Verified: fs.member2 deleted a lead assigned to fs.member1 (got 200). Only /assign and the list endpoints enforce ownership. A regular member who knows a lead's id can still change or delete someone else's lead."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Leads row after hand-over", "issue": "After a member hands a lead to someone else, the row stays in the list until refresh. It shows the locked pill, but the Trial/Followup/Lost action buttons are still active. Minor; could remove the row optimistically.", "selector": "assignee-locked-{id}", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_fs_lead_assignee_iter128.py", "/app/test_reports/pytest/pytest_iter128.xml"],
+  "action_items": [
+    "Optional hardening: add an assignee-ownership check for non-managers (current assignee_id must be empty or user.id) to the delete, convert, mark-lost, update and attend endpoints for leads/trials/subscriptions, and to GET-by-id detail endpoints if any",
+    "Optional: when a non-manager hands a lead to someone else, remove the row or disable its row actions"
+  ],
+  "critical_code_review_comments": [
+    "_is_admin lets any @oll.co email into the gate, so every staff member is a 'member'. This is by design, but combined with the unscoped mutation endpoints it widens access.",
+    "future_skills.py is over 4100 lines and should be split into modules.",
+    "admin_fs_assign uses update_one and does not re-check the current assignee in the same query (there is a race between find_one and update_one). Consider adding {'assignee_id': current} to the update filter for non-managers."
+  ],
+  "updated_files": ["/app/backend/tests/test_fs_lead_assignee_iter128.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary TEST_ leads and a converted trial were created and then deleted. The pre-existing 'TEST Child A' trial was left untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login is POST /api/auth/login, which returns access_token. The UI login page is /admin/login (admin-email, admin-password, admin-submit). The generic delete uses singular entity names: /api/admin/future-skills/{lead|trial|customer}/{id}. member1 id is 3a4a0243-..., member2 id is b78b6c87-...."
+}

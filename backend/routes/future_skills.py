@@ -110,6 +110,48 @@ def _is_admin(user: dict) -> bool:
     return email.endswith("@oll.co")
 
 
+# ── Lead assignee ───────────────────────────────────────────────────────────
+_UNASSIGNED = {"$in": [None, ""]}
+
+
+def _fs_is_manager(user: dict) -> bool:
+    """Admins see every lead; centre owners see every lead in their centre."""
+    return (user or {}).get("role") in ("admin", "super_admin", "fs_center_owner")
+
+
+def _assignee_q(user: dict, assignee: Optional[str] = None) -> dict:
+    conds: list = []
+    uid = (user or {}).get("id")
+    if not _fs_is_manager(user):
+        conds.append({"$or": [{"assignee_id": uid}, {"assignee_id": _UNASSIGNED}]})
+    if assignee == "me":
+        conds.append({"assignee_id": uid})
+    elif assignee == "unassigned":
+        conds.append({"assignee_id": _UNASSIGNED})
+    elif assignee and assignee != "all":
+        conds.append({"assignee_id": assignee})
+    return {"$and": conds} if conds else {}
+
+
+_GUARD_COLLS = {"leads": "future_skills_leads", "trials": "future_skills_trials",
+                "customers": "future_skills_subscriptions", "subscriptions": "future_skills_subscriptions"}
+
+
+async def _owner_guard(request: Request, user: dict = Depends(get_current_user)) -> None:
+    """Regular members may only act on records that are unassigned or assigned to them."""
+    if _fs_is_manager(user):
+        return
+    pp = request.path_params
+    seg = request.url.path.split("/admin/future-skills/", 1)[-1].split("/", 1)[0]
+    coll_name = _GUARD_COLLS.get(seg) or (_NOTE_COLLECTIONS.get(pp.get("entity_type"), (None,))[0])
+    rid = pp.get("lead_id") or pp.get("trial_id") or pp.get("sub_id") or pp.get("entity_id")
+    if not coll_name or not rid:
+        return
+    doc = await db[coll_name].find_one({"id": rid}, {"_id": 0, "assignee_id": 1})
+    if doc and doc.get("assignee_id") and doc["assignee_id"] != user.get("id"):
+        raise HTTPException(status_code=403, detail="This lead is assigned to someone else.")
+
+
 def _fs_scope_center_id(user: dict) -> Optional[str]:
     """Return the center_id a fs_center_owner is scoped to, or None for full admin."""
     if (user or {}).get("role") == "fs_center_owner":
@@ -877,6 +919,7 @@ async def admin_custom_payment_link(body: CustomPaymentLinkBody, user: dict = De
             "payment_status": "pending",
             "crm_status": "subscription_lead",
             "trial_id": trial["id"],
+            "assignee_id": trial.get("assignee_id"), "assignee_name": trial.get("assignee_name"),
             "created_at": now_iso,
             "updated_at": now_iso,
             "created_by_link": user.get("email"),
@@ -1127,6 +1170,7 @@ async def admin_list_trials(
     status: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     center_id: Optional[str] = Query(None),
+    assignee: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1154,9 +1198,10 @@ async def admin_list_trials(
     effective_cid = scope_cid or center_id
     if effective_cid:
         query["center_id"] = effective_cid
+    query.update(_assignee_q(user, assignee))
     cursor = db.future_skills_trials.find(query, {"_id": 0}).sort("created_at", -1).limit(500)
     rows = [r async for r in cursor]
-    scope_q = {"center_id": scope_cid} if scope_cid else {}
+    scope_q = {**({"center_id": scope_cid} if scope_cid else {}), **_assignee_q(user, assignee)}
     total = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": BOOKED_STATUSES}})
     scheduled_count   = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["scheduled", "trial_scheduled"]}})
     rescheduled_count = await db.future_skills_trials.count_documents({**scope_q, "crm_status": "rescheduled"})
@@ -1181,6 +1226,7 @@ async def admin_list_subs(
     status: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     center_id: Optional[str] = Query(None),
+    assignee: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1201,9 +1247,10 @@ async def admin_list_subs(
     effective_cid = scope_cid or center_id
     if effective_cid:
         query["center_id"] = effective_cid
+    query.update(_assignee_q(user, assignee))
     cursor = db.future_skills_subscriptions.find(query, {"_id": 0}).sort("created_at", -1).limit(500)
     rows = [r async for r in cursor]
-    scope_q = {"center_id": scope_cid} if scope_cid else {}
+    scope_q = {**({"center_id": scope_cid} if scope_cid else {}), **_assignee_q(user, assignee)}
     total = await db.future_skills_subscriptions.count_documents(scope_q)
     active = await db.future_skills_subscriptions.count_documents({**scope_q, "crm_status": "active"})
     revenue_pipeline = await db.future_skills_subscriptions.aggregate([
@@ -1236,7 +1283,7 @@ class TrialUpdate(BaseModel):
     row_color: Optional[str] = None
 
 
-@router.patch("/admin/future-skills/trials/{trial_id}")
+@router.patch("/admin/future-skills/trials/{trial_id}", dependencies=[Depends(_owner_guard)])
 async def admin_update_trial(trial_id: str, data: TrialUpdate, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1279,7 +1326,7 @@ class SubscriptionUpdate(BaseModel):
     row_color: Optional[str] = None
 
 
-@router.patch("/admin/future-skills/subscriptions/{sub_id}")
+@router.patch("/admin/future-skills/subscriptions/{sub_id}", dependencies=[Depends(_owner_guard)])
 async def admin_update_sub(sub_id: str, data: SubscriptionUpdate, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1499,6 +1546,7 @@ async def admin_list_leads(
     status: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     center_id: Optional[str] = Query(None),
+    assignee: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1530,9 +1578,10 @@ async def admin_list_leads(
     effective_cid = scope_cid or center_id
     if effective_cid:
         query["center_id"] = effective_cid
+    query.update(_assignee_q(user, assignee))
     cursor = db.future_skills_leads.find(query, {"_id": 0}).sort("created_at", -1).limit(1000)
     rows = [r async for r in cursor]
-    scope_q = {"center_id": scope_cid} if scope_cid else {}
+    scope_q = {**({"center_id": scope_cid} if scope_cid else {}), **_assignee_q(user, assignee)}
     total = await db.future_skills_leads.count_documents(scope_q)
     active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$in": ACTIVE_STATUSES}})
     new_count = await db.future_skills_leads.count_documents({**scope_q, "status": "new"})
@@ -1555,7 +1604,7 @@ async def admin_list_leads(
     }
 
 
-@router.patch("/admin/future-skills/leads/{lead_id}")
+@router.patch("/admin/future-skills/leads/{lead_id}", dependencies=[Depends(_owner_guard)])
 async def admin_update_lead(lead_id: str, data: LeadUpdate, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1574,7 +1623,7 @@ async def admin_update_lead(lead_id: str, data: LeadUpdate, user: dict = Depends
     return {"lead": lead}
 
 
-@router.delete("/admin/future-skills/leads/{lead_id}")
+@router.delete("/admin/future-skills/leads/{lead_id}", dependencies=[Depends(_owner_guard)])
 async def admin_delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1593,7 +1642,7 @@ async def admin_bulk_delete_leads(body: BulkDeleteLeads, user: dict = Depends(ge
     """Bulk-delete leads by id list (admin-only). Returns the deleted count."""
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
-    res = await db.future_skills_leads.delete_many({"id": {"$in": body.ids}})
+    res = await db.future_skills_leads.delete_many({"id": {"$in": body.ids}, **_assignee_q(user)})
     return {"deleted": res.deleted_count, "requested": len(body.ids)}
 
 
@@ -1602,7 +1651,7 @@ class MarkLostBody(BaseModel):
     reason_category: Optional[str] = Field(default="", max_length=120)
 
 
-@router.post("/admin/future-skills/leads/{lead_id}/mark-lost")
+@router.post("/admin/future-skills/leads/{lead_id}/mark-lost", dependencies=[Depends(_owner_guard)])
 async def admin_lead_mark_lost(lead_id: str, data: MarkLostBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1623,7 +1672,7 @@ async def admin_lead_mark_lost(lead_id: str, data: MarkLostBody, user: dict = De
     return {"lead": lead}
 
 
-@router.post("/admin/future-skills/leads/{lead_id}/convert-to-trial")
+@router.post("/admin/future-skills/leads/{lead_id}/convert-to-trial", dependencies=[Depends(_owner_guard)])
 async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1655,6 +1704,7 @@ async def admin_lead_to_trial(lead_id: str, user: dict = Depends(get_current_use
         # filtered OUT of the default view → the lead appeared to vanish.
         "crm_status": "scheduled",
         "return_count": 1,
+        "assignee_id": lead.get("assignee_id"), "assignee_name": lead.get("assignee_name"),
         "source_lead_id": lead_id,
         "created_at": now,
         "updated_at": now,
@@ -1744,7 +1794,7 @@ async def _record_followup(collection, entity_id: str, data: "FollowupBody", use
     return await collection.find_one({id_field: entity_id}, {"_id": 0})
 
 
-@router.post("/admin/future-skills/leads/{lead_id}/followup")
+@router.post("/admin/future-skills/leads/{lead_id}/followup", dependencies=[Depends(_owner_guard)])
 async def admin_lead_followup(lead_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1752,7 +1802,7 @@ async def admin_lead_followup(lead_id: str, data: FollowupBody, user: dict = Dep
     return {"lead": lead}
 
 
-@router.post("/admin/future-skills/trials/{trial_id}/followup")
+@router.post("/admin/future-skills/trials/{trial_id}/followup", dependencies=[Depends(_owner_guard)])
 async def admin_trial_followup(trial_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1762,7 +1812,7 @@ async def admin_trial_followup(trial_id: str, data: FollowupBody, user: dict = D
     return {"trial": trial}
 
 
-@router.post("/admin/future-skills/customers/{sub_id}/followup")
+@router.post("/admin/future-skills/customers/{sub_id}/followup", dependencies=[Depends(_owner_guard)])
 async def admin_customer_followup(sub_id: str, data: FollowupBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1782,7 +1832,7 @@ _NOTE_COLLECTIONS = {
 }
 
 
-@router.post("/admin/future-skills/{entity_type}/{entity_id}/notes")
+@router.post("/admin/future-skills/{entity_type}/{entity_id}/notes", dependencies=[Depends(_owner_guard)])
 async def admin_add_note(entity_type: str, entity_id: str, data: NoteBody, user: dict = Depends(get_current_user)):
     """Add a note to a Lead, Trial or Customer. All notes are kept as a
     running log on `notes_log[]`, and the most recent one is mirrored to
@@ -1830,7 +1880,7 @@ async def admin_delete_batch(bid: str, user: dict = Depends(get_current_user)):
 
 
 # ── DELETE (Leads / Trials / Customers) ────────────────────────────────
-@router.delete("/admin/future-skills/{entity_type}/{entity_id}")
+@router.delete("/admin/future-skills/{entity_type}/{entity_id}", dependencies=[Depends(_owner_guard)])
 async def admin_delete_entity(entity_type: str, entity_id: str, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1845,7 +1895,7 @@ async def admin_delete_entity(entity_type: str, entity_id: str, user: dict = Dep
 
 
 # ── MARK TRIAL ATTENDED ────────────────────────────────────────────────
-@router.post("/admin/future-skills/trials/{trial_id}/attend")
+@router.post("/admin/future-skills/trials/{trial_id}/attend", dependencies=[Depends(_owner_guard)])
 async def admin_trial_attend(trial_id: str, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1865,7 +1915,7 @@ async def admin_trial_attend(trial_id: str, user: dict = Depends(get_current_use
 
 
 # ── MARK TRIAL ABSENT (student did not show up) ────────────────────────
-@router.post("/admin/future-skills/trials/{trial_id}/absent")
+@router.post("/admin/future-skills/trials/{trial_id}/absent", dependencies=[Depends(_owner_guard)])
 async def admin_trial_absent(trial_id: str, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1891,7 +1941,7 @@ class TrialRescheduleBody(BaseModel):
     note: Optional[str] = Field(default="", max_length=1000)
 
 
-@router.post("/admin/future-skills/trials/{trial_id}/reschedule")
+@router.post("/admin/future-skills/trials/{trial_id}/reschedule", dependencies=[Depends(_owner_guard)])
 async def admin_trial_reschedule(trial_id: str, data: TrialRescheduleBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1942,7 +1992,7 @@ class LeadBookTrialBody(BaseModel):
     scheduled_at: Optional[str] = Field(default="", max_length=40)
 
 
-@router.post("/admin/future-skills/leads/{lead_id}/book-trial")
+@router.post("/admin/future-skills/leads/{lead_id}/book-trial", dependencies=[Depends(_owner_guard)])
 async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -1987,6 +2037,7 @@ async def admin_lead_book_trial(lead_id: str, data: LeadBookTrialBody, user: dic
         "trial_status": "scheduled" if scheduled_at else "requested",
         "crm_status": "scheduled" if scheduled_at else "trial_lead",
         "return_count": 1,
+        "assignee_id": lead.get("assignee_id"), "assignee_name": lead.get("assignee_name"),
         "source_lead_id": lead_id,
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
@@ -2449,7 +2500,7 @@ async def admin_create_trial(data: TrialCreateAdmin, user: dict = Depends(get_cu
     return {"trial": doc}
 
 
-@router.post("/admin/future-skills/trials/{trial_id}/mark-lost")
+@router.post("/admin/future-skills/trials/{trial_id}/mark-lost", dependencies=[Depends(_owner_guard)])
 async def admin_trial_mark_lost(trial_id: str, data: MarkLostBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -2481,7 +2532,7 @@ class TrialConvertBody(BaseModel):
     notes: Optional[str] = ""
 
 
-@router.post("/admin/future-skills/trials/{trial_id}/convert-to-customer")
+@router.post("/admin/future-skills/trials/{trial_id}/convert-to-customer", dependencies=[Depends(_owner_guard)])
 async def admin_trial_convert(trial_id: str, data: TrialConvertBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -2510,6 +2561,7 @@ async def admin_trial_convert(trial_id: str, data: TrialConvertBody, user: dict 
         "notes": (data.notes or trial.get("notes", "")),
         "source_ref": trial.get("source_ref", ""),
         "source_trial_id": trial_id,
+        "assignee_id": trial.get("assignee_id"), "assignee_name": trial.get("assignee_name"),
         "plan": data.plan,
         "plan_label": plan_info["label"],
         "billing_cycle": plan_info["billing_cycle"],
@@ -2634,7 +2686,7 @@ class RenewBody(BaseModel):
     notes: Optional[str] = ""
 
 
-@router.post("/admin/future-skills/customers/{sub_id}/renew")
+@router.post("/admin/future-skills/customers/{sub_id}/renew", dependencies=[Depends(_owner_guard)])
 async def admin_customer_renew(sub_id: str, data: RenewBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -2691,7 +2743,7 @@ async def admin_customer_renew(sub_id: str, data: RenewBody, user: dict = Depend
     return {"subscription": sub}
 
 
-@router.post("/admin/future-skills/customers/{sub_id}/mark-lost")
+@router.post("/admin/future-skills/customers/{sub_id}/mark-lost", dependencies=[Depends(_owner_guard)])
 async def admin_customer_mark_lost(sub_id: str, data: MarkLostBody, user: dict = Depends(get_current_user)):
     if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -2718,6 +2770,7 @@ async def admin_list_renewals(
     bucket: str = Query("all", pattern=r"^(all|upcoming|overdue)$"),
     q: Optional[str] = Query(None),
     center_id: Optional[str] = Query(None),
+    assignee: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -2741,6 +2794,7 @@ async def admin_list_renewals(
     effective_cid = scope_cid or center_id
     if effective_cid:
         base_query["center_id"] = effective_cid
+    base_query.update(_assignee_q(user, assignee))
 
     cursor = db.future_skills_subscriptions.find(base_query, {"_id": 0}).limit(2000)
     all_active = [r async for r in cursor]
@@ -2787,6 +2841,7 @@ async def admin_list_lost(
     type_filter: str = Query("all", pattern=r"^(all|lead|trial|customer)$", alias="type"),
     q: Optional[str] = Query(None),
     center_id: Optional[str] = Query(None),
+    assignee: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -2798,7 +2853,7 @@ async def admin_list_lost(
 
     scope_cid = _fs_scope_center_id(user)
     effective_cid = scope_cid or center_id
-    scope_q = {"center_id": effective_cid} if effective_cid else {}
+    scope_q = {**({"center_id": effective_cid} if effective_cid else {}), **_assignee_q(user, assignee)}
 
     rows: list = []
 
@@ -2865,7 +2920,7 @@ async def admin_future_skills_stats(
 
     scope_cid = _fs_scope_center_id(user)
     effective_cid = scope_cid or center_id
-    scope_q = {"center_id": effective_cid} if effective_cid else {}
+    scope_q = {**({"center_id": effective_cid} if effective_cid else {}), **_assignee_q(user)}
 
     leads_active = await db.future_skills_leads.count_documents({**scope_q, "status": {"$in": ["new", "followup"]}})
     trials_active = await db.future_skills_trials.count_documents({**scope_q, "crm_status": {"$in": ["scheduled", "trial_scheduled", "rescheduled", "completed"]}})
@@ -4003,3 +4058,83 @@ async def admin_centre_economics_categories(user: dict = Depends(get_current_use
             for k, v in FS_ECONOMICS_CATEGORIES.items()
         ]
     }
+
+
+# ── Assignee endpoints ─────────────────────────────────────────────────────
+_ASSIGN_COLLECTIONS = {
+    "leads": "future_skills_leads",
+    "trials": "future_skills_trials",
+    "subscriptions": "future_skills_subscriptions",
+}
+
+
+@router.get("/admin/future-skills/assignees")
+async def admin_fs_assignees(user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    out: list = []
+    async for t in db.team_users.find({}, {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "is_active": 1}):
+        if t.get("is_active", True) and t.get("id"):
+            out.append({"id": t["id"], "name": t.get("name") or t.get("email") or "Team Member",
+                        "email": t.get("email") or "", "type": "team"})
+    async for c in db.centers.find({"owner_email": {"$nin": [None, ""]}}, {"_id": 0, "id": 1, "name": 1, "owner_name": 1, "owner_email": 1, "is_active": 1}):
+        if c.get("is_active", True):
+            out.append({"id": c["id"], "name": c.get("owner_name") or c.get("name") or "Centre Owner",
+                        "email": c.get("owner_email") or "", "type": "centre_owner", "center_name": c.get("name", "")})
+    out.sort(key=lambda x: (x["name"] or "").lower())
+    return {"assignees": out, "me": user.get("id"), "is_manager": _fs_is_manager(user)}
+
+
+class AssignBody(BaseModel):
+    assignee_id: Optional[str] = Field(default=None, max_length=64)
+
+
+async def _resolve_assignee_name(assignee_id: str) -> Optional[str]:
+    t = await db.team_users.find_one({"id": assignee_id}, {"_id": 0, "name": 1, "email": 1})
+    if t:
+        return t.get("name") or t.get("email") or "Team Member"
+    c = await db.centers.find_one({"id": assignee_id, "owner_email": {"$nin": [None, ""]}}, {"_id": 0, "owner_name": 1, "name": 1})
+    if c:
+        return c.get("owner_name") or c.get("name") or "Centre Owner"
+    return None
+
+
+@router.patch("/admin/future-skills/{entity}/{entity_id}/assign")
+async def admin_fs_assign(entity: str, entity_id: str, body: AssignBody, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    coll_name = _ASSIGN_COLLECTIONS.get(entity)
+    if not coll_name:
+        raise HTTPException(status_code=400, detail="Invalid entity")
+    coll = db[coll_name]
+    doc = await coll.find_one({"id": entity_id}, {"_id": 0, "id": 1, "assignee_id": 1, "center_id": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Record not found")
+    scope_cid = _fs_scope_center_id(user)
+    if scope_cid and doc.get("center_id") != scope_cid:
+        raise HTTPException(status_code=403, detail="This lead belongs to another centre.")
+    current = doc.get("assignee_id") or None
+    if not _fs_is_manager(user) and current and current != user.get("id"):
+        raise HTTPException(status_code=403, detail="This lead is assigned to someone else — only an admin can reassign it.")
+    new_id = (body.assignee_id or "").strip() or None
+    new_name = None
+    if new_id:
+        new_name = await _resolve_assignee_name(new_id)
+        if not new_name:
+            raise HTTPException(status_code=400, detail="Unknown team member")
+    now = _now_iso()
+    update = {"$set": {"assignee_id": new_id, "assignee_name": new_name, "assigned_at": now if new_id else None,
+                       "assigned_by": user.get("name") or user.get("email"), "updated_at": now}}
+    await coll.update_one({"id": entity_id}, update)
+    # Carry the assignee forward to later stages of the same student.
+    trial_ids: list = []
+    if entity == "leads":
+        trial_ids = [t["id"] async for t in db.future_skills_trials.find({"source_lead_id": entity_id}, {"_id": 0, "id": 1})]
+        if trial_ids:
+            await db.future_skills_trials.update_many({"id": {"$in": trial_ids}}, update)
+    elif entity == "trials":
+        trial_ids = [entity_id]
+    if trial_ids:
+        await db.future_skills_subscriptions.update_many(
+            {"$or": [{"source_trial_id": {"$in": trial_ids}}, {"trial_id": {"$in": trial_ids}}]}, update)
+    return {"ok": True, "assignee_id": new_id, "assignee_name": new_name}

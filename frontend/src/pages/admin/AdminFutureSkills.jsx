@@ -13,6 +13,7 @@ import { format, parseISO } from 'date-fns';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { applySortFilter } from '../../components/SortFilterBar';
+import { FsAssigneeContext, AssigneeCell, AssigneeFilter, entityForRow } from './FsAssignee';
 import {
   rowTintClass,
   SheetTabs,
@@ -145,6 +146,14 @@ const AdminFutureSkills = () => {
   const [sourceFilter, setSourceFilter] = useState('');
   const [centerNameFilter, setCenterNameFilter] = useState('');
   const fileInputRef = useRef(null);
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [assigneeMeta, setAssigneeMeta] = useState({ assignees: [], me: null, isManager: false });
+
+  useEffect(() => {
+    axios.get(`${API}/admin/future-skills/assignees`, { headers: getAuthHeaders() })
+      .then(r => setAssigneeMeta({ assignees: r.data?.assignees || [], me: r.data?.me, isManager: !!r.data?.is_manager }))
+      .catch(() => {});
+  }, [getAuthHeaders]);
 
   // Load centres list once for the filter dropdown (admin only — owner is auto-scoped)
   useEffect(() => {
@@ -185,6 +194,7 @@ const AdminFutureSkills = () => {
       const params = new URLSearchParams();
       if (search.trim()) params.set('q', search.trim());
       if (centerFilter && centerFilter !== 'all') params.set('center_id', centerFilter);
+      if (assigneeFilter !== 'all') params.set('assignee', assigneeFilter);
       let path = '';
       let dataKey = '';
       if (tab === 'leads') {
@@ -211,7 +221,7 @@ const AdminFutureSkills = () => {
     } finally {
       setLoading(false);
     }
-  }, [tab, statusFilter, search, renewalBucket, centerFilter, getAuthHeaders]);
+  }, [tab, statusFilter, search, renewalBucket, centerFilter, assigneeFilter, getAuthHeaders]);
 
   useEffect(() => { fetchData(); fetchTabStats(); }, [fetchData, fetchTabStats]);
 
@@ -246,6 +256,19 @@ const AdminFutureSkills = () => {
   useEffect(() => { setSelectedIds(new Set()); }, [tab, statusFilter, search, centerFilter, renewalBucket]);
 
   const refreshAll = () => { fetchData(); fetchTabStats(); setSelectedIds(new Set()); };
+
+  const assignRow = useCallback(async (entity, row, assigneeId) => {
+    try {
+      const r = await axios.patch(`${API}/admin/future-skills/${entity}/${row.id}/assign`, { assignee_id: assigneeId }, { headers: getAuthHeaders() });
+      const { assignee_id, assignee_name } = r.data;
+      const handedAway = !assigneeMeta.isManager && assignee_id && assignee_id !== assigneeMeta.me;
+      setRows(prev => (handedAway ? prev.filter(x => x.id !== row.id) : prev.map(x => (x.id === row.id ? { ...x, assignee_id, assignee_name } : x))));
+      toast.success(assignee_id ? `Assigned to ${assignee_name}` : 'Unassigned');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not assign');
+    }
+  }, [getAuthHeaders, assigneeMeta]);
+  const assigneeCtx = useMemo(() => ({ ...assigneeMeta, assign: assignRow }), [assigneeMeta, assignRow]);
 
   const toggleLeadSelection = (id) => {
     setSelectedIds(prev => {
@@ -440,6 +463,7 @@ const AdminFutureSkills = () => {
 
   return (
     <AdminLayout title="Future Skills CRM">
+     <FsAssigneeContext.Provider value={assigneeCtx}>
       <div className="-mt-4 sm:-mt-5 p-3 sm:p-4 max-w-7xl mx-auto space-y-3" data-testid="admin-future-skills">
         {/* Scope banner for centre owners */}
         {isCenterOwner && (
@@ -486,6 +510,9 @@ const AdminFutureSkills = () => {
                   className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
                   data-testid="search-input" />
               </div>
+              {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
+                <AssigneeFilter value={assigneeFilter} onChange={setAssigneeFilter} />
+              )}
 
               {/* Status chips (Leads + Free Trials) — inline with search & action buttons */}
               {(tab === 'leads' || tab === 'trials') && STATUS_FILTER_OPTIONS && (
@@ -748,6 +775,7 @@ const AdminFutureSkills = () => {
           getAuthHeaders={getAuthHeaders}
         />
       )}
+     </FsAssigneeContext.Provider>
     </AdminLayout>
   );
 };
@@ -980,6 +1008,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
           <SheetFilterTh label="Source" options={sourceOptions} selected={sourceFilter} onChange={onSourceFilterChange} testId="filter-source" />
           <SheetFilterTh label="Centre · Batch" options={centerOptions} selected={centerFilter} onChange={onCenterFilterChange} testId="filter-center" />
           <SheetFilterTh label="Status" options={statusOptions} selected={statusFilter === 'all' ? '' : statusFilter} onChange={(v) => onStatusFilterChange(v || 'all')} testId="filter-status" />
+          <SheetTh>Assignee</SheetTh>
           <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
         </tr>
@@ -1026,6 +1055,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               )}
             </SheetTd>
             {/* Inline notes — save on blur or Cmd/Ctrl+Enter. */}
+            <SheetTd className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}><AssigneeCell row={r} entity="leads" /></SheetTd>
             <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
               <InlineNotesField lead={r} onSave={onSaveNotes} />
             </SheetTd>
@@ -1064,7 +1094,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               title="Select / deselect all">
               {allSelected ? '☑' : '☐'}
             </SheetTd>
-            <SheetTd colSpan={8} className="text-[11px] text-slate-500">
+            <SheetTd colSpan={9} className="text-[11px] text-slate-500">
               Click a row number to select · currently {selectedIds.size}/{allIds.length} selected
             </SheetTd>
           </tr>
@@ -1125,6 +1155,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
           />
           <SheetSortTh label="Scheduled" sortKey="scheduled" currentSort={sortKey} onSort={onSortChange} />
           <SheetTh>Status</SheetTh>
+          <SheetTh>Assignee</SheetTh>
           <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
         </tr>
@@ -1163,6 +1194,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
               )}
             </SheetTd>
             {/* Inline notes — save on blur or Cmd/Ctrl+Enter. */}
+            <SheetTd className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}><AssigneeCell row={r} entity="trials" /></SheetTd>
             <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
               <InlineNotesField lead={r} onSave={onSaveNotes} testIdPrefix="row-trial-inline-notes" refId={r.trial_ref} />
             </SheetTd>
@@ -1314,6 +1346,7 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
           />
           <SheetTh>Amount Paid</SheetTh>
           <SheetSortTh label="Renewal Date" sortKey="renewal" currentSort={sortKey} onSort={onSortChange} />
+          <SheetTh>Assignee</SheetTh>
           <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
         </tr>
@@ -1341,6 +1374,7 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
             </SheetTd>
             <SheetTd className="font-bold text-emerald-700 cursor-pointer" onClick={() => onOpen(r)}>{fmtMoney(r.amount_paid || r.amount)}</SheetTd>
             <SheetTd className="text-[11px] font-semibold text-[#0F1E33] cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)}>{fmtDate(r.renewal_date)}</SheetTd>
+            <SheetTd className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}><AssigneeCell row={r} entity="subscriptions" /></SheetTd>
             <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
               <InlineNotesField lead={r} onSave={onSaveNotes} testIdPrefix="row-customer-inline-notes" refId={r.subscription_ref} />
             </SheetTd>
@@ -1417,6 +1451,7 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onS
           />
           <SheetSortTh label="Renewal" sortKey="renewal" currentSort={sortKey} onSort={onSortChange} />
           <SheetTh>Status</SheetTh>
+          <SheetTh>Assignee</SheetTh>
           <SheetTh width={220}>Notes</SheetTh>
           <SheetTh>Actions</SheetTh>
         </tr>
@@ -1447,6 +1482,7 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onS
               </div>
             </SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}><StatusBadge status={r.renewal_bucket} /></SheetTd>
+            <SheetTd className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}><AssigneeCell row={r} entity="subscriptions" /></SheetTd>
             <SheetTd className="w-[220px]" onClick={(e) => e.stopPropagation()}>
               <InlineNotesField lead={r} onSave={onSaveNotes} testIdPrefix="row-renewal-inline-notes" refId={r.subscription_ref} />
             </SheetTd>
@@ -1494,6 +1530,7 @@ const LostTable = ({ rows, onOpen }) => (
         <SheetTh>Ref</SheetTh>
         <SheetTh>Name · Contact</SheetTh>
         <SheetTh>Type</SheetTh>
+        <SheetTh>Assignee</SheetTh>
         <SheetTh>Reason</SheetTh>
         <SheetTh className="text-right">Lost At</SheetTh>
       </tr>
@@ -1516,6 +1553,7 @@ const LostTable = ({ rows, onOpen }) => (
               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>{(r.entity_type || '').toUpperCase()}</span>
           </SheetTd>
+          <SheetTd className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}><AssigneeCell row={r} entity={entityForRow('lost', r)} /></SheetTd>
           <SheetTd className="text-[11px] text-slate-700 max-w-md truncate">{r.lost_reason || '—'}</SheetTd>
           <SheetTd className="text-right text-[11px] text-slate-500 whitespace-nowrap">{fmtDateTime(r.lost_at)}</SheetTd>
         </tr>

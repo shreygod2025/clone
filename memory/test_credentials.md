@@ -21,3 +21,8 @@
   - POST /api/friendship-day/register
   - POST /api/friendship-day/initiate-payment
   - GET  /api/friendship-day/verify/{order_id}
+
+## Future Skills CRM regular team members (assignee scoping tests)
+- `fs.member1@oll.co` / `FsTest@2026` — role team_member, permissions ['future_skills'] (name "FS Member One")
+- `fs.member2@oll.co` / `FsTest@2026` — role team_member, permissions ['future_skills'] (name "FS Member Two")
+- These see only leads assigned to them + unassigned leads; cannot reassign others' leads.
