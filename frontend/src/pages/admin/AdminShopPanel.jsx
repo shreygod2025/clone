@@ -249,6 +249,40 @@ const OrdersTab = ({ embedded = false }) => {
     netRevenue: serverStats?.net_revenue ?? 0,
   };
 
+  const copyTracking = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Tracking link copied');
+    } catch {
+      toast.error('Could not copy — please copy manually');
+    }
+  };
+
+  const verifyWithCashfree = async (order) => {
+    setVerifyingId(order.id);
+    try {
+      const r = await axios.post(`${API}/admin/shop/orders/${order.id}/verify`, {}, { headers: getAuthHeaders() });
+      const { old_status, new_status, cashfree_status, status_changed, message } = r.data || {};
+      if (status_changed) {
+        toast.success(`Status updated: ${old_status} → ${new_status}`);
+        await load();
+      } else if (message) {
+        toast.info(message);
+      } else {
+        toast.info(`Cashfree says: ${cashfree_status || new_status}`);
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'Verify failed');
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const onRefundDone = async () => {
+    setRefundOrder(null);
+    await load();
+  };
+
   return (
     <div className={embedded ? '' : ''}>
       {/* Shop-specific stats — total orders + revenue (paid + pending). */}

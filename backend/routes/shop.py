@@ -1217,8 +1217,8 @@ async def admin_verify_shop_payment(order_id: str, user: dict = Depends(get_curr
     finalize it (mark paid + submit POs + send email) if Cashfree says PAID.
     Mirrors the behaviour of /api/payments/sync-single/{order_id} used on the
     Student Online Payments tab."""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if user.get("role") not in ["admin", "super_admin"] and "orders" not in (user.get("permissions") or []):
+        raise HTTPException(status_code=403, detail="You need Orders access to verify payments")
     if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
         raise HTTPException(status_code=500, detail="Payment gateway not configured")
 
