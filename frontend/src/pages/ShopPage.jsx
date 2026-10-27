@@ -86,6 +86,7 @@ const ShopPage = () => {
   }, [classified, categorySlug, search]);
 
   const handleAdd = (p) => {
+    if (p.in_stock === false) { toast.error(`${p.name.trim()} is out of stock`); return; }
     addItem(p, 1);
     toast.success(`${p.name.trim()} added to cart`, {
       action: { label: 'View cart', onClick: openDrawer },
@@ -472,6 +473,11 @@ const ProductGrid = ({ products, onAdd }) => (
                 }
               }}
             />
+            {p.in_stock === false && (
+              <span className="absolute top-2 right-2 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full" data-testid={`shop-oos-badge-${p.id}`}>
+                Out of stock
+              </span>
+            )}
             {p.mrp > p.selling_price && (
               <span className="absolute top-2 left-2 bg-[#D63031] text-white text-[10px] font-bold px-2 py-1 rounded-full">
                 {Math.round(((p.mrp - p.selling_price) / p.mrp) * 100)}% OFF
@@ -507,13 +513,19 @@ const ProductGrid = ({ products, onAdd }) => (
             >
               View
             </Link>
-            <button
-              onClick={() => onAdd(p)}
-              className="bg-slate-900 hover:bg-[#D63031] text-white text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors"
-              data-testid={`shop-add-${p.id}`}
-            >
-              Add
-            </button>
+            {p.in_stock === false ? (
+              <button disabled className="bg-slate-200 text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg cursor-not-allowed" data-testid={`shop-oos-${p.id}`}>
+                Out of stock
+              </button>
+            ) : (
+              <button
+                onClick={() => onAdd(p)}
+                className="bg-slate-900 hover:bg-[#D63031] text-white text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors"
+                data-testid={`shop-add-${p.id}`}
+              >
+                Add
+              </button>
+            )}
           </div>
         </div>
       </article>

@@ -179,7 +179,7 @@ def _get_cf_client():
 
 # ── Vendor catalog cache ────────────────────────────────────────────────────
 _VENDOR_CACHE: dict = {"products": None, "ts": 0}
-_VENDOR_CACHE_TTL = 300  # 5 minutes
+_VENDOR_CACHE_TTL = 60  # 1 minute — keeps vendor stock status fresh
 
 
 async def _fetch_vendor_catalog(force: bool = False) -> List[dict]:
@@ -373,6 +373,7 @@ def _merge_product(v: dict, override: Optional[dict]) -> dict:
         "additional_info": additional_info,
         "dimensions": dimensions,
         "show_on_shop": show_on_shop,
+        "in_stock": (v.get("stock_status") or "in_stock") != "out_of_stock" and v.get("in_stock") is not False,
         "vendor_category": (v.get("category") or "").strip() or None,
         "category": ov.get("category")
         or ("IoT Kits" if "iot" in name.lower() else "Robotics Kits"),
@@ -510,6 +511,8 @@ async def create_shop_order(body: ShopOrderCreate):
         prod = catalog.get(it.product_id)
         if not prod or not prod["show_on_shop"]:
             raise HTTPException(status_code=400, detail=f"Product unavailable: {it.product_id}")
+        if not prod["in_stock"]:
+            raise HTTPException(status_code=400, detail=f"{prod['name'].strip()} is out of stock — please remove it from your cart.")
         price = float(prod["selling_price"])
         line_total = round(price * it.quantity, 2)
         subtotal += line_total

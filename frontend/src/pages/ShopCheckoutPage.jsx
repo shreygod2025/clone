@@ -26,7 +26,8 @@ const initialForm = {
 };
 
 const ShopCheckoutPage = () => {
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, clearCart, removeItem } = useCart();
+  const [oosItems, setOosItems] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [fulfillmentType, setFulfillmentType] = useState('delivery'); // 'delivery' | 'pickup'
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +48,15 @@ const ShopCheckoutPage = () => {
       navigate('/shop');
     }
   }, [items.length, navigate]);
+
+  // Re-check stock for cart items against the live vendor catalog.
+  useEffect(() => {
+    if (items.length === 0) return;
+    axios.get(`${API}/shop/products`).then((r) => {
+      const oos = new Set((r.data?.products || []).filter((p) => p.in_stock === false).map((p) => p.id));
+      setOosItems(items.filter((it) => oos.has(it.product_id)));
+    }).catch(() => {});
+  }, [items]);
 
   // Re-validate coupon whenever cart changes so a swap or quantity update
   // keeps the discount accurate. If it becomes invalid, silently drop it.
@@ -266,9 +276,20 @@ const ShopCheckoutPage = () => {
             />
           </div>
 
+          {oosItems.length > 0 && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800" data-testid="checkout-oos-warning">
+              <p className="font-bold mb-1">Out of stock — remove to continue:</p>
+              {oosItems.map((it) => (
+                <div key={it.product_id} className="flex items-center justify-between gap-2 py-1">
+                  <span className="truncate">{it.name}</span>
+                  <button type="button" onClick={() => removeItem(it.product_id)} className="text-xs font-bold underline" data-testid={`checkout-oos-remove-${it.product_id}`}>Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || oosItems.length > 0}
             className="w-full bg-[#D63031] hover:bg-[#b22729] disabled:bg-slate-400 text-white font-bold py-3.5 rounded-xl text-base flex items-center justify-center gap-2"
             data-testid="checkout-pay-btn"
           >

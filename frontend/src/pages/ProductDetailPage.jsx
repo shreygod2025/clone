@@ -6,6 +6,7 @@ import {
   ShoppingCart, ChevronRight, Truck, Shield, Sparkles,
   ArrowLeft, Package, BadgeCheck, Star, Trophy, Flag, Zap, ArrowRight,
   PlayCircle,
+  PackageX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../components/Footer';
@@ -178,8 +179,10 @@ const ProductDetailPage = () => {
     : 'OLL Robotics & IoT kits crafted for schools and children.';
   const seoImage = product?.image_url || (product && fallbackImage(product.id)) || '';
 
+  const outOfStock = product?.in_stock === false;
   const handleAdd = () => {
     if (!product) return;
+    if (outOfStock) { toast.error(`${product.name.trim()} is out of stock`); return; }
     addItem(product, qty);
     toast.success(`${product.name.trim()} added to cart`, {
       action: { label: 'View cart', onClick: openDrawer },
@@ -188,6 +191,7 @@ const ProductDetailPage = () => {
 
   const handleBuyNow = () => {
     if (!product) return;
+    if (outOfStock) { toast.error(`${product.name.trim()} is out of stock`); return; }
     addItem(product, qty);
     navigate('/shop/checkout');
   };
@@ -392,10 +396,11 @@ const ProductDetailPage = () => {
         setQty={setQty}
         onAdd={handleAdd}
         onBuy={handleBuyNow}
+        outOfStock={outOfStock}
         desktopVisible={!ctaInView && !isTechfest}
       />
 
-      {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={handleBuyNow} onAdd={handleAdd} /> : <NavBar count={count} openDrawer={openDrawer} />}
+      {isTechfest ? <TechfestKitNavBar count={count} openDrawer={openDrawer} onBuyNow={handleBuyNow} onAdd={handleAdd} outOfStock={outOfStock} /> : <NavBar count={count} openDrawer={openDrawer} />}
 
       {/* Breadcrumb — visible + SEO friendly */}
       <nav
@@ -513,7 +518,12 @@ const ProductDetailPage = () => {
           <p className="mt-1 text-xs text-slate-500">Inclusive of all taxes · Flat ₹150 shipping</p>
 
           {/* Quantity + CTA — above the fold on desktop; mobile uses the fixed bottom bar */}
-          <div ref={ctaRef} className="mt-5 hidden sm:flex items-stretch gap-3" data-testid="pdp-cta-inline">
+          {outOfStock && (
+            <div className="mt-5 flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700" data-testid="pdp-out-of-stock">
+              <PackageX className="w-4 h-4" /> Out of stock — this item can&apos;t be ordered right now.
+            </div>
+          )}
+          <div ref={ctaRef} className={`mt-5 hidden ${outOfStock ? '' : 'sm:flex'} items-stretch gap-3`} data-testid="pdp-cta-inline">
             <QtyStepper qty={qty} setQty={setQty} />
             <button
               onClick={handleAdd}
@@ -777,7 +787,13 @@ const QtyStepper = ({ qty, setQty, compact }) => (
 );
 
 // Fixed bottom purchase bar — always on mobile, on desktop only once the inline CTA scrolls away.
-const PurchaseBar = ({ product, qty, setQty, onAdd, onBuy, desktopVisible }) => (
+const PurchaseBar = ({ product, qty, setQty, onAdd, onBuy, desktopVisible, outOfStock }) => (outOfStock ? (
+  <div className="fixed inset-x-0 bottom-0 z-[60] bg-white/95 backdrop-blur border-t border-slate-200 sm:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} data-testid="pdp-purchase-bar-oos">
+    <div className="px-3 py-2.5">
+      <button disabled className="w-full bg-slate-200 text-slate-500 text-sm font-bold uppercase tracking-wider py-3 rounded-lg cursor-not-allowed">Out of stock</button>
+    </div>
+  </div>
+) : (
   <div
     className={`fixed inset-x-0 bottom-0 z-[60] bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-transform duration-300 ${desktopVisible ? 'sm:translate-y-0' : 'sm:translate-y-full'}`}
     style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -797,10 +813,10 @@ const PurchaseBar = ({ product, qty, setQty, onAdd, onBuy, desktopVisible }) => 
       </button>
     </div>
   </div>
-);
+));
 
 // ── Techfest-branded sticky nav (OLL × Techfest IIT Bombay) — sumo/racer only ─
-const TechfestKitNavBar = ({ count, openDrawer, onBuyNow, onAdd }) => (
+const TechfestKitNavBar = ({ count, openDrawer, onBuyNow, onAdd, outOfStock }) => (
   <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm" data-testid="pdp-techfest-navbar">
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 sm:gap-4">
       <Link to="/techfest" className="flex items-center gap-2 sm:gap-3 flex-shrink-0" data-testid="pdp-techfest-nav-home" aria-label="Back to Techfest campaign">
@@ -810,6 +826,9 @@ const TechfestKitNavBar = ({ count, openDrawer, onBuyNow, onAdd }) => (
       </Link>
       <div className="flex-1" />
       {/* Sticky Buy CTA — mobile-first */}
+      {outOfStock ? (
+        <span className="inline-flex items-center rounded-full bg-slate-200 text-slate-600 px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider" data-testid="pdp-sticky-oos">Out of stock</span>
+      ) : (<>
       <button
         onClick={onAdd}
         className="inline-flex items-center gap-1.5 border border-slate-300 hover:border-slate-900 text-slate-900 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors"
@@ -826,6 +845,7 @@ const TechfestKitNavBar = ({ count, openDrawer, onBuyNow, onAdd }) => (
       >
         Buy Now
       </button>
+      </>)}
       <button
         onClick={openDrawer}
         className="relative flex-shrink-0 hidden sm:inline-flex items-center justify-center bg-slate-900 hover:bg-[#DC2626] text-white rounded-full w-10 h-10 transition-colors"

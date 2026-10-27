@@ -23,6 +23,7 @@ export const CartProvider = ({ children }) => {
   }, [items]);
 
   const addItem = (product, quantity = 1) => {
+    if (product.in_stock === false) return false;
     setItems((prev) => {
       const existing = prev.find((p) => p.product_id === product.id);
       if (existing) {
