@@ -61,7 +61,7 @@ const SKILLS_CSS = `
 `;
 
 // "the easiest way to start" skills marquee (Robotics & AI Lab landing). Copy is configurable.
-export const RbSkillsCarousel = ({ eyebrow, title, subtitle, testid = 'rb-skills', bg = '#F8FAFC' }) => (
+export const RbSkillsCarousel = ({ eyebrow, title, subtitle, testid = 'rb-skills', bg = '#F8FAFC', eyebrowBelow = false }) => (
   <section data-testid={testid} style={{ position: 'relative', padding: '4rem 1.5rem', background: bg, overflow: 'hidden' }}>
     <style>{RB_SHARED_CSS + SKILLS_CSS}</style>
     <div style={{ position: 'relative', maxWidth: 1280, margin: '0 auto', background: '#0A1F44', color: '#fff', borderRadius: '32px', overflow: 'hidden', padding: '3.5rem 0 3rem', boxShadow: '0 30px 80px rgba(10,31,68,0.35)' }}>
@@ -69,8 +69,9 @@ export const RbSkillsCarousel = ({ eyebrow, title, subtitle, testid = 'rb-skills
       <div className="rb-orb rb-orb-light" style={{ width: 380, height: 380, bottom: -140, left: -60 }} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '0 1.5rem' }}>
-          <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>{eyebrow}</div>
+          {!eyebrowBelow && <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem' }}>{eyebrow}</div>}
           <h2 className="rb-h2" style={{ fontSize: 'clamp(2rem, 4.4vw, 3rem)', lineHeight: 1.05, color: '#fff' }}>{title}</h2>
+          {eyebrowBelow && <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.5rem', marginTop: '0.6rem' }}>{eyebrow}</div>}
           <p style={{ fontFamily: "'Proxima Nova', 'Montserrat', sans-serif", fontWeight: 300, fontSize: '1rem', maxWidth: 700, margin: '0.9rem auto 0', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>{subtitle}</p>
         </div>
         <div className="rb-skills-wrap" data-testid={`${testid}-scroll`}>

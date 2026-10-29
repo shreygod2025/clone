@@ -1,4 +1,4 @@
-import { Check, ArrowRight, Building2, Users2, Handshake } from 'lucide-react';
+import { Check, ArrowRight, Handshake } from 'lucide-react';
 import { BrochureButton } from './BrochureModal';
 import {
   WHY_START, DIFFERENT, YOU_HAVE, WE_PROVIDE, INCLUDED, SERVICES, SKILL_CARDS, IMG, HERO_VIDEO,
@@ -46,18 +46,13 @@ export const FrHero = ({ onApply }) => (
     <Pixels />
     <div className="fr-hero-grid">
       <div>
-        <div className="fr-pill"><span className="fr-dot" /> OLL Franchise · Ages 3–16</div>
+        <div className="fr-pill"><span className="fr-dot" /> OLL Franchise</div>
         <h1 className="fr-hero-h1" data-testid="franchise-hero-title">
           Start Your Own <em>Robotics &amp; AI</em> Learning Center
         </h1>
         <p className="fr-hero-tag">with OLL</p>
         <div className="fr-need" data-testid="franchise-hero-need">
-          <div className="fr-need-k">All you need is?</div>
-          <div className="fr-need-row">
-            <span><Building2 size={18} /> 1 furnished room <b className="fr-plus">+</b></span>
-            <span><Users2 size={18} /> 1 teacher</span>
-          </div>
-          <p>Rest everything is done by OLL.</p>
+          <p className="fr-need-copy">Launch your own Robotics &amp; AI Learning Center with OLL — a complete franchise opportunity designed to help you build a business in the rapidly evolving future-skills education space.</p>
         </div>
         <div className="fr-hero-actions">
           <button type="button" className="fr-cta" onClick={onApply} data-testid="franchise-hero-apply-btn">Apply for an OLL Franchise <ArrowRight size={18} /></button>
@@ -74,9 +69,6 @@ export const FrHero = ({ onApply }) => (
         </div>
       </div>
     </div>
-    <p className="fr-hero-copy">
-      Launch your own Robotics &amp; AI Learning Center with OLL — a complete franchise opportunity designed to help you build a business in the rapidly evolving future-skills education space.
-    </p>
   </section>
 );
 
@@ -103,7 +95,7 @@ export const FrDifferent = () => (
         </div>
         <div className="fr-eco-col">{DIFFERENT.slice(4).map((c, i) => <IconCard key={c.t} c={c} red={i % 2 === 1} />)}</div>
       </div>
-      <Strip>Your investment builds a complete learning ecosystem — <em>not merely a collection of equipment.</em></Strip>
+      <Strip>Seven pillars. One program. <em>Everything your center needs to deliver.</em></Strip>
     </div>
   </section>
 );

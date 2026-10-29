@@ -99,6 +99,11 @@ export const FRANCHISE_CSS = `
   .fr-chip { padding: 0.55rem 0.85rem; }
   .fr-final { gap: 2rem; }
   .fr-themed section { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .fr-themed .rb-skill-card { flex: 0 0 150px !important; border-radius: 16px !important; }
+  .fr-themed .rb-skills-track { animation-duration: 18s !important; gap: 0.7rem !important; }
+  .fr-themed .rb-skill-label { font-size: 0.8rem !important; }
+  .fr-themed .rb-skill-card:nth-child(n) { height: 200px !important; margin-top: 0 !important; }
+  .fr-themed .rb-skill-card:nth-child(even) { height: 230px !important; }
 }
 
 /* Hero */
@@ -116,6 +121,7 @@ export const FRANCHISE_CSS = `
 .fr-need-row span { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.15rem; }
 .fr-need-row .fr-plus { color: var(--fr-red); font-size: 1.4rem; margin-left: 4px; }
 .fr-need p { margin-top: 0.3rem; color: rgba(219,234,254,0.85); font-size: 0.95rem; }
+.fr-need .fr-need-copy { margin: 0; font-size: 1rem; line-height: 1.65; color: rgba(226,232,240,0.92); }
 .fr-hero-actions { margin-top: 1.75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
 .fr-invest { display: flex; flex-direction: column; padding-left: 1.25rem; border-left: 3px solid var(--fr-red); }
 .fr-invest span { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(219,234,254,0.75); font-weight: 700; }
@@ -131,7 +137,7 @@ export const FRANCHISE_CSS = `
 @media (max-width: 900px) {
   .fr-hero { padding: 6.5rem 1.25rem 3rem; }
   .fr-hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
-  .fr-hero-chips { left: 0.75rem; bottom: 0.75rem; }
+  .fr-hero-chips { position: static; flex-direction: row; flex-wrap: wrap; margin-top: 0.85rem; }
   .fr-hero-photo { aspect-ratio: 4 / 4; }
 }
 
@@ -338,6 +344,8 @@ export const FRANCHISE_CSS = `
 @media (max-width: 768px) {
   .fr-sticky { display: flex; transform: translateY(110%); transition: transform 0.3s ease; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(7,19,69,0.96); backdrop-filter: blur(12px); border-top: 1px solid rgba(59,130,246,0.6); box-shadow: 0 -8px 30px rgba(59,130,246,0.3); }
   .fr-sticky.on { transform: none; }
+  .fr-sticky .fr-cta { white-space: nowrap; padding: 0.7rem 1rem; }
+  .fr-sticky small { white-space: nowrap; }
   .fr-sticky small { display: block; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(219,234,254,0.7); }
   .fr-sticky b { font-size: 1.1rem; font-style: italic; font-weight: 900; }
   .fr-page { padding-bottom: 70px; }

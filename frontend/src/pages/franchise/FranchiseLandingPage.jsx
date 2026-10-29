@@ -72,7 +72,7 @@ export default function FranchiseLandingPage() {
       <FrNav onApply={apply} />
       <FrHero onApply={apply} />
       <div className="fr-themed">
-      <RbSkillsCarousel testid="franchise-skills" bg="#071345" eyebrow="what your center will teach"
+      <RbSkillsCarousel testid="franchise-skills" bg="#071345" eyebrowBelow eyebrow="what your center will teach"
         title={<>Your city&apos;s <span style={{ color: '#FCA5A5' }}>first step</span> into the future.</>}
         subtitle="Robotics, coding, AI, drones, 3D design and more — give children in your community the chance to explore the technologies shaping tomorrow." />
       </div>
@@ -91,7 +91,7 @@ export default function FranchiseLandingPage() {
       <Footer />
       <div className={`fr-sticky ${showSticky ? 'on' : ''}`} data-testid="franchise-sticky-cta">
         <div><small>Total Investment</small><b>₹2.5 Lakhs</b></div>
-        <button type="button" className="fr-cta sm" onClick={apply} data-testid="franchise-sticky-apply-btn">Apply Now <ArrowRight size={16} /></button>
+        <BrochureButton className="fr-cta sm" label="Download Brochure" testid="franchise-sticky-brochure-btn" />
       </div>
     </div>
   );

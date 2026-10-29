@@ -63,12 +63,6 @@ const ADVISORS = [
     image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/lft-surendra-kulkarni_29081609002024000000.webp'
   },
   {
-    name: 'Heather Anderson',
-    title: 'President of World Genesis Foundation',
-    description: 'Educator and advocate specializing in art therapy and youth empowerment. Supports UNESCO\'s mission for youth worldwide.',
-    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/untitled-design-4_30123010262024000000.webp'
-  },
-  {
     name: 'Dr. Neeta Bali',
     title: 'Honorary Advisor at OLL',
     description: 'Director Academics at MVN Group of Schools. Ex Director Principal GD Goenka & Seth Anandram Jaipuria Group of Schools.',
