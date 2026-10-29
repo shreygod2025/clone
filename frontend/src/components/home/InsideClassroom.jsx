@@ -138,7 +138,7 @@ export const InsideClassroom = () => {
   );
 };
 
-export const MediaLightbox = ({ media, onClose }) => {
+export const MediaLightbox = ({ media, onClose, kicker }) => {
   useEffect(() => {
     if (!media) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -170,7 +170,7 @@ export const MediaLightbox = ({ media, onClose }) => {
             )}
             <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(180deg, rgba(10,31,68,0.4), #0A1F44)', color: '#fff' }}>
               <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#FCA5A5' }}>
-                {media.type === 'video' ? 'Class footage' : 'Class moment'}
+                {kicker || (media.type === 'video' ? 'Class footage' : 'Class moment')}
               </div>
               <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '1.15rem', fontWeight: 800, marginTop: 4 }}>{media.label}</div>
               <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.9rem', marginTop: 4, color: 'rgba(191,219,254,0.9)' }}>{media.caption}</div>

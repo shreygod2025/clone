@@ -1,6 +1,5 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Toaster } from 'sonner';
 import { ArrowRight } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { RbAboutOLL, RB_SHARED_CSS } from '../../components/school/RbTrustSections';
@@ -54,7 +53,16 @@ const FrFinal = ({ formRef }) => (
 
 export default function FranchiseLandingPage() {
   const formRef = useRef(null);
-  const apply = () => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const [showSticky, setShowSticky] = useState(false);
+  const apply = () => formRef.current?.querySelector('.fr-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  useEffect(() => {
+    let formVisible = false;
+    const update = () => setShowSticky(window.scrollY > 500 && !formVisible);
+    const io = new IntersectionObserver(([e]) => { formVisible = e.isIntersecting; update(); }, { threshold: 0.05 });
+    if (formRef.current) io.observe(formRef.current);
+    window.addEventListener('scroll', update, { passive: true });
+    return () => { io.disconnect(); window.removeEventListener('scroll', update); };
+  }, []);
   useSeo({
     title: 'Start a Robotics & AI Learning Center Franchise | OLL — ₹2.5 Lakh Investment',
     description: 'Open your own OLL Robotics & AI Learning Center. 1 room + 1 teacher — OLL provides equipment, curriculum, teacher training, LMS, branding and marketing. Total investment ₹2.5 Lakhs.',
@@ -64,7 +72,6 @@ export default function FranchiseLandingPage() {
   });
   return (
     <div className="fr-page">
-      <Toaster position="top-right" richColors />
       <style>{RB_SHARED_CSS + FRANCHISE_CSS}</style>
       <FrNav onApply={apply} />
       <FrHero onApply={apply} />
@@ -85,7 +92,7 @@ export default function FranchiseLandingPage() {
       <ParentsFeedback />
       <FrFinal formRef={formRef} />
       <Footer />
-      <div className="fr-sticky" data-testid="franchise-sticky-cta">
+      <div className={`fr-sticky ${showSticky ? 'on' : ''}`} data-testid="franchise-sticky-cta">
         <div><small>Total Investment</small><b>₹2.5 Lakhs</b></div>
         <button type="button" className="fr-cta sm" onClick={apply} data-testid="franchise-sticky-apply-btn">Apply Now <ArrowRight size={16} /></button>
       </div>

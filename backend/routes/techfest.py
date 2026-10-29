@@ -29,12 +29,10 @@ from .techfest_permission_letter import (
 logger = logging.getLogger(__name__)
 
 
-async def _dispatch_email(to_email: str, subject: str, html: str) -> dict:
+async def _dispatch_email(to_email: str, subject: str, html: str, from_addr: str = "Techfest Team <techfest@oll.co>", reply_to: str = "techfest@oll.co") -> dict:
     """Try Gmail first, fall back to Resend so preview environments (which lack
     GMAIL_APP_PASSWORD) still send successfully. Every mail is sent
     From `Techfest Team <techfest@oll.co>` with Reply-To `techfest@oll.co`."""
-    from_addr = "Techfest Team <techfest@oll.co>"
-    reply_to = "techfest@oll.co"
 
     # ── Gmail path (production) ────────────────────────────────────────
     try:

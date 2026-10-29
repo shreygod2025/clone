@@ -1,6 +1,7 @@
 """Franchise landing-page enquiries → Growth Partners CRM (Centre Franchise)."""
 import os
 import uuid
+from datetime import timedelta
 import logging
 from datetime import datetime, timezone
 from html import escape
@@ -20,7 +21,7 @@ SPACE_LABELS = {"yes": "Yes, I have a space", "no": "No, not yet", "looking": "C
 
 class FranchiseEnquiryIn(BaseModel):
     name: str = Field(..., min_length=2, max_length=120)
-    phone: str = Field(..., min_length=10, max_length=15)
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
     email: EmailStr
     city_state: str = Field(..., min_length=2, max_length=120)
     occupation: str = Field(..., min_length=2, max_length=200)
@@ -60,7 +61,7 @@ async def _notify(d: dict) -> None:
         (os.environ["FRANCHISE_ALERT_EMAIL"], f"New franchise enquiry — {d['name']} ({d['city_state']})", _alert_html(d)),
     ]:
         try:
-            await _dispatch_email(to, subject, html)
+            await _dispatch_email(to, subject, html, from_addr="OLL Franchise <welcome@oll.co>", reply_to="welcome@oll.co")
         except Exception as exc:  # noqa: BLE001
             logger.warning("franchise email to %s failed: %s", to, exc)
 
@@ -69,7 +70,13 @@ async def _notify(d: dict) -> None:
 async def create_franchise_enquiry(body: FranchiseEnquiryIn, background_tasks: BackgroundTasks):
     d = body.model_dump()
     d["email"] = str(d["email"]).lower()
-    now = datetime.now(timezone.utc).isoformat()
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
+    recent = await db.growth_partners.find_one(
+        {"source": "franchise_landing", "$or": [{"phone": d["phone"]}, {"email": d["email"]}],
+         "created_at": {"$gte": (now_dt - timedelta(hours=24)).isoformat()}}, {"_id": 0, "id": 1})
+    if recent:
+        return {"ok": True, "id": recent["id"], "duplicate": True}
     details = (f"Occupation: {d['occupation']}\nHas space: {SPACE_LABELS[d['has_space']]}\n"
                f"Why OLL franchise: {d['reason']}")
     doc = {

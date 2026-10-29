@@ -1,0 +1,44 @@
+{
+  "summary": "Tested the OLL Franchise landing page (/franchise/robotics-ai-learning-center) and POST /api/franchise/enquiry end to end, plus homepage and school-page regressions. Backend: 8/8 pytest tests pass. They cover 422 for bad email, short name, invalid has_space, short phone, short reason and missing fields; a valid create returns ok+id; the record is in GET /api/growth-partners (admin) with interest_type=centre_franchise, source=franchise_landing, status=new, has_space and details stored, and no _id. Frontend: /franchise redirects correctly. All 18 section testids plus the footer render, with 7 skill cards and 5 steps. The 4 included tabs switch panel content. Nav, hero and steps Apply buttons scroll to the form. The mobile sticky Apply button is visible and scrolls. Form checks work: invalid phone shows a toast, missing space shows a toast, and a valid submit shows franchise-form-success. The lead appears in Admin > Growth Partners with Centre Franchise and Franchise Page badges. The classroom lightbox opens and Escape closes it. At 390px there is no horizontal overflow (scrollWidth=390). Regressions pass: homepage feedback, rating card and classroom sections render; the homepage classroom lightbox works; the Techfest play button (home-tf-video-play) opens the video lightbox; the school page rb-skills shows 'Your school's first step into the future.' with 7 cards including rb-skill-drones. Test records cleaned up, including the earlier 'Test Franchise' record.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/franchise/enquiry", "issue": "Franchise thank-you and alert emails go through techfest._dispatch_email, which hardcodes From 'Techfest Team <techfest@oll.co>' and Reply-To techfest@oll.co. Applicants get franchise mail branded as Techfest. Add a from/reply_to parameter or a franchise sender."},
+      {"endpoint": "/api/franchise/enquiry", "issue": "Phone is only checked for length 10-15 on the server; any characters pass, e.g. 'abcdefghij'. Add a digits regex (^[6-9]\\d{9}$) on the server to match the frontend check."},
+      {"endpoint": "/api/franchise/enquiry", "issue": "Public endpoint with no rate limit or duplicate check; repeat submits create duplicate CRM leads and send repeat emails."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "FranchiseLandingPage Toaster", "issue": "Every toast shows twice. FranchiseLandingPage.jsx line 67 mounts its own <Toaster>, and App.js line 506 already mounts a global one. Remove the page-level Toaster. RoboticsBeginnerLanding.jsx line 292 has the same pattern (existing before this change).", "selector": "[data-sonner-toast]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Franchise page mobile (390px)", "issues": [
+        "The Apply buttons (sticky, nav, hero) scroll formRef into view, but formRef is the top of the franchise-apply section. On mobile the long intro text pushes the form card to y≈758, where the fixed sticky bar covers it. Point the scroll at the form card itself or add scroll-margin, and hide the sticky bar once the form is in view.",
+        "In the hero 'all you need is?' card, the '+' is left dangling after '1 furnished room' because the line wraps.",
+        "On first load the sticky bar overlaps the hero's 'TOTAL INVESTMENT' block."
+      ]},
+      {"screen": "Homepage Techfest trailer lightbox", "issues": ["The Techfest trailer lightbox shows the eyebrow 'CLASS FOOTAGE' and reuses the testid home-classroom-lightbox. Small labelling issue."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_franchise_enquiry_iter129.py", "/app/test_reports/pytest/pytest_iter129.xml"],
+  "action_items": [
+    "Remove the duplicate <Toaster> from FranchiseLandingPage.jsx; toasts currently render twice",
+    "Mobile: make Apply buttons scroll to the form card (not the section top), or offset for the sticky bar",
+    "Send franchise emails from an OLL/franchise sender instead of the hardcoded 'Techfest Team <techfest@oll.co>'",
+    "Add server-side phone digit validation to FranchiseEnquiryIn"
+  ],
+  "critical_code_review_comments": [
+    "routes/franchise.py reuses techfest._dispatch_email, which ties franchise mail to Techfest branding; move it to a shared email util with a sender parameter.",
+    "There is no DELETE endpoint for growth_partners. Test cleanup has to go straight to MongoDB.",
+    "Franchise leads appear under the 'Business Partner' tab (main growth_partners list), not 'Center Partner' (a separate section). This matches the agreed choice, but admins may expect them under Center Partner. Consider a filter chip for interest_type."
+  ],
+  "updated_files": ["/app/backend/tests/test_franchise_enquiry_iter129.py"],
+  "success_rate": {"backend": "100%", "frontend": "95% (all functional flows pass; duplicate toast and mobile scroll-target issues)"},
+  "test_credentials": "admin@oll.co / GodisGreat@2026 (login at /admin/login)",
+  "seed_data_creation": "None left behind. Deleted all growth_partners with source franchise_landing and email e1-franchise*@oll.co (2 records, including 'Test Franchise').",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Classroom cards are a moving marquee: use force or a JS click on home-classroom-card-N. Admin login is at /admin/login, not /login. The pytest file cleans up its own TEST_ records through pymongo."
+}

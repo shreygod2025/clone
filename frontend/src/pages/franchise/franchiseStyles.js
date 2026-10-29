@@ -29,7 +29,7 @@ export const FRANCHISE_CSS = `
 .fr-hero-h1 { font-family: 'Zing Rust','Anton',sans-serif; text-transform: uppercase; font-weight: 400; font-size: clamp(2.5rem, 5.6vw, 4.6rem); line-height: 0.98; margin-top: 1.1rem; letter-spacing: 0.005em; }
 .fr-need { margin-top: 1.6rem; padding: 1.1rem 1.3rem; border-radius: 1.1rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(14px); max-width: 520px; animation: fr-rise 0.8s ease 0.2s both; }
 .fr-need-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
-.fr-need-row span { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.15rem; }
+.fr-need-row span { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.15rem; }
 .fr-need-row .fr-plus { color: #FCA5A5; font-size: 1.4rem; }
 .fr-need p { margin-top: 0.35rem; color: rgba(226,232,240,0.85); font-size: 0.95rem; }
 .fr-hero-copy { margin-top: 1.25rem; max-width: 560px; color: rgba(226,232,240,0.85); font-family: 'Proxima Nova','Montserrat',sans-serif; font-weight: 300; line-height: 1.65; }
@@ -131,7 +131,8 @@ export const FRANCHISE_CSS = `
 /* Sticky mobile CTA */
 .fr-sticky { display: none; }
 @media (max-width: 768px) {
-  .fr-sticky { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-top: 1px solid #E2E8F0; }
+  .fr-sticky { display: flex; transform: translateY(110%); transition: transform 0.3s ease; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-top: 1px solid #E2E8F0; }
+  .fr-sticky.on { transform: none; }
   .fr-sticky small { display: block; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; color: #64748B; }
   .fr-sticky b { font-size: 1.1rem; color: #0A1F44; }
   .fr-page { padding-bottom: 70px; }

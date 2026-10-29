@@ -1013,7 +1013,7 @@ const LandingPage = () => {
       <ParentsFeedback />
 
       <InsideClassroom />
-      <MediaLightbox media={mediaOpen} onClose={() => setMediaOpen(null)} />
+      <MediaLightbox media={mediaOpen} onClose={() => setMediaOpen(null)} kicker="Techfest trailer" />
 
       {/* ── OLL Journal · Latest blogs from WordPress ─────────────────── */}
       <WordPressBlogsSection testid="homepage-blogs" />

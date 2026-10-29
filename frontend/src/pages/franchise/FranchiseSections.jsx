@@ -44,8 +44,7 @@ export const FrHero = ({ onApply }) => (
         <div className="fr-need" data-testid="franchise-hero-need">
           <div className="rb-hand" style={{ color: '#FCA5A5', fontSize: '1.6rem', lineHeight: 1 }}>all you need is?</div>
           <div className="fr-need-row">
-            <span><Building2 size={18} /> 1 furnished room</span>
-            <span className="fr-plus">+</span>
+            <span><Building2 size={18} /> 1 furnished room <b className="fr-plus">+</b></span>
             <span><Users2 size={18} /> 1 teacher</span>
           </div>
           <p>Rest everything is done by OLL.</p>
