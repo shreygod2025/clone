@@ -2,13 +2,15 @@ import {
   TrendingUp, Hand, Coins, Boxes, BadgeCheck, Cpu, BookOpen, GraduationCap, MonitorSmartphone,
   LifeBuoy, Trophy, Wrench, Laptop, School, UserRound, Users, Presentation, Settings,
   Ruler, MapPin, Plug, ShieldCheck, Paintbrush, Package, Sparkles, Megaphone, Layers,
-  Bot, Code2, BrainCircuit, Box, Printer,
+  Bot, Code2, BrainCircuit, Box, Plane,
 } from 'lucide-react';
 
 export const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
 const F = '/franchise';
+export const HERO_VIDEO = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/c23889bc0653ebb8_gemini_generated_video_88fbeeac.mp4';
+
 export const IMG = {
   buildKid: `${F}/build-kid.webp`,
   heroKid: `${F}/hero-kid.webp`,
@@ -24,7 +26,7 @@ export const SKILL_CARDS = [
   { t: 'Coding', i: Code2, img: `${F}/skill-1.webp` },
   { t: 'AI', i: BrainCircuit, img: `${F}/skill-2.webp` },
   { t: '3D Design', i: Box, img: `${F}/skill-3.webp` },
-  { t: '3D Printing', i: Printer, img: `${F}/skill-4.webp` },
+  { t: 'Drones', i: Plane },
 ];
 
 export const WHY_START = [

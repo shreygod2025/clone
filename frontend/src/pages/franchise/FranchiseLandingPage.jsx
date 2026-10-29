@@ -9,6 +9,8 @@ import { InsideClassroom } from '../../components/home/InsideClassroom';
 import { useSeo } from '../../hooks/useSeo';
 import { OLL_LOGO_COLOR, IMG } from './franchiseContent';
 import { FranchiseEnquiryForm } from './FranchiseEnquiryForm';
+import { BrochureButton } from './BrochureModal';
+import { FrCenters } from './FrCenters';
 import { FRANCHISE_CSS } from './franchiseStyles';
 import {
   Head, FrHero, FrWhy, FrDifferent, FrEasySetup, FrIncluded, FrServices, FrSpace, FrWho, FrSteps,
@@ -22,6 +24,7 @@ const FrNav = ({ onApply }) => (
       <Link to="/" aria-label="OLL home"><img src={OLL_LOGO_COLOR} alt="OLL" style={{ height: 34 }} /></Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className="fr-nav-invest">Investment <b>₹2.5 Lakhs</b></span>
+        <BrochureButton className="fr-ghost dark sm" label="Brochure" testid="franchise-nav-brochure-btn" />
         <button type="button" className="fr-cta sm" onClick={onApply} data-testid="franchise-nav-apply-btn">Apply Now <ArrowRight size={16} /></button>
       </div>
     </nav>
@@ -36,6 +39,7 @@ const FrFinal = ({ formRef }) => (
           sub="Imagine children in your city designing robots, building drones, experimenting with AI and turning their ideas into real-world projects. With OLL, you can help make that possible while building your own education venture." />
         <p style={{ fontWeight: 800, fontSize: '1.15rem', marginTop: '-1rem' }}>Ready to Start Your OLL Robotics &amp; AI Center?</p>
         <p style={{ color: 'rgba(219,234,254,0.75)', marginTop: 6, lineHeight: 1.6 }}>The future needs creators, problem-solvers and innovators. Help your city create them — fill in your details and our team will connect with you.</p>
+        <div style={{ marginTop: '1.25rem' }}><BrochureButton testid="franchise-final-brochure-btn" label="Download the Franchise Brochure" /></div>
         <div className="fr-photo-frame fr-final-kid"><img src={IMG.thanksKid} alt="Future innovator" loading="lazy" /></div>
       </div>
       <FranchiseEnquiryForm />
@@ -75,6 +79,7 @@ export default function FranchiseLandingPage() {
       <FrWhy />
       <FrDifferent />
       <InsideClassroom />
+      <FrCenters />
       <FrEasySetup />
       <FrIncluded />
       <FrServices />

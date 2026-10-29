@@ -1,6 +1,7 @@
 import { Check, ArrowRight, Building2, Users2, Handshake } from 'lucide-react';
+import { BrochureButton } from './BrochureModal';
 import {
-  WHY_START, DIFFERENT, YOU_HAVE, WE_PROVIDE, INCLUDED, SERVICES, SKILL_CARDS, IMG,
+  WHY_START, DIFFERENT, YOU_HAVE, WE_PROVIDE, INCLUDED, SERVICES, SKILL_CARDS, IMG, HERO_VIDEO,
   SPACE, TEACHERS, PARTNERS, STEPS,
 } from './franchiseContent';
 
@@ -60,11 +61,14 @@ export const FrHero = ({ onApply }) => (
         </div>
         <div className="fr-hero-actions">
           <button type="button" className="fr-cta" onClick={onApply} data-testid="franchise-hero-apply-btn">Apply for an OLL Franchise <ArrowRight size={18} /></button>
+          <BrochureButton testid="franchise-hero-brochure-btn" />
           <div className="fr-invest" data-testid="franchise-investment"><span>Total Investment</span><b>₹2.5 Lakhs</b></div>
         </div>
       </div>
       <div className="fr-hero-art">
-        <div className="fr-hero-photo"><img src={IMG.buildKid} alt="Student building a robot at an OLL center" /></div>
+        <div className="fr-hero-photo">
+          <video src={HERO_VIDEO} poster={IMG.buildKid} autoPlay muted loop playsInline preload="metadata" aria-label="Students learning robotics at an OLL center" data-testid="franchise-hero-video" />
+        </div>
         <div className="fr-hero-chips">
           {SKILL_CARDS.map((s) => <span key={s.t}><s.i size={16} /> {s.t}</span>)}
         </div>

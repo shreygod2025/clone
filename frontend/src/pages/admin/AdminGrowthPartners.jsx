@@ -41,6 +41,7 @@ const INTEREST_TYPES = [
 const SOURCE_OPTIONS = [
   { value: 'website', label: 'Website' },
   { value: 'franchise_landing', label: 'Franchise Page' },
+  { value: 'franchise_brochure', label: 'Franchise Brochure' },
   { value: 'about_page', label: 'About Page' },
   { value: 'team_inquiry_form', label: 'Team Inquiry' },
   { value: 'referral', label: 'Referral' },

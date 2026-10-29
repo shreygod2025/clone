@@ -89,3 +89,27 @@ async def create_franchise_enquiry(body: FranchiseEnquiryIn, background_tasks: B
     await db.growth_partners.insert_one(doc)
     background_tasks.add_task(_notify, d)
     return {"ok": True, "id": doc["id"]}
+
+
+class BrochureLeadIn(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
+    city: str = Field(..., min_length=2, max_length=120)
+
+
+@router.post("/franchise/brochure-lead")
+async def create_brochure_lead(body: BrochureLeadIn):
+    now_dt = datetime.now(timezone.utc)
+    recent = await db.growth_partners.find_one(
+        {"source": {"$in": ["franchise_brochure", "franchise_landing"]}, "phone": body.phone,
+         "created_at": {"$gte": (now_dt - timedelta(hours=24)).isoformat()}}, {"_id": 0, "id": 1})
+    if recent:
+        return {"ok": True, "duplicate": True}
+    now = now_dt.isoformat()
+    await db.growth_partners.insert_one({
+        "id": str(uuid.uuid4()), "name": body.name.strip(), "email": "", "phone": body.phone, "city": body.city.strip(),
+        "interest_type": "centre_franchise", "details": "Downloaded the franchise brochure from the franchise page.",
+        "status": "new", "notes": "", "comments": [], "source": "franchise_brochure", "added_by": "", "assigned_to": "",
+        "created_at": now, "updated_at": now,
+    })
+    return {"ok": True}

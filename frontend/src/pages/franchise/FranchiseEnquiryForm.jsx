@@ -2,9 +2,11 @@ import { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { CityCombobox } from './CityCombobox';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const EMPTY = { name: '', phone: '', email: '', city_state: '', occupation: '', has_space: '', reason: '' };
+const EMPTY = { name: '', phone: '', email: '', city_state: '', occupation: '', occupation_other: '', has_space: '', reason: '' };
+const OCCUPATIONS = ['Educator', 'Institute Owner', 'Other'];
 const SPACE_OPTS = [
   { v: 'yes', l: 'Yes, I have a space' },
   { v: 'looking', l: 'Currently looking' },
@@ -37,10 +39,14 @@ export const FranchiseEnquiryForm = () => {
   const submit = async (e) => {
     e.preventDefault();
     if (!/^[6-9]\d{9}$/.test(f.phone.replace(/\D/g, '').slice(-10))) { toast.error('Enter a valid 10-digit mobile number'); return; }
+    if (!f.city_state) { toast.error('Please select your city'); return; }
+    const occupation = f.occupation === 'Other' ? f.occupation_other.trim() : f.occupation;
+    if (!occupation || occupation.length < 2) { toast.error('Please tell us your current occupation'); return; }
     if (!f.has_space) { toast.error('Tell us whether you already have a space'); return; }
     setBusy(true);
     try {
-      await axios.post(`${API}/franchise/enquiry`, { ...f, phone: f.phone.replace(/\D/g, '').slice(-10) });
+      const { occupation_other: _o, ...rest } = f;
+      await axios.post(`${API}/franchise/enquiry`, { ...rest, occupation, phone: f.phone.replace(/\D/g, '').slice(-10) });
       setDone(true);
     } catch (err) {
       const d = err.response?.data?.detail;
@@ -55,9 +61,20 @@ export const FranchiseEnquiryForm = () => {
         <Field label="Full Name"><input required minLength={2} value={f.name} onChange={set('name')} placeholder="Your full name" data-testid="franchise-input-name" /></Field>
         <Field label="Phone Number"><input required inputMode="numeric" value={f.phone} onChange={set('phone')} placeholder="10-digit mobile" data-testid="franchise-input-phone" /></Field>
         <Field label="Email Address"><input required type="email" value={f.email} onChange={set('email')} placeholder="you@example.com" data-testid="franchise-input-email" /></Field>
-        <Field label="City / State"><input required minLength={2} value={f.city_state} onChange={set('city_state')} placeholder="e.g. Pune, Maharashtra" data-testid="franchise-input-city" /></Field>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <Field label="Current Occupation or Business"><input required minLength={2} value={f.occupation} onChange={set('occupation')} placeholder="e.g. Tuition centre owner, teacher, entrepreneur" data-testid="franchise-input-occupation" /></Field>
+        <div className="fr-field"><span>City / State <b style={{ color: '#DC2626' }}>*</b></span>
+          <CityCombobox value={f.city_state} onChange={(v) => setF((p) => ({ ...p, city_state: v }))} testid="franchise-input-city" />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }} className="fr-field">
+          <span>Current Occupation or Business <b style={{ color: '#DC2626' }}>*</b></span>
+          <div className="fr-chip-row">
+            {OCCUPATIONS.map((o) => (
+              <button type="button" key={o} onClick={() => setF((p) => ({ ...p, occupation: o }))}
+                className={`fr-chip ${f.occupation === o ? 'on' : ''}`} data-testid={`franchise-occupation-${o.toLowerCase().replace(/\s+/g, '-')}`}>{o}</button>
+            ))}
+          </div>
+          {f.occupation === 'Other' && (
+            <input value={f.occupation_other} onChange={set('occupation_other')} placeholder="Tell us what you do" style={{ marginTop: 4 }} data-testid="franchise-input-occupation-other" />
+          )}
         </div>
         <div style={{ gridColumn: '1 / -1' }} className="fr-field">
           <span>Do you already have a space? <b style={{ color: '#DC2626' }}>*</b></span>
