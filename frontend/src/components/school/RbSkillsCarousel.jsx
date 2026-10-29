@@ -61,8 +61,8 @@ const SKILLS_CSS = `
 `;
 
 // "the easiest way to start" skills marquee (Robotics & AI Lab landing). Copy is configurable.
-export const RbSkillsCarousel = ({ eyebrow, title, subtitle, testid = 'rb-skills' }) => (
-  <section data-testid={testid} style={{ position: 'relative', padding: '4rem 1.5rem', background: '#F8FAFC', overflow: 'hidden' }}>
+export const RbSkillsCarousel = ({ eyebrow, title, subtitle, testid = 'rb-skills', bg = '#F8FAFC' }) => (
+  <section data-testid={testid} style={{ position: 'relative', padding: '4rem 1.5rem', background: bg, overflow: 'hidden' }}>
     <style>{RB_SHARED_CSS + SKILLS_CSS}</style>
     <div style={{ position: 'relative', maxWidth: 1280, margin: '0 auto', background: '#0A1F44', color: '#fff', borderRadius: '32px', overflow: 'hidden', padding: '3.5rem 0 3rem', boxShadow: '0 30px 80px rgba(10,31,68,0.35)' }}>
       <div className="rb-orb rb-orb-red" style={{ width: 420, height: 420, top: -140, right: -80 }} />

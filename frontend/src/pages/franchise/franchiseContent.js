@@ -2,15 +2,29 @@ import {
   TrendingUp, Hand, Coins, Boxes, BadgeCheck, Cpu, BookOpen, GraduationCap, MonitorSmartphone,
   LifeBuoy, Trophy, Wrench, Camera, FileBarChart, ClipboardCheck, Laptop, Award, Medal,
   Ruler, MapPin, Plug, ShieldCheck, Paintbrush, Package, Sparkles, Megaphone, Layers,
+  Bot, Code2, BrainCircuit, Box, Printer,
 } from 'lucide-react';
 
 export const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
-export const HERO_PHOTOS = [
-  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rhwyg94z_20260504_163950.jpg',
-  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gwljm6r9_20260504_122607.jpg',
-  'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ctig02to_IMG-20260504-WA0020.jpg',
+const F = '/franchise';
+export const IMG = {
+  buildKid: `${F}/build-kid.webp`,
+  heroKid: `${F}/hero-kid.webp`,
+  thanksKid: `${F}/thanks-kid.webp`,
+  ecoKids: `${F}/eco-kids.webp`,
+  teacher: `${F}/teacher.webp`,
+  marketing: `${F}/marketing.webp`,
+  school: `${F}/school.webp`,
+};
+
+export const SKILL_CARDS = [
+  { t: 'Robotics', i: Bot, img: `${F}/skill-0.webp` },
+  { t: 'Coding', i: Code2, img: `${F}/skill-1.webp` },
+  { t: 'AI', i: BrainCircuit, img: `${F}/skill-2.webp` },
+  { t: '3D Design', i: Box, img: `${F}/skill-3.webp` },
+  { t: '3D Printing', i: Printer, img: `${F}/skill-4.webp` },
 ];
 
 export const WHY_START = [
