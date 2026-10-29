@@ -46,17 +46,19 @@ export const DIFFERENT = [
 ];
 
 export const YOU_HAVE = [
-  { i: School, t: 'Classroom Space', img: '/franchise/setup-space.webp' },
-  { i: UserRound, t: 'Your Appointed Educator', img: '/franchise/setup-educator.webp' },
-  { i: Users, t: 'Student Batches', img: '/franchise/setup-batches.webp' },
+  { i: School, t: 'Premises & Infrastructure', s: 'Providing suitable premises and completing the center infrastructure', img: '/franchise/setup-space.webp' },
+  { i: UserRound, t: 'Educators & Staff', s: 'Recruiting and managing local educators and center staff', img: '/franchise/setup-educator.webp' },
+  { i: Users, t: 'Admissions & Operations', s: 'Local admissions, parent communication and daily center operations', img: '/franchise/setup-batches.webp' },
 ];
 
 export const WE_PROVIDE = [
-  { i: Layers, t: 'Curriculum' },
-  { i: Box, t: 'Equipment' },
-  { i: Presentation, t: 'Teacher Training & SOPs' },
-  { i: Laptop, t: 'LMS & Assessments' },
-  { i: Settings, t: 'Academic Framework' },
+  { i: Layers, t: 'Curriculum, academic framework and learning resources' },
+  { i: Box, t: 'Equipment and kits included in the agreed package' },
+  { i: Presentation, t: 'Teacher training, teaching SOPs and academic guidance' },
+  { i: Laptop, t: 'LMS and center management software access' },
+  { i: Paintbrush, t: 'Branding materials and digital center presence' },
+  { i: Megaphone, t: 'Sales training, lead generation and customer management support, as agreed' },
+  { i: Settings, t: 'Implementation guidance and ongoing support as per the franchise agreement' },
 ];
 
 export const INCLUDED = [

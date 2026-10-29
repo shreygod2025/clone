@@ -1,7 +1,7 @@
 import { Check, ArrowRight, Building2, Users2, Handshake } from 'lucide-react';
 import {
   WHY_START, DIFFERENT, YOU_HAVE, WE_PROVIDE, INCLUDED, SERVICES, SKILL_CARDS, IMG,
-  OLL_PROVIDES, PARTNER_MANAGES, SPACE, TEACHERS, PARTNERS, STEPS,
+  SPACE, TEACHERS, PARTNERS, STEPS,
 } from './franchiseContent';
 
 // Deck-style heading: red tick, heavy italic uppercase, white + red two-tone.
@@ -108,30 +108,32 @@ export const FrEasySetup = () => (
   <section className="fr-sec" data-testid="franchise-easy-setup">
     <Pixels />
     <div className="fr-wrap">
-      <Head a="Easy" b="Implementation." sub="Designed to work with your setup. Start your future-skills center without creating an entirely new academic infrastructure." />
+      <Head a="Easy" b="Implementation." sub="You build the center. We enable the program. Run your center without creating curriculum, learning resources and teaching systems from scratch." />
       <div className="fr-easy">
         <div className="fr-easy-have" data-testid="franchise-you-have">
-          <div className="fr-easy-cap"><b>You Already Have</b><span>Just bring your space and your people.</span></div>
+          <div className="fr-easy-cap"><b>You Manage</b><span>What the franchise partner brings.</span></div>
           <div className="fr-easy-tiles">
             {YOU_HAVE.map((t, i) => (
               <div key={t.t} className={`fr-easy-tile ${i === 2 ? 'wide' : ''}`}>
                 <div className="fr-easy-img"><img src={t.img} alt={t.t} loading="lazy" /></div>
-                <div className="fr-easy-lbl"><span className={`fr-easy-ic ${i % 2 ? 'red' : ''}`}><t.i size={20} /></span>{t.t}</div>
+                <div className="fr-easy-lbl"><span className={`fr-easy-ic ${i % 2 ? 'red' : ''}`}><t.i size={20} /></span>
+                  <div><b>{t.t}</b><small>{t.s}</small></div>
+                </div>
               </div>
             ))}
           </div>
         </div>
         <div className="fr-plus-big">+</div>
         <div className="fr-easy-give" data-testid="franchise-we-provide">
-          <div className="fr-easy-cap red"><b>We Provide</b><span>Everything you need to run the program.</span></div>
-          <div className="fr-easy-icons">
+          <div className="fr-easy-cap red"><b>OLL Provides</b><span>Everything you need to run the program.</span></div>
+          <ul className="fr-give-list">
             {WE_PROVIDE.map((t, i) => (
-              <div key={t.t}><span className={`fr-easy-ic big ${i % 2 ? 'red' : ''}`}><t.i size={30} /></span><b>{t.t}</b></div>
+              <li key={t.t}><span className={`fr-easy-ic sm ${i % 2 ? 'red' : ''}`}><t.i size={18} /></span>{t.t}</li>
             ))}
-          </div>
+          </ul>
         </div>
       </div>
-      <Strip icon={Handshake}>We provide the equipment, curriculum, training, LMS and <em>academic framework.</em></Strip>
+      <Strip icon={Handshake}>Clear roles. <em>One shared mission.</em></Strip>
     </div>
   </section>
 );
@@ -162,12 +164,11 @@ export const FrServices = () => (
   <section className="fr-sec" data-testid="franchise-services">
     <div className="fr-wrap">
       <Head a="Services." b="Support That Runs With You." sub="Beyond equipment — the academic, digital and business systems that keep your center growing." />
-      <div className="fr-grid">
+      <div className="fr-rows">
         {SERVICES.map((c, i) => (
-          <div key={c.t} className={`fr-card ${i % 2 ? 'red' : ''}`}>
+          <div key={c.t} className={`fr-card fr-row ${i % 2 ? 'red' : ''}`}>
             <span className="fr-num">{String(i + 1).padStart(2, '0')}</span>
-            <div className="fr-icon"><c.i size={24} /></div>
-            <h3 className="fr-card-t">{c.t}</h3>
+            <div className="fr-row-h"><div className="fr-icon"><c.i size={24} /></div><h3 className="fr-card-t">{c.t}</h3></div>
             <Ticks items={c.items} />
           </div>
         ))}
@@ -177,31 +178,15 @@ export const FrServices = () => (
   </section>
 );
 
-export const FrRoles = () => (
-  <section className="fr-sec alt" data-testid="franchise-roles">
-    <Pixels />
-    <div className="fr-wrap">
-      <Head a="You Build the Center." b="We Enable the Program."
-        sub="Clear roles, one shared mission. Run your center without creating curriculum, learning resources and teaching systems from scratch." />
-      <div className="fr-roles">
-        <div className="fr-role you"><div className="fr-role-k">You already have</div><h3>What the Franchise Partner Manages</h3><Ticks items={PARTNER_MANAGES} /></div>
-        <div className="fr-plus-big">+</div>
-        <div className="fr-role oll"><div className="fr-role-k">We provide</div><h3>What OLL Provides</h3><Ticks items={OLL_PROVIDES} /></div>
-      </div>
-    </div>
-  </section>
-);
-
 export const FrSpace = () => (
   <section className="fr-sec" data-testid="franchise-space">
     <div className="fr-wrap">
       <Head a="Space" b="Requirements." sub="Just 300–500 sq. ft. for 15–20 students — here's what makes a great OLL center." />
-      <div className="fr-grid">
+      <div className="fr-rows">
         {SPACE.map((c, i) => (
-          <div key={c.t} className={`fr-card ${i % 2 ? 'red' : ''}`}>
+          <div key={c.t} className={`fr-card fr-row ${i % 2 ? 'red' : ''}`}>
             <span className="fr-num">{String(i + 1).padStart(2, '0')}</span>
-            <div className="fr-icon"><c.i size={24} /></div>
-            <h3 className="fr-card-t">{c.t}</h3>
+            <div className="fr-row-h"><div className="fr-icon"><c.i size={24} /></div><h3 className="fr-card-t">{c.t}</h3></div>
             <Ticks items={c.items} />
           </div>
         ))}
@@ -236,12 +221,15 @@ export const FrSteps = ({ onApply }) => (
   <section className="fr-sec" data-testid="franchise-steps">
     <div className="fr-wrap">
       <Head center a="How Does It" b="Work?" sub="Five simple steps from enquiry to your first batch." />
-      <ol className="fr-steps">
+      <ol className="fr-timeline">
         {STEPS.map((s, i) => (
-          <li key={s.t} className={i % 2 ? 'red' : ''} data-testid={`franchise-step-${i + 1}`}>
-            <div className="fr-step-n">{String(i + 1).padStart(2, '0')}</div>
-            <h3>{s.t}</h3>
-            <p>{s.s}</p>
+          <li key={s.t} className={i % 2 ? 'right' : 'left'} data-testid={`franchise-step-${i + 1}`}>
+            <div className={`fr-tl-node ${i % 2 ? 'red' : ''}`}>{String(i + 1).padStart(2, '0')}</div>
+            <div className={`fr-tl-card ${i % 2 ? 'red' : ''}`}>
+              <div className="fr-tl-k">Step {i + 1}</div>
+              <h3>{s.t}</h3>
+              <p>{s.s}</p>
+            </div>
           </li>
         ))}
       </ol>
