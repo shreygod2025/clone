@@ -1,6 +1,6 @@
 import {
   TrendingUp, Hand, Coins, Boxes, BadgeCheck, Cpu, BookOpen, GraduationCap, MonitorSmartphone,
-  LifeBuoy, Trophy, Wrench, Camera, FileBarChart, ClipboardCheck, Laptop, Award, Medal,
+  LifeBuoy, Trophy, Wrench, Laptop, School, UserRound, Users, Presentation, Settings,
   Ruler, MapPin, Plug, ShieldCheck, Paintbrush, Package, Sparkles, Megaphone, Layers,
   Bot, Code2, BrainCircuit, Box, Printer,
 } from 'lucide-react';
@@ -45,13 +45,18 @@ export const DIFFERENT = [
   { i: Wrench, t: 'Implementation Support', s: 'Operational guidance to help establish and run the program.' },
 ];
 
-export const PARENT_VISIBILITY = [
-  { i: Camera, t: 'Student project photographs and videos' },
-  { i: FileBarChart, t: 'Progress reports' },
-  { i: ClipboardCheck, t: 'Assessments' },
-  { i: Laptop, t: 'LMS access' },
-  { i: Award, t: 'Certificates and showcases' },
-  { i: Medal, t: 'Competition participation and achievement stories' },
+export const YOU_HAVE = [
+  { i: School, t: 'Classroom Space', img: '/franchise/setup-space.webp' },
+  { i: UserRound, t: 'Your Appointed Educator', img: '/franchise/setup-educator.webp' },
+  { i: Users, t: 'Student Batches', img: '/franchise/setup-batches.webp' },
+];
+
+export const WE_PROVIDE = [
+  { i: Layers, t: 'Curriculum' },
+  { i: Box, t: 'Equipment' },
+  { i: Presentation, t: 'Teacher Training & SOPs' },
+  { i: Laptop, t: 'LMS & Assessments' },
+  { i: Settings, t: 'Academic Framework' },
 ];
 
 export const INCLUDED = [

@@ -11,7 +11,7 @@ import { OLL_LOGO_COLOR, IMG } from './franchiseContent';
 import { FranchiseEnquiryForm } from './FranchiseEnquiryForm';
 import { FRANCHISE_CSS } from './franchiseStyles';
 import {
-  Head, FrHero, FrSkills, FrWhy, FrDifferent, FrParents, FrIncluded, FrServices, FrRoles, FrSpace, FrWho, FrSteps,
+  Head, FrHero, FrWhy, FrDifferent, FrEasySetup, FrIncluded, FrServices, FrRoles, FrSpace, FrWho, FrSteps,
 } from './FranchiseSections';
 
 const CANONICAL = 'https://oll.co/franchise/robotics-ai-learning-center';
@@ -67,14 +67,13 @@ export default function FranchiseLandingPage() {
       <style>{RB_SHARED_CSS + FRANCHISE_CSS}</style>
       <FrNav onApply={apply} />
       <FrHero onApply={apply} />
-      <FrSkills />
       <RbSkillsCarousel testid="franchise-skills" bg="#071345" eyebrow="what your center will teach"
         title={<>Your city&apos;s <span style={{ color: '#FCA5A5' }}>first step</span> into the future.</>}
         subtitle="Robotics, coding, AI, drones, 3D design and more — give children in your community the chance to explore the technologies shaping tomorrow." />
       <FrWhy />
       <FrDifferent />
       <InsideClassroom />
-      <FrParents />
+      <FrEasySetup />
       <FrIncluded />
       <FrServices />
       <FrRoles />

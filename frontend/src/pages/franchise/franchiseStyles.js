@@ -1,7 +1,8 @@
 export const FRANCHISE_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800;1,900&display=swap');
+@font-face { font-family: 'Zing Rust'; src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype'); font-display: swap; }
 .fr-page { --fr-bg: #0A1A5C; --fr-bg2: #071345; --fr-blue: #2563EB; --fr-glow: #3B82F6; --fr-red: #E11D2E; --fr-red2: #B8121F;
-  min-height: 100vh; background: var(--fr-bg); font-family: 'Montserrat', system-ui, sans-serif; color: #fff; overflow-x: hidden; }
+  min-height: 100vh; background: var(--fr-bg); font-family: 'Montserrat', system-ui, sans-serif; color: #fff; overflow-x: clip; }
 .fr-wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
 .fr-sec { position: relative; overflow: hidden; padding: 5.5rem 1.25rem;
   background: radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.28), transparent 60%), var(--fr-bg); }
@@ -12,8 +13,8 @@ export const FRANCHISE_CSS = `
 .fr-head { margin-bottom: 2.75rem; max-width: 820px; }
 .fr-head.center { margin-left: auto; margin-right: auto; text-align: center; }
 .fr-tickbar { display: inline-block; width: 44px; height: 4px; background: var(--fr-red); border-radius: 2px; margin-bottom: 0.8rem; }
-.fr-h2 { font-weight: 900; font-style: italic; text-transform: uppercase; font-size: clamp(1.9rem, 4.3vw, 3.1rem); line-height: 1.02; letter-spacing: -0.01em; color: #fff; }
-.fr-h2 em, .fr-hero-h1 em { color: var(--fr-red); font-style: italic; text-shadow: 0 0 24px rgba(225,29,46,0.35); }
+.fr-h2 { font-family: 'Zing Rust', 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(2.3rem, 5vw, 3.8rem); line-height: 0.98; letter-spacing: 0.01em; color: #fff; }
+.fr-h2 em, .fr-hero-h1 em { color: var(--fr-red); font-style: normal; text-shadow: 0 0 24px rgba(225,29,46,0.35); }
 .fr-sub { font-size: 1rem; line-height: 1.65; color: rgba(219,234,254,0.82); margin-top: 0.9rem; }
 
 /* Nav */
@@ -36,7 +37,7 @@ export const FRANCHISE_CSS = `
 .fr-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 6px; background: var(--fr-red); color: #fff; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; transform: skewX(-8deg); }
 .fr-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: fr-pulse 2s infinite; }
 @keyframes fr-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-.fr-hero-h1 { font-weight: 900; font-style: italic; text-transform: uppercase; font-size: clamp(2.5rem, 5.6vw, 4.5rem); line-height: 0.98; margin-top: 1.2rem; letter-spacing: -0.015em; }
+.fr-hero-h1 { font-family: 'Zing Rust', 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(3rem, 6.6vw, 5.6rem); line-height: 0.92; margin-top: 1.2rem; letter-spacing: 0.01em; }
 .fr-hero-tag { font-weight: 800; letter-spacing: 0.4em; text-transform: uppercase; color: rgba(219,234,254,0.8); font-size: 0.9rem; margin-top: 0.6rem; }
 .fr-need { margin-top: 1.6rem; padding: 1.1rem 1.3rem; border-radius: 16px; background: rgba(10,26,92,0.6); border: 1px solid rgba(59,130,246,0.6); box-shadow: 0 0 30px rgba(59,130,246,0.25), inset 0 0 20px rgba(59,130,246,0.12); max-width: 520px; animation: fr-rise 0.8s ease 0.2s both; }
 .fr-need-k { font-weight: 900; font-style: italic; text-transform: uppercase; color: var(--fr-red); font-size: 0.95rem; letter-spacing: 0.04em; }
@@ -124,7 +125,11 @@ export const FRANCHISE_CSS = `
 .fr-tab-n { font-weight: 900; font-style: italic; color: #F87171; }
 .fr-tab.on .fr-tab-n { color: #fff; }
 .fr-tabpanel { display: flex; gap: 1.5rem; align-items: flex-start; border-radius: 22px; padding: 2rem; background: linear-gradient(135deg, rgba(37,99,235,0.2), rgba(7,19,69,0.85)); border: 1px solid rgba(59,130,246,0.75); box-shadow: 0 0 40px rgba(59,130,246,0.3); animation: fr-rise 0.4s ease both; }
-.fr-panel-t { font-weight: 900; font-style: italic; text-transform: uppercase; font-size: 1.5rem; }
+.fr-panel-t { font-family: 'Zing Rust', 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 1.9rem; line-height: 1; }
+.fr-inc-list { display: grid; gap: 1.5rem; }
+.fr-tabpanel { position: relative; }
+.fr-tabpanel.red { background: linear-gradient(135deg, rgba(225,29,46,0.28), rgba(60,8,25,0.6)); border-color: rgba(248,113,113,0.75); box-shadow: 0 0 40px rgba(225,29,46,0.28); }
+.fr-tabpanel.red .fr-icon { background: radial-gradient(circle at 30% 30%, #F43F5E, #9F1239); box-shadow: 0 0 20px rgba(225,29,46,0.6); }
 .fr-panel-s { color: rgba(219,234,254,0.75); margin-top: 4px; }
 .fr-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.65rem 1.25rem; margin-top: 1.25rem; }
 .fr-items span { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.9rem; color: rgba(226,232,240,0.92); }
@@ -170,6 +175,31 @@ export const FRANCHISE_CSS = `
 .fr-chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .fr-chip { padding: 0.6rem 1rem; border-radius: 999px; border: 1px solid #CBD5E1; background: #fff; font-weight: 700; font-size: 0.82rem; color: #334155; cursor: pointer; transition: background-color 0.2s, color 0.2s, border-color 0.2s; font-family: inherit; text-transform: none; letter-spacing: 0; }
 .fr-chip.on { background: #0A1A5C; color: #fff; border-color: #0A1A5C; }
+
+/* Easy implementation */
+.fr-easy { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.25rem; align-items: stretch; }
+.fr-easy-have, .fr-easy-give { position: relative; border-radius: 24px; padding: 3.2rem 1.25rem 1.25rem; margin-top: 1.6rem; }
+.fr-easy-have { border: 1.5px solid rgba(59,130,246,0.85); background: rgba(7,19,69,0.6); box-shadow: 0 0 36px rgba(59,130,246,0.35), inset 0 0 24px rgba(59,130,246,0.12); }
+.fr-easy-give { background: linear-gradient(180deg, #FFF1F2, #FDE2E4); color: #0A1A5C; box-shadow: 0 0 36px rgba(225,29,46,0.3); }
+.fr-easy-cap { position: absolute; top: -1.6rem; left: 1.25rem; right: 1.25rem; text-align: center; padding: 0.65rem 1rem; border-radius: 18px; background: var(--fr-bg2); border: 1.5px solid rgba(59,130,246,0.9); box-shadow: 0 0 22px rgba(59,130,246,0.45); }
+.fr-easy-cap.red { background: linear-gradient(90deg, var(--fr-red), var(--fr-red2)); border-color: rgba(255,255,255,0.3); box-shadow: 0 0 22px rgba(225,29,46,0.55); color: #fff; }
+.fr-easy-cap b { display: block; font-family: 'Zing Rust', 'Anton', sans-serif; font-weight: 400; font-size: 1.7rem; text-transform: uppercase; line-height: 1; letter-spacing: 0.02em; }
+.fr-easy-cap span { display: block; font-size: 0.85rem; margin-top: 4px; opacity: 0.9; }
+.fr-easy-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+.fr-easy-tile { border-radius: 16px; overflow: hidden; background: #EEF4FF; color: #0A1A5C; }
+.fr-easy-tile.wide { grid-column: 1 / -1; }
+.fr-easy-img { height: 120px; overflow: hidden; }
+.fr-easy-tile.wide .fr-easy-img { height: 130px; }
+.fr-easy-img img { width: 100%; height: 100%; object-fit: cover; object-position: center 75%; transform: scale(1.18); transform-origin: center 80%; }
+.fr-easy-lbl { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 0.9rem; font-weight: 800; font-size: 0.95rem; line-height: 1.2; }
+.fr-easy-ic { flex-shrink: 0; width: 54px; height: 54px; margin-top: -2.2rem; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #3B82F6, #1E3A8A); color: #fff; display: inline-flex; align-items: center; justify-content: center; border: 3px solid #EEF4FF; box-shadow: 0 6px 16px rgba(10,26,92,0.35); }
+.fr-easy-ic.red { background: radial-gradient(circle at 30% 30%, #F43F5E, #B8121F); }
+.fr-easy-ic.big { width: 84px; height: 84px; margin: 0 auto 0.6rem; border: 0; box-shadow: 0 10px 24px rgba(10,26,92,0.3); }
+.fr-easy-icons { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; height: 100%; gap: 2rem 1rem; padding: 1rem 0; }
+.fr-easy-icons > div { width: calc(33.33% - 1rem); min-width: 120px; text-align: center; }
+.fr-easy-icons b { font-weight: 800; font-size: 0.95rem; color: #0A1A5C; line-height: 1.25; display: block; }
+.fr-easy .fr-plus-big { align-self: center; }
+@media (max-width: 900px) { .fr-easy { grid-template-columns: 1fr; } .fr-easy .fr-plus-big { text-align: center; line-height: 1; } .fr-easy-icons > div { width: calc(50% - 1rem); } }
 
 /* Light reused sections sit on a framed band */
 .fr-light-band { background: #fff; color: #0A1F44; }

@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { Check, ArrowRight, Building2, Users2 } from 'lucide-react';
+import { Check, ArrowRight, Building2, Users2, Handshake } from 'lucide-react';
 import {
-  WHY_START, DIFFERENT, PARENT_VISIBILITY, INCLUDED, SERVICES, SKILL_CARDS, IMG,
+  WHY_START, DIFFERENT, YOU_HAVE, WE_PROVIDE, INCLUDED, SERVICES, SKILL_CARDS, IMG,
   OLL_PROVIDES, PARTNER_MANAGES, SPACE, TEACHERS, PARTNERS, STEPS,
 } from './franchiseContent';
 
@@ -77,23 +76,6 @@ export const FrHero = ({ onApply }) => (
   </section>
 );
 
-export const FrSkills = () => (
-  <section className="fr-sec alt" data-testid="franchise-skill-cards">
-    <Pixels />
-    <div className="fr-wrap">
-      <Head center a="One Program." b="Five Future Skills." sub="A structured, year-long program your center delivers from day one." />
-      <div className="fr-skill-grid">
-        {SKILL_CARDS.map((s, i) => (
-          <div key={s.t} className={`fr-skill ${i % 2 ? 'blue' : 'red'}`} data-testid={`franchise-skill-${i}`}>
-            <img src={s.img} alt={s.t} loading="lazy" />
-          </div>
-        ))}
-      </div>
-      <Strip>A year-long learning vertical <em>designed for growing minds.</em></Strip>
-    </div>
-  </section>
-);
-
 export const FrWhy = () => (
   <section className="fr-sec" data-testid="franchise-why">
     <div className="fr-wrap">
@@ -122,51 +104,59 @@ export const FrDifferent = () => (
   </section>
 );
 
-export const FrParents = () => (
-  <section className="fr-sec" data-testid="franchise-parent-visibility">
-    <div className="fr-wrap fr-split">
-      <div>
-        <Head a="Parent" b="Visibility." sub="Make the value visible. Every project becomes an opportunity to demonstrate learning outcomes and communicate the value of your center." />
-        <div className="fr-chiplist">
-          {PARENT_VISIBILITY.map((c, i) => (
-            <div key={c.t} className="fr-vis"><span className="fr-vis-n">{String(i + 1).padStart(2, '0')}</span><c.i size={18} /> {c.t}</div>
-          ))}
+export const FrEasySetup = () => (
+  <section className="fr-sec" data-testid="franchise-easy-setup">
+    <Pixels />
+    <div className="fr-wrap">
+      <Head a="Easy" b="Implementation." sub="Designed to work with your setup. Start your future-skills center without creating an entirely new academic infrastructure." />
+      <div className="fr-easy">
+        <div className="fr-easy-have" data-testid="franchise-you-have">
+          <div className="fr-easy-cap"><b>You Already Have</b><span>Just bring your space and your people.</span></div>
+          <div className="fr-easy-tiles">
+            {YOU_HAVE.map((t, i) => (
+              <div key={t.t} className={`fr-easy-tile ${i === 2 ? 'wide' : ''}`}>
+                <div className="fr-easy-img"><img src={t.img} alt={t.t} loading="lazy" /></div>
+                <div className="fr-easy-lbl"><span className={`fr-easy-ic ${i % 2 ? 'red' : ''}`}><t.i size={20} /></span>{t.t}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="fr-photo-frame"><img src={IMG.marketing} alt="Student project stories shared with parents" loading="lazy" /></div>
-    </div>
-    <div className="fr-wrap"><Strip>Don&apos;t just communicate learning. <em>Show the outcome.</em></Strip></div>
-  </section>
-);
-
-export const FrIncluded = () => {
-  const [tab, setTab] = useState(INCLUDED[0].key);
-  const cur = INCLUDED.find((x) => x.key === tab);
-  return (
-    <section className="fr-sec alt" data-testid="franchise-included">
-      <Pixels />
-      <div className="fr-wrap">
-        <Head a="What Your" b="Investment Builds." sub="Not a kit purchase. A complete future-skills center — here's what's included in your franchise." />
-        <div className="fr-tabs" role="tablist">
-          {INCLUDED.map((x, i) => (
-            <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} onClick={() => setTab(x.key)}
-              className={`fr-tab ${tab === x.key ? 'on' : ''}`} data-testid={`franchise-included-tab-${x.key}`}>
-              <span className="fr-tab-n">0{i + 1}</span> {x.t}
-            </button>
-          ))}
-        </div>
-        <div className="fr-tabpanel" key={tab} data-testid="franchise-included-panel">
-          <div className="fr-icon big"><cur.i size={30} /></div>
-          <div style={{ flex: 1 }}>
-            <h3 className="fr-panel-t">{cur.t}</h3>
-            <p className="fr-panel-s">{cur.s}</p>
-            <div className="fr-items">{cur.items.map((x) => <span key={x}><Check size={14} strokeWidth={3} /> {x}</span>)}</div>
+        <div className="fr-plus-big">+</div>
+        <div className="fr-easy-give" data-testid="franchise-we-provide">
+          <div className="fr-easy-cap red"><b>We Provide</b><span>Everything you need to run the program.</span></div>
+          <div className="fr-easy-icons">
+            {WE_PROVIDE.map((t, i) => (
+              <div key={t.t}><span className={`fr-easy-ic big ${i % 2 ? 'red' : ''}`}><t.i size={30} /></span><b>{t.t}</b></div>
+            ))}
           </div>
         </div>
       </div>
-    </section>
-  );
-};
+      <Strip icon={Handshake}>We provide the equipment, curriculum, training, LMS and <em>academic framework.</em></Strip>
+    </div>
+  </section>
+);
+
+export const FrIncluded = () => (
+  <section className="fr-sec alt" data-testid="franchise-included">
+    <Pixels />
+    <div className="fr-wrap">
+      <Head a="What Your" b="Investment Builds." sub="Not a kit purchase. A complete future-skills center — here's what's included in your franchise." />
+      <div className="fr-inc-list">
+        {INCLUDED.map((cur, i) => (
+          <div key={cur.key} className={`fr-tabpanel ${i % 2 ? 'red' : ''}`} data-testid={`franchise-included-${cur.key}`}>
+            <span className="fr-num">{String(i + 1).padStart(2, '0')}</span>
+            <div className="fr-icon big"><cur.i size={30} /></div>
+            <div style={{ flex: 1 }}>
+              <h3 className="fr-panel-t">{cur.t}</h3>
+              <p className="fr-panel-s">{cur.s}</p>
+              <div className="fr-items">{cur.items.map((x) => <span key={x}><Check size={14} strokeWidth={3} /> {x}</span>)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
 
 export const FrServices = () => (
   <section className="fr-sec" data-testid="franchise-services">
