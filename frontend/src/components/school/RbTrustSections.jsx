@@ -41,7 +41,7 @@ export const SCHOOL_VIDEOS = [
 ];
 
 
-const RB_SHARED_CSS = `
+export const RB_SHARED_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
   .rb-h2, .rb-h3 { font-family: 'Proxima Nova', 'Montserrat', 'Inter', sans-serif; font-weight: 300; letter-spacing: -0.01em; text-transform: none; }
   .rb-num { font-family: 'Proxima Nova', 'Montserrat', sans-serif; font-weight: 700; letter-spacing: -0.02em; }

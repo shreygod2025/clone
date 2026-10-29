@@ -1,10 +1,12 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Quote as QuoteIcon, Video, Sparkles, X } from 'lucide-react';
+import { GraduationCap, Users, Building2, ArrowRight, PlayCircle, Play, Star, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import WordPressBlogsSection from '../components/WordPressBlogsSection';
 import { NewsStrip } from '../components/home/NewsStrip';
+import { ParentsFeedback } from '../components/home/ParentsFeedback';
+import { InsideClassroom, MediaLightbox } from '../components/home/InsideClassroom';
 import { STI, STI_BG, STI_LOGO, STI_YF_LOGO, STI_CONTACT, STI_DISPLAY_FONT } from '../components/sharkTankTheme';
 import { useUserAuth } from '../context/UserAuthContext';
 
@@ -28,53 +30,6 @@ const PARENT_QUOTES = [
   'Every week she comes home with a new project — and a bigger smile.',
 ];
 
-// ── Parent & student testimonials (video card grid) ────────────────────────
-const TESTIMONIALS = [
-  {
-    role: 'parent', label: 'PARENT', name: 'OLL Parents',
-    quote: '"Our kids come home buzzing about what they built."',
-    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4',
-    thumbYT: null,
-  },
-  {
-    role: 'student', label: 'STUDENT', name: 'Young Builder · Grade 5',
-    quote: '"I made a robot that follows a line!"',
-    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yl1ydmda_IMG_7029.MOV',
-    thumbYT: null,
-  },
-  {
-    role: 'student', label: 'STUDENT', name: 'Young Coder · Grade 7',
-    quote: '"I wrote my first Python game in class."',
-    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4boxtvd2_IMG_7035.MOV',
-    thumbYT: null,
-  },
-  {
-    role: 'student', label: 'STUDENT', name: 'Young Creator · Grade 9',
-    quote: '"3D-printed my own phone stand this week!"',
-    video: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/vo8r3dzk_IMG_7045.MOV',
-    thumbYT: null,
-  },
-];
-
-const WRITTEN_QUOTES = [
-  { quote: 'My son went from gaming all weekend to spending Saturdays designing his own game. The shift in 3 months has been unreal.', name: 'Anita S.', context: 'Grade 5 parent' },
-  { quote: 'He builds robots at home now with parts he saves up for. The class lit a fire we didn\u2019t know was there.', name: 'Rajesh M.', context: 'Grade 8 parent' },
-  { quote: 'Best investment beyond her academics. She actually looks forward to Saturdays.', name: 'Priya K.', context: 'Grade 3 parent' },
-];
-
-// Classroom media — real photos & videos from OLL classrooms (mirrors Future Skills page)
-const CLASSROOM_MEDIA = [
-  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/5h69is60_20260504_122331.mp4', label: 'Hands-on build', caption: 'Kids assembling their first IoT & AI lab kit' },
-  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg', label: 'Live class', caption: 'Working through a circuit module step by step' },
-  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gwljm6r9_20260504_122607.jpg', label: 'Build station', caption: 'Pair-builds with the OLL IoT & AI Lab Kit' },
-  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/04pgqymv_20260504_123958.mp4', label: 'In action', caption: 'Real class footage — what a session feels like' },
-  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tqatbciw_20260504_124243.jpg', label: 'Manipulative station', caption: 'Kids exploring components together' },
-  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9p89o2y6_20260504_154936.mp4', label: 'Class showcase', caption: 'Students presenting what they built today' },
-  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rhwyg94z_20260504_163950.jpg', label: 'Batch of builders', caption: 'End-of-class group photo — the whole crew' },
-  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/geb6vgey_VID20260504135039.mp4', label: 'Build moment', caption: 'Mid-class hands-on — heads-down focus' },
-  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ctig02to_IMG-20260504-WA0020.jpg', label: 'Educator-led', caption: 'Trainers walking kids through their first build' },
-  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/e7dknsgn_VID20260504155236.mp4', label: 'In progress', caption: 'Kids deep in their build — a real session glimpse' },
-];
 
 // Media house logos — infinite scroll ticker under the Shark Tank / KBC cards
 const MEDIA_LOGOS = [
@@ -92,7 +47,7 @@ const MEDIA_LOGOS = [
 const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
-  const [mediaOpen, setMediaOpen] = useState(null); // { type, src, label, caption }
+  const [mediaOpen, setMediaOpen] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);  // Techfest "View more" toggle (mobile only)
 
   // Scroll to top on mount
@@ -100,13 +55,6 @@ const LandingPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Close lightbox on Escape
-  useEffect(() => {
-    if (!mediaOpen) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') setMediaOpen(null); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [mediaOpen]);
 
   // ── SEO: imperative <head> injection (react-helmet-async unreliable here) ─
   useEffect(() => {
@@ -1062,299 +1010,14 @@ const LandingPage = () => {
 
       {/* AI Foundations section — removed per request */}
 
-      {/* ── PARENTS FEEDBACK · rating card + video testimonials + written quotes ── */}
-      <section data-testid="homepage-parents-feedback" style={{
-        position: 'relative',
-        padding: '5rem 1.25rem 4rem',
-        background: '#FFFFFF',
-      }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+      <ParentsFeedback />
 
-          {/* Rating summary card */}
-          <div
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
-              borderRadius: '1.25rem',
-              boxShadow: '0 20px 40px rgba(15,30,80,0.08)',
-              padding: '2rem 2.25rem',
-              maxWidth: 780,
-              margin: '0 auto 3rem',
-              display: 'grid',
-              gridTemplateColumns: '220px 1fr',
-              gap: '2rem',
-              alignItems: 'center',
-            }}
-            className="home-rating-card"
-            data-testid="home-rating-card"
-          >
-            <style>{`@media (max-width: 640px) { .home-rating-card { grid-template-columns: 1fr !important; gap: 1rem !important; padding: 1.5rem !important; } }`}</style>
-            <div>
-              <div style={{ fontFamily: "'Zing Rust', 'Anton', sans-serif", fontSize: 'clamp(3.5rem, 6vw, 5rem)', lineHeight: 1, color: '#DC2626', fontWeight: 900, letterSpacing: '-0.02em' }}>
-                4.75<span style={{ fontSize: '0.4em', color: '#94A3B8', marginLeft: 6 }}>/5</span>
-              </div>
-              <div style={{ marginTop: '0.4rem', fontFamily: "'Montserrat', sans-serif", fontSize: '0.7rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626' }}>Parent Rating</div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.6rem' }}>
-                {[0,1,2,3,4].map((i) => <Star key={i} size={20} style={{ color: '#DC2626', fill: '#DC2626' }} />)}
-                <span style={{ marginLeft: 8, color: '#64748B', fontSize: '0.85rem', fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>based on 500+ reviews</span>
-              </div>
-              {[{ s: 5, p: 82 }, { s: 4, p: 14 }, { s: 3, p: 3 }, { s: 2, p: 1 }].map((r) => (
-                <div key={r.s} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 44px', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: '0.8rem', color: '#64748B', fontFamily: "'Montserrat', sans-serif", fontWeight: 500 }}>{r.s}★</div>
-                  <div style={{ height: 8, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${r.p}%`, background: 'linear-gradient(90deg, #DC2626, #0A1F44)', borderRadius: 999 }} />
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748B', fontFamily: "'Montserrat', sans-serif", fontWeight: 500, textAlign: 'right' }}>{r.p}%</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section headline */}
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '0.78rem', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, color: '#DC2626', marginBottom: '0.5rem' }}>
-              // Real voices · real builds
-            </div>
-            <h2 className="home-h2" style={{ color: '#0F1E33' }}>
-              Hear it from our <span style={{ color: '#0F1E33' }}>parents &amp; students</span>
-            </h2>
-          </div>
-
-          {/* Video testimonials grid */}
-          <div className="home-testimonial-grid" data-testid="home-testimonial-grid">
-            <style>{`
-              .home-testimonial-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
-              @media (max-width: 1000px) { .home-testimonial-grid { grid-template-columns: repeat(2, 1fr); } }
-              @media (max-width: 560px)  { .home-testimonial-grid { grid-template-columns: 1fr; } }
-              .home-tcard { position: relative; aspect-ratio: 4/5; border-radius: 1.1rem; overflow: hidden; background: #0A1F44; box-shadow: 0 18px 40px rgba(15,30,80,0.15); cursor: pointer; text-decoration: none; transition: transform 0.35s ease, box-shadow 0.35s ease; }
-              .home-tcard:hover { transform: translateY(-6px); box-shadow: 0 28px 56px rgba(15,30,80,0.25); }
-              .home-tcard video, .home-tcard img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-              .home-tcard::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(10,31,68,0.90) 100%); pointer-events: none; }
-              .home-tbadge { position: absolute; top: 14px; left: 14px; z-index: 2; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; color: #fff; }
-              .home-tbadge.parent { background: #DC2626; }
-              .home-tbadge.student { background: #0F1E33; }
-              .home-tplay { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; color: #fff; opacity: 0.9; transition: transform 0.3s ease, opacity 0.3s ease; }
-              .home-tcard:hover .home-tplay { transform: scale(1.08); opacity: 1; }
-              .home-tcopy { position: absolute; bottom: 16px; left: 18px; right: 18px; z-index: 2; color: #fff; font-family: 'Montserrat', sans-serif; }
-              .home-tname { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
-              .home-tquote { margin-top: 4px; font-size: 0.82rem; color: rgba(255,255,255,0.85); font-style: italic; line-height: 1.4; }
-            `}</style>
-            {TESTIMONIALS.map((t, idx) => {
-              const isYT = !!t.thumbYT;
-              const props = isYT
-                ? { as: 'a', href: `https://youtu.be/${t.thumbYT}`, target: '_blank', rel: 'noreferrer' }
-                : {};
-              return (
-                <a
-                  key={t.name}
-                  href={isYT ? `https://youtu.be/${t.thumbYT}` : undefined}
-                  target={isYT ? '_blank' : undefined}
-                  rel={isYT ? 'noreferrer' : undefined}
-                  className="home-tcard"
-                  data-testid={`home-testimonial-${idx}`}
-                  {...(!isYT ? { onClick: (e) => {
-                    const vid = e.currentTarget.querySelector('video');
-                    if (!vid) return;
-                    // First click always unmutes + plays; subsequent clicks toggle play/pause with sound on
-                    if (vid.muted) {
-                      vid.muted = false;
-                      vid.currentTime = 0;
-                      const p = vid.play();
-                      if (p && p.catch) p.catch(() => {});
-                    } else if (vid.paused) {
-                      const p = vid.play();
-                      if (p && p.catch) p.catch(() => {});
-                    } else {
-                      vid.pause();
-                    }
-                  }} : {})}
-                >
-                  <span className={`home-tbadge ${t.role}`}>{t.label}</span>
-                  {isYT ? (
-                    <img src={`https://i.ytimg.com/vi/${t.thumbYT}/hqdefault.jpg`} alt={t.name} loading="lazy" />
-                  ) : (
-                    <video src={t.video} autoPlay muted loop playsInline />
-                  )}
-                  <div className="home-tplay"><PlayCircle size={54} strokeWidth={1.5} /></div>
-                  <div className="home-tcopy">
-                    <div className="home-tname">{t.name}</div>
-                    <div className="home-tquote">{t.quote}</div>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-
-          {/* Written quote cards */}
-          <div style={{ marginTop: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }} data-testid="home-written-quotes">
-            {WRITTEN_QUOTES.map((q) => (
-              <div key={q.name} style={{
-                background: '#FFFFFF',
-                border: '1px solid #F1F5F9',
-                borderRadius: '1rem',
-                padding: '1.75rem 1.5rem',
-                boxShadow: '0 10px 24px rgba(15,30,80,0.05)',
-              }}>
-                <QuoteIcon size={22} style={{ color: '#DC2626' }} />
-                <p style={{ marginTop: '1rem', fontFamily: "'Montserrat', sans-serif", fontStyle: 'italic', color: '#334155', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                  &ldquo;{q.quote}&rdquo;
-                </p>
-                <div style={{ marginTop: '1.15rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {[0,1,2,3,4].map((i) => <Star key={i} size={15} style={{ color: '#DC2626', fill: '#DC2626' }} />)}
-                </div>
-                <div style={{ marginTop: '0.5rem', fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#0F1E33' }}>
-                  {q.name}<span style={{ color: '#94A3B8', fontWeight: 500 }}>, {q.context}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── INSIDE AN OLL CLASSROOM · horizontal auto-scroll (uneven cards) ── */}
-      <section data-testid="homepage-inside-classroom" style={{
-        position: 'relative', overflow: 'hidden',
-        padding: '5rem 0 5.5rem',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-      }}>
-        <style>{`
-          @keyframes home-class-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-          .home-class-wrap { position: relative; overflow: hidden; padding: 14px 0; mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent); }
-          .home-class-track { display: inline-flex; gap: 1.15rem; padding: 4px 1rem; align-items: center; animation: home-class-scroll 70s linear infinite; will-change: transform; width: max-content; }
-          .home-class-track:hover { animation-play-state: paused; }
-          .home-class-card {
-            flex-shrink: 0; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer;
-            background: linear-gradient(180deg, #0A1F44 0%, #1E3A5F 100%);
-            border: 2px solid rgba(96,165,250,0.16);
-            box-shadow: 0 22px 44px rgba(10,31,68,0.16);
-            transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
-          }
-          .home-class-card:hover { transform: translateY(-6px); box-shadow: 0 30px 60px rgba(10,31,68,0.28); border-color: #DC2626; }
-          .home-class-card img, .home-class-card video {
-            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-            transition: transform 0.55s ease, opacity 0.35s ease;
-          }
-          .home-class-card:hover img { transform: scale(1.06); }
-          .home-class-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(10,31,68,0.92) 100%); pointer-events: none; }
-          .home-class-pill { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-family: 'Proxima Nova','Montserrat',sans-serif; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; backdrop-filter: blur(6px); border: 1px solid; }
-          .home-class-pill.video { background: rgba(220,38,38,0.72); border-color: #DC2626; }
-          .home-class-pill.photo { background: rgba(30,58,95,0.72); border-color: #60A5FA; }
-          .home-class-play { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-          .home-class-play > div { width: 60px; height: 60px; border-radius: 999px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(0,0,0,0.35); transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease; }
-          .home-class-card:hover .home-class-play > div { transform: scale(1.12); background: #DC2626; border-color: #DC2626; }
-          .home-class-cap { position: absolute; bottom: 14px; left: 16px; right: 16px; z-index: 2; color: #fff; font-family: 'Proxima Nova','Montserrat',sans-serif; }
-          .home-class-cap-title { font-size: 0.98rem; font-weight: 800; line-height: 1.2; }
-          .home-class-cap-sub { margin-top: 3px; font-size: 0.76rem; color: rgba(191,219,254,0.9); font-weight: 300; line-height: 1.4; }
-          /* Uneven sizes — cycled per card index so the ribbon looks organic */
-          .home-class-size-0 { width: 300px; height: 400px; }
-          .home-class-size-1 { width: 380px; height: 280px; }
-          .home-class-size-2 { width: 260px; height: 340px; }
-          .home-class-size-3 { width: 420px; height: 320px; }
-          .home-class-size-4 { width: 320px; height: 420px; }
-          @media (max-width: 640px) {
-            .home-class-size-0 { width: 200px; height: 280px; }
-            .home-class-size-1 { width: 240px; height: 200px; }
-            .home-class-size-2 { width: 180px; height: 240px; }
-            .home-class-size-3 { width: 260px; height: 220px; }
-            .home-class-size-4 { width: 210px; height: 290px; }
-            .home-class-cap-title { font-size: 0.8rem !important; }
-            .home-class-cap-sub { display: none; }
-            .home-class-play > div { width: 46px; height: 46px; }
-          }
-        `}</style>
-
-        <div style={{ textAlign: 'center', maxWidth: 1180, margin: '0 auto 2.5rem', padding: '0 1.25rem' }}>
-          <div className="home-script-heading">what learning looks like</div>
-          <h2 className="home-h2">
-            Inside an <span style={{ WebkitTextStroke: '2px #0A1F44', WebkitTextFillColor: 'transparent', color: 'transparent' }}>OLL classroom.</span>
-          </h2>
-          <p className="home-sub">Not slides. Not lectures. Real components, real builds, real kids getting their hands dirty.</p>
-          <div style={{ marginTop: '0.75rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
-            Tap any card to play / view
-          </div>
-        </div>
-
-        <div className="home-class-wrap" data-testid="home-classroom-slider">
-          <div className="home-class-track">
-            {[...CLASSROOM_MEDIA, ...CLASSROOM_MEDIA].map((m, i) => {
-              const originalIdx = i % CLASSROOM_MEDIA.length;
-              const sizeClass = `home-class-size-${i % 5}`;
-              return (
-                <div
-                  key={`${m.src}-${i}`}
-                  className={`home-class-card ${sizeClass}`}
-                  onClick={() => setMediaOpen(m)}
-                  data-testid={i < CLASSROOM_MEDIA.length ? `home-classroom-card-${originalIdx}` : undefined}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMediaOpen(m); } }}
-                  aria-label={`View ${m.label}`}
-                >
-                  {m.type === 'video' ? (
-                    <video src={m.src} muted playsInline preload="metadata" style={{ pointerEvents: 'none' }} />
-                  ) : (
-                    <img src={m.src} alt={m.label} loading="lazy" />
-                  )}
-                  <div className="home-class-overlay" />
-                  <span className={`home-class-pill ${m.type}`}>
-                    {m.type === 'video' ? <Video size={11} /> : <Sparkles size={11} />}
-                    {m.type === 'video' ? 'Video' : 'Photo'}
-                  </span>
-                  {m.type === 'video' && (
-                    <div className="home-class-play">
-                      <div><Play size={22} fill="#fff" strokeWidth={0} style={{ marginLeft: 2 }} /></div>
-                    </div>
-                  )}
-                  <div className="home-class-cap">
-                    <div className="home-class-cap-title">{m.label}</div>
-                    <div className="home-class-cap-sub">{m.caption}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
-          {CLASSROOM_MEDIA.length} moments · captured at our centres in May 2026
-        </div>
-      </section>
+      <InsideClassroom />
+      <MediaLightbox media={mediaOpen} onClose={() => setMediaOpen(null)} />
 
       {/* ── OLL Journal · Latest blogs from WordPress ─────────────────── */}
       <WordPressBlogsSection testid="homepage-blogs" />
 
-      {/* ── Classroom media lightbox modal ────────────────────────────── */}
-      {mediaOpen && (
-        <div
-          data-testid="home-classroom-lightbox"
-          onClick={(e) => { if (e.target === e.currentTarget) setMediaOpen(null); }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(6,12,30,0.92)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)' }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setMediaOpen(null); }}
-            data-testid="home-classroom-lightbox-close"
-            aria-label="Close"
-            style={{ position: 'absolute', top: 20, right: 20, width: 42, height: 42, borderRadius: 999, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-          >
-            <X size={20} />
-          </button>
-          <div style={{ position: 'relative', width: '100%', maxWidth: 960, borderRadius: 20, overflow: 'hidden', boxShadow: '0 40px 80px rgba(0,0,0,0.55)', background: '#0A1F44' }}>
-            {mediaOpen.type === 'video' ? (
-              <video src={mediaOpen.src} controls autoPlay playsInline style={{ width: '100%', maxHeight: '80vh', background: '#000', display: 'block' }} />
-            ) : (
-              <img src={mediaOpen.src} alt={mediaOpen.label} style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', background: '#000', display: 'block' }} />
-            )}
-            <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(180deg, rgba(10,31,68,0.4), #0A1F44)', color: '#fff' }}>
-              <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#FCA5A5' }}>
-                {mediaOpen.type === 'video' ? 'Class footage' : 'Class moment'}
-              </div>
-              <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '1.15rem', fontWeight: 800, marginTop: 4 }}>{mediaOpen.label}</div>
-              <div style={{ fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.9rem', marginTop: 4, color: 'rgba(191,219,254,0.9)' }}>{mediaOpen.caption}</div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Blog callouts: RoboSumo + ICSE Code 66 ────────────── */}
       <section
