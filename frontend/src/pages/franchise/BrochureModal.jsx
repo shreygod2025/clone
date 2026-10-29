@@ -53,7 +53,7 @@ const BrochureModal = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" data-testid="franchise-brochure-modal">
+      <DialogContent className="fr-vars w-[calc(100%-2rem)] rounded-2xl sm:max-w-md" data-testid="franchise-brochure-modal">
         <DialogHeader>
           <DialogTitle style={{ fontFamily: "'Zing Rust','Anton',sans-serif", fontWeight: 400, fontSize: '1.9rem', textTransform: 'uppercase', color: '#0A1A5C' }}>
             Get the <span style={{ color: '#E11D2E' }}>Franchise Brochure</span>

@@ -3026,7 +3026,7 @@ async def _batch_student_count(batch_id: str) -> int:
 async def public_list_centers():
     """Live centres available for booking — sourced from the shared /centers
     collection managed under Admin → Settings → Centres."""
-    cursor = db.centers.find({"is_active": True}, {"_id": 0, "owner_password_hash": 0}).sort("name", 1)
+    cursor = db.centers.find({"is_active": True}, {"_id": 0, "owner_password_hash": 0, "owner_email": 0, "owner_name": 0}).sort("name", 1)
     return {"centers": [c async for c in cursor]}
 
 

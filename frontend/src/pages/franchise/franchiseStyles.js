@@ -1,8 +1,9 @@
 export const FRANCHISE_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800;1,900&display=swap');
 @font-face { font-family: 'Zing Rust'; src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype'); font-display: swap; }
-.fr-page { --fr-bg: #0A1A5C; --fr-bg2: #071345; --fr-blue: #2563EB; --fr-glow: #3B82F6; --fr-red: #E11D2E; --fr-red2: #B8121F;
-  min-height: 100vh; background: var(--fr-bg); font-family: 'Montserrat', system-ui, sans-serif; color: #fff; overflow-x: clip; }
+.fr-page, .fr-vars { --fr-bg: #0A1A5C; --fr-bg2: #071345; --fr-blue: #2563EB; --fr-glow: #3B82F6; --fr-red: #E11D2E; --fr-red2: #B8121F;
+}
+.fr-page { min-height: 100vh; background: var(--fr-bg); font-family: 'Montserrat', system-ui, sans-serif; color: #fff; overflow-x: clip; }
 .fr-wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
 .fr-sec { position: relative; overflow: hidden; padding: 5.5rem 1.25rem;
   background: radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.28), transparent 60%), var(--fr-bg); }
@@ -88,7 +89,7 @@ export const FRANCHISE_CSS = `
   .fr-easy-cap b { font-size: 1.4rem; }
   .fr-give-list li { font-size: 0.85rem; }
   .fr-eco-circle { max-width: 240px; }
-  .fr-centers { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0.8rem; padding-bottom: 0.75rem; margin: 0 -1rem; padding-left: 1rem; padding-right: 1rem; scrollbar-width: none; }
+  .fr-centers { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-left: 1rem; gap: 0.8rem; padding-bottom: 0.75rem; margin: 0 -1rem; padding-left: 1rem; padding-right: 1rem; scrollbar-width: none; }
   .fr-centers::-webkit-scrollbar { display: none; }
   .fr-center { flex: 0 0 82%; scroll-snap-align: start; }
   .fr-tl-card { padding: 1rem 1.1rem; }

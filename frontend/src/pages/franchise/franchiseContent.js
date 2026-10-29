@@ -9,7 +9,7 @@ export const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
 
 const F = '/franchise';
-export const HERO_VIDEO = 'https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/c23889bc0653ebb8_gemini_generated_video_88fbeeac.mp4';
+export const HERO_VIDEO = '/franchise/hero.mp4';
 
 export const IMG = {
   buildKid: `${F}/build-kid.webp`,

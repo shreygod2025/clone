@@ -1,0 +1,38 @@
+{
+  "summary": "Franchise landing page updates tested (backend + frontend desktop 1920 & mobile 390). Backend 17/17 pytest pass (brochure-lead validation/dedupe/persistence + iter129 enquiry regression). Frontend: hero video element (autoplay/muted/loop), chips Robotics/Coding/AI/3D Design/Drones, franchise-centers directly after homepage-inside-classroom with 8 live centres, all 3 brochure buttons open modal, validation toasts, city search+pick, POST 200, PDF download (application/pdf, 3.8MB) + success state + manual link, enquiry form city combobox (pick and Use typed), occupation chips with Other text sent as occupation, success card, DB record verified. Mobile: no horizontal overflow, nav brochure hidden, hero buttons full width (350px), centers list horizontal scroll, sticky CTA works. ONE HIGH UI BUG: brochure modal submit button is invisible (white text on transparent background).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/future-skills/centers", "issue": "Public endpoint returns owner_email and owner_name of centre owner logins (no password). Consider projecting these out for public consumption."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BrochureModal submit button", "issue": "Button renders with background 'none'/transparent and white text -> 'Download Brochure' label essentially invisible in modal (desktop & mobile). RCA: .fr-cta uses var(--fr-red)/var(--fr-red2) which are defined only on .fr-page; Radix Dialog portals DialogContent to document.body outside .fr-page so the CSS vars are undefined and the gradient is invalid. Fix: define the --fr-* vars on :root (or add className 'fr-page'-scoped vars to DialogContent, or use literal colors in .fr-cta).", "selector": "[data-testid='franchise-brochure-submit']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Mobile centers list", "issues": ["First center card starts flush at x=0 with no left padding/scroll-padding while section heading has 16px inset; add padding-inline / scroll-padding to .fr-centers on mobile"]},
+      {"screen": "Hero video", "issues": ["Video is 7.3MB mp4; in headless Chromium (no H.264) it stays on poster - fine as fallback. Consider a smaller/webm source for mobile data."]},
+      {"screen": "Brochure modal mobile", "issues": ["Modal is full width (0..390) with no side margin; acceptable but looks edge-to-edge"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_franchise_brochure_iter130.py", "/app/backend/tests/test_franchise_enquiry_iter129.py", "/app/test_reports/pytest/pytest_iter130.xml"],
+  "action_items": [
+    "HIGH: Fix invisible brochure modal submit button - move --fr-red/--fr-red2 (and other --fr-* vars) to :root or apply them to the portaled DialogContent",
+    "Minor: strip owner_email/owner_name from public GET /api/future-skills/centers",
+    "Minor: add left padding to mobile .fr-centers scroller"
+  ],
+  "critical_code_review_comments": [
+    "BrochureModal/CityCombobox are portaled (Radix) - any styles relying on .fr-page scoped CSS variables will break inside them",
+    "Brochure-lead dedupe returns duplicate:true silently; fine for UX (download still happens)",
+    "franchiseContent.js services list still says 'Five future skills: Robotics, Coding, AI, 3D Design and 3D Printing' - confirm if Drones should replace 3D Printing there too for consistency"
+  ],
+  "updated_files": ["/app/backend/tests/test_franchise_brochure_iter130.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "test_credentials": "admin@oll.co / GodisGreat@2026",
+  "seed_data_creation": "Test leads with names 'E1 ' / phones 900000055x-56x created and deleted after testing.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Franchise page /franchise/robotics-ai-learning-center. Run pytest backend/tests/test_franchise_brochure_iter130.py + test_franchise_enquiry_iter129.py. Check franchise-brochure-submit computed background after fix. Sonner toasts stack newest first (use .first)."
+}
