@@ -16,7 +16,7 @@ const CLASSROOM_MEDIA = [
 ];
 
 // Homepage "Inside an OLL classroom" auto-scrolling ribbon with lightbox.
-export const InsideClassroom = () => {
+export const InsideClassroom = ({ footer = null }) => {
   const [mediaOpen, setMediaOpen] = useState(null);
   return (
     <>
@@ -132,6 +132,7 @@ export const InsideClassroom = () => {
         <div style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: "'Proxima Nova','Montserrat',sans-serif", fontSize: '0.78rem', color: '#64748B', fontStyle: 'italic' }}>
           {CLASSROOM_MEDIA.length} moments · captured at our centres in May 2026
         </div>
+        {footer}
       </section>
       <MediaLightbox media={mediaOpen} onClose={() => setMediaOpen(null)} />
     </>

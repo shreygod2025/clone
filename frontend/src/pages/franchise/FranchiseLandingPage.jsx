@@ -78,8 +78,7 @@ export default function FranchiseLandingPage() {
       </div>
       <FrWhy />
       <FrDifferent />
-      <InsideClassroom />
-      <FrCenters />
+      <InsideClassroom footer={<FrCenters />} />
       <FrEasySetup />
       <FrIncluded />
       <FrServices />
