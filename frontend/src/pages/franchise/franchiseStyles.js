@@ -69,7 +69,14 @@ export const FRANCHISE_CSS = `
   .fr-hero-tag { font-size: 0.75rem; letter-spacing: 0.3em; }
   .fr-need-row span { font-size: 1rem; }
   .fr-hero-actions { gap: 0.75rem; }
-  .fr-hero-actions .fr-cta, .fr-hero-actions .fr-ghost { width: 100%; justify-content: center; }
+  .fr-hero-actions .fr-cta, .fr-hero-actions .fr-ghost { width: 100%; justify-content: center; font-size: 0.8rem; padding: 0.95rem 1rem; }
+  .fr-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fr-sub.open { display: block; }
+  .fr-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 0.4rem; background: none; border: 0; padding: 0; color: #F87171; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; font-family: inherit; }
+  .fr-card-s, .fr-easy-lbl small, .fr-role-p, .fr-note { display: none; }
+  .fr-grid.five .fr-card { display: flex; align-items: center; gap: 0.9rem; padding: 1.1rem 1rem; }
+  .fr-grid.five .fr-card .fr-icon { margin: 0; width: 44px; height: 44px; flex-shrink: 0; }
+  .fr-eco-col .fr-card { padding: 0.8rem 0.9rem; }
   .fr-invest { border-left: 0; padding-left: 0; flex-direction: row; align-items: baseline; gap: 0.6rem; }
   .fr-hero-chips { flex-direction: row; flex-wrap: wrap; position: static; margin-top: 0.75rem; }
   .fr-hero-chips span { font-size: 0.66rem; padding: 6px 9px; }
@@ -109,7 +116,12 @@ export const FRANCHISE_CSS = `
 /* Hero */
 .fr-hero { position: relative; overflow: hidden; margin-top: -64px; padding: 8rem 1.25rem 4rem;
   background: radial-gradient(ellipse at 80% 30%, rgba(37,99,235,0.45), transparent 55%), radial-gradient(ellipse at 10% 90%, rgba(225,29,46,0.25), transparent 50%), var(--fr-bg2); }
-.fr-hero-grid { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 3rem; align-items: center; }
+.fr-hero-grid { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.05fr 0.95fr; grid-template-areas: 'text art' 'cta art'; column-gap: 3rem; row-gap: 0; align-items: center; }
+.fr-hero-grid > div:first-child { grid-area: text; align-self: end; }
+.fr-hero-grid > .fr-hero-actions { grid-area: cta; align-self: start; }
+.fr-hero-grid > .fr-hero-art { grid-area: art; }
+.fr-cta, .fr-ghost { white-space: nowrap; }
+@media (min-width: 641px) { .fr-more { display: none; } }
 .fr-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 6px; background: var(--fr-red); color: #fff; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; transform: skewX(-8deg); }
 .fr-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: fr-pulse 2s infinite; }
 @keyframes fr-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
@@ -136,7 +148,8 @@ export const FRANCHISE_CSS = `
 @keyframes fr-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @media (max-width: 900px) {
   .fr-hero { padding: 6.5rem 1.25rem 3rem; }
-  .fr-hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .fr-hero-grid { grid-template-columns: 1fr; grid-template-areas: 'text' 'art' 'cta'; row-gap: 1.75rem; }
+  .fr-hero-actions { margin-top: 0; }
   .fr-hero-chips { position: static; flex-direction: row; flex-wrap: wrap; margin-top: 0.85rem; }
   .fr-hero-photo { aspect-ratio: 4 / 4; }
 }
@@ -344,7 +357,8 @@ export const FRANCHISE_CSS = `
 @media (max-width: 768px) {
   .fr-sticky { display: flex; transform: translateY(110%); transition: transform 0.3s ease; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(7,19,69,0.96); backdrop-filter: blur(12px); border-top: 1px solid rgba(59,130,246,0.6); box-shadow: 0 -8px 30px rgba(59,130,246,0.3); }
   .fr-sticky.on { transform: none; }
-  .fr-sticky .fr-cta { white-space: nowrap; padding: 0.7rem 1rem; }
+  .fr-sticky .fr-cta { white-space: nowrap; padding: 0.7rem 0.85rem; font-size: 0.7rem; flex-shrink: 0; }
+  .fr-sticky > div { min-width: 0; }
   .fr-sticky small { white-space: nowrap; }
   .fr-sticky small { display: block; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(219,234,254,0.7); }
   .fr-sticky b { font-size: 1.1rem; font-style: italic; font-weight: 900; }

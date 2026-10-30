@@ -1,4 +1,5 @@
-import { Check, ArrowRight, Handshake } from 'lucide-react';
+import { useState } from 'react';
+import { Check, ArrowRight, Handshake, ChevronDown } from 'lucide-react';
 import { BrochureButton } from './BrochureModal';
 import {
   WHY_START, DIFFERENT, YOU_HAVE, WE_PROVIDE, INCLUDED, SERVICES, SKILL_CARDS, IMG, HERO_VIDEO,
@@ -6,13 +7,21 @@ import {
 } from './franchiseContent';
 
 // Deck-style heading: red tick, heavy italic uppercase, white + red two-tone.
-export const Head = ({ a, b, sub, center }) => (
-  <div className={`fr-head ${center ? 'center' : ''}`}>
-    <span className="fr-tickbar" />
-    <h2 className="fr-h2">{a} <em>{b}</em></h2>
-    {sub && <p className="fr-sub">{sub}</p>}
-  </div>
-);
+export const Head = ({ a, b, sub, center }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`fr-head ${center ? 'center' : ''}`}>
+      <span className="fr-tickbar" />
+      <h2 className="fr-h2">{a} <em>{b}</em></h2>
+      {sub && <p className={`fr-sub ${open ? 'open' : ''}`}>{sub}</p>}
+      {sub && (
+        <button type="button" className="fr-more" onClick={() => setOpen((v) => !v)} data-testid="franchise-read-more">
+          {open ? 'Show less' : 'Read more'} <ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
+        </button>
+      )}
+    </div>
+  );
+};
 
 const IconCard = ({ c, n, red }) => (
   <div className={`fr-card ${red ? 'red' : ''}`}>
@@ -51,14 +60,11 @@ export const FrHero = ({ onApply }) => (
           Start Your Own <em>Robotics &amp; AI</em> Learning Center
         </h1>
         <p className="fr-hero-tag">with OLL</p>
-        <div className="fr-need" data-testid="franchise-hero-need">
-          <p className="fr-need-copy">Launch your own Robotics &amp; AI Learning Center with OLL — a complete franchise opportunity designed to help you build a business in the rapidly evolving future-skills education space.</p>
-        </div>
-        <div className="fr-hero-actions">
+      </div>
+      <div className="fr-hero-actions">
           <button type="button" className="fr-cta" onClick={onApply} data-testid="franchise-hero-apply-btn">Apply for an OLL Franchise <ArrowRight size={18} /></button>
           <BrochureButton testid="franchise-hero-brochure-btn" />
           <div className="fr-invest" data-testid="franchise-investment"><span>Total Investment</span><b>₹2.5 Lakhs</b></div>
-        </div>
       </div>
       <div className="fr-hero-art">
         <div className="fr-hero-photo">

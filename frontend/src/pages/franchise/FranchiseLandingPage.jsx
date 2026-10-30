@@ -74,7 +74,7 @@ export default function FranchiseLandingPage() {
       <div className="fr-themed">
       <RbSkillsCarousel testid="franchise-skills" bg="#071345" eyebrowBelow eyebrow="what your center will teach"
         title={<>Your city&apos;s <span style={{ color: '#FCA5A5' }}>first step</span> into the future.</>}
-        subtitle="Robotics, coding, AI, drones, 3D design and more — give children in your community the chance to explore the technologies shaping tomorrow." />
+        subtitle="Give children in your community the chance to explore the technologies shaping tomorrow." />
       </div>
       <FrWhy />
       <FrDifferent />
