@@ -130,6 +130,17 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 app = FastAPI(title="OLL Platform API")
+
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
+
+
+@app.exception_handler(RequestValidationError)
+async def _log_validation_errors(request, exc):
+    # Log which fields failed so production 422s on public forms can be diagnosed.
+    logging.getLogger("validation").warning("422 %s %s: %s", request.method, request.url.path,
+                                            [(e.get("loc"), e.get("msg")) for e in exc.errors()])
+    return await request_validation_exception_handler(request, exc)
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
 

@@ -35,7 +35,7 @@ from typing import Optional, List
 import jwt as pyjwt
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Header, Request
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .shared import db
 from .techfest import _dispatch_email  # reuse the Resend wrapper
@@ -169,31 +169,38 @@ def _issue_token(sub: str, sids: Optional[list] = None) -> str:
 
 
 class TeamMemberPatchIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     name: Optional[str] = Field(None, max_length=120)
     date_of_birth: Optional[str] = Field(None, max_length=20)
     email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, max_length=20)
-    school: Optional[str] = Field(None, max_length=200)
-    id_proof_url: Optional[str] = Field(None, max_length=500)
+    phone: Optional[str] = Field(None, max_length=30)
+    school: Optional[str] = Field(None, max_length=300)
+    id_proof_url: Optional[str] = Field(None, max_length=2000)
     id_proof_type: Optional[str] = Field(None, max_length=20)
+
+    @field_validator("email", "date_of_birth", "phone", "school", "id_proof_url", "id_proof_type", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v):
+        return None if isinstance(v, str) and not v.strip() else v
 
 
 class SubmissionPatchIn(BaseModel):
     # All submission fields the student can edit until the cutoff. We
     # explicitly list the whitelist here so a malicious client can't
     # overwrite status, created_at, id, etc.
+    model_config = ConfigDict(str_strip_whitespace=True)
     full_name: Optional[str] = Field(None, min_length=2, max_length=120)
     email: Optional[EmailStr] = None
     date_of_birth: Optional[str] = Field(None, max_length=20)
     age: Optional[int] = Field(None, ge=3, le=120)
-    phone: Optional[str] = Field(None, min_length=6, max_length=20)
+    phone: Optional[str] = Field(None, min_length=6, max_length=30)
     country: Optional[str] = Field(None, max_length=80)
     pincode: Optional[str] = Field(None, max_length=20)
     state: Optional[str] = Field(None, max_length=80)
-    city: Optional[str] = Field(None, max_length=80)
-    school_or_college: Optional[str] = Field(None, max_length=200)
+    city: Optional[str] = Field(None, max_length=120)
+    school_or_college: Optional[str] = Field(None, max_length=300)
     age_category: Optional[str] = Field(None, max_length=20)
-    id_proof_url: Optional[str] = Field(None, min_length=8, max_length=500)
+    id_proof_url: Optional[str] = Field(None, min_length=8, max_length=2000)
     id_proof_type: Optional[str] = Field(None, max_length=20)
     competition: Optional[str] = Field(None, max_length=40)
     zone: Optional[str] = Field(None, max_length=20)
@@ -201,7 +208,7 @@ class SubmissionPatchIn(BaseModel):
     project_theme: Optional[str] = Field(None, max_length=120)
     team_id: Optional[str] = Field(None, max_length=60)
     competition_id: Optional[str] = Field(None, max_length=60)
-    drive_link: Optional[str] = Field(None, min_length=8, max_length=500)
+    drive_link: Optional[str] = Field(None, min_length=8, max_length=2000)
     team_members: Optional[List[TeamMemberPatchIn]] = Field(None, max_length=5)
     school_permission_url: Optional[str] = Field(None, max_length=500)
 

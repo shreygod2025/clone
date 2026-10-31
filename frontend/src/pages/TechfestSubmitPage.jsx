@@ -270,7 +270,17 @@ export default function TechfestSubmitPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || 'Submission failed');
+      if (!res.ok) {
+        const d = data?.detail;
+        const msg = Array.isArray(d)
+          ? d.map((e) => {
+              const loc = (e.loc || []).filter((x) => x !== 'body');
+              const field = loc[0] === 'team_members' ? `Team member #${Number(loc[1]) + 2} ${String(loc[2] || '').replace(/_/g, ' ')}` : String(loc[0] || '').replace(/_/g, ' ');
+              return `${field}: ${String(e.msg || 'invalid').replace(/^Value error, /, '')}`;
+            }).join(' · ')
+          : (typeof d === 'string' ? d : 'Submission failed');
+        throw new Error(msg);
+      }
       // Success — clear the saved draft so refreshing doesn't repopulate.
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
       setSubmissionRef(data?.id || '');

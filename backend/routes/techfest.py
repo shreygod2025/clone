@@ -14,7 +14,7 @@ from typing import Optional, Literal, List
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .shared import db, get_current_user
 from .techfest_emails import registration_confirmed_html, school_invite_html, submission_confirmed_html
@@ -289,31 +289,38 @@ async def upsert_techfest_participants(reg_id: str, payload: ParticipantsPayload
 # submissions dashboard doesn't fight for space with the registrations
 # funnel.
 class TeamMemberIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     name:          str = Field(..., min_length=2, max_length=120)
     date_of_birth: Optional[str] = Field(None, max_length=20)   # YYYY-MM-DD
     email:         Optional[EmailStr] = None
-    phone:         Optional[str] = Field(None, max_length=20)
-    school:        Optional[str] = Field(None, max_length=200)
-    id_proof_url:  Optional[str] = Field(None, max_length=500)  # uploaded Aadhar/PAN scan
+    phone:         Optional[str] = Field(None, max_length=30)
+    school:        Optional[str] = Field(None, max_length=300)
+    id_proof_url:  Optional[str] = Field(None, max_length=2000)  # uploaded Aadhar/PAN scan
     id_proof_type: Optional[str] = Field(None, max_length=20)   # 'aadhar' | 'pan' | 'other'
+
+    @field_validator("email", "date_of_birth", "phone", "school", "id_proof_url", "id_proof_type", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v):
+        return None if isinstance(v, str) and not v.strip() else v
 
 
 class TechfestSubmissionIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     # ── Team lead / primary contact ──
     full_name: str = Field(..., min_length=2, max_length=120)
     date_of_birth: str = Field(..., max_length=20)   # ISO YYYY-MM-DD — now REQUIRED
     age: Optional[int] = Field(None, ge=3, le=120)
     email: EmailStr
-    phone: str = Field(..., min_length=6, max_length=20)
+    phone: str = Field(..., min_length=6, max_length=30)
     country: str = Field(..., max_length=80)
     pincode: str = Field(..., max_length=20)
     state: str = Field(..., max_length=80)
-    city: str = Field(..., max_length=80)
-    school_or_college: str = Field(..., max_length=200)
+    city: str = Field(..., max_length=120)
+    school_or_college: str = Field(..., max_length=300)
     # Age category — Junior (Grade 4-7) | Senior (Grade 8-12)
     age_category: str = Field(..., max_length=20)
     # ID proof of the main student (team lead) — NEW required field
-    id_proof_url:  str = Field(..., min_length=8, max_length=500)
+    id_proof_url:  str = Field(..., min_length=8, max_length=2000)
     id_proof_type: str = Field(..., max_length=20)  # 'aadhar' | 'pan' | 'other'
     # Competition: robo_sumo | robo_race | robo_innovation
     competition: str = Field(..., max_length=40)
@@ -327,10 +334,10 @@ class TechfestSubmissionIn(BaseModel):
     # Track ids from techfest.org — now REQUIRED
     team_id:        str = Field(..., min_length=1, max_length=60)
     competition_id: str = Field(..., min_length=1, max_length=60)
-    drive_link:     str = Field(..., min_length=8, max_length=500)
+    drive_link:     str = Field(..., min_length=8, max_length=2000)
     # NEW — team members (excluding lead) and school-permission letter
     team_members: List[TeamMemberIn] = Field(default_factory=list, max_length=5)
-    school_permission_url: Optional[str] = Field(None, max_length=500)
+    school_permission_url: Optional[str] = Field(None, max_length=2000)
 
 
 DUPLICATE_SUBMISSION_MSG = (
