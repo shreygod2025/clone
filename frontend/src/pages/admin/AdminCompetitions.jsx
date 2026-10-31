@@ -270,6 +270,7 @@ export default function AdminCompetitions() {
   const [subZoneFilter, setSubZoneFilter] = useState('');
   const [subAgeFilter, setSubAgeFilter] = useState('');
   const [subStatusFilter, setSubStatusFilter] = useState('');
+  const [subSearch, setSubSearch] = useState('');
   const [reviewTarget, setReviewTarget] = useState(null);
   const [subSelected, setSubSelected] = useState(new Set());
   const toggleSubSelected = (id) => setSubSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -278,8 +279,14 @@ export default function AdminCompetitions() {
     if (subAgeFilter && s.age_category !== subAgeFilter) return false;
     if (subStatusFilter === 'duplicate') return !!s.is_duplicate;
     if (subStatusFilter && (s.review_status || 'pending') !== subStatusFilter) return false;
+    const q = subSearch.trim().toLowerCase();
+    if (q) {
+      const blob = [s.full_name, s.email, s.phone, s.school_or_college, s.city, s.state, s.team_id, s.competition_id, s.project_category, s.project_theme,
+        ...(s.team_members || []).flatMap((m) => [m.name, m.email, m.phone])].filter(Boolean).join(' ').toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
     return true;
-  }), [submissions, subZoneFilter, subAgeFilter, subStatusFilter]);
+  }), [submissions, subZoneFilter, subAgeFilter, subStatusFilter, subSearch]);
   const selectedVisibleSubIds = visibleSubmissions.filter((s) => subSelected.has(s._id)).map((s) => s._id);
   const onReviewSaved = (id, data) => setSubmissions((prev) => prev.map((x) => (x._id === id ? { ...x, ...data } : x)));
 
@@ -1503,6 +1510,12 @@ export default function AdminCompetitions() {
               ) : (
                 <>
                   <div className="px-3 py-2 flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60">
+                    <div className="relative w-full sm:w-72">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input value={subSearch} onChange={(e) => setSubSearch(e.target.value)} placeholder="Search name, email, phone, school, team ID…"
+                        className="h-8 w-full pl-8 pr-7 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-blue-400" data-testid="admin-submissions-search" />
+                      {subSearch && <button type="button" onClick={() => setSubSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs" data-testid="admin-submissions-search-clear">✕</button>}
+                    </div>
                     <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Track:</span>
                     <select className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white" value={subCompFilter} onChange={(e) => setSubCompFilter(e.target.value)} data-testid="admin-submissions-filter">
                       <option value="">All</option>
