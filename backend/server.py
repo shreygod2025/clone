@@ -3241,14 +3241,14 @@ class EducatorOnboardingUpdate(BaseModel):
 
 # Training content models
 TRAINING_VIDEOS = [
-    {"id": "rules", "title": "Educator Rules & Restrictions", "duration": "10:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
-    {"id": "beliefs", "title": "What OLL Believes In", "duration": "8:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
-    {"id": "quiz_guide", "title": "Quiz Checking Guidelines", "duration": "12:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+    {"id": "rules", "title": "Educator Rules & Restrictions", "duration": "10:00", "url": ""},
+    {"id": "beliefs", "title": "What OLL Believes In", "duration": "8:00", "url": ""},
+    {"id": "quiz_guide", "title": "Quiz Checking Guidelines", "duration": "12:00", "url": ""},
 ]
 
 CURRICULUM_VIDEOS = [
-    {"id": "curriculum_intro", "title": "Introduction to OLL Curriculum", "duration": "15:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
-    {"id": "teaching_methods", "title": "Teaching Methodologies", "duration": "20:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+    {"id": "curriculum_intro", "title": "Introduction to OLL Curriculum", "duration": "15:00", "url": ""},
+    {"id": "teaching_methods", "title": "Teaching Methodologies", "duration": "20:00", "url": ""},
 ]
 
 TRAINING_QUIZ = [

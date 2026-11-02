@@ -34,7 +34,6 @@ const TRAINING_CONTENT = [
     id: 'rules',
     title: 'Educator Rules & Restrictions',
     duration: '10:00',
-    url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: 'Learn about the dos and donts as an OLL Educator',
     quiz: [
       {
@@ -57,7 +56,6 @@ const TRAINING_CONTENT = [
     id: 'beliefs',
     title: 'What OLL Believes In',
     duration: '8:00',
-    url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: 'Understanding OLL\'s core values and teaching philosophy',
     quiz: [
       {
@@ -80,7 +78,6 @@ const TRAINING_CONTENT = [
     id: 'quiz_checking',
     title: 'Quiz Checking Guidelines',
     duration: '12:00',
-    url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: 'How to evaluate and provide constructive feedback',
     quiz: [
       {
@@ -473,17 +470,7 @@ const WelcomeStep = ({ content, educator, onComplete, completing }) => (
   <div className="space-y-6">
     <div className="text-center">
       <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Welcome to OLL, {educator?.name}! 🎉</h2>
-      <p className="text-slate-600">Watch this short video to learn about your journey as an OLL Educator</p>
-    </div>
-    
-    <div className="aspect-video bg-slate-100 rounded-xl overflow-hidden">
-      <iframe
-        src={content?.welcome_video?.url || "https://www.youtube.com/embed/dQw4w9WgXcQ"}
-        className="w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        title="Welcome to OLL"
-      />
+      <p className="text-slate-600">Here&apos;s your journey to becoming an OLL Educator</p>
     </div>
     
     <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
@@ -498,7 +485,7 @@ const WelcomeStep = ({ content, educator, onComplete, completing }) => (
     </div>
     
     <Button onClick={onComplete} disabled={completing} className="w-full bg-[#D63031] hover:bg-[#c0392b]">
-      {completing ? 'Saving...' : "I've Watched the Video - Continue"} <ChevronRight className="w-4 h-4 ml-2" />
+      {completing ? 'Saving...' : "Let's Get Started"} <ChevronRight className="w-4 h-4 ml-2" />
     </Button>
   </div>
 );
@@ -845,16 +832,16 @@ const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAns
       </div>
 
       <div className="text-sm text-slate-500">
-        Video {currentVideoIndex + 1} of {TRAINING_CONTENT.length}: <span className="font-medium text-[#1E3A5F]">{currentVideo?.title}</span>
+        Module {currentVideoIndex + 1} of {TRAINING_CONTENT.length}: <span className="font-medium text-[#1E3A5F]">{currentVideo?.title}</span>
       </div>
 
       {!showQuiz && !showUpload ? (
         /* Video View */
         <div className="space-y-4">
-          <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden">
-            <iframe src={currentVideo?.url} className="w-full h-full" allowFullScreen title={currentVideo?.title} />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5" data-testid={`training-module-${currentVideo?.id}`}>
+            <h3 className="font-semibold text-[#1E3A5F]">{currentVideo?.title}</h3>
+            <p className="text-sm text-slate-600 mt-1">{currentVideo?.description}</p>
           </div>
-          <p className="text-sm text-slate-600">{currentVideo?.description}</p>
           
           {isVideoWatched && isQuizPassed && (!currentVideo?.requiresVideoUpload || hasVideoUpload) ? (
             <div className="bg-green-50 p-4 rounded-xl text-green-700 flex items-center gap-2">
@@ -873,8 +860,8 @@ const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAns
               </Button>
             </div>
           ) : (
-            <Button onClick={markVideoWatched} disabled={isVideoWatched} className="w-full bg-[#1E3A5F]">
-              {isVideoWatched ? 'Video Watched ✓ - Take Quiz' : 'I\'ve Watched This Video'}
+            <Button onClick={isVideoWatched ? () => setShowQuiz(true) : markVideoWatched} className="w-full bg-[#1E3A5F]" data-testid="training-start-quiz-btn">
+              {isVideoWatched ? 'Take Quiz' : 'Start Quiz'}
             </Button>
           )}
           
