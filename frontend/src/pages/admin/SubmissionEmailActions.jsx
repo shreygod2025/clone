@@ -96,7 +96,7 @@ export const BulkSubmissionBar = ({ ids, headers, onReview, onClear, onSent }) =
     <div className="px-3 py-2 flex flex-wrap items-center gap-2 border-b border-blue-200 bg-blue-50" data-testid="admin-submissions-bulk-bar">
       <span className="text-sm font-bold text-blue-900" data-testid="admin-submissions-selected-count">{ids.length} selected</span>
       <ConfirmSend pending={pending} count={ids.length} onYes={() => send(pending)} onNo={() => setPending('')} />
-      <MiniBtn onClick={() => setPending('confirmation')} busy={busy === 'confirmation'} icon={Mail} testId="admin-submissions-bulk-confirmation" tone="bg-blue-600 text-white hover:bg-blue-700">Send confirmation</MiniBtn>
+      {/* <MiniBtn onClick={() => setPending('confirmation')} busy={busy === 'confirmation'} icon={Mail} testId="admin-submissions-bulk-confirmation" tone="bg-blue-600 text-white hover:bg-blue-700">Send confirmation</MiniBtn> */}
       <MiniBtn onClick={() => setPending('result')} busy={busy === 'result'} icon={Send} testId="admin-submissions-bulk-result" tone="bg-slate-800 text-white hover:bg-slate-900">Send result mail</MiniBtn>
       <MiniBtn onClick={() => onReview('approved')} icon={CheckCircle2} testId="admin-submissions-bulk-approve" tone="bg-emerald-600 text-white hover:bg-emerald-700">Approve + email</MiniBtn>
       <MiniBtn onClick={() => onReview('rejected')} icon={RotateCcw} testId="admin-submissions-bulk-rework" tone="bg-orange-600 text-white hover:bg-orange-700">Rework + email</MiniBtn>
