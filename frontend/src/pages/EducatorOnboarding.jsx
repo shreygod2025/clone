@@ -838,6 +838,11 @@ const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAns
       {!showQuiz && !showUpload ? (
         /* Video View */
         <div className="space-y-4">
+          <div className="aspect-video rounded-xl bg-[#1E3A5F] flex flex-col items-center justify-center text-center text-white p-6" data-testid="training-video-coming-soon">
+            <Video className="w-10 h-10 mb-3 opacity-80" />
+            <p className="font-semibold text-lg">Video coming soon</p>
+            <p className="text-sm text-white/70 mt-1">You can take the quiz for this module now.</p>
+          </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5" data-testid={`training-module-${currentVideo?.id}`}>
             <h3 className="font-semibold text-[#1E3A5F]">{currentVideo?.title}</h3>
             <p className="text-sm text-slate-600 mt-1">{currentVideo?.description}</p>

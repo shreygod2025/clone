@@ -794,3 +794,6 @@ See `/app/memory/test_credentials.md`.
 - Franchise page v8: hero copy card removed; hero CTAs in own grid area (below video on mobile); buttons nowrap; skills subtitle shortened; mobile: section descriptions clamp to 2 lines with "Read more", card descriptions hidden, Why-cards compact rows.
 - 2026-06 fix: Techfest submit showed "[object Object]" on 422 validation errors. Frontend now shows field-level messages; backend models strip whitespace, blank team-member optional fields → None, longer limits (URLs 2000, phone 30, school 300, city 120). Global RequestValidationError handler logs failing fields (logger "validation").
 - 2026-06: Removed placeholder (Rick Astley) onboarding videos: Welcome step has no video ("Let's Get Started"), Training step shows module cards with Start Quiz; quizzes + video-assessment uploads unchanged. Backend placeholder URLs blanked.
+
+## 2026-06 Educator Training
+- Training step now shows a "Video coming soon" placeholder per module (no real videos yet); quizzes still work.
