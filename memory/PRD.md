@@ -798,3 +798,5 @@ See `/app/memory/test_credentials.md`.
 ## 2026-06 Educator Training
 - Training step now shows a "Video coming soon" placeholder per module (no real videos yet); quizzes still work.
 - One-time admin endpoint POST /api/admin/educators/purge-requested (?confirm=true) removes educators "Shamanth S" & "Nida Khadijah Shariff C" + onboarding/files/sessions/interviews. Executed on production (oll.co) — both removed. Endpoint can be removed.
+- 2026-06: Techfest portal OTP WhatsApp switched from non-existent AiSensy campaign "techfest_portal_otp" to working "otp" campaign (copy-code button). Prod email OTP/notifications need valid RESEND_API_KEY in prod (fixed by republish; shared key).
+- Techfest admin send-email buttons now have Yes/No confirm dialog.

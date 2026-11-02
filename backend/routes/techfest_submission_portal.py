@@ -112,16 +112,20 @@ async def _send_otp_whatsapp(phone: str, name: str, code: str) -> None:
         return
     try:
         import httpx
-        template = os.environ.get("AISENSY_OTP_TEMPLATE") or "techfest_portal_otp"
         payload = {
             "apiKey": key,
-            "campaignName": template,
+            "campaignName": "otp",
             "destination": phone,
-            "userName": name or "there",
+            "userName": "Clone Futura Live Solutions Ltd",
             "templateParams": [code],
+            "source": "OLL Techfest Portal",
+            "buttons": [{"type": "button", "sub_type": "url", "index": 0, "parameters": [{"type": "text", "text": code}]}],
+            "paramsFallbackValue": {"FirstName": code},
         }
         async with httpx.AsyncClient(timeout=15.0) as hx:
-            await hx.post("https://backend.aisensy.com/campaign/t1/api/v2", json=payload)
+            r = await hx.post("https://backend.aisensy.com/campaign/t1/api/v2", json=payload)
+        if r.status_code != 200:
+            logger.warning("techfest portal OTP whatsapp rejected for %s: %s %s", phone, r.status_code, r.text[:200])
     except Exception as exc:
         logger.warning("techfest portal OTP whatsapp failed for %s: %s", phone, exc)
 
@@ -249,7 +253,9 @@ async def submission_portal_request_otp(payload: RequestOtpIn, request: Request)
 
     if email:
         try:
-            await _dispatch_email(email, f"Your Techfest submission code: {otp}", _otp_email_html(name, otp))
+            res = await _dispatch_email(email, f"Your Techfest submission code: {otp}", _otp_email_html(name, otp))
+            if not res.get("success"):
+                logger.warning("techfest portal OTP email not sent to %s: %s", email, res)
         except Exception as exc:
             logger.warning("techfest portal OTP email failed for %s: %s", email, exc)
     wa_phone = _phone10(phone)
