@@ -3664,3 +3664,27 @@ async def create_public_support_ticket(tracking_token: str, ticket_data: dict):
     }
 
 # Get tracking page tickets (for admin) - separate from general support tickets
+
+PURGE_EDUCATOR_NAMES = ["Shamanth S", "Nida Khadijah Shariff C"]
+
+
+@router.post("/admin/educators/purge-requested")
+async def purge_requested_educators(confirm: bool = False, user: dict = Depends(get_current_user)):
+    """One-time removal of specific educators requested by admin (dry run unless confirm=true)."""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete educators")
+    name_filters = [{"name": {"$regex": f"^\\s*{re.escape(n)}\\s*$", "$options": "i"}} for n in PURGE_EDUCATOR_NAMES]
+    apps = await db.educator_applications.find({"$or": name_filters}, {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1}).to_list(50)
+    ids = [a["id"] for a in apps]
+    targets = {
+        "educator_onboarding": {"educator_id": {"$in": ids}},
+        "uploaded_files": {"educator_id": {"$in": ids}},
+        "sessions": {"educator_id": {"$in": ids}},
+        "educator_interviews": {"application_id": {"$in": ids}},
+        "educator_applications": {"id": {"$in": ids}},
+    }
+    counts = {c: await db[c].count_documents(q) for c, q in targets.items()} if ids else {}
+    if confirm and ids:
+        for c, q in targets.items():
+            await db[c].delete_many(q)
+    return {"confirmed": confirm, "educators": apps, "records": counts}

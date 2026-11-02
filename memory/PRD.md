@@ -797,3 +797,4 @@ See `/app/memory/test_credentials.md`.
 
 ## 2026-06 Educator Training
 - Training step now shows a "Video coming soon" placeholder per module (no real videos yet); quizzes still work.
+- One-time admin endpoint POST /api/admin/educators/purge-requested (?confirm=true) removes educators "Shamanth S" & "Nida Khadijah Shariff C" + onboarding/files/sessions/interviews. Run on production after publish, then remove endpoint.
