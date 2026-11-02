@@ -47,9 +47,9 @@ logger = logging.getLogger(__name__)
 # Admins asked for an edit window that closes at 2026-10-20 23:59 IST
 # (which is 2026-10-20T18:29:59Z in UTC — IST is +05:30). Keep this
 # literal so a timezone library isn't required.
-SUBMISSION_EDIT_CUTOFF_UTC = datetime(2026, 11, 1, 18, 29, 59, tzinfo=timezone.utc)   # 1 Nov 2026 23:59 IST
+SUBMISSION_EDIT_CUTOFF_UTC = datetime(2026, 11, 15, 18, 29, 59, tzinfo=timezone.utc)  # 15 Nov 2026 23:59 IST
 EAST_EDIT_CUTOFF_UTC = datetime(2026, 10, 20, 18, 29, 59, tzinfo=timezone.utc)         # 20 Oct 2026 23:59 IST (Kanpur round 24 Oct)
-CUTOFF_LABELS = {"east": "20 Oct 2026, 11:59 PM IST", "default": "1 Nov 2026, 11:59 PM IST"}
+CUTOFF_LABELS = {"east": "20 Oct 2026, 11:59 PM IST", "default": "15 Nov 2026, 11:59 PM IST"}
 
 
 def _cutoff_for(doc: dict) -> datetime:

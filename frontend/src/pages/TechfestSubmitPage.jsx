@@ -331,7 +331,7 @@ export default function TechfestSubmitPage() {
                 </div>
               )}
               <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 text-left">
-                <strong>Need to edit later?</strong> You can update your project details any time until <strong>1 Nov 2026, 11:59 PM IST</strong> (East Zone · Kanpur: <strong>20 Oct 2026</strong>). Head to the submission portal and sign in with your Team ID or the team leader's phone number.
+                <strong>Need to edit later?</strong> You can update your project details any time until <strong>15 Nov 2026, 11:59 PM IST</strong> (East Zone · Kanpur: <strong>20 Oct 2026</strong>). Head to the submission portal and sign in with your Team ID or the team leader's phone number.
               </div>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <Link to="/techfest/my-submission" className="trp-btn primary inline-flex" data-testid="techfest-view-submission">

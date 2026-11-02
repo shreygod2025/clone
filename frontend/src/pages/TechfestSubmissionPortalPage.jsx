@@ -1,7 +1,7 @@
 /**
  * Techfest Submission Portal — sign in with leader phone + OTP, Team ID, or
  * email + OTP, then view / edit every field of the submission until the
- * zone cutoff (East: 20 Oct 2026, others: 1 Nov 2026 · 11:59 PM IST).
+ * zone cutoff (East: 20 Oct 2026, others: 15 Nov 2026 · 11:59 PM IST).
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -214,7 +214,7 @@ export default function TechfestSubmissionPortalPage() {
 
             <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div>Edits are open until <strong>1 Nov 2026, 11:59 PM IST</strong> for all zones, and until <strong>20 Oct 2026, 11:59 PM IST</strong> for East Zone (IIT Kanpur). Every field can be changed; changes save immediately.</div>
+              <div>Edits are open until <strong>15 Nov 2026, 11:59 PM IST</strong> for all zones, and until <strong>20 Oct 2026, 11:59 PM IST</strong> for East Zone (IIT Kanpur). Every field can be changed; changes save immediately.</div>
             </div>
 
             {busy && submissions.length === 0 ? (

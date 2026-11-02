@@ -688,7 +688,7 @@ async def _send_review_result_email(doc: dict, decision: str, remarks: str) -> b
         competition_label=COMPETITION_LABELS.get(doc.get("competition") or "", doc.get("competition") or ""),
         zone_label=ZONE_LABELS.get(zone) if doc.get("competition") in ("robo_sumo", "robo_race") else None,
         team_id=doc.get("team_id") or None,
-        edit_deadline="20 Oct 2026, 11:59 PM IST" if zone == "east" else "1 Nov 2026, 11:59 PM IST",
+        edit_deadline="20 Oct 2026, 11:59 PM IST" if zone == "east" else "15 Nov 2026, 11:59 PM IST",
     )
     subject = ("You've qualified! Submission approved — OLL Robotics Championship @ Techfest"
                if decision == "approved" else "Action needed: edit & resubmit your Techfest project")

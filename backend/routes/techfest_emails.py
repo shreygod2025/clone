@@ -298,7 +298,7 @@ def submission_confirmed_html(
         <li>If you qualify, an OLL coordinator will call you to help you prep the bot &amp; travel.</li>
       </ol>
 
-      <p style="font-size:13px;color:#334155;margin:0 0 8px 0;">Need to change something? Edit your submission any time at <a href="https://oll.co/techfest/my-submission" style="color:#DC2626;">oll.co/techfest/my-submission</a> using your Team ID (open till 1 Nov 2026; East Zone till 20 Oct 2026).</p>
+      <p style="font-size:13px;color:#334155;margin:0 0 8px 0;">Need to change something? Edit your submission any time at <a href="https://oll.co/techfest/my-submission" style="color:#DC2626;">oll.co/techfest/my-submission</a> using your Team ID (open till 15 Nov 2026; East Zone till 20 Oct 2026).</p>
       <div style="text-align:center;margin:22px 0 6px 0;">
         <a href="{WHATSAPP_URL}" style="display:inline-block;background:#25D366;color:#ffffff;padding:12px 22px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">Join the WhatsApp community →</a>
       </div>
@@ -320,7 +320,7 @@ PORTAL_URL = "https://oll.co/techfest/my-submission"
 
 def review_result_html(*, lead_name: str, decision: str, remarks: str, competition_label: str,
                        zone_label: Optional[str] = None, team_id: Optional[str] = None,
-                       edit_deadline: str = "1 Nov 2026, 11:59 PM IST") -> str:
+                       edit_deadline: str = "15 Nov 2026, 11:59 PM IST") -> str:
     """Judge decision email — approved (qualification details) or rejected (edit & resubmit)."""
     import html as _html
     approved = decision == "approved"

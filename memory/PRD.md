@@ -800,3 +800,4 @@ See `/app/memory/test_credentials.md`.
 - One-time admin endpoint POST /api/admin/educators/purge-requested (?confirm=true) removes educators "Shamanth S" & "Nida Khadijah Shariff C" + onboarding/files/sessions/interviews. Executed on production (oll.co) — both removed. Endpoint can be removed.
 - 2026-06: Techfest portal OTP WhatsApp switched from non-existent AiSensy campaign "techfest_portal_otp" to working "otp" campaign (copy-code button). Prod email OTP/notifications need valid RESEND_API_KEY in prod (fixed by republish; shared key).
 - Techfest admin send-email buttons now have Yes/No confirm dialog.
+- 2026-06: Techfest submission edit window extended to 15 Nov 2026 23:59 IST (all zones except East, which stays 20 Oct).
