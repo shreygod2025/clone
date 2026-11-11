@@ -19,7 +19,7 @@ const ZONES = [
   { slug: 'north',   label: 'North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov 2026'},
   { slug: 'south',   label: 'South · RVCE College, Bangalore · 26 Nov 2026' },
   { slug: 'east',    label: 'East · IIT Kanpur · 24 Oct 2026'              },
-  { slug: 'west',    label: 'West · IIT Bombay · 17 Dec 2026'              },
+  { slug: 'west',    label: 'West · Venue & date TBA'              },
   { slug: 'central', label: 'Central · Indore (Date TBA)'                  },
 ];
 

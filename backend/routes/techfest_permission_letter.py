@@ -24,7 +24,7 @@ ZONE_LABELS = {
     "north":   "North Zone · Modern Public School, Shalimar Bagh, Delhi · 21 Nov 2026",
     "south":   "South Zone · RVCE College, Bangalore · 26 Nov 2026",
     "east":    "East Zone · IIT Kanpur · 24 Oct 2026",
-    "west":    "West Zone · IIT Bombay · 17 Dec 2026",
+    "west":    "West Zone · Venue & date TBA",
     "central": "Central Zone · Indore (Date TBA)",
 }
 AGE_CAT_LABELS = {

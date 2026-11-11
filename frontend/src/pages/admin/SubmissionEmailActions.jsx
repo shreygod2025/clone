@@ -51,7 +51,7 @@ const MiniBtn = ({ onClick, busy, icon: Icon, children, testId, tone }) => (
 export const RowEmailActions = ({ s, headers, onSent }) => {
   const [busy, setBusy] = useState('');
   const [pending, setPending] = useState('');
-  const reviewed = ['approved', 'rejected'].includes(s.review_status);
+  const reviewed = ['approved', 'rejected', 'final_rejected'].includes(s.review_status);
   const send = async (kind) => {
     setPending('');
     setBusy(kind);

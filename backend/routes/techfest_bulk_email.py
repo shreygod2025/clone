@@ -262,7 +262,7 @@ _CHECKLIST_BODY_HTML = """
         <tr><td style="padding:10px 14px;font-size:13px;color:#0A1F44;font-weight:600;">East</td><td style="padding:10px 14px;font-size:13px;color:#334155;">24 Oct</td><td style="padding:10px 14px;font-size:13px;color:#334155;">IIT Kanpur</td></tr>
         <tr style="background:#fafafa;"><td style="padding:10px 14px;font-size:13px;color:#0A1F44;font-weight:600;">North</td><td style="padding:10px 14px;font-size:13px;color:#334155;">21 Nov</td><td style="padding:10px 14px;font-size:13px;color:#334155;">Modern Public School, Shalimar Bagh, Delhi</td></tr>
         <tr><td style="padding:10px 14px;font-size:13px;color:#0A1F44;font-weight:600;">South</td><td style="padding:10px 14px;font-size:13px;color:#334155;">26 Nov</td><td style="padding:10px 14px;font-size:13px;color:#334155;">RVCE College, Bangalore</td></tr>
-        <tr style="background:#fafafa;"><td style="padding:10px 14px;font-size:13px;color:#0A1F44;font-weight:600;">West</td><td style="padding:10px 14px;font-size:13px;color:#334155;">17 Dec</td><td style="padding:10px 14px;font-size:13px;color:#334155;">IIT Bombay</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:10px 14px;font-size:13px;color:#0A1F44;font-weight:600;">West</td><td style="padding:10px 14px;font-size:13px;color:#334155;">Date TBA</td><td style="padding:10px 14px;font-size:13px;color:#334155;">Venue TBA</td></tr>
         <tr><td style="padding:10px 14px;font-size:13px;color:#0A1F44;font-weight:600;">Central</td><td style="padding:10px 14px;font-size:13px;color:#334155;">22–28 Nov (TBD)</td><td style="padding:10px 14px;font-size:13px;color:#334155;">—</td></tr>
       </table>
 

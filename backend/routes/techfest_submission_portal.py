@@ -368,6 +368,8 @@ async def submission_portal_update(
         raise HTTPException(status_code=403, detail="This submission belongs to a different account.")
     if (doc.get("review_status") or "") == "approved":
         raise HTTPException(status_code=403, detail="This submission has been approved and is locked — no further edits allowed.")
+    if (doc.get("review_status") or "") == "final_rejected":
+        raise HTTPException(status_code=403, detail="This submission was not selected and is closed — no further edits allowed.")
     # Stricter of the current and requested zone, so moving out of East can't dodge its earlier cutoff.
     cutoff = min(_cutoff_for(doc), _cutoff_for({"zone": payload.zone or doc.get("zone")}))
     if datetime.now(timezone.utc) >= cutoff:

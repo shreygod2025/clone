@@ -108,7 +108,7 @@ DEFAULT_SETTINGS = FaqSettings(
         "- East Qualifier  — IIT Kanpur             — Saturday, 24 October 2026\n"
         "- North Qualifier — Modern Public School, Shalimar Bagh, Delhi — Saturday, 21 November 2026\n"
         "- South Qualifier — RVCE College, Bangalore — Thursday, 26 November 2026\n"
-        "- West Qualifier  — IIT Bombay             — Thursday, 17 December 2026\n"
+        "- West Qualifier  — Venue TBA              — Date TBA\n"
         "- Teams unable to attend their regional qualifier can request a video submission —\n"
         "  reach out to the organisers via info@oll.co.\n"
         "\n"

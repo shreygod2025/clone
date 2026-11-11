@@ -126,7 +126,7 @@ def school_invite_html(school_name: Optional[str] = None) -> str:
       <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;">Why participate</div>
       <ul style="margin:6px 0 20px 0;padding:0 0 0 18px;color:#334155;font-size:14px;line-height:1.7;">
         <li>Nationally-recognised platform for your school and students</li>
-        <li>Live regional qualifiers · East: IIT Kanpur (24 Oct) · North: Modern Public School, Shalimar Bagh, Delhi (21 Nov) · South: RVCE College, Bangalore (26 Nov) · West: IIT Bombay (17 Dec) · Central: date TBA</li>
+        <li>Live regional qualifiers · East: IIT Kanpur (24 Oct) · North: Modern Public School, Shalimar Bagh, Delhi (21 Nov) · South: RVCE College, Bangalore (26 Nov) · West: venue &amp; date TBA · Central: date TBA</li>
         <li>Grand Finale on the iconic IIT Bombay campus, 17 December 2026</li>
         <li>Certificate of Participation for every student · Finalist Recognition for grand-finale competitors</li>
         <li>Optional OLL Robo Sumo &amp; Robo Racer kits available for schools that want the official gear</li>
@@ -205,7 +205,7 @@ def registration_confirmed_html(*, name: str, reg_type: str, tracks: Optional[li
         <table role="presentation" width="100%" style="font-size:13px;color:#0A1F44;margin-top:8px;">
           <tr><td style="padding:4px 0;width:120px;color:#64748b;">Prize Pool</td><td style="padding:4px 0;"><strong>Upto ₹1,50,000</strong> across top 3 teams / track</td></tr>
           <tr><td style="padding:4px 0;color:#64748b;">Registration</td><td style="padding:4px 0;"><strong>Completely FREE</strong> across all rounds</td></tr>
-          <tr><td style="padding:4px 0;color:#64748b;">Regional Qualifier</td><td style="padding:4px 0;">East · IIT Kanpur · 24 Oct &nbsp;·&nbsp; North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov &nbsp;·&nbsp; South · RVCE College, Bangalore · 26 Nov &nbsp;·&nbsp; West · IIT Bombay · 17 Dec &nbsp;·&nbsp; North &amp; Central · dates TBA</td></tr>
+          <tr><td style="padding:4px 0;color:#64748b;">Regional Qualifier</td><td style="padding:4px 0;">East · IIT Kanpur · 24 Oct &nbsp;·&nbsp; North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov &nbsp;·&nbsp; South · RVCE College, Bangalore · 26 Nov &nbsp;·&nbsp; West · venue &amp; date TBA &nbsp;·&nbsp; North &amp; Central · dates TBA</td></tr>
           <tr><td style="padding:4px 0;color:#64748b;">Grand Finale</td><td style="padding:4px 0;">IIT Bombay · 17 Dec 2026</td></tr>
         </table>
       </div>
@@ -316,17 +316,18 @@ def submission_confirmed_html(
 
 
 PORTAL_URL = "https://oll.co/techfest/my-submission"
+INSTAGRAM_LINK = '<a href="https://www.instagram.com/oll.co_/" style="color:#DC2626;">https://www.instagram.com/oll.co_/</a>'
 
 
 def review_result_html(*, lead_name: str, decision: str, remarks: str, competition_label: str,
-                       zone_label: Optional[str] = None, team_id: Optional[str] = None,
+                       zone_label: Optional[str] = None, team_id: Optional[str] = None, team_name: Optional[str] = None,
                        edit_deadline: str = "15 Nov 2026, 11:59 PM IST") -> str:
     """Judge decision email — approved (qualification details) or rejected (edit & resubmit)."""
     import html as _html
     approved = decision == "approved"
     lead_name, remarks = _html.escape(lead_name), _html.escape(remarks)
     team_id = _html.escape(team_id) if team_id else team_id
-    rows = [("Track", competition_label or "—")]
+    rows = [("Team", _html.escape(team_name) if team_name else f"Team {lead_name}"), ("Competition", competition_label or "—")]
     if zone_label:
         rows.append(("Regional Round", zone_label))
     if team_id:
@@ -345,6 +346,7 @@ def review_result_html(*, lead_name: str, decision: str, remarks: str, competiti
         ) + (
             "<li>Winners of the regional rounds qualify for the <strong>Grand Finale at Techfest, IIT Bombay (Dec 2026)</strong>.</li>"
             "<li>An OLL coordinator will call you to help you prep the bot &amp; plan travel.</li>"
+            f"<li><strong>Stay Connected with Us on Instagram!</strong><br/>Following our Instagram page is mandatory to receive all future competition updates, announcements and instructions.<br/>Instagram: {INSTAGRAM_LINK}</li>"
         )
         body = f"""
       <div style="font-size:11px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#16a34a;">Submission Approved · You&rsquo;ve Qualified</div>
@@ -357,6 +359,23 @@ def review_result_html(*, lead_name: str, decision: str, remarks: str, competiti
       <p style="font-size:14px;color:#334155;margin:24px 0 0 0;">See you at the arena,<br/><strong style="color:#0A1F44;">Team OLL</strong></p>
     """
         title, pre = "You've qualified — OLL Robotics Championship @ Techfest IIT Bombay", "Your submission is approved. Here are your qualification details."
+    elif decision == "final_rejected":
+        body = f"""
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#DC2626;">Submission Not Selected</div>
+      <h1 style="font-size:26px;line-height:1.2;margin:6px 0 8px 0;color:#0A1F44;">Hi {lead_name}, thank you for participating.</h1>
+      <p style="font-size:15px;color:#334155;margin:0 0 12px 0;">Our judges carefully reviewed your project for the <strong>OLL Robotics Championship @ Techfest, IIT Bombay 2026</strong>. We&rsquo;re sorry to share that it has <strong style="color:#DC2626;">not been selected</strong> to move forward in the competition.</p>
+      <table role="presentation" width="100%" style="font-size:13px;color:#0A1F44;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 14px;">{meta}</table>
+      <div style="background:#fef2f2;border-left:4px solid #DC2626;border-radius:8px;padding:12px 14px;margin:16px 0;font-size:14px;color:#0A1F44;"><div style="font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Rejection Reason</div>{remarks}</div>
+      <div style="font-size:11px;font-weight:800;letter-spacing:0.22em;text-transform:uppercase;color:#64748b;margin-top:6px;">What this means</div>
+      <ol style="margin:8px 0 20px 0;padding:0 0 0 18px;color:#0A1F44;font-size:14px;line-height:1.7;">
+        <li>This decision is final for this edition &mdash; the submission can no longer be edited.</li>
+        <li>Every project teaches something &mdash; use the judges&rsquo; feedback to make your next build even stronger.</li>
+        <li>For any questions, call 9920188188 or write to techfest@oll.co.</li>
+        <li><strong>Stay Connected with Us!</strong><br/>Follow us on Instagram to stay updated on future competition announcements, upcoming opportunities, and exciting new initiatives. We&rsquo;ll also share innovative ideas and learning experiences to keep your curiosity alive!<br/>Instagram: {INSTAGRAM_LINK}</li>
+      </ol>
+      <p style="font-size:14px;color:#334155;margin:18px 0 0 0;">Keep building,<br/><strong style="color:#0A1F44;">Team OLL</strong></p>
+    """
+        title, pre = "Update on your Techfest submission", "The judges' decision on your project."
     else:
         body = f"""
       <div style="font-size:11px;font-weight:800;letter-spacing:0.28em;text-transform:uppercase;color:#DC2626;">Submission Needs Changes</div>

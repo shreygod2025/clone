@@ -1544,6 +1544,7 @@ export default function AdminCompetitions() {
                       <option value="pending">Pending</option>
                       <option value="approved">Approved</option>
                       <option value="rejected">Rework</option>
+                      <option value="final_rejected">Rejected</option>
                       <option value="duplicate">Duplicates</option>
                     </select>
                     <div className="flex-1" />

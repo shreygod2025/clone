@@ -241,9 +241,9 @@ export default function TechfestSubmissionPortalPage() {
                             {sub.school_or_college} · {sub.city}{sub.updated_at ? ` · updated ${new Date(sub.updated_at).toLocaleString()}` : ''}
                           </div>
                         </div>
-                        {sub.review_status === 'approved' ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" data-testid={`portal-locked-approved-${sub.id}`}>
-                            <Lock className="w-3.5 h-3.5" /> Locked (approved)
+                        {sub.review_status === 'approved' || sub.review_status === 'final_rejected' ? (
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold rounded-lg px-3 py-2 border ${sub.review_status === 'approved' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`} data-testid={`portal-locked-approved-${sub.id}`}>
+                            <Lock className="w-3.5 h-3.5" /> Locked ({sub.review_status === 'approved' ? 'approved' : 'not selected'})
                           </span>
                         ) : sub.edit_window_open ? (
                           <button type="button" onClick={() => setExpandedId(isOpen ? '' : sub.id)} className="tpp-btn border border-slate-200 text-[#0A1F44] text-xs" data-testid={`portal-edit-${sub.id}`}>
@@ -260,12 +260,17 @@ export default function TechfestSubmissionPortalPage() {
                           <strong>Not approved yet.</strong> Judge&apos;s remarks: {sub.judge_remarks || '—'}. Edit the details below and save to resubmit for review.
                         </div>
                       )}
+                      {sub.review_status === 'final_rejected' && (
+                        <div className="mx-4 mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-testid={`portal-final-rejected-${sub.id}`}>
+                          <strong>Not selected.</strong> Reason: {sub.judge_remarks || '—'}. This decision is final and the submission can no longer be edited.
+                        </div>
+                      )}
                       {sub.review_status === 'approved' && (
                         <div className="mx-4 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid={`portal-approved-${sub.id}`}>
                           <strong>Approved — you&apos;ve qualified!</strong>{sub.judge_remarks ? ` Judge's remarks: ${sub.judge_remarks}` : ''}
                         </div>
                       )}
-                      {isOpen && sub.review_status !== 'approved' && (
+                      {isOpen && !['approved', 'final_rejected'].includes(sub.review_status) && (
                         <SubmissionEditor sub={sub} onCancel={() => setExpandedId('')} onSaved={() => { setExpandedId(''); loadSubmissions(); }} />
                       )}
                     </div>

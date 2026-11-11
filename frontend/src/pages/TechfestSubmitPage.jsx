@@ -15,7 +15,7 @@ const OLL_LOGO = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 export const ZONES = [
-  { slug: 'west',    label: 'West · IIT Bombay · 17 Dec 2026'              },
+  { slug: 'west',    label: 'West · Venue & date TBA'              },
   { slug: 'east',    label: 'East · IIT Kanpur · 24 Oct 2026'              },
   { slug: 'north',   label: 'North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov 2026'},
   { slug: 'south',   label: 'South · RVCE College, Bangalore · 26 Nov 2026' },

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Ban } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 
@@ -11,7 +11,16 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STATUS_STYLES = {
   approved: 'bg-emerald-100 text-emerald-800',
   rejected: 'bg-orange-100 text-orange-800',
+  final_rejected: 'bg-red-100 text-red-800',
   pending: 'bg-amber-100 text-amber-800',
+};
+
+export const statusLabel = (st) => ({ rejected: 'rework', final_rejected: 'rejected' }[st] || st || 'pending');
+
+const DIALOG_COPY = {
+  approved: { title: 'Approve', label: <>Judge&apos;s remarks</>, ph: 'Why is this project approved?', btn: 'Approve & email', tone: 'bg-emerald-600 hover:bg-emerald-700', done: 'Submission approved' },
+  rejected: { title: 'Send back for rework', label: <>Changes required (emailed to the team)</>, ph: 'List the changes the team must make before resubmitting', btn: 'Send rework & email', tone: 'bg-orange-600 hover:bg-orange-700', done: 'Sent back for rework' },
+  final_rejected: { title: 'Reject', label: <>Rejection reason (emailed to the team)</>, ph: 'Why is this submission rejected?', btn: 'Reject & Send Email', tone: 'bg-red-600 hover:bg-red-700', done: 'Submission rejected' },
 };
 
 const fmtDT = (v) => (v ? new Date(v).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -41,7 +50,7 @@ export const exportSubmissionsXlsx = (rows) => {
     'ID Proof Type': s.id_proof_type || '',
     'ID Proof URL': s.id_proof_url || '',
     'School Permission URL': s.school_permission_url || '',
-    Status: s.review_status === 'rejected' ? 'rework' : (s.review_status || 'pending'),
+    Status: statusLabel(s.review_status),
     Duplicate: s.is_duplicate ? 'Yes' : 'No',
     'Judge Remarks': s.judge_remarks || '',
     'Reviewed By': s.reviewed_by || '',
@@ -56,7 +65,7 @@ export const exportSubmissionsXlsx = (rows) => {
 export const ReviewStatusBadge = ({ s }) => (
   <div className="flex flex-col items-start gap-1">
     <span data-testid={`admin-submission-status-${s._id}`} className={`text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 ${STATUS_STYLES[s.review_status] || STATUS_STYLES.pending}`}>
-      {s.review_status === 'rejected' ? 'rework' : (s.review_status || 'pending')}
+      {statusLabel(s.review_status)}
     </span>
     {s.resubmitted_at && (s.review_status || 'pending') === 'pending' && (
       <span data-testid={`admin-submission-resubmitted-${s._id}`} className="text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5 bg-blue-100 text-blue-800">Resubmitted</span>
@@ -80,6 +89,10 @@ export const ReviewActions = ({ s, onReview, children }) => (
         className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">
         <XCircle className="w-3.5 h-3.5" /> Rework
       </button>
+      <button type="button" onClick={() => onReview(s, 'final_rejected')} data-testid={`admin-submission-final-reject-${s._id}`}
+        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 transition-colors">
+        <Ban className="w-3.5 h-3.5" /> Rejected
+      </button>
     </div>
     {s.judge_remarks && (
       <div className="mt-1.5 text-[11px] text-slate-600 leading-snug" data-testid={`admin-submission-remarks-${s._id}`}>
@@ -94,7 +107,7 @@ export const ReviewActions = ({ s, onReview, children }) => (
 export default function SubmissionReviewDialog({ target, onClose, onSaved, headers }) {
   const [remarks, setRemarks] = useState('');
   const [saving, setSaving] = useState(false);
-  const approve = target?.decision === 'approved';
+  const copy = DIALOG_COPY[target?.decision] || DIALOG_COPY.rejected;
   const bulkIds = target?.ids;
 
   useEffect(() => { setRemarks(target?.sub?.judge_remarks || ''); }, [target]);
@@ -106,14 +119,14 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
       if (bulkIds) {
         const res = await axios.post(`${API}/admin/techfest/submissions/bulk-review`,
           { ids: bulkIds, decision: target.decision, remarks: remarks.trim() }, { headers });
-        toast.success(`${res.data.updated} submission(s) marked ${approve ? 'approved' : 'rework'} · emails sending in background`);
+        toast.success(`${res.data.updated} submission(s) marked ${statusLabel(target.decision)} · emails sending in background`);
         const { review_status, judge_remarks, reviewed_by, reviewed_at } = res.data;
         bulkIds.forEach((id) => onSaved(id, { review_status, judge_remarks, reviewed_by, reviewed_at }));
         target.onBulkDone?.();
       } else {
         const res = await axios.patch(`${API}/admin/techfest/submissions/${target.sub._id}/review`,
           { decision: target.decision, remarks: remarks.trim() }, { headers });
-        toast.success(`${approve ? 'Submission approved' : 'Sent back for rework'}${res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
+        toast.success(`${copy.done}${res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
         onSaved(target.sub._id, { ...res.data, ...(res.data?.email_sent ? { review_email_sent_at: res.data.reviewed_at } : {}) });
       }
       onClose();
@@ -126,7 +139,7 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
     <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md" data-testid="admin-submission-review-dialog">
         <DialogHeader>
-          <DialogTitle>{approve ? 'Approve' : 'Send back for rework'} {bulkIds ? `${bulkIds.length} submission${bulkIds.length === 1 ? '' : 's'}` : 'submission'}</DialogTitle>
+          <DialogTitle>{copy.title} {bulkIds ? `${bulkIds.length} submission${bulkIds.length === 1 ? '' : 's'}` : 'submission'}</DialogTitle>
         </DialogHeader>
         {target && (
           <div className="space-y-3">
@@ -136,23 +149,23 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
               )}
             </div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
-              {approve ? <>Judge&apos;s remarks</> : <>Changes required (emailed to the team)</>} <span className="text-red-600">*</span>
+              {copy.label} <span className="text-red-600">*</span>
             </label>
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows={4}
-              placeholder={approve ? 'Why is this project approved?' : 'List the changes the team must make before resubmitting'}
+              placeholder={copy.ph}
               className="w-full rounded-lg border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
               data-testid="admin-submission-review-remarks"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={onClose} data-testid="admin-submission-review-cancel">Cancel</Button>
               <Button onClick={save} disabled={saving || remarks.trim().length < 3}
-                className={approve ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'}
+                className={copy.tone}
                 data-testid="admin-submission-review-save">
                 {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                {approve ? 'Approve & email' : 'Send rework & email'}
+                {copy.btn}
               </Button>
             </div>
           </div>

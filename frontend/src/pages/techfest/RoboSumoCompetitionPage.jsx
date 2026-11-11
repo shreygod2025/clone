@@ -57,7 +57,7 @@ const DATA = {
     },
     {
       k: 'Regional Qualifier',
-      when: 'East · IIT Kanpur · 24 Oct · North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov · South · RVCE College, Bangalore · 26 Nov · West · IIT Bombay · 17 Dec',
+      when: 'East · IIT Kanpur · 24 Oct · North · Modern Public School, Shalimar Bagh, Delhi · 21 Nov · South · RVCE College, Bangalore · 26 Nov · West · Venue & date TBA',
       v: 'Live 1v1 knockout brackets on the OLL arena stage — city by city. Winners get the golden ticket to IIT Bombay.',
     },
     {

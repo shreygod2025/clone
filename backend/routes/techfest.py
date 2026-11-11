@@ -579,7 +579,7 @@ async def list_techfest_submissions(
 
 
 class SubmissionReviewIn(BaseModel):
-    decision: Literal["approved", "rejected"]
+    decision: Literal["approved", "rejected", "final_rejected"]
     remarks: str = Field(..., max_length=2000)
 
 
@@ -622,7 +622,7 @@ async def _email_submission(doc: dict, kind: str) -> bool:
         ok = (await _send_submission_confirmations(submission=doc, reference_id=str(doc["_id"]), whatsapp=False)) > 0
         field = "confirmation_email_sent_at"
     else:
-        if (doc.get("review_status") or "pending") not in ("approved", "rejected"):
+        if (doc.get("review_status") or "pending") not in ("approved", "rejected", "final_rejected"):
             return False
         ok = await _send_review_result_email(doc, doc["review_status"], doc.get("judge_remarks") or "")
         field = "review_email_sent_at"
@@ -688,10 +688,13 @@ async def _send_review_result_email(doc: dict, decision: str, remarks: str) -> b
         competition_label=COMPETITION_LABELS.get(doc.get("competition") or "", doc.get("competition") or ""),
         zone_label=ZONE_LABELS.get(zone) if doc.get("competition") in ("robo_sumo", "robo_race") else None,
         team_id=doc.get("team_id") or None,
+        team_name=(doc.get("team_name") or "").strip() or None,
         edit_deadline="20 Oct 2026, 11:59 PM IST" if zone == "east" else "15 Nov 2026, 11:59 PM IST",
     )
-    subject = ("You've qualified! Submission approved — OLL Robotics Championship @ Techfest"
-               if decision == "approved" else "Action needed: edit & resubmit your Techfest project")
+    subject = {
+        "approved": "You've qualified! Submission approved — OLL Robotics Championship @ Techfest",
+        "final_rejected": "Update on your Techfest submission — OLL Robotics Championship",
+    }.get(decision, "Action needed: edit & resubmit your Techfest project")
     try:
         return bool((await _dispatch_email(to, subject, html)).get("success"))
     except Exception as exc:  # noqa: BLE001
