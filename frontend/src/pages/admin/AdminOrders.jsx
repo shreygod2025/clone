@@ -36,6 +36,12 @@ const getGstColorClass = (gst) => {
 };
 
 // Helper function to get absolute URL for uploads
+const safeDate = (v) => {
+  if (!v) return '-';
+  const d = parseISO(String(v).trim().replace(/\//g, '-'));
+  return isNaN(d) ? String(v) : format(d, 'MMM d, yyyy');
+};
+
 const getAbsoluteUrl = (url) => {
   if (!url) return '';
   // If already absolute, return as is
@@ -1604,7 +1610,7 @@ const AdminOrders = () => {
                                     ? 'text-red-600'
                                     : 'text-slate-700'
                                 }`}>
-                                  {format(parseISO(group.tranches[0].due_date), 'MMM d, yyyy')}
+                                  {safeDate(group.tranches[0].due_date)}
                                 </p>
                               </div>
                             ) : group.tranches.length > 1 ? (
@@ -1775,7 +1781,7 @@ const AdminOrders = () => {
                                   <p className={`text-sm ${
                                     isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : 'text-slate-600'
                                   }`}>
-                                    {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                                    {safeDate(payment.due_date)}
                                   </p>
                                 </div>
                               ) : (
@@ -1962,14 +1968,14 @@ const AdminOrders = () => {
                                 ? 'text-red-600'
                                 : 'text-slate-700'
                             }`}>
-                              {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                              {safeDate(payment.due_date)}
                             </p>
                           </div>
                         ) : payment.payment_date ? (
                           <div className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                             <p className="text-sm font-medium text-green-700">
-                              {format(parseISO(payment.payment_date), 'MMM d, yyyy')}
+                              {safeDate(payment.payment_date)}
                             </p>
                           </div>
                         ) : (
@@ -2240,7 +2246,7 @@ const AdminOrders = () => {
                     <p className="text-xs text-slate-500">Due Date</p>
                     <p className="font-medium text-slate-800">
                       {showPaymentModal.due_date 
-                        ? format(parseISO(showPaymentModal.due_date), 'MMM d, yyyy')
+                        ? safeDate(showPaymentModal.due_date)
                         : 'Not set'}
                     </p>
                   </div>
@@ -2682,23 +2688,19 @@ const AdminOrders = () => {
                       <div>
                         <p className="text-xs text-slate-500">Total Amount</p>
                         <p className="font-bold text-lg text-green-600">
-                          ₹{(showSchoolDetails.onboarding_data.total_amount || 0).toLocaleString()}
+                          ₹{Number(showSchoolDetails.onboarding_data.total_amount || 0).toLocaleString()}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Contract Start</p>
                         <p className="font-medium">
-                          {showSchoolDetails.onboarding_data.contract_start 
-                            ? format(parseISO(showSchoolDetails.onboarding_data.contract_start), 'MMM d, yyyy')
-                            : '-'}
+                          {safeDate(showSchoolDetails.onboarding_data.contract_start)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Contract End</p>
                         <p className="font-medium">
-                          {showSchoolDetails.onboarding_data.contract_end 
-                            ? format(parseISO(showSchoolDetails.onboarding_data.contract_end), 'MMM d, yyyy')
-                            : '-'}
+                          {safeDate(showSchoolDetails.onboarding_data.contract_end)}
                         </p>
                       </div>
                       <div>
@@ -2866,9 +2868,9 @@ const AdminOrders = () => {
                               <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-3">
                                 <span className="font-medium">Tranche {idx + 1}</span>
                                 {t.percentage && <span className="text-slate-600">{t.percentage}%</span>}
-                                <span className="font-bold">₹{(t.amount || 0).toLocaleString()}</span>
+                                <span className="font-bold">₹{Number(t.amount || 0).toLocaleString()}</span>
                                 <span className="text-sm text-slate-500">
-                                  {t.date ? format(parseISO(t.date), 'MMM d, yyyy') : '-'}
+                                  {safeDate(t.date)}
                                 </span>
                               </div>
                             ))}
@@ -3001,13 +3003,13 @@ const AdminOrders = () => {
                   {showViewModal.due_date && (
                     <div>
                       <p className="text-xs text-slate-500">Due Date</p>
-                      <p className="font-medium">{format(parseISO(showViewModal.due_date), 'MMM d, yyyy')}</p>
+                      <p className="font-medium">{safeDate(showViewModal.due_date)}</p>
                     </div>
                   )}
                   {showViewModal.payment_date && (
                     <div>
                       <p className="text-xs text-slate-500">Payment Date</p>
-                      <p className="font-medium text-green-700">{format(parseISO(showViewModal.payment_date), 'MMM d, yyyy')}</p>
+                      <p className="font-medium text-green-700">{safeDate(showViewModal.payment_date)}</p>
                     </div>
                   )}
                 </div>
@@ -3117,7 +3119,7 @@ const AdminOrders = () => {
                     <div className="flex justify-between">
                       <span className="text-slate-500">Due Date</span>
                       <span className={isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : ''}>
-                        {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                        {safeDate(payment.due_date)}
                       </span>
                     </div>
                   )}
@@ -3356,13 +3358,13 @@ const AdminOrders = () => {
                   {showStudentDetails.due_date && (
                     <div>
                       <p className="text-xs text-slate-500">Due Date</p>
-                      <p className="font-medium">{format(parseISO(showStudentDetails.due_date), 'MMM d, yyyy')}</p>
+                      <p className="font-medium">{safeDate(showStudentDetails.due_date)}</p>
                     </div>
                   )}
                   {showStudentDetails.payment_date && (
                     <div>
                       <p className="text-xs text-slate-500">Payment Date</p>
-                      <p className="font-medium">{format(parseISO(showStudentDetails.payment_date), 'MMM d, yyyy')}</p>
+                      <p className="font-medium">{safeDate(showStudentDetails.payment_date)}</p>
                     </div>
                   )}
                 </div>

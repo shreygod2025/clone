@@ -805,3 +805,4 @@ See `/app/memory/test_credentials.md`.
 - West zone regional: Venue TBA / Date TBA everywhere.
 - PENDING: red Rejected (final_rejected) button + modal in SubmissionReviewDialog/ReviewActions, badge/filter/portal UI. Backend + email template done.
 - 2026-06: Admin "New Submission" button (admin-submissions-new-btn) opens /techfest/submit?admin=1 in new tab; posts to POST /api/admin/techfest/submissions (admin/team_member auth) bypassing public closure.
+- 2026-06: Fixed blank page on School Conversion Details (AdminOrders) — dates like "2025/04/01" crashed format(parseISO). Added safeDate helper, replaced all MMM d, yyyy formats.
