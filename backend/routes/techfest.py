@@ -371,8 +371,19 @@ async def find_duplicate_submission(team_id: Optional[str], competition_id: Opti
 
 @router.post("/techfest/submissions")
 async def create_techfest_submission(payload: TechfestSubmissionIn, background_tasks: BackgroundTasks):
-    """Public submission endpoint — no auth required."""
+    """Public submission endpoint — closed for new entries."""
     raise HTTPException(status_code=403, detail="New submissions for Techfest 2026 are closed. Existing teams can still edit their entry at oll.co/techfest/my-submission.")
+
+
+@router.post("/admin/techfest/submissions")
+async def admin_create_techfest_submission(payload: TechfestSubmissionIn, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    """OLL team can add a submission on a student's behalf even while public submissions are closed."""
+    if user.get("role") not in ("admin", "super_admin", "team_member", "staff"):
+        raise HTTPException(status_code=403, detail="Only OLL team members can add submissions")
+    return await _create_submission(payload, background_tasks)
+
+
+async def _create_submission(payload: TechfestSubmissionIn, background_tasks: BackgroundTasks):
     ALLOWED_ZONES = {"north", "south", "east", "west", "central"}
     ALLOWED_COMPS = {"robo_sumo", "robo_race", "robo_innovation"}
     ALLOWED_AGE_CATS = {"junior", "senior"}

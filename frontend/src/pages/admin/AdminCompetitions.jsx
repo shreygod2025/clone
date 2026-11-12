@@ -1549,6 +1549,9 @@ export default function AdminCompetitions() {
                     </select>
                     <div className="flex-1" />
                     <span className="text-[11px] text-slate-500" data-testid="admin-submissions-count">{visibleSubmissions.length} of {submissions.length} submissions</span>
+                    <Button size="sm" className="h-8 text-xs bg-[#DC2626] hover:bg-red-700 text-white" onClick={() => window.open('/techfest/submit?admin=1', '_blank')} data-testid="admin-submissions-new-btn">
+                      <Plus className="w-3.5 h-3.5 mr-1" /> New Submission
+                    </Button>
                     <Button size="sm" variant="outline" className="h-8 text-xs" disabled={!visibleSubmissions.length} onClick={() => exportSubmissionsXlsx(visibleSubmissions)} data-testid="admin-submissions-export-xlsx">
                       <Download className="w-3.5 h-3.5 mr-1" /> Export XLSX
                     </Button>

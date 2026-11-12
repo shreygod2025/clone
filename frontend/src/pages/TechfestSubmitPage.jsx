@@ -50,6 +50,7 @@ const ageFromDob = (dob) => {
 };
 
 const SUBMISSIONS_CLOSED = true;
+const ADMIN_MODE = new URLSearchParams(window.location.search).get('admin') === '1' && !!localStorage.getItem('oll_token');
 
 export default function TechfestSubmitPage() {
   useEffect(() => { document.title = 'Submit Project · OLL Robotics Championship · Techfest 2026'; }, []);
@@ -267,8 +268,9 @@ export default function TechfestSubmitPage() {
         project_theme:    isInnovation ? (form.project_theme    || undefined) : undefined,
         team_members: (form.team_members || []).filter((m) => m.name?.trim()),
       };
-      const res = await fetch(`${API_BASE}/api/techfest/submissions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${API_BASE}/api/${ADMIN_MODE ? 'admin/' : ''}techfest/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(ADMIN_MODE ? { Authorization: `Bearer ${localStorage.getItem('oll_token')}` } : {}) },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -316,7 +318,7 @@ export default function TechfestSubmitPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-        {SUBMISSIONS_CLOSED ? (
+        {SUBMISSIONS_CLOSED && !ADMIN_MODE ? (
           <div className="py-12 max-w-xl mx-auto text-center" data-testid="techfest-submissions-closed">
             <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <Upload className="w-8 h-8 text-[#DC2626]" />

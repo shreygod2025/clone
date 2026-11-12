@@ -804,3 +804,4 @@ See `/app/memory/test_credentials.md`.
 - 2026-06: New Techfest submissions CLOSED (SUBMISSIONS_CLOSED const in TechfestSubmitPage.jsx + 403 raise at top of create_techfest_submission). Edits via /techfest/my-submission still open till 15 Nov.
 - West zone regional: Venue TBA / Date TBA everywhere.
 - PENDING: red Rejected (final_rejected) button + modal in SubmissionReviewDialog/ReviewActions, badge/filter/portal UI. Backend + email template done.
+- 2026-06: Admin "New Submission" button (admin-submissions-new-btn) opens /techfest/submit?admin=1 in new tab; posts to POST /api/admin/techfest/submissions (admin/team_member auth) bypassing public closure.
