@@ -372,6 +372,7 @@ async def find_duplicate_submission(team_id: Optional[str], competition_id: Opti
 @router.post("/techfest/submissions")
 async def create_techfest_submission(payload: TechfestSubmissionIn, background_tasks: BackgroundTasks):
     """Public submission endpoint — no auth required."""
+    raise HTTPException(status_code=403, detail="New submissions for Techfest 2026 are closed. Existing teams can still edit their entry at oll.co/techfest/my-submission.")
     ALLOWED_ZONES = {"north", "south", "east", "west", "central"}
     ALLOWED_COMPS = {"robo_sumo", "robo_race", "robo_innovation"}
     ALLOWED_AGE_CATS = {"junior", "senior"}

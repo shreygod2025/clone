@@ -801,3 +801,6 @@ See `/app/memory/test_credentials.md`.
 - 2026-06: Techfest portal OTP WhatsApp switched from non-existent AiSensy campaign "techfest_portal_otp" to working "otp" campaign (copy-code button). Prod email OTP/notifications need valid RESEND_API_KEY in prod (fixed by republish; shared key).
 - Techfest admin send-email buttons now have Yes/No confirm dialog.
 - 2026-06: Techfest submission edit window extended to 15 Nov 2026 23:59 IST (all zones except East, which stays 20 Oct).
+- 2026-06: New Techfest submissions CLOSED (SUBMISSIONS_CLOSED const in TechfestSubmitPage.jsx + 403 raise at top of create_techfest_submission). Edits via /techfest/my-submission still open till 15 Nov.
+- West zone regional: Venue TBA / Date TBA everywhere.
+- PENDING: red Rejected (final_rejected) button + modal in SubmissionReviewDialog/ReviewActions, badge/filter/portal UI. Backend + email template done.

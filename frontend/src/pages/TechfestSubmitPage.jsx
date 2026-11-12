@@ -49,6 +49,8 @@ const ageFromDob = (dob) => {
   return age >= 0 ? String(age) : '';
 };
 
+const SUBMISSIONS_CLOSED = true;
+
 export default function TechfestSubmitPage() {
   useEffect(() => { document.title = 'Submit Project · OLL Robotics Championship · Techfest 2026'; }, []);
 
@@ -314,7 +316,23 @@ export default function TechfestSubmitPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-        {done ? (
+        {SUBMISSIONS_CLOSED ? (
+          <div className="py-12 max-w-xl mx-auto text-center" data-testid="techfest-submissions-closed">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <Upload className="w-8 h-8 text-[#DC2626]" />
+            </div>
+            <h1 className="trp-h1 text-3xl text-[#0A1F44]">New submissions are closed</h1>
+            <p className="text-slate-600 mt-3 font-light">
+              We are no longer accepting new projects for Techfest 2026. Already submitted? You can still update your entry until <strong>15 Nov 2026, 11:59 PM IST</strong> using your Team ID or the team leader&apos;s phone number.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Link to="/techfest/my-submission" className="trp-btn primary inline-flex" data-testid="techfest-closed-edit-submission-btn">
+                Edit Submission <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link to="/techfest" className="trp-btn inline-flex border border-slate-200 text-[#0A1F44]">Back to Techfest</Link>
+            </div>
+          </div>
+        ) : done ? (
           <div className="py-12" data-testid="techfest-submit-success">
             <div className="max-w-xl mx-auto text-center">
               <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
