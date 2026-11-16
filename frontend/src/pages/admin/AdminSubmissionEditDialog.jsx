@@ -57,7 +57,8 @@ export default function AdminSubmissionEditDialog({ sub, onClose, onSaved, heade
   const save = async () => {
     setSaving(true);
     try {
-      const body = Object.fromEntries(Object.entries(form).filter(([k, v]) => v !== (sub[k] || '') && (v !== '' || k === 'zone')));
+      const CLEARABLE = ['zone', 'project_category', 'project_theme', 'school_permission_url'];
+      const body = Object.fromEntries(Object.entries(form).filter(([k, v]) => v !== (sub[k] || '') && (v !== '' || CLEARABLE.includes(k))));
       const clean = members.map((m) => Object.fromEntries(Object.entries(m).filter(([, v]) => v !== '' && v != null)));
       if (JSON.stringify(clean) !== JSON.stringify(sub.team_members || [])) body.team_members = clean;
       const r = await axios.patch(`${API}/admin/techfest/submissions/${sub._id}`, body, { headers });

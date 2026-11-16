@@ -292,8 +292,8 @@ export default function AdminCompetitions() {
     if (subCompFilter && s.competition !== subCompFilter) return false;
     if (subZoneFilter && s.zone !== subZoneFilter) return false;
     if (subAgeFilter && s.age_category !== subAgeFilter) return false;
-    if (subStatusFilter === 'duplicate') return !!s.is_duplicate;
-    if (subStatusFilter && (s.review_status || 'pending') !== subStatusFilter) return false;
+    if (subStatusFilter === 'duplicate' && !s.is_duplicate) return false;
+    if (subStatusFilter && subStatusFilter !== 'duplicate' && (s.review_status || 'pending') !== subStatusFilter) return false;
     const q = subSearch.trim().toLowerCase();
     if (q) {
       const blob = [s.full_name, s.email, s.phone, s.school_or_college, s.city, s.state, s.team_id, s.competition_id, s.project_category, s.project_theme,

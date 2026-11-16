@@ -1,0 +1,33 @@
+{
+  "summary": "Tested the admin edit for Techfest submissions and the fixed submission filters/sort on /admin/competitions > Submissions. Backend: 9/9 pytest pass for PATCH /api/admin/techfest/submissions/{id}. It rejects requests without a token (401/403), saves edits to city/school/zone/competition/team_members, leaves review_status unchanged for approved and final_rejected, returns 409 for a duplicate team_id or competition_id (case-insensitive) and allows re-saving its own id, and returns 400 for a bad id, 404 for a missing one and 422 for a bad email. Frontend: the pencil opens the dialog filled with the submission's values. Save shows the 'Submission updated' toast, closes the dialog and updates the row straight away, and the change is still there after a reload. A duplicate team_id shows the backend 409 message in a toast and the dialog stays open. The Track filter now works (sumo 4, race 2, innovation 2 of 8). Region, Age, Status (Pending/Approved/Rework/Rejected/Duplicates), search (including team member names), combined filters and the 'X of Y submissions' count all work, and the empty state shows. All 6 sort options order rows correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PATCH /api/admin/techfest/submissions/{id}", "issue": "No enum validation: competition='TEST_bogus' and zone='mars' are accepted with 200. Zone can also be cleared for robo_sumo/robo_race, and zone is not dropped when competition is changed to robo_innovation. The create endpoint checks all of these (ALLOWED_COMPS/ZONES/AGE_CATS)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminSubmissionEditDialog save()", "issue": "Fields that are emptied are dropped from the PATCH body (v !== '' filter, only zone is exempt). The admin cannot clear optional fields such as project_theme, project_category or school_permission_url, and the toast says 'No changes to save'.", "selector": "[data-testid=admin-edit-save]", "priority": "LOW"},
+      {"component": "visibleSubmissions filter", "issue": "With Status=Duplicates the filter returns early (return !!s.is_duplicate), so the search box is ignored. Could not be checked in the UI because the preview DB has no duplicates.", "selector": "[data-testid=admin-submissions-filter-status]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_admin_submission_edit_iter131.py", "/app/backend/tests/seed_ui_iter131.py", "/app/test_reports/pytest/pytest_iter131.xml"],
+  "action_items": [
+    "Optional: in admin_update_submission, validate competition/zone/age_category the same way _create_submission does, and set zone to null for robo_innovation",
+    "Optional: let the edit dialog send '' (or null) for optional text fields the admin clears",
+    "Optional: in visibleSubmissions, change `return !!s.is_duplicate` to `if (!s.is_duplicate) return false` so search still applies with the Duplicates filter"
+  ],
+  "critical_code_review_comments": [
+    "AdminCompetitions.jsx is 2483 lines; split it into separate tab components",
+    "Admin PATCH is open to team_member/staff roles as well as admin (same as admin create); confirm this is intended"
+  ],
+  "updated_files": ["/app/backend/tests/test_admin_submission_edit_iter131.py", "/app/backend/tests/seed_ui_iter131.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created e1-test-* submissions (pytest and 5 for the UI); all were deleted by id afterwards. The 3 pre-existing submissions were not changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "To set up UI data, run REACT_APP_BACKEND_URL=... python /app/backend/tests/seed_ui_iter131.py (ids are saved to /tmp/ui_seed_ids.json) and delete them by id afterwards. The preview DB has 3 real submissions (Test Lead, Notif Test, IT Test) and no duplicates."
+}

@@ -415,6 +415,16 @@ async def admin_update_submission(submission_id: str, payload: SubmissionPatchIn
     updates = {k: (v.strip() if isinstance(v, str) else v) for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if "email" in updates:
         updates["email"] = updates["email"].lower().strip()
+    comp = updates.get("competition", doc.get("competition"))
+    if "competition" in updates and comp not in ("robo_sumo", "robo_race", "robo_innovation"):
+        raise HTTPException(status_code=400, detail="Invalid competition")
+    if "age_category" in updates and updates["age_category"] not in ("junior", "senior"):
+        raise HTTPException(status_code=400, detail="Invalid age category")
+    if comp == "robo_innovation":
+        if "competition" in updates or "zone" in updates:
+            updates["zone"] = ""
+    elif ("zone" in updates or "competition" in updates) and updates.get("zone", doc.get("zone")) not in ("north", "south", "east", "west", "central"):
+        raise HTTPException(status_code=400, detail="Please pick a zone for Robo Sumo / Robo Race")
     from .techfest import find_duplicate_submission, _norm_id, DUPLICATE_SUBMISSION_MSG
     changed = {f: updates[f] for f in ("team_id", "competition_id") if f in updates and _norm_id(updates[f]) != _norm_id(doc.get(f))}
     if changed and await find_duplicate_submission(changed.get("team_id"), changed.get("competition_id"), exclude_oid=oid):

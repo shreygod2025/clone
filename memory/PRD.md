@@ -806,3 +806,4 @@ See `/app/memory/test_credentials.md`.
 - PENDING: red Rejected (final_rejected) button + modal in SubmissionReviewDialog/ReviewActions, badge/filter/portal UI. Backend + email template done.
 - 2026-06: Admin "New Submission" button (admin-submissions-new-btn) opens /techfest/submit?admin=1 in new tab; posts to POST /api/admin/techfest/submissions (admin/team_member auth) bypassing public closure.
 - 2026-06: Fixed blank page on School Conversion Details (AdminOrders) — dates like "2025/04/01" crashed format(parseISO). Added safeDate helper, replaced all MMM d, yyyy formats.
+- 2026-11: Admin can edit any Techfest submission (pencil in Team Lead cell → AdminSubmissionEditDialog → PATCH /api/admin/techfest/submissions/{id}; no lock, review_status untouched, dup + enum checks). Submissions Track filter fixed (client-side), Sort select added (newest/oldest/name/school/competition/status). Tested iteration_131.
