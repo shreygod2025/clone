@@ -34,10 +34,10 @@ from typing import Optional, List
 
 import jwt as pyjwt
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, Header, Request
+from fastapi import APIRouter, HTTPException, Header, Request, Depends
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from .shared import db
+from .shared import db, get_current_user
 from .techfest import _dispatch_email  # reuse the Resend wrapper
 
 router = APIRouter()
@@ -397,3 +397,33 @@ async def submission_portal_update(
     await db.techfest_submissions.update_one({"_id": oid}, {"$set": updates})
     refreshed = await db.techfest_submissions.find_one({"_id": oid})
     return {"ok": True, "modified": 1, "submission": _serialise_submission(refreshed)}
+
+
+
+@router.patch("/admin/techfest/submissions/{submission_id}")
+async def admin_update_submission(submission_id: str, payload: SubmissionPatchIn, user: dict = Depends(get_current_user)):
+    """OLL team edit — no deadline/approval lock, review status is left untouched."""
+    if user.get("role") not in ("admin", "super_admin", "team_member", "staff"):
+        raise HTTPException(status_code=403, detail="Only OLL team members can edit submissions")
+    try:
+        oid = ObjectId(submission_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid submission id")
+    doc = await db.techfest_submissions.find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    updates = {k: (v.strip() if isinstance(v, str) else v) for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if "email" in updates:
+        updates["email"] = updates["email"].lower().strip()
+    from .techfest import find_duplicate_submission, _norm_id, DUPLICATE_SUBMISSION_MSG
+    changed = {f: updates[f] for f in ("team_id", "competition_id") if f in updates and _norm_id(updates[f]) != _norm_id(doc.get(f))}
+    if changed and await find_duplicate_submission(changed.get("team_id"), changed.get("competition_id"), exclude_oid=oid):
+        raise HTTPException(status_code=409, detail=DUPLICATE_SUBMISSION_MSG)
+    if not updates:
+        return {"ok": True, "modified": 0}
+    now = datetime.now(timezone.utc).isoformat()
+    updates.update({"updated_at": now, "last_edited_by_admin_at": now, "last_edited_by_admin": user.get("email") or user.get("name")})
+    await db.techfest_submissions.update_one({"_id": oid}, {"$set": updates})
+    refreshed = await db.techfest_submissions.find_one({"_id": oid}, {"review_history": 0})
+    refreshed["_id"] = str(refreshed["_id"])
+    return {"ok": True, "modified": 1, "submission": refreshed}

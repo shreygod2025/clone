@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
 import TechfestBulkEmailDialog from './TechfestBulkEmailDialog';
+import AdminSubmissionEditDialog from './AdminSubmissionEditDialog';
 import SubmissionReviewDialog, { ReviewStatusBadge, ReviewActions, exportSubmissionsXlsx } from './SubmissionReviewDialog';
 import { RowEmailActions, BulkSubmissionBar } from './SubmissionEmailActions';
 
@@ -170,6 +171,17 @@ const SearchableSelect = ({ value, options, onChange, placeholder = 'Select…',
 };
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const byText = (k) => (a, b) => String(a[k] || '').trim().localeCompare(String(b[k] || '').trim(), 'en', { sensitivity: 'base' });
+const STATUS_ORDER = { pending: 0, rejected: 1, approved: 2, final_rejected: 3 };
+const SUB_SORTERS = {
+  newest: (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')),
+  oldest: (a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')),
+  name: byText('full_name'),
+  school: byText('school_or_college'),
+  competition: byText('competition'),
+  status: (a, b) => (STATUS_ORDER[a.review_status || 'pending'] ?? 9) - (STATUS_ORDER[b.review_status || 'pending'] ?? 9),
+};
+
 const TECHFEST_URL = '/techfest';
 
 const TABS = [
@@ -271,10 +283,13 @@ export default function AdminCompetitions() {
   const [subAgeFilter, setSubAgeFilter] = useState('');
   const [subStatusFilter, setSubStatusFilter] = useState('');
   const [subSearch, setSubSearch] = useState('');
+  const [subSort, setSubSort] = useState('newest');
+  const [editSub, setEditSub] = useState(null);
   const [reviewTarget, setReviewTarget] = useState(null);
   const [subSelected, setSubSelected] = useState(new Set());
   const toggleSubSelected = (id) => setSubSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const visibleSubmissions = useMemo(() => submissions.filter((s) => {
+    if (subCompFilter && s.competition !== subCompFilter) return false;
     if (subZoneFilter && s.zone !== subZoneFilter) return false;
     if (subAgeFilter && s.age_category !== subAgeFilter) return false;
     if (subStatusFilter === 'duplicate') return !!s.is_duplicate;
@@ -286,7 +301,7 @@ export default function AdminCompetitions() {
       if (!blob.includes(q)) return false;
     }
     return true;
-  }), [submissions, subZoneFilter, subAgeFilter, subStatusFilter, subSearch]);
+  }).sort(SUB_SORTERS[subSort]), [submissions, subCompFilter, subZoneFilter, subAgeFilter, subStatusFilter, subSearch, subSort]);
   const selectedVisibleSubIds = visibleSubmissions.filter((s) => subSelected.has(s._id)).map((s) => s._id);
   const onReviewSaved = (id, data) => setSubmissions((prev) => prev.map((x) => (x._id === id ? { ...x, ...data } : x)));
 
@@ -437,7 +452,6 @@ export default function AdminCompetitions() {
     try {
       const res = await axios.get(`${API}/admin/techfest/submissions`, {
         headers: getAuthHeaders(),
-        params: subCompFilter ? { competition: subCompFilter } : {},
       });
       setSubmissions(res.data?.items || []);
     } catch (err) {
@@ -1547,6 +1561,15 @@ export default function AdminCompetitions() {
                       <option value="final_rejected">Rejected</option>
                       <option value="duplicate">Duplicates</option>
                     </select>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-2">Sort:</span>
+                    <select className="h-8 px-3 text-xs border border-slate-200 rounded-lg bg-white" value={subSort} onChange={(e) => setSubSort(e.target.value)} data-testid="admin-submissions-sort">
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="name">Team lead A–Z</option>
+                      <option value="school">School A–Z</option>
+                      <option value="competition">Competition</option>
+                      <option value="status">Status</option>
+                    </select>
                     <div className="flex-1" />
                     <span className="text-[11px] text-slate-500" data-testid="admin-submissions-count">{visibleSubmissions.length} of {submissions.length} submissions</span>
                     <Button size="sm" className="h-8 text-xs bg-[#DC2626] hover:bg-red-700 text-white" onClick={() => window.open('/techfest/submit?admin=1', '_blank')} data-testid="admin-submissions-new-btn">
@@ -1604,7 +1627,9 @@ export default function AdminCompetitions() {
                           </td>
                           <td className="px-3 py-3 text-slate-500 tabular-nums">{i + 1}</td>
                           <td className="px-3 py-3">
-                            <div className="font-semibold text-slate-900">{s.full_name}</div>
+                            <div className="font-semibold text-slate-900 flex items-center gap-1.5">{s.full_name}
+                              <button type="button" onClick={() => setEditSub(s)} className="text-slate-400 hover:text-blue-700" title="Edit submission" data-testid={`admin-submission-edit-${s._id}`}><Pencil className="w-3.5 h-3.5" /></button>
+                            </div>
                             <div className="text-[11px] text-slate-500">{s.email} · {s.phone}</div>
                           </td>
                           <td className="px-3 py-3 text-slate-700">{s.school_or_college || '—'}</td>
@@ -1643,6 +1668,7 @@ export default function AdminCompetitions() {
                       })}
                     </tbody>
                   </table>
+                  <AdminSubmissionEditDialog sub={editSub} onClose={() => setEditSub(null)} onSaved={onReviewSaved} headers={getAuthHeaders()} />
                   <SubmissionReviewDialog target={reviewTarget} onClose={() => setReviewTarget(null)} onSaved={onReviewSaved} headers={getAuthHeaders()} />
                 </>
               )
