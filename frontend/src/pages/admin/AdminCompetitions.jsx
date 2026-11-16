@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Popover, PopoverTrigger, PopoverContent } from '../../components/ui/popover';
 import TechfestBulkEmailDialog from './TechfestBulkEmailDialog';
 import AdminSubmissionEditDialog from './AdminSubmissionEditDialog';
+import SendSelectionMailButton from './SendSelectionMailButton';
 import SubmissionReviewDialog, { ReviewStatusBadge, ReviewActions, exportSubmissionsXlsx } from './SubmissionReviewDialog';
 import { RowEmailActions, BulkSubmissionBar } from './SubmissionEmailActions';
 
@@ -1572,6 +1573,7 @@ export default function AdminCompetitions() {
                     </select>
                     <div className="flex-1" />
                     <span className="text-[11px] text-slate-500" data-testid="admin-submissions-count">{visibleSubmissions.length} of {submissions.length} submissions</span>
+                    <SendSelectionMailButton ids={visibleSubmissions.map((x) => x._id)} headers={getAuthHeaders()} statusFilter={subStatusFilter} onDone={loadSubmissions} />
                     <Button size="sm" className="h-8 text-xs bg-[#DC2626] hover:bg-red-700 text-white" onClick={() => window.open('/techfest/submit?admin=1', '_blank')} data-testid="admin-submissions-new-btn">
                       <Plus className="w-3.5 h-3.5 mr-1" /> New Submission
                     </Button>

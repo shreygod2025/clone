@@ -392,3 +392,75 @@ def review_result_html(*, lead_name: str, decision: str, remarks: str, competiti
     """
         title, pre = "Action needed: edit & resubmit your Techfest project", "Judge's remarks inside — you can edit and resubmit."
     return _shell(title=title, preheader=pre, body_html=body)
+
+
+# ── Selection / rejection mails (exact copy from "Email Format.pdf") ──
+_PDF_IG = "https://www.instagram.com/oll.co_/"
+_PDF_WA = "https://chat.whatsapp.com/FCSY3ptA201DUMoF3RP2jg"
+_IG_MANDATORY = ("Following our official Instagram page is mandatory for all selected participants. All important "
+                 "announcements, competition updates, schedules, guidelines, and instructions will be shared through our "
+                 "Instagram page. Make sure you follow us so you don't miss any important information.")
+SELECTION_MAILS = {
+    "robo_sumo": {
+        "subject": "Congratulations! Your Team Has Been Selected for the RoboSumo Regional Round",
+        "paras": [
+            "Congratulations!",
+            "We are delighted to inform you that your team has successfully cleared the submission stage and has been selected for the <strong>Regional Round of the RoboSumo competition</strong> at the OLL × TechFest Robotics Championship 2026–27.",
+            "Your journey towards the Grand Finale at IIT Bombay continues! Get ready to put your engineering skills, strategy, and teamwork to the test.",
+        ],
+        "ig": _IG_MANDATORY,
+        "close": "We wish your team the very best for the upcoming Regional Round. Keep building and keep innovating!",
+        "sign": "Best wishes,",
+    },
+    "robo_race": {
+        "subject": "Congratulations! Your Team Has Been Selected for the RoboRacer Regional Round",
+        "paras": [
+            "Congratulations!",
+            "We are excited to inform you that your team has successfully cleared the submission stage and has been selected for the <strong>Regional Round of the RoboRacer competition</strong> at the OLL × TechFest Robotics Championship 2026–27.",
+            "Get ready to bring your speed, precision, control, and racing strategies to the track as you take another step towards the Grand Finale at IIT Bombay!",
+        ],
+        "ig": _IG_MANDATORY,
+        "close": "We wish your team the very best. Get ready to race, compete, and make your mark!",
+        "sign": "Best wishes,",
+    },
+    "robo_innovation": {
+        "subject": "Congratulations! Your Team Is Selected for the Grand Finale at IIT Bombay",
+        "paras": [
+            "Congratulations!",
+            "We are thrilled to inform you that your team's submission has been successfully reviewed and selected for the <strong>Finale Round of the Robotics Innovation Challenge at IIT Bombay</strong> as part of the OLL × TechFest Robotics Championship 2026-27.",
+            "Your creativity, innovative thinking, and problem-solving approach have earned your team this opportunity. You are now one step closer to showcasing your innovation on the national stage at IIT Bombay!",
+        ],
+        "ig": _IG_MANDATORY,
+        "close": "We look forward to witnessing your innovation at IIT Bombay. Keep creating, keep experimenting, and keep pushing boundaries!",
+        "sign": "Best wishes,",
+    },
+    "rejection": {
+        "subject": "Update Regarding Your OLL × TechFest Submission",
+        "paras": [
+            "Thank you for participating in the OLL × TechFest Robotics Championship 2026-27 and taking the time to submit your project.",
+            "After a thorough review of your submission, we would like to inform you that your team has not been shortlisted for the next stage of the competition.",
+            "We appreciate the effort, creativity, and enthusiasm demonstrated by your team. We encourage you to continue exploring, experimenting, and developing your innovative ideas.",
+        ],
+        "ig": "Follow our official Instagram page to stay updated on future competition announcements, upcoming opportunities, robotics activities, and exciting new initiatives.",
+        "close": "Thank you once again for being a part of OLL × TechFest. This is not the end of your innovation journey. Keep learning, building, and creating!",
+        "sign": "Best regards,",
+    },
+}
+
+
+def selection_mail(kind: str) -> tuple:
+    """Returns (subject, html) for robo_sumo / robo_race / robo_innovation / rejection."""
+    t = SELECTION_MAILS[kind]
+    p = lambda x: f'<p style="font-size:15px;color:#334155;margin:0 0 12px 0;line-height:1.6;">{x}</p>'  # noqa: E731
+    h = lambda x: f'<div style="font-size:15px;font-weight:800;color:#0A1F44;margin:18px 0 6px 0;">{x}</div>'  # noqa: E731
+    link = lambda u: f'<a href="{u}" style="color:#DC2626;font-weight:700;">{u}</a>'  # noqa: E731
+    body = (
+        p("Dear Participant,") + "".join(p(x) for x in t["paras"])
+        + h("Stay Connected with Us!") + p(t["ig"]) + p(f"Instagram: {link(_PDF_IG)}")
+        + h("Join Our Official WhatsApp Community Groups")
+        + p("Stay connected with fellow participants and receive important competition-related updates through our official WhatsApp community.")
+        + p(f"Join here: {link(_PDF_WA)}")
+        + p(t["close"])
+        + f'<p style="font-size:14px;color:#334155;margin:18px 0 0 0;">{t["sign"]}<br/><strong style="color:#0A1F44;">Team OLL × TechFest</strong></p>'
+    )
+    return t["subject"], _shell(title=t["subject"], preheader=t["subject"], body_html=body)

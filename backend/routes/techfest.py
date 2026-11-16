@@ -8,6 +8,8 @@ Admin:
 import csv
 import io
 import re
+import os
+import uuid
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Literal, List
@@ -669,6 +671,103 @@ async def send_submission_emails(payload: SubmissionEmailIn, background_tasks: B
     return {"ok": True, **(await _email_many(payload.ids, payload.kind))}
 
 
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
+
+
+def _team_emails(doc: dict) -> List[str]:
+    out = []
+    for e in [doc.get("email")] + [m.get("email") for m in (doc.get("team_members") or []) if isinstance(m, dict)]:
+        e = (e or "").strip().lower()
+        if _EMAIL_RE.match(e) and e not in out:
+            out.append(e)
+    return out
+
+
+async def _send_pdf_mail(doc: dict, kind: str) -> tuple:
+    """Send a PDF-template mail to lead + members. Returns (sent, failed) recipient counts."""
+    import asyncio
+    from .techfest_emails import selection_mail
+    subject, html = selection_mail(kind)
+    sent = failed = 0
+    for to in _team_emails(doc):
+        try:
+            ok = bool((await _dispatch_email(to, subject, html)).get("success"))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("techfest %s mail failed for %s: %s", kind, to, exc)
+            ok = False
+        sent, failed = sent + ok, failed + (not ok)
+        await asyncio.sleep(0.3)
+    now = datetime.now(timezone.utc).isoformat()
+    field = "rejection_mail" if kind == "rejection" else "selection_mail"
+    await db.techfest_submissions.update_one({"_id": doc["_id"]}, {"$set": {
+        f"{field}_status": "sent" if sent else "failed", f"{field}_sent_at": now if sent else None,
+        f"{field}_attempted_at": now, f"{field}_recipients": sent}})
+    return sent, failed
+
+
+def _email_configured() -> bool:
+    from server import GMAIL_APP_PASSWORD  # type: ignore
+    return bool(GMAIL_APP_PASSWORD or os.environ.get("RESEND_API_KEY"))
+
+
+class SelectionMailIn(BaseModel):
+    ids: List[str] = Field(..., min_length=1, max_length=5000)
+    dry_run: bool = True
+
+
+def _selection_bucket(doc: dict) -> str:
+    if (doc.get("review_status") or "pending") != "approved" or doc.get("competition") not in SELECTION_KINDS:
+        return "not_approved"
+    if doc.get("selection_mail_status") == "sent":
+        return "already_sent"
+    if not _team_emails(doc):
+        return "invalid_email"
+    return "to_send"
+
+
+SELECTION_KINDS = ("robo_sumo", "robo_race", "robo_innovation")
+
+
+async def _run_selection_job(job_id: str, docs: list) -> None:
+    sent = failed = 0
+    for doc in docs:
+        s, _ = await _send_pdf_mail(doc, doc["competition"])
+        sent, failed = sent + (s > 0), failed + (s == 0)
+        await db.techfest_mail_jobs.update_one({"id": job_id}, {"$set": {"sent": sent, "failed": failed}})
+    await db.techfest_mail_jobs.update_one({"id": job_id}, {"$set": {"status": "done", "finished_at": datetime.now(timezone.utc).isoformat()}})
+
+
+@router.post("/admin/techfest/submissions/send-selection-mails")
+async def send_selection_mails(payload: SelectionMailIn, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    _require_reviewer(user)
+    docs = await db.techfest_submissions.find({"_id": {"$in": [_oid(i) for i in payload.ids]}}, {"review_history": 0}).to_list(5000)
+    buckets = {"to_send": [], "already_sent": [], "invalid_email": [], "not_approved": []}
+    for d in docs:
+        buckets[_selection_bucket(d)].append(d)
+    counts = {k: len(v) for k, v in buckets.items()}
+    counts["by_track"] = {k: sum(1 for d in buckets["to_send"] if d["competition"] == k) for k in SELECTION_KINDS}
+    if payload.dry_run:
+        return {"ok": True, "email_configured": _email_configured(), **counts}
+    if not _email_configured():
+        raise HTTPException(status_code=503, detail="Email isn't configured on the server (RESEND_API_KEY / GMAIL_APP_PASSWORD missing).")
+    job_id = str(uuid.uuid4())
+    skipped = counts["already_sent"] + counts["invalid_email"]
+    await db.techfest_mail_jobs.insert_one({"id": job_id, "status": "running", "total": counts["to_send"], "sent": 0, "failed": 0,
+                                            "skipped": skipped, "by": user.get("email"), "started_at": datetime.now(timezone.utc).isoformat()})
+    background_tasks.add_task(_run_selection_job, job_id, buckets["to_send"])
+    return {"ok": True, "job_id": job_id, **counts}
+
+
+@router.get("/admin/techfest/mail-jobs/{job_id}")
+async def get_mail_job(job_id: str, user: dict = Depends(get_current_user)):
+    _require_reviewer(user)
+    job = await db.techfest_mail_jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+
 @router.post("/admin/techfest/submissions/bulk-review")
 async def bulk_review_submissions(payload: BulkReviewIn, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     _require_reviewer(user)
@@ -687,6 +786,9 @@ async def bulk_review_submissions(payload: BulkReviewIn, background_tasks: Backg
 
 
 async def _send_review_result_email(doc: dict, decision: str, remarks: str) -> bool:
+    if decision == "final_rejected":
+        sent, _ = await _send_pdf_mail(doc, "rejection")
+        return sent > 0
     from .techfest_emails import review_result_html
     from .techfest_permission_letter import COMPETITION_LABELS, ZONE_LABELS
     to = (doc.get("email") or "").strip().lower()
