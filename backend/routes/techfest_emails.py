@@ -404,8 +404,8 @@ SELECTION_MAILS = {
     "robo_sumo": {
         "subject": "Congratulations! Your Team Has Been Selected for the RoboSumo Regional Round",
         "paras": [
-            "Congratulations!",
-            "We are delighted to inform you that your team has successfully cleared the submission stage and has been selected for the <strong>Regional Round of the RoboSumo competition</strong> at the OLL × TechFest Robotics Championship 2026–27.",
+            "<strong>Congratulations!</strong>",
+            "<strong>We are delighted to inform you that your team has successfully cleared the submission stage and has been selected for the Regional Round of the RoboSumo competition at the OLL × TechFest Robotics Championship 2026–27.</strong>",
             "Your journey towards the Grand Finale at IIT Bombay continues! Get ready to put your engineering skills, strategy, and teamwork to the test.",
         ],
         "ig": _IG_MANDATORY,
@@ -415,8 +415,8 @@ SELECTION_MAILS = {
     "robo_race": {
         "subject": "Congratulations! Your Team Has Been Selected for the RoboRacer Regional Round",
         "paras": [
-            "Congratulations!",
-            "We are excited to inform you that your team has successfully cleared the submission stage and has been selected for the <strong>Regional Round of the RoboRacer competition</strong> at the OLL × TechFest Robotics Championship 2026–27.",
+            "<strong>Congratulations!</strong>",
+            "<strong>We are excited to inform you that your team has successfully cleared the submission stage and has been selected for the Regional Round of the RoboRacer competition at the OLL × TechFest Robotics Championship 2026–27.</strong>",
             "Get ready to bring your speed, precision, control, and racing strategies to the track as you take another step towards the Grand Finale at IIT Bombay!",
         ],
         "ig": _IG_MANDATORY,
@@ -426,8 +426,8 @@ SELECTION_MAILS = {
     "robo_innovation": {
         "subject": "Congratulations! Your Team Is Selected for the Grand Finale at IIT Bombay",
         "paras": [
-            "Congratulations!",
-            "We are thrilled to inform you that your team's submission has been successfully reviewed and selected for the <strong>Finale Round of the Robotics Innovation Challenge at IIT Bombay</strong> as part of the OLL × TechFest Robotics Championship 2026-27.",
+            "<strong>Congratulations!</strong>",
+            "<strong>We are thrilled to inform you that your team's submission has been successfully reviewed and selected for the Finale Round of the Robotics Innovation Challenge at IIT Bombay as part of the OLL × TechFest Robotics Championship 2026–27.</strong>",
             "Your creativity, innovative thinking, and problem-solving approach have earned your team this opportunity. You are now one step closer to showcasing your innovation on the national stage at IIT Bombay!",
         ],
         "ig": _IG_MANDATORY,
@@ -438,7 +438,7 @@ SELECTION_MAILS = {
         "subject": "Update Regarding Your OLL × TechFest Submission",
         "paras": [
             "Thank you for participating in the OLL × TechFest Robotics Championship 2026-27 and taking the time to submit your project.",
-            "After a thorough review of your submission, we would like to inform you that your team has not been shortlisted for the next stage of the competition.",
+            "<strong>After a thorough review of your submission, we would like to inform you that your team has not been shortlisted for the next stage of the competition.</strong>",
             "We appreciate the effort, creativity, and enthusiasm demonstrated by your team. We encourage you to continue exploring, experimenting, and developing your innovative ideas.",
         ],
         "ig": "Follow our official Instagram page to stay updated on future competition announcements, upcoming opportunities, robotics activities, and exciting new initiatives.",
