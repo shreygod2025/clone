@@ -616,8 +616,10 @@ async def review_techfest_submission(submission_id: str, payload: SubmissionRevi
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Submission not found")
     doc = await db.techfest_submissions.find_one({"_id": oid})
-    email_sent = await _send_review_result_email(doc, payload.decision, remarks)
-    await db.techfest_submissions.update_one({"_id": oid}, {"$set": {"review_email_sent_at": now if email_sent else None}})
+    email_sent = False
+    if payload.decision != "final_rejected":  # rejection mails go out only via Send Mail
+        email_sent = await _send_review_result_email(doc, payload.decision, remarks)
+        await db.techfest_submissions.update_one({"_id": oid}, {"$set": {"review_email_sent_at": now if email_sent else None}})
     return {"ok": True, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now, "email_sent": email_sent}
 
 
@@ -713,12 +715,14 @@ def _email_configured() -> bool:
 class SelectionMailIn(BaseModel):
     ids: List[str] = Field(..., min_length=1, max_length=5000)
     dry_run: bool = True
+    mode: Literal["approved", "rejected"] = "approved"
 
 
-def _selection_bucket(doc: dict) -> str:
-    if (doc.get("review_status") or "pending") != "approved" or doc.get("competition") not in SELECTION_KINDS:
+def _selection_bucket(doc: dict, mode: str = "approved") -> str:
+    want = "final_rejected" if mode == "rejected" else "approved"
+    if (doc.get("review_status") or "pending") != want or doc.get("competition") not in SELECTION_KINDS:
         return "not_approved"
-    if doc.get("selection_mail_status") == "sent":
+    if doc.get("rejection_mail_status" if mode == "rejected" else "selection_mail_status") == "sent":
         return "already_sent"
     if not _team_emails(doc):
         return "invalid_email"
@@ -728,10 +732,10 @@ def _selection_bucket(doc: dict) -> str:
 SELECTION_KINDS = ("robo_sumo", "robo_race", "robo_innovation")
 
 
-async def _run_selection_job(job_id: str, docs: list) -> None:
+async def _run_selection_job(job_id: str, docs: list, mode: str = "approved") -> None:
     sent = failed = 0
     for doc in docs:
-        s, _ = await _send_pdf_mail(doc, doc["competition"])
+        s, _ = await _send_pdf_mail(doc, "rejection" if mode == "rejected" else doc["competition"])
         sent, failed = sent + (s > 0), failed + (s == 0)
         await db.techfest_mail_jobs.update_one({"id": job_id}, {"$set": {"sent": sent, "failed": failed}})
     await db.techfest_mail_jobs.update_one({"id": job_id}, {"$set": {"status": "done", "finished_at": datetime.now(timezone.utc).isoformat()}})
@@ -743,7 +747,7 @@ async def send_selection_mails(payload: SelectionMailIn, background_tasks: Backg
     docs = await db.techfest_submissions.find({"_id": {"$in": [_oid(i) for i in payload.ids]}}, {"review_history": 0}).to_list(5000)
     buckets = {"to_send": [], "already_sent": [], "invalid_email": [], "not_approved": []}
     for d in docs:
-        buckets[_selection_bucket(d)].append(d)
+        buckets[_selection_bucket(d, payload.mode)].append(d)
     counts = {k: len(v) for k, v in buckets.items()}
     counts["by_track"] = {k: sum(1 for d in buckets["to_send"] if d["competition"] == k) for k in SELECTION_KINDS}
     if payload.dry_run:
@@ -754,7 +758,7 @@ async def send_selection_mails(payload: SelectionMailIn, background_tasks: Backg
     skipped = counts["already_sent"] + counts["invalid_email"]
     await db.techfest_mail_jobs.insert_one({"id": job_id, "status": "running", "total": counts["to_send"], "sent": 0, "failed": 0,
                                             "skipped": skipped, "by": user.get("email"), "started_at": datetime.now(timezone.utc).isoformat()})
-    background_tasks.add_task(_run_selection_job, job_id, buckets["to_send"])
+    background_tasks.add_task(_run_selection_job, job_id, buckets["to_send"], payload.mode)
     return {"ok": True, "job_id": job_id, **counts}
 
 
@@ -781,7 +785,8 @@ async def bulk_review_submissions(payload: BulkReviewIn, background_tasks: Backg
         {"$set": {"review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now},
          "$push": {"review_history": {"decision": payload.decision, "remarks": remarks, "by": reviewer, "at": now}}},
     )
-    background_tasks.add_task(_email_many, payload.ids, "result")
+    if payload.decision != "final_rejected":
+        background_tasks.add_task(_email_many, payload.ids, "result")
     return {"ok": True, "updated": res.modified_count, "review_status": payload.decision, "judge_remarks": remarks, "reviewed_by": reviewer, "reviewed_at": now}
 
 

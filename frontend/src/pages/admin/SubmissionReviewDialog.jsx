@@ -20,7 +20,7 @@ export const statusLabel = (st) => ({ rejected: 'rework', final_rejected: 'rejec
 const DIALOG_COPY = {
   approved: { title: 'Approve', label: <>Judge&apos;s remarks</>, ph: 'Why is this project approved?', btn: 'Approve & email', tone: 'bg-emerald-600 hover:bg-emerald-700', done: 'Submission approved' },
   rejected: { title: 'Send back for rework', label: <>Changes required (emailed to the team)</>, ph: 'List the changes the team must make before resubmitting', btn: 'Send rework & email', tone: 'bg-orange-600 hover:bg-orange-700', done: 'Sent back for rework' },
-  final_rejected: { title: 'Reject', label: <>Rejection reason (emailed to the team)</>, ph: 'Why is this submission rejected?', btn: 'Reject & Send Email', tone: 'bg-red-600 hover:bg-red-700', done: 'Submission rejected' },
+  final_rejected: { title: 'Reject', label: <>Rejection reason (saved internally)</>, ph: 'Why is this submission rejected?', btn: 'Reject', tone: 'bg-red-600 hover:bg-red-700', done: 'Submission rejected' },
 };
 
 const fmtDT = (v) => (v ? new Date(v).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -126,7 +126,7 @@ export default function SubmissionReviewDialog({ target, onClose, onSaved, heade
       } else {
         const res = await axios.patch(`${API}/admin/techfest/submissions/${target.sub._id}/review`,
           { decision: target.decision, remarks: remarks.trim() }, { headers });
-        toast.success(`${copy.done}${res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
+        toast.success(`${copy.done}${target.decision === 'final_rejected' ? ' · use Send Mail to email rejected teams' : res.data?.email_sent ? ' · email sent to team lead' : ' · email could not be sent'}`);
         onSaved(target.sub._id, { ...res.data, ...(res.data?.email_sent ? { review_email_sent_at: res.data.reviewed_at } : {}) });
       }
       onClose();
