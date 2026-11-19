@@ -171,6 +171,7 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@craco/craco": "^7.1.0",
     "@eslint/js": "9.23.0",
+    "ajv": "^8.17.1",
     "autoprefixer": "^10.4.20",
     "eslint": "9.23.0",
     "eslint-plugin-import": "2.31.0",
@@ -185,15 +186,7 @@
   "engines": {
     "node": ">=20.x"
   },
-  "overrides": {
-    "mini-css-extract-plugin": {
-      "schema-utils": "3.1.1"
-    }
-  },
   "resolutions": {
-    "mini-css-extract-plugin": {
-      "schema-utils": "3.1.1"
-    },
     "cookie": "^1.0.2",
     "prosemirror-model": "1.25.8",
     "prosemirror-transform": "1.12.0"
