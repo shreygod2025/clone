@@ -183,7 +183,7 @@
     "tailwindcss": "^3.4.17"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=22.x"
   },
   "overrides": {
     "schema-utils": "3.1.1",
