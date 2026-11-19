@@ -183,15 +183,9 @@
     "tailwindcss": "^3.4.17"
   },
   "engines": {
-    "node": ">=22.x"
-  },
-  "overrides": {
-    "schema-utils": "3.1.1",
-    "ajv-keywords": "3.5.2"
+    "node": ">=20.x"
   },
   "resolutions": {
-    "schema-utils": "3.1.1",
-    "ajv-keywords": "3.5.2",
     "cookie": "^1.0.2",
     "prosemirror-model": "1.25.8",
     "prosemirror-transform": "1.12.0"
