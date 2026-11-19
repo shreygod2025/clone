@@ -22,7 +22,7 @@ from io import BytesIO
 # Heavy libraries are imported lazily (inside the functions that need them)
 # to keep startup time fast and health check responsive.
 # Lazy: reportlab, PIL/qrcode, cloudinary, cashfree_pg
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+# from emergentintegrations.llm.chat import LlmChat, UserMessage
 import time
 import hmac
 import hashlib
