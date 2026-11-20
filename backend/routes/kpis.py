@@ -55,11 +55,18 @@ KPI_CATALOG = [
     {"id": "gp_onboarded", "label": "New growth partners onboarded", "category": "Growth Partners", "unit": "count"},
     {"id": "gp_conversions", "label": "Conversions", "category": "Growth Partners", "unit": "count"},
 
-    # Sales B2C — sourced from `inquiry_leads` (inquiry_type = student)
+    # Sales B2C — sourced from `student_inquiries`
     {"id": "b2c_leads_assigned", "label": "No. of student leads assigned", "category": "Sales — B2C", "unit": "count"},
     {"id": "b2c_bookings_closed", "label": "No. of bookings/orders closed", "category": "Sales — B2C", "unit": "count"},
     {"id": "b2c_conversion_rate", "label": "Conversion rate (%)", "category": "Sales — B2C", "unit": "%"},
     {"id": "b2c_revenue_generated", "label": "Revenue generated (₹)", "category": "Sales — B2C", "unit": "₹"},
+
+    # Telecalling — sourced from `telecalling_activity`
+    {"id": "tc_calls_made",       "label": "Calls made",       "category": "Telecalling", "unit": "count"},
+    {"id": "tc_calls_picked",     "label": "Calls picked",     "category": "Telecalling", "unit": "count"},
+    {"id": "tc_leads_interested", "label": "Leads interested", "category": "Telecalling", "unit": "count"},
+    {"id": "tc_meetings_booked",  "label": "Meetings booked",  "category": "Telecalling", "unit": "count"},
+
 
     # Social Media — sourced from `social_media_snapshots`
     # These are channel-level metrics (shared org-wide) shown for any user whose role owns social media growth.
@@ -90,11 +97,6 @@ KPI_CATALOG = [
     {"id": "field_schools_interested", "label": "Schools interested", "category": "Field Ops", "unit": "count"},
     {"id": "field_entries_gained", "label": "Entries gained (met contact)", "category": "Field Ops", "unit": "count"},
 
-    # Telecalling — sourced from `telecalling_activity`
-    {"id": "tc_calls_made",       "label": "Calls made",       "category": "Telecalling", "unit": "count"},
-    {"id": "tc_calls_picked",     "label": "Calls picked",     "category": "Telecalling", "unit": "count"},
-    {"id": "tc_leads_interested", "label": "Leads interested", "category": "Telecalling", "unit": "count"},
-    {"id": "tc_meetings_booked",  "label": "Meetings booked",  "category": "Telecalling", "unit": "count"},
 ]
 
 KPI_BY_ID = {k["id"]: k for k in KPI_CATALOG}
@@ -399,18 +401,17 @@ async def _compute_growth_partner_metrics(user_id: str, start_iso: str, end_iso:
 
 
 async def _compute_b2c_metrics(user_id: str, start_iso: str, end_iso: str) -> dict:
-    """Metrics from `inquiry_leads` where inquiry_type = student."""
-    coll = db.inquiry_leads
+    """Metrics from `student_inquiries` (with fallback to legacy `inquiry_leads`)."""
+    coll = db.student_inquiries
     base = {
         "assigned_to": user_id,
-        "inquiry_type": "student",
         "created_at": {"$gte": start_iso, "$lte": end_iso},
     }
     assigned = await coll.count_documents(base)
     closed_docs = await coll.find(
-        {**base, "status": {"$in": ["converted", "closed_won", "booked"]}},
+        {**base, "status": {"$in": ["converted", "closed_won", "booked", "paid", "enrolled"]}},
         {"_id": 0, "conversion_amount": 1, "converted_amount": 1}
-    ).to_list(2000)
+    ).to_list(5000)
     closed = len(closed_docs)
 
     revenue = 0.0
@@ -420,6 +421,29 @@ async def _compute_b2c_metrics(user_id: str, start_iso: str, end_iso: str) -> di
             revenue += float(amt)
         except Exception:
             continue
+
+    # Fallback to legacy inquiry_leads if none in student_inquiries
+    if assigned == 0:
+        leg_coll = db.inquiry_leads
+        leg_base = {
+            "assigned_to": user_id,
+            "inquiry_type": "student",
+            "created_at": {"$gte": start_iso, "$lte": end_iso},
+        }
+        leg_assigned = await leg_coll.count_documents(leg_base)
+        if leg_assigned > 0:
+            assigned = leg_assigned
+            leg_closed_docs = await leg_coll.find(
+                {**leg_base, "status": {"$in": ["converted", "closed_won", "booked", "paid", "enrolled"]}},
+                {"_id": 0, "conversion_amount": 1, "converted_amount": 1}
+            ).to_list(2000)
+            closed = len(leg_closed_docs)
+            for d in leg_closed_docs:
+                amt = d.get("conversion_amount") or d.get("converted_amount") or 0
+                try:
+                    revenue += float(amt)
+                except Exception:
+                    continue
 
     conversion_rate = round((closed / assigned * 100.0), 1) if assigned else 0.0
 

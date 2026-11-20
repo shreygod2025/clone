@@ -1307,6 +1307,19 @@ async def add_booking_comment(
     if data.comment_type == "call_done":
         comment["call_date"] = data.call_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         comment["call_time"] = data.call_time or datetime.now(timezone.utc).strftime("%H:%M")
+        # Auto-log to telecalling_activity so CRM calls reflect in reports and KPIs
+        try:
+            await db.telecalling_activity.insert_one({
+                "id": str(uuid.uuid4()),
+                "contact_id": booking_id,
+                "user_id": user.get("id"),
+                "user_name": user.get("name", user.get("email", "Admin")),
+                "day": comment["call_date"],
+                "event": "call_made",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception:
+            pass
     result = await db.summer_camp_bookings.update_one(
         {"id": booking_id},
         {"$push": {"comments": comment}}
