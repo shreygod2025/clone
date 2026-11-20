@@ -7,7 +7,8 @@ DELETE /api/ai-chat/session/{sid}— delete a session
 """
 import os, uuid, json, re, logging, asyncio
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from database import db
 from routes.auth import get_current_user
@@ -27,21 +28,30 @@ router = APIRouter()
 # ═════════════════════════════════════════════════════════════════════════════
 
 class WhatsAppChatIn(BaseModel):
-    phone: str          # E.164 or any format — we normalise to last-10
-    message: str
+    phone: str | None = None          # E.164 or any format — we normalise to last-10
+    message: str | None = None
     session_id: str | None = None
 
 
 async def _resolve_wa_user(phone: str) -> dict | None:
     """Return the team_user / admin doc whose phone matches the last-10 digits
-    of the WhatsApp sender. Returns ``None`` if no admin match (callers can
+    of the WhatsApp sender. Checks both `whatsapp_phone` (linked via pairing or direct)
+    and `phone` (stored profile phone). Returns ``None`` if no admin match (callers can
     then fall back to the public FAQ brain)."""
     digits = re.sub(r"\D", "", phone or "")[-10:]
     if len(digits) != 10:
         return None
     tail = re.compile(f"{digits}$")
     for col, uid_field in (("team_users", "id"), ("admins", "id")):
-        doc = await db[col].find_one({"phone": tail}, {"_id": 0})
+        doc = await db[col].find_one(
+            {"$or": [
+                {"whatsapp_phone": digits},
+                {"whatsapp_phone": tail},
+                {"phone": digits},
+                {"phone": tail},
+            ]},
+            {"_id": 0}
+        )
         if doc:
             # Normalise to the shape `run_ai_chat_turn` expects on `user`
             return {
@@ -49,30 +59,105 @@ async def _resolve_wa_user(phone: str) -> dict | None:
                 "email": doc.get("email", ""),
                 "name": doc.get("name", ""),
                 "role": doc.get("role", "team_member"),
-                "phone": doc.get("phone", ""),
+                "phone": doc.get("whatsapp_phone") or doc.get("phone", ""),
             }
     return None
 
 
+@router.get("/ai-chat/whatsapp")
+async def whatsapp_verify(request: Request):
+    """Meta / WhatsApp Cloud API webhook verification challenge"""
+    hub_mode = request.query_params.get("hub.mode")
+    hub_challenge = request.query_params.get("hub.challenge")
+    hub_verify_token = request.query_params.get("hub.verify_token")
+    expected = os.environ.get("AISENSY_WEBHOOK_SECRET", "").strip()
+    if hub_mode == "subscribe":
+        if expected and hub_verify_token != expected:
+            raise HTTPException(status_code=403, detail="Verification token mismatch")
+        return PlainTextResponse(content=hub_challenge or "OK")
+    return {"status": "active", "service": "whatsapp-ai-bridge"}
+
+
 @router.post("/ai-chat/whatsapp")
 async def whatsapp_bridge(
-    payload: WhatsAppChatIn,
+    request: Request,
     x_aisensy_secret: str | None = Header(None),
 ):
     """Public endpoint that AiSensy (or any WhatsApp provider) calls.
     Shared-secret auth so random internet traffic can't drive the AI brain.
+    Extracts phone & message from:
+      - Flat JSON: { phone/mobile/from, message/text/body }
+      - Meta / WhatsApp Cloud API payload: entry[0].changes[0].value.messages[0]
+      - AiSensy Campaign event: data.user.phone, data.message.text
+      - Form-data or Query parameters
     Response shape is `{"reply": "..."}` so AiSensy's response-mapping
     (`reply` → `ai_answer`) wires up without transformation."""
     expected = os.environ.get("AISENSY_WEBHOOK_SECRET", "").strip()
     if expected and x_aisensy_secret != expected:
         raise HTTPException(status_code=403, detail="Bad secret")
-    phone = (payload.phone or "").strip()
-    message = (payload.message or "").strip()
+
+    phone = ""
+    message = ""
+    session_id = None
+
+    # 1. Try parsing JSON body (handles flat, Meta, and AiSensy formats)
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            # Flat format
+            phone = body.get("phone") or body.get("mobile") or body.get("from") or body.get("wa_number") or body.get("sender") or ""
+            message = body.get("message") or body.get("text") or body.get("body") or body.get("msg") or ""
+            session_id = body.get("session_id")
+
+            # Meta WhatsApp Cloud API / AiSensy inbound webhook format
+            if not phone or not message:
+                entry = body.get("entry")
+                if isinstance(entry, list) and entry:
+                    for ent in entry:
+                        changes = ent.get("changes", [])
+                        for ch in changes:
+                            val = ch.get("value", {})
+                            msgs = val.get("messages", [])
+                            for m in msgs:
+                                if not phone:
+                                    phone = m.get("from", "")
+                                if not message and "text" in m:
+                                    message = m["text"].get("body", "")
+
+            # AiSensy Campaign event format
+            if not phone or not message:
+                data = body.get("data")
+                if isinstance(data, dict):
+                    if not phone:
+                        phone = data.get("user", {}).get("phone", "") or data.get("phone", "")
+                    if not message:
+                        message = data.get("message", {}).get("text", "") or data.get("text", "")
+    except Exception:
+        pass
+
+    # 2. Fallback to Form-data
     if not phone or not message:
-        raise HTTPException(status_code=400, detail="phone and message required")
+        try:
+            form = await request.form()
+            phone = phone or form.get("phone") or form.get("mobile") or form.get("from") or ""
+            message = message or form.get("message") or form.get("text") or form.get("body") or ""
+            session_id = session_id or form.get("session_id")
+        except Exception:
+            pass
+
+    # 3. Fallback to Query params
+    if not phone or not message:
+        phone = phone or request.query_params.get("phone") or request.query_params.get("from") or ""
+        message = message or request.query_params.get("message") or request.query_params.get("text") or ""
+        session_id = session_id or request.query_params.get("session_id")
+
+    phone = str(phone or "").strip()
+    message = str(message or "").strip()
+    if not phone or not message:
+        raise HTTPException(status_code=400, detail="phone and message required in payload")
 
     # Session is stable per WhatsApp contact so history + follow-ups work.
-    session_id = payload.session_id or f"wa-{re.sub(r'[^0-9]', '', phone)[-10:]}"
+    session_id = session_id or f"wa-{re.sub(r'[^0-9]', '', phone)[-10:]}"
 
     # ── Pairing code? Short-circuit to link the admin account and reply ──
     # The `## Connect WhatsApp` modal issued a 6-char code like `A3F-K9P`.

@@ -83,7 +83,8 @@ async def _ensure_indexes():
 
 async def _find_user_collection(user_id: str) -> Optional[str]:
     for col in ("team_users", "admins"):
-        if await db[col].find_one({"id": user_id}, {"_id": 1}):
+        query = {"$or": [{"id": user_id}, {"email": user_id}]}
+        if await db[col].find_one(query, {"_id": 1}):
             return col
     return None
 
@@ -109,15 +110,16 @@ async def _consume_link_code(code: str, from_phone: str) -> Optional[dict]:
         return None
     phone_tail = re.sub(r"\D", "", from_phone or "")[-10:]
     now_iso = now.isoformat()
+    user_query = {"$or": [{"id": uid}, {"email": uid}]}
     await db[col].update_one(
-        {"id": uid},
+        user_query,
         {"$set": {
             "whatsapp_phone": phone_tail,
             "whatsapp_linked_at": now_iso,
         }},
     )
     await db.whatsapp_link_codes.delete_one({"code_canonical": canonical})
-    linked = await db[col].find_one({"id": uid}, {"_id": 0})
+    linked = await db[col].find_one(user_query, {"_id": 0})
     logger.info("[whatsapp-link] linked %s (col=%s) → +%s", uid, col, phone_tail)
     return linked
 
@@ -199,7 +201,8 @@ class LinkStatusOut(BaseModel):
 async def link_status(user: dict = Depends(get_current_user)):
     uid = user.get("id") or user.get("_id") or user.get("email")
     col = await _find_user_collection(uid or "") if uid else None
-    doc = await db[col].find_one({"id": uid}, {"_id": 0, "whatsapp_phone": 1, "whatsapp_linked_at": 1}) if col else None
+    user_query = {"$or": [{"id": uid}, {"email": uid}]}
+    doc = await db[col].find_one(user_query, {"_id": 0, "whatsapp_phone": 1, "whatsapp_linked_at": 1}) if col else None
     linked = bool((doc or {}).get("whatsapp_phone"))
     out = LinkStatusOut(
         linked=linked,
@@ -219,14 +222,42 @@ async def link_status(user: dict = Depends(get_current_user)):
     return out
 
 
+class DirectLinkIn(BaseModel):
+    phone: str
+
+
+@router.post("/admin/whatsapp-link/direct")
+async def direct_link(payload: DirectLinkIn, user: dict = Depends(get_current_user)):
+    phone_digits = re.sub(r"\D", "", payload.phone or "")[-10:]
+    if len(phone_digits) != 10:
+        raise HTTPException(status_code=400, detail="Please enter a valid 10-digit mobile number")
+    uid = user.get("id") or user.get("_id") or user.get("email")
+    col = await _find_user_collection(uid or "")
+    if not col:
+        raise HTTPException(status_code=404, detail="User account not found")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    user_query = {"$or": [{"id": uid}, {"email": uid}]}
+    await db[col].update_one(
+        user_query,
+        {"$set": {
+            "whatsapp_phone": phone_digits,
+            "whatsapp_linked_at": now_iso,
+        }},
+    )
+    # Clear any pending codes since user is now directly linked
+    await db.whatsapp_link_codes.delete_many({"user_id": uid})
+    return {"ok": True, "linked": True, "whatsapp_phone": phone_digits}
+
+
 @router.post("/admin/whatsapp-link/unlink")
 async def unlink(user: dict = Depends(get_current_user)):
     uid = user.get("id") or user.get("_id") or user.get("email")
     col = await _find_user_collection(uid or "")
     if not col:
         raise HTTPException(status_code=404, detail="User not found")
+    user_query = {"$or": [{"id": uid}, {"email": uid}]}
     await db[col].update_one(
-        {"id": uid},
+        user_query,
         {"$unset": {"whatsapp_phone": "", "whatsapp_linked_at": ""}},
     )
     return {"ok": True}
