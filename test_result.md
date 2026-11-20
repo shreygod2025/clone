@@ -101,3 +101,85 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Fix bugs where telecalling calls performed by users are not saved or shown in user reports and KPIs"
+
+backend:
+  - task: "Fix telecalling state transition dropping repeat calls and interested modal omitting call logs"
+    implemented: true
+    working: true
+    file: "backend/routes/telecalling.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Replaced equality check prev != changes with active logging on call outcome; automatically logged call_made and call_picked on lead_interested = yes"
+
+  - task: "Include telecalling KPIs for callers in user performance, dashboard, and team reports"
+    implemented: true
+    working: true
+    file: "backend/routes/kpis.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added _resolve_user_kpis helper to dynamically include tc_* KPIs for users with telecalling permission or activity"
+
+  - task: "Add calls_made to bucketed breakdown in team reports and fix live dashboard timezone discrepancy"
+    implemented: true
+    working: true
+    file: "backend/routes/team_reports.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added calls_made to _bucket_counts and included fallback telecalling KPIs; added $or window check in live_dashboard.py"
+
+frontend:
+  - task: "Ensure InterestedLeadModal includes call_picked=yes in patch payload"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/admin/AdminTelecalling.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Included call_picked: 'yes' in InterestedLeadModal patch payload"
+
+  - task: "Render Calls Made in Team Member Report PDF and UserPerformance KPI themes"
+    implemented: true
+    working: true
+    file: "frontend/src/utils/teamMemberReportPdf.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added Calls Made to summary cards and day/week/month breakdown table; added Telecalling theme and icon in UserPerformance.jsx"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.1"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Fix telecalling state transition dropping repeat calls and interested modal omitting call logs"
+    - "Include telecalling KPIs for callers in user performance, dashboard, and team reports"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Verified repeat calling, lead interest auto-logging, KPI resolution for telecallers, and team report buckets via verify_fix.py. All 5 tests passed."

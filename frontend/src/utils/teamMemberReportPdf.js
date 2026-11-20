@@ -101,9 +101,9 @@ export async function generateTeamMemberReportPDF(payload) {
         { label: 'Tasks Completed',   value: fmtVal(totals.tasks_completed),  color: BRAND.emerald },
         { label: 'Queries Assigned',  value: fmtVal(totals.queries_assigned), color: BRAND.amber },
         { label: 'Queries Resolved',  value: fmtVal(totals.queries_resolved), color: BRAND.emerald },
-        { label: 'Field Visits',      value: fmtVal(totals.field_visits),     color: [8, 145, 178] },
+        { label: 'Calls Made',        value: fmtVal(totals.calls_made),       color: BRAND.primary },
         { label: 'Calls Connected',   value: fmtVal(totals.calls_connected),  color: BRAND.emerald },
-        { label: 'Leads Added',       value: fmtVal(totals.leads_added),      color: BRAND.rose },
+        { label: 'Field Visits',      value: fmtVal(totals.field_visits),     color: [8, 145, 178] },
         { label: 'Schools Onboarded', value: fmtVal(totals.schools_onboarded), color: [124, 58, 237] },
       ];
 
@@ -157,7 +157,7 @@ export async function generateTeamMemberReportPDF(payload) {
 
   autoTable(doc, {
     startY: y + 4,
-    head: [['Period', 'Tasks Assigned', 'Tasks Done', 'Queries In', 'Queries Resolved', 'Field Visits', 'Calls Connected']],
+    head: [['Period', 'Tasks Assigned', 'Tasks Done', 'Queries In', 'Queries Resolved', 'Field Visits', 'Calls Made', 'Calls Connected']],
     body: buckets.map(b => [
       b.key,
       b.tasks_assigned || 0,
@@ -165,6 +165,7 @@ export async function generateTeamMemberReportPDF(payload) {
       b.queries_assigned || 0,
       b.queries_resolved || 0,
       b.field_visits || 0,
+      b.calls_made || 0,
       b.calls_connected || 0,
     ]),
     theme: 'grid',

@@ -13,6 +13,7 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, Minus, Clock, CheckCircle2, AlertTriangle,
   Users as UsersIcon, IndianRupee, ArrowLeft, Sparkles, Wallet, PiggyBank, FileDown, Loader2,
+  Phone,
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -32,6 +33,7 @@ const iconFor = (kpi) => {
   if (cat.includes('Task')) return CheckCircle2;
   if (cat.includes('Social')) return TrendingUp;
   if (cat.includes('Future Skills')) return TrendingUp;
+  if (cat.includes('Telecalling')) return Phone;
   return TrendingUp;
 };
 
@@ -59,6 +61,8 @@ const CATEGORY_THEME = {
   'Growth Partners':          { color: '#f97316', badge: 'bg-orange-50 text-orange-700 border-orange-100' },   // orange
   'Social Media':             { color: '#db2777', badge: 'bg-pink-50 text-pink-700 border-pink-100' },        // pink
   'Future Skills':            { color: '#0284c7', badge: 'bg-sky-50 text-sky-700 border-sky-100' },           // sky-blue
+  'Telecalling':              { color: '#6366f1', badge: 'bg-indigo-50 text-indigo-700 border-indigo-100' }, // indigo
+  'Field Ops':                { color: '#0d9488', badge: 'bg-teal-50 text-teal-700 border-teal-100' },       // teal
 };
 const themeFor = (cat) => CATEGORY_THEME[cat] || { color: '#64748b', badge: 'bg-slate-50 text-slate-700 border-slate-100' };
 

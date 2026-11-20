@@ -257,7 +257,7 @@ const InterestedLeadModal = ({ open, contact, onClose, onSaved }) => {
     if (!contact) return;
     setSaving(true);
     try {
-      const patch = { ...form, lead_interested: 'yes' };
+      const patch = { ...form, lead_interested: 'yes', call_picked: 'yes' };
       // Strip empty sub-contacts
       patch.contacts = (patch.contacts || []).filter(c => c.name?.trim() || c.phone?.trim());
       const r = await axios.patch(`${API}/telecalling/contacts/${contact.id}`, patch, { headers: getAuthHeaders() });
