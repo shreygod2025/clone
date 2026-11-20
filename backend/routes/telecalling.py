@@ -475,14 +475,29 @@ async def update_contact(contact_id: str, patch: ContactPatch, user: dict = Depe
     if isinstance(changes.get("contacts"), list):
         changes["contacts"] = [c if isinstance(c, dict) else c.model_dump() for c in changes["contacts"]]
 
-    # Activity logging on state transitions
+    # Activity logging on call outcomes
     prev = row
-    if changes.get("call_picked") in {"yes", "no"} and prev.get("call_picked") != changes["call_picked"]:
+    logged_call_made = False
+    logged_call_picked = False
+
+    if changes.get("call_picked") in {"yes", "no"}:
         await _log_activity(contact_id, user, "call_made")
+        logged_call_made = True
         if changes["call_picked"] == "yes":
             await _log_activity(contact_id, user, "call_picked")
-    if changes.get("lead_interested") == "yes" and prev.get("lead_interested") != "yes":
-        await _log_activity(contact_id, user, "lead_interested")
+            logged_call_picked = True
+
+    if changes.get("lead_interested") == "yes":
+        if prev.get("lead_interested") != "yes":
+            await _log_activity(contact_id, user, "lead_interested")
+        # An interested lead implies the call was made and connected
+        if not logged_call_made:
+            await _log_activity(contact_id, user, "call_made")
+        if not logged_call_picked:
+            await _log_activity(contact_id, user, "call_picked")
+        if "call_picked" not in changes and prev.get("call_picked") != "yes":
+            changes["call_picked"] = "yes"
+
     if changes.get("meeting_at") and prev.get("meeting_at") != changes["meeting_at"]:
         await _log_activity(contact_id, user, "meeting_booked")
 

@@ -242,13 +242,24 @@ async def _role_kpi_series(uid: str, start: datetime, end: datetime,
     """
     if not _compute_selected_metrics:
         return []
-    target = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1})
+    target = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1, "permissions": 1})
     role_id = (target or {}).get("role_id")
     role_doc = None
     role_kpi_ids: List[str] = []
     if role_id:
-        role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0, "kpis": 1})
-        role_kpi_ids = (role_doc or {}).get("kpis", []) or []
+        role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0, "kpis": 1, "permissions": 1})
+        role_kpi_ids = list((role_doc or {}).get("kpis", []) or [])
+
+    # If the user or role has telecalling permissions or recorded activity, include telecalling KPIs
+    user_perms = list((target or {}).get("permissions") or []) + list((role_doc or {}).get("permissions") or [])
+    has_tc = "telecalling" in user_perms
+    if not has_tc and uid:
+        has_tc = bool(await db.telecalling_activity.find_one({"user_id": uid}))
+    if has_tc:
+        for tc_kpi in ("tc_calls_made", "tc_calls_picked", "tc_leads_interested", "tc_meetings_booked"):
+            if tc_kpi not in role_kpi_ids:
+                role_kpi_ids.append(tc_kpi)
+
     # Fallback → same default set that /users/{id}/performance/timeseries uses
     # so the PDF's KPI strip always matches the on-screen performance page.
     if not role_kpi_ids:
@@ -329,6 +340,10 @@ async def _bucket_counts(uid: str, buckets: List[tuple[str, datetime, datetime]]
             field_visits = int((agg[0] or {}).get("n") or 0) if agg else 0
         except Exception:
             field_visits = 0
+        calls_made = await _count_in_window(
+            "telecalling_activity", "user_id", uid, "created_at", b_start, b_end,
+            extra={"event": "call_made"},
+        )
         calls_connected = await _count_in_window(
             "telecalling_activity", "user_id", uid, "created_at", b_start, b_end,
             extra={"event": "call_picked"},
@@ -342,6 +357,7 @@ async def _bucket_counts(uid: str, buckets: List[tuple[str, datetime, datetime]]
             "queries_assigned": queries_assigned,
             "queries_resolved": queries_resolved,
             "field_visits":     field_visits,
+            "calls_made":       calls_made,
             "calls_connected":  calls_connected,
         })
     return out

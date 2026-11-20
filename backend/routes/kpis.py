@@ -492,6 +492,22 @@ async def _compute_task_metrics(user_id: str, start_iso: str, end_iso: str) -> d
     }
 
 
+async def _resolve_user_kpis(target_user: dict, role_doc: Optional[dict]) -> list:
+    """Resolve role KPIs and automatically include telecalling KPIs if the user
+    has telecalling permission or has recorded calling activity."""
+    role_kpis = list((role_doc or {}).get("kpis", []) or [])
+    uid = target_user.get("id") or target_user.get("user_id") or ""
+    user_perms = list(target_user.get("permissions") or []) + list((role_doc or {}).get("permissions") or [])
+    has_tc = "telecalling" in user_perms
+    if not has_tc and uid:
+        has_tc = bool(await db.telecalling_activity.find_one({"user_id": uid}))
+    if has_tc:
+        for tc_kpi in ("tc_calls_made", "tc_calls_picked", "tc_leads_interested", "tc_meetings_booked"):
+            if tc_kpi not in role_kpis:
+                role_kpis.append(tc_kpi)
+    return role_kpis
+
+
 @router.get("/users/{user_id}/performance")
 async def get_user_performance(
     user_id: str,
@@ -509,7 +525,7 @@ async def get_user_performance(
 
     role_id = target.get("role_id") or ""
     role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
-    role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
+    role_kpi_ids = await _resolve_user_kpis(target, role_doc)
 
     if not role_kpi_ids:
         return {
@@ -554,10 +570,10 @@ async def get_my_performance(
     if not uid:
         raise HTTPException(status_code=400, detail="Missing user id in token")
 
-    tu = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1})
+    tu = await db.team_users.find_one({"id": uid}, {"_id": 0, "role_id": 1, "permissions": 1})
     role_id = (tu or {}).get("role_id") or ""
     role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
-    role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
+    role_kpi_ids = await _resolve_user_kpis(tu or {"id": uid}, role_doc)
 
     if not role_kpi_ids:
         role_kpi_ids = [
@@ -670,7 +686,7 @@ async def _timeseries_payload(uid: str, scope: str, ref_iso: Optional[str]) -> d
     target = await db.team_users.find_one({"id": uid}, {"_id": 0})
     role_id = (target or {}).get("role_id") or ""
     role_doc = await db.roles.find_one({"id": role_id}, {"_id": 0}) if role_id else None
-    role_kpi_ids = (role_doc or {}).get("kpis", []) if role_doc else []
+    role_kpi_ids = await _resolve_user_kpis(target or {"id": uid}, role_doc)
 
     if not role_kpi_ids:
         role_kpi_ids = [

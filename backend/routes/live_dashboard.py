@@ -549,16 +549,25 @@ async def _outreach_block() -> Dict[str, Any]:
         # populated by _log_activity — no tz-nightmares needed.
         calls_connected = await db.telecalling_activity.count_documents({
             "event": "call_picked",
-            "day": today_str,
+            "$or": [
+                {"day": today_str},
+                {"created_at": {"$gte": start_dt.isoformat(), "$lte": end_dt.isoformat()}}
+            ]
         })
         calls_made = await db.telecalling_activity.count_documents({
             "event": "call_made",
-            "day": today_str,
+            "$or": [
+                {"day": today_str},
+                {"created_at": {"$gte": start_dt.isoformat(), "$lte": end_dt.isoformat()}}
+            ]
         })
         # Also count "interested" leads today (bonus signal)
         interested = await db.telecalling_activity.count_documents({
             "event": "lead_interested",
-            "day": today_str,
+            "$or": [
+                {"day": today_str},
+                {"created_at": {"$gte": start_dt.isoformat(), "$lte": end_dt.isoformat()}}
+            ]
         })
         result["calls"] = {
             "connected": calls_connected,
