@@ -1,15 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Platform, StatusBar, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MainScreen from './src/screens/MainScreen';
+import LoginScreen from './src/screens/LoginScreen';
 import { COLORS } from './src/theme/colors';
+import { api } from './src/services/api';
 
 export default function App() {
   const isWeb = Platform.OS === 'web';
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
 
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const handleLoginSuccess = (user, token) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    api.setUser(user);
+    api.setToken(token);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    api.setUser(null);
+    api.setToken(null);
+  };
+
+  // Render Screen Content (LoginScreen or MainScreen)
+  const renderContent = () => {
+    if (!isAuthenticated) {
+      return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    }
+    return <MainScreen user={currentUser} onLogout={handleLogout} />;
+  };
+
   if (isWeb) {
-    // Dynamic height calculation on Web to prevent navbar from floating in the middle
     const isMobileViewport = windowWidth <= 480;
     const frameHeight = isMobileViewport ? '100%' : Math.min(windowHeight - 24, 900);
 
@@ -25,7 +52,7 @@ export default function App() {
                 : { height: frameHeight },
             ]}
           >
-            <MainScreen />
+            {renderContent()}
           </View>
         </View>
       </SafeAreaProvider>
@@ -36,7 +63,7 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
       <View style={styles.nativeContainer}>
-        <MainScreen />
+        {renderContent()}
       </View>
     </SafeAreaProvider>
   );
