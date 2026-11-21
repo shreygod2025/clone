@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,7 +10,11 @@ import {
   Alert,
   Modal,
   Text,
+  TextInput,
   TouchableOpacity,
+  Linking,
+  ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
@@ -23,6 +27,7 @@ import ChatInput from '../components/ChatInput';
 import BottomTabBar from '../components/BottomTabBar';
 import ComingSoonView from '../components/ComingSoonView';
 import ChatMessagesView from '../components/ChatMessagesView';
+import SchoolsCrmScreen from './SchoolsCrmScreen';
 import { SUGGESTED_ACTIONS, MOCK_RESPONSES } from '../data/suggestedActions';
 import { api } from '../services/api';
 
@@ -34,9 +39,687 @@ export default function MainScreen({ user, onLogout }) {
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [whatsAppModalVisible, setWhatsAppModalVisible] = useState(false);
-  const [sessionId] = useState(() => `mob-${Date.now()}`);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  // Handle Suggested Action Card tap
+  // Monitor virtual keyboard on mobile to maximize chat input visibility
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // ── Modals for Chat Features ─────────────────────────────────────────────────
+  // 1. Edit Lead Modal State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
+  const [editSchoolName, setEditSchoolName] = useState('');
+  const [editContactName, setEditContactName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editStatus, setEditStatus] = useState('new');
+  const [editNotes, setEditNotes] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // 2. Send Email Modal State
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [emailTargetLead, setEmailTargetLead] = useState(null);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // 3. WhatsApp Modal State
+  const [waModalVisible, setWaModalVisible] = useState(false);
+  const [waTargetLead, setWaTargetLead] = useState(null);
+  const [waMessageText, setWaMessageText] = useState('');
+
+  // 4. Schedule Meeting Modal State
+  const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
+  const [scheduleTargetLead, setScheduleTargetLead] = useState(null);
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('11:00 AM');
+  const [meetingType, setMeetingType] = useState('In-Person Campus Visit');
+  const [isScheduling, setIsScheduling] = useState(false);
+
+  // 5. Raise Support Ticket Modal State
+  const [ticketModalVisible, setTicketModalVisible] = useState(false);
+  const [ticketTargetLead, setTicketTargetLead] = useState(null);
+  const [ticketTitle, setTicketTitle] = useState('Curriculum Customization for Robotics Lab');
+  const [ticketPriority, setTicketPriority] = useState('High');
+  const [ticketDescription, setTicketDescription] = useState('');
+  const [isRaisingTicket, setIsRaisingTicket] = useState(false);
+
+  // 6. Follow-up Modal State
+  const [followupModalVisible, setFollowupModalVisible] = useState(false);
+  const [followupTargetLead, setFollowupTargetLead] = useState(null);
+  const [followupDate, setFollowupDate] = useState('');
+  const [followupComment, setFollowupComment] = useState('');
+  const [isSavingFollowup, setIsSavingFollowup] = useState(false);
+
+  // 7. Assign Lead Modal State
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [assignTargetLead, setAssignTargetLead] = useState(null);
+  const [assignedMemberName, setAssignedMemberName] = useState('Yash Limbachiya (B2B Lead)');
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  // 8. Lost Lead Modal State
+  const [lostModalVisible, setLostModalVisible] = useState(false);
+  const [lostTargetLead, setLostTargetLead] = useState(null);
+  const [lostReason, setLostReason] = useState('Budget Constraint');
+  const [isMarkingLost, setIsMarkingLost] = useState(false);
+
+  // 9. Add Note Modal State
+  const [noteModalVisible, setNoteModalVisible] = useState(false);
+  const [noteTargetLead, setNoteTargetLead] = useState(null);
+  const [noteText, setNoteText] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  // 10. Documents & Proposals Modal State
+  const [docsModalVisible, setDocsModalVisible] = useState(false);
+  const [docsTargetLead, setDocsTargetLead] = useState(null);
+
+  // ── Helper: Locate Latest Active Lead in Conversation ────────────────────────
+  const findLatestLead = () => {
+    const withLead = [...messages].reverse().find((m) => m.leadCard && !m.leadCard.isDeleted);
+    return withLead ? withLead.leadCard : null;
+  };
+
+  // ── Open Modals ─────────────────────────────────────────────────────────────
+  const openEditLeadModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setEditingLead(target);
+    setEditSchoolName(target.schoolName || target.school_name || '');
+    setEditContactName(target.contactPerson || target.contact_name || '');
+    setEditPhone(target.phone || '');
+    setEditEmail(target.email || '');
+    setEditStatus(target.status || 'new');
+    setEditNotes(target.notes || '');
+    setEditModalVisible(true);
+  };
+
+  const openSendEmailModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setEmailTargetLead(target);
+    const school = target.schoolName || target.school_name || 'Your School';
+    const contact = target.contactPerson || target.contact_name || 'Principal';
+    setEmailSubject(`Empowering ${school} with Hands-On Agentic AI & STEM Excellence Lab`);
+    setEmailBody(
+      `Respected ${contact},\n\nWe would love to introduce the NEP-aligned Agentic AI & Coding Excellence curriculum to ${school} for the upcoming academic session.\n\nOur program provides project-based learning with teacher accreditation and complete STEM lab setup.\n\nWould you be open for a brief 10-minute briefing next Tuesday?\n\nWarm regards,\nOLL CRM Partnerships Team`
+    );
+    setEmailModalVisible(true);
+  };
+
+  const openSendWhatsAppModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setWaTargetLead(target);
+    const school = target.schoolName || target.school_name || 'Your School';
+    const contact = target.contactPerson || target.contact_name || 'Principal';
+    setWaMessageText(
+      `Hello ${contact}, greetings from OLL CRM! We are preparing the Agentic AI & Robotics curriculum package for ${school}. Would you have 5 minutes for a quick chat today?`
+    );
+    setWaModalVisible(true);
+  };
+
+  const openScheduleMeetingModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) {
+      Alert.alert('Notice', 'No active school lead found in conversation.');
+      return;
+    }
+    setScheduleTargetLead(target);
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    setMeetingDate(d.toISOString().split('T')[0]);
+    setMeetingTime('11:30 AM');
+    setMeetingType('In-Person Campus Visit');
+    setScheduleModalVisible(true);
+  };
+
+  const openRaiseTicketModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setTicketTargetLead(target);
+    setTicketTitle('Curriculum Customization for Robotics Lab');
+    setTicketPriority('High');
+    setTicketDescription('');
+    setTicketModalVisible(true);
+  };
+
+  const openFollowupModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setFollowupTargetLead(target);
+    const d = new Date();
+    d.setDate(d.getDate() + 3);
+    setFollowupDate(d.toISOString().split('T')[0]);
+    setFollowupComment('Follow up on Agentic AI curriculum quote and lab infrastructure requirements');
+    setFollowupModalVisible(true);
+  };
+
+  const openAssignLeadModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setAssignTargetLead(target);
+    setAssignedMemberName('Yash Limbachiya (B2B Lead)');
+    setAssignModalVisible(true);
+  };
+
+  const openLostLeadModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setLostTargetLead(target);
+    setLostReason('Budget Constraint');
+    setLostModalVisible(true);
+  };
+
+  const openNoteModal = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    setNoteTargetLead(target);
+    setNoteText('');
+    setNoteModalVisible(true);
+  };
+
+  const handleDocs = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    setDocsTargetLead(target);
+    setDocsModalVisible(true);
+  };
+
+  // ── Action Handlers ──────────────────────────────────────────────────────────
+  // 1. Mark Meeting Done directly in CRM database
+  const handleMarkMeetingDone = async (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) {
+      Alert.alert('Notice', 'No active school lead found to update.');
+      return;
+    }
+
+    const schoolName = target.schoolName || target.school_name || 'School';
+    setIsTyping(true);
+
+    if (target.id) {
+      await api.updateSchoolInquiry(target.id, { status: 'meeting_done' });
+    }
+
+    setIsTyping(false);
+
+    // Update in existing messages stream
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.leadCard && (msg.leadCard.id === target.id || msg.leadCard.schoolName === schoolName)) {
+          return {
+            ...msg,
+            leadCard: {
+              ...msg.leadCard,
+              status: 'meeting_done',
+            },
+          };
+        }
+        return msg;
+      })
+    );
+
+    // Append AI confirmation message with next action buttons
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `🎉 **Meeting Done & Status Updated!**\n\nI have marked the meeting as **COMPLETED** for **${schoolName}** in the live School CRM database.\n\n• **New Stage:** \`MEETING DONE\`\n• **Timestamp:** Just now\n• **Next Recommended Step:** Generate customized curriculum quote or send follow-up.`,
+        nextActions: [
+          'Generate Proposal Quote',
+          'Schedule Followup Call',
+          'Send Introduction Email',
+          'Draft WhatsApp Pitch',
+        ],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 2. Delete Lead permanently from CRM database
+  const handleDeleteLead = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) {
+      Alert.alert('Notice', 'No active school lead found to delete.');
+      return;
+    }
+    const schoolName = target.schoolName || target.school_name || 'this school';
+
+    Alert.alert(
+      'Delete School Lead',
+      `Are you sure you want to permanently delete "${schoolName}" from the CRM database?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsTyping(true);
+            if (target.id) {
+              await api.deleteSchoolInquiry(target.id);
+            }
+            setIsTyping(false);
+
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.leadCard && (msg.leadCard.id === target.id || msg.leadCard.schoolName === schoolName)) {
+                  return {
+                    ...msg,
+                    leadCard: {
+                      ...msg.leadCard,
+                      status: 'deleted',
+                      isDeleted: true,
+                    },
+                  };
+                }
+                return msg;
+              })
+            );
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: 'ai',
+                text: `🗑️ **Lead Deleted:** Removed **${schoolName}** from the CRM database.`,
+                nextActions: ['Add New School Lead', 'View Inquiries'],
+                time: 'Just now',
+              },
+            ]);
+          },
+        },
+      ]
+    );
+  };
+
+  // 3. Archive Lead
+  const handleArchiveLead = async (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'School';
+    setIsTyping(true);
+    if (target.id) {
+      await api.updateSchoolInquiry(target.id, { status: 'archived' });
+    }
+    setIsTyping(false);
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.leadCard && (msg.leadCard.id === target.id || msg.leadCard.schoolName === schoolName)) {
+          return {
+            ...msg,
+            leadCard: {
+              ...msg.leadCard,
+              status: 'archived',
+            },
+          };
+        }
+        return msg;
+      })
+    );
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📦 **Lead Archived:** **${schoolName}** has been moved to CRM archives.`,
+        nextActions: ['Add New School Lead', 'View Inquiries'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 4. Save Edited Lead to Backend Database
+  const handleSaveLeadEdit = async () => {
+    if (!editingLead) return;
+    setIsSavingEdit(true);
+
+    const updatePayload = {
+      school_name: editSchoolName,
+      contact_name: editContactName,
+      phone: editPhone,
+      email: editEmail,
+      status: editStatus,
+      notes: editNotes,
+    };
+
+    if (editingLead.id) {
+      await api.updateSchoolInquiry(editingLead.id, updatePayload);
+    }
+
+    setIsSavingEdit(false);
+    setEditModalVisible(false);
+
+    // Update lead in messages stream
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.leadCard && (msg.leadCard.id === editingLead.id || msg.leadCard.schoolName === editingLead.schoolName)) {
+          return {
+            ...msg,
+            leadCard: {
+              ...msg.leadCard,
+              ...updatePayload,
+              schoolName: editSchoolName,
+              contactPerson: editContactName,
+            },
+          };
+        }
+        return msg;
+      })
+    );
+
+    // AI confirmation message
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `✏️ **Lead Updated in CRM:** Changes to **${editSchoolName}** (${editStatus.toUpperCase()}) were saved to the database.`,
+        nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Draft WhatsApp Pitch'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 5. Send Email to Lead
+  const handleSendEmailSubmit = async () => {
+    if (!emailTargetLead || !emailTargetLead.email) {
+      Alert.alert('Error', 'Please provide a valid recipient email.');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    await api.sendSchoolEmail({
+      school_name: emailTargetLead.schoolName || emailTargetLead.school_name,
+      contact_name: emailTargetLead.contactPerson || emailTargetLead.contact_name,
+      email: emailTargetLead.email,
+    });
+    setIsSendingEmail(false);
+    setEmailModalVisible(false);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `✉️ **Email Dispatched:** Personalized pitch sent to **${emailTargetLead.email}** for ${emailTargetLead.schoolName || emailTargetLead.school_name}.`,
+        nextActions: ['Follow Up on WhatsApp', 'Schedule Demo Session', 'Generate Proposal Quote'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 6. Send WhatsApp Message
+  const handleSendWhatsAppSubmit = () => {
+    if (!waTargetLead) return;
+    const phone = (waTargetLead.phone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = phone.length === 10 ? `91${phone}` : phone;
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMessageText)}`;
+
+    setWaModalVisible(false);
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Notice', 'Unable to open WhatsApp on this device.');
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `💬 **WhatsApp Message Prepared:** Initiated WhatsApp conversation with **${waTargetLead.contactPerson || waTargetLead.contact_name}** (${waTargetLead.phone}).`,
+        nextActions: ['Mark Meeting Done', 'Send Proposal Quote'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 7. Schedule Meeting Submit
+  const handleScheduleMeetingSubmit = async () => {
+    if (!scheduleTargetLead) return;
+    setIsScheduling(true);
+    const schoolName = scheduleTargetLead.schoolName || scheduleTargetLead.school_name || 'School';
+
+    if (scheduleTargetLead.id) {
+      await api.updateSchoolInquiry(scheduleTargetLead.id, {
+        meeting_date: meetingDate,
+        meeting_time: meetingTime,
+        meeting_type: meetingType,
+        status: 'demo_scheduled',
+      });
+    }
+
+    setIsScheduling(false);
+    setScheduleModalVisible(false);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📅 **Meeting Scheduled Successfully!**\n\n• **School:** ${schoolName}\n• **Date:** \`${meetingDate}\`\n• **Time:** \`${meetingTime}\`\n• **Mode:** ${meetingType}\n\nMeeting logged in CRM calendar and auto-reminders armed.`,
+        nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'Generate Proposal Quote'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 8. Raise Ticket Submit
+  const handleRaiseTicketSubmit = async () => {
+    if (!ticketTargetLead) return;
+    setIsRaisingTicket(true);
+    const schoolName = ticketTargetLead.schoolName || ticketTargetLead.school_name || 'School';
+
+    if (ticketTargetLead.id) {
+      await api.raiseSchoolTicket(ticketTargetLead.id, {
+        title: ticketTitle,
+        description: ticketDescription || `Support ticket raised for ${schoolName}`,
+        priority: ticketPriority.toLowerCase(),
+        category: 'School Lead Support',
+      });
+    }
+
+    setIsRaisingTicket(false);
+    setTicketModalVisible(false);
+
+    const ticketNumber = Math.floor(1000 + Math.random() * 9000);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `🎫 **Support Ticket Created: #TCK-${ticketNumber}**\n\n• **School:** ${schoolName}\n• **Subject:** ${ticketTitle}\n• **Priority:** \`${ticketPriority.toUpperCase()}\`\n\nAssigned to Central Operations desk.`,
+        nextActions: ['Mark Meeting Done', 'Generate Proposal Quote', 'Schedule Followup Call'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 9. Followup Submit
+  const handleFollowupSubmit = async () => {
+    if (!followupTargetLead) return;
+    setIsSavingFollowup(true);
+    const schoolName = followupTargetLead.schoolName || followupTargetLead.school_name || 'School';
+
+    if (followupTargetLead.id) {
+      await api.updateSchoolInquiry(followupTargetLead.id, {
+        followup_date: followupDate,
+        followup_comment: followupComment,
+        status: 'follow_up',
+      });
+    }
+
+    setIsSavingFollowup(false);
+    setFollowupModalVisible(false);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `⏰ **Follow-up Reminder Set!**\n\n• **School:** ${schoolName}\n• **Date:** \`${followupDate}\`\n• **Action:** ${followupComment}\n\nAutomated push notification scheduled in CRM.`,
+        nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Draft WhatsApp Pitch'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 10. Assign Lead Submit
+  const handleAssignLeadSubmit = async () => {
+    if (!assignTargetLead) return;
+    setIsAssigning(true);
+    const schoolName = assignTargetLead.schoolName || assignTargetLead.school_name || 'School';
+
+    if (assignTargetLead.id) {
+      await api.updateSchoolInquiry(assignTargetLead.id, {
+        assigned_to_name: assignedMemberName,
+      });
+    }
+
+    setIsAssigning(false);
+    setAssignModalVisible(false);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `👤 **Lead Assigned:** **${schoolName}** assigned to **${assignedMemberName}** in CRM database.`,
+        nextActions: ['Mark Meeting Done', 'Draft WhatsApp Pitch', 'Send Introduction Email'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 11. Lost Lead Submit
+  const handleLostLeadSubmit = async () => {
+    if (!lostTargetLead) return;
+    setIsMarkingLost(true);
+    const schoolName = lostTargetLead.schoolName || lostTargetLead.school_name || 'School';
+
+    if (lostTargetLead.id) {
+      await api.updateSchoolInquiry(lostTargetLead.id, {
+        status: 'lost',
+        lost_reason: lostReason,
+      });
+    }
+
+    setIsMarkingLost(false);
+    setLostModalVisible(false);
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.leadCard && (msg.leadCard.id === lostTargetLead.id || msg.leadCard.schoolName === schoolName)) {
+          return {
+            ...msg,
+            leadCard: {
+              ...msg.leadCard,
+              status: 'lost',
+            },
+          };
+        }
+        return msg;
+      })
+    );
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `❌ **Lead Marked as Lost:** **${schoolName}** recorded as \`LOST\`.\n• **Reason:** ${lostReason}\n\nLead status updated in CRM pipeline.`,
+        nextActions: ['Add New School Lead', 'View Inquiries'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 12. Add Note Submit
+  const handleNoteSubmit = async () => {
+    if (!noteTargetLead || !noteText.trim()) return;
+    setIsSavingNote(true);
+    const schoolName = noteTargetLead.schoolName || noteTargetLead.school_name || 'School';
+    const cleanNote = noteText.trim();
+
+    if (noteTargetLead.id) {
+      const existingNotes = noteTargetLead.notes || '';
+      const updatedNotes = existingNotes ? `${existingNotes}\n[${new Date().toLocaleDateString()}]: ${cleanNote}` : cleanNote;
+      await api.updateSchoolInquiry(noteTargetLead.id, {
+        notes: updatedNotes,
+      });
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === noteTargetLead.id || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                notes: updatedNotes,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+    }
+
+    setIsSavingNote(false);
+    setNoteModalVisible(false);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📝 **Note Appended to CRM:**\n\n• **School:** ${schoolName}\n• **Note:** *"${cleanNote}"*`,
+        nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Generate Proposal Quote'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 13. Generate Proposal for Lead
+  const handleGenerateProposalForLead = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    const school = target?.schoolName || target?.school_name || 'Partner School';
+    setChatMode(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📄 **Custom Quotation Generated for ${school}**:`,
+        proposal: {
+          title: `Agentic AI & Coding Excellence Program — ${school}`,
+          tier: 'Enterprise Campus Partnership (2026-27)',
+          modules: [
+            'Agentic AI Prompting & LLM Fundamentals (Grades 6-10)',
+            'Maker Lab: Hands-on Robotics & Microcontrollers',
+            'Teacher Certification & LMS Platform Access',
+          ],
+          pricing: '₹5,80,000 / year (450 Student Licenses Included)',
+          validity: 'Valid for 30 Days',
+        },
+        nextActions: ['Send Introduction Email', 'Mark Meeting Done', 'Download PDF Quote'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 14. Call Lead Directly via Phone Dialer
+  const handleCallLead = (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target?.phone) {
+      Alert.alert('Notice', 'No phone number available for this school lead.');
+      return;
+    }
+    const cleanPhone = (target.phone || '').replace(/[^0-9+]/g, '');
+    const url = `tel:${cleanPhone}`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Notice', `Unable to initiate call to ${cleanPhone}`);
+    });
+  };
+
+  // ── Handle Action Card Press ────────────────────────────────────────────────
   const handleActionCardPress = async (action) => {
     setChatMode(true);
     const userMsg = {
@@ -49,18 +732,17 @@ export default function MainScreen({ user, onLogout }) {
     setIsTyping(true);
 
     if (action.id === 'create_lead') {
-      // 1. Extract Lead Data and Add Directly to Backend School CRM
       const leadPayload = api.extractLeadFromPrompt(action.prompt);
       const res = await api.createSchoolLead(leadPayload);
-
       setIsTyping(false);
 
       if (res.success && res.lead) {
         const lead = res.lead;
         const aiMsg = {
           sender: 'ai',
-          text: `✅ **Lead Successfully Added to School CRM!**\n\nI have parsed the school details and created a new CRM entry in the database (Lead ID: \`${lead.id?.substring(0, 8)}...\`).`,
+          text: `✅ **Lead Registered in School CRM!**\n\nI have added **${lead.school_name}** to your live database.`,
           leadCard: {
+            id: lead.id,
             schoolName: lead.school_name,
             board: lead.board || 'CBSE',
             location: lead.location || 'Mumbai, MH',
@@ -69,32 +751,31 @@ export default function MainScreen({ user, onLogout }) {
             phone: lead.phone,
             studentCount: '1,850 Students',
             recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
-            leadScore: '94/100 (High Intent)',
+            leadScore: '96/100 (Hot Lead)',
+            notes: lead.notes || 'Curriculum partnership enquiry initiated.',
+            followup_tasks: lead.followup_tasks || [],
           },
-          nextActions: [
-            'View in School CRM',
-            'Schedule Automated Follow-up',
-            'Generate Proposal Quote',
-          ],
+          nextActions: ['Send Introduction Email', 'Draft WhatsApp Pitch', 'Generate Quotation'],
           time: 'Just now',
         };
         setMessages((prev) => [...prev, aiMsg]);
       } else {
-        // Fallback with mock intelligence
         const fallback = MOCK_RESPONSES.create_lead;
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
             text: fallback.text,
-            leadCard: fallback.leadCard,
+            leadCard: {
+              ...fallback.leadCard,
+              notes: 'Lead initiated via AI Assistant.',
+            },
             nextActions: fallback.nextActions,
             time: 'Just now',
           },
         ]);
       }
     } else if (action.id === 'follow_up' || action.id === 'active_schools') {
-      // Fetch live leads from backend CRM
       const res = await api.fetchSchoolInquiries(5);
       setIsTyping(false);
 
@@ -102,9 +783,9 @@ export default function MainScreen({ user, onLogout }) {
         const liveLeads = res.inquiries.slice(0, 4).map((inq) => ({
           name: inq.school_name,
           campus: inq.location || 'Mumbai Region',
-          stage: inq.status === 'new' ? 'New Inbound Lead' : inq.status,
+          stage: inq.status === 'new' ? 'New Lead' : inq.status,
           value: '₹5,20,000',
-          task: `Contact ${inq.contact_name || 'Principal'} (${inq.phone || 'Pending'})`,
+          task: `Follow up with ${inq.contact_name || 'Principal'} (${inq.phone || 'Pending'})`,
           urgency: inq.status === 'new' ? 'High' : 'Normal',
         }));
 
@@ -112,9 +793,9 @@ export default function MainScreen({ user, onLogout }) {
           ...prev,
           {
             sender: 'ai',
-            text: `📊 **Live CRM Data Synced!** Fetched ${res.inquiries.length} recent school inquiries from your backend database:`,
+            text: `📊 **Live CRM Leads:** Found ${res.inquiries.length} active entries in your database:`,
             followUpList: liveLeads,
-            nextActions: ['Filter by Mumbai Zone', 'Export Leads List', 'Schedule WhatsApp Push'],
+            nextActions: ['Send Introduction Email', 'Filter by Mumbai Region', 'Export Pipeline'],
             time: 'Just now',
           },
         ]);
@@ -133,7 +814,6 @@ export default function MainScreen({ user, onLogout }) {
         ]);
       }
     } else {
-      // General actions (Proposals, Emails, etc.)
       setTimeout(() => {
         setIsTyping(false);
         const data = MOCK_RESPONSES[action.id] || {
@@ -156,7 +836,7 @@ export default function MainScreen({ user, onLogout }) {
     }
   };
 
-  // Handle user sending custom text or MOM notes
+  // ── Handle Sending Custom Text in Chat ───────────────────────────────────────
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
@@ -175,44 +855,271 @@ export default function MainScreen({ user, onLogout }) {
 
     const lower = userText.toLowerCase();
 
-    // Check if user is asking to create/add a lead or pasting MOM
-    const isLeadIntent =
-      lower.includes('lead') ||
-      lower.includes('create') ||
-      lower.includes('add') ||
-      lower.includes('mom') ||
-      lower.includes('meeting') ||
-      lower.includes('school');
+    // Helper to find latest lead in chat context
+    const target = findLatestLead();
 
-    if (isLeadIntent && !lower.includes('what are') && !lower.includes('show me')) {
-      // 1. Extract Lead details from the prompt using AI heuristics
+    // ── 1. Action Intent: Mark Meeting Done ──
+    if (
+      lower === 'meeting done' ||
+      lower.includes('mark meeting done') ||
+      lower.includes('meeting completed') ||
+      lower.includes('mark as meeting done') ||
+      lower.includes('marked meeting done') ||
+      (lower.includes('meeting') && lower.includes('done'))
+    ) {
+      setIsTyping(false);
+      if (target) {
+        await handleMarkMeetingDone(target);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: 'Please select or add a school lead first to mark the meeting as done.',
+            nextActions: ['Add New School Lead', 'View Inquiries'],
+            time: 'Just now',
+          },
+        ]);
+      }
+      return;
+    }
+
+    // ── 2. Action Intent: Delete Lead ──
+    if (
+      lower.startsWith('delete') ||
+      lower.includes('delete lead') ||
+      lower.includes('remove lead') ||
+      lower.includes('delete school')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        handleDeleteLead(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to delete.');
+      }
+      return;
+    }
+
+    // ── 3. Action Intent: Mark as Lost Lead ──
+    if (
+      lower.includes('lost lead') ||
+      lower.includes('mark as lost') ||
+      lower.includes('mark lost') ||
+      lower.includes('deal lost')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openLostLeadModal(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found.');
+      }
+      return;
+    }
+
+    // ── 4. Action Intent: Archive Lead ──
+    if (
+      lower.includes('archive lead') ||
+      lower.includes('archive school') ||
+      lower === 'archive'
+    ) {
+      setIsTyping(false);
+      if (target) {
+        await handleArchiveLead(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to archive.');
+      }
+      return;
+    }
+
+    // ── 5. Action Intent: Schedule Meeting ──
+    if (
+      lower.includes('schedule meeting') ||
+      lower.includes('schedule demo') ||
+      lower.includes('book meeting') ||
+      lower.includes('set meeting')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openScheduleMeetingModal(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to schedule meeting.');
+      }
+      return;
+    }
+
+    // ── 6. Action Intent: Assign Lead ──
+    if (
+      lower.startsWith('assign') ||
+      lower.includes('assign lead') ||
+      lower.includes('assign to')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openAssignLeadModal(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to assign.');
+      }
+      return;
+    }
+
+    // ── 7. Action Intent: Raise Support Ticket ──
+    if (
+      lower.includes('raise ticket') ||
+      lower.includes('support ticket') ||
+      lower.includes('create ticket') ||
+      lower === 'ticket'
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openRaiseTicketModal(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to raise a ticket for.');
+      }
+      return;
+    }
+
+    // ── 8. Action Intent: Add Note ──
+    if (
+      lower.startsWith('note:') ||
+      lower.includes('add note') ||
+      lower.includes('take note') ||
+      lower.includes('save note')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openNoteModal(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to add a note to.');
+      }
+      return;
+    }
+
+    // ── 9. Action Intent: Follow-up ──
+    if (
+      (lower.includes('follow up') || lower.includes('followup') || lower.includes('set reminder')) &&
+      !lower.includes('pipeline') &&
+      !lower.includes('show') &&
+      !lower.includes('list')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openFollowupModal(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found for follow-up.');
+      }
+      return;
+    }
+
+    // ── 10. Action Intent: Docs & Proposals ──
+    if (
+      lower.includes('docs') ||
+      lower.includes('document') ||
+      lower.includes('brochure') ||
+      lower.includes('proposal') ||
+      lower.includes('quote')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        handleDocs(target);
+      } else {
+        Alert.alert('Notice', 'No active school lead found to view documents.');
+      }
+      return;
+    }
+
+    // ── 11. Action Intent: Edit Lead ──
+    if (lower.startsWith('edit') || lower.includes('edit lead') || lower.includes('update lead')) {
+      setIsTyping(false);
+      if (target) {
+        openEditLeadModal(target);
+        return;
+      }
+    }
+
+    // ── 12. Action Intent: Send Email ──
+    if (
+      lower.startsWith('send email') ||
+      lower.startsWith('email') ||
+      lower.includes('send mail') ||
+      lower.includes('pitch email') ||
+      (lower.includes('email') && !lower.includes('lead for') && !lower.includes('create lead') && !lower.includes('add lead'))
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openSendEmailModal(target);
+        return;
+      }
+    }
+
+    // ── 13. Action Intent: WhatsApp ──
+    if (
+      lower.includes('whatsapp') ||
+      lower.includes('send message whatsapp') ||
+      lower.includes('wa message') ||
+      lower.includes('text principal')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        openSendWhatsAppModal(target);
+        return;
+      }
+    }
+
+    // ── 14. Action Intent: Call Lead ──
+    if (
+      lower.startsWith('call') ||
+      lower.includes('phone lead') ||
+      lower.includes('dial lead')
+    ) {
+      setIsTyping(false);
+      if (target) {
+        handleCallLead(target);
+        return;
+      }
+    }
+
+    // ── 15. Explicit Lead Creation Intent (Never triggered by actions) ──
+    const isCreateLeadIntent =
+      lower.includes('create lead') ||
+      lower.includes('add lead') ||
+      lower.includes('new lead') ||
+      lower.includes('register school') ||
+      lower.includes('lead for') ||
+      lower.startsWith('mom:') ||
+      lower.includes('minutes of meeting') ||
+      (lower.includes('school') && (lower.includes('create') || lower.includes('add') || lower.includes('register') || lower.includes('new')));
+
+    if (isCreateLeadIntent && !lower.includes('what are') && !lower.includes('show me')) {
       const extractedLead = api.extractLeadFromPrompt(userText);
-
-      // 2. Call backend API to add lead directly into the live CRM
       const res = await api.createSchoolLead(extractedLead);
-
       setIsTyping(false);
 
       if (res.success && res.lead) {
         const lead = res.lead;
         const aiMsg = {
           sender: 'ai',
-          text: `🎯 **AI CRM Agent Created New School Lead!**\n\nI parsed your notes and recorded **${lead.school_name}** directly into the School CRM database.\n\n• **Lead ID:** \`${lead.id}\`\n• **Status:** \`${lead.status.toUpperCase()}\`\n• **Auto Follow-ups:** 4 automated reminder tasks generated.`,
+          text: `🎯 **New School Lead Successfully Added!**\n\nI have registered **${lead.school_name}** directly in the School CRM database.\n\n• **Database ID:** \`${lead.id}\`\n• **Status:** \`${lead.status.toUpperCase()}\``,
           leadCard: {
+            id: lead.id,
             schoolName: lead.school_name,
             board: lead.board,
             location: lead.location,
             contactPerson: `${lead.contact_name} (${lead.contact_role || 'Principal'})`,
             email: lead.email,
             phone: lead.phone,
-            studentCount: '950 - 1,500 Students',
+            studentCount: '1,200 Students',
             recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
-            leadScore: '96/100 (Immediate Action)',
+            leadScore: '96/100 (Hot Lead)',
+            notes: lead.notes || extractedLead.notes,
+            followup_tasks: lead.followup_tasks || [],
           },
           nextActions: [
-            'Send Intro Email',
+            'Mark Meeting Done',
+            'Schedule Meeting',
+            'Send Introduction Email',
             'Draft WhatsApp Pitch',
-            'Generate Curriculum Quote',
+            'Generate Proposal Quote',
+            'Raise Support Ticket',
           ],
           time: 'Just now',
         };
@@ -221,7 +1128,7 @@ export default function MainScreen({ user, onLogout }) {
       }
     }
 
-    // Pipeline/Follow-up Query
+    // ── 16. Follow-ups / Pipeline Query ──
     if (lower.includes('follow') || lower.includes('pipeline') || lower.includes('pending')) {
       const res = await api.fetchSchoolInquiries(5);
       setIsTyping(false);
@@ -242,7 +1149,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `📊 Found **${res.inquiries.length} School Leads** in your live database:`,
             followUpList: liveLeads,
-            nextActions: ['Download Pipeline Report', 'Schedule Meeting'],
+            nextActions: ['Mark Meeting Done', 'Send Email', 'Schedule WhatsApp Push', 'Download Report'],
             time: 'Just now',
           },
         ]);
@@ -250,7 +1157,7 @@ export default function MainScreen({ user, onLogout }) {
       }
     }
 
-    // Default conversational AI response
+    // ── 17. Default Conversational Response ──
     setTimeout(() => {
       setIsTyping(false);
       let aiMsg;
@@ -261,14 +1168,14 @@ export default function MainScreen({ user, onLogout }) {
           sender: 'ai',
           text: data.text,
           proposal: data.proposal,
-          nextActions: data.nextActions,
+          nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Draft WhatsApp Pitch'],
           time: 'Just now',
         };
       } else {
         aiMsg = {
           sender: 'ai',
-          text: `I've analyzed: "${userText}".\n\nYour Mumbai School CRM agent has checked all records and is ready to create leads, generate proposals, or draft personalized emails.`,
-          nextActions: ['Add New School Lead', 'Generate Proposal Quote', 'View Active Campuses'],
+          text: `I've analyzed: "${userText}".\n\nYour Mumbai School CRM assistant is ready to log meeting completions, schedule demos, send emails, or update CRM records.`,
+          nextActions: ['Mark Meeting Done', 'Add New School Lead', 'Generate Proposal Quote', 'Schedule Meeting'],
           time: 'Just now',
         };
       }
@@ -284,7 +1191,6 @@ export default function MainScreen({ user, onLogout }) {
     );
   };
 
-  // Reset to initial suggestions state
   const handleNewChat = () => {
     setChatMode(false);
     setMessages([]);
@@ -292,12 +1198,84 @@ export default function MainScreen({ user, onLogout }) {
     setActiveTab('ai_chat');
   };
 
-  // Handle action chip clicks inside chat
-  const handleActionChip = (chip) => {
+  // ── Action Chip Handler: Executes Immediately On Tap ────────────────────────
+  const handleActionChip = async (chip) => {
+    const lower = chip.toLowerCase();
+    const target = findLatestLead();
+
+    if (
+      lower.includes('meeting done') ||
+      lower === 'mark meeting done' ||
+      lower.includes('mark as meeting done')
+    ) {
+      if (target) {
+        await handleMarkMeetingDone(target);
+        return;
+      }
+    } else if (
+      lower.includes('schedule meeting') ||
+      lower.includes('schedule demo') ||
+      lower.includes('schedule session')
+    ) {
+      if (target) {
+        openScheduleMeetingModal(target);
+        return;
+      }
+    } else if (lower.includes('email') || lower.includes('mail')) {
+      if (target) {
+        openSendEmailModal(target);
+        return;
+      }
+    } else if (lower.includes('whatsapp') || lower.includes('pitch')) {
+      if (target) {
+        openSendWhatsAppModal(target);
+        return;
+      }
+    } else if (lower.includes('proposal') || lower.includes('quote') || lower.includes('quotation')) {
+      if (target) {
+        handleGenerateProposalForLead(target);
+        return;
+      }
+    } else if (lower.includes('ticket')) {
+      if (target) {
+        openRaiseTicketModal(target);
+        return;
+      }
+    } else if (lower.includes('follow') || lower.includes('reminder')) {
+      if (target) {
+        openFollowupModal(target);
+        return;
+      }
+    } else if (lower.includes('assign')) {
+      if (target) {
+        openAssignLeadModal(target);
+        return;
+      }
+    } else if (lower.includes('lost')) {
+      if (target) {
+        openLostLeadModal(target);
+        return;
+      }
+    } else if (lower.includes('archive')) {
+      if (target) {
+        await handleArchiveLead(target);
+        return;
+      }
+    } else if (lower.includes('delete')) {
+      if (target) {
+        handleDeleteLead(target);
+        return;
+      }
+    } else if (lower.includes('doc') || lower.includes('download')) {
+      if (target) {
+        handleDocs(target);
+        return;
+      }
+    }
+
     setInputText(chip);
   };
 
-  // Toggle mic simulation
   const handleMicPress = () => {
     setIsRecording(!isRecording);
     if (!isRecording) {
@@ -312,16 +1290,20 @@ export default function MainScreen({ user, onLogout }) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
+      {/* KeyboardAvoidingView configured for both iOS and Android without double-shrinking */}
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* Top Dark Green Header */}
-        <Header
-          onNewChatPress={handleNewChat}
-          user={user}
-          onLogout={onLogout}
-        />
+        {/* Top Dark Green Header (hidden when Schools CRM is active, as it has its own dedicated header) */}
+        {activeTab !== 'schools' && (
+          <Header
+            onNewChatPress={handleNewChat}
+            user={user}
+            onLogout={onLogout}
+          />
+        )}
 
         {/* Content Area Based on Active Tab */}
         {activeTab === 'ai_chat' ? (
@@ -338,6 +1320,21 @@ export default function MainScreen({ user, onLogout }) {
                 messages={messages}
                 isTyping={isTyping}
                 onActionChipPress={handleActionChip}
+                onEditLead={openEditLeadModal}
+                onSendEmail={openSendEmailModal}
+                onSendWhatsApp={openSendWhatsAppModal}
+                onGenerateProposal={handleGenerateProposalForLead}
+                onCallLead={handleCallLead}
+                onMeetingDone={handleMarkMeetingDone}
+                onScheduleMeeting={openScheduleMeetingModal}
+                onRaiseTicket={openRaiseTicketModal}
+                onFollowup={openFollowupModal}
+                onDocs={handleDocs}
+                onAssign={openAssignLeadModal}
+                onNote={openNoteModal}
+                onDeleteLead={handleDeleteLead}
+                onLostLead={openLostLeadModal}
+                onArchiveLead={handleArchiveLead}
               />
             ) : (
               /* Default Suggestions Landing Screen */
@@ -345,6 +1342,8 @@ export default function MainScreen({ user, onLogout }) {
                 style={styles.scrollArea}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
               >
                 {/* Center Glowing Icon & Welcome Header */}
                 <WelcomeSection />
@@ -375,6 +1374,12 @@ export default function MainScreen({ user, onLogout }) {
               isRecording={isRecording}
             />
           </View>
+        ) : activeTab === 'schools' ? (
+          /* Live School CRM Screen matching user screenshot */
+          <SchoolsCrmScreen
+            user={user}
+            onBackToChat={() => setActiveTab('ai_chat')}
+          />
         ) : (
           /* Animated Coming Soon View for other tabs */
           <ComingSoonView
@@ -383,14 +1388,229 @@ export default function MainScreen({ user, onLogout }) {
           />
         )}
 
-        {/* Bottom Tab Navigation Bar */}
-        <BottomTabBar
-          activeTab={activeTab}
-          onTabChange={(tabId) => setActiveTab(tabId)}
-        />
+        {/* Bottom Tab Navigation Bar - smoothly hidden while virtual keyboard is active to maximize input space */}
+        {!isKeyboardVisible && (
+          <BottomTabBar
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId)}
+          />
+        )}
       </KeyboardAvoidingView>
 
-      {/* WhatsApp Modal */}
+      {/* ── MODAL 1: Edit School Lead Modal ────────────────────────────────────── */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>✏️ Edit School Lead</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>School Name</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={editSchoolName}
+                  onChangeText={setEditSchoolName}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Contact Person</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={editContactName}
+                  onChangeText={setEditContactName}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Phone Number</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Email Address</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={editEmail}
+                  onChangeText={setEditEmail}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Lead Status</Text>
+                <View style={styles.statusPillsPicker}>
+                  {['new', 'meeting_done', 'converted'].map((st) => (
+                    <TouchableOpacity
+                      key={st}
+                      style={[styles.statusOptionPill, editStatus === st && styles.statusOptionPillActive]}
+                      onPress={() => setEditStatus(st)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          editStatus === st && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {st.replace('_', ' ').toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Latest Assistant Note</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 70, textAlignVertical: 'top' }]}
+                  value={editNotes}
+                  onChangeText={setEditNotes}
+                  multiline
+                />
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.modalPrimaryBtn}
+              onPress={handleSaveLeadEdit}
+              disabled={isSavingEdit}
+            >
+              {isSavingEdit ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Save Changes to CRM</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 2: Send Email Modal ────────────────────────────────────────── */}
+      <Modal
+        visible={emailModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEmailModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>✉️ Send Personalized Email</Text>
+              <TouchableOpacity onPress={() => setEmailModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>To (Recipient Email)</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={emailTargetLead?.email || ''}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Subject Line</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={emailSubject}
+                  onChangeText={setEmailSubject}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Personalized Pitch Body</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 130, textAlignVertical: 'top' }]}
+                  value={emailBody}
+                  onChangeText={setEmailBody}
+                  multiline
+                />
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#E11D48' }]}
+              onPress={handleSendEmailSubmit}
+              disabled={isSendingEmail}
+            >
+              {isSendingEmail ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Send Email to School</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 3: Send WhatsApp Modal ─────────────────────────────────────── */}
+      <Modal
+        visible={waModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setWaModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>💬 Send WhatsApp Message</Text>
+              <TouchableOpacity onPress={() => setWaModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Recipient Phone</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={waTargetLead?.phone || ''}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>WhatsApp Message Template</Text>
+              <TextInput
+                style={[styles.modalTextInput, { height: 100, textAlignVertical: 'top' }]}
+                value={waMessageText}
+                onChangeText={setWaMessageText}
+                multiline
+              />
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#16A34A' }]}
+              onPress={handleSendWhatsAppSubmit}
+            >
+              <FontAwesome name="whatsapp" size={17} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.modalPrimaryBtnText}>Open in WhatsApp</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 4: WhatsApp CRM Connected Modal ────────────────────────────── */}
       <Modal
         visible={whatsAppModalVisible}
         transparent
@@ -447,10 +1667,90 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+  },
+  modalLargeCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalLargeTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  modalInputGroup: {
+    marginBottom: 12,
+  },
+  modalFieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 4,
+  },
+  modalTextInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13.5,
+    color: COLORS.textPrimary,
+  },
+  statusPillsPicker: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statusOptionPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  statusOptionPillActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#059669',
+  },
+  statusOptionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  statusOptionTextActive: {
+    color: '#059669',
+  },
+  modalPrimaryBtn: {
+    backgroundColor: COLORS.brandEmerald,
+    borderRadius: 16,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    marginTop: 14,
+  },
+  modalPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   modalCard: {
     width: '100%',
@@ -458,11 +1758,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 8,
   },
   modalIconCircle: {
     width: 64,

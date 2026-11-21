@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
@@ -11,6 +11,13 @@ export default function ChatInput({
   onMicPress,
   isRecording = false,
 }) {
+  const handleKeyDown = (e) => {
+    if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
+      e.preventDefault?.();
+      onSend();
+    }
+  };
+
   return (
     <View style={styles.outerWrapper}>
       <View style={styles.pillContainer}>
@@ -30,9 +37,11 @@ export default function ChatInput({
           placeholderTextColor="#94A3B8"
           value={value}
           onChangeText={onChangeText}
-          multiline={false}
-          returnKeyType="send"
-          onSubmitEditing={onSend}
+          multiline={true}
+          selectionColor={COLORS.brandEmerald}
+          blurOnSubmit={false}
+          returnKeyType="default"
+          onKeyPress={handleKeyDown}
         />
 
         {/* Mic Button */}
@@ -93,10 +102,13 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 14.5,
     color: COLORS.textPrimary,
     paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    minHeight: 38,
+    maxHeight: 90,
+    textAlignVertical: 'center',
   },
   sendButton: {
     width: 38,

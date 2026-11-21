@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Feather, FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
 export default function SuggestedActionCard({ action, onPress }) {
   const renderIcon = () => {
     switch (action.id) {
       case 'follow_up':
-        return <FontAwesome5 name="users" size={18} color={action.iconColor} />;
+        return <Feather name="users" size={19} color={action.iconColor} />;
       case 'create_lead':
         return <Feather name="plus-circle" size={20} color={action.iconColor} />;
       case 'generate_proposal':
-        return <FontAwesome5 name="file-invoice-dollar" size={19} color={action.iconColor} />;
+        return <Feather name="file-text" size={19} color={action.iconColor} />;
       case 'active_schools':
-        return <FontAwesome5 name="school" size={17} color={action.iconColor} />;
+        return <Ionicons name="school" size={18} color={action.iconColor} />;
       case 'send_intro_email':
         return <Ionicons name="paper-plane" size={18} color={action.iconColor} />;
       default:

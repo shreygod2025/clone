@@ -25,15 +25,15 @@ export default function BottomTabBar({ activeTab, onTabChange }) {
     },
     {
       id: 'schools',
-      label: 'Schools',
+      label: 'School CRM',
       iconSet: 'Ionicons',
-      iconName: 'trophy-outline',
+      iconName: 'school-outline',
     },
   ];
 
   const renderIcon = (tab, isActive) => {
     const color = isActive ? COLORS.tabActive : COLORS.tabInactive;
-    const size = isActive ? 22 : 20;
+    const size = isActive ? 21 : 19;
 
     if (tab.id === 'ai_chat') {
       return (
@@ -42,6 +42,16 @@ export default function BottomTabBar({ activeTab, onTabChange }) {
           <View style={styles.activeDot} />
           <Ionicons name="chatbubble-ellipses" size={23} color={COLORS.tabActive} />
         </View>
+      );
+    }
+
+    if (tab.id === 'schools') {
+      return (
+        <Ionicons
+          name={isActive ? 'school' : 'school-outline'}
+          size={size}
+          color={color}
+        />
       );
     }
 

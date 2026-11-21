@@ -38,17 +38,22 @@ export default function App() {
 
   if (isWeb) {
     const isMobileViewport = windowWidth <= 480;
-    const frameHeight = isMobileViewport ? '100%' : Math.min(windowHeight - 24, 900);
+    const frameHeight = isMobileViewport ? windowHeight : Math.min(windowHeight - 24, 900);
 
     return (
       <SafeAreaProvider>
         <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
-        <View style={[styles.webContainer, isMobileViewport && styles.webContainerMobile]}>
+        <View
+          style={[
+            styles.webContainer,
+            isMobileViewport && [styles.webContainerMobile, { height: windowHeight, minHeight: windowHeight }],
+          ]}
+        >
           <View
             style={[
               styles.mobileFrame,
               isMobileViewport
-                ? styles.mobileFrameFullscreen
+                ? [styles.mobileFrameFullscreen, { height: windowHeight }]
                 : { height: frameHeight },
             ]}
           >
@@ -83,6 +88,7 @@ const styles = StyleSheet.create({
   webContainerMobile: {
     paddingVertical: 0,
     backgroundColor: COLORS.bgMain,
+    overflow: 'hidden',
   },
   mobileFrame: {
     width: '100%',
