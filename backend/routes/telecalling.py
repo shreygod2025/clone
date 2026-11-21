@@ -27,7 +27,7 @@ import io
 import re
 import uuid
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -109,6 +109,29 @@ class ContactPatch(BaseModel):
     meeting_address:    Optional[str] = None
     contacts:           Optional[List[Contact]] = None  # additional contacts
     assigned_to:        Optional[str] = None
+
+
+class ContactCreate(BaseModel):
+    name:                Optional[str] = ""
+    phone:               str
+    alt_phone:           Optional[str] = ""
+    email:               Optional[str] = ""
+    role:                Optional[str] = ""
+    school_name:         Optional[str] = ""
+    city:                Optional[str] = ""
+    board:               Optional[str] = ""
+    notes:               Optional[str] = ""
+    source:              Optional[str] = "Manual Entry"
+    status:              Optional[str] = "new"
+    call_picked:         Optional[str] = None
+    lead_interested:     Optional[str] = None
+    products_interested: Optional[List[str]] = None
+    assigned_to:         Optional[str] = None
+    followup_at:         Optional[str] = None
+    meeting_at:          Optional[str] = None
+    batch_name:          Optional[str] = None
+    batch_id:            Optional[str] = None
+    extra_fields:        Optional[Dict[str, Any]] = None
 
 
 class ImportOptions(BaseModel):
@@ -416,6 +439,132 @@ async def bulk_assign_contacts(payload: BulkAssign, user: dict = Depends(get_cur
     return {"ok": True, "updated": res.modified_count}
 
 
+# ── Create Single Contact (Direct Table Entry) ───────────────────
+@router.post("/telecalling/contacts")
+async def create_contact(payload: ContactCreate, user: dict = Depends(get_current_user)):
+    """Create a single B2B calling contact / client row directly (no spreadsheet upload needed)."""
+    clean_phone = re.sub(r"[^\d+]", "", payload.phone or "").strip()
+    if not clean_phone:
+        raise HTTPException(status_code=400, detail="Valid phone number is required")
+
+    assigned_to = payload.assigned_to
+    assigned_to_name = None
+
+    if not _is_admin(user):
+        assigned_to = _uid(user)
+        assigned_to_name = user.get("name") or user.get("email")
+    elif assigned_to:
+        target = await db.team_users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        if target:
+            assigned_to_name = target.get("name") or target.get("email")
+
+    batch_id = payload.batch_id
+    batch_name = (payload.batch_name or "").strip()
+    if not batch_id and batch_name:
+        existing_batch = await db.telecalling_batches.find_one({"name": batch_name})
+        if existing_batch:
+            batch_id = existing_batch.get("id")
+        else:
+            batch_id = str(uuid.uuid4())
+            await db.telecalling_batches.insert_one({
+                "id": batch_id,
+                "name": batch_name,
+                "created_at": _now(),
+                "created_by": _uid(user),
+            })
+
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": (payload.name or "").strip(),
+        "phone": clean_phone,
+        "alt_phone": (payload.alt_phone or "").strip(),
+        "email": (payload.email or "").strip().lower(),
+        "role": (payload.role or "").strip(),
+        "school_name": (payload.school_name or "").strip(),
+        "city": (payload.city or "").strip(),
+        "board": (payload.board or "").strip(),
+        "notes": (payload.notes or "").strip(),
+        "source": (payload.source or "Manual Entry").strip(),
+        "status": payload.status or "new",
+        "call_picked": payload.call_picked,
+        "lead_interested": payload.lead_interested,
+        "products_interested": payload.products_interested or [],
+        "followup_at": payload.followup_at,
+        "meeting_at": payload.meeting_at,
+        "school_inquiry_id": None,
+        "batch_id": batch_id,
+        "batch_name": batch_name,
+        "assigned_to": assigned_to,
+        "assigned_to_name": assigned_to_name,
+        "extra_fields": payload.extra_fields or {},
+        "created_at": _now(),
+        "updated_at": _now(),
+    }
+    await db.telecalling_contacts.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "contact": doc}
+
+
+# ── Callers Summary (Caller-by-Caller Sheets) ─────────────────────
+@router.get("/telecalling/callers")
+async def list_telecallers_summary(user: dict = Depends(get_current_user)):
+    """Return summary of callers with their assigned contact counts for quick sheet tabs."""
+    pipeline = [
+        {"$match": {"assigned_to": {"$ne": None}}},
+        {"$group": {
+            "_id": "$assigned_to",
+            "name": {"$first": "$assigned_to_name"},
+            "total_contacts": {"$sum": 1},
+            "unworked": {"$sum": {"$cond": [{"$eq": ["$call_picked", None]}, 1, 0]}},
+            "interested": {"$sum": {"$cond": [{"$eq": ["$lead_interested", "yes"]}, 1, 0]}},
+        }},
+        {"$sort": {"total_contacts": -1}}
+    ]
+    caller_counts = await db.telecalling_contacts.aggregate(pipeline).to_list(200)
+
+    all_users = await db.team_users.find(
+        {"status": {"$ne": "inactive"}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "permissions": 1, "role": 1}
+    ).to_list(500)
+
+    user_map = {u["id"]: u for u in all_users}
+    items = []
+    seen_ids = set()
+    for c in caller_counts:
+        uid = c["_id"]
+        seen_ids.add(uid)
+        u_info = user_map.get(uid, {})
+        items.append({
+            "id": uid,
+            "name": c.get("name") or u_info.get("name") or u_info.get("email") or "Caller",
+            "email": u_info.get("email") or "",
+            "total_contacts": c.get("total_contacts", 0),
+            "unworked": c.get("unworked", 0),
+            "interested": c.get("interested", 0),
+        })
+
+    for u in all_users:
+        uid = u["id"]
+        if uid not in seen_ids and ("telecalling" in (u.get("permissions") or []) or u.get("role") in ["admin", "super_admin"]):
+            items.append({
+                "id": uid,
+                "name": u.get("name") or u.get("email") or "Caller",
+                "email": u.get("email") or "",
+                "total_contacts": 0,
+                "unworked": 0,
+                "interested": 0,
+            })
+
+    unassigned_count = await db.telecalling_contacts.count_documents({"assigned_to": None})
+    total_count = await db.telecalling_contacts.count_documents({})
+
+    return {
+        "callers": items,
+        "unassigned_count": unassigned_count,
+        "total_contacts": total_count,
+    }
+
+
 # ── List / Filter ────────────────────────────────────────────────
 @router.get("/telecalling/contacts")
 async def list_contacts(
@@ -620,33 +769,62 @@ async def delete_contact(contact_id: str, user: dict = Depends(get_current_user)
     return {"ok": True}
 
 
-# ── Reports (daily / monthly per user) ───────────────────────────
+# ── Reports (Comprehensive B2B Calling & Caller Comparison) ──────
 @router.get("/telecalling/reports")
-async def telecalling_reports(month: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def telecalling_reports(
+    month:     Optional[str] = None,
+    period:    Optional[str] = None,   # 'today', 'yesterday', 'this_week', 'this_month', 'all_time'
+    date_from: Optional[str] = None,   # YYYY-MM-DD
+    date_to:   Optional[str] = None,   # YYYY-MM-DD
+    user: dict = Depends(get_current_user),
+):
     """
-    Aggregation:
-      For each (user, day) → counts of events.
-      For each user → month-total.
-      Non-admins see only their own row.
+    Comprehensive reporting for B2B telecalling & sales calls:
+      - Period-based breakdown (Today, Yesterday, This Week, Month, Custom)
+      - Per-caller performance table:
+          Assigned contacts, Calls made, Calls picked, Connection %, Interested, Interest %, Meetings
+      - Overall executive summary totals
+      - Daily activity drilldown per user
     """
-    from datetime import date
     now = datetime.now(timezone.utc)
-    month = month or f"{now.year:04d}-{now.month:02d}"
-    start = f"{month}-01"
-    # end of month
-    y, m = [int(x) for x in month.split("-")]
-    if m == 12:
-        end_first = f"{y+1:04d}-01-01"
+    today_str = now.strftime("%Y-%m-%d")
+
+    # Determine date_from and date_to
+    if period == "today":
+        start_day = today_str
+        end_day = today_str
+    elif period == "yesterday":
+        yest = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        start_day = yest
+        end_day = yest
+    elif period == "this_week":
+        mon = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+        start_day = mon
+        end_day = today_str
+    elif period == "all_time":
+        start_day = "2020-01-01"
+        end_day = "2099-12-31"
+    elif date_from and date_to:
+        start_day = date_from
+        end_day = date_to
     else:
-        end_first = f"{y:04d}-{m+1:02d}-01"
+        m_str = month or f"{now.year:04d}-{now.month:02d}"
+        y, m = [int(x) for x in m_str.split("-")]
+        start_day = f"{y:04d}-{m:02d}-01"
+        if m == 12:
+            end_day = f"{y:04d}-12-31"
+        else:
+            from calendar import monthrange
+            _, last_d = monthrange(y, m)
+            end_day = f"{y:04d}-{m:02d}-{last_d:02d}"
 
-    q: dict = {"day": {"$gte": start, "$lt": end_first}}
+    q_act: dict = {"day": {"$gte": start_day, "$lte": end_day}}
     if not _is_admin(user):
-        q["user_id"] = _uid(user)
+        q_act["user_id"] = _uid(user)
 
-    events = await db.telecalling_activity.find(q, {"_id": 0}).to_list(20000)
+    events = await db.telecalling_activity.find(q_act, {"_id": 0}).to_list(25000)
 
-    # Aggregate
+    # 1. Aggregate activity per user
     per_user: dict = {}
     for ev in events:
         uid = ev.get("user_id")
@@ -654,7 +832,8 @@ async def telecalling_reports(month: Optional[str] = None, user: dict = Depends(
         day = ev.get("day")
         e = ev.get("event")
         u = per_user.setdefault(uid, {
-            "user_id": uid, "user_name": uname,
+            "user_id": uid,
+            "user_name": uname,
             "totals": {"call_made": 0, "call_picked": 0, "lead_interested": 0, "meeting_booked": 0},
             "days": {},
         })
@@ -662,11 +841,105 @@ async def telecalling_reports(month: Optional[str] = None, user: dict = Depends(
         d = u["days"].setdefault(day, {"call_made": 0, "call_picked": 0, "lead_interested": 0, "meeting_booked": 0})
         d[e] = d.get(e, 0) + 1
 
-    # Convert days dict → sorted list
-    for u in per_user.values():
-        u["days"] = [{"day": k, **v} for k, v in sorted(u["days"].items(), reverse=True)]
+    # 2. Get assigned contacts stats per user to enrich report
+    q_contacts: dict = {}
+    if not _is_admin(user):
+        q_contacts["assigned_to"] = _uid(user)
+
+    contact_agg_pipeline = [
+        {"$match": q_contacts},
+        {"$group": {
+            "_id": "$assigned_to",
+            "name": {"$first": "$assigned_to_name"},
+            "total_assigned": {"$sum": 1},
+            "unworked": {"$sum": {"$cond": [{"$eq": ["$call_picked", None]}, 1, 0]}},
+            "picked": {"$sum": {"$cond": [{"$eq": ["$call_picked", "yes"]}, 1, 0]}},
+            "interested": {"$sum": {"$cond": [{"$eq": ["$lead_interested", "yes"]}, 1, 0]}},
+            "followups_pending": {"$sum": {"$cond": [{"$ne": ["$followup_at", None]}, 1, 0]}},
+            "converted_inquiries": {"$sum": {"$cond": [{"$ne": ["$school_inquiry_id", None]}, 1, 0]}},
+        }}
+    ]
+    contact_stats = await db.telecalling_contacts.aggregate(contact_agg_pipeline).to_list(500)
+    contact_stats_map = {c["_id"]: c for c in contact_stats if c["_id"]}
+
+    for uid, c_info in contact_stats_map.items():
+        if uid not in per_user:
+            per_user[uid] = {
+                "user_id": uid,
+                "user_name": c_info.get("name") or "Caller",
+                "totals": {"call_made": 0, "call_picked": 0, "lead_interested": 0, "meeting_booked": 0},
+                "days": {},
+            }
+
+    rows = []
+    for uid, u in per_user.items():
+        totals = u["totals"]
+        made = totals.get("call_made", 0)
+        picked = totals.get("call_picked", 0)
+        interested = totals.get("lead_interested", 0)
+        booked = totals.get("meeting_booked", 0)
+
+        c_stat = contact_stats_map.get(uid, {})
+        assigned = c_stat.get("total_assigned", 0)
+        unworked = c_stat.get("unworked", 0)
+        followups = c_stat.get("followups_pending", 0)
+        converted = c_stat.get("converted_inquiries", 0)
+
+        conn_rate = round((picked / made * 100), 1) if made > 0 else 0.0
+        interest_rate = round((interested / picked * 100), 1) if picked > 0 else 0.0
+        meeting_rate = round((booked / interested * 100), 1) if interested > 0 else 0.0
+
+        days_list = [{"day": k, **v} for k, v in sorted(u["days"].items(), reverse=True)]
+
+        rows.append({
+            "user_id": uid,
+            "user_name": u["user_name"],
+            "totals": totals,
+            "rates": {
+                "connection_rate": conn_rate,
+                "interest_rate": interest_rate,
+                "meeting_rate": meeting_rate,
+            },
+            "contacts": {
+                "total_assigned": assigned,
+                "unworked": unworked,
+                "followups_pending": followups,
+                "converted_inquiries": converted,
+            },
+            "days": days_list,
+        })
+
+    rows.sort(key=lambda x: (x["totals"]["call_made"], x["contacts"]["total_assigned"]), reverse=True)
+
+    sum_made = sum(r["totals"]["call_made"] for r in rows)
+    sum_picked = sum(r["totals"]["call_picked"] for r in rows)
+    sum_interested = sum(r["totals"]["lead_interested"] for r in rows)
+    sum_booked = sum(r["totals"]["meeting_booked"] for r in rows)
+    sum_assigned = sum(r["contacts"]["total_assigned"] for r in rows)
+    sum_unworked = sum(r["contacts"]["unworked"] for r in rows)
+    sum_followups = sum(r["contacts"]["followups_pending"] for r in rows)
+
+    overall_conn_rate = round((sum_picked / sum_made * 100), 1) if sum_made > 0 else 0.0
+    overall_interest_rate = round((sum_interested / sum_picked * 100), 1) if sum_picked > 0 else 0.0
+
+    summary = {
+        "active_callers": len(rows),
+        "total_calls_made": sum_made,
+        "total_calls_picked": sum_picked,
+        "total_leads_interested": sum_interested,
+        "total_meetings_booked": sum_booked,
+        "overall_connection_rate": overall_conn_rate,
+        "overall_interest_rate": overall_interest_rate,
+        "total_assigned_contacts": sum_assigned,
+        "total_unworked_contacts": sum_unworked,
+        "total_followups_pending": sum_followups,
+    }
 
     return {
-        "month":  month,
-        "rows":   sorted(per_user.values(), key=lambda x: -sum(x["totals"].values())),
+        "period": period or "month",
+        "date_from": start_day,
+        "date_to": end_day,
+        "month": month or f"{now.year:04d}-{now.month:02d}",
+        "summary": summary,
+        "rows": rows,
     }

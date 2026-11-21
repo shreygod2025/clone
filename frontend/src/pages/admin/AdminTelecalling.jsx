@@ -23,6 +23,7 @@ import {
   Phone, Upload, Download, FileSpreadsheet, Users, Search, Filter, X,
   Building2, Calendar, BarChart3, ChevronDown, ChevronRight, Loader2, Plus,
   UserPlus, MessageSquare, Mail, MapPin, AlertTriangle, PenSquare, Trash2,
+  Clock, RefreshCw,
 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -201,6 +202,254 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
             </Button>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Add Single Client / Lead modal (Direct B2B calling sheet entry)
+const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, batches }) => {
+  const { getAuthHeaders } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    alt_phone: '',
+    email: '',
+    role: '',
+    school_name: '',
+    city: '',
+    board: '',
+    assigned_to: '',
+    source: 'Direct Entry',
+    batch_name: 'Direct Calling Sheet',
+    notes: '',
+  });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: '',
+        phone: '',
+        alt_phone: '',
+        email: '',
+        role: '',
+        school_name: '',
+        city: '',
+        board: '',
+        assigned_to: isAdmin ? '' : (currentUserId || ''),
+        source: 'Direct Entry',
+        batch_name: 'Direct Calling Sheet',
+        notes: '',
+      });
+    }
+  }, [open, isAdmin, currentUserId]);
+
+  const submit = async (e) => {
+    e?.preventDefault();
+    if (!form.name.trim()) return toast.error('Contact person name is required');
+    if (!form.phone.trim()) return toast.error('Phone number is required');
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        alt_phone: form.alt_phone.trim() || undefined,
+        email: form.email.trim() || undefined,
+        role: form.role.trim() || undefined,
+        school_name: form.school_name.trim() || undefined,
+        city: form.city.trim() || undefined,
+        board: form.board.trim() || undefined,
+        assigned_to: form.assigned_to || undefined,
+        source: form.source.trim() || 'Direct Entry',
+        batch_name: form.batch_name.trim() || 'Direct Calling Sheet',
+        notes: form.notes.trim() || undefined,
+      };
+      await axios.post(`${API}/telecalling/contacts`, payload, { headers: getAuthHeaders() });
+      toast.success('Client added to calling sheet successfully');
+      onDone();
+      onClose();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to add contact');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto" data-testid="tc-add-client-modal">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5 text-emerald-600" />
+            Add B2B Client / Lead to Calling Sheet
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-3 mt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Contact Person Name <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Dr. Sunita Sharma"
+                required
+                data-testid="tc-add-name"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Phone Number <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={form.phone}
+                onChange={e => setForm({ ...form, phone: e.target.value })}
+                placeholder="e.g. 9876543210"
+                required
+                data-testid="tc-add-phone"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Alternate Phone</label>
+              <Input
+                value={form.alt_phone}
+                onChange={e => setForm({ ...form, alt_phone: e.target.value })}
+                placeholder="e.g. 022-28475892"
+                data-testid="tc-add-alt-phone"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="e.g. principal@school.edu"
+                data-testid="tc-add-email"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">School / Organization</label>
+              <Input
+                value={form.school_name}
+                onChange={e => setForm({ ...form, school_name: e.target.value })}
+                placeholder="e.g. Delhi Public School"
+                data-testid="tc-add-school"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Role / Designation</label>
+              <select
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                data-testid="tc-add-role"
+              >
+                <option value="">Select role</option>
+                {SCHOOL_CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
+              <Input
+                value={form.city}
+                onChange={e => setForm({ ...form, city: e.target.value })}
+                placeholder="e.g. Mumbai, Pune, Bangalore"
+                data-testid="tc-add-city"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Board</label>
+              <select
+                value={form.board}
+                onChange={e => setForm({ ...form, board: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                data-testid="tc-add-board"
+              >
+                <option value="">Select board</option>
+                {BOARDS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {isAdmin ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Assign to Caller</label>
+                <select
+                  value={form.assigned_to}
+                  onChange={e => setForm({ ...form, assigned_to: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                  data-testid="tc-add-assigned-to"
+                >
+                  <option value="">Auto / Unassigned</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Source</label>
+                <Input
+                  value={form.source}
+                  onChange={e => setForm({ ...form, source: e.target.value })}
+                  placeholder="e.g. Direct Entry, Inbound, Referral"
+                  data-testid="tc-add-source"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Calling Sheet / Batch Name</label>
+              <Input
+                value={form.batch_name}
+                onChange={e => setForm({ ...form, batch_name: e.target.value })}
+                placeholder="e.g. Direct Calling Sheet"
+                data-testid="tc-add-batch-name"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Initial Notes</label>
+            <textarea
+              rows={2}
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              placeholder="Initial context, reference, or call notes..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              data-testid="tc-add-notes"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              data-testid="tc-add-client-submit"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+              Add to Calling Sheet
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -664,87 +913,426 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
 };
 
 // ─────────────────────────────────────────────────────────────────
-// Reports tab
-const ReportsTab = () => {
+// Reports tab: Comprehensive Executive Calling Analytics & Side-by-Side Comparison
+const ReportsTab = ({ onOpenCallerSheet }) => {
   const { getAuthHeaders } = useAuth();
+  const [period, setPeriod] = useState('this_month');
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [rows, setRows] = useState([]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(null);
+  const [expandedUser, setExpandedUser] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axios.get(`${API}/telecalling/reports?month=${month}`, { headers: getAuthHeaders() });
-      setRows(r.data.rows || []);
-    } catch { toast.error('Failed to load reports'); }
-    finally { setLoading(false); }
-  }, [getAuthHeaders, month]);
-  useEffect(() => { load(); }, [load]);
+      const params = new URLSearchParams();
+      params.set('period', period);
+      if (period === 'month') params.set('month', month);
+      if (period === 'custom' && dateFrom && dateTo) {
+        params.set('date_from', dateFrom);
+        params.set('date_to', dateTo);
+      }
+      const r = await axios.get(`${API}/telecalling/reports?${params}`, { headers: getAuthHeaders() });
+      setData(r.data);
+    } catch {
+      toast.error('Failed to load calling reports');
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthHeaders, period, month, dateFrom, dateTo]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const rows = data?.rows || [];
+  const summary = data?.summary || {
+    active_callers: 0,
+    total_calls_made: 0,
+    total_calls_picked: 0,
+    total_leads_interested: 0,
+    total_meetings_booked: 0,
+    overall_connection_rate: 0,
+    overall_interest_rate: 0,
+    total_assigned_contacts: 0,
+    total_unworked_contacts: 0,
+    total_followups_pending: 0,
+  };
+
+  const exportCsv = () => {
+    if (!rows.length) return toast.error('No caller data to export');
+    const headers = [
+      'Caller Name',
+      'Assigned in Sheet',
+      'Calls Made',
+      'Picked / Connected',
+      'Connection Rate %',
+      'Interested Leads',
+      'Interest Rate %',
+      'Meetings Booked',
+      'Unworked in Sheet',
+      'Pending Follow-ups',
+      'Converted to CRM',
+    ];
+    const lines = [headers.join(',')];
+    rows.forEach(r => {
+      lines.push([
+        `"${(r.user_name || 'Caller').replace(/"/g, '""')}"`,
+        r.contacts?.total_assigned || 0,
+        r.totals?.call_made || 0,
+        r.totals?.call_picked || 0,
+        `${r.rates?.connection_rate || 0}%`,
+        r.totals?.lead_interested || 0,
+        `${r.rates?.interest_rate || 0}%`,
+        r.totals?.meeting_booked || 0,
+        r.contacts?.unworked || 0,
+        r.contacts?.followups_pending || 0,
+        r.contacts?.converted_inquiries || 0,
+      ].join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `telecalling-caller-comparison-${period}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Caller comparison CSV downloaded');
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-center">
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Month</label>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
-            className="h-9 px-2 border border-slate-200 rounded-lg text-sm" data-testid="tc-rep-month" />
-        </div>
-      </div>
-      {loading ? (
-        <div className="text-center py-8 text-slate-400"><Loader2 className="w-5 h-5 mx-auto animate-spin" /></div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">
-          No call activity in this month.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {rows.map(u => (
-            <div key={u.user_id || u.user_name} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <button onClick={() => setExpanded(exp => exp === u.user_id ? null : u.user_id)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 text-left" data-testid={`tc-rep-user-${u.user_id}`}>
-                {expanded === u.user_id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                <div className="flex-1">
-                  <div className="font-semibold text-slate-800">{u.user_name}</div>
-                  <div className="text-[11px] text-slate-500">Total: {Object.values(u.totals).reduce((a, b) => a + b, 0)} events</div>
-                </div>
-                <div className="flex gap-3 text-xs">
-                  <div className="text-center"><div className="font-bold text-slate-800">{u.totals.call_made}</div><div className="text-[10px] text-slate-500">Made</div></div>
-                  <div className="text-center"><div className="font-bold text-emerald-700">{u.totals.call_picked}</div><div className="text-[10px] text-slate-500">Picked</div></div>
-                  <div className="text-center"><div className="font-bold text-indigo-700">{u.totals.lead_interested}</div><div className="text-[10px] text-slate-500">Interested</div></div>
-                  <div className="text-center"><div className="font-bold text-amber-700">{u.totals.meeting_booked}</div><div className="text-[10px] text-slate-500">Meetings</div></div>
-                </div>
-              </button>
-              {expanded === u.user_id && (
-                <div className="border-t border-slate-100 p-3 bg-slate-50/60">
-                  <table className="w-full text-xs">
-                    <thead className="text-slate-500 text-left">
-                      <tr>
-                        <th className="pb-1">Day</th>
-                        <th className="pb-1 text-right">Made</th>
-                        <th className="pb-1 text-right">Picked</th>
-                        <th className="pb-1 text-right">Interested</th>
-                        <th className="pb-1 text-right">Meetings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {u.days.map(d => (
-                        <tr key={d.day} className="border-t border-slate-200">
-                          <td className="py-1">{d.day}</td>
-                          <td className="py-1 text-right">{d.call_made}</td>
-                          <td className="py-1 text-right text-emerald-700">{d.call_picked}</td>
-                          <td className="py-1 text-right text-indigo-700">{d.lead_interested}</td>
-                          <td className="py-1 text-right text-amber-700">{d.meeting_booked}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+    <div className="space-y-5" data-testid="tc-reports-section">
+      {/* Filter and Action Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1 flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-indigo-600" /> Period:
+          </span>
+          {[
+            ['today', 'Today'],
+            ['yesterday', 'Yesterday'],
+            ['this_week', 'This Week'],
+            ['this_month', 'This Month'],
+            ['all_time', 'All Time'],
+            ['custom', 'Custom Range'],
+          ].map(([p, label]) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                period === p
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              data-testid={`tc-rep-period-${p}`}
+            >
+              {label}
+            </button>
           ))}
         </div>
+
+        <div className="flex items-center gap-2">
+          {period === 'custom' && (
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="h-7 px-2 border border-slate-200 rounded text-xs bg-white"
+                data-testid="tc-rep-date-from"
+              />
+              <span className="text-xs text-slate-400">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="h-7 px-2 border border-slate-200 rounded text-xs bg-white"
+                data-testid="tc-rep-date-to"
+              />
+              <Button size="sm" onClick={load} className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700">Apply</Button>
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={load}
+            disabled={loading}
+            className="h-9 text-xs"
+            title="Refresh calling stats"
+            data-testid="tc-rep-refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportCsv}
+            disabled={!rows.length}
+            className="h-9 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+            data-testid="tc-rep-export-csv"
+          >
+            <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Date Range Sub-label */}
+      {data && (
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+          <div>
+            Showing calling performance from <span className="font-semibold text-slate-700">{data.date_from}</span> to <span className="font-semibold text-slate-700">{data.date_to}</span>
+          </div>
+          <div>{summary.active_callers} callers active / assigned</div>
+        </div>
       )}
+
+      {/* Executive Summary KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" data-testid="tc-executive-kpis">
+        <div className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl p-3.5 text-white shadow-sm">
+          <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Calls Made</p>
+          <p className="text-2xl font-bold mt-1">{summary.total_calls_made}</p>
+          <p className="text-[10px] text-white/70 mt-1">{summary.active_callers} callers logged</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl p-3.5 text-white shadow-sm">
+          <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Picked (Connected)</p>
+          <p className="text-2xl font-bold mt-1">{summary.total_calls_picked}</p>
+          <div className="flex items-center gap-1 text-[10px] text-white/80 mt-1">
+            <span className="font-bold bg-white/20 px-1 rounded">{summary.overall_connection_rate}%</span>
+            <span>conn. rate</span>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-xl p-3.5 text-white shadow-sm">
+          <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Interested Leads</p>
+          <p className="text-2xl font-bold mt-1">{summary.total_leads_interested}</p>
+          <div className="flex items-center gap-1 text-[10px] text-white/80 mt-1">
+            <span className="font-bold bg-white/20 px-1 rounded">{summary.overall_interest_rate}%</span>
+            <span>of picked</span>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-3.5 text-white shadow-sm">
+          <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Meetings Booked</p>
+          <p className="text-2xl font-bold mt-1">{summary.total_meetings_booked}</p>
+          <p className="text-[10px] text-white/80 mt-1">B2B presentations</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-600 to-indigo-900 rounded-xl p-3.5 text-white shadow-sm">
+          <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Total in Sheets</p>
+          <p className="text-2xl font-bold mt-1">{summary.total_assigned_contacts}</p>
+          <p className="text-[10px] text-white/80 mt-1">{summary.total_unworked_contacts} unworked</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-rose-500 to-pink-700 rounded-xl p-3.5 text-white shadow-sm">
+          <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Follow-ups</p>
+          <p className="text-2xl font-bold mt-1">{summary.total_followups_pending}</p>
+          <p className="text-[10px] text-white/80 mt-1">Scheduled calls</p>
+        </div>
+      </div>
+
+      {/* Side-by-Side Caller Comparison Table */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" data-testid="tc-caller-comparison-card">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              Side-by-Side Caller Comparison &amp; Sheet Status
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Live comparison across all callers. Replaces manual Excel checking — click &ldquo;Open Calling Sheet&rdquo; to inspect or work any caller&rsquo;s sheet.
+            </p>
+          </div>
+          <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded-full border border-indigo-200">
+            {rows.length} Calling Sheets Monitored
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-slate-400">
+            <Loader2 className="w-6 h-6 mx-auto animate-spin mb-2" />
+            <p className="text-xs">Aggregating calling metrics...</p>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 text-sm">
+            No telecaller activity recorded for this period.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left" data-testid="tc-caller-comparison-table">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-500">
+                <tr>
+                  <th className="px-3 py-3">Caller</th>
+                  <th className="px-3 py-3 text-right">Sheet Contacts</th>
+                  <th className="px-3 py-3 text-right">Calls Made</th>
+                  <th className="px-3 py-3 text-right">Connected</th>
+                  <th className="px-3 py-3 text-right">Connection %</th>
+                  <th className="px-3 py-3 text-right">Interested</th>
+                  <th className="px-3 py-3 text-right">Interest %</th>
+                  <th className="px-3 py-3 text-right">Meetings</th>
+                  <th className="px-3 py-3 text-right">Unworked</th>
+                  <th className="px-3 py-3 text-right">Follow-ups</th>
+                  <th className="px-3 py-3 text-right">CRM Converted</th>
+                  <th className="px-3 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map(r => {
+                  const connRate = r.rates?.connection_rate || 0;
+                  const intRate = r.rates?.interest_rate || 0;
+                  const made = r.totals?.call_made || 0;
+                  const picked = r.totals?.call_picked || 0;
+                  const interested = r.totals?.lead_interested || 0;
+                  const meetings = r.totals?.meeting_booked || 0;
+                  const assigned = r.contacts?.total_assigned || 0;
+                  const unworked = r.contacts?.unworked || 0;
+                  const followups = r.contacts?.followups_pending || 0;
+                  const converted = r.contacts?.converted_inquiries || 0;
+                  const isExpanded = expandedUser === r.user_id;
+
+                  return (
+                    <tr key={r.user_id} className="hover:bg-slate-50/70 transition" data-testid={`tc-caller-row-${r.user_id}`}>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedUser(isExpanded ? null : r.user_id)}
+                            className="text-slate-400 hover:text-slate-700"
+                            title="Toggle daily breakdown"
+                            data-testid={`tc-rep-expand-${r.user_id}`}
+                          >
+                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </button>
+                          <div>
+                            <div className="font-bold text-slate-800 text-xs">{r.user_name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{r.user_id ? r.user_id.slice(0, 8) + '...' : ''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-slate-700 font-mono">
+                        {assigned}
+                      </td>
+                      <td className="px-3 py-3 text-right font-bold text-slate-900 font-mono">
+                        {made}
+                      </td>
+                      <td className="px-3 py-3 text-right font-bold text-blue-700 font-mono">
+                        {picked}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          connRate >= 50
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : connRate >= 30
+                            ? 'bg-blue-100 text-blue-800'
+                            : connRate > 0
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {connRate}%
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right font-bold text-emerald-700 font-mono">
+                        {interested}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          intRate >= 20
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : intRate > 0
+                            ? 'bg-indigo-100 text-indigo-800'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {intRate}%
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right font-bold text-amber-600 font-mono">
+                        {meetings}
+                      </td>
+                      <td className="px-3 py-3 text-right text-slate-600 font-mono">
+                        {unworked > 0 ? (
+                          <span className="text-amber-600 font-semibold">{unworked}</span>
+                        ) : (
+                          <span className="text-slate-400">0</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-right text-slate-600 font-mono">
+                        {followups}
+                      </td>
+                      <td className="px-3 py-3 text-right text-purple-700 font-semibold font-mono">
+                        {converted}
+                      </td>
+                      <td className="px-3 py-3 text-center whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onOpenCallerSheet && onOpenCallerSheet(r.user_id)}
+                          className="h-7 text-[11px] px-2.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300"
+                          data-testid={`tc-open-sheet-${r.user_id}`}
+                        >
+                          <FileSpreadsheet className="w-3 h-3 mr-1 text-indigo-500" />
+                          Open Sheet
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded User Daily Log Drawer */}
+      {expandedUser && (() => {
+        const userRow = rows.find(r => r.user_id === expandedUser);
+        if (!userRow || !userRow.days?.length) return null;
+        return (
+          <div className="bg-white rounded-xl border border-indigo-200 p-4 shadow-sm" data-testid="tc-rep-daily-drawer">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-indigo-600" />
+                Day-by-Day Calling Activity for <span className="text-indigo-600">{userRow.user_name}</span>
+              </h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setExpandedUser(null)}
+                className="h-7 text-xs text-slate-500"
+              >
+                Close Daily Breakdown ✕
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 border-b">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Date</th>
+                    <th className="px-3 py-2 text-right">Calls Made</th>
+                    <th className="px-3 py-2 text-right">Connected</th>
+                    <th className="px-3 py-2 text-right">Interested</th>
+                    <th className="px-3 py-2 text-right">Meetings Booked</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {userRow.days.map(d => (
+                    <tr key={d.day} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 font-mono font-medium text-slate-700">{d.day}</td>
+                      <td className="px-3 py-2 text-right font-bold text-slate-900 font-mono">{d.call_made}</td>
+                      <td className="px-3 py-2 text-right font-bold text-blue-700 font-mono">{d.call_picked}</td>
+                      <td className="px-3 py-2 text-right font-bold text-emerald-700 font-mono">{d.lead_interested}</td>
+                      <td className="px-3 py-2 text-right font-bold text-amber-600 font-mono">{d.meeting_booked}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -757,6 +1345,8 @@ export default function AdminTelecalling() {
   const [tab, setTab] = useState('queue');
   const [contacts, setContacts] = useState([]);
   const [users, setUsers] = useState([]);
+  const [callers, setCallers] = useState([]);
+  const [showAddClient, setShowAddClient] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -781,10 +1371,18 @@ export default function AdminTelecalling() {
     } catch { /* silent — batches optional */ }
   }, [getAuthHeaders]);
 
+  const loadCallers = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/telecalling/callers`, { headers: getAuthHeaders() });
+      setCallers(r.data.callers || []);
+    } catch { /* silent */ }
+  }, [getAuthHeaders]);
+
   const loadContacts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.set('limit', '2000');
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('search', search);
       if (isAdmin && assigneeFilter !== 'all') params.set('assigned_to', assigneeFilter);
@@ -820,6 +1418,7 @@ export default function AdminTelecalling() {
   useEffect(() => { loadUsers(); }, [loadUsers]);
   useEffect(() => { loadContacts(); }, [loadContacts]);
   useEffect(() => { loadBatches(); }, [loadBatches]);
+  useEffect(() => { loadCallers(); }, [loadCallers]);
 
   // ── Bulk / batch operations ──────────────────────────────────
   const toggleSelected = (id) => setSelected(s => {
@@ -840,6 +1439,7 @@ export default function AdminTelecalling() {
       clearSelection();
       loadContacts();
       loadBatches();
+      loadCallers();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Delete failed'); }
   };
 
@@ -857,6 +1457,7 @@ export default function AdminTelecalling() {
       setBulkAssignUser('');
       clearSelection();
       loadContacts();
+      loadCallers();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Assign failed'); }
   };
 
@@ -880,6 +1481,7 @@ export default function AdminTelecalling() {
       if (activeBatch === batch.id) setActiveBatch('all');
       loadBatches();
       loadContacts();
+      loadCallers();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Delete failed'); }
   };
 
@@ -889,6 +1491,9 @@ export default function AdminTelecalling() {
     try {
       const r = await axios.patch(`${API}/telecalling/contacts/${id}`, patch, { headers: getAuthHeaders() });
       setContacts(cs => cs.map(c => c.id === id ? r.data : c));
+      if (patch.call_picked !== undefined || patch.lead_interested !== undefined) {
+        loadCallers();
+      }
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Update failed');
       loadContacts();
@@ -900,6 +1505,7 @@ export default function AdminTelecalling() {
     try {
       await axios.delete(`${API}/telecalling/contacts/${id}`, { headers: getAuthHeaders() });
       setContacts(cs => cs.filter(c => c.id !== id));
+      loadCallers();
     } catch { toast.error('Delete failed'); }
   };
 
@@ -939,12 +1545,20 @@ export default function AdminTelecalling() {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><Phone className="w-6 h-6 text-indigo-600" /> Telecalling</h1>
           <div className="flex items-center gap-2">
             <div className="flex bg-slate-100 rounded-lg p-1">
-              <button className={`px-3 py-1.5 text-sm font-medium rounded ${tab === 'queue' ? 'bg-white shadow' : 'text-slate-600'}`} onClick={() => setTab('queue')} data-testid="tc-tab-queue">Queue</button>
-              <button className={`px-3 py-1.5 text-sm font-medium rounded ${tab === 'reports' ? 'bg-white shadow' : 'text-slate-600'}`} onClick={() => setTab('reports')} data-testid="tc-tab-reports">Reports</button>
+              <button className={`px-3 py-1.5 text-sm font-medium rounded ${tab === 'queue' ? 'bg-white shadow' : 'text-slate-600'}`} onClick={() => setTab('queue')} data-testid="tc-tab-queue">Queue &amp; Sheets</button>
+              <button className={`px-3 py-1.5 text-sm font-medium rounded ${tab === 'reports' ? 'bg-white shadow' : 'text-slate-600'}`} onClick={() => setTab('reports')} data-testid="tc-tab-reports">Reports &amp; KPIs</button>
             </div>
+            <Button
+              size="sm"
+              onClick={() => setShowAddClient(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              data-testid="tc-add-client-btn"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Client
+            </Button>
             {isAdmin && (
               <Button size="sm" onClick={() => setShowImport(true)} className="bg-[#1E3A5F] hover:bg-[#0F203E]" data-testid="tc-import-btn">
-                <Upload className="w-4 h-4 mr-1" /> Import
+                <Upload className="w-4 h-4 mr-1" /> Import Excel
               </Button>
             )}
           </div>
@@ -952,6 +1566,121 @@ export default function AdminTelecalling() {
 
         {tab === 'queue' && (
           <div className="space-y-3">
+            {/* Caller Calling Sheet Switcher (Replaces manual Excel sheets for callers) */}
+            <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm space-y-2" data-testid="tc-caller-sheets-bar">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Calling Sheets by Caller:
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Switch between caller sheets directly on the website without maintaining separate Excel files
+                  </span>
+                </div>
+                {isAdmin && (
+                  <span className="text-[11px] text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                    {callers.length} Active Caller Sheets
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setAssigneeFilter('all')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
+                    assigneeFilter === 'all'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                  data-testid="tc-caller-sheet-all"
+                >
+                  <span>All Clients / Sheets</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    assigneeFilter === 'all' ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {callers.reduce((acc, c) => acc + (c.total_contacts || 0), 0)}
+                  </span>
+                </button>
+
+                {/* Current user's sheet if present */}
+                {(() => {
+                  const myCaller = callers.find(c => c.user_id === user?.id);
+                  if (!myCaller) return null;
+                  const isSelected = assigneeFilter === myCaller.user_id;
+                  return (
+                    <button
+                      onClick={() => setAssigneeFilter(myCaller.user_id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                      data-testid="tc-caller-sheet-me"
+                    >
+                      <span>★ My Calling Sheet</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-white/25 text-white' : 'bg-emerald-200 text-emerald-900'
+                      }`}>
+                        {myCaller.total_contacts}
+                      </span>
+                      {myCaller.unworked > 0 && (
+                        <span className={`text-[9px] px-1 rounded ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {myCaller.unworked} unworked
+                        </span>
+                      )}
+                    </button>
+                  );
+                })()}
+
+                {/* Other callers */}
+                {callers.filter(c => c.user_id !== user?.id).map(c => {
+                  const isSelected = assigneeFilter === c.user_id;
+                  return (
+                    <button
+                      key={c.user_id}
+                      onClick={() => setAssigneeFilter(c.user_id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                      data-testid={`tc-caller-sheet-${c.user_id}`}
+                    >
+                      <span>{c.user_name}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {c.total_contacts}
+                      </span>
+                      {c.unworked > 0 && (
+                        <span className={`text-[9px] px-1 rounded ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {c.unworked} left
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {isAdmin && (
+                  <button
+                    onClick={() => setAssigneeFilter('unassigned')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
+                      assigneeFilter === 'unassigned'
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    data-testid="tc-caller-sheet-unassigned"
+                  >
+                    <span>Unassigned</span>
+                  </button>
+                )}
+              </div>
+            </div>
             {/* Batch tabs (imported sheets) */}
             {(batches.length > 0 || isAdmin) && (
               <div className="flex items-center gap-1 flex-wrap bg-white rounded-lg border border-slate-200 p-1.5" data-testid="tc-batch-tabs">
@@ -1145,11 +1874,31 @@ export default function AdminTelecalling() {
           </div>
         )}
 
-        {tab === 'reports' && <ReportsTab />}
+        {tab === 'reports' && (
+          <ReportsTab
+            onOpenCallerSheet={(callerId) => {
+              setTab('queue');
+              setAssigneeFilter(callerId);
+            }}
+          />
+        )}
       </div>
 
-      <ImportModal open={showImport} onClose={() => setShowImport(false)} onDone={() => { loadContacts(); loadBatches(); }} users={users} />
-      <InterestedLeadModal open={!!interestedRow} contact={interestedRow} onClose={() => setInterestedRow(null)} onSaved={loadContacts} />
+      <AddClientModal
+        open={showAddClient}
+        onClose={() => setShowAddClient(false)}
+        onDone={() => {
+          loadContacts();
+          loadCallers();
+          loadBatches();
+        }}
+        users={users}
+        isAdmin={isAdmin}
+        currentUserId={user?.id}
+        batches={batches}
+      />
+      <ImportModal open={showImport} onClose={() => setShowImport(false)} onDone={() => { loadContacts(); loadBatches(); loadCallers(); }} users={users} />
+      <InterestedLeadModal open={!!interestedRow} contact={interestedRow} onClose={() => setInterestedRow(null)} onSaved={() => { loadContacts(); loadCallers(); }} />
 
       {/* Bulk-assign modal */}
       <Dialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen}>
