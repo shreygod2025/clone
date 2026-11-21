@@ -16,12 +16,13 @@
  * Reports tab:
  *   - Per-user daily/monthly rollup of Calls Made / Picked / Interested / Meetings Booked
  */
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import {
   Phone, Upload, Download, FileSpreadsheet, Users, Search, Filter, X,
-  Building2, Calendar, BarChart3, ChevronDown, ChevronRight, Loader2, Plus,
+  Building2, Calendar, BarChart3, ChevronDown, ChevronRight, ChevronLeft,
+  ChevronsLeft, ChevronsRight, Loader2, Plus,
   UserPlus, MessageSquare, Mail, MapPin, AlertTriangle, PenSquare, Trash2,
   Clock, RefreshCw,
 } from 'lucide-react';
@@ -785,7 +786,7 @@ const STATUS_OPTIONS = [
 const CELL = 'px-2 py-1.5 border-r border-slate-200 border-b';
 const HEAD = 'px-2 py-2 text-left border-r border-slate-200 border-b bg-slate-50 text-[10px] uppercase font-bold text-slate-500 whitespace-nowrap';
 
-const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDelete, selected = false, onToggleSelected, extraColumns = [] }) => {
+const ContactRow = React.memo(({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDelete, selected = false, onToggleSelected, extraColumns = [] }) => {
   const noteRef = useRef(null);
   const [note, setNote] = useState(row.notes || '');
   useEffect(() => { setNote(row.notes || ''); }, [row.id, row.notes]);
@@ -910,7 +911,7 @@ const ContactRow = ({ row, idx, isAdmin, users, onPatch, onOpenInterested, onDel
       )}
     </tr>
   );
-};
+});
 
 // ─────────────────────────────────────────────────────────────────
 // Reports tab: Comprehensive Executive Calling Analytics & Side-by-Side Comparison
@@ -1349,6 +1350,9 @@ export default function AdminTelecalling() {
   const [showAddClient, setShowAddClient] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [pageSize, setPageSize] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [sortDesc, setSortDesc] = useState(true);   // Date Added sort direction
@@ -1363,6 +1367,17 @@ export default function AdminTelecalling() {
   const [selected, setSelected] = useState(new Set());
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [bulkAssignUser, setBulkAssignUser] = useState('');
+
+  // Debounce search input by 250ms so typing never lags or spams the backend
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); }, 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to first page whenever search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, assigneeFilter, activeBatch, pageSize]);
 
   const loadBatches = useCallback(async () => {
     try {
@@ -1384,7 +1399,7 @@ export default function AdminTelecalling() {
       const params = new URLSearchParams();
       params.set('limit', '2000');
       if (statusFilter !== 'all') params.set('status', statusFilter);
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (isAdmin && assigneeFilter !== 'all') params.set('assigned_to', assigneeFilter);
       if (activeBatch && activeBatch !== 'all') params.set('batch_id', activeBatch);
       const r = await axios.get(`${API}/telecalling/contacts?${params}`, { headers: getAuthHeaders() });
@@ -1392,7 +1407,7 @@ export default function AdminTelecalling() {
       setSelected(new Set());   // clear selection whenever the list changes
     } catch { toast.error('Failed to load contacts'); }
     finally { setLoading(false); }
-  }, [getAuthHeaders, statusFilter, search, isAdmin, assigneeFilter, activeBatch]);
+  }, [getAuthHeaders, statusFilter, debouncedSearch, isAdmin, assigneeFilter, activeBatch]);
 
   const loadUsers = useCallback(async () => {
     if (!isAdmin) return;
@@ -1534,6 +1549,22 @@ export default function AdminTelecalling() {
     }
     return [...s];
   }, [contacts, activeBatch, batches]);
+
+  const sortedContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => {
+      const av = a.created_at || '';
+      const bv = b.created_at || '';
+      return sortDesc ? bv.localeCompare(av) : av.localeCompare(bv);
+    });
+  }, [contacts, sortDesc]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedContacts.length / (pageSize === 'all' ? (sortedContacts.length || 1) : pageSize)));
+
+  const paginatedContacts = useMemo(() => {
+    if (pageSize === 'all') return sortedContacts;
+    const start = (currentPage - 1) * pageSize;
+    return sortedContacts.slice(start, start + pageSize);
+  }, [sortedContacts, currentPage, pageSize]);
 
   const allSelected = contacts.length > 0 && contacts.every(c => selected.has(c.id));
   const toggleAll = () => (allSelected ? clearSelection() : selectAllVisible());
@@ -1803,10 +1834,33 @@ export default function AdminTelecalling() {
                   {users.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
                 </select>
               )}
-              <div className="ml-auto text-xs text-slate-500">{contacts.length} rows</div>
+              <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  <span>Per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={e => {
+                      const v = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                      setPageSize(v);
+                      setCurrentPage(1);
+                    }}
+                    className="h-7 px-1.5 border border-slate-200 rounded text-xs bg-white font-medium text-slate-700"
+                    data-testid="tc-page-size-select"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={250}>250</option>
+                    <option value="all">All ({sortedContacts.length})</option>
+                  </select>
+                </div>
+                <span className="font-semibold text-slate-700">
+                  {sortedContacts.length} total
+                </span>
+              </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+            <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-sm">
               {loading ? (
                 <div className="text-center py-8 text-slate-400"><Loader2 className="w-5 h-5 mx-auto animate-spin" /></div>
               ) : contacts.length === 0 ? (
@@ -1853,24 +1907,72 @@ export default function AdminTelecalling() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...contacts]
-                      .sort((a, b) => {
-                        const av = a.created_at || ''; const bv = b.created_at || '';
-                        return sortDesc ? bv.localeCompare(av) : av.localeCompare(bv);
-                      })
-                      .map((c, idx) => (
-                        <ContactRow key={c.id} row={c} idx={idx} isAdmin={isAdmin} users={users}
+                    {paginatedContacts.map((c, idx) => {
+                      const globalIdx = pageSize === 'all' ? idx : (currentPage - 1) * pageSize + idx;
+                      return (
+                        <ContactRow key={c.id} row={c} idx={globalIdx} isAdmin={isAdmin} users={users}
                           onPatch={patchRow}
                           onOpenInterested={setInterestedRow}
                           onDelete={deleteRow}
                           selected={selected.has(c.id)}
                           onToggleSelected={() => toggleSelected(c.id)}
                           extraColumns={extraColumns} />
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
             </div>
+
+            {/* Bottom Pagination controls */}
+            {pageSize !== 'all' && totalPages > 1 && (
+              <div className="flex items-center justify-between flex-wrap gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200 text-xs shadow-sm" data-testid="tc-pagination-bar">
+                <div className="text-slate-600">
+                  Showing <span className="font-bold text-slate-800">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+                  <span className="font-bold text-slate-800">{Math.min(currentPage * pageSize, sortedContacts.length)}</span> of{' '}
+                  <span className="font-bold text-slate-800">{sortedContacts.length}</span> contacts
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(1)}
+                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="First page"
+                    data-testid="tc-page-first"
+                  >
+                    <ChevronsLeft className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-slate-700"
+                    data-testid="tc-page-prev"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                  </button>
+                  <span className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium">
+                    Page <span className="font-bold text-indigo-700">{currentPage}</span> of <span className="font-bold">{totalPages}</span>
+                  </span>
+                  <button
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-1 font-medium text-slate-700"
+                    data-testid="tc-page-next"
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="Last page"
+                    data-testid="tc-page-last"
+                  >
+                    <ChevronsRight className="w-4 h-4 text-slate-600" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
