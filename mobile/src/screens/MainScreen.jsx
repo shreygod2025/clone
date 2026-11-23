@@ -134,6 +134,20 @@ export default function MainScreen({ user, onLogout }) {
   const openEditLeadModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+
+    // Rule 1: Cannot edit if deleted
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Cannot Edit Lead', `"${schoolName}" has been deleted from CRM and cannot be edited.`);
+      return;
+    }
+
+    // Rule 4: Cannot do anything if lost
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. No edits or modifications can be made.`);
+      return;
+    }
+
     setEditingLead(target);
     setEditSchoolName(target.schoolName || target.school_name || '');
     setEditContactName(target.contactPerson || target.contact_name || '');
@@ -147,8 +161,16 @@ export default function MainScreen({ user, onLogout }) {
   const openSendEmailModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
-    setEmailTargetLead(target);
     const school = target.schoolName || target.school_name || 'Your School';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${school}" is marked as a Lost Lead. Communication is locked.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${school}" has been deleted from CRM.`);
+      return;
+    }
+    setEmailTargetLead(target);
     const contact = target.contactPerson || target.contact_name || 'Principal';
     setEmailSubject(`Empowering ${school} with Hands-On Agentic AI & STEM Excellence Lab`);
     setEmailBody(
@@ -160,8 +182,16 @@ export default function MainScreen({ user, onLogout }) {
   const openSendWhatsAppModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
-    setWaTargetLead(target);
     const school = target.schoolName || target.school_name || 'Your School';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${school}" is marked as a Lost Lead. Communication is locked.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${school}" has been deleted from CRM.`);
+      return;
+    }
+    setWaTargetLead(target);
     const contact = target.contactPerson || target.contact_name || 'Principal';
     setWaMessageText(
       `Hello ${contact}, greetings from OLL CRM! We are preparing the Agentic AI & Robotics curriculum package for ${school}. Would you have 5 minutes for a quick chat today?`
@@ -169,24 +199,60 @@ export default function MainScreen({ user, onLogout }) {
     setWaModalVisible(true);
   };
 
+  // Rule 2 & 3: Cannot reschedule if meeting scheduled, can reschedule for second time if meeting is done
   const openScheduleMeetingModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) {
       Alert.alert('Notice', 'No active school lead found in conversation.');
       return;
     }
+    const schoolName = target.schoolName || target.school_name || 'this school';
+
+    // Rule 4: Lost lead check
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. No meetings can be scheduled.`);
+      return;
+    }
+
+    // Rule 1: Deleted check
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
+
+    // Rule 2 & 3:
+    const isMeetingScheduled = target.status === 'meeting_scheduled' || (target.meeting_date && target.status !== 'meeting_done');
+    const isMeetingDone = target.status === 'meeting_done';
+
+    if (isMeetingScheduled && !isMeetingDone) {
+      Alert.alert(
+        'Meeting Already Scheduled',
+        `A meeting is already scheduled with "${schoolName}" for ${target.meeting_date || 'an upcoming date'}${target.meeting_time ? ` at ${target.meeting_time}` : ''}.\n\nYou cannot reschedule this meeting until it has taken place and been marked as Done.`
+      );
+      return;
+    }
+
     setScheduleTargetLead(target);
     const d = new Date();
     d.setDate(d.getDate() + 2);
     setMeetingDate(d.toISOString().split('T')[0]);
     setMeetingTime('11:30 AM');
-    setMeetingType('In-Person Campus Visit');
+    setMeetingType(isMeetingDone ? 'Follow-up / 2nd Demo Meeting' : 'In-Person Campus Visit');
     setScheduleModalVisible(true);
   };
 
   const openRaiseTicketModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. Support tickets cannot be raised.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setTicketTargetLead(target);
     setTicketTitle('Curriculum Customization for Robotics Lab');
     setTicketPriority('High');
@@ -197,6 +263,15 @@ export default function MainScreen({ user, onLogout }) {
   const openFollowupModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. Follow-ups cannot be scheduled.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setFollowupTargetLead(target);
     const d = new Date();
     d.setDate(d.getDate() + 3);
@@ -208,6 +283,15 @@ export default function MainScreen({ user, onLogout }) {
   const openAssignLeadModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. Lost leads cannot be assigned.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setAssignTargetLead(target);
     setAssignedMemberName('Yash Limbachiya (B2B Lead)');
     setAssignModalVisible(true);
@@ -216,6 +300,15 @@ export default function MainScreen({ user, onLogout }) {
   const openLostLeadModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'lost') {
+      Alert.alert('Already Lost', `"${schoolName}" is already recorded as a Lost Lead.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setLostTargetLead(target);
     setLostReason('Budget Constraint');
     setLostModalVisible(true);
@@ -224,6 +317,15 @@ export default function MainScreen({ user, onLogout }) {
   const openNoteModal = (leadCard, initialText = '') => {
     const target = leadCard || findLatestLead();
     if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. Notes cannot be added to closed leads.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setNoteTargetLead(target);
     setNoteText(initialText || '');
     setNoteModalVisible(true);
@@ -231,6 +333,16 @@ export default function MainScreen({ user, onLogout }) {
 
   const handleDocs = (leadCard) => {
     const target = leadCard || findLatestLead();
+    if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setDocsTargetLead(target);
     setDocsModalVisible(true);
   };
@@ -245,6 +357,22 @@ export default function MainScreen({ user, onLogout }) {
     }
 
     const schoolName = target.schoolName || target.school_name || 'School';
+
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead. No actions can be performed.`);
+      return;
+    }
+
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
+
+    if (target.status === 'meeting_done') {
+      Alert.alert('Already Completed', `The meeting for "${schoolName}" is already marked as done. You can now schedule a 2nd meeting or send a proposal quote.`);
+      return;
+    }
+
     setIsTyping(true);
 
     if (target.id) {
@@ -274,7 +402,8 @@ export default function MainScreen({ user, onLogout }) {
       ...prev,
       {
         sender: 'ai',
-        text: `🎉 **Meeting Done & Status Updated!**\n\nI have marked the meeting as **COMPLETED** for **${schoolName}** in the live School CRM database.\n\n• **New Stage:** \`MEETING DONE\`\n• **Timestamp:** Just now\n• **Next Recommended Step:** Generate customized curriculum quote or send follow-up.`,
+        text: `🎉 **Meeting Done & Status Updated!**\n\nI have marked the meeting as **COMPLETED** for **${schoolName}** in the live School CRM database.\n\n• **New Stage:** \`MEETING DONE\`\n• **Next Allowed Step:** Schedule 2nd Meeting or Generate customized curriculum quote.`,
+        nextActions: ['Schedule 2nd Meeting', 'Generate Proposal Quote', 'Send Introduction Email'],
         time: 'Just now',
       },
     ]);
@@ -288,6 +417,10 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
     const schoolName = target.schoolName || target.school_name || 'this school';
+    if (target.status === 'deleted' || target.isDeleted) {
+      Alert.alert('Already Deleted', `"${schoolName}" has already been deleted from CRM.`);
+      return;
+    }
 
     Alert.alert(
       'Delete School Lead',
@@ -340,6 +473,14 @@ export default function MainScreen({ user, onLogout }) {
     const target = leadCard || findLatestLead();
     if (!target) return;
     const schoolName = target.schoolName || target.school_name || 'School';
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted) {
+      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
+      return;
+    }
     setIsTyping(true);
     if (target.id) {
       await api.updateSchoolInquiry(target.id, { status: 'archived' });
@@ -473,29 +614,52 @@ export default function MainScreen({ user, onLogout }) {
     ]);
   };
 
-  // 7. Schedule Meeting Submit
+  // 7. Schedule Meeting Submit (Handles Initial & 2nd Meeting)
   const handleScheduleMeetingSubmit = async () => {
     if (!scheduleTargetLead) return;
     setIsScheduling(true);
     const schoolName = scheduleTargetLead.schoolName || scheduleTargetLead.school_name || 'School';
+    const isSecondMeeting = scheduleTargetLead.status === 'meeting_done';
+    const newStatus = 'meeting_scheduled';
 
     if (scheduleTargetLead.id) {
       await api.updateSchoolInquiry(scheduleTargetLead.id, {
         meeting_date: meetingDate,
         meeting_time: meetingTime,
         meeting_type: meetingType,
-        status: 'demo_scheduled',
+        status: newStatus,
       });
     }
 
     setIsScheduling(false);
     setScheduleModalVisible(false);
 
+    // Update in messages stream so the leadCard reflects meeting_scheduled
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.leadCard && (msg.leadCard.id === scheduleTargetLead.id || msg.leadCard.schoolName === schoolName)) {
+          return {
+            ...msg,
+            leadCard: {
+              ...msg.leadCard,
+              status: newStatus,
+              meeting_date: meetingDate,
+              meeting_time: meetingTime,
+              meeting_type: meetingType,
+            },
+          };
+        }
+        return msg;
+      })
+    );
+
     setMessages((prev) => [
       ...prev,
       {
         sender: 'ai',
-        text: `📅 **Meeting Scheduled Successfully!**\n\n• **School:** ${schoolName}\n• **Date:** \`${meetingDate}\`\n• **Time:** \`${meetingTime}\`\n• **Mode:** ${meetingType}\n\nMeeting logged in CRM calendar and auto-reminders armed.`,
+        text: isSecondMeeting
+          ? `📅 **2nd Meeting Scheduled!**\n\n• **School:** ${schoolName}\n• **Meeting:** 2nd Round / Follow-up Demo\n• **Date:** \`${meetingDate}\`\n• **Time:** \`${meetingTime}\`\n• **Mode:** ${meetingType}\n\nMeeting logged in CRM calendar and auto-reminders armed.`
+          : `📅 **Meeting Scheduled Successfully!**\n\n• **School:** ${schoolName}\n• **Date:** \`${meetingDate}\`\n• **Time:** \`${meetingTime}\`\n• **Mode:** ${meetingType}\n\nMeeting logged in CRM calendar and auto-reminders armed.`,
         nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'Generate Proposal Quote'],
         time: 'Just now',
       },
@@ -687,7 +851,18 @@ export default function MainScreen({ user, onLogout }) {
   // 13. Generate Proposal for Lead
   const handleGenerateProposalForLead = (leadCard) => {
     const target = leadCard || findLatestLead();
-    const school = target?.schoolName || target?.school_name || 'Partner School';
+    if (!target) return;
+    const school = target.schoolName || target.school_name || 'Partner School';
+
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${school}" is marked as a Lost Lead. Proposals cannot be generated.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${school}" has been deleted from CRM.`);
+      return;
+    }
+
     setChatMode(true);
     setMessages((prev) => [
       ...prev,
@@ -714,6 +889,18 @@ export default function MainScreen({ user, onLogout }) {
   // 14. Call Lead Directly via Phone Dialer
   const handleCallLead = (leadCard) => {
     const target = leadCard || findLatestLead();
+    if (!target) return;
+    const school = target.schoolName || target.school_name || 'this school';
+
+    if (target.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${school}" is marked as a Lost Lead. Calling is disabled.`);
+      return;
+    }
+    if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+      Alert.alert('Lead Deleted', `"${school}" has been deleted from CRM.`);
+      return;
+    }
+
     if (!target?.phone) {
       Alert.alert('Notice', 'No phone number available for this school lead.');
       return;
@@ -873,6 +1060,42 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'meeting_done') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `ℹ️ **Meeting Already Completed:** The meeting for **${target.schoolName || target.school_name}** is already marked as done. You can now schedule a 2nd meeting or send a proposal quote.`,
+              nextActions: ['Schedule 2nd Meeting', 'Generate Proposal Quote'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         await handleMarkMeetingDone(target);
       } else {
         setMessages((prev) => [
@@ -897,6 +1120,18 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'deleted' || target.isDeleted) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Already Deleted:** **${target.schoolName || target.school_name}** has already been deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         handleDeleteLead(target);
       } else {
         Alert.alert('Notice', 'No active school lead found to delete.');
@@ -913,6 +1148,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Already Lost:** **${target.schoolName || target.school_name}** is already recorded as a Lost Lead.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openLostLeadModal(target);
       } else {
         Alert.alert('Notice', 'No active school lead found.');
@@ -928,6 +1187,18 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         await handleArchiveLead(target);
       } else {
         Alert.alert('Notice', 'No active school lead found to archive.');
@@ -935,7 +1206,7 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
-    // ── 5. Action Intent: Schedule Meeting ──
+    // ── 5. Action Intent: Schedule Meeting (Rule 2 & 3) ──
     if (
       lower.includes('schedule meeting') ||
       lower.includes('schedule demo') ||
@@ -944,6 +1215,47 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Meetings cannot be scheduled for closed leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM. Meetings cannot be scheduled for deleted leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+
+        const isMeetingScheduled = target.status === 'meeting_scheduled' || (target.meeting_date && target.status !== 'meeting_done');
+        const isMeetingDone = target.status === 'meeting_done';
+
+        if (isMeetingScheduled && !isMeetingDone) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `⚠️ **Meeting Already Scheduled:** A meeting with **${target.schoolName || target.school_name}** is already scheduled for **${target.meeting_date || 'an upcoming date'}**${target.meeting_time ? ` at **${target.meeting_time}**` : ''}.\n\nUnder CRM rules, you cannot reschedule this meeting until it has taken place and been marked as Done.`,
+              nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+
         openScheduleMeetingModal(target);
       } else {
         Alert.alert('Notice', 'No active school lead found to schedule meeting.');
@@ -959,6 +1271,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Lost leads cannot be assigned.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openAssignLeadModal(target);
       } else {
         Alert.alert('Notice', 'No active school lead found to assign.');
@@ -975,6 +1311,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Support tickets cannot be raised for closed leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openRaiseTicketModal(target);
       } else {
         Alert.alert('Notice', 'No active school lead found to raise a ticket for.');
@@ -994,6 +1354,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Notes cannot be added to closed leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         let extractedNote = '';
         const colonIdx = userText.indexOf(':');
         if (colonIdx !== -1 && colonIdx < userText.length - 1) {
@@ -1015,6 +1399,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Follow-ups cannot be scheduled for closed leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openFollowupModal(target);
       } else {
         Alert.alert('Notice', 'No active school lead found for follow-up.');
@@ -1032,6 +1440,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Documents and proposals are unavailable for closed leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         handleDocs(target);
       } else {
         Alert.alert('Notice', 'No active school lead found to view documents.');
@@ -1039,10 +1471,34 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
-    // ── 11. Action Intent: Edit Lead ──
+    // ── 11. Action Intent: Edit Lead (Rule 1: deleted lead cannot be edited; Rule 4: lost lead cannot be edited) ──
     if (lower.startsWith('edit') || lower.includes('edit lead') || lower.includes('update lead')) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `⚠️ **Cannot Edit Deleted Lead:** **${target.schoolName || target.school_name}** was deleted from CRM. Deleted leads cannot be edited from chat or card.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Cannot Edit Lost Lead:** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Closed leads cannot be edited or modified.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openEditLeadModal(target);
         return;
       }
@@ -1058,6 +1514,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Outbound emails cannot be sent.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openSendEmailModal(target);
         return;
       }
@@ -1072,6 +1552,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. WhatsApp messages cannot be sent.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         openSendWhatsAppModal(target);
         return;
       }
@@ -1085,6 +1589,30 @@ export default function MainScreen({ user, onLogout }) {
     ) {
       setIsTyping(false);
       if (target) {
+        if (target.status === 'lost') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Calls cannot be placed for closed leads.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
+              nextActions: ['Add New School Lead', 'View Inquiries'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
         handleCallLead(target);
         return;
       }

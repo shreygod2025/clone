@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Keyboard, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Keyboard, Platform, Linking, Alert } from 'react-native';
 import { Feather, Ionicons, FontAwesome } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import MarkdownView from './MarkdownView';
@@ -99,221 +99,323 @@ export default function ChatMessagesView({
                 <MarkdownView content={msg.text} baseStyle={styles.aiText} isUser={false} />
 
                 {/* Render Rich Lead Card if present */}
-                {msg.leadCard && (
-                  <View style={styles.leadCardContainer}>
-                    <View style={styles.cardHeader}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                        <Ionicons name="school" size={17} color="#059669" style={{ marginRight: 6 }} />
-                        <Text style={styles.schoolName} numberOfLines={1}>{msg.leadCard.schoolName || msg.leadCard.school_name}</Text>
-                      </View>
-                    </View>
+                {msg.leadCard && (() => {
+                  const lead = msg.leadCard;
+                  const isDeleted = lead.status === 'deleted' || lead.isDeleted || lead.status === 'archived';
+                  const isLost = lead.status === 'lost';
+                  const isMeetingDone = lead.status === 'meeting_done';
+                  const isMeetingScheduled = !isMeetingDone && (lead.status === 'meeting_scheduled' || Boolean(lead.meeting_date));
 
-                    <View style={styles.badgeRow}>
-                      <View style={styles.boardBadge}>
-                        <Text style={styles.boardBadgeText}>{msg.leadCard.board || 'CBSE'}</Text>
+                  return (
+                    <View style={styles.leadCardContainer}>
+                      <View style={styles.cardHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          <Ionicons name="school" size={17} color={isLost ? '#EF4444' : isDeleted ? '#64748B' : '#059669'} style={{ marginRight: 6 }} />
+                          <Text style={styles.schoolName} numberOfLines={1}>{lead.schoolName || lead.school_name}</Text>
+                        </View>
                       </View>
-                      <View style={styles.scoreBadge}>
-                        <Text style={styles.scoreBadgeText}>{msg.leadCard.leadScore || '96/100 (Hot Lead)'}</Text>
+
+                      <View style={styles.badgeRow}>
+                        {isLost ? (
+                          <View style={[styles.boardBadge, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1 }]}>
+                            <Text style={[styles.boardBadgeText, { color: '#B91C1C', fontWeight: '800' }]}>❌ LOST LEAD (CLOSED)</Text>
+                          </View>
+                        ) : isDeleted ? (
+                          <View style={[styles.boardBadge, { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', borderWidth: 1 }]}>
+                            <Text style={[styles.boardBadgeText, { color: '#64748B', fontWeight: '800' }]}>🗑️ DELETED FROM CRM</Text>
+                          </View>
+                        ) : isMeetingDone ? (
+                          <View style={[styles.boardBadge, { backgroundColor: '#F3E8FF', borderColor: '#D8B4FE', borderWidth: 1 }]}>
+                            <Text style={[styles.boardBadgeText, { color: '#7C3AED', fontWeight: '800' }]}>✓ MEETING DONE</Text>
+                          </View>
+                        ) : isMeetingScheduled ? (
+                          <View style={[styles.boardBadge, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}>
+                            <Text style={[styles.boardBadgeText, { color: '#1D4ED8', fontWeight: '800' }]}>📅 MEETING SCHEDULED</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.boardBadge}>
+                            <Text style={styles.boardBadgeText}>{lead.board || 'CBSE'}</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.scoreBadge}>
+                          <Text style={styles.scoreBadgeText}>{lead.leadScore || (isLost ? '0/100 (Closed)' : '96/100 (Hot Lead)')}</Text>
+                        </View>
+                        {lead.id ? (
+                          <View style={styles.dbIdBadge}>
+                            <Text style={styles.dbIdText}>ID: {lead.id.substring(0, 8)}</Text>
+                          </View>
+                        ) : null}
                       </View>
-                      {msg.leadCard.id ? (
-                        <View style={styles.dbIdBadge}>
-                          <Text style={styles.dbIdText}>ID: {msg.leadCard.id.substring(0, 8)}</Text>
+
+                      <View style={styles.infoRow}>
+                        <Feather name="map-pin" size={14} color="#64748B" />
+                        <Text style={styles.infoText}>{lead.location || 'Mumbai, Maharashtra'}</Text>
+                      </View>
+
+                      <View style={styles.infoRow}>
+                        <Feather name="user" size={14} color="#64748B" />
+                        <Text style={styles.infoText}>{lead.contactPerson || lead.contact_name}</Text>
+                      </View>
+
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.infoRow}
+                        onPress={() => {
+                          if (isLost) {
+                            Alert.alert('Lead Closed (Lost)', 'This lead is marked as Lost. Communication is disabled.');
+                            return;
+                          }
+                          if (isDeleted) {
+                            Alert.alert('Lead Deleted', 'This lead has been deleted from CRM.');
+                            return;
+                          }
+                          onSendEmail && onSendEmail(lead);
+                        }}
+                      >
+                        <Feather name="mail" size={14} color="#E11D48" />
+                        <Text style={[styles.infoText, { color: '#E11D48' }]}>
+                          {lead.email || 'pending@school.edu.in'} <Text style={{ fontSize: 11, color: '#94A3B8' }}>(Tap to Email)</Text>
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.infoRow}
+                        onPress={() => {
+                          if (isLost) {
+                            Alert.alert('Lead Closed (Lost)', 'This lead is marked as Lost. Communication is disabled.');
+                            return;
+                          }
+                          if (isDeleted) {
+                            Alert.alert('Lead Deleted', 'This lead has been deleted from CRM.');
+                            return;
+                          }
+                          onCallLead && onCallLead(lead);
+                        }}
+                      >
+                        <Feather name="phone" size={14} color="#059669" />
+                        <Text style={[styles.infoText, { color: '#059669', fontWeight: '600' }]}>
+                          {lead.phone} <Text style={{ fontSize: 11, color: '#94A3B8' }}>(Tap to Call)</Text>
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Clean Assistant Latest Note */}
+                      <View style={styles.latestNoteCard}>
+                        <View style={styles.noteTitleRow}>
+                          <View style={styles.noteAiPill}>
+                            <Ionicons name="sparkles" size={10} color="#065F46" />
+                            <Text style={styles.noteAiPillText}>Assistant</Text>
+                          </View>
+                          <Text style={styles.latestNoteTitle}>Latest Note:</Text>
+                        </View>
+                        <MarkdownView
+                          content={formatAssistantNote(lead.notes, lead)}
+                          baseStyle={styles.latestNoteBody}
+                        />
+                      </View>
+
+                      {/* Automated Follow-up Tasks from Backend */}
+                      {lead.followup_tasks && lead.followup_tasks.length > 0 ? (
+                        <View style={styles.followupTasksBox}>
+                          <Text style={styles.followupBoxTitle}>Auto-Scheduled Follow-up Reminders:</Text>
+                          {lead.followup_tasks.slice(0, 4).map((task, idx) => (
+                            <View key={idx} style={styles.taskMiniRow}>
+                              <Feather name="calendar" size={12} color="#059669" style={{ marginRight: 6 }} />
+                              <Text style={styles.taskMiniText}>
+                                Step {task.number}: {task.email_type} scheduled for {task.scheduled_date}
+                              </Text>
+                            </View>
+                          ))}
                         </View>
                       ) : null}
-                    </View>
 
-                    <View style={styles.infoRow}>
-                      <Feather name="map-pin" size={14} color="#64748B" />
-                      <Text style={styles.infoText}>{msg.leadCard.location || 'Mumbai, Maharashtra'}</Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Feather name="user" size={14} color="#64748B" />
-                      <Text style={styles.infoText}>{msg.leadCard.contactPerson || msg.leadCard.contact_name}</Text>
-                    </View>
-
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={styles.infoRow}
-                      onPress={() => onSendEmail && onSendEmail(msg.leadCard)}
-                    >
-                      <Feather name="mail" size={14} color="#E11D48" />
-                      <Text style={[styles.infoText, { color: '#E11D48' }]}>
-                        {msg.leadCard.email || 'pending@school.edu.in'} <Text style={{ fontSize: 11, color: '#94A3B8' }}>(Tap to Email)</Text>
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={styles.infoRow}
-                      onPress={() => onCallLead && onCallLead(msg.leadCard)}
-                    >
-                      <Feather name="phone" size={14} color="#059669" />
-                      <Text style={[styles.infoText, { color: '#059669', fontWeight: '600' }]}>
-                        {msg.leadCard.phone} <Text style={{ fontSize: 11, color: '#94A3B8' }}>(Tap to Call)</Text>
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Clean Assistant Latest Note */}
-                    <View style={styles.latestNoteCard}>
-                      <View style={styles.noteTitleRow}>
-                        <View style={styles.noteAiPill}>
-                          <Ionicons name="sparkles" size={10} color="#065F46" />
-                          <Text style={styles.noteAiPillText}>Assistant</Text>
-                        </View>
-                        <Text style={styles.latestNoteTitle}>Latest Note:</Text>
-                      </View>
-                      <MarkdownView
-                        content={formatAssistantNote(msg.leadCard.notes, msg.leadCard)}
-                        baseStyle={styles.latestNoteBody}
-                      />
-                    </View>
-
-                    {/* Automated Follow-up Tasks from Backend */}
-                    {msg.leadCard.followup_tasks && msg.leadCard.followup_tasks.length > 0 ? (
-                      <View style={styles.followupTasksBox}>
-                        <Text style={styles.followupBoxTitle}>Auto-Scheduled Follow-up Reminders:</Text>
-                        {msg.leadCard.followup_tasks.slice(0, 4).map((task, idx) => (
-                          <View key={idx} style={styles.taskMiniRow}>
-                            <Feather name="calendar" size={12} color="#059669" style={{ marginRight: 6 }} />
-                            <Text style={styles.taskMiniText}>
-                              Step {task.number}: {task.email_type} scheduled for {task.scheduled_date}
-                            </Text>
+                      {/* Interactive Lead Action Buttons or Locked State */}
+                      {isLost ? (
+                        <View style={styles.leadLostBanner}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                            <Feather name="slash" size={13} color="#DC2626" style={{ marginRight: 6 }} />
+                            <Text style={styles.leadLostTitle}>Lost Lead — Closed Permanently</Text>
                           </View>
-                        ))}
-                      </View>
-                    ) : null}
+                          <Text style={styles.leadLostDescription}>
+                            This school has been recorded as a Lost Lead. Per CRM rules, no meetings, proposals, notes, or edits can be performed.
+                          </Text>
+                        </View>
+                      ) : isDeleted ? (
+                        <View style={styles.leadDeletedBanner}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                            <Feather name="trash-2" size={13} color="#64748B" style={{ marginRight: 6 }} />
+                            <Text style={styles.leadDeletedTitle}>Lead Deleted from CRM</Text>
+                          </View>
+                          <Text style={styles.leadDeletedDescription}>
+                            This record was deleted from the active database. Editing and further actions are disabled.
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.leadActionsBar}>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnEditLead]}
+                            onPress={() => onEditLead && onEditLead(lead)}
+                          >
+                            <Feather name="edit-2" size={11} color="#0284C7" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#0284C7' }]}>Edit</Text>
+                          </TouchableOpacity>
 
-                    {/* Interactive Lead Action Buttons (All 12 from School CRM) */}
-                    <View style={styles.leadActionsBar}>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnEditLead]}
-                        onPress={() => onEditLead && onEditLead(msg.leadCard)}
-                      >
-                        <Feather name="edit-2" size={11} color="#0284C7" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#0284C7' }]}>Edit</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnProposal]}
+                            onPress={() => onGenerateProposal && onGenerateProposal(lead)}
+                          >
+                            <Feather name="file-text" size={11} color="#D97706" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#D97706' }]}>Proposal</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnProposal]}
-                        onPress={() => onGenerateProposal && onGenerateProposal(msg.leadCard)}
-                      >
-                        <Feather name="file-text" size={11} color="#D97706" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#D97706' }]}>Proposal</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[
+                              styles.leadActionButton,
+                              isMeetingDone ? { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' } : styles.btnMeetingDone,
+                            ]}
+                            onPress={() => onMeetingDone && onMeetingDone(lead)}
+                          >
+                            <View style={isMeetingDone ? styles.tinyGreenDot : styles.tinyPurpleDot} />
+                            <Text
+                              style={[
+                                styles.leadActionText,
+                                { color: isMeetingDone ? '#059669' : '#7C3AED', fontWeight: isMeetingDone ? '700' : '600' },
+                              ]}
+                            >
+                              {isMeetingDone ? 'Meeting Done ✓' : 'Meeting Done'}
+                            </Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnMeetingDone]}
-                        onPress={() => onMeetingDone && onMeetingDone(msg.leadCard)}
-                      >
-                        <View style={styles.tinyPurpleDot} />
-                        <Text style={[styles.leadActionText, { color: '#7C3AED' }]}>Meeting Done</Text>
-                      </TouchableOpacity>
+                          {/* Schedule Meeting: Rule 2 & 3 */}
+                          {isMeetingScheduled ? (
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              style={[styles.leadActionButton, styles.btnMeetingLocked]}
+                              onPress={() => onScheduleMeeting && onScheduleMeeting(lead)}
+                            >
+                              <Feather name="lock" size={11} color="#64748B" style={{ marginRight: 3 }} />
+                              <Text style={[styles.leadActionText, { color: '#64748B' }]}>Meeting Scheduled (Locked)</Text>
+                            </TouchableOpacity>
+                          ) : isMeetingDone ? (
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              style={[styles.leadActionButton, styles.btnScheduleMeeting]}
+                              onPress={() => onScheduleMeeting && onScheduleMeeting(lead)}
+                            >
+                              <Feather name="calendar" size={11} color="#2563EB" style={{ marginRight: 3 }} />
+                              <Text style={[styles.leadActionText, { color: '#2563EB', fontWeight: '700' }]}>
+                                Schedule 2nd Meeting
+                              </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              style={[styles.leadActionButton, styles.btnScheduleMeeting]}
+                              onPress={() => onScheduleMeeting && onScheduleMeeting(lead)}
+                            >
+                              <Feather name="calendar" size={11} color="#2563EB" style={{ marginRight: 3 }} />
+                              <Text style={[styles.leadActionText, { color: '#2563EB' }]}>Schedule Meeting</Text>
+                            </TouchableOpacity>
+                          )}
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnScheduleMeeting]}
-                        onPress={() => onScheduleMeeting && onScheduleMeeting(msg.leadCard)}
-                      >
-                        <Feather name="calendar" size={11} color="#2563EB" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#2563EB' }]}>Schedule Meeting</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnTicket]}
+                            onPress={() => onRaiseTicket && onRaiseTicket(lead)}
+                          >
+                            <Ionicons name="ticket-outline" size={11} color="#EA580C" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#EA580C' }]}>Ticket</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnTicket]}
-                        onPress={() => onRaiseTicket && onRaiseTicket(msg.leadCard)}
-                      >
-                        <Ionicons name="ticket-outline" size={11} color="#EA580C" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#EA580C' }]}>Ticket</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnFollowup]}
+                            onPress={() => onFollowup && onFollowup(lead)}
+                          >
+                            <Feather name="phone-call" size={11} color="#0D9488" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#0D9488' }]}>Followup</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnFollowup]}
-                        onPress={() => onFollowup && onFollowup(msg.leadCard)}
-                      >
-                        <Feather name="phone-call" size={11} color="#0D9488" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#0D9488' }]}>Followup</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnDocs]}
+                            onPress={() => onDocs && onDocs(lead)}
+                          >
+                            <Feather name="file-text" size={11} color="#0891B2" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#0891B2' }]}>Docs</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnDocs]}
-                        onPress={() => onDocs && onDocs(msg.leadCard)}
-                      >
-                        <Feather name="file-text" size={11} color="#0891B2" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#0891B2' }]}>Docs</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnMail]}
+                            onPress={() => onSendEmail && onSendEmail(lead)}
+                          >
+                            <Feather name="mail" size={11} color="#0284C7" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#0284C7' }]}>Mail</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnMail]}
-                        onPress={() => onSendEmail && onSendEmail(msg.leadCard)}
-                      >
-                        <Feather name="mail" size={11} color="#0284C7" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#0284C7' }]}>Mail</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnWa]}
+                            onPress={() => onSendWhatsApp && onSendWhatsApp(lead)}
+                          >
+                            <FontAwesome name="whatsapp" size={13} color="#16A34A" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#16A34A' }]}>WhatsApp</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnWa]}
-                        onPress={() => onSendWhatsApp && onSendWhatsApp(msg.leadCard)}
-                      >
-                        <FontAwesome name="whatsapp" size={13} color="#16A34A" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#16A34A' }]}>WhatsApp</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnAssign]}
+                            onPress={() => onAssign && onAssign(lead)}
+                          >
+                            <Feather name="user-plus" size={11} color="#4F46E5" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#4F46E5' }]}>Assign</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnAssign]}
-                        onPress={() => onAssign && onAssign(msg.leadCard)}
-                      >
-                        <Feather name="user-plus" size={11} color="#4F46E5" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#4F46E5' }]}>Assign</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnNote]}
+                            onPress={() => onNote && onNote(lead)}
+                          >
+                            <Feather name="edit-3" size={11} color="#475569" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#475569' }]}>Note</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnNote]}
-                        onPress={() => onNote && onNote(msg.leadCard)}
-                      >
-                        <Feather name="edit-3" size={11} color="#475569" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#475569' }]}>Note</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnDelete]}
+                            onPress={() => onDeleteLead && onDeleteLead(lead)}
+                          >
+                            <Feather name="trash-2" size={11} color="#DC2626" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#DC2626' }]}>Delete</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnDelete]}
-                        onPress={() => onDeleteLead && onDeleteLead(msg.leadCard)}
-                      >
-                        <Feather name="trash-2" size={11} color="#DC2626" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#DC2626' }]}>Delete</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnLostLead]}
+                            onPress={() => onLostLead && onLostLead(lead)}
+                          >
+                            <Feather name="x" size={11} color="#E11D48" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#E11D48' }]}>Lost Lead</Text>
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnLostLead]}
-                        onPress={() => onLostLead && onLostLead(msg.leadCard)}
-                      >
-                        <Feather name="x" size={11} color="#E11D48" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#E11D48' }]}>Lost Lead</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnArchive]}
-                        onPress={() => onArchiveLead && onArchiveLead(msg.leadCard)}
-                      >
-                        <Feather name="archive" size={11} color="#64748B" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#64748B' }]}>Archive</Text>
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={[styles.leadActionButton, styles.btnArchive]}
+                            onPress={() => onArchiveLead && onArchiveLead(lead)}
+                          >
+                            <Feather name="archive" size={11} color="#64748B" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#64748B' }]}>Archive</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
-                  </View>
-                )}
+                  );
+                })()}
 
                 {/* Render Follow-up Pipeline List if present */}
                 {msg.followUpList && (
@@ -813,6 +915,53 @@ const styles = StyleSheet.create({
   leadActionText: {
     fontSize: 11.5,
     fontWeight: '700',
+  },
+  tinyGreenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#059669',
+    marginRight: 4,
+  },
+  btnMeetingLocked: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  leadLostBanner: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+  },
+  leadLostTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B91C1C',
+  },
+  leadLostDescription: {
+    fontSize: 11,
+    color: '#7F1D1D',
+    lineHeight: 15,
+  },
+  leadDeletedBanner: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#CBD5E1',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+  },
+  leadDeletedTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  leadDeletedDescription: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
   },
   pipelineContainer: {
     marginTop: 8,

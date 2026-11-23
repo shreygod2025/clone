@@ -231,6 +231,17 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Open Edit / Proposal Modal
   const openEditModal = (lead) => {
+    if (!lead) return;
+    const isLost = (lead.status || '').toLowerCase() === 'lost';
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isDeleted) {
+      Alert.alert('Cannot Edit Lead', `"${lead.school_name}" has been deleted from CRM and cannot be edited.`);
+      return;
+    }
+    if (isLost) {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead. No edits or modifications can be made.`);
+      return;
+    }
     setSelectedLead(lead);
     setFormSchoolName(lead.school_name || '');
     setFormContactName(lead.contact_name || '');
@@ -334,6 +345,22 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Quick Action: Mark Meeting Done
   const handleMarkMeetingDone = async (lead) => {
+    if (!lead) return;
+    const isLost = (lead.status || '').toLowerCase() === 'lost';
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isLost) {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead. No actions can be performed.`);
+      return;
+    }
+    if (isDeleted) {
+      Alert.alert('Lead Deleted', `"${lead.school_name}" has been deleted from CRM.`);
+      return;
+    }
+    if (lead.status === 'meeting_done') {
+      Alert.alert('Already Completed', `The meeting for "${lead.school_name}" is already marked as done. You can now schedule a 2nd meeting or send a proposal quote.`);
+      return;
+    }
+
     const updated = { status: 'meeting_done' };
     if (lead.id) {
       await api.updateSchoolInquiry(lead.id, updated);
@@ -341,12 +368,22 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
     setLeads((prev) =>
       prev.map((l) => (l.id === lead.id ? { ...l, status: 'meeting_done' } : l))
     );
-    Alert.alert('Status Updated', `"${lead.school_name}" moved to Meeting Done stage.`);
+    Alert.alert('Status Updated', `"${lead.school_name}" moved to Meeting Done stage. You can now schedule a 2nd meeting.`);
   };
 
   // Quick Action: Mark Lost Lead
   const handleMarkLost = async (lead) => {
-    Alert.alert('Mark Lost Lead', `Are you sure you want to mark ${lead.school_name} as lost?`, [
+    if (!lead) return;
+    if (lead.status === 'lost') {
+      Alert.alert('Already Lost', `"${lead.school_name}" is already marked as a Lost Lead.`);
+      return;
+    }
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isDeleted) {
+      Alert.alert('Lead Deleted', `"${lead.school_name}" has been deleted from CRM.`);
+      return;
+    }
+    Alert.alert('Mark Lost Lead', `Are you sure you want to mark ${lead.school_name} as lost? Once marked lost, no further actions can be performed.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Confirm Lost',
@@ -365,6 +402,11 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Quick Action: Archive Lead
   const handleArchiveLead = async (lead) => {
+    if (!lead) return;
+    if (lead.status === 'lost') {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead.`);
+      return;
+    }
     if (lead.id) {
       await api.updateSchoolInquiry(lead.id, { status: 'archived' });
     }
@@ -376,6 +418,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Quick Action: Delete Lead
   const handleDeleteLead = (lead) => {
+    if (!lead) return;
     Alert.alert('Delete Inquiry', `Delete record for ${lead.school_name}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -393,6 +436,17 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Open Email Modal
   const openEmailModal = (lead) => {
+    if (!lead) return;
+    const isLost = (lead.status || '').toLowerCase() === 'lost';
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isLost) {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead. Communication is locked.`);
+      return;
+    }
+    if (isDeleted) {
+      Alert.alert('Lead Deleted', `"${lead.school_name}" has been deleted from CRM.`);
+      return;
+    }
     setSelectedLead(lead);
     const school = lead.school_name || 'School';
     const contact = lead.contact_name || 'Principal';
@@ -422,16 +476,44 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Schedule Meeting
   const openScheduleMeetingModal = (lead) => {
+    if (!lead) return;
+    const isLost = (lead.status || '').toLowerCase() === 'lost';
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isLost) {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead. Meetings cannot be scheduled for closed leads.`);
+      return;
+    }
+    if (isDeleted) {
+      Alert.alert('Lead Deleted', `"${lead.school_name}" has been deleted from CRM.`);
+      return;
+    }
+
+    const isMeetingScheduled = lead.status === 'meeting_scheduled' || (lead.meeting_date && lead.status !== 'meeting_done');
+    const isMeetingDone = lead.status === 'meeting_done';
+
+    if (isMeetingScheduled && !isMeetingDone) {
+      Alert.alert(
+        'Meeting Already Scheduled',
+        `A meeting is already scheduled with "${lead.school_name}" for ${lead.meeting_date || 'an upcoming date'}${lead.meeting_time ? ` at ${lead.meeting_time}` : ''}.\n\nYou cannot reschedule this meeting until it has taken place and been marked as Done.`
+      );
+      return;
+    }
+
     setSelectedLead(lead);
+    setMeetingType(isMeetingDone ? 'Follow-up / 2nd Demo Meeting' : 'In-Person Campus Visit');
     setMeetingModalVisible(true);
   };
 
   const handleSaveMeeting = async () => {
     if (!selectedLead) return;
+    const isSecondMeeting = selectedLead.status === 'meeting_done';
     const update = {
       meeting_date: meetingDate,
       meeting_time: meetingTime,
       meeting_type: meetingType,
+      notes: isSecondMeeting
+        ? `${selectedLead.notes || ''}\n• [${new Date().toLocaleDateString()}] 2nd Meeting scheduled for ${meetingDate} at ${meetingTime}`
+        : selectedLead.notes,
     };
     if (selectedLead.id) {
       await api.updateSchoolInquiry(selectedLead.id, update);
@@ -440,11 +522,25 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
       prev.map((l) => (l.id === selectedLead.id ? { ...l, ...update } : l))
     );
     setMeetingModalVisible(false);
-    Alert.alert('Meeting Scheduled', `Meeting with ${selectedLead.school_name} set for ${meetingDate} at ${meetingTime}.`);
+    Alert.alert(
+      isSecondMeeting ? '2nd Meeting Scheduled' : 'Meeting Scheduled',
+      `${isSecondMeeting ? '2nd Meeting' : 'Meeting'} with ${selectedLead.school_name} set for ${meetingDate} at ${meetingTime}.`
+    );
   };
 
   // Quick Note
   const openNoteModal = (lead) => {
+    if (!lead) return;
+    const isLost = (lead.status || '').toLowerCase() === 'lost';
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isLost) {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead. Notes cannot be added.`);
+      return;
+    }
+    if (isDeleted) {
+      Alert.alert('Lead Deleted', `"${lead.school_name}" has been deleted from CRM.`);
+      return;
+    }
     setSelectedLead(lead);
     setNewNoteText('');
     setNoteModalVisible(true);
@@ -470,6 +566,17 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   // Raise Ticket
   const openTicketModal = (lead) => {
+    if (!lead) return;
+    const isLost = (lead.status || '').toLowerCase() === 'lost';
+    const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+    if (isLost) {
+      Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead. Support tickets cannot be raised.`);
+      return;
+    }
+    if (isDeleted) {
+      Alert.alert('Lead Deleted', `"${lead.school_name}" has been deleted from CRM.`);
+      return;
+    }
     setSelectedLead(lead);
     setTicketSubject('');
     setTicketModalVisible(true);
@@ -819,119 +926,178 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
                   <Text style={styles.fullViewBtnText}>View</Text>
                 </TouchableOpacity>
 
-                {/* ── Complete Action Buttons Grid matching Screenshot ─────────── */}
-                <View style={styles.actionsGrid}>
-                  {/* Row 1 */}
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnEditProposal]}
-                    onPress={() => openEditModal(lead)}
-                  >
-                    <Feather name="edit-2" size={11} color="#D97706" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#D97706' }]}>Edit / Proposal</Text>
-                  </TouchableOpacity>
+                {/* ── Complete Action Buttons Grid or State Banners ─────────── */}
+                {(() => {
+                  const isLost = (lead.status || '').toLowerCase() === 'lost';
+                  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+                  const isMeetingDone = (lead.status || '').toLowerCase() === 'meeting_done';
+                  const isMeetingScheduled = !isMeetingDone && ((lead.status || '').toLowerCase() === 'meeting_scheduled' || Boolean(lead.meeting_date));
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnMeetingDone]}
-                    onPress={() => handleMarkMeetingDone(lead)}
-                  >
-                    <View style={styles.tinyPurpleDot} />
-                    <Text style={[styles.actionGridText, { color: '#7C3AED' }]}>Meeting Done</Text>
-                  </TouchableOpacity>
+                  if (isLost) {
+                    return (
+                      <View style={styles.leadLostBanner}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                          <Feather name="slash" size={12} color="#DC2626" style={{ marginRight: 5 }} />
+                          <Text style={styles.leadLostTitle}>Lost Lead — Closed Permanently</Text>
+                        </View>
+                        <Text style={styles.leadLostDescription}>
+                          No further meetings, emails, proposals, or edits can be performed for this lead.
+                        </Text>
+                      </View>
+                    );
+                  }
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnScheduleMeeting]}
-                    onPress={() => openScheduleMeetingModal(lead)}
-                  >
-                    <Feather name="calendar" size={11} color="#2563EB" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#2563EB' }]}>Schedule Meeting</Text>
-                  </TouchableOpacity>
+                  if (isDeleted) {
+                    return (
+                      <View style={styles.leadDeletedBanner}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                          <Feather name="trash-2" size={12} color="#64748B" style={{ marginRight: 5 }} />
+                          <Text style={styles.leadDeletedTitle}>Lead Deleted from CRM</Text>
+                        </View>
+                        <Text style={styles.leadDeletedDescription}>
+                          This record was deleted from the CRM database and cannot be edited.
+                        </Text>
+                      </View>
+                    );
+                  }
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnTicket]}
-                    onPress={() => openTicketModal(lead)}
-                  >
-                    <Ionicons name="ticket-outline" size={11} color="#EA580C" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#EA580C' }]}>Ticket</Text>
-                  </TouchableOpacity>
+                  return (
+                    <View style={styles.actionsGrid}>
+                      {/* Row 1 */}
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnEditProposal]}
+                        onPress={() => openEditModal(lead)}
+                      >
+                        <Feather name="edit-2" size={11} color="#D97706" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#D97706' }]}>Edit / Proposal</Text>
+                      </TouchableOpacity>
 
-                  {/* Row 2 */}
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnFollowup]}
-                    onPress={() => openScheduleMeetingModal(lead)}
-                  >
-                    <Feather name="phone-call" size={11} color="#0D9488" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#0D9488' }]}>Followup</Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnMeetingDone]}
+                        onPress={() => handleMarkMeetingDone(lead)}
+                      >
+                        <View style={isMeetingDone ? styles.tinyGreenDot : styles.tinyPurpleDot} />
+                        <Text style={[styles.actionGridText, { color: isMeetingDone ? '#059669' : '#7C3AED' }]}>
+                          {isMeetingDone ? 'Meeting Done ✓' : 'Meeting Done'}
+                        </Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnDocs]}
-                    onPress={() => Alert.alert('Documents', `Brochure and syllabus for ${lead.school_name} ready.`)}
-                  >
-                    <Feather name="file-text" size={11} color="#0891B2" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#0891B2' }]}>Docs</Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={isMeetingScheduled ? 1 : 0.8}
+                        style={[
+                          styles.actionGridBtn,
+                          styles.btnScheduleMeeting,
+                          isMeetingScheduled && styles.btnMeetingLocked,
+                        ]}
+                        onPress={() => openScheduleMeetingModal(lead)}
+                      >
+                        <Feather
+                          name={isMeetingScheduled ? 'lock' : 'calendar'}
+                          size={11}
+                          color={isMeetingScheduled ? '#64748B' : '#2563EB'}
+                          style={{ marginRight: 3 }}
+                        />
+                        <Text
+                          style={[
+                            styles.actionGridText,
+                            { color: isMeetingScheduled ? '#64748B' : '#2563EB' },
+                          ]}
+                        >
+                          {isMeetingDone
+                            ? 'Schedule 2nd Meeting'
+                            : isMeetingScheduled
+                            ? 'Meeting Scheduled (Locked)'
+                            : 'Schedule Meeting'}
+                        </Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnMail]}
-                    onPress={() => openEmailModal(lead)}
-                  >
-                    <Feather name="mail" size={11} color="#0284C7" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#0284C7' }]}>Mail</Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnTicket]}
+                        onPress={() => openTicketModal(lead)}
+                      >
+                        <Ionicons name="ticket-outline" size={11} color="#EA580C" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#EA580C' }]}>Ticket</Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnAssign]}
-                    onPress={() => Alert.alert('Assign', `Assign RM to ${lead.school_name}`)}
-                  >
-                    <Feather name="user-plus" size={11} color="#4F46E5" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#4F46E5' }]}>Assign</Text>
-                  </TouchableOpacity>
+                      {/* Row 2 */}
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnFollowup]}
+                        onPress={() => openScheduleMeetingModal(lead)}
+                      >
+                        <Feather name="phone-call" size={11} color="#0D9488" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#0D9488' }]}>Followup</Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnNote]}
-                    onPress={() => openNoteModal(lead)}
-                  >
-                    <Feather name="edit-3" size={11} color="#475569" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#475569' }]}>Note</Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnDocs]}
+                        onPress={() => Alert.alert('Documents', `Brochure and syllabus for ${lead.school_name} ready.`)}
+                      >
+                        <Feather name="file-text" size={11} color="#0891B2" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#0891B2' }]}>Docs</Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnDelete]}
-                    onPress={() => handleDeleteLead(lead)}
-                  >
-                    <Feather name="trash-2" size={11} color="#DC2626" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#DC2626' }]}>Delete</Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnMail]}
+                        onPress={() => openEmailModal(lead)}
+                      >
+                        <Feather name="mail" size={11} color="#0284C7" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#0284C7' }]}>Mail</Text>
+                      </TouchableOpacity>
 
-                  {/* Row 3 Outlines */}
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnLostLead]}
-                    onPress={() => handleMarkLost(lead)}
-                  >
-                    <Feather name="x" size={11} color="#E11D48" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#E11D48' }]}>Lost Lead</Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnAssign]}
+                        onPress={() => Alert.alert('Assign', `Assign RM to ${lead.school_name}`)}
+                      >
+                        <Feather name="user-plus" size={11} color="#4F46E5" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#4F46E5' }]}>Assign</Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.actionGridBtn, styles.btnArchive]}
-                    onPress={() => handleArchiveLead(lead)}
-                  >
-                    <Feather name="archive" size={11} color="#64748B" style={{ marginRight: 3 }} />
-                    <Text style={[styles.actionGridText, { color: '#64748B' }]}>Archive</Text>
-                  </TouchableOpacity>
-                </View>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnNote]}
+                        onPress={() => openNoteModal(lead)}
+                      >
+                        <Feather name="edit-3" size={11} color="#475569" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#475569' }]}>Note</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnDelete]}
+                        onPress={() => handleDeleteLead(lead)}
+                      >
+                        <Feather name="trash-2" size={11} color="#DC2626" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#DC2626' }]}>Delete</Text>
+                      </TouchableOpacity>
+
+                      {/* Row 3 Outlines */}
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnLostLead]}
+                        onPress={() => handleMarkLost(lead)}
+                      >
+                        <Feather name="x" size={11} color="#E11D48" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#E11D48' }]}>Lost Lead</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.actionGridBtn, styles.btnArchive]}
+                        onPress={() => handleArchiveLead(lead)}
+                      >
+                        <Feather name="archive" size={11} color="#64748B" style={{ marginRight: 3 }} />
+                        <Text style={[styles.actionGridText, { color: '#64748B' }]}>Archive</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })()}
               </View>
             ))
           )}
@@ -1956,6 +2122,53 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#7C3AED',
     marginRight: 4,
+  },
+  tinyGreenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#059669',
+    marginRight: 4,
+  },
+  btnMeetingLocked: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  leadLostBanner: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+  },
+  leadLostTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B91C1C',
+  },
+  leadLostDescription: {
+    fontSize: 11,
+    color: '#7F1D1D',
+    lineHeight: 15,
+  },
+  leadDeletedBanner: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#CBD5E1',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+  },
+  leadDeletedTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  leadDeletedDescription: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
   },
   btnScheduleMeeting: {
     backgroundColor: '#EFF6FF',
