@@ -26,8 +26,8 @@ A mobile frontend application for **OLL CRM AI Assistant**, built with **React N
   - Tap "+ New Chat" at any time to reset back to the suggestions landing page.
 
 - **Animated Coming Soon Screen**:
-  - For "Dashboard", "My Space", and "Schools" tabs in the bottom navigation.
-  - Features smooth looping pulse and floating glowing badges, tab-specific details, "Notify When Live" reminder button, and a quick "Return to AI Chat" button.
+  - For "Dashboard" and "My Space" tabs in the bottom navigation.
+  - Features smooth looping pulse and floating glowing badges, tab-specific details, and a quick "Return to AI Chat" button.
 
 - **Bottom Navigation Bar**:
   - 4 tabs: Dashboard, AI Chat (active with green indicator dot), My Space, and Schools.

@@ -1,11 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
 export default function ComingSoonView({ tabName, onBackToChat }) {
-  const [notified, setNotified] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
@@ -143,22 +142,6 @@ export default function ComingSoonView({ tabName, onBackToChat }) {
           <Feather name="message-square" size={17} color="#FFFFFF" style={styles.btnIcon} />
           <Text style={styles.backButtonText}>Return to AI Chat</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.notifyButton, notified && styles.notifyButtonDone]}
-          onPress={() => setNotified(!notified)}
-        >
-          <Feather
-            name={notified ? 'check' : 'bell'}
-            size={16}
-            color={notified ? '#059669' : COLORS.textSecondary}
-            style={styles.btnIcon}
-          />
-          <Text style={[styles.notifyButtonText, notified && styles.notifyButtonTextDone]}>
-            {notified ? 'Reminder Set!' : 'Notify When Live'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -249,7 +232,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.brandEmerald,
     paddingVertical: 14,
     borderRadius: 24,
-    marginBottom: 12,
     shadowColor: COLORS.brandEmerald,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -263,29 +245,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  notifyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '85%',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  notifyButtonDone: {
-    borderColor: '#A7F3D0',
-    backgroundColor: '#F0FDF4',
-  },
-  notifyButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  notifyButtonTextDone: {
-    color: '#059669',
-    fontWeight: '700',
   },
 });
