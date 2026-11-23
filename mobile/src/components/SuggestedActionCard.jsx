@@ -14,8 +14,8 @@ export default function SuggestedActionCard({ action, onPress }) {
         return <Feather name="file-text" size={19} color={action.iconColor} />;
       case 'active_schools':
         return <Ionicons name="school" size={18} color={action.iconColor} />;
-      case 'send_intro_email':
-        return <Ionicons name="paper-plane" size={18} color={action.iconColor} />;
+      case 'my_tasks':
+        return <Feather name="check-square" size={19} color={action.iconColor} />;
       default:
         return <Feather name="activity" size={18} color={COLORS.textSecondary} />;
     }

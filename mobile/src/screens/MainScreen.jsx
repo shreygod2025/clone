@@ -2456,7 +2456,7 @@ export default function MainScreen({ user, onLogout }) {
         ]);
       }
       return;
-    } else if (action.id === 'follow_up' || action.id === 'active_schools') {
+    } else if (action.id === 'follow_up') {
       const res = await api.fetchSchoolInquiries(5);
       setIsTyping(false);
 
@@ -2486,14 +2486,40 @@ export default function MainScreen({ user, onLogout }) {
           ...prev,
           {
             sender: 'ai',
-            text: fallback.text,
-            followUpList: fallback.data,
-            activeSchools: fallback.schools,
-            nextActions: fallback.nextActions,
+            text: fallback?.text || 'Here is your current pipeline review:',
+            followUpList: fallback?.data,
+            nextActions: fallback?.nextActions || ['Add School Lead'],
             time: 'Just now',
           },
         ]);
       }
+    } else if (action.id === 'my_tasks') {
+      const res = await api.fetchTasks('my');
+      setIsTyping(false);
+      let tasksList = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+      const taskCount = tasksList.length;
+      const pendingCount = tasksList.filter((t) => t.status !== 'completed').length;
+      const completedCount = taskCount - pendingCount;
+
+      const myTasksText = taskCount > 0
+        ? `📋 **OLL Mission Control — My Tasks (${taskCount}):**\nYou have **${pendingCount} active / pending** tasks and **${completedCount} completed** tasks:`
+        : `📋 **Mission Control Tasks:** You currently have no tasks assigned to you. Tap **Create Task** to add one.`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: myTasksText,
+          taskListCard: {
+            title: 'Assigned Mission Tasks',
+            subtitle: `${pendingCount} active • ${completedCount} completed`,
+            tasks: tasksList,
+          },
+          nextActions: ['Create Task', "Today's Tasks", 'Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
     } else {
       setTimeout(() => {
         setIsTyping(false);
