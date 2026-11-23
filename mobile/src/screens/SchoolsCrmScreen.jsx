@@ -452,18 +452,20 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
 
   const handleSaveNote = async () => {
     if (!selectedLead || !newNoteText.trim()) return;
+    const cleanNote = newNoteText.trim();
     const updatedNotes = selectedLead.notes
-      ? `${selectedLead.notes}\n• [${new Date().toLocaleDateString()}] ${newNoteText.trim()}`
-      : newNoteText.trim();
+      ? `${selectedLead.notes}\n• [${new Date().toLocaleDateString()}] ${cleanNote}`
+      : cleanNote;
 
     if (selectedLead.id) {
+      await api.addSchoolComment(selectedLead.id, cleanNote, user?.name || 'Mobile User');
       await api.updateSchoolInquiry(selectedLead.id, { notes: updatedNotes });
     }
     setLeads((prev) =>
       prev.map((l) => (l.id === selectedLead.id ? { ...l, notes: updatedNotes } : l))
     );
     setNoteModalVisible(false);
-    Alert.alert('Note Saved', `New note added to ${selectedLead.school_name}.`);
+    Alert.alert('Note Saved', `New note added to comments for ${selectedLead.school_name}.`);
   };
 
   // Raise Ticket

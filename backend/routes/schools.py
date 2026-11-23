@@ -185,6 +185,8 @@ class SchoolInquiryUpdate(BaseModel):
     logo_filename: Optional[str] = None
     # School team contacts (synced at top-level for quick access)
     school_contacts: Optional[List[dict]] = None
+    # Comments list (synced with web app CRM comments)
+    comments: Optional[List[dict]] = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

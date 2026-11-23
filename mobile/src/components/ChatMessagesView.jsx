@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Keyboard, Platform, Linking } from 'react-native';
 import { Feather, Ionicons, FontAwesome } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
+import MarkdownView from './MarkdownView';
 
 // Helper to sanitize and format assistant notes, stripping any legacy extraction boilerplate
 function formatAssistantNote(notes, leadCard) {
@@ -70,7 +71,7 @@ export default function ChatMessagesView({
             /* User Message Bubble */
             <View style={styles.userBubbleContainer}>
               <View style={styles.userBubble}>
-                <Text style={styles.userText}>{msg.text}</Text>
+                <MarkdownView content={msg.text} baseStyle={styles.userText} isUser={true} />
               </View>
               <Text style={styles.timestamp}>{msg.time || 'Just now'}</Text>
             </View>
@@ -95,24 +96,16 @@ export default function ChatMessagesView({
 
               {/* AI Bubble Body */}
               <View style={styles.aiBubble}>
-                <Text style={styles.aiText}>{msg.text}</Text>
+                <MarkdownView content={msg.text} baseStyle={styles.aiText} isUser={false} />
 
                 {/* Render Rich Lead Card if present */}
                 {msg.leadCard && (
                   <View style={styles.leadCardContainer}>
                     <View style={styles.cardHeader}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                         <Ionicons name="school" size={17} color="#059669" style={{ marginRight: 6 }} />
                         <Text style={styles.schoolName} numberOfLines={1}>{msg.leadCard.schoolName || msg.leadCard.school_name}</Text>
                       </View>
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        style={styles.cardTopEditBtn}
-                        onPress={() => onEditLead && onEditLead(msg.leadCard)}
-                      >
-                        <Feather name="edit-2" size={12} color="#0284C7" style={{ marginRight: 4 }} />
-                        <Text style={styles.cardTopEditText}>Edit</Text>
-                      </TouchableOpacity>
                     </View>
 
                     <View style={styles.badgeRow}>
@@ -170,9 +163,10 @@ export default function ChatMessagesView({
                         </View>
                         <Text style={styles.latestNoteTitle}>Latest Note:</Text>
                       </View>
-                      <Text style={styles.latestNoteBody}>
-                        {formatAssistantNote(msg.leadCard.notes, msg.leadCard)}
-                      </Text>
+                      <MarkdownView
+                        content={formatAssistantNote(msg.leadCard.notes, msg.leadCard)}
+                        baseStyle={styles.latestNoteBody}
+                      />
                     </View>
 
                     {/* Automated Follow-up Tasks from Backend */}
@@ -594,23 +588,7 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 8,
-  },
-  cardTopEditBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: '#F0F9FF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  cardTopEditText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0284C7',
   },
   schoolName: {
     fontSize: 15.5,

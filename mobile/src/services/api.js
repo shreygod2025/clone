@@ -145,6 +145,49 @@ class ApiService {
     }
   }
 
+  // 3b. Add Comment to School Lead (Web App Comments): POST /api/schools/comment/{inquiry_id}
+  async addSchoolComment(inquiryId, commentText, author = '') {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/schools/comment/${inquiryId}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          text: commentText,
+          author: author || 'Mobile AI Assistant',
+        }),
+      }, 12000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, comment: data.comment };
+      } else {
+        const err = await response.json().catch(() => ({}));
+        return { success: false, error: err.detail || 'Failed to add comment' };
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // 3c. Get Comments for School Lead: GET /api/schools/comments/{inquiry_id}
+  async getSchoolComments(inquiryId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/schools/comments/${inquiryId}`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 12000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, comments: data };
+      } else {
+        return { success: false, comments: [] };
+      }
+    } catch (err) {
+      return { success: false, error: err.message, comments: [] };
+    }
+  }
+
   // 4. Send Personalized Email to School: POST /api/schools/send-personalized-email
   async sendSchoolEmail(emailData) {
     try {

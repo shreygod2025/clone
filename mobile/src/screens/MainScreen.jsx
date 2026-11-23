@@ -221,11 +221,11 @@ export default function MainScreen({ user, onLogout }) {
     setLostModalVisible(true);
   };
 
-  const openNoteModal = (leadCard) => {
+  const openNoteModal = (leadCard, initialText = '') => {
     const target = leadCard || findLatestLead();
     if (!target) return;
     setNoteTargetLead(target);
-    setNoteText('');
+    setNoteText(initialText || '');
     setNoteModalVisible(true);
   };
 
@@ -628,7 +628,7 @@ export default function MainScreen({ user, onLogout }) {
     ]);
   };
 
-  // 12. Add Note Submit
+  // 12. Add Note Submit (Syncs directly to Comments in Web App CRM)
   const handleNoteSubmit = async () => {
     if (!noteTargetLead || !noteText.trim()) return;
     setIsSavingNote(true);
@@ -638,6 +638,11 @@ export default function MainScreen({ user, onLogout }) {
     if (noteTargetLead.id) {
       const existingNotes = noteTargetLead.notes || '';
       const updatedNotes = existingNotes ? `${existingNotes}\n[${new Date().toLocaleDateString()}]: ${cleanNote}` : cleanNote;
+
+      // 1. Add directly to comments in web app CRM: POST /api/schools/comment/{id}
+      await api.addSchoolComment(noteTargetLead.id, cleanNote, user?.name || 'Mobile AI Assistant');
+
+      // 2. Also update notes field on inquiry for full backwards compatibility
       await api.updateSchoolInquiry(noteTargetLead.id, {
         notes: updatedNotes,
       });
@@ -645,11 +650,18 @@ export default function MainScreen({ user, onLogout }) {
       setMessages((prev) =>
         prev.map((msg) => {
           if (msg.leadCard && (msg.leadCard.id === noteTargetLead.id || msg.leadCard.schoolName === schoolName)) {
+            const currentComments = Array.isArray(msg.leadCard.comments) ? [...msg.leadCard.comments] : [];
+            currentComments.push({
+              text: cleanNote,
+              author: user?.name || 'Mobile AI Assistant',
+              created_at: new Date().toISOString(),
+            });
             return {
               ...msg,
               leadCard: {
                 ...msg.leadCard,
                 notes: updatedNotes,
+                comments: currentComments,
               },
             };
           }
@@ -665,7 +677,7 @@ export default function MainScreen({ user, onLogout }) {
       ...prev,
       {
         sender: 'ai',
-        text: `📝 **Note Appended to CRM:**\n\n• **School:** ${schoolName}\n• **Note:** *"${cleanNote}"*`,
+        text: `📝 **Note Added to Comments & CRM:**\n\n• **School:** ${schoolName}\n• **Comment:** *"${cleanNote}"*\n• **Synced to:** Web App Comments List`,
         nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Generate Proposal Quote'],
         time: 'Just now',
       },
@@ -970,18 +982,26 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
-    // ── 8. Action Intent: Add Note ──
+    // ── 8. Action Intent: Add Note / Comment ──
     if (
       lower.startsWith('note:') ||
+      lower.startsWith('comment:') ||
       lower.includes('add note') ||
       lower.includes('take note') ||
-      lower.includes('save note')
+      lower.includes('save note') ||
+      lower.includes('add comment') ||
+      lower.includes('new comment')
     ) {
       setIsTyping(false);
       if (target) {
-        openNoteModal(target);
+        let extractedNote = '';
+        const colonIdx = userText.indexOf(':');
+        if (colonIdx !== -1 && colonIdx < userText.length - 1) {
+          extractedNote = userText.slice(colonIdx + 1).trim();
+        }
+        openNoteModal(target, extractedNote);
       } else {
-        Alert.alert('Notice', 'No active school lead found to add a note to.');
+        Alert.alert('Notice', 'No active school lead found to add a note or comment to.');
       }
       return;
     }
@@ -2045,7 +2065,7 @@ export default function MainScreen({ user, onLogout }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalLargeCard}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalLargeTitle}>📝 Add Note to Lead</Text>
+              <Text style={styles.modalLargeTitle}>📝 Add Note & Comment</Text>
               <TouchableOpacity onPress={() => setNoteModalVisible(false)}>
                 <Feather name="x" size={20} color="#64748B" />
               </TouchableOpacity>
@@ -2061,7 +2081,7 @@ export default function MainScreen({ user, onLogout }) {
             </View>
 
             <View style={styles.modalInputGroup}>
-              <Text style={styles.modalFieldLabel}>Assistant / Discussion Note</Text>
+              <Text style={styles.modalFieldLabel}>Note / Comment (Web App Comments)</Text>
               <TextInput
                 style={[styles.modalTextInput, { height: 110, textAlignVertical: 'top' }]}
                 value={noteText}
@@ -2069,18 +2089,21 @@ export default function MainScreen({ user, onLogout }) {
                 placeholder="Enter discussion remarks, key commitments, or principal requests..."
                 multiline
               />
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
+                💡 Note will be synced directly to the school comments in the web app.
+              </Text>
             </View>
 
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.modalPrimaryBtn, { backgroundColor: '#475569' }]}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#059669' }]}
               onPress={handleNoteSubmit}
               disabled={isSavingNote}
             >
               {isSavingNote ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.modalPrimaryBtnText}>Append Note to CRM</Text>
+                <Text style={styles.modalPrimaryBtnText}>Save Note to Comments & CRM</Text>
               )}
             </TouchableOpacity>
           </View>
