@@ -157,13 +157,22 @@ export default function MainScreen({ user, onLogout }) {
   const [newNotes, setNewNotes] = useState('');
   const [isSavingNewLead, setIsSavingNewLead] = useState(false);
 
-  // 1. Edit Lead Modal State
+  // 1. Edit Lead Modal State (Matching Add School Lead Form)
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [editSchoolName, setEditSchoolName] = useState('');
   const [editContactName, setEditContactName] = useState('');
+  const [editContactRole, setEditContactRole] = useState('Principal');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editLocation, setEditLocation] = useState('Mumbai, Maharashtra');
+  const [editAddress, setEditAddress] = useState('');
+  const [editBoard, setEditBoard] = useState('CBSE');
+  const [editStudentTier, setEditStudentTier] = useState('500-800');
+  const [editOffering, setEditOffering] = useState('Agentic AI & Coding Excellence Lab (K-12)');
+  const [editMeetingType, setEditMeetingType] = useState('In-Person Campus Visit');
+  const [editMeetingDate, setEditMeetingDate] = useState('');
+  const [editMeetingTime, setEditMeetingTime] = useState('11:00 AM');
   const [editStatus, setEditStatus] = useState('new');
   const [editNotes, setEditNotes] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -269,11 +278,21 @@ export default function MainScreen({ user, onLogout }) {
 
     setEditingLead(target);
     setEditSchoolName(target.schoolName || target.school_name || '');
-    setEditContactName(target.contactPerson || target.contact_name || '');
+    const cPerson = target.contactPerson || target.contact_name || '';
+    setEditContactName(cPerson.replace(/\s*\([^)]*\)/, '').trim());
+    setEditContactRole(target.contactRole || target.contact_role || 'Principal');
     setEditPhone(target.phone || '');
     setEditEmail(target.email || '');
+    setEditLocation(target.location || 'Mumbai, Maharashtra');
+    setEditAddress(target.address || '');
+    setEditBoard(target.board || 'CBSE');
+    setEditStudentTier(target.studentCount || target.school_size || target.student_count_tier || '500-800');
+    setEditOffering(target.recommendedProgram || (target.programs_interested && target.programs_interested[0]) || 'Agentic AI & Coding Excellence Lab (K-12)');
+    setEditMeetingType(target.meeting_type || 'In-Person Campus Visit');
+    setEditMeetingDate(target.meeting_date || '');
+    setEditMeetingTime(target.meeting_time || '11:00 AM');
     setEditStatus(target.status || 'new');
-    setEditNotes(target.notes || '');
+    setEditNotes(target.notes || target.discussionSummary || target.discussion_summary || target.comments || '');
     setEditModalVisible(true);
   };
 
@@ -807,19 +826,54 @@ export default function MainScreen({ user, onLogout }) {
   // 4. Save Edited Lead to Backend Database
   const handleSaveLeadEdit = async () => {
     if (!editingLead) return;
+    if (!editSchoolName.trim() || !editContactName.trim() || !editPhone.trim()) {
+      Alert.alert('Required Fields', 'School Name, Primary Contact Person, and Phone Number are required.');
+      return;
+    }
     setIsSavingEdit(true);
 
     const updatePayload = {
-      school_name: editSchoolName,
-      contact_name: editContactName,
-      phone: editPhone,
-      email: editEmail,
+      school_name: editSchoolName.trim(),
+      schoolName: editSchoolName.trim(),
+      contact_name: editContactName.trim(),
+      contactPerson: `${editContactName.trim()} (${editContactRole})`,
+      contact_role: editContactRole,
+      contactRole: editContactRole,
+      phone: editPhone.trim(),
+      email: editEmail.trim(),
+      location: editLocation.trim(),
+      address: editAddress.trim(),
+      board: editBoard,
+      student_count_tier: editStudentTier,
+      studentCount: editStudentTier,
+      school_size: editStudentTier,
+      programs_interested: [editOffering],
+      recommendedProgram: editOffering,
+      meeting_type: editMeetingType,
+      meeting_date: editMeetingDate.trim() || null,
+      meeting_time: editMeetingTime.trim() || null,
       status: editStatus,
-      notes: editNotes,
+      notes: editNotes.trim(),
     };
 
     if (editingLead.id) {
-      await api.updateSchoolInquiry(editingLead.id, updatePayload);
+      await api.updateSchoolInquiry(editingLead.id, {
+        school_name: updatePayload.school_name,
+        contact_name: updatePayload.contact_name,
+        contact_role: updatePayload.contact_role,
+        phone: updatePayload.phone,
+        email: updatePayload.email,
+        location: updatePayload.location,
+        address: updatePayload.address,
+        board: updatePayload.board,
+        school_size: updatePayload.school_size,
+        programs_interested: updatePayload.programs_interested,
+        meeting_type: updatePayload.meeting_type,
+        meeting_date: updatePayload.meeting_date,
+        meeting_time: updatePayload.meeting_time,
+        status: updatePayload.status,
+        notes: updatePayload.notes,
+      });
     }
 
     setIsSavingEdit(false);
@@ -828,28 +882,45 @@ export default function MainScreen({ user, onLogout }) {
     // Update lead in messages stream
     setMessages((prev) =>
       prev.map((msg) => {
-        if (msg.leadCard && (msg.leadCard.id === editingLead.id || msg.leadCard.schoolName === editingLead.schoolName)) {
-          return {
-            ...msg,
-            leadCard: {
-              ...msg.leadCard,
-              ...updatePayload,
-              schoolName: editSchoolName,
-              contactPerson: editContactName,
-            },
-          };
+        if (msg.leadCard) {
+          const lcName = msg.leadCard.schoolName || msg.leadCard.school_name;
+          const origName = editingLead.schoolName || editingLead.school_name;
+          if (
+            (editingLead.id && msg.leadCard.id === editingLead.id) ||
+            (lcName && origName && lcName.toLowerCase() === origName.toLowerCase())
+          ) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                ...updatePayload,
+              },
+            };
+          }
         }
         return msg;
       })
     );
 
-    // AI confirmation message
+    const updatedCard = {
+      ...editingLead,
+      ...updatePayload,
+      id: editingLead.id || `lead_${Date.now()}`,
+      leadScore: updatePayload.status === 'lost' ? '0/100 (Closed)' : '96/100 (Hot Lead)',
+      isDeleted: false,
+      isArchived: updatePayload.status === 'archived',
+    };
+
+    // AI confirmation message with updated lead card and full action controls
     setMessages((prev) => [
       ...prev,
       {
         sender: 'ai',
-        text: `✏️ **Lead Updated in CRM:** Changes to **${editSchoolName}** (${editStatus.toUpperCase()}) were saved to the database.`,
-        nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
+        text: `✏️ **Lead Updated in CRM:** Changes to **${editSchoolName}** were saved to the database.\n\nUpdated lead card rendered below with full action controls:`,
+        leadCard: updatedCard,
+        nextActions: updatePayload.status === 'meeting_done'
+          ? ['Schedule 2nd Meeting', 'Generate Proposal Quote', 'Add Note']
+          : ['Mark Meeting Done', 'Schedule Meeting', 'Generate Proposal Quote', 'Add Note'],
         time: 'Just now',
       },
     ]);
@@ -2849,35 +2920,69 @@ export default function MainScreen({ user, onLogout }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalLargeCard}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalLargeTitle}>✏️ Edit School Lead</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="edit-3" size={20} color={COLORS.brandEmerald} style={{ marginRight: 8 }} />
+                <Text style={styles.modalLargeTitle}>✏️ Edit School Lead</Text>
+              </View>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Feather name="x" size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalFieldLabel}>School Name</Text>
+                <Text style={styles.modalFieldLabel}>School Name *</Text>
                 <TextInput
                   style={styles.modalTextInput}
+                  placeholder="e.g. Podar International School"
+                  placeholderTextColor="#94A3B8"
                   value={editSchoolName}
                   onChangeText={setEditSchoolName}
                 />
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalFieldLabel}>Contact Person</Text>
+                <Text style={styles.modalFieldLabel}>Primary Contact Person *</Text>
                 <TextInput
                   style={styles.modalTextInput}
+                  placeholder="e.g. Dr. Arvind Mehta"
+                  placeholderTextColor="#94A3B8"
                   value={editContactName}
                   onChangeText={setEditContactName}
                 />
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalFieldLabel}>Phone Number</Text>
+                <Text style={styles.modalFieldLabel}>Contact Role</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {CONTACT_ROLES.map((role) => (
+                    <TouchableOpacity
+                      key={role}
+                      style={[
+                        styles.statusOptionPill,
+                        editContactRole === role && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setEditContactRole(role)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          editContactRole === role && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {role}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Phone Number *</Text>
                 <TextInput
                   style={styles.modalTextInput}
+                  placeholder="e.g. +91 98201 44921"
+                  placeholderTextColor="#94A3B8"
                   value={editPhone}
                   onChangeText={setEditPhone}
                   keyboardType="phone-pad"
@@ -2885,19 +2990,165 @@ export default function MainScreen({ user, onLogout }) {
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalFieldLabel}>Email Address</Text>
+                <Text style={styles.modalFieldLabel}>Email Address (Optional)</Text>
                 <TextInput
                   style={styles.modalTextInput}
+                  placeholder="e.g. principal@school.edu.in"
+                  placeholderTextColor="#94A3B8"
                   value={editEmail}
                   onChangeText={setEditEmail}
                   keyboardType="email-address"
+                  autoCapitalize="none"
                 />
               </View>
 
               <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>City / Location</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. Andheri West, Mumbai, MH"
+                  placeholderTextColor="#94A3B8"
+                  value={editLocation}
+                  onChangeText={setEditLocation}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Full Postal Address</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 50, textAlignVertical: 'top' }]}
+                  placeholder="Campus address..."
+                  placeholderTextColor="#94A3B8"
+                  value={editAddress}
+                  onChangeText={setEditAddress}
+                  multiline
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Board Affiliation</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {SCHOOL_BOARDS.map((b) => (
+                    <TouchableOpacity
+                      key={b}
+                      style={[
+                        styles.statusOptionPill,
+                        editBoard === b && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setEditBoard(b)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          editBoard === b && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {b}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Estimated Student Count</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {STUDENT_TIERS.map((tier) => (
+                    <TouchableOpacity
+                      key={tier}
+                      style={[
+                        styles.statusOptionPill,
+                        editStudentTier === tier && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setEditStudentTier(tier)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          editStudentTier === tier && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {tier} Students
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Offering / Program of Interest</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {SCHOOL_PROGRAMS.map((prog) => (
+                    <TouchableOpacity
+                      key={prog}
+                      style={[
+                        styles.statusOptionPill,
+                        editOffering === prog && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setEditOffering(prog)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          editOffering === prog && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {prog}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Initial Meeting Preference</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {MEETING_TYPES.map((mType) => (
+                    <TouchableOpacity
+                      key={mType}
+                      style={[
+                        styles.statusOptionPill,
+                        editMeetingType === mType && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setEditMeetingType(mType)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          editMeetingType === mType && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {mType}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Meeting Date & Time (Optional)</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[styles.modalTextInput, { flex: 1 }]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#94A3B8"
+                    value={editMeetingDate}
+                    onChangeText={setEditMeetingDate}
+                  />
+                  <TextInput
+                    style={[styles.modalTextInput, { flex: 1 }]}
+                    placeholder="11:00 AM"
+                    placeholderTextColor="#94A3B8"
+                    value={editMeetingTime}
+                    onChangeText={setEditMeetingTime}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
                 <Text style={styles.modalFieldLabel}>Lead Status</Text>
-                <View style={styles.statusPillsPicker}>
-                  {['new', 'meeting_done', 'converted'].map((st) => (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {['new', 'contacted', 'meeting_scheduled', 'meeting_done', 'proposal_sent', 'negotiation', 'lost'].map((st) => (
                     <TouchableOpacity
                       key={st}
                       style={[styles.statusOptionPill, editStatus === st && styles.statusOptionPillActive]}
@@ -2909,17 +3160,19 @@ export default function MainScreen({ user, onLogout }) {
                           editStatus === st && styles.statusOptionTextActive,
                         ]}
                       >
-                        {st.replace('_', ' ').toUpperCase()}
+                        {st.replace(/_/g, ' ').toUpperCase()}
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               </View>
 
               <View style={styles.modalInputGroup}>
-                <Text style={styles.modalFieldLabel}>Latest Assistant Note</Text>
+                <Text style={styles.modalFieldLabel}>Notes & Discussion Summary</Text>
                 <TextInput
-                  style={[styles.modalTextInput, { height: 70, textAlignVertical: 'top' }]}
+                  style={[styles.modalTextInput, { height: 60, textAlignVertical: 'top' }]}
+                  placeholder="Meeting context or specific requirements..."
+                  placeholderTextColor="#94A3B8"
                   value={editNotes}
                   onChangeText={setEditNotes}
                   multiline
@@ -2942,6 +3195,7 @@ export default function MainScreen({ user, onLogout }) {
           </View>
         </View>
       </Modal>
+
 
       {/* ── MODAL 2: Send Email Modal ────────────────────────────────────────── */}
       <Modal
