@@ -15,7 +15,7 @@ A mobile frontend application for **OLL CRM AI Assistant**, built with **React N
     2. *Create a new lead for ABC School* (Auto-fill Mumbai location & contact)
     3. *Generate a proposal for a school* (Draft customized curriculum quote)
     4. *What are my active schools?* (View enrolled campuses & tiers)
-    5. *Send introduction email to a school* (AI personalized pitch template)
+    5. *Retrieve all school leads* (Search & inspect CRM pipeline in chat)
   - Pro Tip banner with sample Minutes of Meeting (MOM) auto-fill.
   - Floating bottom chat pill with attachment, voice dictation toggle, and up-arrow send button.
 

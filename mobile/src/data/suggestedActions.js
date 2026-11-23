@@ -40,14 +40,14 @@ export const SUGGESTED_ACTIONS = [
     prompt: 'List all currently active partner schools, tier status, and student enrollments',
   },
   {
-    id: 'send_intro_email',
-    title: 'Send introduction email to a school',
-    subtitle: 'AI personalized pitch template',
-    iconType: 'send',
+    id: 'retrieve_leads',
+    title: 'Retrieve all school leads',
+    subtitle: 'Search & inspect CRM pipeline in chat',
+    iconType: 'database',
     iconSet: 'Feather',
-    iconBg: '#FFE4E6',
-    iconColor: '#E11D48',
-    prompt: 'Draft and prepare a personalized introduction email to Principal Dr. Sharma at Delhi Public School, Mumbai',
+    iconBg: '#E0F2FE',
+    iconColor: '#0284C7',
+    prompt: 'Retrieve all school leads from the database',
   },
 ];
 
@@ -80,7 +80,7 @@ export const MOCK_RESPONSES = {
         urgency: "Urgent",
       },
     ],
-    nextActions: ["Schedule Reminders", "Draft WhatsApp Update", "Download Pipeline PDF"],
+    nextActions: ["Schedule Reminders", "Download Pipeline PDF"],
   },
 
   create_lead: {
@@ -97,7 +97,7 @@ export const MOCK_RESPONSES = {
       leadScore: "88/100 (High Intent)",
       notes: "Lead registered for ABC International High School. Met with Dr. Arvind Mehta (Principal). In discussion for K-12 Agentic AI lab partnership. Demonstration requested.",
     },
-    nextActions: ["Add to Active CRM", "Generate Custom Proposal", "Send Intro WhatsApp"],
+    nextActions: ["Add School Lead", "Generate Custom Proposal"],
   },
 
   generate_proposal: {
@@ -113,7 +113,7 @@ export const MOCK_RESPONSES = {
       pricing: "₹5,40,000 / year (Includes 400 student licenses + trainer support)",
       validity: "Valid until Dec 15, 2026",
     },
-    nextActions: ["Export PDF Proposal", "Send via WhatsApp", "Edit Price Quote"],
+    nextActions: ["Export PDF Proposal", "Edit Price Quote"],
   },
 
   active_schools: {
@@ -127,13 +127,8 @@ export const MOCK_RESPONSES = {
     nextActions: ["View School LMS Reports", "Schedule Teacher Refreshers", "Request Invoices"],
   },
 
-  send_intro_email: {
-    text: "✉️ Here is the **AI-Personalized Introduction Pitch** prepared for Dr. Sharma at Delhi Public School:",
-    email: {
-      subject: "Empowering DPS Mumbai Students with Hands-On Agentic AI & STEM (K-12 Collaboration)",
-      recipient: "dr.sharma@dpsmumbai.org",
-      body: "Respected Dr. Sharma,\n\nI hope this email finds you well. As Delhi Public School continues to lead the benchmark in academic distinction in Mumbai, we would love to collaborate on bringing cutting-edge Agentic AI, Coding, and Future Skills labs to your students for the upcoming term.\n\nOur NEP-aligned curriculum has already empowered 25,000+ students across top campuses in Maharashtra with 100% project-based learning.\n\nWould you be open for a brief 10-minute briefing or campus demonstration next Tuesday at 11:30 AM?\n\nWarm regards,\nOLL CRM Partnerships Team",
-    },
-    nextActions: ["Send Email Directly", "Copy to Clipboard", "Customize Tone"],
+  retrieve_leads: {
+    text: "📋 Querying live School CRM database for all enrolled leads and pipeline schools...",
+    nextActions: ["Add School Lead", "Schedule Meeting"],
   },
 };

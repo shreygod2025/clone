@@ -31,6 +31,35 @@ import SchoolsCrmScreen from './SchoolsCrmScreen';
 import { SUGGESTED_ACTIONS, MOCK_RESPONSES } from '../data/suggestedActions';
 import { api } from '../services/api';
 
+const CONTACT_ROLES = [
+  'Principal',
+  'Director',
+  'Trustee / Owner',
+  'Vice Principal',
+  'Coordinator',
+  'Primary Coordinator',
+  'Secondary Coordinator',
+  'Computer Teacher',
+  'Teacher',
+  'Head of Department',
+  'Accounts',
+  'Admin',
+  'Other',
+];
+
+const SCHOOL_BOARDS = ['CBSE', 'ICSE', 'State Board', 'IB', 'Cambridge (IGCSE)', 'Other'];
+
+const STUDENT_TIERS = ['100-300', '300-500', '500-800', '800-1000', '1000-1500', '1500+'];
+
+const SCHOOL_PROGRAMS = [
+  'Agentic AI & Coding Excellence Lab (K-12)',
+  'Robotics & STEM Innovation Lab',
+  'NEP 2020 Future Skills Curriculum',
+  'AI Foundations & Coding Bootcamp',
+];
+
+const MEETING_TYPES = ['In-Person Campus Visit', 'Online Demo', 'Phone Call'];
+
 export default function MainScreen({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('ai_chat');
   const [chatMode, setChatMode] = useState(false);
@@ -69,6 +98,24 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   // ── Modals for Chat Features ─────────────────────────────────────────────────
+  // 0. Add School Lead Form Modal State (Matching AdminSchoolCRM Web App)
+  const [addLeadModalVisible, setAddLeadModalVisible] = useState(false);
+  const [newSchoolName, setNewSchoolName] = useState('');
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactRole, setNewContactRole] = useState('Principal');
+  const [newPhone, setNewPhone] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newBoard, setNewBoard] = useState('CBSE');
+  const [newStudentTier, setNewStudentTier] = useState('500-800');
+  const [newOffering, setNewOffering] = useState('Agentic AI & Coding Excellence Lab (K-12)');
+  const [newMeetingType, setNewMeetingType] = useState('In-Person Campus Visit');
+  const [newMeetingDate, setNewMeetingDate] = useState('');
+  const [newMeetingTime, setNewMeetingTime] = useState('11:00 AM');
+  const [newNotes, setNewNotes] = useState('');
+  const [isSavingNewLead, setIsSavingNewLead] = useState(false);
+
   // 1. Edit Lead Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -144,6 +191,24 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   // ── Open Modals ─────────────────────────────────────────────────────────────
+  const openAddLeadModal = (initialData = {}) => {
+    setNewSchoolName(initialData.school_name || initialData.schoolName || '');
+    setNewContactName(initialData.contact_name || initialData.contactPerson || '');
+    setNewContactRole(initialData.contact_role || 'Principal');
+    setNewPhone(initialData.phone || '');
+    setNewEmail(initialData.email || '');
+    setNewLocation(initialData.location || 'Mumbai, Maharashtra');
+    setNewAddress(initialData.address || '');
+    setNewBoard(initialData.board || 'CBSE');
+    setNewStudentTier(initialData.student_count_tier || initialData.studentCount || '500-800');
+    setNewOffering(initialData.program || initialData.recommendedProgram || 'Agentic AI & Coding Excellence Lab (K-12)');
+    setNewMeetingType(initialData.meeting_type || 'In-Person Campus Visit');
+    setNewMeetingDate(initialData.meeting_date || '');
+    setNewMeetingTime(initialData.meeting_time || '11:00 AM');
+    setNewNotes(initialData.notes || '');
+    setAddLeadModalVisible(true);
+  };
+
   const openEditLeadModal = (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
@@ -416,7 +481,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `🎉 **Meeting Done & Status Updated!**\n\nI have marked the meeting as **COMPLETED** for **${schoolName}** in the live School CRM database.\n\n• **New Stage:** \`MEETING DONE\`\n• **Next Allowed Step:** Schedule 2nd Meeting or Generate customized curriculum quote.`,
-        nextActions: ['Schedule 2nd Meeting', 'Generate Proposal Quote', 'Send Introduction Email'],
+        nextActions: ['Schedule 2nd Meeting', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -471,7 +536,7 @@ export default function MainScreen({ user, onLogout }) {
               {
                 sender: 'ai',
                 text: `🗑️ **Lead Deleted:** Removed **${schoolName}** from the CRM database.`,
-                nextActions: ['Add New School Lead', 'View Inquiries'],
+                nextActions: ['Add School Lead', 'Retrieve All Leads'],
                 time: 'Just now',
               },
             ]);
@@ -520,10 +585,97 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `📦 **Lead Archived:** **${schoolName}** has been moved to CRM archives.`,
-        nextActions: ['Add New School Lead', 'View Inquiries'],
+        nextActions: ['Add School Lead', 'Retrieve All Leads'],
         time: 'Just now',
       },
     ]);
+  };
+
+  // 3b. Save New School Lead from Form Modal to Backend Database (Matching AdminSchoolCRM)
+  const handleSaveNewLeadSubmit = async () => {
+    if (!newSchoolName.trim() || !newContactName.trim() || !newPhone.trim()) {
+      Alert.alert('Required Fields', 'School Name, Primary Contact Person, and Phone Number are required.');
+      return;
+    }
+
+    setIsSavingNewLead(true);
+    const cleanPhone = newPhone.trim().replace(/[^0-9]/g, '');
+    const cleanEmail = newEmail.trim() || `${cleanPhone || 'info'}@school.oll`;
+
+    const leadPayload = {
+      school_name: newSchoolName.trim(),
+      contact_name: newContactName.trim(),
+      contact_role: newContactRole || 'Principal',
+      phone: newPhone.trim(),
+      email: cleanEmail,
+      location: newLocation.trim() || 'Mumbai, Maharashtra',
+      address: newAddress.trim() || '',
+      board: newBoard || 'CBSE',
+      student_count_tier: newStudentTier || '500-800',
+      school_size: newStudentTier || '500-800',
+      programs_interested: [newOffering || 'Agentic AI & Coding Excellence Lab (K-12)'],
+      meeting_type: newMeetingType || 'In-Person Campus Visit',
+      meeting_date: newMeetingDate.trim() || null,
+      meeting_time: newMeetingTime.trim() || null,
+      notes: newNotes.trim() || `Lead registered via OLL Mobile CRM for ${newSchoolName.trim()}.`,
+      source: 'manual',
+    };
+
+    const res = await api.createSchoolLead(leadPayload);
+    setIsSavingNewLead(false);
+    setAddLeadModalVisible(false);
+
+    const savedLead = (res.success && res.lead) ? res.lead : {
+      ...leadPayload,
+      id: `lead_${Date.now()}`,
+      status: 'new',
+      created_at: new Date().toISOString(),
+    };
+
+    const leadCardObj = {
+      id: savedLead.id,
+      schoolName: savedLead.school_name,
+      contactPerson: `${savedLead.contact_name} (${savedLead.contact_role || 'Principal'})`,
+      phone: savedLead.phone,
+      email: savedLead.email,
+      location: savedLead.location,
+      board: savedLead.board,
+      studentCount: `${savedLead.student_count_tier || savedLead.school_size || '500-800'} Students`,
+      recommendedProgram: (savedLead.programs_interested && savedLead.programs_interested[0]) || newOffering,
+      leadScore: '85/100 (New School Lead)',
+      notes: savedLead.notes,
+      status: savedLead.status || 'new',
+      meeting_date: savedLead.meeting_date || null,
+      meeting_time: savedLead.meeting_time || null,
+      meeting_type: savedLead.meeting_type || null,
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `✅ **New School Lead Registered!**\n\nI have successfully saved **${savedLead.school_name}** to your live CRM database.\n\n• **Contact:** ${savedLead.contact_name} (${savedLead.contact_role || 'Principal'})\n• **Phone:** \`${savedLead.phone}\`\n• **Email:** \`${savedLead.email}\`\n• **Location:** ${savedLead.location}\n• **Board:** ${savedLead.board}\n• **Program:** ${leadCardObj.recommendedProgram}`,
+        leadCard: leadCardObj,
+        nextActions: ['Schedule Meeting', 'Generate Proposal Quote'],
+        time: 'Just now',
+      },
+    ]);
+
+    // Reset state
+    setNewSchoolName('');
+    setNewContactName('');
+    setNewContactRole('Principal');
+    setNewPhone('');
+    setNewEmail('');
+    setNewLocation('');
+    setNewAddress('');
+    setNewBoard('CBSE');
+    setNewStudentTier('500-800');
+    setNewOffering('Agentic AI & Coding Excellence Lab (K-12)');
+    setNewMeetingType('In-Person Campus Visit');
+    setNewMeetingDate('');
+    setNewMeetingTime('11:00 AM');
+    setNewNotes('');
   };
 
   // 4. Save Edited Lead to Backend Database
@@ -571,7 +723,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `✏️ **Lead Updated in CRM:** Changes to **${editSchoolName}** (${editStatus.toUpperCase()}) were saved to the database.`,
-        nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Draft WhatsApp Pitch'],
+        nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -731,7 +883,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `⏰ **Follow-up Reminder Set!**\n\n• **School:** ${schoolName}\n• **Date:** \`${followupDate}\`\n• **Action:** ${followupComment}\n\nAutomated push notification scheduled in CRM.`,
-        nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Draft WhatsApp Pitch'],
+        nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -757,7 +909,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `👤 **Lead Assigned:** **${schoolName}** assigned to **${assignedMemberName}** in CRM database.`,
-        nextActions: ['Mark Meeting Done', 'Draft WhatsApp Pitch', 'Send Introduction Email'],
+        nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -799,7 +951,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `❌ **Lead Marked as Lost:** **${schoolName}** recorded as \`LOST\`.\n• **Reason:** ${lostReason}\n\nLead status updated in CRM pipeline.`,
-        nextActions: ['Add New School Lead', 'View Inquiries'],
+        nextActions: ['Add School Lead', 'Retrieve All Leads'],
         time: 'Just now',
       },
     ]);
@@ -855,7 +1007,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `📝 **Note Added to Comments & CRM:**\n\n• **School:** ${schoolName}\n• **Comment:** *"${cleanNote}"*\n• **Synced to:** Web App Comments List`,
-        nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Generate Proposal Quote'],
+        nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -893,7 +1045,7 @@ export default function MainScreen({ user, onLogout }) {
           pricing: '₹5,80,000 / year (450 Student Licenses Included)',
           validity: 'Valid for 30 Days',
         },
-        nextActions: ['Send Introduction Email', 'Mark Meeting Done', 'Download PDF Quote'],
+        nextActions: ['Mark Meeting Done', 'Download PDF Quote'],
         time: 'Just now',
       },
     ]);
@@ -938,47 +1090,52 @@ export default function MainScreen({ user, onLogout }) {
     setIsTyping(true);
 
     if (action.id === 'create_lead') {
-      const leadPayload = api.extractLeadFromPrompt(action.prompt);
-      const res = await api.createSchoolLead(leadPayload);
+      setIsTyping(false);
+      openAddLeadModal({
+        school_name: 'ABC International School',
+        contact_name: 'Dr. Arvind Mehta',
+        contact_role: 'Principal',
+        phone: '+91 98201 44921',
+        email: 'principal.arvind@abcschoolmumbai.edu.in',
+        location: 'Andheri West, Mumbai, MH',
+        board: 'CBSE',
+        student_count_tier: '1500+',
+      });
+      return;
+    } else if (action.id === 'retrieve_leads') {
+      const res = await api.fetchSchoolInquiries(50);
       setIsTyping(false);
 
-      if (res.success && res.lead) {
-        const lead = res.lead;
-        const aiMsg = {
-          sender: 'ai',
-          text: `✅ **Lead Registered in School CRM!**\n\nI have added **${lead.school_name}** to your live database.`,
-          leadCard: {
-            id: lead.id,
-            schoolName: lead.school_name,
-            board: lead.board || 'CBSE',
-            location: lead.location || 'Mumbai, MH',
-            contactPerson: `${lead.contact_name} (${lead.contact_role || 'Principal'})`,
-            email: lead.email,
-            phone: lead.phone,
-            studentCount: '1,850 Students',
-            recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
-            leadScore: '96/100 (Hot Lead)',
-            notes: lead.notes || 'Curriculum partnership enquiry initiated.',
-            followup_tasks: lead.followup_tasks || [],
-          },
-          time: 'Just now',
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-      } else {
-        const fallback = MOCK_RESPONSES.create_lead;
+      if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
+        const leadLines = res.inquiries.slice(0, 15).map((l, idx) => {
+          const statusBadge = (l.status || 'new').toUpperCase();
+          const contact = l.contact_name ? `${l.contact_name} (${l.contact_role || 'Contact'})` : 'Principal';
+          const loc = l.location || 'Mumbai';
+          const board = l.board || 'CBSE';
+          return `${idx + 1}. **${l.school_name}** • \`${statusBadge}\`\n   📍 ${loc} • 🎓 ${board}\n   👤 ${contact} • 📞 \`${l.phone || 'N/A'}\``;
+        }).join('\n\n');
+
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
-            text: fallback.text,
-            leadCard: {
-              ...fallback.leadCard,
-              notes: 'Lead initiated via AI Assistant.',
-            },
+            text: `📋 **Live CRM School Leads (${res.inquiries.length} Total):**\n\n${leadLines}\n\n*Tip: To inspect or take actions on any school, type "Show lead [School Name]" or "Retrieve lead for [School Name]".*`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📋 **No School Leads Found:** No active inquiries currently recorded in your CRM pipeline.`,
+            nextActions: ['Add School Lead'],
             time: 'Just now',
           },
         ]);
       }
+      return;
     } else if (action.id === 'follow_up' || action.id === 'active_schools') {
       const res = await api.fetchSchoolInquiries(5);
       setIsTyping(false);
@@ -999,7 +1156,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `📊 **Live CRM Leads:** Found ${res.inquiries.length} active entries in your database:`,
             followUpList: liveLeads,
-            nextActions: ['Send Introduction Email', 'Filter by Mumbai Region', 'Export Pipeline'],
+            nextActions: ['Add School Lead', 'Filter by Mumbai Region', 'Export Pipeline'],
             time: 'Just now',
           },
         ]);
@@ -1060,6 +1217,177 @@ export default function MainScreen({ user, onLogout }) {
     const lower = userText.toLowerCase();
 
     // Helper to find latest lead in chat context
+    // ── 0A. Action Intent: Add School Lead (Opens Dedicated Web App Form Modal) ──
+    const isAddLeadFormIntent =
+      lower === 'add school lead' ||
+      lower === 'add lead' ||
+      lower === 'create lead' ||
+      lower === 'create school lead' ||
+      lower === 'new school lead' ||
+      lower === 'add new school lead' ||
+      lower === 'new lead' ||
+      lower === 'add school' ||
+      lower === 'open lead form' ||
+      lower === 'lead form';
+
+    if (isAddLeadFormIntent) {
+      setIsTyping(false);
+      openAddLeadModal();
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: '📝 **Opening Add School Lead Form:** Fill in the school name, contact information, board, and curriculum requirements in the form modal.',
+          nextActions: ['Add School Lead', 'Retrieve All Leads'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── 0B. Query Intent: Retrieve All Leads in CRM ──
+    const isRetrieveAllLeadsIntent =
+      lower === 'retrieve all leads' ||
+      lower === 'retrieve leads' ||
+      lower === 'show all leads' ||
+      lower === 'list all leads' ||
+      lower === 'get all leads' ||
+      lower === 'view all leads' ||
+      lower === 'all leads' ||
+      lower === 'show leads' ||
+      lower === 'list leads' ||
+      (lower.includes('retrieve') && lower.includes('leads') && !lower.includes('for')) ||
+      (lower.includes('list') && lower.includes('leads')) ||
+      (lower.includes('show') && lower.includes('all') && lower.includes('lead'));
+
+    if (isRetrieveAllLeadsIntent) {
+      const res = await api.fetchSchoolInquiries(50);
+      setIsTyping(false);
+
+      if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
+        const leadLines = res.inquiries.slice(0, 15).map((l, idx) => {
+          const statusBadge = (l.status || 'new').toUpperCase();
+          const contact = l.contact_name ? `${l.contact_name} (${l.contact_role || 'Contact'})` : 'Principal';
+          const loc = l.location || 'Mumbai';
+          const board = l.board || 'CBSE';
+          return `${idx + 1}. **${l.school_name}** • \`${statusBadge}\`\n   📍 ${loc} • 🎓 ${board}\n   👤 ${contact} • 📞 \`${l.phone || 'N/A'}\``;
+        }).join('\n\n');
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📋 **Live CRM School Leads (${res.inquiries.length} Total):**\n\n${leadLines}\n\n*Tip: To inspect or take actions on any school, type "Show lead [School Name]" or "Retrieve lead for [School Name]".*`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📋 **No School Leads Found:** No active inquiries currently recorded in your CRM pipeline.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+      }
+      return;
+    }
+
+    // ── 0C. Query Intent: Retrieve Specific Lead in CRM ──
+    const isSpecificLeadQuery =
+      lower.startsWith('retrieve lead for') ||
+      lower.startsWith('show lead for') ||
+      lower.startsWith('show lead') ||
+      lower.startsWith('find lead') ||
+      lower.startsWith('get lead for') ||
+      lower.startsWith('get lead') ||
+      lower.startsWith('search lead') ||
+      (lower.includes('retrieve') && lower.includes('lead') && lower.includes('for')) ||
+      (lower.includes('lead for') && !lower.includes('create') && !lower.includes('add'));
+
+    if (isSpecificLeadQuery) {
+      let queryName = userText
+        .replace(/retrieve\s+lead\s+for/i, '')
+        .replace(/show\s+lead\s+for/i, '')
+        .replace(/show\s+lead/i, '')
+        .replace(/find\s+lead\s+for/i, '')
+        .replace(/find\s+lead/i, '')
+        .replace(/get\s+lead\s+for/i, '')
+        .replace(/get\s+lead/i, '')
+        .replace(/search\s+lead\s+for/i, '')
+        .replace(/search\s+lead/i, '')
+        .replace(/lead\s+for/i, '')
+        .replace(/details/i, '')
+        .trim();
+
+      const res = await api.fetchSchoolInquiries(100);
+      setIsTyping(false);
+
+      if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
+        const queryLower = queryName.toLowerCase();
+        const matched = res.inquiries.find((l) => {
+          const sName = (l.school_name || '').toLowerCase();
+          const cName = (l.contact_name || '').toLowerCase();
+          return sName.includes(queryLower) || queryLower.includes(sName) || cName.includes(queryLower);
+        });
+
+        if (matched) {
+          const leadCardObj = {
+            id: matched.id,
+            schoolName: matched.school_name,
+            contactPerson: `${matched.contact_name || 'Contact'} (${matched.contact_role || 'Principal'})`,
+            phone: matched.phone || '',
+            email: matched.email || '',
+            location: matched.location || 'Mumbai, Maharashtra',
+            board: matched.board || 'CBSE',
+            studentCount: matched.school_size || matched.student_count_tier || 'Enrolled Campus',
+            recommendedProgram: (matched.programs_interested && matched.programs_interested[0]) || 'Agentic AI & Coding Excellence Lab (K-12)',
+            leadScore: '92/100 (Active Pipeline)',
+            notes: matched.notes || 'Inquiry active in School CRM.',
+            status: matched.status || 'new',
+            meeting_date: matched.meeting_date || null,
+            meeting_time: matched.meeting_time || null,
+            meeting_type: matched.meeting_type || null,
+            comments: matched.comments || [],
+          };
+
+          const isMeetingDone = matched.status === 'meeting_done';
+          const isMeetingScheduled = matched.status === 'meeting_scheduled';
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🏫 **Retrieved Lead Dossier for ${matched.school_name}:**\n\n• **Status:** \`${(matched.status || 'NEW').toUpperCase()}\`\n• **Contact:** ${matched.contact_name || 'Principal'} (${matched.contact_role || 'Principal'})\n• **Phone:** \`${matched.phone || 'N/A'}\`\n• **Location:** ${matched.location || 'Mumbai'}\n• **Board:** ${matched.board || 'CBSE'}\n${matched.meeting_date ? `• **Meeting:** \`${matched.meeting_date}\` (${matched.meeting_type || 'offline'})\n` : ''}\nInteractive lead card rendered below with full action controls:`,
+              leadCard: leadCardObj,
+              nextActions: isMeetingDone
+                ? ['Schedule 2nd Meeting', 'Generate Proposal Quote']
+                : isMeetingScheduled
+                ? ['Mark Meeting Done', 'Generate Proposal Quote']
+                : ['Schedule Meeting', 'Generate Proposal Quote'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `🔍 **School Lead Not Found:** Could not locate an existing school lead matching **"${queryName}"** in the CRM database.\n\nWould you like to add this school?`,
+          nextActions: ['Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // Helper to find latest lead in chat context
     const target = findLatestLead();
 
     // ── 1. Action Intent: Mark Meeting Done ──
@@ -1079,7 +1407,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1091,7 +1419,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1116,7 +1444,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: 'Please select or add a school lead first to mark the meeting as done.',
-            nextActions: ['Add New School Lead', 'View Inquiries'],
+            nextActions: ['Add School Lead', 'Retrieve All Leads'],
             time: 'Just now',
           },
         ]);
@@ -1139,7 +1467,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Already Deleted:** **${target.schoolName || target.school_name}** has already been deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1167,7 +1495,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Already Lost:** **${target.schoolName || target.school_name}** is already recorded as a Lost Lead.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1179,7 +1507,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1206,7 +1534,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1234,7 +1562,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Meetings cannot be scheduled for closed leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1246,7 +1574,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM. Meetings cannot be scheduled for deleted leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1262,7 +1590,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `⚠️ **Meeting Already Scheduled:** A meeting with **${target.schoolName || target.school_name}** is already scheduled for **${target.meeting_date || 'an upcoming date'}**${target.meeting_time ? ` at **${target.meeting_time}**` : ''}.\n\nUnder CRM rules, you cannot reschedule this meeting until it has taken place and been marked as Done.`,
-              nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'View Inquiries'],
+              nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1290,7 +1618,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Lost leads cannot be assigned.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1302,7 +1630,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1330,7 +1658,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Support tickets cannot be raised for closed leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1342,7 +1670,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1373,7 +1701,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Notes cannot be added to closed leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1385,7 +1713,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1418,7 +1746,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Follow-ups cannot be scheduled for closed leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1430,7 +1758,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1459,7 +1787,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Documents and proposals are unavailable for closed leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1471,7 +1799,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1494,7 +1822,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `⚠️ **Cannot Edit Deleted Lead:** **${target.schoolName || target.school_name}** was deleted from CRM. Deleted leads cannot be edited from chat or card.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1506,7 +1834,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Cannot Edit Lost Lead:** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Closed leads cannot be edited or modified.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1533,7 +1861,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Outbound emails cannot be sent.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1545,7 +1873,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1571,7 +1899,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. WhatsApp messages cannot be sent.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1583,7 +1911,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1608,7 +1936,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Calls cannot be placed for closed leads.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1620,7 +1948,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add New School Lead', 'View Inquiries'],
+              nextActions: ['Add School Lead', 'Retrieve All Leads'],
               time: 'Just now',
             },
           ]);
@@ -1705,7 +2033,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `📊 Found **${res.inquiries.length} School Leads** in your live database:`,
             followUpList: liveLeads,
-            nextActions: ['Mark Meeting Done', 'Send Email', 'Schedule WhatsApp Push', 'Download Report'],
+            nextActions: ['Mark Meeting Done', 'Generate Proposal Quote', 'Retrieve All Leads'],
             time: 'Just now',
           },
         ]);
@@ -1724,14 +2052,14 @@ export default function MainScreen({ user, onLogout }) {
           sender: 'ai',
           text: data.text,
           proposal: data.proposal,
-          nextActions: ['Mark Meeting Done', 'Send Introduction Email', 'Draft WhatsApp Pitch'],
+          nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
           time: 'Just now',
         };
       } else {
         aiMsg = {
           sender: 'ai',
           text: `I've analyzed: "${userText}".\n\nYour Mumbai School CRM assistant is ready to log meeting completions, schedule demos, send emails, or update CRM records.`,
-          nextActions: ['Mark Meeting Done', 'Add New School Lead', 'Generate Proposal Quote', 'Schedule Meeting'],
+          nextActions: ['Mark Meeting Done', 'Add School Lead', 'Generate Proposal Quote', 'Schedule Meeting'],
           time: 'Just now',
         };
       }
@@ -1758,6 +2086,33 @@ export default function MainScreen({ user, onLogout }) {
   const handleActionChip = async (chip) => {
     const lower = chip.toLowerCase();
     const target = findLatestLead();
+
+    if (
+      lower.includes('add school lead') ||
+      lower.includes('add new school lead') ||
+      lower === 'add school lead' ||
+      lower === 'add new school lead' ||
+      lower === 'add lead' ||
+      lower === 'create lead' ||
+      lower === 'add school'
+    ) {
+      openAddLeadModal();
+      return;
+    }
+
+    if (
+      lower.includes('retrieve all leads') ||
+      lower.includes('retrieve leads') ||
+      lower === 'all leads' ||
+      lower === 'show leads' ||
+      lower === 'list leads'
+    ) {
+      setInputText('Retrieve all leads');
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+      return;
+    }
 
     if (
       lower.includes('meeting done') ||
@@ -1953,6 +2308,270 @@ export default function MainScreen({ user, onLogout }) {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* ── MODAL 0: Add School Lead Form Modal (Matching AdminSchoolCRM) ─────── */}
+      <Modal
+        visible={addLeadModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddLeadModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="school" size={20} color={COLORS.brandEmerald} style={{ marginRight: 8 }} />
+                <Text style={styles.modalLargeTitle}>+ Add New School Lead</Text>
+              </View>
+              <TouchableOpacity onPress={() => setAddLeadModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>School Name *</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. Podar International School"
+                  placeholderTextColor="#94A3B8"
+                  value={newSchoolName}
+                  onChangeText={setNewSchoolName}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Primary Contact Person *</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. Dr. Arvind Mehta"
+                  placeholderTextColor="#94A3B8"
+                  value={newContactName}
+                  onChangeText={setNewContactName}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Contact Role</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {CONTACT_ROLES.map((role) => (
+                    <TouchableOpacity
+                      key={role}
+                      style={[
+                        styles.statusOptionPill,
+                        newContactRole === role && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setNewContactRole(role)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          newContactRole === role && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {role}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Phone Number *</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. +91 98201 44921"
+                  placeholderTextColor="#94A3B8"
+                  value={newPhone}
+                  onChangeText={setNewPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Email Address (Optional)</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. principal@school.edu.in"
+                  placeholderTextColor="#94A3B8"
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>City / Location</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. Andheri West, Mumbai, MH"
+                  placeholderTextColor="#94A3B8"
+                  value={newLocation}
+                  onChangeText={setNewLocation}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Full Postal Address</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 50, textAlignVertical: 'top' }]}
+                  placeholder="Campus address..."
+                  placeholderTextColor="#94A3B8"
+                  value={newAddress}
+                  onChangeText={setNewAddress}
+                  multiline
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Board Affiliation</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {SCHOOL_BOARDS.map((b) => (
+                    <TouchableOpacity
+                      key={b}
+                      style={[
+                        styles.statusOptionPill,
+                        newBoard === b && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setNewBoard(b)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          newBoard === b && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {b}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Estimated Student Count</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {STUDENT_TIERS.map((tier) => (
+                    <TouchableOpacity
+                      key={tier}
+                      style={[
+                        styles.statusOptionPill,
+                        newStudentTier === tier && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setNewStudentTier(tier)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          newStudentTier === tier && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {tier} Students
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Offering / Program of Interest</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  {SCHOOL_PROGRAMS.map((prog) => (
+                    <TouchableOpacity
+                      key={prog}
+                      style={[
+                        styles.statusOptionPill,
+                        newOffering === prog && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setNewOffering(prog)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          newOffering === prog && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {prog}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Initial Meeting Preference</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {MEETING_TYPES.map((mType) => (
+                    <TouchableOpacity
+                      key={mType}
+                      style={[
+                        styles.statusOptionPill,
+                        newMeetingType === mType && styles.statusOptionPillActive,
+                      ]}
+                      onPress={() => setNewMeetingType(mType)}
+                    >
+                      <Text
+                        style={[
+                          styles.statusOptionText,
+                          newMeetingType === mType && styles.statusOptionTextActive,
+                        ]}
+                      >
+                        {mType}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Meeting Date & Time (Optional)</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[styles.modalTextInput, { flex: 1 }]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#94A3B8"
+                    value={newMeetingDate}
+                    onChangeText={setNewMeetingDate}
+                  />
+                  <TextInput
+                    style={[styles.modalTextInput, { flex: 1 }]}
+                    placeholder="11:00 AM"
+                    placeholderTextColor="#94A3B8"
+                    value={newMeetingTime}
+                    onChangeText={setNewMeetingTime}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Notes & Discussion Summary</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 60, textAlignVertical: 'top' }]}
+                  placeholder="Meeting context or specific requirements..."
+                  placeholderTextColor="#94A3B8"
+                  value={newNotes}
+                  onChangeText={setNewNotes}
+                  multiline
+                />
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.modalPrimaryBtn}
+              onPress={handleSaveNewLeadSubmit}
+              disabled={isSavingNewLead}
+            >
+              {isSavingNewLead ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>+ Add Lead to CRM Database</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── MODAL 1: Edit School Lead Modal ────────────────────────────────────── */}
       <Modal

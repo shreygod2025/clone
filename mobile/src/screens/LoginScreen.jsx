@@ -17,8 +17,8 @@ import { COLORS } from '../theme/colors';
 import { api } from '../services/api';
 
 export default function LoginScreen({ onLoginSuccess }) {
-  const [email, setEmail] = useState('it@oll.co');
-  const [password, setPassword] = useState('it@oll.co');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -45,12 +45,6 @@ export default function LoginScreen({ onLoginSuccess }) {
       setLoading(false);
       setErrorMessage(err.message || 'An unexpected error occurred during login');
     }
-  };
-
-  const handleQuickFill = () => {
-    setEmail('it@oll.co');
-    setPassword('it@oll.co');
-    setErrorMessage('');
   };
 
   return (
@@ -100,7 +94,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               <Feather name="mail" size={18} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
-                placeholder="it@oll.co"
+                placeholder="example@.com"
                 placeholderTextColor="#94A3B8"
                 value={email}
                 onChangeText={setEmail}
@@ -118,7 +112,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               <Feather name="lock" size={18} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
-                placeholder="••••••••"
+                placeholder="example@.com"
                 placeholderTextColor="#94A3B8"
                 value={password}
                 onChangeText={setPassword}
@@ -137,16 +131,6 @@ export default function LoginScreen({ onLoginSuccess }) {
               </TouchableOpacity>
             </View>
           </View>
-
-          {/* Quick Fill Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={styles.quickFillButton}
-            onPress={handleQuickFill}
-          >
-            <Feather name="zap" size={14} color={COLORS.brandEmerald} style={{ marginRight: 4 }} />
-            <Text style={styles.quickFillText}>Auto-fill Live Admin (it@oll.co)</Text>
-          </TouchableOpacity>
 
           {/* Submit Button */}
           <TouchableOpacity
@@ -320,22 +304,6 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 6,
-  },
-  quickFillButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 12,
-    paddingVertical: 8,
-    marginBottom: 16,
-  },
-  quickFillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.brandEmerald,
   },
   submitButton: {
     borderRadius: 16,
