@@ -28,6 +28,7 @@ import BottomTabBar from '../components/BottomTabBar';
 import ComingSoonView from '../components/ComingSoonView';
 import ChatMessagesView from '../components/ChatMessagesView';
 import SchoolsCrmScreen from './SchoolsCrmScreen';
+import FieldVisitScreen from './FieldVisitScreen';
 import { SUGGESTED_ACTIONS, MOCK_RESPONSES } from '../data/suggestedActions';
 import { api } from '../services/api';
 
@@ -3752,8 +3753,8 @@ export default function MainScreen({ user, onLogout }) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
-      {/* Top Dark Green Header (hidden when Schools CRM is active, as it has its own dedicated header) */}
-      {activeTab !== 'schools' && (
+      {/* Top Dark Green Header (hidden when Schools CRM or Field Visit is active, as they have dedicated headers) */}
+      {activeTab !== 'schools' && activeTab !== 'field_visit' && (
         <Header
           onNewChatPress={handleNewChat}
           user={user}
@@ -3846,6 +3847,13 @@ export default function MainScreen({ user, onLogout }) {
               onFocus={handleInputFocus}
             />
           </View>
+        ) : activeTab === 'field_visit' ? (
+          /* Live Field Visit & Reports Screen matching user screenshot */
+          <FieldVisitScreen
+            user={user}
+            onBackToChat={() => setActiveTab('ai_chat')}
+            onLogout={onLogout}
+          />
         ) : activeTab === 'schools' ? (
           /* Live School CRM Screen matching user screenshot */
           <SchoolsCrmScreen

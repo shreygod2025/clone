@@ -1,4 +1,5 @@
 // Backend API Service for OLL School CRM Mobile Frontend
+import { Platform } from 'react-native';
 
 // Reads backend URL dynamically from mobile/.env (EXPO_PUBLIC_BACKEND_URL)
 const CONFIGURED_BACKEND_URL = (
@@ -519,6 +520,240 @@ class ApiService {
       programs_interested: ['Agentic AI & Coding Excellence Lab (K-12)'],
       notes: assistantNote,
     };
+  }
+
+  // ── Field Reports & Cloudinary Upload ─────────────────────────────────────
+
+  /**
+   * Uploads an image to Cloudinary via backend /api/upload?type=images
+   * Accepts Expo ImagePicker result/asset, URI string, or Blob/File
+   * Returns: { success: true, url, filename, public_id }
+   */
+  async uploadPhotoToCloudinary(asset) {
+    try {
+      const formData = new FormData();
+
+      if (!asset) {
+        throw new Error('No image provided for upload');
+      }
+
+      if (Platform.OS === 'web') {
+        if (asset.file) {
+          formData.append('file', asset.file);
+        } else if (typeof asset === 'string' && (asset.startsWith('blob:') || asset.startsWith('data:'))) {
+          const res = await fetch(asset);
+          const blob = await res.blob();
+          const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+          formData.append('file', blob, `field_photo_${Date.now()}.${ext}`);
+        } else if (asset.uri && (asset.uri.startsWith('blob:') || asset.uri.startsWith('data:'))) {
+          const res = await fetch(asset.uri);
+          const blob = await res.blob();
+          const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+          formData.append('file', blob, asset.fileName || `field_photo_${Date.now()}.${ext}`);
+        } else if (asset instanceof Blob || (typeof File !== 'undefined' && asset instanceof File)) {
+          formData.append('file', asset, asset.name || `field_photo_${Date.now()}.jpg`);
+        } else {
+          // If already a remote url (e.g. cloudinary url), return it directly
+          if (typeof asset === 'string' && asset.startsWith('http')) {
+            return { success: true, url: asset, filename: 'remote', public_id: '' };
+          }
+          if (asset.uri && asset.uri.startsWith('http')) {
+            return { success: true, url: asset.uri, filename: 'remote', public_id: '' };
+          }
+          throw new Error('Unsupported image format on web');
+        }
+      } else {
+        // Native (iOS / Android)
+        const uri = typeof asset === 'string' ? asset : asset.uri;
+        if (uri.startsWith('http')) {
+          return { success: true, url: uri, filename: 'remote', public_id: '' };
+        }
+        const fileName = asset.fileName || uri.split('/').pop() || `field_photo_${Date.now()}.jpg`;
+        const mimeType = asset.mimeType || (fileName.endsWith('.png') ? 'image/png' : 'image/jpeg');
+
+        formData.append('file', {
+          uri,
+          name: fileName,
+          type: mimeType,
+        });
+      }
+
+      const headers = {};
+      if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/upload?type=images`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      }, 30000);
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Upload failed (${response.status})`);
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        url: result.url,
+        filename: result.filename,
+        public_id: result.public_id,
+      };
+    } catch (err) {
+      console.error('[ApiService] Cloudinary upload error:', err);
+      return {
+        success: false,
+        error: err.message || 'Failed to upload photo to Cloudinary',
+      };
+    }
+  }
+
+  // Create Field Check-In: POST /api/field-reports/checkin
+  async createFieldCheckin(checkinData) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports/checkin`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          latitude: checkinData.latitude || null,
+          longitude: checkinData.longitude || null,
+          photo_url: checkinData.photo_url || null,
+          location_label: checkinData.location_label || 'Current Location',
+          notes: checkinData.notes || '',
+        }),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, report: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Check-in failed (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error during check-in' };
+    }
+  }
+
+  // Fetch all field reports: GET /api/field-reports
+  async fetchFieldReports() {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, reports: Array.isArray(data) ? data : [] };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to fetch reports (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error fetching reports' };
+    }
+  }
+
+  // Fetch single report by ID: GET /api/field-reports/{id}
+  async fetchFieldReportById(reportId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports/${reportId}`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, report: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to fetch report (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error fetching report' };
+    }
+  }
+
+  // Add School Visit to active field report: POST /api/field-reports/{report_id}/school-visits
+  async addFieldSchoolVisit(reportId, visitData) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports/${reportId}/school-visits`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(visitData),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, visit: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to add school visit (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error adding school visit' };
+    }
+  }
+
+  // Check out of field day: PATCH /api/field-reports/{report_id}/checkout
+  async checkoutFieldReport(reportId, checkoutData = {}) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports/${reportId}/checkout`, {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          latitude: checkoutData.latitude || null,
+          longitude: checkoutData.longitude || null,
+          end_notes: checkoutData.end_notes || 'Day concluded successfully',
+        }),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, report: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to checkout (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error during checkout' };
+    }
+  }
+
+  // Delete field report: DELETE /api/field-reports/{report_id}
+  async deleteFieldReport(reportId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports/${reportId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to delete report (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error deleting report' };
+    }
+  }
+
+  // Delete school visit: DELETE /api/field-reports/{report_id}/school-visits/{visit_id}
+  async deleteFieldSchoolVisit(reportId, visitId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/field-reports/${reportId}/school-visits/${visitId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to delete visit (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error deleting visit' };
+    }
   }
 }
 

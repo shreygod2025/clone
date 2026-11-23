@@ -6,10 +6,10 @@ import { COLORS } from '../theme/colors';
 export default function BottomTabBar({ activeTab, onTabChange }) {
   const tabs = [
     {
-      id: 'dashboard',
-      label: 'Dashboard',
-      iconSet: 'Feather',
-      iconName: 'columns',
+      id: 'field_visit',
+      label: 'Field Visit',
+      iconSet: 'Ionicons',
+      iconName: 'location-outline',
     },
     {
       id: 'ai_chat',
@@ -34,6 +34,16 @@ export default function BottomTabBar({ activeTab, onTabChange }) {
   const renderIcon = (tab, isActive) => {
     const color = isActive ? COLORS.tabActive : COLORS.tabInactive;
     const size = isActive ? 21 : 19;
+
+    if (tab.id === 'field_visit') {
+      return (
+        <Ionicons
+          name={isActive ? 'location' : 'location-outline'}
+          size={size}
+          color={color}
+        />
+      );
+    }
 
     if (tab.id === 'ai_chat') {
       return (
