@@ -79,7 +79,7 @@ const FALLBACK_LEADS = [
   },
 ];
 
-export default function SchoolsCrmScreen({ user, onBackToChat }) {
+export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
   const [subTab, setSubTab] = useState('leads'); // 'dashboard', 'leads', 'contacts'
   const [stageFilter, setStageFilter] = useState('new'); // 'all', 'new', 'meeting_done', 'converted', 'active', etc.
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,6 +103,14 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
   const [viewDetailsModalVisible, setViewDetailsModalVisible] = useState(false);
   const [pricingModalVisible, setPricingModalVisible] = useState(false);
   const [onboardingTrackerVisible, setOnboardingTrackerVisible] = useState(false);
+
+  // Dossier Comments & Activity History State (Web App Responsive Details)
+  const [dossierComments, setDossierComments] = useState([]);
+  const [dossierHistory, setDossierHistory] = useState([]);
+  const [newDossierComment, setNewDossierComment] = useState('');
+  const [isAddingDossierComment, setIsAddingDossierComment] = useState(false);
+  const [loadingDossierHistory, setLoadingDossierHistory] = useState(false);
+  const [dossierHistoryCollapsed, setDossierHistoryCollapsed] = useState(false);
 
   // Form Fields for Add/Edit Lead
   const [formSchoolName, setFormSchoolName] = useState('');
@@ -596,10 +604,169 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
     Alert.alert('Ticket Raised', `Ticket #${Math.floor(1000 + Math.random() * 9000)} generated for ${selectedLead.school_name}.`);
   };
 
-  // View Details
-  const openViewDetailsModal = (lead) => {
+  // Helpers for Dossier Date & Type Badges (Web App Responsive Details)
+  const formatDossierDate = (d) => {
+    if (!d) return '-';
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d);
+      return dt.toLocaleDateString('en-IN', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return String(d);
+    }
+  };
+
+  const getDossierTypeMeta = (type) => {
+    switch (type) {
+      case 'created':
+        return { label: 'Inquiry Created', color: '#2563EB', bg: '#EFF6FF', border: '#60A5FA', icon: 'plus-circle' };
+      case 'status_change':
+        return { label: 'Status Changed', color: '#D97706', bg: '#FFFBEB', border: '#FBBF24', icon: 'refresh-cw' };
+      case 'meeting_scheduled':
+        return { label: 'Meeting Scheduled', color: '#7C3AED', bg: '#F5F3FF', border: '#A78BFA', icon: 'calendar' };
+      case 'followup':
+        return { label: 'Follow-up Set', color: '#EA580C', bg: '#FFF7ED', border: '#FB923C', icon: 'clock' };
+      case 'converted':
+        return { label: 'Converted / Won', color: '#059669', bg: '#ECFDF5', border: '#34D399', icon: 'check-circle' };
+      case 'onboarding_step':
+        return { label: 'Onboarding Step', color: '#0D9488', bg: '#F0FDFA', border: '#2DD4BF', icon: 'layers' };
+      case 'ticket':
+        return { label: 'Ticket Raised', color: '#DC2626', bg: '#FEF2F2', border: '#F87171', icon: 'alert-circle' };
+      case 'note':
+        return { label: 'Note / Comment', color: '#475569', bg: '#F8FAFC', border: '#94A3B8', icon: 'message-square' };
+      default:
+        return { label: 'CRM Activity', color: '#4F46E5', bg: '#EEF2FF', border: '#818CF8', icon: 'activity' };
+    }
+  };
+
+  // View Details with Live Comments & Activity History
+  const openViewDetailsModal = async (lead) => {
+    if (!lead) return;
     setSelectedLead(lead);
+    setDossierComments(lead.comments || []);
+    setNewDossierComment('');
     setViewDetailsModalVisible(true);
+    setLoadingDossierHistory(true);
+
+    try {
+      if (lead.id) {
+        // Fetch comments
+        api.getSchoolComments(lead.id).then((res) => {
+          if (res.success && Array.isArray(res.comments) && res.comments.length > 0) {
+            setDossierComments(res.comments);
+          }
+        }).catch(() => {});
+
+        // Fetch activity history
+        const histRes = await api.getSchoolHistory(lead.id);
+        if (histRes.success && Array.isArray(histRes.history) && histRes.history.length > 0) {
+          setDossierHistory(histRes.history);
+          setLoadingDossierHistory(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Error fetching history:', e);
+    }
+
+    // Synthesize timeline if empty
+    const synthesized = [];
+    if (lead.comments && lead.comments.length > 0) {
+      lead.comments.forEach((c) => {
+        synthesized.push({
+          type: 'note',
+          date: c.created_at || new Date().toISOString(),
+          description: `Comment: "${c.text}"`,
+          user: c.author || 'CRM Assistant',
+        });
+      });
+    }
+    if (lead.meeting_date) {
+      synthesized.push({
+        type: 'meeting_scheduled',
+        date: lead.meeting_date,
+        description: `Meeting scheduled for ${lead.meeting_date} at ${lead.meeting_time || '11:30 AM'} (${lead.meeting_type || 'offline'})`,
+        user: user?.name || 'CRM Team',
+      });
+    }
+    if (lead.status === 'meeting_done') {
+      synthesized.push({
+        type: 'status_change',
+        date: new Date().toISOString(),
+        description: 'Meeting marked as completed (Done). Ready for 2nd round or proposal.',
+        user: user?.name || 'CRM Team',
+      });
+    }
+    if (lead.status === 'lost') {
+      synthesized.push({
+        type: 'status_change',
+        date: new Date().toISOString(),
+        description: 'Marked as Lost Lead in CRM pipeline.',
+        user: user?.name || 'CRM Team',
+      });
+    }
+    synthesized.push({
+      type: 'created',
+      date: lead.created_at || new Date().toISOString(),
+      description: `Inquiry registered in CRM for ${lead.school_name}`,
+      user: lead.contact_name || 'School Desk',
+    });
+
+    setDossierHistory(synthesized);
+    setLoadingDossierHistory(false);
+  };
+
+  const handleAddDossierComment = async () => {
+    if (!newDossierComment.trim() || !selectedLead) return;
+    const text = newDossierComment.trim();
+    setIsAddingDossierComment(true);
+
+    const author = user?.name || 'CRM Administrator';
+    const nowIso = new Date().toISOString();
+
+    const newCommentObj = {
+      text,
+      author,
+      created_at: nowIso,
+    };
+
+    setDossierComments((prev) => [newCommentObj, ...prev]);
+    setNewDossierComment('');
+
+    if (selectedLead.id) {
+      await api.addSchoolComment(selectedLead.id, text, author);
+    }
+
+    // Update in leads list
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id === selectedLead.id) {
+          return {
+            ...l,
+            comments: [newCommentObj, ...(l.comments || [])],
+          };
+        }
+        return l;
+      })
+    );
+
+    setDossierHistory((prev) => [
+      {
+        type: 'note',
+        date: nowIso,
+        description: `Comment: "${text}"`,
+        user: author,
+      },
+      ...prev,
+    ]);
+
+    setIsAddingDossierComment(false);
   };
 
   // Call Phone
@@ -658,7 +825,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
             onPress={() => setOnboardingTrackerVisible(true)}
           >
             <Ionicons name="clipboard-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.onboardingTrackerText}>ONBOARDING TRACKER</Text>
+            <Text style={styles.onboardingTrackerText}>TRACKER</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -676,6 +843,16 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
               <Text style={styles.bellBadgeText}>28</Text>
             </View>
           </View>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.crmLogoutBtn}
+            onPress={onLogout}
+            accessibilityLabel="Sign Out"
+          >
+            <Feather name="log-out" size={13} color="#EF4444" style={{ marginRight: 4 }} />
+            <Text style={styles.crmLogoutText}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1483,59 +1660,301 @@ export default function SchoolsCrmScreen({ user, onBackToChat }) {
         </View>
       </Modal>
 
-      {/* ── MODAL 7: View Lead Details ────────────────────────────────────────── */}
-      <Modal visible={viewDetailsModalVisible} transparent animationType="slide">
+      {/* ── MODAL 7: View Lead Details (Proper, Rich & Responsive) ──────────── */}
+      <Modal visible={viewDetailsModalVisible} transparent animationType="slide" onRequestClose={() => setViewDetailsModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalLargeCard}>
+          <View style={[styles.modalLargeCard, { maxHeight: '92%', width: '95%', maxWidth: 580, paddingBottom: 16 }]}>
+            {/* Header */}
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>👁️ School Lead Dossier</Text>
-              <TouchableOpacity onPress={() => setViewDetailsModalVisible(false)}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text style={[styles.dossierSchoolName, { fontSize: 17 }]} numberOfLines={1}>
+                    {selectedLead?.school_name}
+                  </Text>
+                  <View style={[
+                    styles.dossierStatusPill,
+                    selectedLead?.status === 'archived' ? { backgroundColor: '#F1F5F9' } :
+                    selectedLead?.status === 'lost' ? { backgroundColor: '#FFE4E6' } :
+                    selectedLead?.status === 'meeting_done' ? { backgroundColor: '#ECFDF5' } :
+                    selectedLead?.status === 'converted' ? { backgroundColor: '#FEF3C7' } :
+                    selectedLead?.status === 'active' ? { backgroundColor: '#DCFCE7' } :
+                    { backgroundColor: '#EFF6FF' }
+                  ]}>
+                    <Text style={[
+                      styles.dossierStatusPillText,
+                      selectedLead?.status === 'archived' ? { color: '#64748B' } :
+                      selectedLead?.status === 'lost' ? { color: '#E11D48' } :
+                      selectedLead?.status === 'meeting_done' ? { color: '#059669' } :
+                      selectedLead?.status === 'converted' ? { color: '#D97706' } :
+                      selectedLead?.status === 'active' ? { color: '#16A34A' } :
+                      { color: '#2563EB' }
+                    ]}>
+                      {(selectedLead?.status || 'new').toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                  School Lead Dossier • Live CRM Synchronized
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setViewDetailsModalVisible(false)} style={{ padding: 4 }}>
                 <Feather name="x" size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              <Text style={styles.dossierSchoolName}>{selectedLead?.school_name}</Text>
-              <Text style={styles.dossierContact}>
-                {selectedLead?.contact_name} ({selectedLead?.contact_role || 'Principal'})
-              </Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+              {/* Responsive 2-Column Info Grid */}
+              <View style={styles.dossierGrid}>
+                <View style={styles.dossierGridItem}>
+                  <Text style={styles.dossierGridLabel}>Contact Person</Text>
+                  <Text style={styles.dossierGridVal}>
+                    {selectedLead?.contact_name} {selectedLead?.contact_role ? `(${selectedLead?.contact_role})` : ''}
+                  </Text>
+                </View>
 
-              <View style={styles.dossierRow}>
-                <Text style={styles.dossierLabel}>Database ID:</Text>
-                <Text style={styles.dossierVal}>{selectedLead?.id}</Text>
+                <TouchableOpacity
+                  style={styles.dossierGridItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleCallPhone(selectedLead?.phone)}
+                >
+                  <Text style={styles.dossierGridLabel}>Phone Number</Text>
+                  <Text style={[styles.dossierGridVal, { color: '#059669', fontWeight: '700' }]}>
+                    📞 {selectedLead?.phone || 'N/A'}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.dossierGridItem}>
+                  <Text style={styles.dossierGridLabel}>Official Email</Text>
+                  <Text style={styles.dossierGridVal}>✉️ {selectedLead?.email || 'N/A'}</Text>
+                </View>
+
+                <View style={styles.dossierGridItem}>
+                  <Text style={styles.dossierGridLabel}>Campus Location</Text>
+                  <Text style={styles.dossierGridVal}>📍 {selectedLead?.location || 'Mumbai, Maharashtra'}</Text>
+                </View>
+
+                <View style={styles.dossierGridItem}>
+                  <Text style={styles.dossierGridLabel}>Affiliated Board</Text>
+                  <Text style={styles.dossierGridVal}>🎓 {selectedLead?.board || 'CBSE'}</Text>
+                </View>
+
+                <View style={styles.dossierGridItem}>
+                  <Text style={styles.dossierGridLabel}>Curriculum Program</Text>
+                  <Text style={styles.dossierGridVal}>
+                    {(selectedLead?.programs_interested && selectedLead?.programs_interested[0]) ||
+                      'Agentic AI & Coding Excellence Lab (K-12)'}
+                  </Text>
+                </View>
+
+                <View style={[styles.dossierGridItem, { width: '100%' }]}>
+                  <Text style={styles.dossierGridLabel}>Meeting Status</Text>
+                  <Text style={styles.dossierGridVal}>
+                    {selectedLead?.meeting_date
+                      ? `📅 ${selectedLead.meeting_date} at ${selectedLead.meeting_time || '11:30 AM'} (${selectedLead.meeting_type || 'offline'})`
+                      : 'No meeting scheduled yet'}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.dossierRow}>
-                <Text style={styles.dossierLabel}>Phone:</Text>
-                <Text style={styles.dossierVal}>{selectedLead?.phone}</Text>
+              {/* 1. Discussion Notes Section (Web App Notes) */}
+              <View style={styles.dossierSectionCard}>
+                <View style={styles.dossierSectionHeader}>
+                  <Feather name="file-text" size={14} color="#D97706" style={{ marginRight: 6 }} />
+                  <Text style={[styles.dossierSectionTitle, { color: '#92400E' }]}>Discussion Notes</Text>
+                </View>
+                <View style={styles.dossierNotesBox}>
+                  <Text style={styles.dossierNotesText}>
+                    {selectedLead?.notes || 'No discussion notes logged yet.'}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.dossierRow}>
-                <Text style={styles.dossierLabel}>Email:</Text>
-                <Text style={styles.dossierVal}>{selectedLead?.email}</Text>
+              {/* 2. Comments Section (Web App Comments) */}
+              <View style={styles.dossierSectionCard}>
+                <View style={styles.dossierSectionHeader}>
+                  <Feather name="message-square" size={14} color="#4F46E5" style={{ marginRight: 6 }} />
+                  <Text style={[styles.dossierSectionTitle, { color: '#3730A3' }]}>
+                    Comments ({dossierComments.length})
+                  </Text>
+                </View>
+
+                {/* Comments List */}
+                {dossierComments.length > 0 ? (
+                  <View style={{ marginBottom: 10, gap: 8 }}>
+                    {dossierComments.map((c, idx) => (
+                      <View key={idx} style={styles.dossierCommentCard}>
+                        <Text style={styles.dossierCommentBody}>{c.text || c.comment}</Text>
+                        <View style={styles.dossierCommentFooter}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Feather name="user" size={11} color="#64748B" style={{ marginRight: 4 }} />
+                            <Text style={styles.dossierCommentAuthor}>{c.author || 'CRM User'}</Text>
+                          </View>
+                          <Text style={styles.dossierCommentDate}>
+                            {formatDossierDate(c.created_at || c.timestamp)}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.dossierEmptyBox}>
+                    <Text style={styles.dossierEmptyText}>No remarks or comments recorded yet.</Text>
+                  </View>
+                )}
+
+                {/* Add a comment input */}
+                <View style={styles.dossierAddCommentRow}>
+                  <TextInput
+                    style={styles.dossierAddCommentInput}
+                    value={newDossierComment}
+                    onChangeText={setNewDossierComment}
+                    placeholder="Add a comment or remark..."
+                    placeholderTextColor="#94A3B8"
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.dossierAddCommentBtn, !newDossierComment.trim() && { opacity: 0.6 }]}
+                    onPress={handleAddDossierComment}
+                    disabled={isAddingDossierComment || !newDossierComment.trim()}
+                  >
+                    {isAddingDossierComment ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Feather name="send" size={14} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              <View style={styles.dossierRow}>
-                <Text style={styles.dossierLabel}>Location:</Text>
-                <Text style={styles.dossierVal}>{selectedLead?.location}</Text>
+              {/* 3. Activity History Section (Web App Activity History) */}
+              <View style={styles.dossierSectionCard}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[styles.dossierSectionHeader, { justifyContent: 'space-between' }]}
+                  onPress={() => setDossierHistoryCollapsed(!dossierHistoryCollapsed)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Feather name="clock" size={14} color="#0D9488" style={{ marginRight: 6 }} />
+                    <Text style={[styles.dossierSectionTitle, { color: '#115E59' }]}>
+                      Activity History ({dossierHistory.length})
+                    </Text>
+                  </View>
+                  <Feather
+                    name={dossierHistoryCollapsed ? 'chevron-down' : 'chevron-up'}
+                    size={16}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+
+                {!dossierHistoryCollapsed && (
+                  <View style={{ marginTop: 8 }}>
+                    {loadingDossierHistory ? (
+                      <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                        <ActivityIndicator size="small" color="#0D9488" />
+                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>Loading history...</Text>
+                      </View>
+                    ) : dossierHistory.length > 0 ? (
+                      <View style={{ gap: 8 }}>
+                        {dossierHistory.map((item, idx) => {
+                          const meta = getDossierTypeMeta(item.type);
+                          return (
+                            <View
+                              key={idx}
+                              style={[
+                                styles.dossierHistoryCard,
+                                {
+                                  backgroundColor: meta.bg,
+                                  borderLeftColor: meta.border,
+                                },
+                              ]}
+                            >
+                              <View style={styles.dossierHistoryTopRow}>
+                                <View style={[styles.dossierHistoryTypePill, { backgroundColor: meta.bg }]}>
+                                  <Feather name={meta.icon} size={10} color={meta.color} style={{ marginRight: 3 }} />
+                                  <Text style={[styles.dossierHistoryTypeLabel, { color: meta.color }]}>
+                                    {meta.label}
+                                  </Text>
+                                </View>
+                                <Text style={styles.dossierHistoryDate}>
+                                  {formatDossierDate(item.date || item.created_at || item.timestamp)}
+                                </Text>
+                              </View>
+                              <Text style={styles.dossierHistoryDesc}>
+                                {item.description || item.action || item.title || 'CRM Action recorded'}
+                              </Text>
+                              {(item.user || item.author) && (
+                                <Text style={styles.dossierHistoryAuthor}>
+                                  Logged by {item.user || item.author}
+                                </Text>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <View style={styles.dossierEmptyBox}>
+                        <Text style={styles.dossierEmptyText}>No activity history recorded yet.</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
 
-              <View style={styles.dossierRow}>
-                <Text style={styles.dossierLabel}>Stage Status:</Text>
-                <Text style={[styles.dossierVal, { fontWeight: '800', color: '#059669' }]}>
-                  {(selectedLead?.status || 'new').toUpperCase()}
-                </Text>
-              </View>
+              {/* Quick Action Toolbar */}
+              <View style={styles.dossierActionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.dossierActionBtn, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }]}
+                  onPress={() => {
+                    setViewDetailsModalVisible(false);
+                    handleCallPhone(selectedLead?.phone);
+                  }}
+                >
+                  <Feather name="phone" size={13} color="#16A34A" />
+                  <Text style={[styles.dossierActionBtnText, { color: '#16A34A' }]}>Call</Text>
+                </TouchableOpacity>
 
-              <View style={styles.dossierNotesBlock}>
-                <Text style={styles.dossierNotesHeader}>All Activity Notes:</Text>
-                <Text style={styles.dossierNotesBody}>{selectedLead?.notes || 'No notes logged.'}</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.dossierActionBtn, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}
+                  onPress={() => {
+                    setViewDetailsModalVisible(false);
+                    openEmailModal(selectedLead);
+                  }}
+                >
+                  <Feather name="mail" size={13} color="#0284C7" />
+                  <Text style={[styles.dossierActionBtnText, { color: '#0284C7' }]}>Email</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.dossierActionBtn, { backgroundColor: '#FAF5FF', borderColor: '#DDD6FE' }]}
+                  onPress={() => {
+                    setViewDetailsModalVisible(false);
+                    openMeetingModal(selectedLead);
+                  }}
+                >
+                  <Feather name="calendar" size={13} color="#7C3AED" />
+                  <Text style={[styles.dossierActionBtnText, { color: '#7C3AED' }]}>Meeting</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.dossierActionBtn, { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1' }]}
+                  onPress={() => {
+                    setViewDetailsModalVisible(false);
+                    openEditModal(selectedLead);
+                  }}
+                >
+                  <Feather name="edit" size={13} color="#475569" />
+                  <Text style={[styles.dossierActionBtnText, { color: '#475569' }]}>Edit</Text>
+                </TouchableOpacity>
               </View>
             </ScrollView>
 
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.primaryModalBtn}
+              style={[styles.primaryModalBtn, { backgroundColor: '#064E3B', marginTop: 10, paddingVertical: 11 }]}
               onPress={() => setViewDetailsModalVisible(false)}
             >
               <Text style={styles.primaryModalBtnText}>Close Dossier</Text>
@@ -2499,5 +2918,204 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#334155',
     fontWeight: '600',
+  },
+  crmLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  crmLogoutText: {
+    color: '#EF4444',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  dossierStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  dossierStatusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  dossierGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dossierGridItem: {
+    minWidth: '45%',
+    flex: 1,
+    paddingVertical: 4,
+  },
+  dossierGridLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  dossierGridVal: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  dossierSectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  dossierSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dossierSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dossierNotesBox: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+  },
+  dossierNotesText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#92400E',
+  },
+  dossierCommentCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+  },
+  dossierCommentBody: {
+    fontSize: 12.5,
+    color: '#334155',
+    lineHeight: 17,
+    marginBottom: 6,
+  },
+  dossierCommentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dossierCommentAuthor: {
+    fontSize: 10.5,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  dossierCommentDate: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  dossierEmptyBox: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  dossierEmptyText: {
+    fontSize: 11.5,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  dossierAddCommentRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  dossierAddCommentInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: 12.5,
+    color: '#0F172A',
+  },
+  dossierAddCommentBtn: {
+    backgroundColor: '#064E3B',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dossierHistoryCard: {
+    borderRadius: 10,
+    padding: 10,
+    borderLeftWidth: 4,
+  },
+  dossierHistoryTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  dossierHistoryTypePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dossierHistoryTypeLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  dossierHistoryDate: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  dossierHistoryDesc: {
+    fontSize: 12,
+    color: '#1E293B',
+    lineHeight: 16,
+  },
+  dossierHistoryAuthor: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 3,
+    fontStyle: 'italic',
+  },
+  dossierActionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  dossierActionBtn: {
+    flex: 1,
+    minWidth: 70,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  dossierActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

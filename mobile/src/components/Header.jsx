@@ -60,7 +60,7 @@ export default function Header({ onNewChatPress, user, onLogout }) {
           </View>
         </View>
 
-        {/* Right side: + New Chat button & User Avatar */}
+        {/* Right side: + New Chat button, User Avatar & Logout */}
         <View style={styles.actionsRow}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -77,6 +77,16 @@ export default function Header({ onNewChatPress, user, onLogout }) {
             onPress={() => setProfileModalVisible(true)}
           >
             <Text style={styles.avatarText}>{getInitials()}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.headerLogoutBtn}
+            onPress={onLogout}
+            accessibilityLabel="Sign Out"
+          >
+            <Feather name="log-out" size={14} color="#F87171" />
+            <Text style={styles.headerLogoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -250,6 +260,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.brandMint,
+  },
+  headerLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginLeft: 7,
+  },
+  headerLogoutText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#F87171',
+    marginLeft: 3,
   },
   modalBackdrop: {
     flex: 1,

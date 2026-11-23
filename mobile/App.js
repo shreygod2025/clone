@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Platform, StatusBar, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MainScreen from './src/screens/MainScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { COLORS } from './src/theme/colors';
 import { api } from './src/services/api';
+import { saveAuthSession, getAuthSession, clearAuthSession } from './src/utils/sessionStorage';
 
 export default function App() {
   const isWeb = Platform.OS === 'web';
@@ -14,14 +15,27 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Check 7-day persisted session/cookie on initial mount
+  useEffect(() => {
+    const session = getAuthSession();
+    if (session && session.user && session.token) {
+      setCurrentUser(session.user);
+      setIsAuthenticated(true);
+      api.setUser(session.user);
+      api.setToken(session.token);
+    }
+  }, []);
+
   const handleLoginSuccess = (user, token) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
     api.setUser(user);
     api.setToken(token);
+    saveAuthSession(user, token, 7); // Persist for 7 days in cookie & storage
   };
 
   const handleLogout = () => {
+    clearAuthSession();
     setIsAuthenticated(false);
     setCurrentUser(null);
     api.setUser(null);

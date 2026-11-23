@@ -3851,6 +3851,7 @@ export default function MainScreen({ user, onLogout }) {
           <SchoolsCrmScreen
             user={user}
             onBackToChat={() => setActiveTab('ai_chat')}
+            onLogout={onLogout}
           />
         ) : (
           /* Animated Coming Soon View for other tabs */
@@ -5286,9 +5287,60 @@ export default function MainScreen({ user, onLogout }) {
               </View>
             </ScrollView>
 
+            {/* Quick Action Toolbar */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={{ flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }}
+                onPress={() => {
+                  setViewModalVisible(false);
+                  handleCallLead(viewTargetLead);
+                }}
+              >
+                <Feather name="phone" size={13} color="#16A34A" />
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#16A34A' }}>Call</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={{ flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }}
+                onPress={() => {
+                  setViewModalVisible(false);
+                  openSendEmailModal(viewTargetLead);
+                }}
+              >
+                <Feather name="mail" size={13} color="#0284C7" />
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#0284C7' }}>Email</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={{ flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: '#FAF5FF', borderColor: '#DDD6FE' }}
+                onPress={() => {
+                  setViewModalVisible(false);
+                  openScheduleMeetingModal(viewTargetLead);
+                }}
+              >
+                <Feather name="calendar" size={13} color="#7C3AED" />
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#7C3AED' }}>Meeting</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={{ flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: '#F8FAFC', borderColor: '#CBD5E1' }}
+                onPress={() => {
+                  setViewModalVisible(false);
+                  openEditLeadModal(viewTargetLead);
+                }}
+              >
+                <Feather name="edit" size={13} color="#475569" />
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#475569' }}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.modalPrimaryBtn, { backgroundColor: '#0D9488', marginTop: 10, paddingVertical: 11 }]}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#0D9488', marginTop: 8, paddingVertical: 11 }]}
               onPress={() => setViewModalVisible(false)}
             >
               <Text style={styles.modalPrimaryBtnText}>Close Dossier</Text>
