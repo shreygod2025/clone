@@ -37,11 +37,11 @@ export default function BottomTabBar({ activeTab, onTabChange }) {
 
     if (tab.id === 'ai_chat') {
       return (
-        <View style={styles.activeIconContainer}>
-          {/* Active green indicator dot on top of icon */}
-          <View style={styles.activeDot} />
-          <Ionicons name="chatbubble-ellipses" size={23} color={COLORS.tabActive} />
-        </View>
+        <Ionicons
+          name={isActive ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+          size={size}
+          color={color}
+        />
       );
     }
 
@@ -104,17 +104,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
-  },
-  activeIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.brandGreen,
-    marginBottom: 3,
   },
   tabLabel: {
     fontSize: 11,

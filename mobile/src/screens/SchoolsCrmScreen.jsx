@@ -821,31 +821,6 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
         <View style={styles.headerRightActions}>
           <TouchableOpacity
             activeOpacity={0.8}
-            style={styles.onboardingTrackerBtn}
-            onPress={() => setOnboardingTrackerVisible(true)}
-          >
-            <Ionicons name="clipboard-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.onboardingTrackerText}>TRACKER</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.pricingBtn}
-            onPress={() => setPricingModalVisible(true)}
-          >
-            <Text style={styles.pricingBtnDollar}>$</Text>
-            <Text style={styles.pricingBtnText}>PRICING</Text>
-          </TouchableOpacity>
-
-          <View style={styles.notificationBell}>
-            <Feather name="bell" size={18} color="#0F172A" />
-            <View style={styles.bellBadge}>
-              <Text style={styles.bellBadgeText}>28</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
             style={styles.crmLogoutBtn}
             onPress={onLogout}
             accessibilityLabel="Sign Out"

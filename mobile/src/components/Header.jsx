@@ -5,24 +5,6 @@ import { COLORS } from '../theme/colors';
 
 export default function Header({ onNewChatPress, user, onLogout }) {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.4,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [pulseAnim]);
 
   const getInitials = () => {
     if (!user || !user.name) return 'YL';
@@ -51,8 +33,7 @@ export default function Header({ onNewChatPress, user, onLogout }) {
             </View>
 
             <View style={styles.statusRow}>
-              <Animated.View style={[styles.statusDot, { opacity: pulseAnim }]} />
-              <Text style={styles.statusText}>Agentic AI Live</Text>
+              <Text style={styles.statusText}>AI Assistant</Text>
             </View>
           </View>
         </View>
@@ -189,25 +170,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginTop: 2,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.brandGreen,
-    marginRight: 5,
-    shadowColor: COLORS.brandGreen,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '500',
-    color: COLORS.liveGreen,
+    color: '#A7F3D0',
   },
   actionsRow: {
     flexDirection: 'row',
