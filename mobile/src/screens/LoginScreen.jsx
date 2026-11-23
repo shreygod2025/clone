@@ -68,7 +68,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           <Text style={styles.appTitle}>OLL CRM</Text>
           <View style={styles.agenticPill}>
             <View style={styles.liveDot} />
-            <Text style={styles.agenticPillText}>Admin Portal • GPT-5 Live</Text>
+            <Text style={styles.agenticPillText}>Admin Portal • AI Live</Text>
           </View>
           <Text style={styles.subtitle}>
             Sign in to access your School CRM, live pipeline leads & agentic actions.
@@ -155,14 +155,6 @@ export default function LoginScreen({ onLoginSuccess }) {
               )}
             </LinearGradient>
           </TouchableOpacity>
-        </View>
-
-        {/* Server & Backend Indicator */}
-        <View style={styles.serverStatusFooter}>
-          <View style={styles.serverDot} />
-          <Text style={styles.serverText} numberOfLines={1}>
-            Backend: <Text style={{ fontWeight: '700' }}>{api.getBackendUrl()}</Text>
-          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -324,22 +316,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
-  },
-  serverStatusFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  serverDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22C55E',
-    marginRight: 6,
-  },
-  serverText: {
-    fontSize: 11.5,
-    color: '#A7F3D0',
   },
 });

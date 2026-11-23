@@ -857,36 +857,42 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       </View>
 
       {/* ── Sub-Tabs Navigation (Dashboard, Leads & Schools, Contact Management) ─ */}
-      <View style={styles.subTabsContainer}>
-        <TouchableOpacity
-          style={[styles.subTabItem, subTab === 'dashboard' && styles.subTabItemActive]}
-          onPress={() => setSubTab('dashboard')}
+      <View style={styles.subTabsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subTabsContainer}
         >
-          <Feather name="layout" size={14} color={subTab === 'dashboard' ? '#0F172A' : '#64748B'} />
-          <Text style={[styles.subTabText, subTab === 'dashboard' && styles.subTabTextActive]}>
-            Dashboard
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.subTabItem, subTab === 'dashboard' && styles.subTabItemActive]}
+            onPress={() => setSubTab('dashboard')}
+          >
+            <Feather name="layout" size={13} color={subTab === 'dashboard' ? '#0F172A' : '#64748B'} />
+            <Text style={[styles.subTabText, subTab === 'dashboard' && styles.subTabTextActive]}>
+              Dashboard
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.subTabItem, subTab === 'leads' && styles.subTabItemActive]}
-          onPress={() => setSubTab('leads')}
-        >
-          <Ionicons name="school" size={14} color={subTab === 'leads' ? '#0F172A' : '#64748B'} />
-          <Text style={[styles.subTabText, subTab === 'leads' && styles.subTabTextActive]}>
-            Leads & Schools
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.subTabItem, subTab === 'leads' && styles.subTabItemActive]}
+            onPress={() => setSubTab('leads')}
+          >
+            <Ionicons name="school" size={13} color={subTab === 'leads' ? '#0F172A' : '#64748B'} />
+            <Text style={[styles.subTabText, subTab === 'leads' && styles.subTabTextActive]}>
+              Leads & Schools
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.subTabItem, subTab === 'contacts' && styles.subTabItemActive]}
-          onPress={() => setSubTab('contacts')}
-        >
-          <Feather name="users" size={14} color={subTab === 'contacts' ? '#0F172A' : '#64748B'} />
-          <Text style={[styles.subTabText, subTab === 'contacts' && styles.subTabTextActive]}>
-            Contact Management
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.subTabItem, subTab === 'contacts' && styles.subTabItemActive]}
+            onPress={() => setSubTab('contacts')}
+          >
+            <Feather name="users" size={13} color={subTab === 'contacts' ? '#0F172A' : '#64748B'} />
+            <Text style={[styles.subTabText, subTab === 'contacts' && styles.subTabTextActive]}>
+              Contact Management
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       {subTab === 'leads' ? (
@@ -968,6 +974,28 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
                 <Text style={styles.exportCsvBtnText}>Export CSV</Text>
               </TouchableOpacity>
 
+              {/* Table / Grid View Switcher Pill */}
+              <View style={styles.viewModePill}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[styles.viewModePillBtn, viewMode === 'grid' && styles.viewModePillBtnActive]}
+                  onPress={() => setViewMode('grid')}
+                  accessibilityLabel="Grid View"
+                >
+                  <Feather name="grid" size={12} color={viewMode === 'grid' ? '#0F172A' : '#64748B'} style={{ marginRight: 3 }} />
+                  <Text style={[styles.viewModePillText, viewMode === 'grid' && styles.viewModePillTextActive]}>Grid</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[styles.viewModePillBtn, viewMode === 'table' && styles.viewModePillBtnActive]}
+                  onPress={() => setViewMode('table')}
+                  accessibilityLabel="Table View"
+                >
+                  <Feather name="list" size={12} color={viewMode === 'table' ? '#0F172A' : '#64748B'} style={{ marginRight: 3 }} />
+                  <Text style={[styles.viewModePillText, viewMode === 'table' && styles.viewModePillTextActive]}>Table</Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity activeOpacity={0.8} style={styles.addLeadBtn} onPress={openAddLeadModal}>
                 <Feather name="plus" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
                 <Text style={styles.addLeadBtnText}>+ Add Lead</Text>
@@ -1002,7 +1030,36 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
             })}
           </ScrollView>
 
-          {/* ── Leads Cards List matching Screenshot ───────────────────────────── */}
+          {/* ── View Mode Switcher Header Bar ─────────────────────────────────── */}
+          <View style={styles.viewSwitcherBar}>
+            <Text style={styles.viewSwitcherCount}>
+              {filteredLeads.length} {filteredLeads.length === 1 ? 'School Lead' : 'School Leads'}
+            </Text>
+            <View style={styles.viewSwitcherToggle}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.viewSwitcherBtn, viewMode === 'grid' && styles.viewSwitcherBtnActive]}
+                onPress={() => setViewMode('grid')}
+              >
+                <Feather name="grid" size={13} color={viewMode === 'grid' ? '#059669' : '#64748B'} style={{ marginRight: 4 }} />
+                <Text style={[styles.viewSwitcherBtnText, viewMode === 'grid' && styles.viewSwitcherBtnTextActive]}>
+                  Grid View
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.viewSwitcherBtn, viewMode === 'table' && styles.viewSwitcherBtnActive]}
+                onPress={() => setViewMode('table')}
+              >
+                <Feather name="list" size={13} color={viewMode === 'table' ? '#059669' : '#64748B'} style={{ marginRight: 4 }} />
+                <Text style={[styles.viewSwitcherBtnText, viewMode === 'table' && styles.viewSwitcherBtnTextActive]}>
+                  Table View
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ── Leads Content Display (Grid or Table) ─────────────────────────── */}
           {loading ? (
             <View style={styles.centerBox}>
               <ActivityIndicator color={COLORS.brandEmerald} size="large" />
@@ -1014,6 +1071,178 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
               <Text style={styles.emptyTitle}>No school leads in this stage</Text>
               <Text style={styles.emptySubtitle}>Tap "+ Add Lead" above to create an entry or switch stages.</Text>
             </View>
+          ) : viewMode === 'table' ? (
+            /* Table View */
+            <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScrollView} contentContainerStyle={styles.tableScrollContent}>
+              <View style={styles.tableContainer}>
+                {/* Table Header Row */}
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderCell, { width: 180 }]}>School Name</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 135 }]}>Contact Person</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 130 }]}>Phone / Email</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 110 }]}>Location</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 90 }]}>Board</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 120 }]}>Status</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 125 }]}>Meeting Date</Text>
+                  <Text style={[styles.tableHeaderCell, { width: 230, textAlign: 'center' }]}>Actions</Text>
+                </View>
+
+                {/* Table Body Rows */}
+                {filteredLeads.map((lead, idx) => {
+                  const isLost = (lead.status || '').toLowerCase() === 'lost';
+                  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+                  const isArchived = !isDeleted && (lead.status === 'archived' || lead.isArchived === true);
+                  const isMeetingDone = (lead.status || '').toLowerCase() === 'meeting_done';
+                  const isMeetingScheduled = !isMeetingDone && ((lead.status || '').toLowerCase() === 'meeting_scheduled' || Boolean(lead.meeting_date));
+                  const isEven = idx % 2 === 0;
+
+                  return (
+                    <View key={lead.id} style={[styles.tableDataRow, isEven ? styles.tableRowEven : styles.tableRowOdd]}>
+                      {/* School Name */}
+                      <View style={[styles.tableDataCell, { width: 180 }]}>
+                        <TouchableOpacity onPress={() => openViewDetailsModal(lead)} activeOpacity={0.7}>
+                          <Text style={styles.tableSchoolTitle} numberOfLines={2}>{lead.school_name}</Text>
+                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.offering || 'STEM Curriculum'}</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Contact Person */}
+                      <View style={[styles.tableDataCell, { width: 135 }]}>
+                        <Text style={styles.tableCellText} numberOfLines={1}>{lead.contact_name}</Text>
+                        {lead.contact_role ? (
+                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.contact_role}</Text>
+                        ) : null}
+                      </View>
+
+                      {/* Phone / Email */}
+                      <View style={[styles.tableDataCell, { width: 130 }]}>
+                        <TouchableOpacity onPress={() => handleCallPhone(lead.phone)} activeOpacity={0.7}>
+                          <Text style={styles.tablePhoneText} numberOfLines={1}>{lead.phone || 'N/A'}</Text>
+                        </TouchableOpacity>
+                        {lead.email ? (
+                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.email}</Text>
+                        ) : null}
+                      </View>
+
+                      {/* Location */}
+                      <View style={[styles.tableDataCell, { width: 110 }]}>
+                        <Text style={styles.tableCellText} numberOfLines={1}>{lead.location || 'Mumbai'}</Text>
+                      </View>
+
+                      {/* Board */}
+                      <View style={[styles.tableDataCell, { width: 90 }]}>
+                        <View style={styles.tableBoardBadge}>
+                          <Text style={styles.tableBoardBadgeText}>{lead.board || 'CBSE'}</Text>
+                        </View>
+                      </View>
+
+                      {/* Status */}
+                      <View style={[styles.tableDataCell, { width: 120 }]}>
+                        <View style={[
+                          styles.tableStatusBadge,
+                          {
+                            backgroundColor: isLost ? '#FEE2E2' : isDeleted ? '#F1F5F9' : isMeetingDone ? '#EDE9FE' : isMeetingScheduled ? '#DBEAFE' : '#ECFDF5',
+                          }
+                        ]}>
+                          <Text style={[
+                            styles.tableStatusText,
+                            {
+                              color: isLost ? '#DC2626' : isDeleted ? '#64748B' : isMeetingDone ? '#7C3AED' : isMeetingScheduled ? '#2563EB' : '#059669',
+                            }
+                          ]}>
+                            {isLost ? 'Lost' : isDeleted ? 'Deleted' : isMeetingDone ? 'Meeting Done' : isMeetingScheduled ? 'Scheduled' : (lead.status || 'Active')}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Meeting Date */}
+                      <View style={[styles.tableDataCell, { width: 125 }]}>
+                        <Text style={styles.tableCellText} numberOfLines={1}>
+                          {lead.meeting_date ? `${lead.meeting_date}` : 'Not scheduled'}
+                        </Text>
+                        {lead.meeting_time ? (
+                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.meeting_time}</Text>
+                        ) : null}
+                      </View>
+
+                      {/* Actions */}
+                      <View style={[styles.tableDataCell, { width: 230, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
+                        {/* View Dossier Button */}
+                        <TouchableOpacity
+                          style={styles.tableActionIconBtn}
+                          onPress={() => openViewDetailsModal(lead)}
+                          accessibilityLabel="View Details"
+                        >
+                          <Feather name="eye" size={13} color="#2563EB" />
+                        </TouchableOpacity>
+
+                        {/* Call */}
+                        <TouchableOpacity
+                          style={styles.tableActionIconBtn}
+                          onPress={() => handleCallPhone(lead.phone)}
+                          accessibilityLabel="Call"
+                        >
+                          <Feather name="phone" size={13} color="#059669" />
+                        </TouchableOpacity>
+
+                        {/* Mail */}
+                        {!isLost && (
+                          <TouchableOpacity
+                            style={styles.tableActionIconBtn}
+                            onPress={() => openEmailModal(lead)}
+                            accessibilityLabel="Mail"
+                          >
+                            <Feather name="mail" size={13} color="#0284C7" />
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Meeting - Rule 1, 2, 3, 4 */}
+                        {!isDeleted && !isLost && (
+                          <TouchableOpacity
+                            style={[styles.tableActionIconBtn, isMeetingScheduled && !isMeetingDone && { opacity: 0.45 }]}
+                            onPress={() => openScheduleMeetingModal(lead)}
+                            accessibilityLabel="Meeting"
+                          >
+                            <Feather name={isMeetingScheduled && !isMeetingDone ? "lock" : "calendar"} size={13} color={isMeetingScheduled && !isMeetingDone ? "#64748B" : "#D97706"} />
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Edit - Rule 1 & 4 */}
+                        {!isDeleted && !isLost && (
+                          <TouchableOpacity
+                            style={styles.tableActionIconBtn}
+                            onPress={() => openEditModal(lead)}
+                            accessibilityLabel="Edit"
+                          >
+                            <Feather name="edit-2" size={13} color="#475569" />
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Note */}
+                        {!isDeleted && !isLost && (
+                          <TouchableOpacity
+                            style={styles.tableActionIconBtn}
+                            onPress={() => openNoteModal(lead)}
+                            accessibilityLabel="Note"
+                          >
+                            <Feather name="file-text" size={13} color="#0D9488" />
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Delete */}
+                        <TouchableOpacity
+                          style={styles.tableActionIconBtn}
+                          onPress={() => handleDeleteLead(lead)}
+                          accessibilityLabel="Delete"
+                        >
+                          <Feather name="trash-2" size={13} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
           ) : (
             filteredLeads.map((lead) => (
               <View key={lead.id} style={styles.schoolCard}>
@@ -2042,9 +2271,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : (Platform.OS === 'ios' ? 14 : 18),
-    paddingBottom: 14,
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : (Platform.OS === 'ios' ? 12 : 14),
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -2052,86 +2281,93 @@ const styles = StyleSheet.create({
   headerLeftRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    minWidth: 0,
+    marginRight: 4,
   },
   backButton: {
-    padding: 6,
-    marginRight: 6,
+    padding: 4,
+    marginRight: 4,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0F172A',
   },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flexShrink: 0,
+    gap: 5,
   },
   onboardingTrackerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E293B',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    borderRadius: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
   },
   onboardingTrackerText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   pricingBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#DC2626',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    borderRadius: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
   },
   pricingBtnDollar: {
     color: '#FFFFFF',
     fontWeight: '900',
-    fontSize: 11,
-    marginRight: 3,
+    fontSize: 10,
+    marginRight: 2,
   },
   pricingBtnText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   notificationBell: {
-    padding: 4,
+    padding: 3,
     position: 'relative',
   },
   bellBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: -2,
+    right: -2,
     backgroundColor: '#EF4444',
-    borderRadius: 7,
+    borderRadius: 6,
     paddingHorizontal: 3,
     paddingVertical: 1,
-    minWidth: 14,
+    minWidth: 13,
     alignItems: 'center',
   },
   bellBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '800',
   },
-  subTabsContainer: {
-    flexDirection: 'row',
+  subTabsWrapper: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    paddingHorizontal: 12,
+  },
+  subTabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    alignItems: 'center',
   },
   subTabItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 12,
-    marginRight: 8,
+    marginRight: 6,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
     gap: 5,
@@ -2147,6 +2383,188 @@ const styles = StyleSheet.create({
   subTabTextActive: {
     color: '#0F172A',
     fontWeight: '800',
+  },
+  viewModePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 2,
+  },
+  viewModePillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  viewModePillBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  viewModePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  viewModePillTextActive: {
+    color: '#0F172A',
+    fontWeight: '800',
+  },
+  viewSwitcherBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  viewSwitcherCount: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  viewSwitcherToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 2,
+    gap: 2,
+  },
+  viewSwitcherBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  viewSwitcherBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  viewSwitcherBtnText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  viewSwitcherBtnTextActive: {
+    color: '#059669',
+    fontWeight: '800',
+  },
+  tableScrollView: {
+    backgroundColor: '#FFFFFF',
+    marginTop: 8,
+    marginHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  tableScrollContent: {
+    paddingBottom: 4,
+  },
+  tableContainer: {
+    minWidth: 1120,
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#E2E8F0',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  tableHeaderCell: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    paddingHorizontal: 6,
+  },
+  tableDataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  tableRowEven: {
+    backgroundColor: '#FFFFFF',
+  },
+  tableRowOdd: {
+    backgroundColor: '#FAFAFA',
+  },
+  tableDataCell: {
+    paddingHorizontal: 6,
+    justifyContent: 'center',
+  },
+  tableSchoolTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  tableCellText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  tablePhoneText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  tableSubText: {
+    fontSize: 10.5,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  tableBoardBadge: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+  },
+  tableBoardBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  tableStatusBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  tableStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tableActionIconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mainScrollView: {
     flex: 1,
@@ -2925,13 +3343,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECDD3',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    borderRadius: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
   },
   crmLogoutText: {
     color: '#EF4444',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   dossierStatusPill: {

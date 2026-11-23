@@ -48,9 +48,6 @@ export default function Header({ onNewChatPress, user, onLogout }) {
           <View style={styles.titleColumn}>
             <View style={styles.nameAndBadgeRow}>
               <Text style={styles.brandName}>OLL CRM</Text>
-              <View style={styles.gptBadge}>
-                <Text style={styles.gptBadgeText}>GPT-5</Text>
-              </View>
             </View>
 
             <View style={styles.statusRow}>
@@ -67,7 +64,7 @@ export default function Header({ onNewChatPress, user, onLogout }) {
             style={styles.newChatButton}
             onPress={onNewChatPress}
           >
-            <Feather name="plus" size={14} color={COLORS.brandMint} style={styles.plusIcon} />
+            <Feather name="plus" size={13} color={COLORS.brandMint} style={styles.plusIcon} />
             <Text style={styles.newChatText}>New Chat</Text>
           </TouchableOpacity>
 
@@ -85,7 +82,7 @@ export default function Header({ onNewChatPress, user, onLogout }) {
             onPress={onLogout}
             accessibilityLabel="Sign Out"
           >
-            <Feather name="log-out" size={14} color="#F87171" />
+            <Feather name="log-out" size={13} color="#F87171" />
             <Text style={styles.headerLogoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -143,9 +140,9 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   navBarRow: {
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 14 : (Platform.OS === 'ios' ? 12 : 18),
-    paddingBottom: 14,
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'android' ? 12 : (Platform.OS === 'ios' ? 10 : 14),
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -153,11 +150,14 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    minWidth: 0,
+    marginRight: 6,
   },
   logoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: COLORS.brandMint,
     alignItems: 'center',
     justifyContent: 'center',
@@ -167,65 +167,53 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   logoText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: COLORS.brandDark,
     letterSpacing: -0.5,
     fontStyle: 'italic',
   },
   titleColumn: {
-    marginLeft: 10,
+    marginLeft: 8,
     justifyContent: 'center',
+    flexShrink: 1,
   },
   nameAndBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   brandName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.textWhite,
     letterSpacing: 0.2,
   },
-  gptBadge: {
-    backgroundColor: 'rgba(15, 92, 70, 0.7)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 229, 163, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginLeft: 8,
-  },
-  gptBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: COLORS.brandMint,
-    letterSpacing: 0.3,
-  },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
+    marginTop: 2,
   },
   statusDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: COLORS.brandGreen,
-    marginRight: 6,
+    marginRight: 5,
     shadowColor: COLORS.brandGreen,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: COLORS.liveGreen,
   },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
+    gap: 6,
   },
   newChatButton: {
     flexDirection: 'row',
@@ -233,23 +221,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.headerSubtle,
     borderWidth: 1,
     borderColor: 'rgba(56, 229, 163, 0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginRight: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   plusIcon: {
-    marginRight: 3,
+    marginRight: 2,
   },
   newChatText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.textWhite,
   },
   avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: COLORS.headerSubtle,
     borderWidth: 1,
     borderColor: 'rgba(56, 229, 163, 0.25)',
@@ -257,23 +244,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.brandMint,
   },
   headerLogoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: 'rgba(239, 68, 68, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.35)',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginLeft: 7,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
   headerLogoutText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '700',
     color: '#F87171',
     marginLeft: 3,

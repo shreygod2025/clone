@@ -96,7 +96,7 @@ export default function ChatMessagesView({
                     <Text style={styles.aiName}>OLL CRM AI</Text>
                     <View style={styles.agenticBadge}>
                       <View style={styles.liveDot} />
-                      <Text style={styles.agenticText}>GPT-5</Text>
+                      <Text style={styles.agenticText}>AI</Text>
                     </View>
                   </View>
                 </View>

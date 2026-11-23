@@ -5,7 +5,7 @@ A mobile frontend application for **OLL CRM AI Assistant**, built with **React N
 ## ✨ Features
 
 - **Pixel-Perfect AI Chat Landing Page**:
-  - Forest Emerald Header (`#063D2E`) with OLL stylized badge, GPT-5 pill, and animated glowing "Agentic AI Live" status dot.
+  - Forest Emerald Header (`#063D2E`) with OLL stylized badge and animated glowing "Agentic AI Live" status dot.
   - "+ New Chat" button and user avatar ("YL").
   - Quick action bar with "Connect WhatsApp" and "Mumbai Region" indicator.
   - Centered glowing AI assistant gradient squircle with animated floating effect.
