@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -79,13 +79,440 @@ const FALLBACK_LEADS = [
   },
 ];
 
+// ── MEMOIZED LEAD CARD COMPONENT (Zero Re-render Lag) ─────────────────────────
+const LeadCard = React.memo(function LeadCard({
+  lead,
+  onViewDetails,
+  onCallPhone,
+  onEmail,
+  onScheduleMeeting,
+  onEdit,
+  onNote,
+  onDelete,
+  onLost,
+  onArchive,
+  onMeetingDone,
+  onTicket,
+}) {
+  const isLost = (lead.status || '').toLowerCase() === 'lost';
+  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+  const isMeetingDone = (lead.status || '').toLowerCase() === 'meeting_done';
+  const isMeetingScheduled = !isMeetingDone && ((lead.status || '').toLowerCase() === 'meeting_scheduled' || Boolean(lead.meeting_date));
+
+  return (
+    <View style={styles.schoolCard}>
+      {/* School Name & Primary Contact */}
+      <View style={styles.cardHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.schoolCardTitle}>{lead.school_name}</Text>
+          <Text style={styles.contactSubtitle}>
+            {lead.contact_name} {lead.contact_role ? `(${lead.contact_role})` : ''}
+          </Text>
+        </View>
+      </View>
+
+      {/* Source & Channel Badges */}
+      <View style={styles.tagsRow}>
+        <View style={styles.sourceTag}>
+          <Text style={styles.sourceTagText}>{lead.source || 'ai_assistant_mobile'}</Text>
+        </View>
+        <View style={styles.meetingTypeTag}>
+          <Text style={styles.meetingTypeTagText}>{lead.meeting_type || 'Offline'}</Text>
+        </View>
+        <View style={styles.viewerBadge}>
+          <Text style={styles.viewerBadgeText}>Viewer Only</Text>
+        </View>
+      </View>
+
+      {/* Details (Phone, Location, Board, Added Date) */}
+      <View style={styles.detailsGroup}>
+        <TouchableOpacity
+          style={styles.metaRow}
+          activeOpacity={0.7}
+          onPress={() => onCallPhone(lead.phone)}
+        >
+          <Feather name="phone" size={13} color="#64748B" />
+          <Text style={[styles.metaText, { color: '#059669', fontWeight: '600' }]}>
+            {lead.phone || 'No phone'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.metaRow}>
+          <Feather name="map-pin" size={13} color="#64748B" />
+          <Text style={styles.metaText}>{lead.location || 'Mumbai, Maharashtra'}</Text>
+        </View>
+
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabelText}>Board: </Text>
+          <Text style={styles.metaText}>{lead.board || 'CBSE'}</Text>
+        </View>
+
+        <Text style={styles.addedDateText}>
+          Added {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Nov 2026'}
+        </Text>
+      </View>
+
+      {/* Offering Tag */}
+      <View style={styles.offeringTag}>
+        <Text style={styles.offeringTagText}>
+          {(lead.programs_interested && lead.programs_interested[0]) ||
+            'Agentic AI & Coding Excellence Lab (K-12)'}
+        </Text>
+      </View>
+
+      {/* Latest Note Box */}
+      <View style={styles.noteBox}>
+        <View style={styles.noteBoxTitleRow}>
+          <Feather name="check-square" size={13} color="#475569" style={{ marginRight: 5 }} />
+          <Text style={styles.noteBoxTitle}>Latest Note</Text>
+        </View>
+        <Text style={styles.noteBoxContent} numberOfLines={3}>
+          {lead.notes || 'Created via AI Assistant. Curriculum demo requested.'}
+        </Text>
+      </View>
+
+      {/* Sequence Progress */}
+      <View style={styles.sequenceProgressRow}>
+        <Feather name="calendar" size={12} color="#0284C7" style={{ marginRight: 4 }} />
+        <Text style={styles.sequenceText}>Next: 26 Nov</Text>
+        <Text style={styles.sequenceCounter}>(0/4)</Text>
+      </View>
+
+      {/* Full Width View Button */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.fullViewBtn}
+        onPress={() => onViewDetails(lead)}
+      >
+        <Feather name="eye" size={13} color="#475569" style={{ marginRight: 5 }} />
+        <Text style={styles.fullViewBtnText}>View</Text>
+      </TouchableOpacity>
+
+      {/* Complete Action Buttons Grid or State Banners */}
+      {isLost ? (
+        <View style={styles.leadLostBanner}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+            <Feather name="slash" size={12} color="#DC2626" style={{ marginRight: 5 }} />
+            <Text style={styles.leadLostTitle}>Lost Lead — Closed Permanently</Text>
+          </View>
+          <Text style={styles.leadLostDescription}>
+            No further meetings, emails, proposals, or edits can be performed for this lead.
+          </Text>
+        </View>
+      ) : isDeleted ? (
+        <View style={styles.leadDeletedBanner}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+            <Feather name="trash-2" size={12} color="#64748B" style={{ marginRight: 5 }} />
+            <Text style={styles.leadDeletedTitle}>Lead Deleted from CRM</Text>
+          </View>
+          <Text style={styles.leadDeletedDescription}>
+            This record was deleted from the CRM database and cannot be edited.
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.actionsGrid}>
+          {/* Row 1 */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnEditProposal]}
+            onPress={() => onEdit(lead)}
+          >
+            <Feather name="edit-2" size={11} color="#D97706" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#D97706' }]}>Edit / Proposal</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnMeetingDone]}
+            onPress={() => onMeetingDone(lead)}
+          >
+            <View style={isMeetingDone ? styles.tinyGreenDot : styles.tinyPurpleDot} />
+            <Text style={[styles.actionGridText, { color: isMeetingDone ? '#059669' : '#7C3AED' }]}>
+              {isMeetingDone ? 'Meeting Done ✓' : 'Meeting Done'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={isMeetingScheduled ? 1 : 0.8}
+            style={[
+              styles.actionGridBtn,
+              styles.btnScheduleMeeting,
+              isMeetingScheduled && styles.btnMeetingLocked,
+            ]}
+            onPress={() => onScheduleMeeting(lead)}
+          >
+            <Feather
+              name={isMeetingScheduled ? 'lock' : 'calendar'}
+              size={11}
+              color={isMeetingScheduled ? '#64748B' : '#2563EB'}
+              style={{ marginRight: 3 }}
+            />
+            <Text
+              style={[
+                styles.actionGridText,
+                { color: isMeetingScheduled ? '#64748B' : '#2563EB' },
+              ]}
+            >
+              {isMeetingDone
+                ? 'Schedule 2nd Meeting'
+                : isMeetingScheduled
+                ? 'Meeting Scheduled (Locked)'
+                : 'Schedule Meeting'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnTicket]}
+            onPress={() => onTicket(lead)}
+          >
+            <Ionicons name="ticket-outline" size={11} color="#EA580C" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#EA580C' }]}>Ticket</Text>
+          </TouchableOpacity>
+
+          {/* Row 2 */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnFollowup]}
+            onPress={() => onScheduleMeeting(lead)}
+          >
+            <Feather name="phone-call" size={11} color="#0D9488" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#0D9488' }]}>Followup</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnDocs]}
+            onPress={() => Alert.alert('Documents', `Brochure and syllabus for ${lead.school_name} ready.`)}
+          >
+            <Feather name="file-text" size={11} color="#0891B2" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#0891B2' }]}>Docs</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnMail]}
+            onPress={() => onEmail(lead)}
+          >
+            <Feather name="mail" size={11} color="#0284C7" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#0284C7' }]}>Mail</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnAssign]}
+            onPress={() => Alert.alert('Assign', `Assign RM to ${lead.school_name}`)}
+          >
+            <Feather name="user-plus" size={11} color="#4F46E5" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#4F46E5' }]}>Assign</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnNote]}
+            onPress={() => onNote(lead)}
+          >
+            <Feather name="edit-3" size={11} color="#475569" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#475569' }]}>Note</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnDelete]}
+            onPress={() => onDelete(lead)}
+          >
+            <Feather name="trash-2" size={11} color="#DC2626" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#DC2626' }]}>Delete</Text>
+          </TouchableOpacity>
+
+          {/* Row 3 Outlines */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnLostLead]}
+            onPress={() => onLost(lead)}
+          >
+            <Feather name="x" size={11} color="#E11D48" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#E11D48' }]}>Lost Lead</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.actionGridBtn, styles.btnArchive]}
+            onPress={() => onArchive(lead)}
+          >
+            <Feather name="archive" size={11} color="#64748B" style={{ marginRight: 3 }} />
+            <Text style={[styles.actionGridText, { color: '#64748B' }]}>Archive</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+});
+
+// ── MEMOIZED TABLE ROW COMPONENT (Zero Re-render Lag) ────────────────────────
+const LeadTableRow = React.memo(function LeadTableRow({
+  lead,
+  isEven,
+  onViewDetails,
+  onCallPhone,
+  onEmail,
+  onScheduleMeeting,
+  onEdit,
+  onNote,
+  onDelete,
+}) {
+  const isLost = (lead.status || '').toLowerCase() === 'lost';
+  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
+  const isMeetingDone = (lead.status || '').toLowerCase() === 'meeting_done';
+  const isMeetingScheduled = !isMeetingDone && ((lead.status || '').toLowerCase() === 'meeting_scheduled' || Boolean(lead.meeting_date));
+
+  return (
+    <View style={[styles.tableDataRow, isEven ? styles.tableRowEven : styles.tableRowOdd]}>
+      {/* School Name */}
+      <View style={[styles.tableDataCell, { width: 180 }]}>
+        <TouchableOpacity onPress={() => onViewDetails(lead)} activeOpacity={0.7}>
+          <Text style={styles.tableSchoolTitle} numberOfLines={2}>{lead.school_name}</Text>
+          <Text style={styles.tableSubText} numberOfLines={1}>{lead.offering || 'STEM Curriculum'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Contact Person */}
+      <View style={[styles.tableDataCell, { width: 135 }]}>
+        <Text style={styles.tableCellText} numberOfLines={1}>{lead.contact_name}</Text>
+        {lead.contact_role ? (
+          <Text style={styles.tableSubText} numberOfLines={1}>{lead.contact_role}</Text>
+        ) : null}
+      </View>
+
+      {/* Phone / Email */}
+      <View style={[styles.tableDataCell, { width: 130 }]}>
+        <TouchableOpacity onPress={() => onCallPhone(lead.phone)} activeOpacity={0.7}>
+          <Text style={styles.tablePhoneText} numberOfLines={1}>{lead.phone || 'N/A'}</Text>
+        </TouchableOpacity>
+        {lead.email ? (
+          <Text style={styles.tableSubText} numberOfLines={1}>{lead.email}</Text>
+        ) : null}
+      </View>
+
+      {/* Location */}
+      <View style={[styles.tableDataCell, { width: 110 }]}>
+        <Text style={styles.tableCellText} numberOfLines={1}>{lead.location || 'Mumbai'}</Text>
+      </View>
+
+      {/* Board */}
+      <View style={[styles.tableDataCell, { width: 90 }]}>
+        <View style={styles.tableBoardBadge}>
+          <Text style={styles.tableBoardBadgeText}>{lead.board || 'CBSE'}</Text>
+        </View>
+      </View>
+
+      {/* Status */}
+      <View style={[styles.tableDataCell, { width: 120 }]}>
+        <View style={[
+          styles.tableStatusBadge,
+          {
+            backgroundColor: isLost ? '#FEE2E2' : isDeleted ? '#F1F5F9' : isMeetingDone ? '#EDE9FE' : isMeetingScheduled ? '#DBEAFE' : '#ECFDF5',
+          }
+        ]}>
+          <Text style={[
+            styles.tableStatusText,
+            {
+              color: isLost ? '#DC2626' : isDeleted ? '#64748B' : isMeetingDone ? '#7C3AED' : isMeetingScheduled ? '#2563EB' : '#059669',
+            }
+          ]}>
+            {isLost ? 'Lost' : isDeleted ? 'Deleted' : isMeetingDone ? 'Meeting Done' : isMeetingScheduled ? 'Scheduled' : (lead.status || 'Active')}
+          </Text>
+        </View>
+      </View>
+
+      {/* Meeting Date */}
+      <View style={[styles.tableDataCell, { width: 125 }]}>
+        <Text style={styles.tableCellText} numberOfLines={1}>
+          {lead.meeting_date ? `${lead.meeting_date}` : 'Not scheduled'}
+        </Text>
+        {lead.meeting_time ? (
+          <Text style={styles.tableSubText} numberOfLines={1}>{lead.meeting_time}</Text>
+        ) : null}
+      </View>
+
+      {/* Actions */}
+      <View style={[styles.tableDataCell, { width: 230, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
+        <TouchableOpacity
+          style={styles.tableActionIconBtn}
+          onPress={() => onViewDetails(lead)}
+          accessibilityLabel="View Details"
+        >
+          <Feather name="eye" size={13} color="#2563EB" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tableActionIconBtn}
+          onPress={() => onCallPhone(lead.phone)}
+          accessibilityLabel="Call"
+        >
+          <Feather name="phone" size={13} color="#059669" />
+        </TouchableOpacity>
+
+        {!isLost && (
+          <TouchableOpacity
+            style={styles.tableActionIconBtn}
+            onPress={() => onEmail(lead)}
+            accessibilityLabel="Mail"
+          >
+            <Feather name="mail" size={13} color="#0284C7" />
+          </TouchableOpacity>
+        )}
+
+        {!isDeleted && !isLost && (
+          <TouchableOpacity
+            style={[styles.tableActionIconBtn, isMeetingScheduled && !isMeetingDone && { opacity: 0.45 }]}
+            onPress={() => onScheduleMeeting(lead)}
+            accessibilityLabel="Meeting"
+          >
+            <Feather name={isMeetingScheduled && !isMeetingDone ? "lock" : "calendar"} size={13} color={isMeetingScheduled && !isMeetingDone ? "#64748B" : "#D97706"} />
+          </TouchableOpacity>
+        )}
+
+        {!isDeleted && !isLost && (
+          <TouchableOpacity
+            style={styles.tableActionIconBtn}
+            onPress={() => onEdit(lead)}
+            accessibilityLabel="Edit"
+          >
+            <Feather name="edit-2" size={13} color="#475569" />
+          </TouchableOpacity>
+        )}
+
+        {!isDeleted && !isLost && (
+          <TouchableOpacity
+            style={styles.tableActionIconBtn}
+            onPress={() => onNote(lead)}
+            accessibilityLabel="Note"
+          >
+            <Feather name="file-text" size={13} color="#0D9488" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.tableActionIconBtn}
+          onPress={() => onDelete(lead)}
+          accessibilityLabel="Delete"
+        >
+          <Feather name="trash-2" size={13} color="#DC2626" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
 export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
   const [subTab, setSubTab] = useState('leads'); // 'dashboard', 'leads', 'contacts'
   const [stageFilter, setStageFilter] = useState('new'); // 'all', 'new', 'meeting_done', 'converted', 'active', etc.
   const [searchQuery, setSearchQuery] = useState('');
   const [searchThisStageOnly, setSearchThisStageOnly] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' | 'oldest'
+  const [displayLimit, setDisplayLimit] = useState(24);
 
   // Live Data State
   const [leads, setLeads] = useState(FALLBACK_LEADS);
@@ -238,8 +665,18 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       });
   }, [leads, stageFilter, searchQuery, sortOrder]);
 
-  // Open Edit / Proposal Modal
-  const openEditModal = (lead) => {
+  // Reset display limit when stage, search query, or view mode changes
+  useEffect(() => {
+    setDisplayLimit(24);
+  }, [stageFilter, searchQuery, viewMode]);
+
+  // Windowed visible subset for instant switching and 0ms render lag
+  const visibleLeads = useMemo(() => {
+    return filteredLeads.slice(0, displayLimit);
+  }, [filteredLeads, displayLimit]);
+
+  // Open Edit / Proposal Modal (Memoized for zero re-render lag)
+  const openEditModal = useCallback((lead) => {
     if (!lead) return;
     const isLost = (lead.status || '').toLowerCase() === 'lost';
     const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
@@ -266,7 +703,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     setFormStatus(lead.status || 'new');
     setFormNotes(lead.notes || '');
     setEditModalVisible(true);
-  };
+  }, []);
 
   // Open Add Lead Modal
   const openAddLeadModal = () => {
@@ -352,8 +789,8 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     Alert.alert('Updated', `Changes saved to ${formSchoolName}.`);
   };
 
-  // Quick Action: Mark Meeting Done
-  const handleMarkMeetingDone = async (lead) => {
+  // Quick Action: Mark Meeting Done (Memoized)
+  const handleMarkMeetingDone = useCallback(async (lead) => {
     if (!lead) return;
     const isLost = (lead.status || '').toLowerCase() === 'lost';
     const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
@@ -378,10 +815,10 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       prev.map((l) => (l.id === lead.id ? { ...l, status: 'meeting_done' } : l))
     );
     Alert.alert('Status Updated', `"${lead.school_name}" moved to Meeting Done stage. You can now schedule a 2nd meeting.`);
-  };
+  }, []);
 
-  // Quick Action: Mark Lost Lead
-  const handleMarkLost = async (lead) => {
+  // Quick Action: Mark Lost Lead (Memoized)
+  const handleMarkLost = useCallback(async (lead) => {
     if (!lead) return;
     if (lead.status === 'lost') {
       Alert.alert('Already Lost', `"${lead.school_name}" is already marked as a Lost Lead.`);
@@ -407,10 +844,10 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
         },
       },
     ]);
-  };
+  }, []);
 
-  // Quick Action: Archive Lead
-  const handleArchiveLead = async (lead) => {
+  // Quick Action: Archive Lead (Memoized)
+  const handleArchiveLead = useCallback(async (lead) => {
     if (!lead) return;
     if (lead.status === 'lost') {
       Alert.alert('Lead Closed (Lost)', `"${lead.school_name}" is marked as a Lost Lead.`);
@@ -423,10 +860,10 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       prev.map((l) => (l.id === lead.id ? { ...l, status: 'archived' } : l))
     );
     Alert.alert('Archived', `"${lead.school_name}" moved to Archived.`);
-  };
+  }, []);
 
-  // Quick Action: Delete Lead
-  const handleDeleteLead = (lead) => {
+  // Quick Action: Delete Lead (Memoized)
+  const handleDeleteLead = useCallback((lead) => {
     if (!lead) return;
     Alert.alert('Delete Inquiry', `Delete record for ${lead.school_name}?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -441,10 +878,10 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
         },
       },
     ]);
-  };
+  }, []);
 
-  // Open Email Modal
-  const openEmailModal = (lead) => {
+  // Open Email Modal (Memoized)
+  const openEmailModal = useCallback((lead) => {
     if (!lead) return;
     const isLost = (lead.status || '').toLowerCase() === 'lost';
     const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
@@ -464,7 +901,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       `Respected ${contact},\n\nGreetings from OLL CRM Partnerships.\n\nWe would love to introduce the NEP-aligned Agentic AI & Robotics Excellence Curriculum to ${school} for the upcoming 2026-27 academic session.\n\nOur program includes hands-on student projects, complete hardware kits, teacher accreditation, and LMS platform access.\n\nWould next Tuesday at 11:30 AM be convenient for a brief 10-minute briefing?\n\nWarm regards,\nOLL CRM Partnerships Team`
     );
     setEmailModalVisible(true);
-  };
+  }, []);
 
   // Send Email
   const handleSendEmailSubmit = async () => {
@@ -483,8 +920,8 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     Alert.alert('Dispatched', `Personalized pitch email sent to ${selectedLead.email}`);
   };
 
-  // Schedule Meeting
-  const openScheduleMeetingModal = (lead) => {
+  // Schedule Meeting (Memoized)
+  const openScheduleMeetingModal = useCallback((lead) => {
     if (!lead) return;
     const isLost = (lead.status || '').toLowerCase() === 'lost';
     const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
@@ -511,7 +948,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     setSelectedLead(lead);
     setMeetingType(isMeetingDone ? 'Follow-up / 2nd Demo Meeting' : 'In-Person Campus Visit');
     setMeetingModalVisible(true);
-  };
+  }, []);
 
   const handleSaveMeeting = async () => {
     if (!selectedLead) return;
@@ -537,8 +974,8 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     );
   };
 
-  // Quick Note
-  const openNoteModal = (lead) => {
+  // Quick Note (Memoized)
+  const openNoteModal = useCallback((lead) => {
     if (!lead) return;
     const isLost = (lead.status || '').toLowerCase() === 'lost';
     const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
@@ -553,7 +990,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     setSelectedLead(lead);
     setNewNoteText('');
     setNoteModalVisible(true);
-  };
+  }, []);
 
   const handleSaveNote = async () => {
     if (!selectedLead || !newNoteText.trim()) return;
@@ -573,8 +1010,8 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     Alert.alert('Note Saved', `New note added to comments for ${selectedLead.school_name}.`);
   };
 
-  // Raise Ticket
-  const openTicketModal = (lead) => {
+  // Raise Ticket (Memoized)
+  const openTicketModal = useCallback((lead) => {
     if (!lead) return;
     const isLost = (lead.status || '').toLowerCase() === 'lost';
     const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
@@ -589,7 +1026,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     setSelectedLead(lead);
     setTicketSubject('');
     setTicketModalVisible(true);
-  };
+  }, []);
 
   const handleRaiseTicketSubmit = async () => {
     if (!selectedLead || !ticketSubject.trim()) return;
@@ -645,44 +1082,21 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     }
   };
 
-  // View Details with Live Comments & Activity History
-  const openViewDetailsModal = async (lead) => {
+  // View Details with Live Comments & Activity History (Instant 0ms baseline rendering)
+  const openViewDetailsModal = useCallback((lead) => {
     if (!lead) return;
     setSelectedLead(lead);
     setDossierComments(lead.comments || []);
     setNewDossierComment('');
-    setViewDetailsModalVisible(true);
-    setLoadingDossierHistory(true);
 
-    try {
-      if (lead.id) {
-        // Fetch comments
-        api.getSchoolComments(lead.id).then((res) => {
-          if (res.success && Array.isArray(res.comments) && res.comments.length > 0) {
-            setDossierComments(res.comments);
-          }
-        }).catch(() => {});
-
-        // Fetch activity history
-        const histRes = await api.getSchoolHistory(lead.id);
-        if (histRes.success && Array.isArray(histRes.history) && histRes.history.length > 0) {
-          setDossierHistory(histRes.history);
-          setLoadingDossierHistory(false);
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('Error fetching history:', e);
-    }
-
-    // Synthesize timeline if empty
+    // Synthesize timeline immediately for instant zero-lag display
     const synthesized = [];
     if (lead.comments && lead.comments.length > 0) {
       lead.comments.forEach((c) => {
         synthesized.push({
           type: 'note',
           date: c.created_at || new Date().toISOString(),
-          description: `Comment: "${c.text}"`,
+          description: `Comment: "${c.text || c.comment || ''}"`,
           user: c.author || 'CRM Assistant',
         });
       });
@@ -720,7 +1134,23 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
 
     setDossierHistory(synthesized);
     setLoadingDossierHistory(false);
-  };
+    setViewDetailsModalVisible(true);
+
+    // Asynchronously fetch fresh comments & activity history from backend without blocking UI
+    if (lead.id) {
+      api.getSchoolComments(lead.id).then((res) => {
+        if (res.success && Array.isArray(res.comments) && res.comments.length > 0) {
+          setDossierComments(res.comments);
+        }
+      }).catch(() => {});
+
+      api.getSchoolHistory(lead.id).then((histRes) => {
+        if (histRes.success && Array.isArray(histRes.history) && histRes.history.length > 0) {
+          setDossierHistory(histRes.history);
+        }
+      }).catch(() => {});
+    }
+  }, [user]);
 
   const handleAddDossierComment = async () => {
     if (!newDossierComment.trim() || !selectedLead) return;
@@ -769,12 +1199,12 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
     setIsAddingDossierComment(false);
   };
 
-  // Call Phone
-  const handleCallPhone = (phone) => {
+  // Call Phone (Memoized)
+  const handleCallPhone = useCallback((phone) => {
     if (!phone) return;
     const clean = phone.replace(/[^0-9+]/g, '');
     Linking.openURL(`tel:${clean}`).catch(() => Alert.alert('Notice', 'Unable to initiate call.'));
-  };
+  }, []);
 
   // WhatsApp
   const handleOpenWhatsApp = (lead) => {
@@ -1062,426 +1492,69 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
                   <Text style={[styles.tableHeaderCell, { width: 230, textAlign: 'center' }]}>Actions</Text>
                 </View>
 
-                {/* Table Body Rows */}
-                {filteredLeads.map((lead, idx) => {
-                  const isLost = (lead.status || '').toLowerCase() === 'lost';
-                  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
-                  const isArchived = !isDeleted && (lead.status === 'archived' || lead.isArchived === true);
-                  const isMeetingDone = (lead.status || '').toLowerCase() === 'meeting_done';
-                  const isMeetingScheduled = !isMeetingDone && ((lead.status || '').toLowerCase() === 'meeting_scheduled' || Boolean(lead.meeting_date));
-                  const isEven = idx % 2 === 0;
-
-                  return (
-                    <View key={lead.id} style={[styles.tableDataRow, isEven ? styles.tableRowEven : styles.tableRowOdd]}>
-                      {/* School Name */}
-                      <View style={[styles.tableDataCell, { width: 180 }]}>
-                        <TouchableOpacity onPress={() => openViewDetailsModal(lead)} activeOpacity={0.7}>
-                          <Text style={styles.tableSchoolTitle} numberOfLines={2}>{lead.school_name}</Text>
-                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.offering || 'STEM Curriculum'}</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Contact Person */}
-                      <View style={[styles.tableDataCell, { width: 135 }]}>
-                        <Text style={styles.tableCellText} numberOfLines={1}>{lead.contact_name}</Text>
-                        {lead.contact_role ? (
-                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.contact_role}</Text>
-                        ) : null}
-                      </View>
-
-                      {/* Phone / Email */}
-                      <View style={[styles.tableDataCell, { width: 130 }]}>
-                        <TouchableOpacity onPress={() => handleCallPhone(lead.phone)} activeOpacity={0.7}>
-                          <Text style={styles.tablePhoneText} numberOfLines={1}>{lead.phone || 'N/A'}</Text>
-                        </TouchableOpacity>
-                        {lead.email ? (
-                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.email}</Text>
-                        ) : null}
-                      </View>
-
-                      {/* Location */}
-                      <View style={[styles.tableDataCell, { width: 110 }]}>
-                        <Text style={styles.tableCellText} numberOfLines={1}>{lead.location || 'Mumbai'}</Text>
-                      </View>
-
-                      {/* Board */}
-                      <View style={[styles.tableDataCell, { width: 90 }]}>
-                        <View style={styles.tableBoardBadge}>
-                          <Text style={styles.tableBoardBadgeText}>{lead.board || 'CBSE'}</Text>
-                        </View>
-                      </View>
-
-                      {/* Status */}
-                      <View style={[styles.tableDataCell, { width: 120 }]}>
-                        <View style={[
-                          styles.tableStatusBadge,
-                          {
-                            backgroundColor: isLost ? '#FEE2E2' : isDeleted ? '#F1F5F9' : isMeetingDone ? '#EDE9FE' : isMeetingScheduled ? '#DBEAFE' : '#ECFDF5',
-                          }
-                        ]}>
-                          <Text style={[
-                            styles.tableStatusText,
-                            {
-                              color: isLost ? '#DC2626' : isDeleted ? '#64748B' : isMeetingDone ? '#7C3AED' : isMeetingScheduled ? '#2563EB' : '#059669',
-                            }
-                          ]}>
-                            {isLost ? 'Lost' : isDeleted ? 'Deleted' : isMeetingDone ? 'Meeting Done' : isMeetingScheduled ? 'Scheduled' : (lead.status || 'Active')}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Meeting Date */}
-                      <View style={[styles.tableDataCell, { width: 125 }]}>
-                        <Text style={styles.tableCellText} numberOfLines={1}>
-                          {lead.meeting_date ? `${lead.meeting_date}` : 'Not scheduled'}
-                        </Text>
-                        {lead.meeting_time ? (
-                          <Text style={styles.tableSubText} numberOfLines={1}>{lead.meeting_time}</Text>
-                        ) : null}
-                      </View>
-
-                      {/* Actions */}
-                      <View style={[styles.tableDataCell, { width: 230, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
-                        {/* View Dossier Button */}
-                        <TouchableOpacity
-                          style={styles.tableActionIconBtn}
-                          onPress={() => openViewDetailsModal(lead)}
-                          accessibilityLabel="View Details"
-                        >
-                          <Feather name="eye" size={13} color="#2563EB" />
-                        </TouchableOpacity>
-
-                        {/* Call */}
-                        <TouchableOpacity
-                          style={styles.tableActionIconBtn}
-                          onPress={() => handleCallPhone(lead.phone)}
-                          accessibilityLabel="Call"
-                        >
-                          <Feather name="phone" size={13} color="#059669" />
-                        </TouchableOpacity>
-
-                        {/* Mail */}
-                        {!isLost && (
-                          <TouchableOpacity
-                            style={styles.tableActionIconBtn}
-                            onPress={() => openEmailModal(lead)}
-                            accessibilityLabel="Mail"
-                          >
-                            <Feather name="mail" size={13} color="#0284C7" />
-                          </TouchableOpacity>
-                        )}
-
-                        {/* Meeting - Rule 1, 2, 3, 4 */}
-                        {!isDeleted && !isLost && (
-                          <TouchableOpacity
-                            style={[styles.tableActionIconBtn, isMeetingScheduled && !isMeetingDone && { opacity: 0.45 }]}
-                            onPress={() => openScheduleMeetingModal(lead)}
-                            accessibilityLabel="Meeting"
-                          >
-                            <Feather name={isMeetingScheduled && !isMeetingDone ? "lock" : "calendar"} size={13} color={isMeetingScheduled && !isMeetingDone ? "#64748B" : "#D97706"} />
-                          </TouchableOpacity>
-                        )}
-
-                        {/* Edit - Rule 1 & 4 */}
-                        {!isDeleted && !isLost && (
-                          <TouchableOpacity
-                            style={styles.tableActionIconBtn}
-                            onPress={() => openEditModal(lead)}
-                            accessibilityLabel="Edit"
-                          >
-                            <Feather name="edit-2" size={13} color="#475569" />
-                          </TouchableOpacity>
-                        )}
-
-                        {/* Note */}
-                        {!isDeleted && !isLost && (
-                          <TouchableOpacity
-                            style={styles.tableActionIconBtn}
-                            onPress={() => openNoteModal(lead)}
-                            accessibilityLabel="Note"
-                          >
-                            <Feather name="file-text" size={13} color="#0D9488" />
-                          </TouchableOpacity>
-                        )}
-
-                        {/* Delete */}
-                        <TouchableOpacity
-                          style={styles.tableActionIconBtn}
-                          onPress={() => handleDeleteLead(lead)}
-                          accessibilityLabel="Delete"
-                        >
-                          <Feather name="trash-2" size={13} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
+                {/* Table Body Rows (Memoized with zero re-render lag) */}
+                {visibleLeads.map((lead, idx) => (
+                  <LeadTableRow
+                    key={lead.id}
+                    lead={lead}
+                    isEven={idx % 2 === 0}
+                    onViewDetails={openViewDetailsModal}
+                    onCallPhone={handleCallPhone}
+                    onEmail={openEmailModal}
+                    onScheduleMeeting={openScheduleMeetingModal}
+                    onEdit={openEditModal}
+                    onNote={openNoteModal}
+                    onDelete={handleDeleteLead}
+                  />
+                ))}
               </View>
             </ScrollView>
           ) : (
-            filteredLeads.map((lead) => (
-              <View key={lead.id} style={styles.schoolCard}>
-                {/* School Name & Primary Contact */}
-                <View style={styles.cardHeaderRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.schoolCardTitle}>{lead.school_name}</Text>
-                    <Text style={styles.contactSubtitle}>
-                      {lead.contact_name} {lead.contact_role ? `(${lead.contact_role})` : ''}
-                    </Text>
-                  </View>
-                </View>
+            /* Grid View (Memoized LeadCard with zero re-render lag) */
+            visibleLeads.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                onViewDetails={openViewDetailsModal}
+                onCallPhone={handleCallPhone}
+                onEmail={openEmailModal}
+                onScheduleMeeting={openScheduleMeetingModal}
+                onEdit={openEditModal}
+                onNote={openNoteModal}
+                onDelete={handleDeleteLead}
+                onLost={handleMarkLost}
+                onArchive={handleArchiveLead}
+                onMeetingDone={handleMarkMeetingDone}
+                onTicket={openTicketModal}
+              />
+            ))
+          )}
 
-                {/* Source & Channel Badges */}
-                <View style={styles.tagsRow}>
-                  <View style={styles.sourceTag}>
-                    <Text style={styles.sourceTagText}>{lead.source || 'ai_assistant_mobile'}</Text>
-                  </View>
-                  <View style={styles.meetingTypeTag}>
-                    <Text style={styles.meetingTypeTagText}>{lead.meeting_type || 'Offline'}</Text>
-                  </View>
-                  <View style={styles.viewerBadge}>
-                    <Text style={styles.viewerBadgeText}>Viewer Only</Text>
-                  </View>
-                </View>
-
-                {/* Details (Phone, Location, Board, Added Date) */}
-                <View style={styles.detailsGroup}>
-                  <TouchableOpacity
-                    style={styles.metaRow}
-                    activeOpacity={0.7}
-                    onPress={() => handleCallPhone(lead.phone)}
-                  >
-                    <Feather name="phone" size={13} color="#64748B" />
-                    <Text style={[styles.metaText, { color: '#059669', fontWeight: '600' }]}>
-                      {lead.phone || 'No phone'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.metaRow}>
-                    <Feather name="map-pin" size={13} color="#64748B" />
-                    <Text style={styles.metaText}>{lead.location || 'Mumbai, Maharashtra'}</Text>
-                  </View>
-
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaLabelText}>Board: </Text>
-                    <Text style={styles.metaText}>{lead.board || 'CBSE'}</Text>
-                  </View>
-
-                  <Text style={styles.addedDateText}>
-                    Added {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Nov 2026'}
-                  </Text>
-                </View>
-
-                {/* Offering Tag */}
-                <View style={styles.offeringTag}>
-                  <Text style={styles.offeringTagText}>
-                    {(lead.programs_interested && lead.programs_interested[0]) ||
-                      'Agentic AI & Coding Excellence Lab (K-12)'}
-                  </Text>
-                </View>
-
-                {/* Latest Note Box */}
-                <View style={styles.noteBox}>
-                  <View style={styles.noteBoxTitleRow}>
-                    <Feather name="check-square" size={13} color="#475569" style={{ marginRight: 5 }} />
-                    <Text style={styles.noteBoxTitle}>Latest Note</Text>
-                  </View>
-                  <Text style={styles.noteBoxContent} numberOfLines={3}>
-                    {lead.notes || 'Created via AI Assistant. Curriculum demo requested.'}
-                  </Text>
-                </View>
-
-                {/* Sequence Progress */}
-                <View style={styles.sequenceProgressRow}>
-                  <Feather name="calendar" size={12} color="#0284C7" style={{ marginRight: 4 }} />
-                  <Text style={styles.sequenceText}>Next: 26 Nov</Text>
-                  <Text style={styles.sequenceCounter}>(0/4)</Text>
-                </View>
-
-                {/* Full Width View Button */}
+          {/* Windowed Pagination / Load More Bar */}
+          {filteredLeads.length > displayLimit && (
+            <View style={styles.loadMoreContainer}>
+              <Text style={styles.loadMoreInfoText}>
+                Showing {visibleLeads.length} of {filteredLeads.length} school leads
+              </Text>
+              <View style={styles.loadMoreActionsRow}>
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  style={styles.fullViewBtn}
-                  onPress={() => openViewDetailsModal(lead)}
+                  style={styles.loadMoreBtn}
+                  onPress={() => setDisplayLimit((prev) => prev + 24)}
                 >
-                  <Feather name="eye" size={13} color="#475569" style={{ marginRight: 5 }} />
-                  <Text style={styles.fullViewBtnText}>View</Text>
+                  <Feather name="plus-circle" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                  <Text style={styles.loadMoreBtnText}>Load 24 More</Text>
                 </TouchableOpacity>
 
-                {/* ── Complete Action Buttons Grid or State Banners ─────────── */}
-                {(() => {
-                  const isLost = (lead.status || '').toLowerCase() === 'lost';
-                  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true || lead.status === 'archived';
-                  const isMeetingDone = (lead.status || '').toLowerCase() === 'meeting_done';
-                  const isMeetingScheduled = !isMeetingDone && ((lead.status || '').toLowerCase() === 'meeting_scheduled' || Boolean(lead.meeting_date));
-
-                  if (isLost) {
-                    return (
-                      <View style={styles.leadLostBanner}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                          <Feather name="slash" size={12} color="#DC2626" style={{ marginRight: 5 }} />
-                          <Text style={styles.leadLostTitle}>Lost Lead — Closed Permanently</Text>
-                        </View>
-                        <Text style={styles.leadLostDescription}>
-                          No further meetings, emails, proposals, or edits can be performed for this lead.
-                        </Text>
-                      </View>
-                    );
-                  }
-
-                  if (isDeleted) {
-                    return (
-                      <View style={styles.leadDeletedBanner}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                          <Feather name="trash-2" size={12} color="#64748B" style={{ marginRight: 5 }} />
-                          <Text style={styles.leadDeletedTitle}>Lead Deleted from CRM</Text>
-                        </View>
-                        <Text style={styles.leadDeletedDescription}>
-                          This record was deleted from the CRM database and cannot be edited.
-                        </Text>
-                      </View>
-                    );
-                  }
-
-                  return (
-                    <View style={styles.actionsGrid}>
-                      {/* Row 1 */}
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnEditProposal]}
-                        onPress={() => openEditModal(lead)}
-                      >
-                        <Feather name="edit-2" size={11} color="#D97706" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#D97706' }]}>Edit / Proposal</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnMeetingDone]}
-                        onPress={() => handleMarkMeetingDone(lead)}
-                      >
-                        <View style={isMeetingDone ? styles.tinyGreenDot : styles.tinyPurpleDot} />
-                        <Text style={[styles.actionGridText, { color: isMeetingDone ? '#059669' : '#7C3AED' }]}>
-                          {isMeetingDone ? 'Meeting Done ✓' : 'Meeting Done'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={isMeetingScheduled ? 1 : 0.8}
-                        style={[
-                          styles.actionGridBtn,
-                          styles.btnScheduleMeeting,
-                          isMeetingScheduled && styles.btnMeetingLocked,
-                        ]}
-                        onPress={() => openScheduleMeetingModal(lead)}
-                      >
-                        <Feather
-                          name={isMeetingScheduled ? 'lock' : 'calendar'}
-                          size={11}
-                          color={isMeetingScheduled ? '#64748B' : '#2563EB'}
-                          style={{ marginRight: 3 }}
-                        />
-                        <Text
-                          style={[
-                            styles.actionGridText,
-                            { color: isMeetingScheduled ? '#64748B' : '#2563EB' },
-                          ]}
-                        >
-                          {isMeetingDone
-                            ? 'Schedule 2nd Meeting'
-                            : isMeetingScheduled
-                            ? 'Meeting Scheduled (Locked)'
-                            : 'Schedule Meeting'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnTicket]}
-                        onPress={() => openTicketModal(lead)}
-                      >
-                        <Ionicons name="ticket-outline" size={11} color="#EA580C" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#EA580C' }]}>Ticket</Text>
-                      </TouchableOpacity>
-
-                      {/* Row 2 */}
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnFollowup]}
-                        onPress={() => openScheduleMeetingModal(lead)}
-                      >
-                        <Feather name="phone-call" size={11} color="#0D9488" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#0D9488' }]}>Followup</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnDocs]}
-                        onPress={() => Alert.alert('Documents', `Brochure and syllabus for ${lead.school_name} ready.`)}
-                      >
-                        <Feather name="file-text" size={11} color="#0891B2" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#0891B2' }]}>Docs</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnMail]}
-                        onPress={() => openEmailModal(lead)}
-                      >
-                        <Feather name="mail" size={11} color="#0284C7" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#0284C7' }]}>Mail</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnAssign]}
-                        onPress={() => Alert.alert('Assign', `Assign RM to ${lead.school_name}`)}
-                      >
-                        <Feather name="user-plus" size={11} color="#4F46E5" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#4F46E5' }]}>Assign</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnNote]}
-                        onPress={() => openNoteModal(lead)}
-                      >
-                        <Feather name="edit-3" size={11} color="#475569" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#475569' }]}>Note</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnDelete]}
-                        onPress={() => handleDeleteLead(lead)}
-                      >
-                        <Feather name="trash-2" size={11} color="#DC2626" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#DC2626' }]}>Delete</Text>
-                      </TouchableOpacity>
-
-                      {/* Row 3 Outlines */}
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnLostLead]}
-                        onPress={() => handleMarkLost(lead)}
-                      >
-                        <Feather name="x" size={11} color="#E11D48" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#E11D48' }]}>Lost Lead</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.actionGridBtn, styles.btnArchive]}
-                        onPress={() => handleArchiveLead(lead)}
-                      >
-                        <Feather name="archive" size={11} color="#64748B" style={{ marginRight: 3 }} />
-                        <Text style={[styles.actionGridText, { color: '#64748B' }]}>Archive</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })()}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.showAllBtn}
+                  onPress={() => setDisplayLimit(filteredLeads.length)}
+                >
+                  <Text style={styles.showAllBtnText}>Show All ({filteredLeads.length})</Text>
+                </TouchableOpacity>
               </View>
-            ))
+            </View>
           )}
         </ScrollView>
       ) : subTab === 'dashboard' ? (
@@ -1536,337 +1609,350 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       )}
 
       {/* ── MODAL 1: Add New Lead ──────────────────────────────────────────────── */}
-      <Modal visible={addLeadModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalLargeCard}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>+ Add School Lead</Text>
-              <TouchableOpacity onPress={() => setAddLeadModalVisible(false)}>
-                <Feather name="x" size={20} color="#64748B" />
+      {addLeadModalVisible ? (
+        <Modal visible={true} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalLargeCard}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>+ Add School Lead</Text>
+                <TouchableOpacity onPress={() => setAddLeadModalVisible(false)}>
+                  <Feather name="x" size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>School Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Podar International School"
+                    value={formSchoolName}
+                    onChangeText={setFormSchoolName}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Contact Person & Role</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Dr. Arvind Mehta (Principal)"
+                    value={formContactName}
+                    onChangeText={setFormContactName}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Phone Number</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. 9820144921"
+                    value={formPhone}
+                    onChangeText={setFormPhone}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Email Address</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. principal@school.edu.in"
+                    value={formEmail}
+                    onChangeText={setFormEmail}
+                    keyboardType="email-address"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Location & Board</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Mumbai, Maharashtra • CBSE"
+                    value={formLocation}
+                    onChangeText={setFormLocation}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Initial Notes / Remarks</Text>
+                  <TextInput
+                    style={[styles.formInput, { height: 70, textAlignVertical: 'top' }]}
+                    placeholder="Meeting notes or curriculum interest..."
+                    value={formNotes}
+                    onChangeText={setFormNotes}
+                    multiline
+                  />
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.primaryModalBtn}
+                onPress={handleSaveNewLead}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.primaryModalBtnText}>Save Lead to Database</Text>
+                )}
               </TouchableOpacity>
             </View>
+          </View>
+        </Modal>
+      ) : null}
 
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>School Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Podar International School"
-                  value={formSchoolName}
-                  onChangeText={setFormSchoolName}
-                />
+      {/* ── MODAL 2: Edit / Proposal Modal ────────────────────────────────────── */}
+      {editModalVisible ? (
+        <Modal visible={true} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalLargeCard}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>✏️ Edit / Proposal Details</Text>
+                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                  <Feather name="x" size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>School Name</Text>
+                  <TextInput style={styles.formInput} value={formSchoolName} onChangeText={setFormSchoolName} />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Contact Person</Text>
+                  <TextInput style={styles.formInput} value={formContactName} onChangeText={setFormContactName} />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Phone Number</Text>
+                  <TextInput style={styles.formInput} value={formPhone} onChangeText={setFormPhone} />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Stage Status</Text>
+                  <View style={styles.statusRowPicker}>
+                    {['new', 'meeting_done', 'converted', 'active', 'lost'].map((st) => (
+                      <TouchableOpacity
+                        key={st}
+                        style={[styles.statusChoicePill, formStatus === st && styles.statusChoicePillActive]}
+                        onPress={() => setFormStatus(st)}
+                      >
+                        <Text style={[styles.statusChoiceText, formStatus === st && styles.statusChoiceTextActive]}>
+                          {st.replace('_', ' ').toUpperCase()}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Latest Note</Text>
+                  <TextInput
+                    style={[styles.formInput, { height: 70, textAlignVertical: 'top' }]}
+                    value={formNotes}
+                    onChangeText={setFormNotes}
+                    multiline
+                  />
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.primaryModalBtn}
+                onPress={handleSaveEditLead}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.primaryModalBtnText}>Update Lead Record</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
+      {/* ── MODAL 3: Send Email ───────────────────────────────────────────────── */}
+      {emailModalVisible ? (
+        <Modal visible={true} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalLargeCard}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>✉️ Send Personalized Pitch</Text>
+                <TouchableOpacity onPress={() => setEmailModalVisible(false)}>
+                  <Feather name="x" size={20} color="#64748B" />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Contact Person & Role</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Dr. Arvind Mehta (Principal)"
-                  value={formContactName}
-                  onChangeText={setFormContactName}
-                />
+                <Text style={styles.formLabel}>Recipient Email</Text>
+                <TextInput style={styles.formInput} value={selectedLead?.email || ''} editable={false} />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Phone Number</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. 9820144921"
-                  value={formPhone}
-                  onChangeText={setFormPhone}
-                  keyboardType="phone-pad"
-                />
+                <Text style={styles.formLabel}>Subject</Text>
+                <TextInput style={styles.formInput} value={emailSubject} onChangeText={setEmailSubject} />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Email Address</Text>
+                <Text style={styles.formLabel}>Pitch Body</Text>
                 <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. principal@school.edu.in"
-                  value={formEmail}
-                  onChangeText={setFormEmail}
-                  keyboardType="email-address"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Location & Board</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Mumbai, Maharashtra • CBSE"
-                  value={formLocation}
-                  onChangeText={setFormLocation}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Initial Notes / Remarks</Text>
-                <TextInput
-                  style={[styles.formInput, { height: 70, textAlignVertical: 'top' }]}
-                  placeholder="Meeting notes or curriculum interest..."
-                  value={formNotes}
-                  onChangeText={setFormNotes}
+                  style={[styles.formInput, { height: 140, textAlignVertical: 'top' }]}
+                  value={emailBody}
+                  onChangeText={setEmailBody}
                   multiline
                 />
               </View>
-            </ScrollView>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.primaryModalBtn}
-              onPress={handleSaveNewLead}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.primaryModalBtnText}>Save Lead to Database</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── MODAL 2: Edit / Proposal Modal ────────────────────────────────────── */}
-      <Modal visible={editModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalLargeCard}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>✏️ Edit / Proposal Details</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Feather name="x" size={20} color="#64748B" />
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.primaryModalBtn, { backgroundColor: '#E11D48' }]}
+                onPress={handleSendEmailSubmit}
+                disabled={isSendingEmail}
+              >
+                {isSendingEmail ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.primaryModalBtnText}>Send Email via Server</Text>
+                )}
               </TouchableOpacity>
             </View>
+          </View>
+        </Modal>
+      ) : null}
 
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>School Name</Text>
-                <TextInput style={styles.formInput} value={formSchoolName} onChangeText={setFormSchoolName} />
+      {/* ── MODAL 4: Schedule Meeting ─────────────────────────────────────────── */}
+      {meetingModalVisible ? (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>📅 Schedule Campus Meeting</Text>
+              <Text style={styles.modalSub}>{selectedLead?.school_name}</Text>
+
+              <View style={[styles.formGroup, { width: '100%' }]}>
+                <Text style={styles.formLabel}>Meeting Date (YYYY-MM-DD)</Text>
+                <TextInput style={styles.formInput} value={meetingDate} onChangeText={setMeetingDate} />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Contact Person</Text>
-                <TextInput style={styles.formInput} value={formContactName} onChangeText={setFormContactName} />
+              <View style={[styles.formGroup, { width: '100%' }]}>
+                <Text style={styles.formLabel}>Meeting Time</Text>
+                <TextInput style={styles.formInput} value={meetingTime} onChangeText={setMeetingTime} />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Phone Number</Text>
-                <TextInput style={styles.formInput} value={formPhone} onChangeText={setFormPhone} />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Stage Status</Text>
-                <View style={styles.statusRowPicker}>
-                  {['new', 'meeting_done', 'converted', 'active', 'lost'].map((st) => (
+              <View style={[styles.formGroup, { width: '100%' }]}>
+                <Text style={styles.formLabel}>Format</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['offline', 'online'].map((t) => (
                     <TouchableOpacity
-                      key={st}
-                      style={[styles.statusChoicePill, formStatus === st && styles.statusChoicePillActive]}
-                      onPress={() => setFormStatus(st)}
+                      key={t}
+                      style={[styles.statusChoicePill, meetingType === t && styles.statusChoicePillActive]}
+                      onPress={() => setMeetingType(t)}
                     >
-                      <Text style={[styles.statusChoiceText, formStatus === st && styles.statusChoiceTextActive]}>
-                        {st.replace('_', ' ').toUpperCase()}
+                      <Text style={[styles.statusChoiceText, meetingType === t && styles.statusChoiceTextActive]}>
+                        {t.toUpperCase()}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Latest Note</Text>
-                <TextInput
-                  style={[styles.formInput, { height: 70, textAlignVertical: 'top' }]}
-                  value={formNotes}
-                  onChangeText={setFormNotes}
-                  multiline
-                />
-              </View>
-            </ScrollView>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.primaryModalBtn}
-              onPress={handleSaveEditLead}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.primaryModalBtnText}>Update Lead Record</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── MODAL 3: Send Email ───────────────────────────────────────────────── */}
-      <Modal visible={emailModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalLargeCard}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>✉️ Send Personalized Pitch</Text>
-              <TouchableOpacity onPress={() => setEmailModalVisible(false)}>
-                <Feather name="x" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Recipient Email</Text>
-              <TextInput style={styles.formInput} value={selectedLead?.email || ''} editable={false} />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Subject</Text>
-              <TextInput style={styles.formInput} value={emailSubject} onChangeText={setEmailSubject} />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Pitch Body</Text>
-              <TextInput
-                style={[styles.formInput, { height: 140, textAlignVertical: 'top' }]}
-                value={emailBody}
-                onChangeText={setEmailBody}
-                multiline
-              />
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.primaryModalBtn, { backgroundColor: '#E11D48' }]}
-              onPress={handleSendEmailSubmit}
-              disabled={isSendingEmail}
-            >
-              {isSendingEmail ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.primaryModalBtnText}>Send Email via Server</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── MODAL 4: Schedule Meeting ─────────────────────────────────────────── */}
-      <Modal visible={meetingModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>📅 Schedule Campus Meeting</Text>
-            <Text style={styles.modalSub}>{selectedLead?.school_name}</Text>
-
-            <View style={[styles.formGroup, { width: '100%' }]}>
-              <Text style={styles.formLabel}>Meeting Date (YYYY-MM-DD)</Text>
-              <TextInput style={styles.formInput} value={meetingDate} onChangeText={setMeetingDate} />
-            </View>
-
-            <View style={[styles.formGroup, { width: '100%' }]}>
-              <Text style={styles.formLabel}>Meeting Time</Text>
-              <TextInput style={styles.formInput} value={meetingTime} onChangeText={setMeetingTime} />
-            </View>
-
-            <View style={[styles.formGroup, { width: '100%' }]}>
-              <Text style={styles.formLabel}>Format</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {['offline', 'online'].map((t) => (
-                  <TouchableOpacity
-                    key={t}
-                    style={[styles.statusChoicePill, meetingType === t && styles.statusChoicePillActive]}
-                    onPress={() => setMeetingType(t)}
-                  >
-                    <Text style={[styles.statusChoiceText, meetingType === t && styles.statusChoiceTextActive]}>
-                      {t.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setMeetingModalVisible(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmBtn} onPress={handleSaveMeeting}>
+                  <Text style={styles.confirmBtnText}>Save Meeting</Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setMeetingModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleSaveMeeting}>
-                <Text style={styles.confirmBtnText}>Save Meeting</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
 
       {/* ── MODAL 5: Quick Note ───────────────────────────────────────────────── */}
-      <Modal visible={noteModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>📝 Append Lead Note</Text>
-            <Text style={styles.modalSub}>{selectedLead?.school_name}</Text>
+      {noteModalVisible ? (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>📝 Append Lead Note</Text>
+              <Text style={styles.modalSub}>{selectedLead?.school_name}</Text>
 
-            <TextInput
-              style={[styles.formInput, { width: '100%', height: 90, textAlignVertical: 'top' }]}
-              placeholder="Enter meeting takeaways or next action items..."
-              value={newNoteText}
-              onChangeText={setNewNoteText}
-              multiline
-            />
-
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setNoteModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleSaveNote}>
-                <Text style={styles.confirmBtnText}>Save Note</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── MODAL 6: Ticket Raising ───────────────────────────────────────────── */}
-      <Modal visible={ticketModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>🎫 Raise CRM Support Ticket</Text>
-            <Text style={styles.modalSub}>{selectedLead?.school_name}</Text>
-
-            <View style={[styles.formGroup, { width: '100%' }]}>
-              <Text style={styles.formLabel}>Ticket Title / Issue</Text>
               <TextInput
-                style={styles.formInput}
-                placeholder="e.g. Hardware lab kit dispatch pending"
-                value={ticketSubject}
-                onChangeText={setTicketSubject}
+                style={[styles.formInput, { width: '100%', height: 90, textAlignVertical: 'top' }]}
+                placeholder="Enter meeting takeaways or next action items..."
+                value={newNoteText}
+                onChangeText={setNewNoteText}
+                multiline
               />
-            </View>
 
-            <View style={[styles.formGroup, { width: '100%' }]}>
-              <Text style={styles.formLabel}>Priority</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {['low', 'medium', 'high', 'urgent'].map((p) => (
-                  <TouchableOpacity
-                    key={p}
-                    style={[styles.statusChoicePill, ticketPriority === p && styles.statusChoicePillActive]}
-                    onPress={() => setTicketPriority(p)}
-                  >
-                    <Text style={[styles.statusChoiceText, ticketPriority === p && styles.statusChoiceTextActive]}>
-                      {p.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setNoteModalVisible(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmBtn} onPress={handleSaveNote}>
+                  <Text style={styles.confirmBtnText}>Save Note</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          </View>
+        </Modal>
+      ) : null}
 
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setTicketModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleRaiseTicketSubmit}>
-                <Text style={styles.confirmBtnText}>Submit Ticket</Text>
-              </TouchableOpacity>
+      {/* ── MODAL 6: Ticket Raising ───────────────────────────────────────────── */}
+      {ticketModalVisible ? (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>🎫 Raise CRM Support Ticket</Text>
+              <Text style={styles.modalSub}>{selectedLead?.school_name}</Text>
+
+              <View style={[styles.formGroup, { width: '100%' }]}>
+                <Text style={styles.formLabel}>Ticket Title / Issue</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g. Hardware lab kit dispatch pending"
+                  value={ticketSubject}
+                  onChangeText={setTicketSubject}
+                />
+              </View>
+
+              <View style={[styles.formGroup, { width: '100%' }]}>
+                <Text style={styles.formLabel}>Priority</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['low', 'medium', 'high', 'urgent'].map((p) => (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.statusChoicePill, ticketPriority === p && styles.statusChoicePillActive]}
+                      onPress={() => setTicketPriority(p)}
+                    >
+                      <Text style={[styles.statusChoiceText, ticketPriority === p && styles.statusChoiceTextActive]}>
+                        {p.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setTicketModalVisible(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmBtn} onPress={handleRaiseTicketSubmit}>
+                  <Text style={styles.confirmBtnText}>Submit Ticket</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
 
       {/* ── MODAL 7: View Lead Details (Proper, Rich & Responsive) ──────────── */}
-      <Modal visible={viewDetailsModalVisible} transparent animationType="slide" onRequestClose={() => setViewDetailsModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+      {viewDetailsModalVisible ? (
+        <Modal visible={true} transparent animationType="slide" onRequestClose={() => setViewDetailsModalVisible(false)}>
+          <View style={styles.modalOverlay}>
           <View style={[styles.modalLargeCard, { maxHeight: '92%', width: '95%', maxWidth: 580, paddingBottom: 16 }]}>
             {/* Header */}
             <View style={styles.modalHeaderRow}>
@@ -2135,7 +2221,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
                   style={[styles.dossierActionBtn, { backgroundColor: '#FAF5FF', borderColor: '#DDD6FE' }]}
                   onPress={() => {
                     setViewDetailsModalVisible(false);
-                    openMeetingModal(selectedLead);
+                    openScheduleMeetingModal(selectedLead);
                   }}
                 >
                   <Feather name="calendar" size={13} color="#7C3AED" />
@@ -2165,74 +2251,79 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+        </Modal>
+      ) : null}
 
       {/* ── MODAL 8: Pricing Modal ────────────────────────────────────────────── */}
-      <Modal visible={pricingModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.pricingIconCircle}>
-              <Text style={styles.pricingDollarSign}>$</Text>
-            </View>
-            <Text style={styles.modalTitle}>OLL School Pricing Tiers</Text>
-            <Text style={styles.modalSub}>Curriculum Excellence & Lab Packages</Text>
+      {pricingModalVisible ? (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.pricingIconCircle}>
+                <Text style={styles.pricingDollarSign}>$</Text>
+              </View>
+              <Text style={styles.modalTitle}>OLL School Pricing Tiers</Text>
+              <Text style={styles.modalSub}>Curriculum Excellence & Lab Packages</Text>
 
-            <View style={styles.pricingTierRow}>
-              <Text style={styles.pricingTierTitle}>• Starter AI Lab (K-5):</Text>
-              <Text style={styles.pricingTierVal}>₹2,80,000 / yr</Text>
-            </View>
-            <View style={styles.pricingTierRow}>
-              <Text style={styles.pricingTierTitle}>• Excellence Lab (6-10):</Text>
-              <Text style={styles.pricingTierVal}>₹5,40,000 / yr</Text>
-            </View>
-            <View style={styles.pricingTierRow}>
-              <Text style={styles.pricingTierTitle}>• Enterprise K-12 Lab:</Text>
-              <Text style={styles.pricingTierVal}>₹9,20,000 / yr</Text>
-            </View>
+              <View style={styles.pricingTierRow}>
+                <Text style={styles.pricingTierTitle}>• Starter AI Lab (K-5):</Text>
+                <Text style={styles.pricingTierVal}>₹2,80,000 / yr</Text>
+              </View>
+              <View style={styles.pricingTierRow}>
+                <Text style={styles.pricingTierTitle}>• Excellence Lab (6-10):</Text>
+                <Text style={styles.pricingTierVal}>₹5,40,000 / yr</Text>
+              </View>
+              <View style={styles.pricingTierRow}>
+                <Text style={styles.pricingTierTitle}>• Enterprise K-12 Lab:</Text>
+                <Text style={styles.pricingTierVal}>₹9,20,000 / yr</Text>
+              </View>
 
-            <TouchableOpacity
-              style={styles.confirmBtn}
-              onPress={() => setPricingModalVisible(false)}
-            >
-              <Text style={styles.confirmBtnText}>Done</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={() => setPricingModalVisible(false)}
+              >
+                <Text style={styles.confirmBtnText}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
 
       {/* ── MODAL 9: Onboarding Tracker Modal ─────────────────────────────────── */}
-      <Modal visible={onboardingTrackerVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>📋 Onboarding Tracker</Text>
-            <Text style={styles.modalSub}>Live Status of School Deployments</Text>
+      {onboardingTrackerVisible ? (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>📋 Onboarding Tracker</Text>
+              <Text style={styles.modalSub}>Live Status of School Deployments</Text>
 
-            <View style={styles.trackerStepRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#059669" />
-              <Text style={styles.trackerStepText}>1. Lead Intake & Verification</Text>
-            </View>
-            <View style={styles.trackerStepRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#059669" />
-              <Text style={styles.trackerStepText}>2. Campus Demo & Decision</Text>
-            </View>
-            <View style={styles.trackerStepRow}>
-              <Ionicons name="time" size={16} color="#F59E0B" />
-              <Text style={styles.trackerStepText}>3. Teacher Training & LMS Setup</Text>
-            </View>
-            <View style={styles.trackerStepRow}>
-              <Ionicons name="ellipse-outline" size={16} color="#94A3B8" />
-              <Text style={styles.trackerStepText}>4. Hardware Lab Dispatch</Text>
-            </View>
+              <View style={styles.trackerStepRow}>
+                <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                <Text style={styles.trackerStepText}>1. Lead Intake & Verification</Text>
+              </View>
+              <View style={styles.trackerStepRow}>
+                <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                <Text style={styles.trackerStepText}>2. Campus Demo & Decision</Text>
+              </View>
+              <View style={styles.trackerStepRow}>
+                <Ionicons name="time" size={16} color="#F59E0B" />
+                <Text style={styles.trackerStepText}>3. Teacher Training & LMS Setup</Text>
+              </View>
+              <View style={styles.trackerStepRow}>
+                <Ionicons name="ellipse-outline" size={16} color="#94A3B8" />
+                <Text style={styles.trackerStepText}>4. Hardware Lab Dispatch</Text>
+              </View>
 
-            <TouchableOpacity
-              style={styles.confirmBtn}
-              onPress={() => setOnboardingTrackerVisible(false)}
-            >
-              <Text style={styles.confirmBtnText}>Close Tracker</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={() => setOnboardingTrackerVisible(false)}
+              >
+                <Text style={styles.confirmBtnText}>Close Tracker</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
     </View>
   );
 }
@@ -3509,6 +3600,56 @@ const styles = StyleSheet.create({
   },
   dossierActionBtnText: {
     fontSize: 12,
+    fontWeight: '700',
+  },
+  loadMoreContainer: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    marginTop: 10,
+    marginBottom: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginHorizontal: 14,
+  },
+  loadMoreInfoText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 10,
+  },
+  loadMoreActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  loadMoreBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  showAllBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  showAllBtnText: {
+    color: '#334155',
+    fontSize: 12.5,
     fontWeight: '700',
   },
 });
