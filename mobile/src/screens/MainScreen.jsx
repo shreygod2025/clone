@@ -234,9 +234,18 @@ export default function MainScreen({ user, onLogout }) {
   const [docsModalVisible, setDocsModalVisible] = useState(false);
   const [docsTargetLead, setDocsTargetLead] = useState(null);
 
+  // 11. Conversational AI Actions & Confirmation State
+  const [pendingConfirmation, setPendingConfirmation] = useState(null);
+  const [pendingNoteTarget, setPendingNoteTarget] = useState(null);
+
   // ── Helper: Locate Latest Active Lead in Conversation ────────────────────────
   const findLatestLead = () => {
     const withLead = [...messages].reverse().find((m) => m.leadCard && !m.leadCard.isDeleted);
+    return withLead ? withLead.leadCard : null;
+  };
+
+  const findLatestLeadIncludingArchived = () => {
+    const withLead = [...messages].reverse().find((m) => m.leadCard);
     return withLead ? withLead.leadCard : null;
   };
 
@@ -447,9 +456,7 @@ export default function MainScreen({ user, onLogout }) {
       Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
       return;
     }
-    setLostTargetLead(target);
-    setLostReason('Budget Constraint');
-    setLostModalVisible(true);
+    promptLostConfirmation(target, 'Closed as lost lead');
   };
 
   const openNoteModal = (leadCard, initialText = '') => {
@@ -547,6 +554,852 @@ export default function MainScreen({ user, onLogout }) {
     ]);
   };
 
+  // ── Natural Language Parsing & School Resolution Helpers ──────────────────
+  const extractMeetingDetailsFromText = (text, lead) => {
+    const lower = text.toLowerCase();
+    
+    // 1. Mode: online / offline / phone
+    let mode = 'In-Person Campus Visit';
+    if (lower.includes('online') || lower.includes('zoom') || lower.includes('google meet') || lower.includes('virtual') || lower.includes('demo')) {
+      mode = 'Online Demo';
+    } else if (lower.includes('phone') || lower.includes('call') || lower.includes('telephonic')) {
+      mode = 'Phone Call';
+    }
+
+    // 2. Date
+    let date = '';
+    const isoMatch = text.match(/\b\d{4}-\d{2}-\d{2}\b/);
+    if (isoMatch) {
+      date = isoMatch[0];
+    } else if (lower.includes('tomorrow')) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      date = d.toISOString().split('T')[0];
+    } else if (lower.includes('next week') || lower.includes('next monday')) {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      date = d.toISOString().split('T')[0];
+    } else if (lower.includes('in 2 days')) {
+      const d = new Date();
+      d.setDate(d.getDate() + 2);
+      date = d.toISOString().split('T')[0];
+    } else if (lower.includes('friday')) {
+      const d = new Date();
+      d.setDate(d.getDate() + ((5 + 7 - d.getDay()) % 7 || 7));
+      date = d.toISOString().split('T')[0];
+    }
+
+    // 3. Time
+    let time = '11:00 AM';
+    const timeMatch = text.match(/\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM))\b/);
+    if (timeMatch) {
+      time = timeMatch[1].toUpperCase();
+    }
+
+    // 4. Location / Link
+    let location = mode === 'Online Demo' ? 'Google Meet / Zoom' : (lead?.location || 'School Campus');
+    const meetLinkMatch = text.match(/(https?:\/\/[^\s]+)/);
+    if (meetLinkMatch) {
+      location = meetLinkMatch[1];
+    }
+
+    // 5. Notes
+    let notes = 'Agentic AI & Coding Excellence curriculum presentation and lab demonstration';
+    const notesMatch = text.match(/(?:regarding|about|agenda|discuss|for)\s+([^,.]+)/i);
+    if (notesMatch && notesMatch[1].length > 4) {
+      notes = notesMatch[1].trim();
+    }
+
+    const hasRequiredDetails = Boolean(date);
+
+    return {
+      date,
+      time,
+      mode,
+      location,
+      notes,
+      hasRequiredDetails,
+    };
+  };
+
+  const extractNoteAndSchool = (text) => {
+    let schoolQuery = '';
+    let extractedNote = '';
+
+    const colonIdx = text.indexOf(':');
+    if (colonIdx !== -1 && colonIdx < text.length - 1) {
+      const left = text.slice(0, colonIdx);
+      extractedNote = text.slice(colonIdx + 1).trim();
+      schoolQuery = left
+        .replace(/add\s+a\s+note\s+for/i, '')
+        .replace(/add\s+note\s+for/i, '')
+        .replace(/add\s+a\s+note\s+to/i, '')
+        .replace(/add\s+note\s+to/i, '')
+        .replace(/add\s+a\s+comment\s+for/i, '')
+        .replace(/add\s+comment\s+for/i, '')
+        .replace(/add\s+a\s+comment\s+to/i, '')
+        .replace(/add\s+comment\s+to/i, '')
+        .replace(/note\s+for/i, '')
+        .replace(/comment\s+for/i, '')
+        .replace(/note/i, '')
+        .replace(/comment/i, '')
+        .trim();
+    } else {
+      const thatMatch = text.match(/(?:saying|that|with note)\s+(.+)$/i);
+      if (thatMatch) {
+        extractedNote = thatMatch[1].trim();
+        const left = text.slice(0, thatMatch.index);
+        schoolQuery = left
+          .replace(/add\s+a\s+note\s+for/i, '')
+          .replace(/add\s+note\s+for/i, '')
+          .replace(/add\s+a\s+note\s+to/i, '')
+          .replace(/add\s+note\s+to/i, '')
+          .replace(/add\s+a\s+comment\s+for/i, '')
+          .replace(/add\s+comment\s+for/i, '')
+          .replace(/add\s+a\s+comment\s+to/i, '')
+          .replace(/add\s+comment\s+to/i, '')
+          .replace(/note/i, '')
+          .replace(/comment/i, '')
+          .trim();
+      } else {
+        schoolQuery = text
+          .replace(/add\s+a\s+note\s+for/i, '')
+          .replace(/add\s+note\s+for/i, '')
+          .replace(/add\s+a\s+note\s+to/i, '')
+          .replace(/add\s+note\s+to/i, '')
+          .replace(/add\s+a\s+comment\s+for/i, '')
+          .replace(/add\s+comment\s+for/i, '')
+          .replace(/add\s+a\s+comment\s+to/i, '')
+          .replace(/add\s+comment\s+to/i, '')
+          .replace(/add\s+note/i, '')
+          .replace(/add\s+comment/i, '')
+          .replace(/note/i, '')
+          .replace(/comment/i, '')
+          .trim();
+      }
+    }
+
+    return { schoolQuery, extractedNote };
+  };
+
+  const resolveSchoolFromQuery = async (queryText) => {
+    let clean = (queryText || '').trim().toLowerCase();
+    
+    clean = clean
+      .replace(/^for\s+/i, '')
+      .replace(/^with\s+/i, '')
+      .replace(/^to\s+/i, '')
+      .replace(/^about\s+/i, '')
+      .replace(/\s+lead$/i, '')
+      .replace(/\s+school$/i, '')
+      .trim();
+
+    const isThisLead =
+      !clean ||
+      clean === 'this' ||
+      clean === 'this school' ||
+      clean === 'this school lead' ||
+      clean === 'this lead' ||
+      clean === 'the lead' ||
+      clean === 'the school' ||
+      clean === 'school' ||
+      clean === 'lead';
+
+    const latest = findLatestLead();
+
+    if (isThisLead) {
+      if (latest) return { status: 'single', lead: latest };
+      const anyLatest = findLatestLeadIncludingArchived();
+      if (anyLatest) return { status: 'single', lead: anyLatest };
+    }
+
+    const res = await api.fetchSchoolInquiries(100);
+    const leadsMap = new Map();
+
+    FALLBACK_LEADS.forEach((l) => {
+      const key = (l.school_name || l.schoolName || '').toLowerCase();
+      if (key) leadsMap.set(key, l);
+    });
+
+    if (res.success && Array.isArray(res.inquiries)) {
+      res.inquiries.forEach((l) => {
+        const key = (l.school_name || l.schoolName || '').toLowerCase();
+        if (key) leadsMap.set(key, l);
+      });
+    }
+
+    messages.forEach((m) => {
+      if (m.leadCard) {
+        const key = (m.leadCard.schoolName || m.leadCard.school_name || '').toLowerCase();
+        if (key) leadsMap.set(key, m.leadCard);
+      }
+    });
+
+    const allLeads = Array.from(leadsMap.values());
+
+    if (!clean) {
+      if (latest) return { status: 'single', lead: latest };
+      if (allLeads.length > 0) return { status: 'single', lead: allLeads[0] };
+      return { status: 'none' };
+    }
+
+    const exact = allLeads.find((l) => {
+      const s = (l.schoolName || l.school_name || '').toLowerCase();
+      return s === clean;
+    });
+    if (exact) return { status: 'single', lead: exact };
+
+    const matches = allLeads.filter((l) => {
+      const s = (l.schoolName || l.school_name || '').toLowerCase();
+      const c = (l.contactPerson || l.contact_name || '').toLowerCase();
+      return s.includes(clean) || clean.includes(s) || c.includes(clean);
+    });
+
+    if (matches.length === 1) {
+      return { status: 'single', lead: matches[0] };
+    } else if (matches.length > 1) {
+      return { status: 'multiple', candidates: matches };
+    }
+
+    const tokens = clean.split(/\s+/).filter((t) => t.length >= 3 && !['the', 'and', 'for', 'school', 'lead'].includes(t));
+    if (tokens.length > 0) {
+      const tokenMatches = allLeads.filter((l) => {
+        const s = (l.schoolName || l.school_name || '').toLowerCase();
+        return tokens.some((tok) => s.includes(tok));
+      });
+      if (tokenMatches.length === 1) {
+        return { status: 'single', lead: tokenMatches[0] };
+      } else if (tokenMatches.length > 1) {
+        return { status: 'multiple', candidates: tokenMatches };
+      }
+    }
+
+    if ((clean.includes('this') || clean.includes('lead')) && latest) {
+      return { status: 'single', lead: latest };
+    }
+
+    return { status: 'none', query: clean };
+  };
+
+  // ── Confirmation Prompters ──────────────────────────────────────────────────
+  const promptDeleteConfirmation = (lead) => {
+    if (!lead) return;
+    const sName = lead.schoolName || lead.school_name || 'School';
+    const cPerson = lead.contactPerson || lead.contact_name || 'Principal';
+    setChatMode(true);
+    const confCard = {
+      id: `conf_del_${Date.now()}`,
+      actionType: 'delete',
+      danger: true,
+      title: 'Confirm Permanent Deletion',
+      description: 'Are you sure you want to permanently delete this school lead from the CRM database? This action is permanent and cannot be undone.',
+      schoolName: sName,
+      leadId: lead.id,
+      lead: lead,
+      details: [
+        { label: 'School Name', value: sName },
+        { label: 'Contact Person', value: cPerson },
+        { label: 'Phone Number', value: lead.phone || 'N/A' },
+        { label: 'Location', value: lead.location || 'Mumbai, Maharashtra' },
+        { label: 'Current Status', value: (lead.status || 'NEW').toUpperCase() },
+      ],
+      confirmLabel: 'Yes, Delete Permanently',
+      cancelLabel: 'No, Cancel',
+      status: 'pending',
+    };
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `⚠️ **Permanent Deletion Requested for ${sName}:**\n\nPlease confirm below using **Yes** or **No** before I execute this irreversible deletion:`,
+        confirmationCard: confCard,
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const promptScheduleMeetingConfirmation = (lead, details) => {
+    if (!lead) return;
+    const sName = lead.schoolName || lead.school_name || 'School';
+    setChatMode(true);
+    const confCard = {
+      id: `conf_sch_${Date.now()}`,
+      actionType: 'schedule_meeting',
+      danger: false,
+      title: 'Confirm Meeting Schedule',
+      description: 'Please review the meeting summary before confirming. The meeting will be logged in the CRM calendar upon confirmation.',
+      schoolName: sName,
+      leadId: lead.id,
+      lead: lead,
+      payload: details,
+      details: [
+        { label: 'School Name', value: sName },
+        { label: 'Date & Time', value: `${details.date} at ${details.time}` },
+        { label: 'Meeting Mode', value: details.mode },
+        { label: 'Location / Link', value: details.location },
+        { label: 'Discussion Notes', value: details.notes },
+      ],
+      confirmLabel: 'Yes, Schedule Meeting',
+      cancelLabel: 'No, Cancel',
+      status: 'pending',
+    };
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📅 **Meeting Summary for ${sName}:**\n\nPlease confirm to save this meeting to the CRM calendar:`,
+        confirmationCard: confCard,
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const promptAddNoteConfirmation = (lead, noteContent) => {
+    if (!lead) return;
+    const sName = lead.schoolName || lead.school_name || 'School';
+    setChatMode(true);
+    const confCard = {
+      id: `conf_note_${Date.now()}`,
+      actionType: 'add_note',
+      danger: false,
+      title: 'Confirm Adding Note / Comment',
+      description: 'This note will be recorded in the CRM comments history and attached to this school lead.',
+      schoolName: sName,
+      leadId: lead.id,
+      lead: lead,
+      payload: { note: noteContent },
+      details: [
+        { label: 'School Name', value: sName },
+        { label: 'Author', value: user?.name || 'CRM Assistant' },
+        { label: 'Note Content', value: noteContent },
+      ],
+      confirmLabel: 'Yes, Save Note',
+      cancelLabel: 'No, Cancel',
+      status: 'pending',
+    };
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📝 **Confirm Note for ${sName}:**\n\nPlease confirm to save this note to the CRM database:`,
+        confirmationCard: confCard,
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const promptArchiveConfirmation = (lead) => {
+    if (!lead) return;
+    const sName = lead.schoolName || lead.school_name || 'School';
+    setChatMode(true);
+    const confCard = {
+      id: `conf_arc_${Date.now()}`,
+      actionType: 'archive',
+      danger: false,
+      title: 'Confirm Lead Archival',
+      description: 'Archiving moves this school lead out of the active pipeline while preserving all details and history. You can restore it anytime with "Unarchive".',
+      schoolName: sName,
+      leadId: lead.id,
+      lead: lead,
+      details: [
+        { label: 'School Name', value: sName },
+        { label: 'Contact Person', value: lead.contactPerson || lead.contact_name || 'Principal' },
+        { label: 'Phone Number', value: lead.phone || 'N/A' },
+        { label: 'Current Status', value: (lead.status || 'NEW').toUpperCase() },
+      ],
+      confirmLabel: 'Yes, Archive Lead',
+      cancelLabel: 'No, Cancel',
+      status: 'pending',
+    };
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📦 **Archival Requested for ${sName}:**\n\nPlease confirm below using **Yes** or **No**:`,
+        confirmationCard: confCard,
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const promptUnarchiveConfirmation = (lead) => {
+    if (!lead) return;
+    const sName = lead.schoolName || lead.school_name || 'School';
+    setChatMode(true);
+    const confCard = {
+      id: `conf_unarc_${Date.now()}`,
+      actionType: 'unarchive',
+      danger: false,
+      title: 'Confirm Lead Restoration',
+      description: 'Restoring will move this school lead back into your active CRM sales pipeline with full action controls enabled.',
+      schoolName: sName,
+      leadId: lead.id,
+      lead: lead,
+      details: [
+        { label: 'School Name', value: sName },
+        { label: 'Contact Person', value: lead.contactPerson || lead.contact_name || 'Principal' },
+        { label: 'Phone Number', value: lead.phone || 'N/A' },
+        { label: 'Status', value: 'ARCHIVED' },
+      ],
+      confirmLabel: 'Yes, Restore to Pipeline',
+      cancelLabel: 'No, Cancel',
+      status: 'pending',
+    };
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `🔄 **Restoration Requested for ${sName}:**\n\nPlease confirm below to restore this lead to the active pipeline:`,
+        confirmationCard: confCard,
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const promptLostConfirmation = (lead, reason) => {
+    if (!lead) return;
+    const sName = lead.schoolName || lead.school_name || 'School';
+    const r = reason || 'Closed as lost via conversational AI assistant';
+    setChatMode(true);
+    const confCard = {
+      id: `conf_lost_${Date.now()}`,
+      actionType: 'lost',
+      danger: true,
+      title: 'Confirm Mark as Lost Lead',
+      description: 'Are you sure you want to mark this school as a Lost Lead? Under CRM rules, all further communication, meetings, and edits will be disabled. All previous history will be preserved.',
+      schoolName: sName,
+      leadId: lead.id,
+      lead: lead,
+      payload: { reason: r },
+      details: [
+        { label: 'School Name', value: sName },
+        { label: 'Contact Person', value: lead.contactPerson || lead.contact_name || 'Principal' },
+        { label: 'Current Status', value: (lead.status || 'NEW').toUpperCase() },
+        { label: 'Reason for Loss', value: r },
+      ],
+      confirmLabel: 'Yes, Mark as Lost',
+      cancelLabel: 'No, Cancel',
+      status: 'pending',
+    };
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `❌ **Mark as Lost Lead Requested for ${sName}:**\n\nPlease confirm below using **Yes** or **No**:`,
+        confirmationCard: confCard,
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // ── Execute Confirmed & Cancelled Operations ────────────────────────────────
+  const executeConfirmedAction = async (confCard) => {
+    if (!confCard) return;
+    const targetLead = confCard.lead;
+    const schoolName = confCard.schoolName || targetLead?.schoolName || targetLead?.school_name || 'School';
+    const targetId = confCard.leadId || targetLead?.id;
+
+    // Update confirmationCard status in message history to 'confirmed'
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.confirmationCard && m.confirmationCard.id === confCard.id) {
+          return {
+            ...m,
+            confirmationCard: {
+              ...m.confirmationCard,
+              status: 'confirmed',
+            },
+          };
+        }
+        return m;
+      })
+    );
+
+    setPendingConfirmation(null);
+    setIsTyping(true);
+
+    const author = user?.name || 'CRM Assistant';
+
+    // ── 1. Delete Lead ────────────────────────────────────────────────────────
+    if (confCard.actionType === 'delete') {
+      if (targetId) {
+        await api.deleteSchoolInquiry(targetId);
+      }
+      setIsTyping(false);
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === targetId || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                status: 'deleted',
+                isDeleted: true,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `🗑️ **Lead Permanently Deleted:** **${schoolName}** has been removed from the CRM database.\n\n• **Status:** \`DELETED\`\n• **Action:** Permanent Deletion Confirmed\n\nAll records for this school lead have been purged.`,
+          nextActions: ['Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── 2. Schedule Meeting ──────────────────────────────────────────────────
+    if (confCard.actionType === 'schedule_meeting') {
+      const payload = confCard.payload || {};
+      const mDate = payload.date || meetingDate || new Date().toISOString().split('T')[0];
+      const mTime = payload.time || meetingTime || '11:00 AM';
+      const mMode = payload.mode || meetingType || 'In-Person Campus Visit';
+      const mLocation = payload.location || (mMode === 'Online Demo' ? 'Google Meet / Zoom' : targetLead?.location || 'School Campus');
+      const mNotes = payload.notes || 'Curriculum demo and discussion';
+
+      const logText = `Meeting scheduled for ${mDate} at ${mTime} (${mMode}) - ${mNotes}`;
+
+      if (targetId) {
+        await api.updateSchoolInquiry(targetId, {
+          meeting_date: mDate,
+          meeting_time: mTime,
+          meeting_type: mMode,
+          status: 'meeting_scheduled',
+        });
+        await api.addSchoolComment(targetId, logText, author);
+      }
+      setIsTyping(false);
+
+      const updatedLeadCard = {
+        ...targetLead,
+        status: 'meeting_scheduled',
+        meeting_date: mDate,
+        meeting_time: mTime,
+        meeting_type: mMode,
+        comments: [
+          ...(targetLead?.comments || []),
+          { text: logText, author: author, created_at: new Date().toISOString() },
+        ],
+      };
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === targetId || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                ...updatedLeadCard,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `📅 **Meeting Successfully Scheduled!**\n\n• **School:** ${schoolName}\n• **Date & Time:** \`${mDate}\` at \`${mTime}\`\n• **Mode:** ${mMode}\n• **Location/Link:** ${mLocation}\n• **Agenda:** ${mNotes}\n\nThe meeting has been saved against the school lead in the CRM calendar and added to activity history.\n\nUpdated lead card rendered below:`,
+          leadCard: updatedLeadCard,
+          nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'Generate Proposal Quote'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── 3. Add Note / Comment ────────────────────────────────────────────────
+    if (confCard.actionType === 'add_note') {
+      const noteContent = confCard.payload?.note || noteText || '';
+      const existingNotes = targetLead?.notes || '';
+      const updatedNotes = existingNotes
+        ? `${existingNotes}\n[${new Date().toLocaleDateString()}]: ${noteContent}`
+        : noteContent;
+
+      if (targetId) {
+        await api.addSchoolComment(targetId, noteContent, author);
+        await api.updateSchoolInquiry(targetId, { notes: updatedNotes });
+      }
+      setIsTyping(false);
+
+      const newComments = [
+        ...(targetLead?.comments || []),
+        { text: noteContent, author: author, created_at: new Date().toISOString() },
+      ];
+
+      const updatedLeadCard = {
+        ...targetLead,
+        notes: updatedNotes,
+        comments: newComments,
+      };
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === targetId || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                ...updatedLeadCard,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `📝 **Note Successfully Saved to CRM!**\n\n• **School:** ${schoolName}\n• **Note / Comment:** *"${noteContent}"*\n• **Author:** ${author}\n• **Timestamp:** Just now\n\nNote added to comments history against this lead.\n\nUpdated lead card rendered below:`,
+          leadCard: updatedLeadCard,
+          nextActions: ['Mark Meeting Done', 'Generate Proposal Quote', 'Schedule Meeting'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── 4. Archive Lead ──────────────────────────────────────────────────────
+    if (confCard.actionType === 'archive') {
+      const logText = 'Moved lead to CRM archive';
+      if (targetId) {
+        await api.updateSchoolInquiry(targetId, { status: 'archived' });
+        await api.addSchoolComment(targetId, logText, author);
+      }
+      setIsTyping(false);
+
+      const updatedCard = {
+        ...targetLead,
+        status: 'archived',
+        isDeleted: false,
+        isArchived: true,
+        leadScore: 'Archived Record',
+        comments: [
+          ...(targetLead?.comments || []),
+          { text: logText, author: author, created_at: new Date().toISOString() },
+        ],
+      };
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === targetId || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                ...updatedCard,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `📦 **School Lead Archived:** **${schoolName}** has been moved to the CRM archive.\n\nAll details, meeting records, and comments are preserved. You can restore it to the active pipeline anytime by saying "Unarchive ${schoolName}".`,
+          leadCard: updatedCard,
+          nextActions: ['Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── 5. Unarchive Lead ────────────────────────────────────────────────────
+    if (confCard.actionType === 'unarchive') {
+      const logText = 'Restored lead to active pipeline from archive';
+      if (targetId) {
+        await api.updateSchoolInquiry(targetId, { status: 'new' });
+        await api.addSchoolComment(targetId, logText, author);
+      }
+      setIsTyping(false);
+
+      const restoredCard = {
+        ...targetLead,
+        status: 'new',
+        isDeleted: false,
+        isArchived: false,
+        leadScore: '96/100 (Hot Lead)',
+        comments: [
+          ...(targetLead?.comments || []),
+          { text: logText, author: author, created_at: new Date().toISOString() },
+        ],
+      };
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === targetId || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                ...restoredCard,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `🔄 **Lead Unarchived & Restored:** **${schoolName}** has been restored to your active CRM sales pipeline.\n\nAll action buttons and communication channels are now re-enabled. Interactive lead card rendered below:`,
+          leadCard: restoredCard,
+          nextActions: ['Schedule Meeting', 'Generate Proposal Quote', 'Add Note'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── 6. Mark as Lost Lead ─────────────────────────────────────────────────
+    if (confCard.actionType === 'lost') {
+      const reason = confCard.payload?.reason || lostReason || 'Closed as lost via conversational AI assistant';
+      const logText = `Marked as Lost: ${reason}`;
+      if (targetId) {
+        await api.updateSchoolInquiry(targetId, { status: 'lost', lost_reason: reason });
+        await api.addSchoolComment(targetId, logText, author);
+      }
+      setIsTyping(false);
+
+      const lostCard = {
+        ...targetLead,
+        status: 'lost',
+        isLost: true,
+        leadScore: '0/100 (Closed)',
+        comments: [
+          ...(targetLead?.comments || []),
+          { text: logText, author: author, created_at: new Date().toISOString() },
+        ],
+      };
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.leadCard && (msg.leadCard.id === targetId || msg.leadCard.schoolName === schoolName)) {
+            return {
+              ...msg,
+              leadCard: {
+                ...msg.leadCard,
+                ...lostCard,
+              },
+            };
+          }
+          return msg;
+        })
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `❌ **Lead Marked as Lost:** **${schoolName}** is now recorded as a closed \`LOST\` lead in the CRM.\n• **Reason:** ${reason}\n\nPer CRM rules, communication and scheduling are locked. All historical notes and interaction history have been preserved.\n\nUpdated lead card rendered below:`,
+          leadCard: lostCard,
+          nextActions: ['Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+  };
+
+  const executeCancelledAction = async (confCard) => {
+    if (!confCard) return;
+    const schoolName = confCard.schoolName || 'the school';
+    const actionName =
+      confCard.actionType === 'delete' ? 'Permanent deletion' :
+      confCard.actionType === 'schedule_meeting' ? 'Meeting scheduling' :
+      confCard.actionType === 'add_note' ? 'Adding note' :
+      confCard.actionType === 'archive' ? 'Archiving' :
+      confCard.actionType === 'unarchive' ? 'Unarchiving' :
+      'Marking as lost lead';
+
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.confirmationCard && m.confirmationCard.id === confCard.id) {
+          return {
+            ...m,
+            confirmationCard: {
+              ...m.confirmationCard,
+              status: 'cancelled',
+            },
+          };
+        }
+        return m;
+      })
+    );
+
+    setPendingConfirmation(null);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `🚫 **Operation Cancelled:** ${actionName} for **${schoolName}** was cancelled. No changes have been made to your CRM database.`,
+        nextActions: ['Add School Lead'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const handleSelectDisambiguatedSchool = async (selectedSchool, disambigCard) => {
+    if (!selectedSchool || !disambigCard) return;
+    const action = disambigCard.action;
+
+    if (action === 'delete') {
+      promptDeleteConfirmation(selectedSchool);
+    } else if (action === 'schedule_meeting') {
+      promptScheduleMeetingConfirmation(selectedSchool, disambigCard.payload || {
+        date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        time: '11:00 AM',
+        mode: 'In-Person Campus Visit',
+        location: selectedSchool.location || 'School Campus',
+        notes: 'Discussion on curriculum partnership',
+      });
+    } else if (action === 'add_note') {
+      if (disambigCard.payload?.note) {
+        promptAddNoteConfirmation(selectedSchool, disambigCard.payload.note);
+      } else {
+        setPendingNoteTarget(selectedSchool);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📝 **Add Note for ${selectedSchool.school_name || selectedSchool.schoolName}:**\n\nWhat note or discussion comment would you like to record in the CRM? (Type your note below or use the form):`,
+            noteInputCard: { lead: selectedSchool },
+            time: 'Just now',
+          },
+        ]);
+      }
+    } else if (action === 'archive') {
+      promptArchiveConfirmation(selectedSchool);
+    } else if (action === 'unarchive') {
+      promptUnarchiveConfirmation(selectedSchool);
+    } else if (action === 'lost') {
+      promptLostConfirmation(selectedSchool, disambigCard.payload?.reason);
+    }
+  };
+
   // 2. Delete Lead permanently from CRM database
   const handleDeleteLead = (leadCard) => {
     const target = leadCard || findLatestLead();
@@ -554,186 +1407,24 @@ export default function MainScreen({ user, onLogout }) {
       Alert.alert('Notice', 'No active school lead found to delete.');
       return;
     }
-    const schoolName = target.schoolName || target.school_name || 'this school';
-    if (target.status === 'deleted' || target.isDeleted) {
-      Alert.alert('Already Deleted', `"${schoolName}" has already been deleted from CRM.`);
-      return;
-    }
-
-    Alert.alert(
-      'Delete School Lead',
-      `Are you sure you want to permanently delete "${schoolName}" from the CRM database?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setIsTyping(true);
-            if (target.id) {
-              await api.deleteSchoolInquiry(target.id);
-            }
-            setIsTyping(false);
-
-            setMessages((prev) =>
-              prev.map((msg) => {
-                if (msg.leadCard && (msg.leadCard.id === target.id || msg.leadCard.schoolName === schoolName)) {
-                  return {
-                    ...msg,
-                    leadCard: {
-                      ...msg.leadCard,
-                      status: 'deleted',
-                      isDeleted: true,
-                    },
-                  };
-                }
-                return msg;
-              })
-            );
-
-            setMessages((prev) => [
-              ...prev,
-              {
-                sender: 'ai',
-                text: `🗑️ **Lead Deleted:** Removed **${schoolName}** from the CRM database.`,
-                nextActions: ['Add School Lead'],
-                time: 'Just now',
-              },
-            ]);
-          },
-        },
-      ]
-    );
+    promptDeleteConfirmation(target);
   };
 
   // 3. Archive Lead
   const handleArchiveLead = async (leadCard) => {
     const target = leadCard || findLatestLead();
     if (!target) return;
-    const schoolName = target.schoolName || target.school_name || 'School';
-    const targetId = target.id;
-    if (target.status === 'lost') {
-      Alert.alert('Lead Closed (Lost)', `"${schoolName}" is marked as a Lost Lead.`);
-      return;
-    }
-    if (target.status === 'deleted' || target.isDeleted) {
-      Alert.alert('Lead Deleted', `"${schoolName}" has been deleted from CRM.`);
-      return;
-    }
-    setIsTyping(true);
-    if (targetId) {
-      await api.updateSchoolInquiry(targetId, { status: 'archived' });
-    }
-    setIsTyping(false);
-
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.leadCard) {
-          const lcName = msg.leadCard.schoolName || msg.leadCard.school_name;
-          if ((targetId && msg.leadCard.id === targetId) || (lcName && lcName.toLowerCase() === schoolName.toLowerCase())) {
-            return {
-              ...msg,
-              leadCard: {
-                ...msg.leadCard,
-                status: 'archived',
-                isDeleted: false,
-                isArchived: true,
-              },
-            };
-          }
-        }
-        return msg;
-      })
-    );
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: 'ai',
-        text: `📦 **Lead Archived:** **${schoolName}** has been moved to CRM archives. You can unarchive or delete it at any time.`,
-        nextActions: ['Add School Lead'],
-        time: 'Just now',
-      },
-    ]);
+    promptArchiveConfirmation(target);
   };
 
-  // 3a. Unarchive Lead (Restore to Active Pipeline with Full Lead Card & All Buttons)
+  // 3a. Unarchive Lead
   const handleUnarchiveLead = async (leadCard) => {
-    const target = leadCard || findLatestLead();
+    const target = leadCard || findLatestLeadIncludingArchived();
     if (!target) {
       Alert.alert('Notice', 'No school lead found in context to unarchive.');
       return;
     }
-    const schoolName = target.schoolName || target.school_name || 'School';
-    const contactPerson = target.contactPerson || target.contact_name || 'Principal';
-    const contactRole = target.contactRole || target.contact_role || 'Principal';
-    const targetId = target.id;
-
-    setIsTyping(true);
-    if (targetId) {
-      await api.updateSchoolInquiry(targetId, { status: 'new' });
-    }
-    setIsTyping(false);
-
-    // Build the fully active leadCard object with all details and active status 'new'
-    const restoredLeadCard = {
-      ...target,
-      id: targetId || target.id || `lead_${Date.now()}`,
-      schoolName: schoolName,
-      school_name: schoolName,
-      contactPerson: contactPerson.includes('(') ? contactPerson : `${contactPerson} (${contactRole})`,
-      contact_name: contactPerson.replace(/\s*\([^)]*\)/, '').trim(),
-      contactRole: contactRole,
-      contact_role: contactRole,
-      phone: target.phone || '',
-      email: target.email || '',
-      location: target.location || 'Mumbai, Maharashtra',
-      board: target.board || 'CBSE',
-      studentCount: target.studentCount || target.school_size || target.student_count_tier || 'Enrolled Campus',
-      recommendedProgram: target.recommendedProgram || (target.programs_interested && target.programs_interested[0]) || 'Agentic AI & Coding Excellence Lab (K-12)',
-      leadScore: '96/100 (Hot Lead)',
-      notes: target.notes || `Lead restored to active pipeline from CRM archives. Ready for demonstrations and proposals.`,
-      status: 'new',
-      isDeleted: false,
-      isArchived: false,
-      meeting_date: target.meeting_date || null,
-      meeting_time: target.meeting_time || null,
-      meeting_type: target.meeting_type || null,
-      comments: target.comments || [],
-    };
-
-    // Update existing cards in messages history so they also reflect active status
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.leadCard) {
-          const lcName = msg.leadCard.schoolName || msg.leadCard.school_name;
-          if ((targetId && msg.leadCard.id === targetId) || (lcName && lcName.toLowerCase() === schoolName.toLowerCase())) {
-            return {
-              ...msg,
-              leadCard: {
-                ...msg.leadCard,
-                status: 'new',
-                isDeleted: false,
-                isArchived: false,
-              },
-            };
-          }
-        }
-        return msg;
-      })
-    );
-
-    // Append NEW chat message containing the FULL LEAD CARD with ALL active action buttons!
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: 'ai',
-        text: `✅ **Lead Restored from Archive:** **${schoolName}** is now active in your CRM pipeline as **New Lead**.\n\nInteractive lead card rendered below with full action controls:`,
-        leadCard: restoredLeadCard,
-        nextActions: ['Schedule Meeting', 'Generate Proposal Quote', 'Add Note'],
-        time: 'Just now',
-      },
-    ]);
+    promptUnarchiveConfirmation(target);
   };
 
   // 3b. Save New School Lead from Form Modal to Backend Database (Matching AdminSchoolCRM)
@@ -1413,6 +2104,53 @@ export default function MainScreen({ user, onLogout }) {
 
     const lower = userText.toLowerCase();
 
+    // ── STEP 1: Check if user is replying to a pending Confirmation ("yes" / "no") ──
+    if (pendingConfirmation) {
+      const isAffirmative =
+        lower === 'yes' ||
+        lower === 'y' ||
+        lower === 'yes please' ||
+        lower === 'confirm' ||
+        lower === 'proceed' ||
+        lower === 'sure' ||
+        lower === 'do it' ||
+        lower === 'ok' ||
+        lower === 'okay' ||
+        lower === 'yes confirm' ||
+        lower.startsWith('yes');
+
+      const isNegative =
+        lower === 'no' ||
+        lower === 'n' ||
+        lower === 'cancel' ||
+        lower === 'stop' ||
+        lower === 'abort' ||
+        lower === 'no cancel' ||
+        lower === "don't" ||
+        lower === 'nevermind' ||
+        lower === 'no thanks' ||
+        lower.startsWith('no');
+
+      if (isAffirmative) {
+        setIsTyping(false);
+        await executeConfirmedAction(pendingConfirmation);
+        return;
+      } else if (isNegative) {
+        setIsTyping(false);
+        await executeCancelledAction(pendingConfirmation);
+        return;
+      }
+    }
+
+    // ── STEP 2: Check if user is supplying note text after AI prompted for it ──
+    if (pendingNoteTarget) {
+      const targetSchool = pendingNoteTarget;
+      setPendingNoteTarget(null);
+      setIsTyping(false);
+      promptAddNoteConfirmation(targetSchool, userText);
+      return;
+    }
+
     // Helper to find latest lead in chat context
     // ── 0A. Action Intent: Add School Lead (Opens Dedicated Web App Form Modal) ──
     const isAddLeadFormIntent =
@@ -1489,22 +2227,6 @@ export default function MainScreen({ user, onLogout }) {
             time: 'Just now',
           },
         ]);
-      }
-      return;
-    }
-
-    // ── 0C. Action Intent: Unarchive Lead ──
-    if (
-      lower.includes('unarchive') ||
-      lower.includes('restore lead') ||
-      lower.includes('un-archive')
-    ) {
-      setIsTyping(false);
-      const targetLead = findLatestLead();
-      if (targetLead) {
-        await handleUnarchiveLead(targetLead);
-      } else {
-        Alert.alert('Notice', 'No archived school lead found in context to restore.');
       }
       return;
     }
@@ -1783,281 +2505,538 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
-    // ── 2. Action Intent: Delete Lead ──
-    if (
-      lower.startsWith('delete') ||
-      lower.includes('delete lead') ||
-      lower.includes('remove lead') ||
-      lower.includes('delete school')
-    ) {
+    // ── 2. Action Intent: Delete School Lead (Confirmation-Based) ──
+    const isDeleteIntent =
+      (lower.startsWith('delete') ||
+       lower.startsWith('remove') ||
+       lower.includes('permanently delete') ||
+       lower.includes('delete school') ||
+       lower.includes('delete lead') ||
+       lower.includes('delete this')) &&
+      !lower.includes('how to') &&
+      !lower.includes('why');
+
+    if (isDeleteIntent) {
+      let q = userText
+        .replace(/permanently\s+delete/i, '')
+        .replace(/delete\s+this\s+school\s+lead/i, '')
+        .replace(/delete\s+this\s+school/i, '')
+        .replace(/delete\s+this\s+lead/i, '')
+        .replace(/delete\s+school\s+lead(?:\s+for)?/i, '')
+        .replace(/delete\s+lead(?:\s+for)?/i, '')
+        .replace(/delete\s+school(?:\s+for)?/i, '')
+        .replace(/delete/i, '')
+        .replace(/remove/i, '')
+        .trim();
+
+      const resolved = await resolveSchoolFromQuery(q);
       setIsTyping(false);
-      if (target) {
-        if (target.status === 'deleted' || target.isDeleted) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `🗑️ **Already Deleted:** **${target.schoolName || target.school_name}** has already been deleted from CRM.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
+
+      if (resolved.status === 'multiple') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Multiple Schools Found Matching "${q}":**\n\nPlease select the exact school lead you want to permanently delete:`,
+            disambiguationCard: {
+              action: 'delete',
+              actionLabel: 'permanently delete',
+              candidates: resolved.candidates,
             },
-          ]);
-          return;
-        }
-        handleDeleteLead(target);
-      } else {
-        Alert.alert('Notice', 'No active school lead found to delete.');
+            time: 'Just now',
+          },
+        ]);
+        return;
       }
+
+      if (resolved.status === 'none') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **School Lead Not Found:** Could not locate an existing school lead matching **"${q || userText}"** to delete.\n\nPlease check the school name or type "Show all leads" to browse.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const lead = resolved.lead;
+      if (lead.status === 'deleted' || lead.isDeleted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🗑️ **Already Deleted:** **${lead.schoolName || lead.school_name}** has already been permanently deleted from CRM.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      promptDeleteConfirmation(lead);
       return;
     }
 
-    // ── 3. Action Intent: Mark as Lost Lead ──
-    if (
+    // ── 3. Action Intent: Mark as Lost Lead (Confirmation-Based) ──
+    const isLostIntent =
       lower.includes('lost lead') ||
       lower.includes('mark as lost') ||
       lower.includes('mark lost') ||
-      lower.includes('deal lost')
-    ) {
+      lower.includes('deal lost') ||
+      lower.includes('is a lost lead') ||
+      lower.includes('as lost lead');
+
+    if (isLostIntent) {
+      let q = userText
+        .replace(/mark\s+this\s+school\s+as\s+a\s+lost\s+lead/i, '')
+        .replace(/mark\s+this\s+school\s+as\s+lost/i, '')
+        .replace(/this\s+school\s+is\s+a\s+lost\s+lead/i, '')
+        .replace(/mark\s+as\s+lost\s+lead(?:\s+for)?/i, '')
+        .replace(/mark\s+as\s+lost(?:\s+for)?/i, '')
+        .replace(/mark\s+lost\s+lead(?:\s+for)?/i, '')
+        .replace(/mark\s+lost(?:\s+for)?/i, '')
+        .replace(/lost\s+lead(?:\s+for)?/i, '')
+        .replace(/deal\s+lost\s+with/i, '')
+        .replace(/deal\s+lost(?:\s+for)?/i, '')
+        .replace(/is\s+a\s+lost\s+lead/i, '')
+        .trim();
+
+      const resolved = await resolveSchoolFromQuery(q);
       setIsTyping(false);
-      if (target) {
-        if (target.status === 'lost') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `❌ **Already Lost:** **${target.schoolName || target.school_name}** is already recorded as a Lost Lead.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
+
+      if (resolved.status === 'multiple') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Multiple Schools Found Matching "${q}":**\n\nPlease select which school lead to mark as lost:`,
+            disambiguationCard: {
+              action: 'lost',
+              actionLabel: 'mark as lost',
+              candidates: resolved.candidates,
             },
-          ]);
-          return;
-        }
-        if (target.status === 'deleted' || target.isDeleted) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (resolved.status === 'none') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **School Lead Not Found:** Could not locate a school lead matching **"${q || userText}"** to mark as lost.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const lead = resolved.lead;
+      if (lead.status === 'lost') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `❌ **Already Marked as Lost:** **${lead.schoolName || lead.school_name}** is already recorded as a Lost Lead.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+      if (lead.status === 'deleted' || lead.isDeleted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🗑️ **Lead Deleted:** **${lead.schoolName || lead.school_name}** was deleted from CRM.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      promptLostConfirmation(lead);
+      return;
+    }
+
+    // ── 4. Action Intent: Archive School Lead (Confirmation-Based) ──
+    const isArchiveIntent =
+      (lower.includes('archive this school') ||
+       lower.includes('archive this lead') ||
+       lower.includes('archive school') ||
+       lower.includes('archive lead') ||
+       lower.includes('move to archive') ||
+       lower.startsWith('archive')) &&
+      !lower.includes('unarchive') &&
+      !lower.includes('un-archive');
+
+    if (isArchiveIntent) {
+      let q = userText
+        .replace(/archive\s+this\s+school\s+lead/i, '')
+        .replace(/archive\s+this\s+school/i, '')
+        .replace(/archive\s+this\s+lead/i, '')
+        .replace(/move\s+(?:to\s+)?archive/i, '')
+        .replace(/archive\s+school\s+lead(?:\s+for)?/i, '')
+        .replace(/archive\s+lead(?:\s+for)?/i, '')
+        .replace(/archive\s+school(?:\s+for)?/i, '')
+        .replace(/archive/i, '')
+        .trim();
+
+      const resolved = await resolveSchoolFromQuery(q);
+      setIsTyping(false);
+
+      if (resolved.status === 'multiple') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Multiple Schools Found Matching "${q}":**\n\nPlease select which school lead to archive:`,
+            disambiguationCard: {
+              action: 'archive',
+              actionLabel: 'archive',
+              candidates: resolved.candidates,
             },
-          ]);
-          return;
-        }
-        openLostLeadModal(target);
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (resolved.status === 'none') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **School Lead Not Found:** Could not locate a school matching **"${q || userText}"** to archive.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const lead = resolved.lead;
+      if (lead.status === 'archived' || lead.isArchived) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📦 **Already Archived:** **${lead.schoolName || lead.school_name}** is already in the CRM archive.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+      if (lead.status === 'lost') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `❌ **Lead Closed (Lost):** **${lead.schoolName || lead.school_name}** is marked as a Lost Lead.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      promptArchiveConfirmation(lead);
+      return;
+    }
+
+    // ── 5. Action Intent: Unarchive School Lead (Confirmation-Based) ──
+    const isUnarchiveIntent =
+      lower.includes('unarchive') ||
+      lower.includes('un-archive') ||
+      lower.includes('restore lead') ||
+      lower.includes('restore school') ||
+      lower.startsWith('restore');
+
+    if (isUnarchiveIntent) {
+      let q = userText
+        .replace(/unarchive\s+this\s+school\s+lead/i, '')
+        .replace(/unarchive\s+this\s+school/i, '')
+        .replace(/unarchive\s+this\s+lead/i, '')
+        .replace(/unarchive\s+school\s+lead(?:\s+for)?/i, '')
+        .replace(/unarchive\s+lead(?:\s+for)?/i, '')
+        .replace(/unarchive\s+school(?:\s+for)?/i, '')
+        .replace(/un-archive\s+school\s+lead(?:\s+for)?/i, '')
+        .replace(/un-archive\s+lead(?:\s+for)?/i, '')
+        .replace(/un-archive/i, '')
+        .replace(/unarchive/i, '')
+        .replace(/restore\s+lead(?:\s+for)?/i, '')
+        .replace(/restore\s+school(?:\s+for)?/i, '')
+        .replace(/restore/i, '')
+        .trim();
+
+      const resolved = await resolveSchoolFromQuery(q);
+      setIsTyping(false);
+
+      if (resolved.status === 'multiple') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Multiple Schools Found Matching "${q}":**\n\nPlease select which school lead to unarchive:`,
+            disambiguationCard: {
+              action: 'unarchive',
+              actionLabel: 'unarchive and restore',
+              candidates: resolved.candidates,
+            },
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (resolved.status === 'none') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Archived School Not Found:** Could not locate an archived school lead matching **"${q || userText}"** to restore.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const lead = resolved.lead;
+      if (lead.status !== 'archived' && !lead.isArchived) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `ℹ️ **Lead is Already Active:** **${lead.schoolName || lead.school_name}** is already in the active CRM sales pipeline.`,
+            leadCard: lead,
+            nextActions: ['Schedule Meeting', 'Generate Proposal Quote'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      promptUnarchiveConfirmation(lead);
+      return;
+    }
+
+    // ── 6. Action Intent: Schedule Meeting (Confirmation-Based with Details) ──
+    const isScheduleIntent =
+      (lower.includes('schedule a meeting') ||
+       lower.includes('schedule meeting') ||
+       lower.includes('book a meeting') ||
+       lower.includes('book meeting') ||
+       lower.includes('schedule demo') ||
+       lower.includes('set up a meeting') ||
+       lower.startsWith('schedule demo') ||
+       (lower.startsWith('meeting with') && !lower.includes('done')));
+
+    if (isScheduleIntent && !lower.includes('done') && !lower.includes('completed')) {
+      let q = userText
+        .replace(/schedule\s+a\s+meeting\s+with/i, '')
+        .replace(/schedule\s+meeting\s+with/i, '')
+        .replace(/schedule\s+a\s+meeting\s+for/i, '')
+        .replace(/schedule\s+meeting\s+for/i, '')
+        .replace(/book\s+a\s+meeting\s+with/i, '')
+        .replace(/book\s+meeting\s+with/i, '')
+        .replace(/schedule\s+demo\s+for/i, '')
+        .replace(/schedule\s+demo\s+with/i, '')
+        .replace(/set\s+up\s+a\s+meeting\s+with/i, '')
+        .replace(/meeting\s+with/i, '')
+        .replace(/schedule\s+meeting/i, '')
+        .replace(/schedule/i, '')
+        .trim();
+
+      const rawQuery = q.split(/\s+(?:on|at|tomorrow|next|for|via|online|offline)/i)[0].trim();
+      const resolved = await resolveSchoolFromQuery(rawQuery);
+      setIsTyping(false);
+
+      if (resolved.status === 'multiple') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Multiple Schools Found Matching "${rawQuery}":**\n\nPlease select the school you want to schedule a meeting with:`,
+            disambiguationCard: {
+              action: 'schedule_meeting',
+              actionLabel: 'schedule meeting with',
+              candidates: resolved.candidates,
+            },
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (resolved.status === 'none') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **School Lead Not Found:** Could not locate a school matching **"${rawQuery || userText}"** to schedule a meeting.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const lead = resolved.lead;
+
+      if (lead.status === 'lost') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `❌ **Lead Closed (Lost):** **${lead.schoolName || lead.school_name}** is marked as a Lost Lead. Meetings cannot be scheduled for closed leads.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+      if (lead.status === 'deleted' || lead.isDeleted || lead.status === 'archived' || lead.isArchived) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `⚠️ **Lead Inactive:** **${lead.schoolName || lead.school_name}** is currently ${lead.isArchived ? 'archived' : 'deleted'}. Please restore it before scheduling meetings.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const isMeetingScheduled = lead.status === 'meeting_scheduled' || (lead.meeting_date && lead.status !== 'meeting_done');
+      const isMeetingDone = lead.status === 'meeting_done';
+
+      if (isMeetingScheduled && !isMeetingDone) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `⚠️ **Meeting Already Scheduled:** A meeting with **${lead.schoolName || lead.school_name}** is already scheduled for **${lead.meeting_date || 'an upcoming date'}**${lead.meeting_time ? ` at **${lead.meeting_time}**` : ''}.\n\nUnder CRM rules, you cannot reschedule this meeting until it has taken place and been marked as Done.`,
+            nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const parsedDetails = extractMeetingDetailsFromText(userText, lead);
+      if (parsedDetails.hasRequiredDetails) {
+        promptScheduleMeetingConfirmation(lead, parsedDetails);
       } else {
-        Alert.alert('Notice', 'No active school lead found.');
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📅 **Schedule Meeting with ${lead.schoolName || lead.school_name}:**\n\nPlease select the meeting mode, date, time, and location/link below:`,
+            meetingSchedulerCard: { lead },
+            time: 'Just now',
+          },
+        ]);
       }
       return;
     }
 
-    // ── 4. Action Intent: Archive Lead ──
-    if (
-      lower.includes('archive lead') ||
-      lower.includes('archive school') ||
-      lower === 'archive'
-    ) {
-      setIsTyping(false);
-      if (target) {
-        if (target.status === 'lost') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        await handleArchiveLead(target);
-      } else {
-        Alert.alert('Notice', 'No active school lead found to archive.');
-      }
-      return;
-    }
-
-    // ── 5. Action Intent: Schedule Meeting (Rule 2 & 3) ──
-    if (
-      lower.includes('schedule meeting') ||
-      lower.includes('schedule demo') ||
-      lower.includes('book meeting') ||
-      lower.includes('set meeting')
-    ) {
-      setIsTyping(false);
-      if (target) {
-        if (target.status === 'lost') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Meetings cannot be scheduled for closed leads.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM. Meetings cannot be scheduled for deleted leads.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-
-        const isMeetingScheduled = target.status === 'meeting_scheduled' || (target.meeting_date && target.status !== 'meeting_done');
-        const isMeetingDone = target.status === 'meeting_done';
-
-        if (isMeetingScheduled && !isMeetingDone) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `⚠️ **Meeting Already Scheduled:** A meeting with **${target.schoolName || target.school_name}** is already scheduled for **${target.meeting_date || 'an upcoming date'}**${target.meeting_time ? ` at **${target.meeting_time}**` : ''}.\n\nUnder CRM rules, you cannot reschedule this meeting until it has taken place and been marked as Done.`,
-              nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-
-        openScheduleMeetingModal(target);
-      } else {
-        Alert.alert('Notice', 'No active school lead found to schedule meeting.');
-      }
-      return;
-    }
-
-    // ── 6. Action Intent: Assign Lead ──
-    if (
-      lower.startsWith('assign') ||
-      lower.includes('assign lead') ||
-      lower.includes('assign to')
-    ) {
-      setIsTyping(false);
-      if (target) {
-        if (target.status === 'lost') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Lost leads cannot be assigned.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        openAssignLeadModal(target);
-      } else {
-        Alert.alert('Notice', 'No active school lead found to assign.');
-      }
-      return;
-    }
-
-    // ── 7. Action Intent: Raise Support Ticket ──
-    if (
-      lower.includes('raise ticket') ||
-      lower.includes('support ticket') ||
-      lower.includes('create ticket') ||
-      lower === 'ticket'
-    ) {
-      setIsTyping(false);
-      if (target) {
-        if (target.status === 'lost') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Support tickets cannot be raised for closed leads.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        openRaiseTicketModal(target);
-      } else {
-        Alert.alert('Notice', 'No active school lead found to raise a ticket for.');
-      }
-      return;
-    }
-
-    // ── 8. Action Intent: Add Note / Comment ──
-    if (
+    // ── 7. Action Intent: Add Note or Comment (Confirmation-Based) ──
+    const isNoteIntent =
       lower.startsWith('note:') ||
       lower.startsWith('comment:') ||
+      lower.includes('add a note') ||
       lower.includes('add note') ||
-      lower.includes('take note') ||
-      lower.includes('save note') ||
+      lower.includes('add a comment') ||
       lower.includes('add comment') ||
-      lower.includes('new comment')
-    ) {
+      lower.includes('comment on') ||
+      lower.includes('note on');
+
+    if (isNoteIntent) {
+      const { schoolQuery, extractedNote } = extractNoteAndSchool(userText);
+      const resolved = await resolveSchoolFromQuery(schoolQuery);
       setIsTyping(false);
-      if (target) {
-        if (target.status === 'lost') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Notes cannot be added to closed leads.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
+
+      if (resolved.status === 'multiple') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Multiple Schools Found Matching "${schoolQuery}":**\n\nPlease select which school to add this note to:`,
+            disambiguationCard: {
+              action: 'add_note',
+              actionLabel: 'add note to',
+              payload: { note: extractedNote },
+              candidates: resolved.candidates,
             },
-          ]);
-          return;
-        }
-        if (target.status === 'deleted' || target.isDeleted || target.status === 'archived') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: 'ai',
-              text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead'],
-              time: 'Just now',
-            },
-          ]);
-          return;
-        }
-        let extractedNote = '';
-        const colonIdx = userText.indexOf(':');
-        if (colonIdx !== -1 && colonIdx < userText.length - 1) {
-          extractedNote = userText.slice(colonIdx + 1).trim();
-        }
-        openNoteModal(target, extractedNote);
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (resolved.status === 'none') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **School Lead Not Found:** Could not locate a school matching **"${schoolQuery || userText}"** to add a note to.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const lead = resolved.lead;
+      if (lead.status === 'lost') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `❌ **Lead Closed (Lost):** **${lead.schoolName || lead.school_name}** is marked as a Lost Lead. Notes cannot be added to closed leads.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+      if (lead.status === 'deleted' || lead.isDeleted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🗑️ **Lead Deleted:** **${lead.schoolName || lead.school_name}** was deleted from CRM.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (extractedNote && extractedNote.length >= 3) {
+        promptAddNoteConfirmation(lead, extractedNote);
       } else {
-        Alert.alert('Notice', 'No active school lead found to add a note or comment to.');
+        setPendingNoteTarget(lead);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `📝 **Add Note for ${lead.schoolName || lead.school_name}:**\n\nWhat note or discussion comment would you like to record in the CRM? (Type your note below or use the form):`,
+            noteInputCard: { lead },
+            time: 'Just now',
+          },
+        ]);
       }
       return;
     }
@@ -2582,6 +3561,13 @@ export default function MainScreen({ user, onLogout }) {
                 onLostLead={openLostLeadModal}
                 onArchiveLead={handleArchiveLead}
                 onUnarchiveLead={handleUnarchiveLead}
+                onConfirmAction={executeConfirmedAction}
+                onCancelAction={executeCancelledAction}
+                onSelectDisambiguatedSchool={handleSelectDisambiguatedSchool}
+                onSubmitInlineMeeting={({ lead, date, time, mode, location, notes }) =>
+                  promptScheduleMeetingConfirmation(lead, { date, time, mode, location, notes })
+                }
+                onSubmitInlineNote={(lead, noteText) => promptAddNoteConfirmation(lead, noteText)}
               />
             ) : (
               /* Default Suggestions Landing Screen */

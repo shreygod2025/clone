@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Keyboard, Platform, Linking, Alert } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Keyboard, Platform, Linking, Alert, TextInput } from 'react-native';
 import { Feather, Ionicons, FontAwesome } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import MarkdownView from './MarkdownView';
@@ -40,6 +40,11 @@ export default function ChatMessagesView({
   onLostLead,
   onArchiveLead,
   onUnarchiveLead,
+  onConfirmAction,
+  onCancelAction,
+  onSelectDisambiguatedSchool,
+  onSubmitInlineMeeting,
+  onSubmitInlineNote,
 }) {
   const scrollViewRef = useRef(null);
 
@@ -229,6 +234,27 @@ export default function ChatMessagesView({
                           baseStyle={styles.latestNoteBody}
                         />
                       </View>
+
+                      {/* CRM Activity Log & Comments History */}
+                      {lead.comments && lead.comments.length > 0 ? (
+                        <View style={styles.activityLogContainer}>
+                          <View style={styles.activityLogHeader}>
+                            <Feather name="clock" size={11} color="#059669" style={{ marginRight: 5 }} />
+                            <Text style={styles.activityLogTitle}>CRM Comments & Activity Log ({lead.comments.length}):</Text>
+                          </View>
+                          {lead.comments.slice(-3).reverse().map((c, i) => (
+                            <View key={i} style={styles.activityLogRow}>
+                              <View style={styles.activityLogBullet} />
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.activityLogText}>{c.text || c.comment}</Text>
+                                <Text style={styles.activityLogMeta}>
+                                  👤 {c.author || 'CRM Assistant'} • {c.created_at ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Logged recently'}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
 
                       {/* Automated Follow-up Tasks from Backend */}
                       {lead.followup_tasks && lead.followup_tasks.length > 0 ? (
@@ -522,6 +548,137 @@ export default function ChatMessagesView({
                   </View>
                 )}
 
+                {/* Render Disambiguation Card if multiple schools matched */}
+                {msg.disambiguationCard && (
+                  <View style={styles.disambiguationBox}>
+                    <View style={styles.disambigHeader}>
+                      <Feather name="help-circle" size={15} color="#0284C7" style={{ marginRight: 6 }} />
+                      <Text style={styles.disambigTitle}>Multiple Schools Matched</Text>
+                    </View>
+                    <Text style={styles.disambigSubtitle}>
+                      Please select which school you want to {msg.disambiguationCard.actionLabel || 'proceed with'}:
+                    </Text>
+                    <View style={styles.disambigList}>
+                      {msg.disambiguationCard.candidates.map((c, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          activeOpacity={0.7}
+                          style={styles.disambigBtn}
+                          onPress={() => onSelectDisambiguatedSchool && onSelectDisambiguatedSchool(c, msg.disambiguationCard)}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.disambigSchoolName}>{c.school_name || c.schoolName}</Text>
+                            <Text style={styles.disambigSchoolMeta}>
+                              📍 {c.location || 'Mumbai'} • 👤 {c.contact_name || c.contactPerson || 'Principal'} • 🎓 {c.board || 'CBSE'}
+                            </Text>
+                          </View>
+                          <Feather name="chevron-right" size={16} color="#059669" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Render Inline Meeting Scheduler Form if present */}
+                {msg.meetingSchedulerCard && (
+                  <InlineMeetingScheduler
+                    lead={msg.meetingSchedulerCard.lead}
+                    onSubmit={onSubmitInlineMeeting}
+                  />
+                )}
+
+                {/* Render Inline Note Input Form if present */}
+                {msg.noteInputCard && (
+                  <InlineNoteInput
+                    lead={msg.noteInputCard.lead}
+                    onSubmit={onSubmitInlineNote}
+                  />
+                )}
+
+                {/* Render Confirmation Card (Yes/No buttons) */}
+                {msg.confirmationCard && (
+                  <View style={[
+                    styles.confirmationCard,
+                    msg.confirmationCard.danger ? styles.confirmationCardDanger : styles.confirmationCardPrimary,
+                    msg.confirmationCard.status === 'confirmed' && styles.confirmationCardConfirmed,
+                    msg.confirmationCard.status === 'cancelled' && styles.confirmationCardCancelled,
+                  ]}>
+                    <View style={styles.confirmHeaderRow}>
+                      <View style={[
+                        styles.confirmIconBubble,
+                        msg.confirmationCard.danger ? styles.confirmIconDanger : styles.confirmIconPrimary
+                      ]}>
+                        <Feather
+                          name={
+                            msg.confirmationCard.actionType === 'delete' ? 'trash-2' :
+                            msg.confirmationCard.actionType === 'lost' ? 'slash' :
+                            msg.confirmationCard.actionType === 'archive' ? 'archive' :
+                            msg.confirmationCard.actionType === 'unarchive' ? 'rotate-ccw' :
+                            msg.confirmationCard.actionType === 'schedule_meeting' ? 'calendar' :
+                            'edit-3'
+                          }
+                          size={16}
+                          color={msg.confirmationCard.danger ? '#DC2626' : '#059669'}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.confirmTitle}>{msg.confirmationCard.title}</Text>
+                        {msg.confirmationCard.description ? (
+                          <Text style={styles.confirmDesc}>{msg.confirmationCard.description}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    {/* Details Key-Value Box */}
+                    {msg.confirmationCard.details && msg.confirmationCard.details.length > 0 && (
+                      <View style={styles.confirmDetailsBox}>
+                        {msg.confirmationCard.details.map((d, idx) => (
+                          <View key={idx} style={styles.confirmDetailRow}>
+                            <Text style={styles.confirmDetailLabel}>{d.label}:</Text>
+                            <Text style={styles.confirmDetailValue} numberOfLines={2}>{d.value}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Interactive Yes / No Buttons if status is pending */}
+                    {msg.confirmationCard.status === 'pending' ? (
+                      <View style={styles.confirmButtonsRow}>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          style={[
+                            styles.confirmBtn,
+                            msg.confirmationCard.danger ? styles.confirmBtnDanger : styles.confirmBtnPrimary
+                          ]}
+                          onPress={() => onConfirmAction && onConfirmAction(msg.confirmationCard)}
+                        >
+                          <Feather name="check" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                          <Text style={styles.confirmBtnText}>{msg.confirmationCard.confirmLabel || 'Yes, Confirm'}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          style={[styles.confirmBtn, styles.confirmBtnCancel]}
+                          onPress={() => onCancelAction && onCancelAction(msg.confirmationCard)}
+                        >
+                          <Feather name="x" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                          <Text style={styles.confirmBtnCancelText}>{msg.confirmationCard.cancelLabel || 'No, Cancel'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : msg.confirmationCard.status === 'confirmed' ? (
+                      <View style={styles.confirmStatusBannerSuccess}>
+                        <Feather name="check-circle" size={14} color="#059669" style={{ marginRight: 6 }} />
+                        <Text style={styles.confirmStatusTextSuccess}>Action Confirmed & Executed</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.confirmStatusBannerCancelled}>
+                        <Feather name="x-circle" size={14} color="#64748B" style={{ marginRight: 6 }} />
+                        <Text style={styles.confirmStatusTextCancelled}>Operation Cancelled — No changes made</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {/* Render Action Chips (hidden when leadCard is shown to avoid duplicate buttons) */}
                 {!msg.leadCard && msg.nextActions && msg.nextActions.length > 0 && (
                   <View style={styles.chipsRow}>
@@ -556,6 +713,151 @@ export default function ChatMessagesView({
         </View>
       )}
     </ScrollView>
+  );
+}
+
+function InlineMeetingScheduler({ lead, onSubmit }) {
+  const [mode, setMode] = useState('In-Person Campus Visit');
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [time, setTime] = useState('11:00 AM');
+  const [location, setLocation] = useState(lead?.location || 'School Campus');
+  const [notes, setNotes] = useState('Demonstration of Agentic AI & STEM Excellence Lab');
+
+  const setQuickDate = (daysAhead, defaultTime) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    setDate(d.toISOString().split('T')[0]);
+    setTime(defaultTime);
+  };
+
+  return (
+    <View style={styles.inlineFormCard}>
+      <View style={styles.inlineFormHeader}>
+        <Feather name="calendar" size={15} color="#2563EB" style={{ marginRight: 6 }} />
+        <Text style={styles.inlineFormTitle}>Meeting Details: {lead?.schoolName || lead?.school_name}</Text>
+      </View>
+
+      <Text style={styles.inlineFieldLabel}>Meeting Mode</Text>
+      <View style={styles.inlinePillsRow}>
+        {['In-Person Campus Visit', 'Online Demo', 'Phone Call'].map((m) => (
+          <TouchableOpacity
+            key={m}
+            style={[styles.inlinePill, mode === m && styles.inlinePillActive]}
+            onPress={() => {
+              setMode(m);
+              if (m === 'Online Demo') setLocation('Google Meet / Zoom');
+              else if (m === 'Phone Call') setLocation(lead?.phone || 'Phone Call');
+              else setLocation(lead?.location || 'School Campus');
+            }}
+          >
+            <Text style={[styles.inlinePillText, mode === m && styles.inlinePillTextActive]}>{m}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.inlineFieldLabel}>Quick Schedule</Text>
+      <View style={styles.inlinePillsRow}>
+        <TouchableOpacity style={styles.inlineQuickChip} onPress={() => setQuickDate(1, '11:00 AM')}>
+          <Text style={styles.inlineQuickChipText}>Tomorrow 11 AM</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.inlineQuickChip} onPress={() => setQuickDate(2, '02:00 PM')}>
+          <Text style={styles.inlineQuickChipText}>In 2 Days 2 PM</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.inlineQuickChip} onPress={() => setQuickDate(4, '10:00 AM')}>
+          <Text style={styles.inlineQuickChipText}>Next Week 10 AM</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.inlineFieldLabel}>Date</Text>
+          <TextInput
+            style={styles.inlineInput}
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#94A3B8"
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.inlineFieldLabel}>Time</Text>
+          <TextInput
+            style={styles.inlineInput}
+            value={time}
+            onChangeText={setTime}
+            placeholder="11:00 AM"
+            placeholderTextColor="#94A3B8"
+          />
+        </View>
+      </View>
+
+      <Text style={styles.inlineFieldLabel}>{mode === 'Online Demo' ? 'Online Meeting Link' : 'Location'}</Text>
+      <TextInput
+        style={styles.inlineInput}
+        value={location}
+        onChangeText={setLocation}
+        placeholder={mode === 'Online Demo' ? 'https://meet.google.com/...' : 'Campus Conference Room'}
+        placeholderTextColor="#94A3B8"
+      />
+
+      <Text style={styles.inlineFieldLabel}>Meeting Notes / Agenda</Text>
+      <TextInput
+        style={[styles.inlineInput, { height: 46, textAlignVertical: 'top' }]}
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Discussion objectives..."
+        placeholderTextColor="#94A3B8"
+        multiline
+      />
+
+      <TouchableOpacity
+        style={styles.inlineSubmitBtn}
+        activeOpacity={0.8}
+        onPress={() => onSubmit && onSubmit({ lead, date, time, mode, location, notes })}
+      >
+        <Feather name="check-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+        <Text style={styles.inlineSubmitBtnText}>Review & Confirm Meeting</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function InlineNoteInput({ lead, onSubmit }) {
+  const [noteText, setNoteText] = useState('');
+
+  return (
+    <View style={styles.inlineFormCard}>
+      <View style={styles.inlineFormHeader}>
+        <Feather name="edit-3" size={15} color="#059669" style={{ marginRight: 6 }} />
+        <Text style={styles.inlineFormTitle}>Add Note: {lead?.schoolName || lead?.school_name}</Text>
+      </View>
+      <TextInput
+        style={[styles.inlineInput, { height: 56, textAlignVertical: 'top', marginTop: 8 }]}
+        value={noteText}
+        onChangeText={setNoteText}
+        placeholder="Type note or comment to record in CRM..."
+        placeholderTextColor="#94A3B8"
+        multiline
+      />
+      <TouchableOpacity
+        style={[styles.inlineSubmitBtn, { backgroundColor: '#059669' }]}
+        activeOpacity={0.8}
+        onPress={() => {
+          if (noteText.trim()) {
+            onSubmit && onSubmit(lead, noteText.trim());
+          } else {
+            Alert.alert('Notice', 'Please enter a note before saving.');
+          }
+        }}
+      >
+        <Feather name="save" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+        <Text style={styles.inlineSubmitBtnText}>Save Note to CRM</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -1263,5 +1565,343 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#059669',
+  },
+  // ── Conversational Confirmation Card ───────────────────────────────────────
+  confirmationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  confirmationCardPrimary: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#FAFCFA',
+  },
+  confirmationCardDanger: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FFFBFB',
+  },
+  confirmationCardConfirmed: {
+    borderColor: '#A7F3D0',
+    backgroundColor: '#F0FDF4',
+  },
+  confirmationCardCancelled: {
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    opacity: 0.85,
+  },
+  confirmHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  confirmIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  confirmIconPrimary: {
+    backgroundColor: '#ECFDF5',
+  },
+  confirmIconDanger: {
+    backgroundColor: '#FEE2E2',
+  },
+  confirmTitle: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  confirmDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  confirmDetailsBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  confirmDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 2,
+  },
+  confirmDetailLabel: {
+    width: 100,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  confirmDetailValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  confirmButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  confirmBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  confirmBtnPrimary: {
+    backgroundColor: '#059669',
+  },
+  confirmBtnDanger: {
+    backgroundColor: '#DC2626',
+  },
+  confirmBtnCancel: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  confirmBtnCancelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  confirmStatusBannerSuccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  confirmStatusTextSuccess: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  confirmStatusBannerCancelled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  confirmStatusTextCancelled: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+
+  // ── Disambiguation Card ────────────────────────────────────────────────────
+  disambiguationBox: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    padding: 14,
+    marginTop: 10,
+  },
+  disambigHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  disambigTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  disambigSubtitle: {
+    fontSize: 12,
+    color: '#475569',
+    marginBottom: 8,
+  },
+  disambigList: {
+    gap: 6,
+  },
+  disambigBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+  },
+  disambigSchoolName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  disambigSchoolMeta: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+
+  // ── Inline Interactive Form Cards ──────────────────────────────────────────
+  inlineFormCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginTop: 10,
+  },
+  inlineFormHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  inlineFormTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  inlineFieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 6,
+    marginBottom: 3,
+    textTransform: 'uppercase',
+  },
+  inlinePillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  inlinePill: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  inlinePillActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  inlinePillText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  inlinePillTextActive: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+  },
+  inlineQuickChip: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  inlineQuickChipText: {
+    fontSize: 11,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  inlineInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 12.5,
+    color: '#0F172A',
+  },
+  inlineSubmitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  inlineSubmitBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // ── CRM Activity Log & Comments History in Lead Card ───────────────────────
+  activityLogContainer: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  activityLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  activityLogTitle: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  activityLogRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 3,
+    borderTopWidth: 1,
+    borderTopColor: '#DCFCE7',
+  },
+  activityLogBullet: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#059669',
+    marginTop: 6,
+    marginRight: 6,
+  },
+  activityLogText: {
+    fontSize: 11.5,
+    color: '#1E293B',
+    lineHeight: 16,
+  },
+  activityLogMeta: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
   },
 });
