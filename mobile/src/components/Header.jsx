@@ -35,16 +35,6 @@ export default function Header({ onNewChatPress, user, onLogout }) {
 
   return (
     <View style={styles.headerWrapper}>
-      {/* Phone Status Bar (9:41, Signal, Wifi, Battery) matching the design */}
-      <View style={styles.statusBarRow}>
-        <Text style={styles.statusTime}>9:41</Text>
-        <View style={styles.statusIconsRow}>
-          <Ionicons name="cellular" size={14} color="#FFFFFF" style={styles.statusIcon} />
-          <Ionicons name="wifi" size={14} color="#FFFFFF" style={styles.statusIcon} />
-          <Ionicons name="battery-full" size={18} color="#FFFFFF" />
-        </View>
-      </View>
-
       {/* Main Navigation Bar */}
       <View style={styles.navBarRow}>
         {/* Left side: Logo + Brand + Status */}
@@ -142,31 +132,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
-  statusBarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 12 : 10,
-    paddingBottom: 4,
-  },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-  },
-  statusIconsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIcon: {
-    marginRight: 6,
-  },
   navBarRow: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 14,
+    paddingTop: Platform.OS === 'ios' ? 8 : 10,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

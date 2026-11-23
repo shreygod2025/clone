@@ -10,6 +10,8 @@ export default function ChatInput({
   onAttach,
   onMicPress,
   isRecording = false,
+  onFocus,
+  onBlur,
 }) {
   const handleKeyDown = (e) => {
     if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
@@ -42,6 +44,8 @@ export default function ChatInput({
           blurOnSubmit={false}
           returnKeyType="default"
           onKeyPress={handleKeyDown}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
 
         {/* Mic Button */}
@@ -77,18 +81,18 @@ const styles = StyleSheet.create({
   outerWrapper: {
     paddingHorizontal: 16,
     paddingTop: 6,
-    paddingBottom: 10,
-    backgroundColor: 'transparent',
+    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+    backgroundColor: COLORS.bgMain,
   },
   pillContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.2,
+    borderColor: '#CBD5E1',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: Platform.OS === 'ios' ? 6 : 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,

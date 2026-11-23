@@ -53,21 +53,10 @@ export default function LoginScreen({ onLoginSuccess }) {
     setErrorMessage('');
   };
 
-  const handleDemoMode = () => {
-    const demoUser = {
-      id: 'demo-admin-id',
-      email: 'it@oll.co',
-      name: 'Mehak Shaikh',
-      role: 'admin',
-      permissions: ['schools', 'dashboard', 'ai_chat'],
-    };
-    onLoginSuccess(demoUser, 'demo-token');
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
@@ -76,15 +65,6 @@ export default function LoginScreen({ onLoginSuccess }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Status Bar Placeholder for Mobile */}
-        <View style={styles.statusBarRow}>
-          <Text style={styles.statusTime}>9:41</Text>
-          <View style={styles.statusIconsRow}>
-            <Ionicons name="cellular" size={14} color="#FFFFFF" style={styles.statusIcon} />
-            <Ionicons name="wifi" size={14} color="#FFFFFF" style={styles.statusIcon} />
-            <Ionicons name="battery-full" size={18} color="#FFFFFF" />
-          </View>
-        </View>
 
         {/* Brand Header */}
         <View style={styles.headerSection}>
@@ -191,15 +171,6 @@ export default function LoginScreen({ onLoginSuccess }) {
               )}
             </LinearGradient>
           </TouchableOpacity>
-
-          {/* Quick Demo Bypass Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={styles.demoModeButton}
-            onPress={handleDemoMode}
-          >
-            <Text style={styles.demoModeText}>Explore in Demo Mode →</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Server & Backend Indicator */}
@@ -222,27 +193,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 20 : 16,
     paddingBottom: 30,
     justifyContent: 'center',
-  },
-  statusBarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 12 : 8,
-    paddingBottom: 16,
-  },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  statusIconsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIcon: {
-    marginRight: 6,
   },
   headerSection: {
     alignItems: 'center',
@@ -403,18 +356,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
-  },
-  demoModeButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    marginTop: 10,
-  },
-  demoModeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    textDecorationLine: 'underline',
   },
   serverStatusFooter: {
     flexDirection: 'row',

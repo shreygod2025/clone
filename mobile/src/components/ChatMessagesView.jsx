@@ -48,10 +48,11 @@ export default function ChatMessagesView({
 
   // Auto-scroll when virtual keyboard appears on mobile
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const showSub = Keyboard.addListener(showEvent, () => {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }, 50);
     });
     return () => showSub.remove();
   }, []);

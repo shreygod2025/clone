@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -40,13 +40,19 @@ export default function MainScreen({ user, onLogout }) {
   const [isRecording, setIsRecording] = useState(false);
   const [whatsAppModalVisible, setWhatsAppModalVisible] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const landingScrollRef = useRef(null);
 
   // Monitor virtual keyboard on mobile to maximize chat input visibility
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setIsKeyboardVisible(true);
+      setTimeout(() => {
+        landingScrollRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    });
     const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
 
     return () => {
@@ -54,6 +60,13 @@ export default function MainScreen({ user, onLogout }) {
       hideSub.remove();
     };
   }, []);
+
+  const handleInputFocus = () => {
+    setIsKeyboardVisible(true);
+    setTimeout(() => {
+      landingScrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
 
   // ── Modals for Chat Features ─────────────────────────────────────────────────
   // 1. Edit Lead Modal State
@@ -1833,27 +1846,26 @@ export default function MainScreen({ user, onLogout }) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
-      {/* KeyboardAvoidingView configured for both iOS and Android without double-shrinking */}
+      {/* Top Dark Green Header (hidden when Schools CRM is active, as it has its own dedicated header) */}
+      {activeTab !== 'schools' && (
+        <Header
+          onNewChatPress={handleNewChat}
+          user={user}
+          onLogout={onLogout}
+        />
+      )}
+
+      {/* KeyboardAvoidingView configured for both iOS and Android to keep input box always visible */}
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* Top Dark Green Header (hidden when Schools CRM is active, as it has its own dedicated header) */}
-        {activeTab !== 'schools' && (
-          <Header
-            onNewChatPress={handleNewChat}
-            user={user}
-            onLogout={onLogout}
-          />
-        )}
-
         {/* Content Area Based on Active Tab */}
         {activeTab === 'ai_chat' ? (
           <View style={styles.chatTabContainer}>
-            {/* Quick Actions Strip (WhatsApp + Region) */}
+            {/* Quick Actions Strip (Region) */}
             <QuickActionsStrip
-              onWhatsAppPress={() => setWhatsAppModalVisible(true)}
               region="Mumbai Region"
             />
 
@@ -1882,6 +1894,7 @@ export default function MainScreen({ user, onLogout }) {
             ) : (
               /* Default Suggestions Landing Screen */
               <ScrollView
+                ref={landingScrollRef}
                 style={styles.scrollArea}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -1915,6 +1928,7 @@ export default function MainScreen({ user, onLogout }) {
               onAttach={handlePasteSampleMom}
               onMicPress={handleMicPress}
               isRecording={isRecording}
+              onFocus={handleInputFocus}
             />
           </View>
         ) : activeTab === 'schools' ? (
