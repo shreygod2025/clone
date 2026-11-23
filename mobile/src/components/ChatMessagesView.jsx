@@ -211,11 +211,16 @@ function TaskListCard({
 
 function InlineTaskCreationCard({
   initialTitle = '',
+  initialAssigneeId = '',
+  initialAssigneeName = '',
+  teamUsers = [],
   onSubmit,
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [priority, setPriority] = useState('medium');
   const [dueDateDays, setDueDateDays] = useState(1);
+  const [assignedToId, setAssignedToId] = useState(initialAssigneeId || '');
+  const [assigneeName, setAssigneeName] = useState(initialAssigneeName || '');
 
   const handleSubmit = () => {
     if (!title.trim()) return;
@@ -225,6 +230,8 @@ function InlineTaskCreationCard({
         title: title.trim(),
         priority,
         due_date: due,
+        assigned_to: assignedToId,
+        assignee_name: assigneeName,
       });
     }
   };
@@ -249,6 +256,33 @@ function InlineTaskCreationCard({
         placeholder="e.g. Follow up on robotics syllabus with Principal"
         placeholderTextColor="#94A3B8"
       />
+
+      {/* Assignee Selection */}
+      <Text style={styles.taskCreationLabel}>Assign Task To</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+        <TouchableOpacity
+          style={[styles.selectorPill, !assignedToId && styles.selectorPillActive]}
+          onPress={() => { setAssignedToId(''); setAssigneeName(''); }}
+        >
+          <Text style={[styles.selectorPillText, !assignedToId && styles.selectorPillTextActive]}>
+            👤 Assign to Myself
+          </Text>
+        </TouchableOpacity>
+        {(teamUsers || []).map((u) => {
+          const isSelected = assignedToId === u.id;
+          return (
+            <TouchableOpacity
+              key={u.id}
+              style={[styles.selectorPill, isSelected && styles.selectorPillActive]}
+              onPress={() => { setAssignedToId(u.id); setAssigneeName(u.name); }}
+            >
+              <Text style={[styles.selectorPillText, isSelected && styles.selectorPillTextActive]}>
+                {u.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       <Text style={styles.taskCreationLabel}>Priority</Text>
       <View style={styles.pillSelectorRow}>
@@ -329,6 +363,7 @@ export default function ChatMessagesView({
   onDeleteTask,
   onCommentTask,
   onSubmitInlineTask,
+  teamUsers = [],
 }) {
   const scrollViewRef = useRef(null);
 
@@ -896,6 +931,7 @@ export default function ChatMessagesView({
                           name={
                             msg.confirmationCard.actionType === 'delete' ? 'trash-2' :
                             msg.confirmationCard.actionType === 'delete_task' ? 'trash-2' :
+                            msg.confirmationCard.actionType === 'reassign_task' ? 'user-check' :
                             msg.confirmationCard.actionType === 'create_task' ? 'check-square' :
                             msg.confirmationCard.actionType === 'complete_task' ? 'check-circle' :
                             msg.confirmationCard.actionType === 'lost' ? 'slash' :
@@ -996,6 +1032,9 @@ export default function ChatMessagesView({
                 {msg.taskCreationCard && (
                   <InlineTaskCreationCard
                     initialTitle={msg.taskCreationCard.initialTitle}
+                    initialAssigneeId={msg.taskCreationCard.initialAssigneeId}
+                    initialAssigneeName={msg.taskCreationCard.initialAssigneeName}
+                    teamUsers={msg.taskCreationCard.teamUsers || teamUsers}
                     onSubmit={onSubmitInlineTask}
                   />
                 )}

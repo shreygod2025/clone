@@ -238,6 +238,15 @@ export default function MainScreen({ user, onLogout }) {
   // 11. Conversational AI Actions & Confirmation State
   const [pendingConfirmation, setPendingConfirmation] = useState(null);
   const [pendingNoteTarget, setPendingNoteTarget] = useState(null);
+  const [teamUsers, setTeamUsers] = useState([]);
+
+  useEffect(() => {
+    api.fetchTeamUsers().then((res) => {
+      if (res.success && Array.isArray(res.users)) {
+        setTeamUsers(res.users);
+      }
+    }).catch(() => {});
+  }, []);
 
   // 12. View Comments & Activity History Modal State (Web App CRM View)
   const [viewModalVisible, setViewModalVisible] = useState(false);
@@ -929,6 +938,23 @@ export default function MainScreen({ user, onLogout }) {
     const sName = lead.schoolName || lead.school_name || 'School';
     const cPerson = lead.contactPerson || lead.contact_name || 'Principal';
     setChatMode(true);
+
+    const userUid = user?.id || user?.user_id || '';
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const isOwner = !lead.assigned_to || lead.assigned_to === userUid || lead.added_by === userUid;
+
+    if (!isAdmin && !isOwner) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `⛔ **Access Denied:** You don't have access to it. Only the lead owner or an administrator can delete leads from the CRM database.`,
+          nextActions: ['Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
     const confCard = {
       id: `conf_del_${Date.now()}`,
       actionType: 'delete',
@@ -1146,7 +1172,7 @@ export default function MainScreen({ user, onLogout }) {
       .replace(/^create\s+(?:a\s+)?task(?:\s*[:=-])?/i, '')
       .replace(/^add\s+(?:a\s+)?task(?:\s*[:=-])?/i, '')
       .replace(/^new\s+task(?:\s*[:=-])?/i, '')
-      .replace(/^assign\s+task(?:\s*[:=-])?/i, '')
+      .replace(/^assign\s+(?:a\s+)?task(?:\s*[:=-])?/i, '')
       .replace(/^remind\s+me\s+to(?:\s*[:=-])?/i, '')
       .trim();
 
@@ -1167,9 +1193,35 @@ export default function MainScreen({ user, onLogout }) {
 
     const due_date = new Date(Date.now() + dueDays * 86400000).toISOString().split('T')[0];
 
+    let assigned_to = defaultAssignee || user?.id || user?.user_id;
+    let assignee_name = user?.name || 'Bhumi Sanghvi';
+
+    // Scan for assigned team member in text (e.g. "assign task to Rahul: ...", "create task for Priya", "... to Yash")
+    if (Array.isArray(teamUsers) && teamUsers.length > 0) {
+      for (const u of teamUsers) {
+        if (!u.name) continue;
+        const fullName = u.name.trim();
+        const firstName = fullName.split(/\s+/)[0];
+
+        const hasFull = new RegExp(`\\b${fullName}\\b`, 'i').test(text);
+        const hasFirst = firstName.length >= 3 && new RegExp(`(?:to|for|assign)\\s+${firstName}\\b`, 'i').test(text);
+
+        if (hasFull || hasFirst) {
+          assigned_to = u.id;
+          assignee_name = u.name;
+          clean = clean
+            .replace(new RegExp(`(?:to|for)\\s+${fullName}`, 'gi'), '')
+            .replace(new RegExp(`(?:to|for)\\s+${firstName}`, 'gi'), '')
+            .trim();
+          break;
+        }
+      }
+    }
+
     clean = clean
       .replace(/(?:with|having)?\s*(?:urgent|high|medium|low)\s*priority/gi, '')
       .replace(/due\s+(?:today|tomorrow|friday|monday|next\s+week|in\s+\d+\s+days?)/gi, '')
+      .replace(/^[:\s-]+|[:\s-]+$/g, '')
       .replace(/\s+/g, ' ')
       .trim();
 
@@ -1177,25 +1229,31 @@ export default function MainScreen({ user, onLogout }) {
       title: clean || 'New Mission Control Task',
       priority,
       due_date,
-      assigned_to: defaultAssignee || user?.id || user?.user_id,
+      assigned_to,
+      assignee_name,
       description: `Created via OLL AI Assistant from prompt: "${text}"`,
     };
   };
 
   const promptCreateTaskConfirmation = (taskDetails) => {
+    const isSelf = !taskDetails.assigned_to || taskDetails.assigned_to === (user?.id || user?.user_id);
+    const assignedLabel = taskDetails.assignee_name || (isSelf ? (user?.name || 'Bhumi Sanghvi') : 'Team Member');
+
     const confCard = {
       id: `task-create-${Date.now()}`,
       actionType: 'create_task',
-      title: 'Confirm Task Creation',
-      description: 'Please confirm adding this task to OLL Mission Control:',
+      title: isSelf ? 'Confirm Task Creation' : `Confirm Assigning Task to ${assignedLabel}`,
+      description: isSelf
+        ? 'Please confirm adding this task to OLL Mission Control:'
+        : `Please confirm assigning this task to ${assignedLabel} in Mission Control:`,
       details: [
         { label: 'Task Title', value: taskDetails.title },
+        { label: 'Assigned To', value: assignedLabel },
         { label: 'Priority', value: (taskDetails.priority || 'medium').toUpperCase() },
         { label: 'Due Date', value: taskDetails.due_date ? taskDetails.due_date.split('T')[0] : 'Tomorrow' },
-        { label: 'Assigned To', value: user?.name || 'Bhumi Sanghvi' },
       ],
       payload: taskDetails,
-      confirmLabel: 'Yes, Create Task',
+      confirmLabel: isSelf ? 'Yes, Create Task' : `Yes, Assign Task`,
       cancelLabel: 'No, Cancel',
       danger: false,
       status: 'pending',
@@ -1206,7 +1264,9 @@ export default function MainScreen({ user, onLogout }) {
       ...prev,
       {
         sender: 'ai',
-        text: `📋 **Confirm Task Creation:**\n\nI have prepared the task **"${taskDetails.title}"** for Mission Control.\n\nPlease confirm to create this task:`,
+        text: isSelf
+          ? `📋 **Confirm Task Creation:**\n\nI have prepared the task **"${taskDetails.title}"** for Mission Control.\n\nPlease confirm to create this task:`
+          : `📋 **Confirm Assigning Task to ${assignedLabel}:**\n\nI have prepared the task **"${taskDetails.title}"** assigned to **${assignedLabel}**.\n\nPlease confirm to dispatch this task:`,
         confirmationCard: confCard,
         nextActions: ['My Tasks', 'Create Task'],
         time: 'Just now',
@@ -1215,6 +1275,23 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   const promptDeleteTaskConfirmation = (task) => {
+    const userUid = user?.id || user?.user_id || '';
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const isCreator = !task.assigned_by || task.assigned_by === userUid;
+
+    if (!isAdmin && !isCreator) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
     const confCard = {
       id: `task-del-${task.id || Date.now()}`,
       actionType: 'delete_task',
@@ -1246,6 +1323,62 @@ export default function MainScreen({ user, onLogout }) {
     ]);
   };
 
+  const promptReassignTaskConfirmation = (task, targetUser) => {
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    if (!isAdmin) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `⛔ **Access Denied:** You don't have access to it. Only administrators can reassign tasks in Mission Control.`,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    const currentAssignee = task.assignee_name || task.assigned_to_name || 'Myself';
+    const confCard = {
+      id: `task-reassign-${Date.now()}`,
+      actionType: 'reassign_task',
+      taskCode: task.code || 'TASK',
+      taskTitle: task.title,
+      title: `Reassign ${task.code || 'Task'} to ${targetUser.name}?`,
+      description: `Please confirm reassigning this task from ${currentAssignee} to ${targetUser.name}:`,
+      details: [
+        { label: 'Task Code', value: task.code || 'TASK' },
+        { label: 'Task Title', value: task.title },
+        { label: 'Current Assignee', value: currentAssignee },
+        { label: 'New Assignee', value: targetUser.name },
+        { label: 'Priority', value: (task.priority || 'medium').toUpperCase() },
+      ],
+      payload: {
+        taskId: task.id,
+        taskCode: task.code,
+        taskTitle: task.title,
+        assigned_to: targetUser.id,
+        targetUserName: targetUser.name,
+      },
+      confirmLabel: `Yes, Reassign to ${targetUser.name.split(' ')[0]}`,
+      cancelLabel: 'No, Cancel',
+      danger: false,
+      status: 'pending',
+    };
+
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `👤 **Confirm Task Reassignment:**\n\nAre you sure you want to reassign task **${task.code || ''} — "${task.title}"** to **${targetUser.name}**?`,
+        confirmationCard: confCard,
+        nextActions: ['My Tasks', 'Create Task'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
   const handleCompleteTask = async (task) => {
     if (!task?.id) return;
     setIsTyping(true);
@@ -1264,7 +1397,20 @@ export default function MainScreen({ user, onLogout }) {
         },
       ]);
     } else {
-      Alert.alert('Error', res.error || 'Failed to complete task');
+      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed');
+      const errText = isAccess
+        ? `⛔ **Access Denied:** You don't have access to it. ${res.error || 'You lack permissions to complete this task.'}`
+        : `❌ **Failed to complete task:** ${res.error || 'Failed to complete task'}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: errText,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
     }
   };
 
@@ -1286,12 +1432,41 @@ export default function MainScreen({ user, onLogout }) {
         },
       ]);
     } else {
-      Alert.alert('Error', res.error || 'Failed to start task');
+      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed');
+      const errText = isAccess
+        ? `⛔ **Access Denied:** You don't have access to it. ${res.error || 'You lack permissions to start this task.'}`
+        : `❌ **Failed to start task:** ${res.error || 'Failed to start task'}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: errText,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
     }
   };
 
   const handleDeleteTask = (task) => {
     if (!task) return;
+    const userUid = user?.id || user?.user_id || '';
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const isCreator = !task.assigned_by || task.assigned_by === userUid;
+
+    if (!isAdmin && !isCreator) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
     promptDeleteTaskConfirmation(task);
   };
 
@@ -1309,7 +1484,20 @@ export default function MainScreen({ user, onLogout }) {
         },
       ]);
     } else {
-      Alert.alert('Error', res.error || 'Could not post comment');
+      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed');
+      const errText = isAccess
+        ? `⛔ **Access Denied:** You don't have access to it. ${res.error || 'You lack permissions to add comments.'}`
+        : `❌ **Failed to add comment:** ${res.error || 'Could not post comment'}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: errText,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
     }
   };
 
@@ -1347,10 +1535,29 @@ export default function MainScreen({ user, onLogout }) {
 
     // ── 1. Delete Lead ────────────────────────────────────────────────────────
     if (confCard.actionType === 'delete') {
+      let delRes = null;
       if (targetId) {
-        await api.deleteSchoolInquiry(targetId);
+        delRes = await api.deleteSchoolInquiry(targetId);
       }
       setIsTyping(false);
+
+      if (delRes && !delRes.success) {
+        const isAccess = delRes.status === 403 || delRes.error?.includes('403') || delRes.error?.toLowerCase().includes('permission') || delRes.error?.toLowerCase().includes('not allowed');
+        const errText = isAccess
+          ? `⛔ **Access Denied:** You don't have access to it. Only the lead owner or an administrator can delete leads from the CRM database.`
+          : `❌ **Failed to delete lead:** ${delRes.error || 'Server error'}`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: errText,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
 
       setMessages((prev) =>
         prev.map((msg) => {
@@ -1650,22 +1857,60 @@ export default function MainScreen({ user, onLogout }) {
       });
       setIsTyping(false);
       if (res.success && res.task) {
+        const assigneeLabel = taskPayload.assignee_name || (taskPayload.assigned_to && taskPayload.assigned_to !== (user?.id || user?.user_id) ? 'Team Member' : 'Myself');
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
-            text: `✅ **Task Created Successfully!**\n\nTask **${res.task.code || 'TSK'}** has been assigned and saved to OLL Mission Control. In-app & WhatsApp notifications triggered.`,
+            text: `✅ **Task Created Successfully!**\n\nTask **${res.task.code || 'TSK'} — "${res.task.title}"** has been assigned to **${assigneeLabel}** and saved to OLL Mission Control. In-app & WhatsApp notifications triggered.`,
             taskCard: res.task,
             nextActions: ['My Tasks', 'Create Task'],
             time: 'Just now',
           },
         ]);
       } else {
+        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed');
+        const errText = isAccess
+          ? `⛔ **Access Denied:** You don't have access to it. ${res.error || 'You lack permissions to assign tasks.'}`
+          : `❌ **Failed to create task:** ${res.error || 'Server error'}`;
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
-            text: `❌ **Failed to create task:** ${res.error || 'Server error'}`,
+            text: errText,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+      }
+      return;
+    }
+
+    if (confCard.actionType === 'reassign_task') {
+      const payload = confCard.payload || {};
+      const res = await api.updateTask(payload.taskId, { assigned_to: payload.assigned_to });
+      setIsTyping(false);
+      if (res.success && res.task) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `✅ **Task Reassigned Successfully!**\n\nTask **${res.task.code || payload.taskCode} — "${res.task.title || payload.taskTitle}"** is now assigned to **${payload.targetUserName}**.\n• In-app & WhatsApp notifications dispatched.`,
+            taskCard: res.task,
+            nextActions: ['My Tasks', 'Create Task'],
+            time: 'Just now',
+          },
+        ]);
+      } else {
+        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('only');
+        const errText = isAccess
+          ? `⛔ **Access Denied:** You don't have access to it. Only administrators can reassign tasks in Mission Control.`
+          : `❌ **Failed to reassign task:** ${res.error || 'Server error'}`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: errText,
             nextActions: ['My Tasks'],
             time: 'Just now',
           },
@@ -1689,11 +1934,15 @@ export default function MainScreen({ user, onLogout }) {
           },
         ]);
       } else {
+        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('creator');
+        const errText = isAccess
+          ? `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`
+          : `❌ **Failed to delete task:** ${res.error || 'Permission denied or not found'}`;
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
-            text: `❌ **Failed to delete task:** ${res.error || 'Permission denied or not found'}`,
+            text: errText,
             nextActions: ['My Tasks'],
             time: 'Just now',
           },
@@ -1713,6 +1962,7 @@ export default function MainScreen({ user, onLogout }) {
       confCard.actionType === 'archive' ? 'Archiving' :
       confCard.actionType === 'unarchive' ? 'Unarchiving' :
       confCard.actionType === 'create_task' ? 'Task creation' :
+      confCard.actionType === 'reassign_task' ? 'Task reassignment' :
       confCard.actionType === 'delete_task' ? 'Task deletion' :
       'Marking as lost lead';
 
@@ -1786,6 +2036,21 @@ export default function MainScreen({ user, onLogout }) {
     const target = leadCard || findLatestLead();
     if (!target) {
       Alert.alert('Notice', 'No active school lead found to delete.');
+      return;
+    }
+    const userUid = user?.id || user?.user_id || '';
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const isOwner = !target.assigned_to || target.assigned_to === userUid || target.added_by === userUid;
+    if (!isAdmin && !isOwner) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `⛔ **Access Denied:** You don't have access to it. Only the lead owner or an administrator can delete leads from the CRM database.`,
+          nextActions: ['Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
       return;
     }
     promptDeleteConfirmation(target);
@@ -2749,13 +3014,143 @@ export default function MainScreen({ user, onLogout }) {
         ...prev,
         {
           sender: 'ai',
-          text: '➕ **Create New Task:**\nFill in the title, priority, and due date below, or type in plain language (e.g., *"Create task: Call DPS Principal tomorrow, priority high"*):',
-          taskCreationCard: { initialTitle: '', initialPriority: 'medium' },
+          text: '➕ **Create New Task:**\nFill in the title, priority, assignee, and due date below, or type in plain language (e.g., *"Create task for Rahul: Prepare syllabus by Friday, priority high"*):',
+          taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers },
           nextActions: ['My Tasks', "Today's Tasks"],
           time: 'Just now',
         },
       ]);
       return;
+    }
+
+    // ── T2b. Task Reassignment Intent ("reassign task TSK-0004 to Priya", "assign task TSK-0004 to Rahul") ──
+    const hasTaskCode = /tsk-\d+/i.test(lower);
+    const isReassignIntent =
+      lower.startsWith('reassign') ||
+      (hasTaskCode && (lower.startsWith('assign task') || lower.startsWith('assign') || lower.startsWith('reassign task')));
+
+    if (isReassignIntent) {
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+      if (!isAdmin) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `⛔ **Access Denied:** You don't have access to it. Only administrators can reassign tasks in Mission Control.`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const codeMatch = userText.match(/tsk-\d+/i);
+      const taskCode = codeMatch ? codeMatch[0].toUpperCase() : '';
+
+      let targetUser = null;
+      if (Array.isArray(teamUsers)) {
+        for (const u of teamUsers) {
+          if (!u.name) continue;
+          const fullName = u.name.trim();
+          const firstName = fullName.split(/\s+/)[0];
+          const hasFull = new RegExp(`\\b${fullName}\\b`, 'i').test(userText);
+          const hasFirst = firstName.length >= 3 && new RegExp(`(?:to|for)\\s+${firstName}\\b`, 'i').test(userText);
+          if (hasFull || hasFirst) {
+            targetUser = u;
+            break;
+          }
+        }
+      }
+
+      const res = await api.fetchTasks('my');
+      setIsTyping(false);
+      const tasks = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+      let matchedTask = tasks.find((t) => (t.code || '').toUpperCase() === taskCode);
+      if (!matchedTask && !taskCode && tasks.length > 0) {
+        matchedTask = tasks[0];
+      }
+
+      if (!matchedTask) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Task Not Found:** Could not locate task **"${taskCode || userText}"** to reassign.`,
+            taskListCard: { title: 'Available Tasks', tasks },
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      if (!targetUser) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `👤 **Whom should task ${matchedTask.code || ''} be reassigned to?**\nPlease specify a team member name (e.g., *"Assign ${matchedTask.code || 'task'} to Priya"*).`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      promptReassignTaskConfirmation(matchedTask, targetUser);
+      return;
+    }
+
+    // ── T2c. Assign Task Prompt for Member ("assign task to Rahul", "create task for Priya") ──
+    const isAssignForMemberPrompt =
+      (lower.startsWith('assign task to') ||
+       lower.startsWith('assign to') ||
+       lower.startsWith('create task for') ||
+       lower.startsWith('new task for')) &&
+      !lower.includes(':') &&
+      !lower.includes(';') &&
+      !lower.includes('due') &&
+      !lower.includes('priority') &&
+      !/tsk-\d+/i.test(lower);
+
+    if (isAssignForMemberPrompt) {
+      let matchedMember = null;
+      if (Array.isArray(teamUsers)) {
+        for (const u of teamUsers) {
+          if (!u.name) continue;
+          const fullName = u.name.trim();
+          const firstName = fullName.split(/\s+/)[0];
+          if (
+            new RegExp(`(?:to|for)\\s+${fullName}`, 'i').test(userText) ||
+            (firstName.length >= 3 && new RegExp(`(?:to|for)\\s+${firstName}`, 'i').test(userText))
+          ) {
+            matchedMember = u;
+            break;
+          }
+        }
+      }
+
+      if (matchedMember) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `➕ **Assign New Task to ${matchedMember.name}:**\nEnter the task title, priority, and deadline below:`,
+            taskCreationCard: {
+              initialTitle: '',
+              initialPriority: 'medium',
+              initialAssigneeId: matchedMember.id,
+              initialAssigneeName: matchedMember.name,
+              teamUsers,
+            },
+            nextActions: ['My Tasks', "Today's Tasks"],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
     }
 
     // ── T3. Task Creation: Natural Language with Details ──
@@ -2778,7 +3173,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: '➕ **Create New Task:** Please specify the task title or fill the quick form below:',
-            taskCreationCard: { initialTitle: '', initialPriority: 'medium' },
+            taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers },
             nextActions: ['My Tasks'],
             time: 'Just now',
           },
@@ -2863,6 +3258,22 @@ export default function MainScreen({ user, onLogout }) {
       }
 
       if (matchedTask) {
+        const userUid = user?.id || user?.user_id || '';
+        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+        const isCreator = !matchedTask.assigned_by || matchedTask.assigned_by === userUid;
+        if (!isAdmin && !isCreator) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`,
+              nextActions: ['My Tasks'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+
         promptDeleteTaskConfirmation(matchedTask);
         return;
       } else {
@@ -3360,6 +3771,22 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: `🗑️ **Already Deleted:** **${lead.schoolName || lead.school_name}** has already been permanently deleted from CRM.`,
+            nextActions: ['Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      const userUid = user?.id || user?.user_id || '';
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+      const isOwner = !lead.assigned_to || lead.assigned_to === userUid || lead.added_by === userUid;
+      if (!isAdmin && !isOwner) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `⛔ **Access Denied:** You don't have access to it. Only the lead owner or an administrator can delete leads from the CRM database.`,
             nextActions: ['Add School Lead'],
             time: 'Just now',
           },
@@ -4441,6 +4868,7 @@ export default function MainScreen({ user, onLogout }) {
                 onDeleteTask={handleDeleteTask}
                 onCommentTask={handleCommentTask}
                 onSubmitInlineTask={handleSubmitInlineTask}
+                teamUsers={teamUsers}
               />
             ) : (
               /* Default Suggestions Landing Screen */

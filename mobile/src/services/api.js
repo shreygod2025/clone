@@ -268,7 +268,15 @@ class ApiService {
         method: 'DELETE',
         headers: this.getHeaders(),
       }, 12000);
-      return { success: response.ok };
+      if (response.ok) {
+        return { success: true };
+      }
+      const err = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: err.detail || `Failed to delete lead (${response.status})`,
+        status: response.status,
+      };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -847,7 +855,7 @@ class ApiService {
         return { success: true, task: data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to create task (${response.status})` };
+      return { success: false, error: err.detail || `Failed to create task (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error creating task' };
     }
@@ -866,7 +874,7 @@ class ApiService {
         return { success: true, task: data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to update task (${response.status})` };
+      return { success: false, error: err.detail || `Failed to update task (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error updating task' };
     }
@@ -884,7 +892,7 @@ class ApiService {
         return { success: true, data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to delete task (${response.status})` };
+      return { success: false, error: err.detail || `Failed to delete task (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error deleting task' };
     }
@@ -902,7 +910,7 @@ class ApiService {
         return { success: true, task: data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to submit task (${response.status})` };
+      return { success: false, error: err.detail || `Failed to submit task (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error submitting task' };
     }
@@ -920,7 +928,7 @@ class ApiService {
         return { success: true, task: data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to approve task (${response.status})` };
+      return { success: false, error: err.detail || `Failed to approve task (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error approving task' };
     }
@@ -939,7 +947,7 @@ class ApiService {
         return { success: true, task: data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to reject task (${response.status})` };
+      return { success: false, error: err.detail || `Failed to reject task (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error rejecting task' };
     }
@@ -958,7 +966,7 @@ class ApiService {
         return { success: true, comment: data };
       }
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || `Failed to add comment (${response.status})` };
+      return { success: false, error: err.detail || `Failed to add comment (${response.status})`, status: response.status };
     } catch (err) {
       return { success: false, error: err.message || 'Network error adding comment' };
     }
