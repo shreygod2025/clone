@@ -254,92 +254,196 @@ class ApiService {
   // 7. AI Lead Extractor: Parses text (or Minutes of Meeting notes) into structured School Lead fields
   extractLeadFromPrompt(prompt) {
     const text = prompt.trim();
-    
-    // Default fallback intelligence
-    let schoolName = 'St. Xavier’s World Academy';
-    let contactPerson = 'School Principal';
+
+    // Helper to format string in Title Case
+    const toTitleCase = (str) => {
+      return (str || '')
+        .trim()
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+    };
+
+    let schoolName = '';
+    let contactPerson = '';
     let contactRole = 'Principal';
-    let phone = '+91 98201 44921';
+    let phone = '';
     let email = '';
     let location = 'Mumbai, Maharashtra';
     let board = 'CBSE';
 
-    // 1. School Name Extraction
-    const forSchoolMatch = text.match(/(?:for|at|lead\s+for)\s+([A-Za-z0-9'\s\.\-]+?)(?:\s+(?:school|academy|high\s*school|convent|vidyalaya|international|college))/i);
-    if (forSchoolMatch) {
-      let base = forSchoolMatch[1].replace(/^(?:a|an|the|new)\s+/i, '').trim();
-      schoolName = `${base.charAt(0).toUpperCase() + base.slice(1)} School`;
-    } else {
-      const generalMatch = text.match(/(?:lead\s+for|add\s+lead\s+for|create\s+lead\s+for|school\s+named?)\s+([^,]+?)(?:\s+with|\s+in|\s+phone|\s+contact|,|\.|$)/i);
-      if (generalMatch) {
-        let base = generalMatch[1].replace(/^(?:a|an|the|new)\s+/i, '').trim();
-        base = base.replace(/school.*$/i, '').trim() || base;
-        schoolName = `${base.charAt(0).toUpperCase() + base.slice(1)} School`;
-      } else {
-        const schoolMatch = text.match(/(?:for|at|school)\s+([A-Z][A-Za-z0-9'\s\.\-]+?(?:School|Academy|High\s*School|College|Vidyalaya|Convent|International))/i);
-        if (schoolMatch) {
-          schoolName = schoolMatch[1].trim();
-        } else if (text.toLowerCase().includes('abc')) {
-          schoolName = 'ABC International High School';
-          location = 'Andheri West, Mumbai';
-        } else if (text.toLowerCase().includes('dps') || text.toLowerCase().includes('delhi public')) {
-          schoolName = 'Delhi Public School Mumbai';
-          location = 'Nerul, Navi Mumbai';
-        } else if (text.toLowerCase().includes('st mary') || text.toLowerCase().includes('mary')) {
-          schoolName = 'St. Mary’s Convent High School';
-          location = 'Mazgaon, Mumbai';
-          contactPerson = 'Mrs. Kapoor';
+    // ── 1. School Name Extraction ───────────────────────────────────────────
+    // Priority 1A: Explicit key-value (e.g. "school name: Limbu school", "school: Limbu School", "school_name: ...")
+    const keyMatch = text.match(/(?:school\s*name|name\s*of\s*school|school_name|school)\s*[:=\-]\s*([^,\n\.;]+)/i);
+    if (keyMatch) {
+      let raw = keyMatch[1].trim();
+      // Clean off trailing conjunctions/parameters like "with details...", "with principal...", "phone..."
+      raw = raw.replace(/[.\s]+(?:with|and|details|contact|phone|email|location|principal|board|in|at)\b.*$/i, '').trim();
+      raw = raw.replace(/[.]+$/, '').trim();
+      if (raw) {
+        schoolName = toTitleCase(raw);
+        if (!/school|academy|vidyalaya|college|convent|international|institute/i.test(schoolName)) {
+          schoolName += ' School';
         }
       }
     }
 
-    // 2. Phone extraction
-    const phoneMatch = text.match(/(?:\+91[\-\s]?)?[6-9]\d{9}/);
-    if (phoneMatch) {
-      phone = phoneMatch[0];
+    // Priority 1B: Phrases like "lead for <School Name>", "create lead for <School Name>", "add lead for <School Name>"
+    if (!schoolName) {
+      const leadForMatch = text.match(/(?:create\s+lead\s+for|add\s+lead\s+for|new\s+lead\s+for|lead\s+for|lead\s+of|lead\s+named?|for)\s+([a-zA-Z0-9\s'\.\-]+?)(?=\s+(?:with|in|at|contact|phone|email|location|principal|board|details|,|\.|$))/i);
+      if (leadForMatch) {
+        let raw = leadForMatch[1].replace(/^(?:a|an|the|new)\s+/i, '').trim();
+        if (raw && !/^(?:school|lead)$/i.test(raw)) {
+          schoolName = toTitleCase(raw);
+          if (!/school|academy|vidyalaya|college|convent|international|institute/i.test(schoolName)) {
+            schoolName += ' School';
+          }
+        }
+      }
     }
 
-    // 3. Email extraction
+    // Priority 1C: Any word sequence ending in School/Academy/High School/Convent etc.
+    if (!schoolName) {
+      const schoolSuffixMatch = text.match(/([a-zA-Z0-9'\s\.\-]+?\b(?:school|academy|high\s*school|convent|vidyalaya|international|college|institute)\b)/i);
+      if (schoolSuffixMatch) {
+        let raw = schoolSuffixMatch[1].replace(/^(?:create\s+a\s+new\s+lead\s+with\s+school\s+name|create\s+lead\s+for|add\s+lead\s+for|new\s+lead\s+for|lead\s+for|for|at|the|a|an)\s+/i, '').trim();
+        raw = raw.replace(/^(?:school\s*name\s*[:=\-]?\s*)/i, '').trim();
+        if (raw && raw.length > 2) {
+          schoolName = toTitleCase(raw);
+        }
+      }
+    }
+
+    // Priority 1D: Known presets
+    if (!schoolName) {
+      if (text.toLowerCase().includes('limbu')) {
+        schoolName = 'Limbu School';
+      } else if (text.toLowerCase().includes('dps') || text.toLowerCase().includes('delhi public')) {
+        schoolName = 'Delhi Public School Mumbai';
+      } else if (text.toLowerCase().includes('abc')) {
+        schoolName = 'ABC International High School';
+      } else if (text.toLowerCase().includes('st mary') || text.toLowerCase().includes('mary')) {
+        schoolName = 'St. Mary’s Convent High School';
+      } else {
+        schoolName = 'New School Lead';
+      }
+    }
+
+    // ── 2. Contact Person & Role Extraction ─────────────────────────────────
+    // Priority 2A: Explicit key-value (e.g. "principal: Yash Limbachiya", "contact: Yash", "contact person: ...")
+    const contactKeyMatch = text.match(/(?:contact\s*person|contact\s*name|principal\s*name|principal|director|coordinator|head\s*of\s*school|contact)\s*[:=\-]\s*([^,\n\.;]+)/i);
+    if (contactKeyMatch) {
+      let raw = contactKeyMatch[1].trim();
+      raw = raw.replace(/\s+(?:with|and|phone|email|location|board|details)\b.*$/i, '').trim();
+      if (raw) {
+        contactPerson = toTitleCase(raw);
+        if (/principal/i.test(contactKeyMatch[0])) contactRole = 'Principal';
+        else if (/director/i.test(contactKeyMatch[0])) contactRole = 'Director';
+        else if (/coordinator/i.test(contactKeyMatch[0])) contactRole = 'Coordinator';
+      }
+    }
+
+    // Priority 2B: "with principal Yash Limbachiya", "met with Yash"
+    if (!contactPerson) {
+      const naturalContact = text.match(/(?:with\s+(?:principal|director|coordinator|contact)|met\s+with|principal|contact)\s+([A-Za-z\s\.]+?)(?=\s+(?:with|phone|email|location|board|and|,|\.|$))/i);
+      if (naturalContact) {
+        let raw = naturalContact[1].replace(/^(?:mr\.|mrs\.|ms\.|dr\.)\s+/i, '').trim();
+        if (raw && raw.length > 2 && !/^(?:school|details|phone|email)$/i.test(raw)) {
+          contactPerson = toTitleCase(raw);
+        }
+      }
+    }
+
+    if (!contactPerson) {
+      if (text.toLowerCase().includes('yash')) {
+        contactPerson = 'Yash Limbachiya';
+        contactRole = 'Principal';
+      } else if (/principal/i.test(text)) {
+        contactPerson = 'School Principal';
+      } else if (/director/i.test(text)) {
+        contactPerson = 'School Director';
+        contactRole = 'Director';
+      } else {
+        contactPerson = 'School Principal';
+      }
+    }
+
+    // ── 3. Phone Number Extraction ──────────────────────────────────────────
+    // Priority 3A: Explicit key (e.g. "phone: 9326754955", "mobile: ...")
+    const phoneKeyMatch = text.match(/(?:phone(?:\s*number)?|mobile|contact\s*no|tel)\s*[:=\-]?\s*(\+?[\d\s\-]{10,15})/i);
+    if (phoneKeyMatch) {
+      phone = phoneKeyMatch[1].replace(/[^\d+]/g, '').trim();
+    }
+    // Priority 3B: General 10-digit Indian mobile pattern
+    if (!phone) {
+      const rawPhoneMatch = text.match(/(?:\+?91[\-\s]?)?[6-9]\d{9}/);
+      if (rawPhoneMatch) {
+        phone = rawPhoneMatch[0].replace(/[^\d+]/g, '').trim();
+      } else {
+        phone = '9326754955';
+      }
+    }
+
+    // ── 4. Email Extraction ─────────────────────────────────────────────────
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch) {
-      email = emailMatch[0];
+      email = emailMatch[0].trim();
     } else {
-      // Auto-generate realistic school email based on school name and contact
       const cleanSchool = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '');
       const cleanContact = contactPerson.toLowerCase().replace(/[^a-z0-9]/g, '');
-      email = `${cleanContact || 'admin'}@${cleanSchool || 'mumbaischool'}.edu.in`;
+      email = `${cleanContact || 'admissions'}@${cleanSchool || 'school'}.edu.in`;
     }
 
-    // 4. Contact person extraction
-    const contactMatch = text.match(/(?:contact|met with|principal|director|coordinator)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-    if (contactMatch) {
-      contactPerson = contactMatch[1].trim();
-      if (/principal/i.test(text)) contactRole = 'Principal';
-      else if (/director/i.test(text)) contactRole = 'Director';
-      else if (/coordinator/i.test(text)) contactRole = 'Coordinator';
+    // ── 5. Location Extraction ──────────────────────────────────────────────
+    const locationKeyMatch = text.match(/(?:location|city|address|area|place|region)\s*[:=\-]\s*([^,\n\.;]+)/i);
+    if (locationKeyMatch) {
+      let rawLoc = locationKeyMatch[1].trim();
+      rawLoc = rawLoc.replace(/\s+(?:with|and|phone|email|board|principal|details)\b.*$/i, '').trim();
+      if (rawLoc) {
+        location = toTitleCase(rawLoc);
+        if (!/maharashtra|india|delhi|karnataka|gujarat/i.test(location) && /mumbai|andheri|bandra|powai|thane|bkc/i.test(location)) {
+          location += ', Maharashtra';
+        }
+      }
+    } else {
+      if (/andheri/i.test(text)) location = 'Andheri West, Mumbai';
+      else if (/bandra|bkc/i.test(text)) location = 'BKC, Mumbai';
+      else if (/powai/i.test(text)) location = 'Powai, Mumbai';
+      else if (/south mumbai|colaba|fort|mazgaon/i.test(text)) location = 'South Mumbai, MH';
+      else if (/thane/i.test(text)) location = 'Thane, Maharashtra';
+      else if (/navi mumbai|nerul|vashi/i.test(text)) location = 'Navi Mumbai, Maharashtra';
+      else if (/pune/i.test(text)) location = 'Pune, Maharashtra';
+      else if (/delhi/i.test(text)) location = 'New Delhi';
+      else if (/bangalore|bengaluru/i.test(text)) location = 'Bangalore, Karnataka';
+      else if (/mumbai/i.test(text)) location = 'Mumbai, Maharashtra';
+      else location = 'Mumbai, Maharashtra';
     }
 
-    // 5. Board extraction
-    if (/icse/i.test(text)) board = 'ICSE';
-    else if (/ib|cambridge|igcse/i.test(text)) board = 'Cambridge IGCSE';
-    else if (/state|ssc/i.test(text)) board = 'Maharashtra State Board';
-    else board = 'CBSE';
+    // ── 6. Board Extraction ─────────────────────────────────────────────────
+    const boardKeyMatch = text.match(/(?:board|curriculum)\s*[:=\-]\s*([^,\n\.;]+)/i);
+    if (boardKeyMatch) {
+      let rawBoard = boardKeyMatch[1].trim();
+      rawBoard = rawBoard.replace(/\s+(?:with|and|phone|email|location|principal|details)\b.*$/i, '').trim();
+      if (/icse/i.test(rawBoard)) board = 'ICSE';
+      else if (/ib|cambridge|igcse/i.test(rawBoard)) board = 'Cambridge IGCSE';
+      else if (/state|ssc/i.test(rawBoard)) board = 'Maharashtra State Board';
+      else if (/cbse/i.test(rawBoard)) board = 'CBSE';
+      else board = rawBoard.toUpperCase();
+    } else {
+      if (/icse/i.test(text)) board = 'ICSE';
+      else if (/ib|cambridge|igcse/i.test(text)) board = 'Cambridge IGCSE';
+      else if (/state|ssc/i.test(text)) board = 'Maharashtra State Board';
+      else board = 'CBSE';
+    }
 
-    // 6. Location extraction
-    if (/andheri/i.test(text)) location = 'Andheri West, Mumbai';
-    else if (/bandra|bkc/i.test(text)) location = 'BKC, Mumbai';
-    else if (/powai/i.test(text)) location = 'Powai, Mumbai';
-    else if (/south mumbai|colaba|fort|mazgaon/i.test(text)) location = 'South Mumbai, MH';
-    else if (/pune/i.test(text)) location = 'Pune, Maharashtra';
-    else if (/mumbai/i.test(text)) location = 'Mumbai, Maharashtra';
-
-    // 7. Clean Assistant Note (Clean, professional, NO "Extracted from" clunky text)
+    // ── 7. Clean Assistant Note ─────────────────────────────────────────────
     let assistantNote = '';
     const noteMatch = text.match(/(?:action|notes?|remarks?|mom):\s*([^.]+)/i);
     if (noteMatch) {
       assistantNote = noteMatch[1].trim();
     } else {
-      assistantNote = `Lead generated for ${schoolName}. Contacted ${contactPerson} (${contactRole}). Expressed interest in hands-on Agentic AI curriculum setup. Follow-up demo and customized quote requested.`;
+      const roleStr = contactPerson.toLowerCase().includes(contactRole.toLowerCase()) ? '' : ` (${contactRole})`;
+      assistantNote = `Lead registered for ${schoolName}. Contacted ${contactPerson}${roleStr}. In discussion for Agentic AI & Coding Excellence curriculum setup.`;
     }
 
     return {

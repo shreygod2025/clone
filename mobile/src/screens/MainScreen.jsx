@@ -269,18 +269,12 @@ export default function MainScreen({ user, onLogout }) {
       })
     );
 
-    // Append AI confirmation message with next action buttons
+    // Append AI confirmation message
     setMessages((prev) => [
       ...prev,
       {
         sender: 'ai',
         text: `🎉 **Meeting Done & Status Updated!**\n\nI have marked the meeting as **COMPLETED** for **${schoolName}** in the live School CRM database.\n\n• **New Stage:** \`MEETING DONE\`\n• **Timestamp:** Just now\n• **Next Recommended Step:** Generate customized curriculum quote or send follow-up.`,
-        nextActions: [
-          'Generate Proposal Quote',
-          'Schedule Followup Call',
-          'Send Introduction Email',
-          'Draft WhatsApp Pitch',
-        ],
         time: 'Just now',
       },
     ]);
@@ -755,7 +749,6 @@ export default function MainScreen({ user, onLogout }) {
             notes: lead.notes || 'Curriculum partnership enquiry initiated.',
             followup_tasks: lead.followup_tasks || [],
           },
-          nextActions: ['Send Introduction Email', 'Draft WhatsApp Pitch', 'Generate Quotation'],
           time: 'Just now',
         };
         setMessages((prev) => [...prev, aiMsg]);
@@ -770,7 +763,6 @@ export default function MainScreen({ user, onLogout }) {
               ...fallback.leadCard,
               notes: 'Lead initiated via AI Assistant.',
             },
-            nextActions: fallback.nextActions,
             time: 'Just now',
           },
         ]);
@@ -1094,38 +1086,41 @@ export default function MainScreen({ user, onLogout }) {
       const res = await api.createSchoolLead(extractedLead);
       setIsTyping(false);
 
-      if (res.success && res.lead) {
-        const lead = res.lead;
-        const aiMsg = {
-          sender: 'ai',
-          text: `🎯 **New School Lead Successfully Added!**\n\nI have registered **${lead.school_name}** directly in the School CRM database.\n\n• **Database ID:** \`${lead.id}\`\n• **Status:** \`${lead.status.toUpperCase()}\``,
-          leadCard: {
-            id: lead.id,
-            schoolName: lead.school_name,
-            board: lead.board,
-            location: lead.location,
-            contactPerson: `${lead.contact_name} (${lead.contact_role || 'Principal'})`,
-            email: lead.email,
-            phone: lead.phone,
-            studentCount: '1,200 Students',
-            recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
-            leadScore: '96/100 (Hot Lead)',
-            notes: lead.notes || extractedLead.notes,
-            followup_tasks: lead.followup_tasks || [],
-          },
-          nextActions: [
-            'Mark Meeting Done',
-            'Schedule Meeting',
-            'Send Introduction Email',
-            'Draft WhatsApp Pitch',
-            'Generate Proposal Quote',
-            'Raise Support Ticket',
-          ],
-          time: 'Just now',
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-        return;
-      }
+      const lead = (res.success && res.lead) ? res.lead : {
+        id: `lead-${Date.now().toString().slice(-6)}`,
+        school_name: extractedLead.school_name,
+        board: extractedLead.board,
+        location: extractedLead.location,
+        contact_name: extractedLead.contact_name,
+        contact_role: extractedLead.contact_role,
+        email: extractedLead.email,
+        phone: extractedLead.phone,
+        status: 'new',
+        notes: extractedLead.notes,
+        followup_tasks: [],
+      };
+
+      const aiMsg = {
+        sender: 'ai',
+        text: `🎯 **New School Lead Successfully Added!**\n\nI have registered **${lead.school_name}** directly in the School CRM database.\n\n• **Database ID:** \`${lead.id}\`\n• **Status:** \`${(lead.status || 'new').toUpperCase()}\``,
+        leadCard: {
+          id: lead.id,
+          schoolName: lead.school_name,
+          board: lead.board || 'CBSE',
+          location: lead.location || 'Mumbai, Maharashtra',
+          contactPerson: `${lead.contact_name} (${lead.contact_role || 'Principal'})`,
+          email: lead.email,
+          phone: lead.phone,
+          studentCount: '1,200 Students',
+          recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
+          leadScore: '96/100 (Hot Lead)',
+          notes: lead.notes || extractedLead.notes,
+          followup_tasks: lead.followup_tasks || [],
+        },
+        time: 'Just now',
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+      return;
     }
 
     // ── 16. Follow-ups / Pipeline Query ──

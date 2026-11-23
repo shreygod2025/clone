@@ -101,8 +101,18 @@ export default function ChatMessagesView({
                 {msg.leadCard && (
                   <View style={styles.leadCardContainer}>
                     <View style={styles.cardHeader}>
-                      <Ionicons name="school" size={17} color="#059669" />
-                      <Text style={styles.schoolName}>{msg.leadCard.schoolName || msg.leadCard.school_name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                        <Ionicons name="school" size={17} color="#059669" style={{ marginRight: 6 }} />
+                        <Text style={styles.schoolName} numberOfLines={1}>{msg.leadCard.schoolName || msg.leadCard.school_name}</Text>
+                      </View>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.cardTopEditBtn}
+                        onPress={() => onEditLead && onEditLead(msg.leadCard)}
+                      >
+                        <Feather name="edit-2" size={12} color="#0284C7" style={{ marginRight: 4 }} />
+                        <Text style={styles.cardTopEditText}>Edit</Text>
+                      </TouchableOpacity>
                     </View>
 
                     <View style={styles.badgeRow}>
@@ -184,11 +194,20 @@ export default function ChatMessagesView({
                     <View style={styles.leadActionsBar}>
                       <TouchableOpacity
                         activeOpacity={0.8}
-                        style={[styles.leadActionButton, styles.btnEditProposal]}
+                        style={[styles.leadActionButton, styles.btnEditLead]}
                         onPress={() => onEditLead && onEditLead(msg.leadCard)}
                       >
-                        <Feather name="edit-2" size={11} color="#D97706" style={{ marginRight: 3 }} />
-                        <Text style={[styles.leadActionText, { color: '#D97706' }]}>Edit / Proposal</Text>
+                        <Feather name="edit-2" size={11} color="#0284C7" style={{ marginRight: 3 }} />
+                        <Text style={[styles.leadActionText, { color: '#0284C7' }]}>Edit</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.leadActionButton, styles.btnProposal]}
+                        onPress={() => onGenerateProposal && onGenerateProposal(msg.leadCard)}
+                      >
+                        <Feather name="file-text" size={11} color="#D97706" style={{ marginRight: 3 }} />
+                        <Text style={[styles.leadActionText, { color: '#D97706' }]}>Proposal</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -363,8 +382,8 @@ export default function ChatMessagesView({
                   </View>
                 )}
 
-                {/* Render Action Chips */}
-                {msg.nextActions && msg.nextActions.length > 0 && (
+                {/* Render Action Chips (hidden when leadCard is shown to avoid duplicate buttons) */}
+                {!msg.leadCard && msg.nextActions && msg.nextActions.length > 0 && (
                   <View style={styles.chipsRow}>
                     {msg.nextActions.map((chip, idx) => (
                       <TouchableOpacity
@@ -575,7 +594,23 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  cardTopEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  cardTopEditText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
   },
   schoolName: {
     fontSize: 15.5,
@@ -729,6 +764,14 @@ const styles = StyleSheet.create({
   proposalBtn: {
     backgroundColor: '#EEF2FF',
     borderColor: '#C7D2FE',
+  },
+  btnEditLead: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+  },
+  btnProposal: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
   },
   btnEditProposal: {
     backgroundColor: '#FFFBEB',
