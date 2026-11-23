@@ -238,6 +238,16 @@ export default function MainScreen({ user, onLogout }) {
   const [pendingConfirmation, setPendingConfirmation] = useState(null);
   const [pendingNoteTarget, setPendingNoteTarget] = useState(null);
 
+  // 12. View Comments & Activity History Modal State (Web App CRM View)
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [viewTargetLead, setViewTargetLead] = useState(null);
+  const [viewCommentsList, setViewCommentsList] = useState([]);
+  const [viewHistoryList, setViewHistoryList] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [newViewComment, setNewViewComment] = useState('');
+  const [isAddingViewComment, setIsAddingViewComment] = useState(false);
+  const [viewHistoryCollapsed, setViewHistoryCollapsed] = useState(false);
+
   // ── Helper: Locate Latest Active Lead in Conversation ────────────────────────
   const findLatestLead = () => {
     const withLead = [...messages].reverse().find((m) => m.leadCard && !m.leadCard.isDeleted);
@@ -490,6 +500,137 @@ export default function MainScreen({ user, onLogout }) {
     }
     setDocsTargetLead(target);
     setDocsModalVisible(true);
+  };
+
+  // 12. Open View Comments, Notes & Activity History Modal (Web App CRM View)
+  const openViewLeadModal = async (leadCard) => {
+    const target = leadCard || findLatestLeadIncludingArchived();
+    if (!target) {
+      Alert.alert('Notice', 'No school lead available to view.');
+      return;
+    }
+
+    setViewTargetLead(target);
+    setViewCommentsList(target.comments || []);
+    setNewViewComment('');
+    setViewModalVisible(true);
+    setIsLoadingHistory(true);
+
+    try {
+      if (target.id) {
+        // Fetch real-time comments from CRM backend
+        api.getSchoolComments(target.id).then((commentsRes) => {
+          if (commentsRes.success && Array.isArray(commentsRes.comments) && commentsRes.comments.length > 0) {
+            setViewCommentsList(commentsRes.comments);
+          }
+        }).catch(() => {});
+
+        // Fetch activity history from CRM backend
+        const histRes = await api.getSchoolHistory(target.id);
+        if (histRes.success && Array.isArray(histRes.history) && histRes.history.length > 0) {
+          setViewHistoryList(histRes.history);
+          setIsLoadingHistory(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Error fetching history:', e);
+    }
+
+    // Synthesize history timeline if backend history list is empty
+    const synthesized = [];
+    if (target.comments && target.comments.length > 0) {
+      target.comments.forEach((c) => {
+        synthesized.push({
+          type: 'note',
+          date: c.created_at || new Date().toISOString(),
+          description: `Comment: "${c.text}"`,
+          user: c.author || 'CRM Assistant',
+        });
+      });
+    }
+    if (target.meeting_date) {
+      synthesized.push({
+        type: 'meeting_scheduled',
+        date: target.meeting_date,
+        description: `Meeting scheduled for ${target.meeting_date} at ${target.meeting_time || '11:00 AM'} (${target.meeting_type || 'offline'})`,
+        user: user?.name || 'CRM Team',
+      });
+    }
+    if (target.status === 'meeting_done') {
+      synthesized.push({
+        type: 'status_change',
+        date: new Date().toISOString(),
+        description: 'Meeting marked as completed (Done). Ready for 2nd round or proposal.',
+        user: user?.name || 'CRM Team',
+      });
+    }
+    if (target.status === 'lost') {
+      synthesized.push({
+        type: 'status_change',
+        date: new Date().toISOString(),
+        description: `Marked as Lost Lead: ${target.lost_reason || 'Pipeline closed'}`,
+        user: user?.name || 'CRM Team',
+      });
+    }
+    if (target.status === 'archived') {
+      synthesized.push({
+        type: 'status_change',
+        date: new Date().toISOString(),
+        description: 'Lead stored in CRM archives.',
+        user: user?.name || 'CRM Team',
+      });
+    }
+    synthesized.push({
+      type: 'created',
+      date: target.created_at || new Date().toISOString(),
+      description: `Inquiry registered in CRM database for ${target.schoolName || target.school_name || 'School'}`,
+      user: target.contactPerson || 'School Desk',
+    });
+
+    setViewHistoryList(synthesized);
+    setIsLoadingHistory(false);
+  };
+
+  // Helper to format activity dates and badges for View Dossier Modal
+  const formatActivityDate = (d) => {
+    if (!d) return '-';
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d);
+      return dt.toLocaleDateString('en-IN', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return String(d);
+    }
+  };
+
+  const getActivityTypeMeta = (type) => {
+    switch (type) {
+      case 'created':
+        return { label: 'Inquiry Created', color: '#2563EB', bg: '#EFF6FF', border: '#60A5FA', icon: 'plus-circle' };
+      case 'status_change':
+        return { label: 'Status Changed', color: '#D97706', bg: '#FFFBEB', border: '#FBBF24', icon: 'refresh-cw' };
+      case 'meeting_scheduled':
+        return { label: 'Meeting Scheduled', color: '#7C3AED', bg: '#F5F3FF', border: '#A78BFA', icon: 'calendar' };
+      case 'followup':
+        return { label: 'Follow-up Set', color: '#EA580C', bg: '#FFF7ED', border: '#FB923C', icon: 'clock' };
+      case 'converted':
+        return { label: 'Partnered / Won', color: '#059669', bg: '#ECFDF5', border: '#34D399', icon: 'check-circle' };
+      case 'onboarding_step':
+        return { label: 'Onboarding Step', color: '#0D9488', bg: '#F0FDFA', border: '#2DD4BF', icon: 'layers' };
+      case 'ticket':
+        return { label: 'Ticket Raised', color: '#DC2626', bg: '#FEF2F2', border: '#F87171', icon: 'alert-circle' };
+      case 'note':
+        return { label: 'Note / Comment', color: '#475569', bg: '#F8FAFC', border: '#94A3B8', icon: 'message-square' };
+      default:
+        return { label: 'CRM Activity', color: '#4F46E5', bg: '#EEF2FF', border: '#818CF8', icon: 'activity' };
+    }
   };
 
   // ── Action Handlers ──────────────────────────────────────────────────────────
@@ -1901,6 +2042,57 @@ export default function MainScreen({ user, onLogout }) {
     ]);
   };
 
+  // Add Comment directly from View Dossier Modal (Web App Sync)
+  const handleAddViewCommentSubmit = async () => {
+    if (!newViewComment.trim() || !viewTargetLead) return;
+    const text = newViewComment.trim();
+    setIsAddingViewComment(true);
+
+    const author = user?.name || 'CRM Assistant';
+    const nowIso = new Date().toISOString();
+
+    const newCommentObj = {
+      text,
+      author,
+      created_at: nowIso,
+    };
+
+    setViewCommentsList((prev) => [newCommentObj, ...prev]);
+    setNewViewComment('');
+
+    if (viewTargetLead.id) {
+      await api.addSchoolComment(viewTargetLead.id, text, author);
+    }
+
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.leadCard && (m.leadCard.id === viewTargetLead.id || m.leadCard.schoolName === viewTargetLead.schoolName)) {
+          const updatedComments = [newCommentObj, ...(m.leadCard.comments || [])];
+          return {
+            ...m,
+            leadCard: {
+              ...m.leadCard,
+              comments: updatedComments,
+            },
+          };
+        }
+        return m;
+      })
+    );
+
+    setViewHistoryList((prev) => [
+      {
+        type: 'note',
+        date: nowIso,
+        description: `Comment: "${text}"`,
+        user: author,
+      },
+      ...prev,
+    ]);
+
+    setIsAddingViewComment(false);
+  };
+
   // 13. Generate Proposal for Lead
   const handleGenerateProposalForLead = (leadCard) => {
     const target = leadCard || findLatestLead();
@@ -3269,6 +3461,50 @@ export default function MainScreen({ user, onLogout }) {
       }
     }
 
+    // ── 14b. Action Intent: View Lead / Comments / Notes / Activity History ──
+    const isViewIntent =
+      lower.startsWith('view') ||
+      lower.includes('view lead') ||
+      lower.includes('show comments') ||
+      lower.includes('view comments') ||
+      lower.includes('show history') ||
+      lower.includes('view history') ||
+      lower.includes('activity history') ||
+      lower.includes('view activity') ||
+      lower.includes('view notes');
+
+    if (isViewIntent && !lower.includes('view inquir')) {
+      let q = userText
+        .replace(/view\s+comments\s+(?:for|of)?/i, '')
+        .replace(/show\s+comments\s+(?:for|of)?/i, '')
+        .replace(/view\s+history\s+(?:for|of)?/i, '')
+        .replace(/show\s+history\s+(?:for|of)?/i, '')
+        .replace(/activity\s+history\s+(?:for|of)?/i, '')
+        .replace(/view\s+activity\s+(?:for|of)?/i, '')
+        .replace(/view\s+notes\s+(?:for|of)?/i, '')
+        .replace(/view\s+lead(?:\s+for)?/i, '')
+        .replace(/view(?:\s+for)?/i, '')
+        .trim();
+
+      const resolved = await resolveSchoolFromQuery(q);
+      setIsTyping(false);
+
+      const schoolLead = resolved.lead || target;
+      if (schoolLead) {
+        openViewLeadModal(schoolLead);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `👁️ **Viewing Dossier for ${schoolLead.schoolName || schoolLead.school_name}:**\n\nOpening comments, discussion notes, and full CRM activity history...`,
+            leadCard: schoolLead,
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+    }
+
     // ── 15. Explicit Lead Creation Intent (Never triggered by actions) ──
     const isCreateLeadIntent =
       lower.includes('create lead') ||
@@ -3548,6 +3784,7 @@ export default function MainScreen({ user, onLogout }) {
                 onEditLead={openEditLeadModal}
                 onSendEmail={openSendEmailModal}
                 onSendWhatsApp={openSendWhatsAppModal}
+                onViewLead={openViewLeadModal}
                 onGenerateProposal={handleGenerateProposalForLead}
                 onCallLead={handleCallLead}
                 onMeetingDone={handleMarkMeetingDone}
@@ -4844,6 +5081,221 @@ export default function MainScreen({ user, onLogout }) {
           </View>
         </View>
       </Modal>
+
+      {/* ── MODAL 12: View Comments, Notes & Activity History Modal (Web App View) ── */}
+      <Modal
+        visible={viewModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setViewModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalLargeCard, { maxHeight: '90%', paddingBottom: 16 }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text style={[styles.modalLargeTitle, { fontSize: 16.5 }]} numberOfLines={1}>
+                    {viewTargetLead?.schoolName || viewTargetLead?.school_name || 'School Dossier'}
+                  </Text>
+                  <View style={[
+                    styles.viewStatusBadge,
+                    viewTargetLead?.status === 'archived' ? { backgroundColor: '#F1F5F9' } :
+                    viewTargetLead?.status === 'lost' ? { backgroundColor: '#FFE4E6' } :
+                    viewTargetLead?.status === 'meeting_done' ? { backgroundColor: '#ECFDF5' } :
+                    viewTargetLead?.status === 'meeting_scheduled' ? { backgroundColor: '#F5F3FF' } :
+                    { backgroundColor: '#EFF6FF' }
+                  ]}>
+                    <Text style={[
+                      styles.viewStatusBadgeText,
+                      viewTargetLead?.status === 'archived' ? { color: '#64748B' } :
+                      viewTargetLead?.status === 'lost' ? { color: '#E11D48' } :
+                      viewTargetLead?.status === 'meeting_done' ? { color: '#059669' } :
+                      viewTargetLead?.status === 'meeting_scheduled' ? { color: '#7C3AED' } :
+                      { color: '#2563EB' }
+                    ]}>
+                      {(viewTargetLead?.status || 'NEW').toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                  Comments, Notes & Activity History (Web App CRM View)
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setViewModalVisible(false)} style={{ padding: 4 }}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* School Quick Info Bar */}
+            <View style={styles.viewQuickInfoBar}>
+              <Text style={styles.viewQuickInfoItem} numberOfLines={1}>
+                👤 {viewTargetLead?.contactPerson || viewTargetLead?.contact_name || 'Principal'}
+              </Text>
+              <Text style={styles.viewQuickInfoItem} numberOfLines={1}>
+                📞 {viewTargetLead?.phone || 'N/A'}
+              </Text>
+              <Text style={styles.viewQuickInfoItem} numberOfLines={1}>
+                📍 {viewTargetLead?.location || 'Mumbai'}
+              </Text>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+              {/* 1. Discussion Notes Section (Web App Notes) */}
+              <View style={styles.viewSectionCard}>
+                <View style={styles.viewSectionHeader}>
+                  <Feather name="file-text" size={14} color="#D97706" style={{ marginRight: 6 }} />
+                  <Text style={[styles.viewSectionTitle, { color: '#92400E' }]}>Discussion Notes</Text>
+                </View>
+                <View style={styles.viewNotesBox}>
+                  <Text style={styles.viewNotesText}>
+                    {viewTargetLead?.notes || 'No discussion notes logged yet for this school.'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 2. Comments Section (Web App Comments) */}
+              <View style={styles.viewSectionCard}>
+                <View style={styles.viewSectionHeader}>
+                  <Feather name="message-square" size={14} color="#4F46E5" style={{ marginRight: 6 }} />
+                  <Text style={[styles.viewSectionTitle, { color: '#3730A3' }]}>
+                    Comments ({viewCommentsList.length})
+                  </Text>
+                </View>
+
+                {/* Comments List */}
+                {viewCommentsList.length > 0 ? (
+                  <View style={{ marginBottom: 10, gap: 8 }}>
+                    {viewCommentsList.map((c, idx) => (
+                      <View key={idx} style={styles.viewCommentCard}>
+                        <Text style={styles.viewCommentBody}>{c.text || c.comment}</Text>
+                        <View style={styles.viewCommentFooter}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Feather name="user" size={11} color="#64748B" style={{ marginRight: 4 }} />
+                            <Text style={styles.viewCommentAuthor}>{c.author || 'CRM User'}</Text>
+                          </View>
+                          <Text style={styles.viewCommentDate}>
+                            {formatActivityDate(c.created_at || c.timestamp)}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.viewEmptyBox}>
+                    <Text style={styles.viewEmptyText}>No comments recorded yet.</Text>
+                  </View>
+                )}
+
+                {/* Add a comment input */}
+                <View style={styles.viewAddCommentRow}>
+                  <TextInput
+                    style={styles.viewAddCommentInput}
+                    value={newViewComment}
+                    onChangeText={setNewViewComment}
+                    placeholder="Add a comment or note..."
+                    placeholderTextColor="#94A3B8"
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.viewAddCommentBtn, !newViewComment.trim() && { opacity: 0.6 }]}
+                    onPress={handleAddViewCommentSubmit}
+                    disabled={isAddingViewComment || !newViewComment.trim()}
+                  >
+                    {isAddingViewComment ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Feather name="send" size={14} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* 3. Activity History Section (Web App Activity History) */}
+              <View style={styles.viewSectionCard}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[styles.viewSectionHeader, { justifyContent: 'space-between' }]}
+                  onPress={() => setViewHistoryCollapsed(!viewHistoryCollapsed)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Feather name="clock" size={14} color="#0D9488" style={{ marginRight: 6 }} />
+                    <Text style={[styles.viewSectionTitle, { color: '#115E59' }]}>
+                      Activity History ({viewHistoryList.length})
+                    </Text>
+                  </View>
+                  <Feather
+                    name={viewHistoryCollapsed ? 'chevron-down' : 'chevron-up'}
+                    size={16}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+
+                {!viewHistoryCollapsed && (
+                  <View style={{ marginTop: 8 }}>
+                    {isLoadingHistory ? (
+                      <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                        <ActivityIndicator size="small" color="#0D9488" />
+                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>Loading history...</Text>
+                      </View>
+                    ) : viewHistoryList.length > 0 ? (
+                      <View style={{ gap: 8 }}>
+                        {viewHistoryList.map((item, idx) => {
+                          const meta = getActivityTypeMeta(item.type);
+                          return (
+                            <View
+                              key={idx}
+                              style={[
+                                styles.viewHistoryCard,
+                                {
+                                  backgroundColor: meta.bg,
+                                  borderLeftColor: meta.border,
+                                },
+                              ]}
+                            >
+                              <View style={styles.viewHistoryTopRow}>
+                                <View style={[styles.viewHistoryTypePill, { backgroundColor: meta.bg }]}>
+                                  <Feather name={meta.icon} size={10} color={meta.color} style={{ marginRight: 3 }} />
+                                  <Text style={[styles.viewHistoryTypeLabel, { color: meta.color }]}>
+                                    {meta.label}
+                                  </Text>
+                                </View>
+                                <Text style={styles.viewHistoryDate}>
+                                  {formatActivityDate(item.date || item.created_at || item.timestamp)}
+                                </Text>
+                              </View>
+                              <Text style={styles.viewHistoryDesc}>
+                                {item.description || item.action || item.title || 'CRM Action recorded'}
+                              </Text>
+                              {(item.user || item.author) && (
+                                <Text style={styles.viewHistoryAuthor}>
+                                  Logged by {item.user || item.author}
+                                </Text>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <View style={styles.viewEmptyBox}>
+                        <Text style={styles.viewEmptyText}>No activity history recorded yet.</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#0D9488', marginTop: 10, paddingVertical: 11 }]}
+              onPress={() => setViewModalVisible(false)}
+            >
+              <Text style={styles.modalPrimaryBtnText}>Close Dossier</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -5001,5 +5453,156 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  viewStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  viewStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  viewQuickInfoBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  viewQuickInfoItem: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  viewSectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+  },
+  viewSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  viewSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewNotesBox: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+  },
+  viewNotesText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#92400E',
+  },
+  viewCommentCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+  },
+  viewCommentBody: {
+    fontSize: 12.5,
+    color: '#334155',
+    lineHeight: 17,
+    marginBottom: 6,
+  },
+  viewCommentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  viewCommentAuthor: {
+    fontSize: 10.5,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  viewCommentDate: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  viewEmptyBox: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  viewEmptyText: {
+    fontSize: 11.5,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  viewAddCommentRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  viewAddCommentInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: 12.5,
+    color: COLORS.textPrimary,
+  },
+  viewAddCommentBtn: {
+    backgroundColor: '#059669',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewHistoryCard: {
+    borderRadius: 10,
+    padding: 10,
+    borderLeftWidth: 4,
+  },
+  viewHistoryTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  viewHistoryTypePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewHistoryTypeLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  viewHistoryDate: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  viewHistoryDesc: {
+    fontSize: 12,
+    color: '#1E293B',
+    lineHeight: 16,
+  },
+  viewHistoryAuthor: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
 });

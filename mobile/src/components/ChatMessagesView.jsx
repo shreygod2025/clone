@@ -27,6 +27,7 @@ export default function ChatMessagesView({
   onEditLead,
   onSendEmail,
   onSendWhatsApp,
+  onViewLead,
   onGenerateProposal,
   onCallLead,
   onMeetingDone,
@@ -430,11 +431,11 @@ export default function ChatMessagesView({
 
                           <TouchableOpacity
                             activeOpacity={0.8}
-                            style={[styles.leadActionButton, styles.btnWa]}
-                            onPress={() => onSendWhatsApp && onSendWhatsApp(lead)}
+                            style={[styles.leadActionButton, styles.btnView]}
+                            onPress={() => onViewLead && onViewLead(lead)}
                           >
-                            <FontAwesome name="whatsapp" size={13} color="#16A34A" style={{ marginRight: 3 }} />
-                            <Text style={[styles.leadActionText, { color: '#16A34A' }]}>WhatsApp</Text>
+                            <Feather name="eye" size={11} color="#0D9488" style={{ marginRight: 3 }} />
+                            <Text style={[styles.leadActionText, { color: '#0D9488' }]}>View</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1233,6 +1234,10 @@ const styles = StyleSheet.create({
   btnMail: {
     backgroundColor: '#F0F9FF',
     borderColor: '#BAE6FD',
+  },
+  btnView: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
   },
   btnWa: {
     backgroundColor: '#F0FDF4',

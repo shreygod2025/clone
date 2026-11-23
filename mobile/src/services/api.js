@@ -188,6 +188,25 @@ class ApiService {
     }
   }
 
+  // 3d. Get Complete Activity History for School Lead: GET /api/schools/{school_id}/history
+  async getSchoolHistory(schoolId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/schools/${schoolId}/history`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 12000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, history: data.history || [] };
+      } else {
+        return { success: false, history: [] };
+      }
+    } catch (err) {
+      return { success: false, error: err.message, history: [] };
+    }
+  }
+
   // 4. Send Personalized Email to School: POST /api/schools/send-personalized-email
   async sendSchoolEmail(emailData) {
     try {
