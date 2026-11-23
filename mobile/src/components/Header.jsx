@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
   },
   navBarRow: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 8 : 10,
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'android' ? 14 : (Platform.OS === 'ios' ? 12 : 18),
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

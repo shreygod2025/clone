@@ -40,14 +40,14 @@ export const SUGGESTED_ACTIONS = [
     prompt: 'List all currently active partner schools, tier status, and student enrollments',
   },
   {
-    id: 'retrieve_leads',
-    title: 'Retrieve all school leads',
-    subtitle: 'Search & inspect CRM pipeline in chat',
-    iconType: 'database',
+    id: 'schedule_meeting',
+    title: 'Schedule a demo meeting',
+    subtitle: 'Set up presentation with Principal',
+    iconType: 'calendar',
     iconSet: 'Feather',
-    iconBg: '#E0F2FE',
-    iconColor: '#0284C7',
-    prompt: 'Retrieve all school leads from the database',
+    iconBg: '#EFF6FF',
+    iconColor: '#2563EB',
+    prompt: 'Schedule a demo meeting with the Principal',
   },
 ];
 
@@ -127,8 +127,8 @@ export const MOCK_RESPONSES = {
     nextActions: ["View School LMS Reports", "Schedule Teacher Refreshers", "Request Invoices"],
   },
 
-  retrieve_leads: {
-    text: "📋 Querying live School CRM database for all enrolled leads and pipeline schools...",
-    nextActions: ["Add School Lead", "Schedule Meeting"],
+  schedule_meeting: {
+    text: "📅 Ready to book a demonstration meeting. Which date, time, and meeting type (online/offline) would you like to schedule?",
+    nextActions: ["Mark Meeting Done", "Generate Proposal Quote"],
   },
 };

@@ -536,7 +536,7 @@ export default function MainScreen({ user, onLogout }) {
               {
                 sender: 'ai',
                 text: `🗑️ **Lead Deleted:** Removed **${schoolName}** from the CRM database.`,
-                nextActions: ['Add School Lead', 'Retrieve All Leads'],
+                nextActions: ['Add School Lead'],
                 time: 'Just now',
               },
             ]);
@@ -573,6 +573,8 @@ export default function MainScreen({ user, onLogout }) {
             leadCard: {
               ...msg.leadCard,
               status: 'archived',
+              isDeleted: false,
+              isArchived: true,
             },
           };
         }
@@ -584,8 +586,47 @@ export default function MainScreen({ user, onLogout }) {
       ...prev,
       {
         sender: 'ai',
-        text: `📦 **Lead Archived:** **${schoolName}** has been moved to CRM archives.`,
-        nextActions: ['Add School Lead', 'Retrieve All Leads'],
+        text: `📦 **Lead Archived:** **${schoolName}** has been moved to CRM archives. You can unarchive or delete it at any time.`,
+        nextActions: ['Add School Lead'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  // 3a. Unarchive Lead (Restore to Active Pipeline)
+  const handleUnarchiveLead = async (leadCard) => {
+    const target = leadCard || findLatestLead();
+    if (!target) return;
+    const schoolName = target.schoolName || target.school_name || 'School';
+    setIsTyping(true);
+    if (target.id) {
+      await api.updateSchoolInquiry(target.id, { status: 'new' });
+    }
+    setIsTyping(false);
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.leadCard && (msg.leadCard.id === target.id || msg.leadCard.schoolName === schoolName)) {
+          return {
+            ...msg,
+            leadCard: {
+              ...msg.leadCard,
+              status: 'new',
+              isDeleted: false,
+              isArchived: false,
+            },
+          };
+        }
+        return msg;
+      })
+    );
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `✅ **Lead Restored from Archive:** **${schoolName}** has been restored to active pipeline as **New Lead**. You can now edit, schedule meetings, or generate proposals.`,
+        nextActions: ['Schedule Meeting', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -951,7 +992,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `❌ **Lead Marked as Lost:** **${schoolName}** recorded as \`LOST\`.\n• **Reason:** ${lostReason}\n\nLead status updated in CRM pipeline.`,
-        nextActions: ['Add School Lead', 'Retrieve All Leads'],
+        nextActions: ['Add School Lead'],
         time: 'Just now',
       },
     ]);
@@ -1238,7 +1279,7 @@ export default function MainScreen({ user, onLogout }) {
         {
           sender: 'ai',
           text: '📝 **Opening Add School Lead Form:** Fill in the school name, contact information, board, and curriculum requirements in the form modal.',
-          nextActions: ['Add School Lead', 'Retrieve All Leads'],
+          nextActions: ['Add School Lead'],
           time: 'Just now',
         },
       ]);
@@ -1296,74 +1337,199 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
-    // ── 0C. Query Intent: Retrieve Specific Lead in CRM ──
+    // ── 0C. Action Intent: Unarchive Lead ──
+    if (
+      lower.includes('unarchive') ||
+      lower.includes('restore lead') ||
+      lower.includes('un-archive')
+    ) {
+      setIsTyping(false);
+      const targetLead = findLatestLead();
+      if (targetLead) {
+        await handleUnarchiveLead(targetLead);
+      } else {
+        Alert.alert('Notice', 'No archived school lead found in context to restore.');
+      }
+      return;
+    }
+
+    // ── 0D. Query Intent: Retrieve Specific / Particular Lead in CRM ──
     const isSpecificLeadQuery =
-      lower.startsWith('retrieve lead for') ||
-      lower.startsWith('show lead for') ||
-      lower.startsWith('show lead') ||
-      lower.startsWith('find lead') ||
-      lower.startsWith('get lead for') ||
-      lower.startsWith('get lead') ||
-      lower.startsWith('search lead') ||
-      (lower.includes('retrieve') && lower.includes('lead') && lower.includes('for')) ||
-      (lower.includes('lead for') && !lower.includes('create') && !lower.includes('add'));
+      !isRetrieveAllLeadsIntent &&
+      (lower.includes('particular lead') ||
+        lower.includes('specific lead') ||
+        lower.startsWith('retrieve lead') ||
+        lower.startsWith('show lead') ||
+        lower.startsWith('find lead') ||
+        lower.startsWith('get lead') ||
+        lower.startsWith('search lead') ||
+        lower.startsWith('view lead') ||
+        lower.startsWith('inspect lead') ||
+        (lower.includes('retrieve') && lower.includes('lead')) ||
+        (lower.includes('show') && lower.includes('lead')) ||
+        (lower.includes('get') && lower.includes('lead')) ||
+        (lower.includes('lead for') && !lower.includes('create') && !lower.includes('add')));
 
     if (isSpecificLeadQuery) {
       let queryName = userText
-        .replace(/retrieve\s+lead\s+for/i, '')
-        .replace(/show\s+lead\s+for/i, '')
-        .replace(/show\s+lead/i, '')
-        .replace(/find\s+lead\s+for/i, '')
-        .replace(/find\s+lead/i, '')
-        .replace(/get\s+lead\s+for/i, '')
-        .replace(/get\s+lead/i, '')
-        .replace(/search\s+lead\s+for/i, '')
-        .replace(/search\s+lead/i, '')
+        .replace(/retrieve\s+(?:a\s+)?(?:particular|specific)\s+lead(?:\s+for)?/i, '')
+        .replace(/show\s+(?:a\s+)?(?:particular|specific)\s+lead(?:\s+for)?/i, '')
+        .replace(/get\s+(?:a\s+)?(?:particular|specific)\s+lead(?:\s+for)?/i, '')
+        .replace(/find\s+(?:a\s+)?(?:particular|specific)\s+lead(?:\s+for)?/i, '')
+        .replace(/view\s+(?:a\s+)?(?:particular|specific)\s+lead(?:\s+for)?/i, '')
+        .replace(/retrieve\s+lead(?:\s+for)?/i, '')
+        .replace(/show\s+lead(?:\s+for)?/i, '')
+        .replace(/find\s+lead(?:\s+for)?/i, '')
+        .replace(/get\s+lead(?:\s+for)?/i, '')
+        .replace(/search\s+lead(?:\s+for)?/i, '')
+        .replace(/view\s+lead(?:\s+for)?/i, '')
         .replace(/lead\s+for/i, '')
+        .replace(/details\s+for/i, '')
         .replace(/details/i, '')
+        .replace(/particular\s+lead/i, '')
+        .replace(/specific\s+lead/i, '')
         .trim();
+
+      // Clean out common filler words
+      if (
+        queryName.toLowerCase() === 'a' ||
+        queryName.toLowerCase() === 'the' ||
+        queryName.toLowerCase() === 'school' ||
+        queryName.toLowerCase() === 'in crm' ||
+        queryName.toLowerCase() === 'from crm'
+      ) {
+        queryName = '';
+      }
 
       const res = await api.fetchSchoolInquiries(100);
       setIsTyping(false);
 
-      if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
-        const queryLower = queryName.toLowerCase();
-        const matched = res.inquiries.find((l) => {
-          const sName = (l.school_name || '').toLowerCase();
-          const cName = (l.contact_name || '').toLowerCase();
-          return sName.includes(queryLower) || queryLower.includes(sName) || cName.includes(queryLower);
-        });
+      let matched = null;
+      const queryLower = queryName.toLowerCase();
 
-        if (matched) {
-          const leadCardObj = {
-            id: matched.id,
-            schoolName: matched.school_name,
-            contactPerson: `${matched.contact_name || 'Contact'} (${matched.contact_role || 'Principal'})`,
-            phone: matched.phone || '',
-            email: matched.email || '',
-            location: matched.location || 'Mumbai, Maharashtra',
-            board: matched.board || 'CBSE',
-            studentCount: matched.school_size || matched.student_count_tier || 'Enrolled Campus',
-            recommendedProgram: (matched.programs_interested && matched.programs_interested[0]) || 'Agentic AI & Coding Excellence Lab (K-12)',
-            leadScore: '92/100 (Active Pipeline)',
-            notes: matched.notes || 'Inquiry active in School CRM.',
-            status: matched.status || 'new',
-            meeting_date: matched.meeting_date || null,
-            meeting_time: matched.meeting_time || null,
-            meeting_type: matched.meeting_type || null,
-            comments: matched.comments || [],
+      // Priority 1: If query specified, check recent conversation memory first
+      if (queryLower) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const lc = messages[i]?.leadCard;
+          if (lc) {
+            const sName = (lc.schoolName || lc.school_name || '').toLowerCase();
+            const cName = (lc.contactPerson || lc.contact_name || '').toLowerCase();
+            if (sName.includes(queryLower) || queryLower.includes(sName) || cName.includes(queryLower)) {
+              matched = {
+                id: lc.id,
+                school_name: lc.schoolName || lc.school_name,
+                contact_name: lc.contactPerson || lc.contact_name,
+                contact_role: lc.contactRole || 'Principal',
+                phone: lc.phone,
+                email: lc.email,
+                location: lc.location,
+                board: lc.board,
+                school_size: lc.studentCount,
+                programs_interested: [lc.recommendedProgram],
+                notes: lc.notes,
+                status: lc.status,
+                isDeleted: lc.isDeleted,
+                isArchived: lc.isArchived,
+                meeting_date: lc.meeting_date,
+                meeting_time: lc.meeting_time,
+                meeting_type: lc.meeting_type,
+                comments: lc.comments,
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      // Priority 2: Check live CRM backend inquiries
+      if (!matched && res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
+        if (queryLower) {
+          matched = res.inquiries.find((l) => {
+            const sName = (l.school_name || '').toLowerCase();
+            const cName = (l.contact_name || '').toLowerCase();
+            return sName.includes(queryLower) || queryLower.includes(sName) || cName.includes(queryLower);
+          });
+        }
+      }
+
+      // Priority 3: If generic query (e.g. "retrieve a particular lead" or "show lead"), snap to latest in context or first inquiry
+      if (!matched && !queryLower) {
+        const latest = findLatestLead();
+        if (latest) {
+          matched = {
+            id: latest.id,
+            school_name: latest.schoolName || latest.school_name,
+            contact_name: latest.contactPerson || latest.contact_name,
+            contact_role: latest.contactRole || 'Principal',
+            phone: latest.phone,
+            email: latest.email,
+            location: latest.location,
+            board: latest.board,
+            school_size: latest.studentCount,
+            programs_interested: [latest.recommendedProgram],
+            notes: latest.notes,
+            status: latest.status,
+            isDeleted: latest.isDeleted,
+            isArchived: latest.isArchived,
+            meeting_date: latest.meeting_date,
+            meeting_time: latest.meeting_time,
+            meeting_type: latest.meeting_type,
+            comments: latest.comments,
           };
+        } else if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
+          matched = res.inquiries[0];
+        }
+      }
 
-          const isMeetingDone = matched.status === 'meeting_done';
-          const isMeetingScheduled = matched.status === 'meeting_scheduled';
+      if (matched) {
+        const isArchived = matched.status === 'archived' || matched.isArchived === true;
+        const isDeleted = matched.status === 'deleted' || matched.isDeleted === true;
+        const isLost = !isDeleted && !isArchived && matched.status === 'lost';
+        const isMeetingDone = !isDeleted && !isArchived && matched.status === 'meeting_done';
+        const isMeetingScheduled = !isDeleted && !isArchived && !isMeetingDone && (matched.status === 'meeting_scheduled' || Boolean(matched.meeting_date));
 
+        const leadCardObj = {
+          id: matched.id,
+          schoolName: matched.school_name || matched.schoolName,
+          contactPerson: `${matched.contact_name || matched.contactPerson || 'Contact'} (${matched.contact_role || 'Principal'})`,
+          phone: matched.phone || '',
+          email: matched.email || '',
+          location: matched.location || 'Mumbai, Maharashtra',
+          board: matched.board || 'CBSE',
+          studentCount: matched.school_size || matched.student_count_tier || 'Enrolled Campus',
+          recommendedProgram: (matched.programs_interested && matched.programs_interested[0]) || 'Agentic AI & Coding Excellence Lab (K-12)',
+          leadScore: isArchived ? 'Archived Record' : isLost ? '0/100 (Closed)' : '92/100 (Active Pipeline)',
+          notes: matched.notes || (isArchived ? 'This lead is in CRM archives.' : 'Inquiry active in School CRM.'),
+          status: matched.status || 'new',
+          isDeleted: isDeleted,
+          isArchived: isArchived,
+          meeting_date: matched.meeting_date || null,
+          meeting_time: matched.meeting_time || null,
+          meeting_type: matched.meeting_type || null,
+          comments: matched.comments || [],
+        };
+
+        if (isArchived) {
           setMessages((prev) => [
             ...prev,
             {
               sender: 'ai',
-              text: `🏫 **Retrieved Lead Dossier for ${matched.school_name}:**\n\n• **Status:** \`${(matched.status || 'NEW').toUpperCase()}\`\n• **Contact:** ${matched.contact_name || 'Principal'} (${matched.contact_role || 'Principal'})\n• **Phone:** \`${matched.phone || 'N/A'}\`\n• **Location:** ${matched.location || 'Mumbai'}\n• **Board:** ${matched.board || 'CBSE'}\n${matched.meeting_date ? `• **Meeting:** \`${matched.meeting_date}\` (${matched.meeting_type || 'offline'})\n` : ''}\nInteractive lead card rendered below with full action controls:`,
+              text: `📦 **Retrieved Archived Lead Dossier for ${leadCardObj.schoolName}:**\n\n• **Status:** \`ARCHIVED\`\n• **Contact:** ${matched.contact_name || 'Principal'} (${matched.contact_role || 'Principal'})\n• **Phone:** \`${matched.phone || 'N/A'}\`\n• **Location:** ${matched.location || 'Mumbai'}\n• **Board:** ${matched.board || 'CBSE'}\n\nThis school lead is stored in the archive. Interactive lead card rendered below with **Unarchive** and **Delete** controls:`,
               leadCard: leadCardObj,
-              nextActions: isMeetingDone
+              nextActions: ['Add School Lead'],
+              time: 'Just now',
+            },
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `🏫 **Retrieved Lead Dossier for ${leadCardObj.schoolName}:**\n\n• **Status:** \`${(matched.status || 'NEW').toUpperCase()}\`\n• **Contact:** ${matched.contact_name || 'Principal'} (${matched.contact_role || 'Principal'})\n• **Phone:** \`${matched.phone || 'N/A'}\`\n• **Location:** ${matched.location || 'Mumbai'}\n• **Board:** ${matched.board || 'CBSE'}\n${matched.meeting_date ? `• **Meeting:** \`${matched.meeting_date}\` (${matched.meeting_type || 'offline'})\n` : ''}\nInteractive lead card rendered below with full action controls:`,
+              leadCard: leadCardObj,
+              nextActions: isLost
+                ? ['Add School Lead']
+                : isMeetingDone
                 ? ['Schedule 2nd Meeting', 'Generate Proposal Quote']
                 : isMeetingScheduled
                 ? ['Mark Meeting Done', 'Generate Proposal Quote']
@@ -1371,15 +1537,15 @@ export default function MainScreen({ user, onLogout }) {
               time: 'Just now',
             },
           ]);
-          return;
         }
+        return;
       }
 
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: `🔍 **School Lead Not Found:** Could not locate an existing school lead matching **"${queryName}"** in the CRM database.\n\nWould you like to add this school?`,
+          text: `🔍 **School Lead Not Found:** Could not locate an existing school lead matching **"${queryName || userText}"** in the CRM database.\n\nWould you like to add this school?`,
           nextActions: ['Add School Lead'],
           time: 'Just now',
         },
@@ -1407,7 +1573,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1419,7 +1585,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1444,7 +1610,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: 'Please select or add a school lead first to mark the meeting as done.',
-            nextActions: ['Add School Lead', 'Retrieve All Leads'],
+            nextActions: ['Add School Lead'],
             time: 'Just now',
           },
         ]);
@@ -1467,7 +1633,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Already Deleted:** **${target.schoolName || target.school_name}** has already been deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1495,7 +1661,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Already Lost:** **${target.schoolName || target.school_name}** is already recorded as a Lost Lead.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1507,7 +1673,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1534,7 +1700,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1562,7 +1728,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Meetings cannot be scheduled for closed leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1574,7 +1740,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM. Meetings cannot be scheduled for deleted leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1590,7 +1756,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `⚠️ **Meeting Already Scheduled:** A meeting with **${target.schoolName || target.school_name}** is already scheduled for **${target.meeting_date || 'an upcoming date'}**${target.meeting_time ? ` at **${target.meeting_time}**` : ''}.\n\nUnder CRM rules, you cannot reschedule this meeting until it has taken place and been marked as Done.`,
-              nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email', 'Retrieve All Leads'],
+              nextActions: ['Mark Meeting Done', 'Send Meeting Invite Email'],
               time: 'Just now',
             },
           ]);
@@ -1618,7 +1784,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Lost leads cannot be assigned.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1630,7 +1796,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1658,7 +1824,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Support tickets cannot be raised for closed leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1670,7 +1836,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1701,7 +1867,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Notes cannot be added to closed leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1713,7 +1879,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1746,7 +1912,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Follow-ups cannot be scheduled for closed leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1758,7 +1924,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1787,7 +1953,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Documents and proposals are unavailable for closed leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1799,7 +1965,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1822,7 +1988,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `⚠️ **Cannot Edit Deleted Lead:** **${target.schoolName || target.school_name}** was deleted from CRM. Deleted leads cannot be edited from chat or card.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1834,7 +2000,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Cannot Edit Lost Lead:** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Closed leads cannot be edited or modified.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1861,7 +2027,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Outbound emails cannot be sent.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1873,7 +2039,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1899,7 +2065,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. WhatsApp messages cannot be sent.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1911,7 +2077,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1936,7 +2102,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `❌ **Lead Closed (Lost):** **${target.schoolName || target.school_name}** is marked as a Lost Lead. Calls cannot be placed for closed leads.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -1948,7 +2114,7 @@ export default function MainScreen({ user, onLogout }) {
             {
               sender: 'ai',
               text: `🗑️ **Lead Deleted:** **${target.schoolName || target.school_name}** was deleted from CRM.`,
-              nextActions: ['Add School Lead', 'Retrieve All Leads'],
+              nextActions: ['Add School Lead'],
               time: 'Just now',
             },
           ]);
@@ -2033,7 +2199,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `📊 Found **${res.inquiries.length} School Leads** in your live database:`,
             followUpList: liveLeads,
-            nextActions: ['Mark Meeting Done', 'Generate Proposal Quote', 'Retrieve All Leads'],
+            nextActions: ['Mark Meeting Done', 'Generate Proposal Quote'],
             time: 'Just now',
           },
         ]);
@@ -2167,6 +2333,11 @@ export default function MainScreen({ user, onLogout }) {
         openLostLeadModal(target);
         return;
       }
+    } else if (lower.includes('unarchive') || lower.includes('restore')) {
+      if (target) {
+        await handleUnarchiveLead(target);
+        return;
+      }
     } else if (lower.includes('archive')) {
       if (target) {
         await handleArchiveLead(target);
@@ -2245,6 +2416,7 @@ export default function MainScreen({ user, onLogout }) {
                 onDeleteLead={handleDeleteLead}
                 onLostLead={openLostLeadModal}
                 onArchiveLead={handleArchiveLead}
+                onUnarchiveLead={handleUnarchiveLead}
               />
             ) : (
               /* Default Suggestions Landing Screen */
@@ -3346,6 +3518,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.headerBg,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
   },
   keyboardContainer: {
     flex: 1,

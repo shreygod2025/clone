@@ -12,6 +12,7 @@ import {
   Linking,
   RefreshControl,
   Platform,
+  StatusBar,
 } from 'react-native';
 import {
   Feather,
@@ -1623,8 +1624,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : (Platform.OS === 'ios' ? 14 : 18),
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -39,6 +39,7 @@ export default function ChatMessagesView({
   onDeleteLead,
   onLostLead,
   onArchiveLead,
+  onUnarchiveLead,
 }) {
   const scrollViewRef = useRef(null);
 
@@ -102,16 +103,17 @@ export default function ChatMessagesView({
                 {/* Render Rich Lead Card if present */}
                 {msg.leadCard && (() => {
                   const lead = msg.leadCard;
-                  const isDeleted = lead.status === 'deleted' || lead.isDeleted || lead.status === 'archived';
-                  const isLost = lead.status === 'lost';
-                  const isMeetingDone = lead.status === 'meeting_done';
-                  const isMeetingScheduled = !isMeetingDone && (lead.status === 'meeting_scheduled' || Boolean(lead.meeting_date));
+                  const isDeleted = lead.status === 'deleted' || lead.isDeleted === true;
+                  const isArchived = !isDeleted && (lead.status === 'archived' || lead.isArchived === true);
+                  const isLost = !isDeleted && !isArchived && lead.status === 'lost';
+                  const isMeetingDone = !isDeleted && !isArchived && lead.status === 'meeting_done';
+                  const isMeetingScheduled = !isDeleted && !isArchived && !isMeetingDone && (lead.status === 'meeting_scheduled' || Boolean(lead.meeting_date));
 
                   return (
                     <View style={styles.leadCardContainer}>
                       <View style={styles.cardHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                          <Ionicons name="school" size={17} color={isLost ? '#EF4444' : isDeleted ? '#64748B' : '#059669'} style={{ marginRight: 6 }} />
+                          <Ionicons name="school" size={17} color={isLost ? '#EF4444' : isDeleted ? '#64748B' : isArchived ? '#475569' : '#059669'} style={{ marginRight: 6 }} />
                           <Text style={styles.schoolName} numberOfLines={1}>{lead.schoolName || lead.school_name}</Text>
                         </View>
                       </View>
@@ -124,6 +126,10 @@ export default function ChatMessagesView({
                         ) : isDeleted ? (
                           <View style={[styles.boardBadge, { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', borderWidth: 1 }]}>
                             <Text style={[styles.boardBadgeText, { color: '#64748B', fontWeight: '800' }]}>🗑️ DELETED FROM CRM</Text>
+                          </View>
+                        ) : isArchived ? (
+                          <View style={[styles.boardBadge, { backgroundColor: '#F1F5F9', borderColor: '#94A3B8', borderWidth: 1 }]}>
+                            <Text style={[styles.boardBadgeText, { color: '#475569', fontWeight: '800' }]}>📦 ARCHIVED LEAD</Text>
                           </View>
                         ) : isMeetingDone ? (
                           <View style={[styles.boardBadge, { backgroundColor: '#F3E8FF', borderColor: '#D8B4FE', borderWidth: 1 }]}>
@@ -171,6 +177,10 @@ export default function ChatMessagesView({
                             Alert.alert('Lead Deleted', 'This lead has been deleted from CRM.');
                             return;
                           }
+                          if (isArchived) {
+                            Alert.alert('Lead Archived', 'This lead is archived. Tap Unarchive Lead to resume active communications.');
+                            return;
+                          }
                           onSendEmail && onSendEmail(lead);
                         }}
                       >
@@ -190,6 +200,10 @@ export default function ChatMessagesView({
                           }
                           if (isDeleted) {
                             Alert.alert('Lead Deleted', 'This lead has been deleted from CRM.');
+                            return;
+                          }
+                          if (isArchived) {
+                            Alert.alert('Lead Archived', 'This lead is archived. Tap Unarchive Lead to resume active communications.');
                             return;
                           }
                           onCallLead && onCallLead(lead);
@@ -251,6 +265,35 @@ export default function ChatMessagesView({
                           <Text style={styles.leadDeletedDescription}>
                             This record was deleted from the active database. Editing and further actions are disabled.
                           </Text>
+                        </View>
+                      ) : isArchived ? (
+                        <View style={styles.leadArchivedBanner}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                            <Feather name="archive" size={13} color="#475569" style={{ marginRight: 6 }} />
+                            <Text style={styles.leadArchivedTitle}>Archived Lead</Text>
+                          </View>
+                          <Text style={styles.leadArchivedDescription}>
+                            This school lead is stored in the CRM archive. You can restore it to the active pipeline or delete it permanently.
+                          </Text>
+                          <View style={styles.archivedButtonsRow}>
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              style={[styles.archiveBtn, styles.btnUnarchive]}
+                              onPress={() => onUnarchiveLead && onUnarchiveLead(lead)}
+                            >
+                              <Feather name="rotate-ccw" size={12} color="#059669" style={{ marginRight: 5 }} />
+                              <Text style={styles.btnUnarchiveText}>Unarchive Lead</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              style={[styles.archiveBtn, styles.btnDeleteArchive]}
+                              onPress={() => onDeleteLead && onDeleteLead(lead)}
+                            >
+                              <Feather name="trash-2" size={12} color="#DC2626" style={{ marginRight: 5 }} />
+                              <Text style={styles.btnDeleteArchiveText}>Delete</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       ) : (
                         <View style={styles.leadActionsBar}>
@@ -963,6 +1006,56 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     lineHeight: 15,
+  },
+  leadArchivedBanner: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#94A3B8',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+  },
+  leadArchivedTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  leadArchivedDescription: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
+  },
+  archivedButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  archiveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  btnUnarchive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  btnUnarchiveText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  btnDeleteArchive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECDD3',
+  },
+  btnDeleteArchiveText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   pipelineContainer: {
     marginTop: 8,
