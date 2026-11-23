@@ -20,6 +20,284 @@ function formatAssistantNote(notes, leadCard) {
   return clean;
 }
 
+// ── Task Management Helper Components (Web App Phase 1) ──────────────────────
+function getPriorityBadge(priority = 'medium') {
+  const p = (priority || 'medium').toLowerCase();
+  if (p === 'urgent') return { label: '🔥 Urgent', bg: '#FEE2E2', color: '#DC2626' };
+  if (p === 'high') return { label: '⚡ High', bg: '#FFEDD5', color: '#EA580C' };
+  if (p === 'low') return { label: '💤 Low', bg: '#F1F5F9', color: '#475569' };
+  return { label: '🔹 Medium', bg: '#FEF9C3', color: '#A16207' };
+}
+
+function getStatusBadge(status = 'pending') {
+  const s = (status || 'pending').toLowerCase();
+  if (s === 'completed') return { label: '✓ Completed', bg: '#DCFCE7', color: '#15803D' };
+  if (s === 'in_progress') return { label: '⏳ In Progress', bg: '#DBEAFE', color: '#1D4ED8' };
+  if (s === 'pending_approval') return { label: '📋 Pending Approval', bg: '#F3E8FF', color: '#7E22CE' };
+  if (s === 'rejected') return { label: '✕ Rejected', bg: '#FEE2E2', color: '#DC2626' };
+  return { label: '🕒 Pending', bg: '#FEF3C7', color: '#B45309' };
+}
+
+function TaskItemCard({
+  task,
+  onCompleteTask,
+  onStartTask,
+  onDeleteTask,
+  onCommentTask,
+}) {
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
+
+  const priorityMeta = getPriorityBadge(task.priority);
+  const statusMeta = getStatusBadge(task.status);
+  const isCompleted = (task.status || '').toLowerCase() === 'completed';
+  const isInProgress = (task.status || '').toLowerCase() === 'in_progress';
+
+  const handleSendComment = async () => {
+    if (!commentText.trim()) return;
+    setIsSendingComment(true);
+    if (onCommentTask) {
+      await onCommentTask(task, commentText.trim());
+    }
+    setIsSendingComment(false);
+    setCommentText('');
+    setCommentOpen(false);
+  };
+
+  return (
+    <View style={styles.taskItemContainer}>
+      <View style={styles.taskItemTopRow}>
+        <View style={styles.taskCodeBadge}>
+          <Text style={styles.taskCodeText}>{task.code || 'TASK'}</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          <View style={[styles.taskBadgePill, { backgroundColor: priorityMeta.bg }]}>
+            <Text style={[styles.taskBadgeText, { color: priorityMeta.color }]}>{priorityMeta.label}</Text>
+          </View>
+          <View style={[styles.taskBadgePill, { backgroundColor: statusMeta.bg }]}>
+            <Text style={[styles.taskBadgeText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.taskItemTitle}>{task.title}</Text>
+      {task.description ? (
+        <Text style={styles.taskItemDesc} numberOfLines={2}>{task.description}</Text>
+      ) : null}
+
+      <View style={styles.taskItemMetaRow}>
+        <View style={styles.taskMetaCol}>
+          <Feather name="user" size={11} color="#64748B" style={{ marginRight: 4 }} />
+          <Text style={styles.taskMetaText} numberOfLines={1}>
+            {task.assigned_to_name || 'Team Member'}
+          </Text>
+        </View>
+        {task.due_date ? (
+          <View style={styles.taskMetaCol}>
+            <Feather name="calendar" size={11} color="#64748B" style={{ marginRight: 4 }} />
+            <Text style={styles.taskMetaText}>
+              Due: {task.due_date.split('T')[0]}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.taskActionsRow}>
+        {!isCompleted && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.taskActionBtn, styles.taskBtnComplete]}
+            onPress={() => onCompleteTask && onCompleteTask(task)}
+          >
+            <Feather name="check" size={11} color="#059669" style={{ marginRight: 3 }} />
+            <Text style={[styles.taskActionBtnText, { color: '#059669' }]}>Complete</Text>
+          </TouchableOpacity>
+        )}
+
+        {!isCompleted && !isInProgress && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.taskActionBtn, styles.taskBtnStart]}
+            onPress={() => onStartTask && onStartTask(task)}
+          >
+            <Feather name="play" size={10} color="#2563EB" style={{ marginRight: 3 }} />
+            <Text style={[styles.taskActionBtnText, { color: '#2563EB' }]}>Start</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.taskActionBtn, styles.taskBtnComment]}
+          onPress={() => setCommentOpen(!commentOpen)}
+        >
+          <Feather name="message-square" size={11} color="#64748B" style={{ marginRight: 3 }} />
+          <Text style={[styles.taskActionBtnText, { color: '#64748B' }]}>Comment</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.taskActionBtn, styles.taskBtnDelete]}
+          onPress={() => onDeleteTask && onDeleteTask(task)}
+        >
+          <Feather name="trash-2" size={11} color="#EF4444" style={{ marginRight: 3 }} />
+          <Text style={[styles.taskActionBtnText, { color: '#EF4444' }]}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+
+      {commentOpen && (
+        <View style={styles.inlineCommentBox}>
+          <TextInput
+            style={styles.inlineCommentInput}
+            value={commentText}
+            onChangeText={setCommentText}
+            placeholder="Add update or remark..."
+            placeholderTextColor="#94A3B8"
+          />
+          <TouchableOpacity
+            style={styles.sendCommentBtn}
+            onPress={handleSendComment}
+            disabled={isSendingComment || !commentText.trim()}
+          >
+            <Text style={styles.sendCommentBtnText}>Post</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TaskListCard({
+  title,
+  subtitle,
+  tasks = [],
+  onCompleteTask,
+  onStartTask,
+  onDeleteTask,
+  onCommentTask,
+}) {
+  return (
+    <View style={styles.taskListCardContainer}>
+      <View style={styles.taskListHeader}>
+        <View style={styles.taskListIconBubble}>
+          <Feather name="check-square" size={16} color="#059669" />
+        </View>
+        <View style={{ flex: 1, marginLeft: 9 }}>
+          <Text style={styles.taskListTitle}>{title || `Tasks (${tasks.length})`}</Text>
+          {subtitle ? <Text style={styles.taskListSubtitle}>{subtitle}</Text> : null}
+        </View>
+      </View>
+
+      {tasks.length === 0 ? (
+        <View style={styles.emptyTaskState}>
+          <Text style={styles.emptyTaskText}>No tasks found in this view.</Text>
+        </View>
+      ) : (
+        tasks.map((task, idx) => (
+          <TaskItemCard
+            key={task.id || idx}
+            task={task}
+            onCompleteTask={onCompleteTask}
+            onStartTask={onStartTask}
+            onDeleteTask={onDeleteTask}
+            onCommentTask={onCommentTask}
+          />
+        ))
+      )}
+    </View>
+  );
+}
+
+function InlineTaskCreationCard({
+  initialTitle = '',
+  onSubmit,
+}) {
+  const [title, setTitle] = useState(initialTitle);
+  const [priority, setPriority] = useState('medium');
+  const [dueDateDays, setDueDateDays] = useState(1);
+
+  const handleSubmit = () => {
+    if (!title.trim()) return;
+    const due = new Date(Date.now() + dueDateDays * 86400000).toISOString().split('T')[0];
+    if (onSubmit) {
+      onSubmit({
+        title: title.trim(),
+        priority,
+        due_date: due,
+      });
+    }
+  };
+
+  return (
+    <View style={styles.taskCreationCard}>
+      <View style={styles.taskCreationHeader}>
+        <View style={styles.taskCreationIconWrap}>
+          <Feather name="plus-circle" size={15} color="#059669" />
+        </View>
+        <View style={{ marginLeft: 8 }}>
+          <Text style={styles.taskCreationTitle}>New Mission Control Task</Text>
+          <Text style={styles.taskCreationSubtitle}>Auto-logged to tasks database</Text>
+        </View>
+      </View>
+
+      <Text style={styles.taskCreationLabel}>Task Title *</Text>
+      <TextInput
+        style={styles.taskCreationInput}
+        value={title}
+        onChangeText={setTitle}
+        placeholder="e.g. Follow up on robotics syllabus with Principal"
+        placeholderTextColor="#94A3B8"
+      />
+
+      <Text style={styles.taskCreationLabel}>Priority</Text>
+      <View style={styles.pillSelectorRow}>
+        {['low', 'medium', 'high', 'urgent'].map((p) => (
+          <TouchableOpacity
+            key={p}
+            style={[styles.selectorPill, priority === p && styles.selectorPillActive]}
+            onPress={() => setPriority(p)}
+          >
+            <Text style={[styles.selectorPillText, priority === p && styles.selectorPillTextActive]}>
+              {p.toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.taskCreationLabel}>Due Date</Text>
+      <View style={styles.pillSelectorRow}>
+        {[
+          { label: 'Today', days: 0 },
+          { label: 'Tomorrow', days: 1 },
+          { label: 'In 3 Days', days: 3 },
+          { label: 'Next Week', days: 7 },
+        ].map((d) => (
+          <TouchableOpacity
+            key={d.label}
+            style={[styles.selectorPill, dueDateDays === d.days && styles.selectorPillActive]}
+            onPress={() => setDueDateDays(d.days)}
+          >
+            <Text style={[styles.selectorPillText, dueDateDays === d.days && styles.selectorPillTextActive]}>
+              {d.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={[styles.createTaskSubmitBtn, !title.trim() && { opacity: 0.6 }]}
+        onPress={handleSubmit}
+        disabled={!title.trim()}
+      >
+        <Feather name="check" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+        <Text style={styles.createTaskSubmitBtnText}>Create Task Now</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function ChatMessagesView({
   messages,
   isTyping,
@@ -46,6 +324,11 @@ export default function ChatMessagesView({
   onSelectDisambiguatedSchool,
   onSubmitInlineMeeting,
   onSubmitInlineNote,
+  onCompleteTask,
+  onStartTask,
+  onDeleteTask,
+  onCommentTask,
+  onSubmitInlineTask,
 }) {
   const scrollViewRef = useRef(null);
 
@@ -612,6 +895,9 @@ export default function ChatMessagesView({
                         <Feather
                           name={
                             msg.confirmationCard.actionType === 'delete' ? 'trash-2' :
+                            msg.confirmationCard.actionType === 'delete_task' ? 'trash-2' :
+                            msg.confirmationCard.actionType === 'create_task' ? 'check-square' :
+                            msg.confirmationCard.actionType === 'complete_task' ? 'check-circle' :
                             msg.confirmationCard.actionType === 'lost' ? 'slash' :
                             msg.confirmationCard.actionType === 'archive' ? 'archive' :
                             msg.confirmationCard.actionType === 'unarchive' ? 'rotate-ccw' :
@@ -678,6 +964,40 @@ export default function ChatMessagesView({
                       </View>
                     )}
                   </View>
+                )}
+
+                {/* Render Task List Card if present */}
+                {msg.taskListCard && (
+                  <TaskListCard
+                    title={msg.taskListCard.title}
+                    subtitle={msg.taskListCard.subtitle}
+                    tasks={msg.taskListCard.tasks}
+                    onCompleteTask={onCompleteTask}
+                    onStartTask={onStartTask}
+                    onDeleteTask={onDeleteTask}
+                    onCommentTask={onCommentTask}
+                  />
+                )}
+
+                {/* Render Single Task Card if present */}
+                {msg.taskCard && (
+                  <View style={styles.singleTaskWrapper}>
+                    <TaskItemCard
+                      task={msg.taskCard}
+                      onCompleteTask={onCompleteTask}
+                      onStartTask={onStartTask}
+                      onDeleteTask={onDeleteTask}
+                      onCommentTask={onCommentTask}
+                    />
+                  </View>
+                )}
+
+                {/* Render Inline Task Creation Card if present */}
+                {msg.taskCreationCard && (
+                  <InlineTaskCreationCard
+                    initialTitle={msg.taskCreationCard.initialTitle}
+                    onSubmit={onSubmitInlineTask}
+                  />
                 )}
 
                 {/* Render Action Chips (hidden when leadCard is shown to avoid duplicate buttons) */}
@@ -1908,5 +2228,295 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#64748B',
     marginTop: 1,
+  },
+
+  // ── Task Management Cards Styles ──────────────────────────────────────────
+  taskListCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginTop: 10,
+    marginBottom: 6,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  taskListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  taskListHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  taskListIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskListTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  taskListSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  emptyTaskState: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  emptyTaskText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  taskItemContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+    marginBottom: 8,
+  },
+  taskItemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  taskCodeBadge: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  taskCodeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#1D4ED8',
+    letterSpacing: 0.3,
+  },
+  taskBadgePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  taskBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  taskItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 17,
+  },
+  taskItemDesc: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  taskItemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 7,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  taskMetaCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taskMetaText: {
+    fontSize: 10.5,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  taskActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  taskActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4.5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  taskBtnComplete: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  taskBtnStart: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  taskBtnComment: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  taskBtnDelete: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECDD3',
+  },
+  taskActionBtnText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  inlineCommentBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  inlineCommentInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    fontSize: 11.5,
+    color: '#0F172A',
+  },
+  sendCommentBtn: {
+    backgroundColor: '#059669',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  sendCommentBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  singleTaskWrapper: {
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  taskCreationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginTop: 10,
+    marginBottom: 6,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  taskCreationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  taskCreationIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskCreationTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  taskCreationSubtitle: {
+    fontSize: 10.5,
+    color: '#64748B',
+  },
+  taskCreationLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
+    marginTop: 6,
+  },
+  taskCreationInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12.5,
+    color: '#0F172A',
+  },
+  pillSelectorRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  selectorPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  selectorPillActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#059669',
+  },
+  selectorPillText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  selectorPillTextActive: {
+    color: '#059669',
+    fontWeight: '800',
+  },
+  createTaskSubmitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    borderRadius: 8,
+    paddingVertical: 9,
+    marginTop: 12,
+  },
+  createTaskSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
 });

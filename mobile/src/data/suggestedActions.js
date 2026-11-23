@@ -49,6 +49,16 @@ export const SUGGESTED_ACTIONS = [
     iconColor: '#2563EB',
     prompt: 'Schedule a demo meeting with the Principal',
   },
+  {
+    id: 'my_tasks',
+    title: 'Show my tasks & deadlines',
+    subtitle: 'Mission Control tasks & approvals',
+    iconType: 'check-square',
+    iconSet: 'Feather',
+    iconBg: '#F0FDF4',
+    iconColor: '#16A34A',
+    prompt: 'Show my tasks',
+  },
 ];
 
 export const MOCK_RESPONSES = {

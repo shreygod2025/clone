@@ -755,6 +755,231 @@ class ApiService {
       return { success: false, error: err.message || 'Network error deleting visit' };
     }
   }
+
+  // ── Task Management (Web App Phase 1 MVP) ──────────────────────────────────
+  async fetchTasks(filter = 'my', status = null) {
+    try {
+      let url = `${this.baseUrl}/api/tasks?filter=${encodeURIComponent(filter)}`;
+      if (status) {
+        url += `&status=${encodeURIComponent(status)}`;
+      }
+      const response = await this.fetchWithTimeout(url, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, tasks: Array.isArray(data) ? data : [] };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to fetch tasks (${response.status})`, tasks: [] };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error fetching tasks', tasks: [] };
+    }
+  }
+
+  async fetchTodaysTasks() {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/today`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          success: true,
+          today: Array.isArray(data.today) ? data.today : [],
+          this_week: Array.isArray(data.this_week) ? data.this_week : [],
+          overdue: Array.isArray(data.overdue) ? data.overdue : [],
+        };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to fetch today's tasks (${response.status})`, today: [], this_week: [], overdue: [] };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error fetching today tasks', today: [], this_week: [], overdue: [] };
+    }
+  }
+
+  async fetchTaskById(taskId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, task: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to fetch task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error fetching task' };
+    }
+  }
+
+  async createTask(taskData) {
+    try {
+      const assigneeId = taskData.assigned_to || this.currentUser?.id || this.currentUser?.user_id || '';
+      const payload = {
+        title: taskData.title?.trim() || 'New Task',
+        description: taskData.description || '',
+        status: taskData.status || 'pending',
+        priority: taskData.priority || 'medium',
+        assigned_to: assigneeId,
+        due_date: taskData.due_date || null,
+        project_id: taskData.project_id || null,
+        tags: Array.isArray(taskData.tags) ? taskData.tags : [],
+        gdrive_link: taskData.gdrive_link || null,
+        attachments: Array.isArray(taskData.attachments) ? taskData.attachments : [],
+      };
+
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, task: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to create task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error creating task' };
+    }
+  }
+
+  async updateTask(taskId, updateData) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: JSON.stringify(updateData),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, task: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to update task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error updating task' };
+    }
+  }
+
+  async deleteTask(taskId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to delete task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error deleting task' };
+    }
+  }
+
+  async submitTaskForApproval(taskId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}/submit`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, task: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to submit task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error submitting task' };
+    }
+  }
+
+  async approveTask(taskId) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}/approve`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, task: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to approve task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error approving task' };
+    }
+  }
+
+  async rejectTask(taskId, reason = '') {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}/reject`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ reason }),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, task: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to reject task (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error rejecting task' };
+    }
+  }
+
+  async addTaskComment(taskId, message) {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/${taskId}/comments`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ message: message.trim() }),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, comment: data };
+      }
+      const err = await response.json().catch(() => ({}));
+      return { success: false, error: err.detail || `Failed to add comment (${response.status})` };
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error adding comment' };
+    }
+  }
+
+  async fetchTeamUsers() {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/team-users`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, users: Array.isArray(data) ? data : [] };
+      }
+      return { success: false, users: [] };
+    } catch {
+      return { success: false, users: [] };
+    }
+  }
 }
 
 export const api = new ApiService();

@@ -63,7 +63,7 @@ const getInitials = (name) => {
 /**
  * PhotoCardWithUserAttached
  * Renders an uploaded Cloudinary image with the user's name, role/email,
- * Cloudinary verified badge, timestamp, and location attached directly below it.
+ * timestamp, and notes attached directly below it.
  */
 function PhotoCardWithUserAttached({
   photoUrl,
@@ -84,10 +84,6 @@ function PhotoCardWithUserAttached({
         <View style={styles.attachedTagPill}>
           <Feather name="camera" size={11} color="#059669" style={{ marginRight: 4 }} />
           <Text style={styles.attachedTagText}>{tagLabel}</Text>
-        </View>
-        <View style={styles.cloudinaryBadge}>
-          <Ionicons name="cloud-done" size={11} color="#0284C7" style={{ marginRight: 4 }} />
-          <Text style={styles.cloudinaryBadgeText}>Cloudinary Verified</Text>
         </View>
       </View>
 
@@ -126,14 +122,8 @@ function PhotoCardWithUserAttached({
           </View>
         </View>
 
-        {/* Location & Timestamp strip */}
+        {/* Timestamp strip */}
         <View style={styles.attachedMetaGrid}>
-          {locationLabel ? (
-            <View style={styles.attachedMetaItem}>
-              <Ionicons name="location-sharp" size={11} color="#059669" style={{ marginRight: 4 }} />
-              <Text style={styles.attachedMetaText} numberOfLines={1}>{locationLabel}</Text>
-            </View>
-          ) : null}
           {timestamp ? (
             <View style={styles.attachedMetaItem}>
               <Feather name="clock" size={11} color="#64748B" style={{ marginRight: 4 }} />
@@ -234,25 +224,6 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
     setRefreshing(true);
     loadReports();
   }, [loadReports]);
-
-  // Request location coordinates
-  const detectLocation = () => {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude.toFixed(4);
-          const lng = pos.coords.longitude.toFixed(4);
-          setLocationLabel(`GPS (${lat}, ${lng}) - Mumbai`);
-        },
-        () => {
-          setLocationLabel('Mumbai, Maharashtra');
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    } else {
-      setLocationLabel('Mumbai, Maharashtra');
-    }
-  };
 
   // Launch Camera or Gallery
   const handlePickPhoto = async (useCamera = false) => {
@@ -693,21 +664,12 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
                     activeOpacity={0.85}
                     style={styles.checkInMainBtn}
                     onPress={() => {
-                      detectLocation();
                       setCheckinModalVisible(true);
                     }}
                   >
                     <Feather name="camera" size={17} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={styles.checkInMainBtnText}>Check In (click photo)</Text>
                   </TouchableOpacity>
-
-                  {/* Cloudinary Integration Note */}
-                  <View style={styles.readyFooterNote}>
-                    <Ionicons name="cloud-outline" size={13} color="#64748B" style={{ marginRight: 5 }} />
-                    <Text style={styles.readyFooterNoteText}>
-                      Photos are uploaded and stored securely on Cloudinary
-                    </Text>
-                  </View>
                 </View>
               ) : (
                 /* ── ACTIVE FIELD DAY IN PROGRESS ── */
@@ -1115,10 +1077,6 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
                   <Text style={styles.modalUserName}>{currentUserName}</Text>
                   <Text style={styles.modalUserRole}>{currentUserEmail} • Founder's Office</Text>
                 </View>
-                <View style={styles.cloudTag}>
-                  <Ionicons name="cloud" size={11} color="#0284C7" style={{ marginRight: 3 }} />
-                  <Text style={styles.cloudTagText}>Cloudinary</Text>
-                </View>
               </View>
 
               {/* Photo Preview or Selection Area */}
@@ -1129,13 +1087,12 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
                     userName={currentUserName}
                     userEmail={currentUserEmail}
                     timestamp={new Date().toISOString()}
-                    locationLabel={locationLabel}
                     tagLabel="Live Check-In Selfie"
                   />
                   {isUploadingPhoto && (
                     <View style={styles.uploadingOverlay}>
                       <ActivityIndicator size="small" color="#FFFFFF" />
-                      <Text style={styles.uploadingText}>Uploading to Cloudinary...</Text>
+                      <Text style={styles.uploadingText}>Saving photo...</Text>
                     </View>
                   )}
                   <TouchableOpacity
@@ -1152,7 +1109,7 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
                   <Ionicons name="camera-outline" size={42} color="#059669" />
                   <Text style={styles.pickerBoxTitle}>Take Photo to Check In</Text>
                   <Text style={styles.pickerBoxSub}>
-                    Required for geolocation and attendance verification.
+                    Upload or capture a photo to start your field day.
                   </Text>
 
                   <View style={styles.pickerActionsRow}>
@@ -1176,24 +1133,6 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
                   </View>
                 </View>
               )}
-
-              {/* Location Field */}
-              <View style={styles.formGroup}>
-                <Text style={styles.inputLabel}>Location Label</Text>
-                <View style={styles.inputWithIcon}>
-                  <Ionicons name="location-sharp" size={16} color="#059669" style={{ marginRight: 6 }} />
-                  <TextInput
-                    style={styles.formInputFlex}
-                    value={locationLabel}
-                    onChangeText={setLocationLabel}
-                    placeholder="Enter city or area name..."
-                    placeholderTextColor="#94A3B8"
-                  />
-                  <TouchableOpacity onPress={detectLocation} style={styles.detectGpsBtn}>
-                    <Text style={styles.detectGpsBtnText}>Detect</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
 
               {/* Notes Field */}
               <View style={styles.formGroup}>
@@ -1600,10 +1539,6 @@ export default function FieldVisitScreen({ user, onBackToChat, onLogout }) {
 
           <View style={styles.previewCaptionBar}>
             <Text style={styles.previewCaptionTitle}>{previewImageModal.title}</Text>
-            <View style={styles.previewCloudinaryTag}>
-              <Ionicons name="cloud-done" size={12} color="#38BDF8" style={{ marginRight: 4 }} />
-              <Text style={styles.previewCloudinaryText}>Cloudinary Verified Media</Text>
-            </View>
           </View>
         </View>
       </Modal>

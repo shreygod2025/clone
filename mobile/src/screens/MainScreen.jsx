@@ -1140,6 +1140,183 @@ export default function MainScreen({ user, onLogout }) {
     ]);
   };
 
+  // ── Mission Control Task Helpers & Actions (Integrated in AI Chat) ──────────
+  const extractTaskDetailsFromText = (text, defaultAssignee = '') => {
+    let clean = text
+      .replace(/^create\s+(?:a\s+)?task(?:\s*[:=-])?/i, '')
+      .replace(/^add\s+(?:a\s+)?task(?:\s*[:=-])?/i, '')
+      .replace(/^new\s+task(?:\s*[:=-])?/i, '')
+      .replace(/^assign\s+task(?:\s*[:=-])?/i, '')
+      .replace(/^remind\s+me\s+to(?:\s*[:=-])?/i, '')
+      .trim();
+
+    let priority = 'medium';
+    if (/urgent|critical|asap|emergency/i.test(text)) priority = 'urgent';
+    else if (/high\s+priority|high/i.test(text)) priority = 'high';
+    else if (/low\s+priority|low/i.test(text)) priority = 'low';
+
+    let dueDays = 1;
+    if (/today/i.test(text)) dueDays = 0;
+    else if (/tomorrow/i.test(text)) dueDays = 1;
+    else if (/in\s+(\d+)\s+days?/i.test(text)) {
+      const m = text.match(/in\s+(\d+)\s+days?/i);
+      dueDays = parseInt(m[1], 10) || 1;
+    } else if (/next\s+week/i.test(text)) dueDays = 7;
+    else if (/friday/i.test(text)) dueDays = 4;
+    else if (/monday/i.test(text)) dueDays = 3;
+
+    const due_date = new Date(Date.now() + dueDays * 86400000).toISOString().split('T')[0];
+
+    clean = clean
+      .replace(/(?:with|having)?\s*(?:urgent|high|medium|low)\s*priority/gi, '')
+      .replace(/due\s+(?:today|tomorrow|friday|monday|next\s+week|in\s+\d+\s+days?)/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return {
+      title: clean || 'New Mission Control Task',
+      priority,
+      due_date,
+      assigned_to: defaultAssignee || user?.id || user?.user_id,
+      description: `Created via OLL AI Assistant from prompt: "${text}"`,
+    };
+  };
+
+  const promptCreateTaskConfirmation = (taskDetails) => {
+    const confCard = {
+      id: `task-create-${Date.now()}`,
+      actionType: 'create_task',
+      title: 'Confirm Task Creation',
+      description: 'Please confirm adding this task to OLL Mission Control:',
+      details: [
+        { label: 'Task Title', value: taskDetails.title },
+        { label: 'Priority', value: (taskDetails.priority || 'medium').toUpperCase() },
+        { label: 'Due Date', value: taskDetails.due_date ? taskDetails.due_date.split('T')[0] : 'Tomorrow' },
+        { label: 'Assigned To', value: user?.name || 'Bhumi Sanghvi' },
+      ],
+      payload: taskDetails,
+      confirmLabel: 'Yes, Create Task',
+      cancelLabel: 'No, Cancel',
+      danger: false,
+      status: 'pending',
+    };
+
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `📋 **Confirm Task Creation:**\n\nI have prepared the task **"${taskDetails.title}"** for Mission Control.\n\nPlease confirm to create this task:`,
+        confirmationCard: confCard,
+        nextActions: ['My Tasks', 'Create Task'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const promptDeleteTaskConfirmation = (task) => {
+    const confCard = {
+      id: `task-del-${task.id || Date.now()}`,
+      actionType: 'delete_task',
+      title: `Delete Task ${task.code || 'TASK'}?`,
+      description: 'Are you sure you want to permanently delete this task from Mission Control?',
+      details: [
+        { label: 'Task Code', value: task.code || 'TASK' },
+        { label: 'Title', value: task.title },
+        { label: 'Priority', value: (task.priority || 'medium').toUpperCase() },
+        { label: 'Status', value: (task.status || 'pending').toUpperCase() },
+      ],
+      payload: task,
+      confirmLabel: 'Yes, Delete Task',
+      cancelLabel: 'No, Keep Task',
+      danger: true,
+      status: 'pending',
+    };
+
+    setPendingConfirmation(confCard);
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: `⚠️ **Confirm Task Deletion:**\n\nAre you sure you want to delete **${task.code} — ${task.title}**? This cannot be undone.`,
+        confirmationCard: confCard,
+        nextActions: ['My Tasks'],
+        time: 'Just now',
+      },
+    ]);
+  };
+
+  const handleCompleteTask = async (task) => {
+    if (!task?.id) return;
+    setIsTyping(true);
+    const res = await api.updateTask(task.id, { status: 'completed' });
+    setIsTyping(false);
+
+    if (res.success && res.task) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `🎉 **Task Completed!** Task **${res.task.code || ''} — "${res.task.title}"** has been marked as Completed in Mission Control.`,
+          taskCard: res.task,
+          nextActions: ['My Tasks', 'Create Task'],
+          time: 'Just now',
+        },
+      ]);
+    } else {
+      Alert.alert('Error', res.error || 'Failed to complete task');
+    }
+  };
+
+  const handleStartTask = async (task) => {
+    if (!task?.id) return;
+    setIsTyping(true);
+    const res = await api.updateTask(task.id, { status: 'in_progress' });
+    setIsTyping(false);
+
+    if (res.success && res.task) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `⏳ **Task In Progress:** Task **${res.task.code || ''} — "${res.task.title}"** is now in progress.`,
+          taskCard: res.task,
+          nextActions: ['My Tasks', 'Complete Task'],
+          time: 'Just now',
+        },
+      ]);
+    } else {
+      Alert.alert('Error', res.error || 'Failed to start task');
+    }
+  };
+
+  const handleDeleteTask = (task) => {
+    if (!task) return;
+    promptDeleteTaskConfirmation(task);
+  };
+
+  const handleCommentTask = async (task, comment) => {
+    if (!task?.id || !comment) return;
+    const res = await api.addTaskComment(task.id, comment);
+    if (res.success) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `💬 **Comment Added to ${task.code || 'Task'}:**\n\n"${comment}"`,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+    } else {
+      Alert.alert('Error', res.error || 'Could not post comment');
+    }
+  };
+
+  const handleSubmitInlineTask = (taskData) => {
+    promptCreateTaskConfirmation(taskData);
+  };
+
   // ── Execute Confirmed & Cancelled Operations ────────────────────────────────
   const executeConfirmedAction = async (confCard) => {
     if (!confCard) return;
@@ -1464,17 +1641,79 @@ export default function MainScreen({ user, onLogout }) {
       ]);
       return;
     }
+
+    if (confCard.actionType === 'create_task') {
+      const taskPayload = confCard.payload || {};
+      const res = await api.createTask({
+        ...taskPayload,
+        assigned_to: taskPayload.assigned_to || user?.id || user?.user_id,
+      });
+      setIsTyping(false);
+      if (res.success && res.task) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `✅ **Task Created Successfully!**\n\nTask **${res.task.code || 'TSK'}** has been assigned and saved to OLL Mission Control. In-app & WhatsApp notifications triggered.`,
+            taskCard: res.task,
+            nextActions: ['My Tasks', 'Create Task'],
+            time: 'Just now',
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `❌ **Failed to create task:** ${res.error || 'Server error'}`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+      }
+      return;
+    }
+
+    if (confCard.actionType === 'delete_task') {
+      const task = confCard.payload || {};
+      const res = await api.deleteTask(task.id);
+      setIsTyping(false);
+      if (res.success) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🗑️ **Task Deleted:** Task **${task.code || ''} — ${task.title}** has been removed from Mission Control.`,
+            nextActions: ['My Tasks', 'Create Task'],
+            time: 'Just now',
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `❌ **Failed to delete task:** ${res.error || 'Permission denied or not found'}`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+      }
+      return;
+    }
   };
 
   const executeCancelledAction = async (confCard) => {
     if (!confCard) return;
-    const schoolName = confCard.schoolName || 'the school';
+    const schoolName = confCard.schoolName || confCard.payload?.title || confCard.taskTitle || 'the item';
     const actionName =
       confCard.actionType === 'delete' ? 'Permanent deletion' :
       confCard.actionType === 'schedule_meeting' ? 'Meeting scheduling' :
       confCard.actionType === 'add_note' ? 'Adding note' :
       confCard.actionType === 'archive' ? 'Archiving' :
       confCard.actionType === 'unarchive' ? 'Unarchiving' :
+      confCard.actionType === 'create_task' ? 'Task creation' :
+      confCard.actionType === 'delete_task' ? 'Task deletion' :
       'Marking as lost lead';
 
     setMessages((prev) =>
@@ -1497,8 +1736,8 @@ export default function MainScreen({ user, onLogout }) {
       ...prev,
       {
         sender: 'ai',
-        text: `🚫 **Operation Cancelled:** ${actionName} for **${schoolName}** was cancelled. No changes have been made to your CRM database.`,
-        nextActions: ['Add School Lead'],
+        text: `🚫 **Operation Cancelled:** ${actionName} for **${schoolName}** was cancelled. No changes have been made to your database.`,
+        nextActions: ['Add School Lead', 'My Tasks'],
         time: 'Just now',
       },
     ]);
@@ -2342,6 +2581,339 @@ export default function MainScreen({ user, onLogout }) {
       setIsTyping(false);
       promptAddNoteConfirmation(targetSchool, userText);
       return;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── TASK MANAGEMENT IN AI CHAT (OLL Mission Control Integration) ─────────
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // ── T1. Task Listing: Today's Tasks, Overdue Tasks, My Tasks ──
+    const isTodayTasks =
+      lower === "today's tasks" ||
+      lower === "today's task" ||
+      lower === "today tasks" ||
+      lower === "today task" ||
+      lower === "tasks today" ||
+      lower.includes("today's task") ||
+      lower.includes("task today") ||
+      lower.includes("tasks for today");
+
+    const isOverdueTasks =
+      lower === "overdue tasks" ||
+      lower === "overdue task" ||
+      lower.includes("overdue task") ||
+      lower.includes("pending tasks") ||
+      lower.includes("tasks overdue");
+
+    const isMyTasks =
+      lower === "my tasks" ||
+      lower === "show tasks" ||
+      lower === "list tasks" ||
+      lower === "tasks" ||
+      lower === "view tasks" ||
+      lower === "get tasks" ||
+      lower === "all tasks" ||
+      lower.includes("my tasks") ||
+      lower.includes("show my tasks") ||
+      lower.includes("list my tasks") ||
+      lower.includes("view my tasks") ||
+      lower.includes("task list") ||
+      lower.includes("mission control tasks");
+
+    if (isTodayTasks || isOverdueTasks || isMyTasks) {
+      if (isTodayTasks) {
+        const res = await api.fetchTodaysTasks();
+        setIsTyping(false);
+        const todayTasks = (res.success && Array.isArray(res.today)) ? res.today : [];
+        const overdueTasks = (res.success && Array.isArray(res.overdue)) ? res.overdue : [];
+        const combined = [...overdueTasks, ...todayTasks];
+
+        const summaryText = combined.length > 0
+          ? `📅 **Today's Mission Control Tasks (${combined.length}):**\nYou have **${todayTasks.length} tasks scheduled for today**${overdueTasks.length > 0 ? ` and **${overdueTasks.length} overdue tasks** requiring attention` : ''}:`
+          : `🎉 **All Clear for Today!** You have no pending tasks scheduled for today in Mission Control.`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: summaryText,
+            taskListCard: {
+              title: "Today's Schedule & Deadlines",
+              subtitle: `${combined.length} tasks assigned to you`,
+              tasks: combined,
+            },
+            nextActions: ['Create Task', 'My Tasks', 'Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      // Overdue or General My Tasks
+      const res = await api.fetchTasks('my');
+      setIsTyping(false);
+      let tasksList = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+
+      if (isOverdueTasks) {
+        const now = new Date();
+        tasksList = tasksList.filter((t) => {
+          if (t.status === 'completed') return false;
+          if (!t.due_date) return false;
+          return new Date(t.due_date) < now;
+        });
+
+        const overdueText = tasksList.length > 0
+          ? `⚠️ **Overdue Tasks Alert (${tasksList.length}):**\nThe following tasks are past their deadline and need immediate action:`
+          : `✅ **No Overdue Tasks!** You're completely up to date with your Mission Control deliverables.`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: overdueText,
+            taskListCard: {
+              title: 'Overdue Mission Control Tasks',
+              subtitle: `${tasksList.length} past-due items`,
+              tasks: tasksList,
+            },
+            nextActions: ['My Tasks', 'Create Task', 'Add School Lead'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      // General My Tasks
+      const taskCount = tasksList.length;
+      const pendingCount = tasksList.filter((t) => t.status !== 'completed').length;
+      const completedCount = taskCount - pendingCount;
+
+      const myTasksText = taskCount > 0
+        ? `📋 **OLL Mission Control — My Tasks (${taskCount}):**\nYou have **${pendingCount} active / pending** tasks and **${completedCount} completed** tasks:`
+        : `📋 **Mission Control Tasks:** You currently have no tasks assigned to you. Tap **Create Task** to add one.`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: myTasksText,
+          taskListCard: {
+            title: 'Assigned Mission Tasks',
+            subtitle: `${pendingCount} active • ${completedCount} completed`,
+            tasks: tasksList,
+          },
+          nextActions: ['Create Task', "Today's Tasks", 'Add School Lead'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── T2. Task Creation: Empty / Prompt Form Intent ──
+    const isCreateTaskPromptIntent =
+      lower === 'create task' ||
+      lower === 'new task' ||
+      lower === 'add task' ||
+      lower === 'assign task' ||
+      lower === 'make task';
+
+    if (isCreateTaskPromptIntent) {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: '➕ **Create New Task:**\nFill in the title, priority, and due date below, or type in plain language (e.g., *"Create task: Call DPS Principal tomorrow, priority high"*):',
+          taskCreationCard: { initialTitle: '', initialPriority: 'medium' },
+          nextActions: ['My Tasks', "Today's Tasks"],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── T3. Task Creation: Natural Language with Details ──
+    const isCreateTaskWithDetails =
+      lower.startsWith('create task') ||
+      lower.startsWith('create a task') ||
+      lower.startsWith('add task') ||
+      lower.startsWith('add a task') ||
+      lower.startsWith('new task') ||
+      lower.startsWith('remind me to') ||
+      lower.startsWith('assign task') ||
+      ((lower.includes('task:') || lower.includes('task -')) && !lower.includes('comment'));
+
+    if (isCreateTaskWithDetails) {
+      setIsTyping(false);
+      const taskDetails = extractTaskDetailsFromText(userText);
+      if (!taskDetails.title || taskDetails.title.toLowerCase() === 'new task') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: '➕ **Create New Task:** Please specify the task title or fill the quick form below:',
+            taskCreationCard: { initialTitle: '', initialPriority: 'medium' },
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+
+      promptCreateTaskConfirmation(taskDetails);
+      return;
+    }
+
+    // ── T4. Complete Task via Chat ("complete task TSK-0004", "finish task ...") ──
+    const isCompleteTaskIntent =
+      lower.startsWith('complete task') ||
+      lower.startsWith('finish task') ||
+      lower.startsWith('mark task done') ||
+      lower.startsWith('mark task as done') ||
+      lower.startsWith('mark task completed') ||
+      lower.startsWith('done task') ||
+      ((lower.includes('complete') || lower.includes('done')) && /tsk-\d+/i.test(lower));
+
+    if (isCompleteTaskIntent) {
+      const codeMatch = userText.match(/tsk-\d+/i);
+      const query = codeMatch ? codeMatch[0].toUpperCase() : userText.replace(/complete|task|finish|mark|as|done|completed/gi, '').trim();
+
+      const res = await api.fetchTasks('my');
+      setIsTyping(false);
+      const tasks = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+
+      let matchedTask = null;
+      if (codeMatch) {
+        matchedTask = tasks.find((t) => (t.code || '').toUpperCase() === query);
+      }
+      if (!matchedTask && query) {
+        const qLower = query.toLowerCase();
+        matchedTask = tasks.find((t) => (t.title || '').toLowerCase().includes(qLower));
+      }
+
+      if (matchedTask) {
+        await handleCompleteTask(matchedTask);
+        return;
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Task Not Found:** Could not find a task matching **"${query || userText}"** in your assigned tasks. Here is your current task list:`,
+            taskListCard: {
+              title: 'Your Current Tasks',
+              tasks,
+            },
+            nextActions: ['My Tasks', 'Create Task'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+    }
+
+    // ── T5. Delete Task via Chat ("delete task TSK-0002") ──
+    const isDeleteTaskIntent =
+      lower.startsWith('delete task') ||
+      lower.startsWith('remove task') ||
+      lower.startsWith('cancel task') ||
+      (lower.includes('delete') && /tsk-\d+/i.test(lower));
+
+    if (isDeleteTaskIntent) {
+      const codeMatch = userText.match(/tsk-\d+/i);
+      const query = codeMatch ? codeMatch[0].toUpperCase() : userText.replace(/delete|task|remove|cancel/gi, '').trim();
+
+      const res = await api.fetchTasks('my');
+      setIsTyping(false);
+      const tasks = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+
+      let matchedTask = null;
+      if (codeMatch) {
+        matchedTask = tasks.find((t) => (t.code || '').toUpperCase() === query);
+      }
+      if (!matchedTask && query) {
+        const qLower = query.toLowerCase();
+        matchedTask = tasks.find((t) => (t.title || '').toLowerCase().includes(qLower));
+      }
+
+      if (matchedTask) {
+        promptDeleteTaskConfirmation(matchedTask);
+        return;
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Task Not Found:** Could not locate task **"${query || userText}"** to delete. Please specify a valid task code like \`TSK-0001\`.`,
+            taskListCard: {
+              title: 'Your Current Tasks',
+              tasks,
+            },
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+    }
+
+    // ── T6. Comment on Task via Chat ("comment on task TSK-0002: message") ──
+    const isCommentTaskIntent =
+      lower.startsWith('comment on task') ||
+      lower.startsWith('add comment to task') ||
+      lower.startsWith('note on task') ||
+      lower.includes('task comment:');
+
+    if (isCommentTaskIntent) {
+      const codeMatch = userText.match(/tsk-\d+/i);
+      let commentBody = '';
+      if (userText.includes(':')) {
+        commentBody = userText.split(':').slice(1).join(':').trim();
+      } else {
+        commentBody = userText
+          .replace(/comment\s+on\s+task\s+[a-zA-Z0-9_-]+/i, '')
+          .replace(/add\s+comment\s+to\s+task\s+[a-zA-Z0-9_-]+/i, '')
+          .trim();
+      }
+
+      const res = await api.fetchTasks('my');
+      setIsTyping(false);
+      const tasks = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+
+      let matchedTask = null;
+      if (codeMatch) {
+        matchedTask = tasks.find((t) => (t.code || '').toUpperCase() === codeMatch[0].toUpperCase());
+      }
+      if (!matchedTask && tasks.length > 0) {
+        matchedTask = tasks[0];
+      }
+
+      if (matchedTask && commentBody) {
+        await handleCommentTask(matchedTask, commentBody);
+        return;
+      } else if (!matchedTask) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `🔍 **Task Not Found:** Please specify a valid task code (e.g., *"Comment on task TSK-0001: Sent the report"*).`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `💬 **Add Comment to ${matchedTask.code || 'Task'}:** Please enter what comment or update you want to post.`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
     }
 
     // Helper to find latest lead in chat context
@@ -3634,6 +4206,38 @@ export default function MainScreen({ user, onLogout }) {
     const lower = chip.toLowerCase();
     const target = findLatestLead();
 
+    if (lower === 'my tasks' || lower.includes('my tasks')) {
+      setInputText('My Tasks');
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+      return;
+    }
+
+    if (lower.includes("today's tasks") || lower === "today's tasks" || lower === 'today tasks') {
+      setInputText("Today's Tasks");
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+      return;
+    }
+
+    if (lower === 'create task' || lower === 'new task' || lower === 'add task') {
+      setInputText('Create Task');
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+      return;
+    }
+
+    if (lower.includes('overdue tasks') || lower === 'overdue tasks') {
+      setInputText('Overdue Tasks');
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+      return;
+    }
+
     if (
       lower.includes('add school lead') ||
       lower.includes('add new school lead') ||
@@ -3806,6 +4410,11 @@ export default function MainScreen({ user, onLogout }) {
                   promptScheduleMeetingConfirmation(lead, { date, time, mode, location, notes })
                 }
                 onSubmitInlineNote={(lead, noteText) => promptAddNoteConfirmation(lead, noteText)}
+                onCompleteTask={handleCompleteTask}
+                onStartTask={handleStartTask}
+                onDeleteTask={handleDeleteTask}
+                onCommentTask={handleCommentTask}
+                onSubmitInlineTask={handleSubmitInlineTask}
               />
             ) : (
               /* Default Suggestions Landing Screen */
