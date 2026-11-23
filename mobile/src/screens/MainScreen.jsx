@@ -1636,6 +1636,529 @@ export default function MainScreen({ user, onLogout }) {
           </View>
         </View>
       </Modal>
+
+      {/* ── MODAL 5: Schedule Meeting Modal ────────────────────────────────────── */}
+      <Modal
+        visible={scheduleModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setScheduleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>📅 Schedule School Meeting</Text>
+              <TouchableOpacity onPress={() => setScheduleModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>School & Principal</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: '#F1F5F9' }]}
+                  value={`${scheduleTargetLead?.schoolName || scheduleTargetLead?.school_name || 'School'} • ${scheduleTargetLead?.contactPerson || scheduleTargetLead?.contact_name || 'Principal'}`}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Meeting Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={meetingDate}
+                  onChangeText={setMeetingDate}
+                  placeholder="2026-11-25"
+                />
+                <View style={[styles.statusPillsPicker, { marginTop: 6 }]}>
+                  {['Tomorrow', 'In 2 Days', 'Next Week'].map((label, idx) => (
+                    <TouchableOpacity
+                      key={label}
+                      style={styles.statusOptionPill}
+                      onPress={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + (idx === 0 ? 1 : idx === 1 ? 2 : 7));
+                        setMeetingDate(d.toISOString().split('T')[0]);
+                      }}
+                    >
+                      <Text style={styles.statusOptionText}>+ {label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Meeting Time</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={meetingTime}
+                  onChangeText={setMeetingTime}
+                  placeholder="11:30 AM"
+                />
+                <View style={[styles.statusPillsPicker, { marginTop: 6 }]}>
+                  {['10:30 AM', '02:00 PM', '04:30 PM'].map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.statusOptionPill, meetingTime === t && styles.statusOptionPillActive]}
+                      onPress={() => setMeetingTime(t)}
+                    >
+                      <Text style={[styles.statusOptionText, meetingTime === t && styles.statusOptionTextActive]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Meeting Format</Text>
+                <View style={styles.statusPillsPicker}>
+                  {['In-Person Campus Visit', 'Online Demo (Google Meet)'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.statusOptionPill, meetingType === type && styles.statusOptionPillActive]}
+                      onPress={() => setMeetingType(type)}
+                    >
+                      <Text style={[styles.statusOptionText, meetingType === type && styles.statusOptionTextActive]}>
+                        {type === 'In-Person Campus Visit' ? '🏫 In-Person' : '💻 Google Meet'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#2563EB' }]}
+              onPress={handleScheduleMeetingSubmit}
+              disabled={isScheduling}
+            >
+              {isScheduling ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Confirm & Schedule Meeting</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 6: Raise Support Ticket Modal ────────────────────────────────── */}
+      <Modal
+        visible={ticketModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTicketModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>🎫 Raise Support Ticket</Text>
+              <TouchableOpacity onPress={() => setTicketModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>School Reference</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: '#F1F5F9' }]}
+                  value={ticketTargetLead?.schoolName || ticketTargetLead?.school_name || 'School'}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Ticket Subject / Issue</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={ticketTitle}
+                  onChangeText={setTicketTitle}
+                />
+                <View style={[styles.statusPillsPicker, { marginTop: 6, flexWrap: 'wrap' }]}>
+                  {['Curriculum Customization', 'Quote Approval', 'Hardware Lab Kit', 'MOU Revision'].map((sub) => (
+                    <TouchableOpacity
+                      key={sub}
+                      style={[styles.statusOptionPill, ticketTitle.includes(sub) && styles.statusOptionPillActive]}
+                      onPress={() => setTicketTitle(sub)}
+                    >
+                      <Text style={[styles.statusOptionText, ticketTitle.includes(sub) && styles.statusOptionTextActive]}>
+                        {sub}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Priority Level</Text>
+                <View style={styles.statusPillsPicker}>
+                  {['High', 'Medium', 'Normal'].map((p) => (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.statusOptionPill, ticketPriority === p && styles.statusOptionPillActive]}
+                      onPress={() => setTicketPriority(p)}
+                    >
+                      <Text style={[styles.statusOptionText, ticketPriority === p && styles.statusOptionTextActive]}>
+                        {p}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Ticket Description / Context</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 80, textAlignVertical: 'top' }]}
+                  value={ticketDescription}
+                  onChangeText={setTicketDescription}
+                  placeholder="Provide any additional details or requirements..."
+                  multiline
+                />
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#EA580C' }]}
+              onPress={handleRaiseTicketSubmit}
+              disabled={isRaisingTicket}
+            >
+              {isRaisingTicket ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Submit Support Ticket</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 7: Follow-up Reminder Modal ──────────────────────────────────── */}
+      <Modal
+        visible={followupModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFollowupModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>⏰ Schedule Follow-up</Text>
+              <TouchableOpacity onPress={() => setFollowupModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Follow-up Target</Text>
+              <TextInput
+                style={[styles.modalTextInput, { backgroundColor: '#F1F5F9' }]}
+                value={followupTargetLead?.schoolName || followupTargetLead?.school_name || 'School'}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Follow-up Date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={followupDate}
+                onChangeText={setFollowupDate}
+              />
+              <View style={[styles.statusPillsPicker, { marginTop: 6 }]}>
+                {['Tomorrow', 'In 3 Days', 'Next Week'].map((label, idx) => (
+                  <TouchableOpacity
+                    key={label}
+                    style={styles.statusOptionPill}
+                    onPress={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + (idx === 0 ? 1 : idx === 1 ? 3 : 7));
+                      setFollowupDate(d.toISOString().split('T')[0]);
+                    }}
+                  >
+                    <Text style={styles.statusOptionText}>+ {label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Follow-up Action Note</Text>
+              <TextInput
+                style={[styles.modalTextInput, { height: 75, textAlignVertical: 'top' }]}
+                value={followupComment}
+                onChangeText={setFollowupComment}
+                multiline
+              />
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#0D9488' }]}
+              onPress={handleFollowupSubmit}
+              disabled={isSavingFollowup}
+            >
+              {isSavingFollowup ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Set Follow-up Reminder</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 8: Assign Lead Modal ────────────────────────────────────────── */}
+      <Modal
+        visible={assignModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAssignModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>👤 Assign Lead to Team</Text>
+              <TouchableOpacity onPress={() => setAssignModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Assigning Lead</Text>
+              <TextInput
+                style={[styles.modalTextInput, { backgroundColor: '#F1F5F9' }]}
+                value={assignTargetLead?.schoolName || assignTargetLead?.school_name || 'School'}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Select Team Member</Text>
+              <View style={[styles.statusPillsPicker, { flexDirection: 'column', gap: 6 }]}>
+                {[
+                  'Yash Limbachiya (B2B Lead)',
+                  'Rahul Sharma (Regional Manager)',
+                  'Priya Singh (Sales Executive)',
+                  'Admin Desk (Unassigned Pool)',
+                ].map((name) => (
+                  <TouchableOpacity
+                    key={name}
+                    style={[styles.statusOptionPill, assignedMemberName === name && styles.statusOptionPillActive]}
+                    onPress={() => setAssignedMemberName(name)}
+                  >
+                    <Text style={[styles.statusOptionText, assignedMemberName === name && styles.statusOptionTextActive]}>
+                      ✓ {name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#4F46E5' }]}
+              onPress={handleAssignLeadSubmit}
+              disabled={isAssigning}
+            >
+              {isAssigning ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Confirm Assignment</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 9: Mark as Lost Modal ───────────────────────────────────────── */}
+      <Modal
+        visible={lostModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLostModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalLargeTitle, { color: '#E11D48' }]}>❌ Mark Lead as Lost</Text>
+              <TouchableOpacity onPress={() => setLostModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>School</Text>
+              <TextInput
+                style={[styles.modalTextInput, { backgroundColor: '#F1F5F9' }]}
+                value={lostTargetLead?.schoolName || lostTargetLead?.school_name || 'School'}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Primary Reason for Drop-off</Text>
+              <View style={[styles.statusPillsPicker, { flexDirection: 'column', gap: 6 }]}>
+                {[
+                  'Budget Constraint / Fee Pushback',
+                  'Competitor Partner Selected',
+                  'Postponed to Next Academic Term',
+                  'Lack of Computer Lab Infrastructure',
+                  'School Management Decision Pending',
+                ].map((reason) => (
+                  <TouchableOpacity
+                    key={reason}
+                    style={[styles.statusOptionPill, lostReason === reason && styles.statusOptionPillActive]}
+                    onPress={() => setLostReason(reason)}
+                  >
+                    <Text style={[styles.statusOptionText, lostReason === reason && styles.statusOptionTextActive]}>
+                      • {reason}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#E11D48' }]}
+              onPress={handleLostLeadSubmit}
+              disabled={isMarkingLost}
+            >
+              {isMarkingLost ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Confirm Mark as Lost</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 10: Add Note Modal ──────────────────────────────────────────── */}
+      <Modal
+        visible={noteModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setNoteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>📝 Add Note to Lead</Text>
+              <TouchableOpacity onPress={() => setNoteModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>School Reference</Text>
+              <TextInput
+                style={[styles.modalTextInput, { backgroundColor: '#F1F5F9' }]}
+                value={noteTargetLead?.schoolName || noteTargetLead?.school_name || 'School'}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.modalInputGroup}>
+              <Text style={styles.modalFieldLabel}>Assistant / Discussion Note</Text>
+              <TextInput
+                style={[styles.modalTextInput, { height: 110, textAlignVertical: 'top' }]}
+                value={noteText}
+                onChangeText={setNoteText}
+                placeholder="Enter discussion remarks, key commitments, or principal requests..."
+                multiline
+              />
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#475569' }]}
+              onPress={handleNoteSubmit}
+              disabled={isSavingNote}
+            >
+              {isSavingNote ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Append Note to CRM</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 11: Documents & Proposals Modal ─────────────────────────────── */}
+      <Modal
+        visible={docsModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDocsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalLargeTitle}>📄 Documents & Proposals</Text>
+              <TouchableOpacity onPress={() => setDocsModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 10 }}>
+                Available documents for {docsTargetLead?.schoolName || docsTargetLead?.school_name || 'this school'}:
+              </Text>
+
+              {[
+                { name: 'OLL Agentic AI Curriculum Brochure.pdf', size: '2.4 MB', icon: 'file-text' },
+                { name: 'School Partnership Standard MOU (2026-27).pdf', size: '1.1 MB', icon: 'file' },
+                { name: 'Customized STEM Excellence Proposal Quotation.pdf', size: '890 KB', icon: 'file-text' },
+              ].map((doc, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 10,
+                    backgroundColor: '#F8FAFC',
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    marginBottom: 8,
+                  }}
+                  onPress={() => {
+                    setDocsModalVisible(false);
+                    Alert.alert('Download', `Downloading ${doc.name}...`);
+                  }}
+                >
+                  <Feather name={doc.icon} size={18} color="#0891B2" style={{ marginRight: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12.5, fontWeight: '700', color: COLORS.textPrimary }}>{doc.name}</Text>
+                    <Text style={{ fontSize: 10.5, color: '#94A3B8' }}>{doc.size} • Verified</Text>
+                  </View>
+                  <Feather name="download" size={14} color="#0891B2" />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#0891B2' }]}
+              onPress={() => {
+                setDocsModalVisible(false);
+                if (docsTargetLead) openSendEmailModal(docsTargetLead);
+              }}
+            >
+              <Feather name="mail" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.modalPrimaryBtnText}>Email Documents to School</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
