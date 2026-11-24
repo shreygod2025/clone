@@ -75,6 +75,8 @@ agenthub/agents/youtube/db
 
 # Build caches
 .cache/
+.expo/
+**/.expo/
 
 # Mobile development
 android-sdk/ frontend/node_modules/.cache/default-development/0.pack

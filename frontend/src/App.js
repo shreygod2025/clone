@@ -126,6 +126,10 @@ const FriendshipDaySuccess = lazy(() => import("./pages/FriendshipDaySuccess"));
 const RoboticsBeginnerLanding = lazy(() => import("./pages/school/RoboticsBeginnerLanding"));
 const FranchiseLandingPage = lazy(() => import("./pages/franchise/FranchiseLandingPage"));
 const RoboticsICSE910Landing = lazy(() => import("./pages/school/RoboticsICSE910Landing"));
+const RoboticsAdvanceLanding = lazy(() => import("./pages/school/RoboticsAdvanceLanding"));
+const CompositeSkillLabLanding = lazy(() => import("./pages/school/CompositeSkillLabLanding"));
+const AfterSchoolClubLanding = lazy(() => import("./pages/school/AfterSchoolClubLanding"));
+const EntrepreneurshipBootcampLanding = lazy(() => import("./pages/school/EntrepreneurshipBootcampLanding"));
 const CBSECTAILanding = lazy(() => import("./pages/school/CBSECTAILanding"));
 const FutureSkillsLanding = lazy(() => import("./pages/school/FutureSkillsLanding"));
 const StemPreschoolLanding = lazy(() => import("./pages/school/StemPreschoolLanding"));
@@ -433,7 +437,35 @@ function App() {
               {/* Old URLs → 301 to the new canonical */}
               <Route path="/school/robotics/beginner"     element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
               <Route path="/school/robotics/intermediate" element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
-              <Route path="/school/robotics/advanced"     element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
+              <Route path="/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10" element={<RoboticsAdvanceLanding />} />
+              <Route path="/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10/" element={<RoboticsAdvanceLanding />} />
+              <Route path="/school/robotics/advance"      element={<Navigate to="/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10" replace />} />
+              <Route path="/school/robotics/advanced"     element={<Navigate to="/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10" replace />} />
+
+              {/* Composite Skill Lab (CSL) · CBSE Skill-75/2024 */}
+              <Route path="/school/composite-skill-lab-cbse-skill-education-grades-6-to-10" element={<CompositeSkillLabLanding />} />
+              <Route path="/school/composite-skill-lab-cbse-skill-education-grades-6-to-10/" element={<CompositeSkillLabLanding />} />
+              <Route path="/school/composite-skill-lab" element={<Navigate to="/school/composite-skill-lab-cbse-skill-education-grades-6-to-10" replace />} />
+              <Route path="/school/composite-skill-lab/" element={<Navigate to="/school/composite-skill-lab-cbse-skill-education-grades-6-to-10" replace />} />
+              <Route path="/school/csl" element={<Navigate to="/school/composite-skill-lab-cbse-skill-education-grades-6-to-10" replace />} />
+
+              {/* After-School Robo Club · In-School Learning Center */}
+              <Route path="/school/after-school-robo-club-robotics-ai-stem-learning-center" element={<AfterSchoolClubLanding />} />
+              <Route path="/school/after-school-robo-club-robotics-ai-stem-learning-center/" element={<AfterSchoolClubLanding />} />
+              <Route path="/school/after-school-club" element={<Navigate to="/school/after-school-robo-club-robotics-ai-stem-learning-center" replace />} />
+              <Route path="/school/after-school-club/" element={<Navigate to="/school/after-school-robo-club-robotics-ai-stem-learning-center" replace />} />
+              <Route path="/school/after-school-robo-club" element={<Navigate to="/school/after-school-robo-club-robotics-ai-stem-learning-center" replace />} />
+              <Route path="/school/after-school-robo-club/" element={<Navigate to="/school/after-school-robo-club-robotics-ai-stem-learning-center" replace />} />
+              <Route path="/school/robo-club" element={<Navigate to="/school/after-school-robo-club-robotics-ai-stem-learning-center" replace />} />
+
+              {/* Entrepreneurship & Financial Literacy Bootcamp */}
+              <Route path="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools" element={<EntrepreneurshipBootcampLanding />} />
+              <Route path="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools/" element={<EntrepreneurshipBootcampLanding />} />
+              <Route path="/school/entrepreneurship-bootcamp" element={<Navigate to="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools" replace />} />
+              <Route path="/school/entrepreneurship-bootcamp/" element={<Navigate to="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools" replace />} />
+              <Route path="/school/financial-literacy-bootcamp" element={<Navigate to="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools" replace />} />
+              <Route path="/school/financial-literacy-bootcamp/" element={<Navigate to="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools" replace />} />
+              <Route path="/school/finlit-bootcamp" element={<Navigate to="/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools" replace />} />
               <Route path="/school/robotics/icse"         element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
               <Route path="/school/cs/icse"               element={<Navigate to="/school/robotics-ai-lab-for-schools-turnkey-solution/" replace />} />
               <Route path="/school/robotics/icse-9-10" element={<RoboticsICSE910Landing />} />

@@ -13,15 +13,19 @@ export const MEGA_MENU = [
     items: [
       { label: 'Pre-School', sub: 'Play + explore · Ages 3–5', to: '/school/robotics/pre-school', img: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=240&q=60' },
       { label: 'Robotics & AI Program', sub: 'Grade 1–8 · Turnkey Robotics & AI Lab', to: '/school/robotics-ai-lab-for-schools-turnkey-solution/', img: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif' },
+      { label: 'Advance Robotics Program', sub: 'Grades 3–10 · Motion, Sensors & AI', to: '/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10', img: '/school/advance/advance_curriculum_cover.webp' },
+      { label: 'After-School Robo Club', sub: 'Ages 3–16 · In-School Innovation Center', to: '/school/after-school-robo-club-robotics-ai-stem-learning-center', img: '/school/afterschool/asc_page_1.webp' },
       { label: 'ICSE — Group 3 (9th & 10th)', sub: 'Board-mapped elective', to: '/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th', img: `${CA}/n2zt8acf_OLL%20Curriculum%20Brochure%20-%20ICSE%20Group%203%20Subject%20-%20Code%2066%20Curriculum%20%209th%20-%2010th%20%202026.png` },
     ],
   },
   {
-    eyebrow: 'For Schools', title: 'Computer Science', accent: '#1E3A5F',
+    eyebrow: 'For Schools', title: 'Computer Science & Skill Labs', accent: '#1E3A5F',
     items: [
       { label: 'ICSE — Future Skills', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', to: '/school/icse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8', img: FS_HERO },
       { label: 'CBSE — Future Skills', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', to: '/school/cbse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8', img: FS_HERO },
       { label: 'CBSE — Computational Thinking & AI', sub: 'CBSE Acad-15/2026 elective · Grades 3-8', to: '/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8', img: `${CA}/v94lyklh_WhatsApp%20Image%202026-09-17%20at%2012.42.49.jpeg` },
+      { label: 'Composite Skill Lab (CSL)', sub: 'CBSE Skill-75 · Grades 6–10 Multi-Skill', to: '/school/composite-skill-lab-cbse-skill-education-grades-6-to-10', img: '/school/composite/csl_page_1.webp' },
+      { label: 'Entrepreneurship Bootcamp', sub: 'Ages 3–16 · Real Money & Business Skills', to: '/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools', img: '/school/entrepreneurship/ent_page_1.webp' },
     ],
   },
   {

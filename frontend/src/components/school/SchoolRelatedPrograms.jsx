@@ -47,6 +47,34 @@ const ALL_PROGRAMS = {
     body: 'Turnkey Robotics & AI Lab — curriculum, kits, teacher training, STEM.org accreditation. Aligned with NEP 2020 & NCF 2023.',
     color: '#10B981',
   },
+  'advance-robotics': {
+    href: '/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10',
+    title: 'Advance Robotics & AI Program · Grades 3–10',
+    tag: 'Motion · Sensors · Arduino · IoT',
+    body: 'Complete Grade 3–10 curriculum with snap-fit parts, smart coding hubs, sensors, microcontrollers & Voice AI.',
+    color: '#D63031',
+  },
+  'composite-skill-lab': {
+    href: '/school/composite-skill-lab-cbse-skill-education-grades-6-to-10',
+    title: 'Composite Skill Lab (CSL) · Grades 6–10',
+    tag: 'CBSE Skill-75/2024 · NEP 2020',
+    body: 'Turnkey 110-hr multi-skill lab: Life Forms, Machines & Materials, Human Services & Kaushal Bodh.',
+    color: '#16A34A',
+  },
+  'after-school-club': {
+    href: '/school/after-school-robo-club-robotics-ai-stem-learning-center',
+    title: 'After-School Robo Club · Ages 3–16',
+    tag: 'In-School Innovation & Revenue Hub',
+    body: 'Turnkey Robotics, AI, Coding & 3D Printing center. Monetize space, prepare for IIT Bombay Finale.',
+    color: '#DC2626',
+  },
+  'entrepreneurship-bootcamp': {
+    href: '/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools',
+    title: 'Entrepreneurship & Financial Literacy Bootcamp',
+    tag: 'Ages 3–16 · Real Money & Venture Skills',
+    body: 'Hands-on mock banks, simulations, product prototyping & startup pitches. Founded by Shark Tank prodigy.',
+    color: '#D97706',
+  },
 };
 
 export default function SchoolRelatedPrograms({ current, theme = 'light', testid = 'school-related-programs' }) {

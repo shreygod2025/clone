@@ -266,6 +266,34 @@
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
+  <!-- Advance Robotics & AI Program · Grades 3-10 -->
+  <url>
+    <loc>https://oll.co/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10</loc>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <!-- Composite Skill Lab (CSL) · CBSE Skill-75/2024 · Grades 6-10 -->
+  <url>
+    <loc>https://oll.co/school/composite-skill-lab-cbse-skill-education-grades-6-to-10</loc>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <!-- After-School Robo Club · Robotics & AI Learning Center · Ages 3-16 -->
+  <url>
+    <loc>https://oll.co/school/after-school-robo-club-robotics-ai-stem-learning-center</loc>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <!-- Financial Literacy & Entrepreneurship Bootcamp · Ages 3-16 -->
+  <url>
+    <loc>https://oll.co/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools</loc>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
   <!-- Beginner Robotics · Grades 1-4 · CBSE / ICSE / State -->
   <url>
     <loc>https://oll.co/school/robotics/beginner</loc>

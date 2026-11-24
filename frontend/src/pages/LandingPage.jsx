@@ -504,6 +504,7 @@ const LandingPage = () => {
                 {[
                   { label: 'Pre-School',                           route: '/school/robotics/pre-school',   sub: 'Play + explore · Ages 3–5' },
                   { label: 'Robotics & AI Program for Schools',    route: '/school/robotics-ai-lab-for-schools-turnkey-solution/', sub: 'Grade 1–8 · Turnkey Robotics & AI Lab', highlight: true },
+                  { label: 'Advance Robotics & AI Program',        route: '/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10', sub: 'Grades 3–10 · Motion, Sensors, IoT & AI' },
                   { label: 'ICSE — Group 3 Subject (9th & 10th)',  route: '/school/icse-robotics-and-ai-curriculum-books-with-practical-activity-kits-for-class-9th-and10th',      sub: 'Board-mapped elective' },
                 ].map(t => (
                   <button key={t.label}
@@ -545,6 +546,44 @@ const LandingPage = () => {
                   { label: 'ICSE — Future Skills',                 route: '/school/icse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', testid: 'school-cs-icse-future-skills' },
                   { label: 'CBSE — Future Skills',                 route: '/school/cbse-ict-robotics-ai-and-coding-curriculum-with-practical-activity-books-for-class-1-to-8', sub: '4-in-1 · ICT · Coding · AI · Robotics · Grades 1-8', testid: 'school-cs-cbse-future-skills' },
                   { label: 'CBSE — Computational Thinking & AI',   route: '/school/cs/cbse-computational-thinking-ai-books-activities-for-classes-3-to-8',         sub: 'CBSE Acad-15/2026 elective · Grades 3-8',            testid: 'school-cs-cbse-ct-ai' },
+                ].map(t => (
+                  <button key={t.label}
+                    onClick={() => navigate(t.route)}
+                    data-testid={t.testid}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: '#F8FAFC', color: '#0F1E33', border: '1px solid #E2E8F0',
+                      padding: '0.85rem 1.1rem', borderRadius: '0.75rem', cursor: 'pointer',
+                      fontFamily: "'Nunito Sans', sans-serif", fontWeight: 700, fontSize: '0.95rem',
+                      textAlign: 'left', transition: 'transform 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; }}
+                  >
+                    <span>
+                      {t.label}
+                      <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 500, opacity: 0.75, marginTop: '0.15rem' }}>{t.sub}</span>
+                    </span>
+                    <span style={{ fontWeight: 900 }}>→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SKILL LABS & BOOTCAMPS card family */}
+            <div style={{ background: '#fff', borderRadius: '1.5rem', border: '2px solid #E2E8F0', padding: '1.75rem', boxShadow: '0 12px 40px rgba(15,30,80,0.08)' }} data-testid="school-products-skill-labs">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '2rem' }}>⚡</span>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#059669', fontFamily: "'JetBrains Mono', monospace" }}>Product Family</div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0F1E33', fontFamily: "'JetBrains Mono', monospace" }}>Skill Labs & Clubs</h3>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {[
+                  { label: 'Composite Skill Lab (CSL)', route: '/school/composite-skill-lab-cbse-skill-education-grades-6-to-10', sub: 'CBSE Skill-75/2024 · Grades 6–10 (110 hrs/yr)', testid: 'school-csl' },
+                  { label: 'After-School Robo Club', route: '/school/after-school-robo-club-robotics-ai-stem-learning-center', sub: 'Ages 3–16 · In-School Innovation & Revenue Hub', testid: 'school-after-school-club' },
+                  { label: 'Entrepreneurship & Fin-Lit Bootcamp', route: '/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools', sub: 'Ages 3–16 · Mock Banks, Markets & Pitches', testid: 'school-entrepreneurship-bootcamp' },
                 ].map(t => (
                   <button key={t.label}
                     onClick={() => navigate(t.route)}

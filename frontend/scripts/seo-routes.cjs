@@ -398,4 +398,40 @@ ROUTES['/school'] = {
   ogType: 'website',
 };
 
+ROUTES['/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10'] = {
+  title: 'Advance Robotics & AI Curriculum & Kits for Grades 3-10 | OLL for Schools',
+  description: 'Advance Robotics & AI curriculum, snap-fit mechanics, rechargeable coding hubs, sensor modules & voice AI for Grades 3 to 10.',
+  ogTitle: 'Advance Robotics & AI Curriculum (Grades 3-10) · OLL',
+  ogDescription: 'Turnkey Grade 3-10 Robotics & AI curriculum, kits, teacher training & IIT Bombay finale.',
+  ogImage: OG.roboticsBuild,
+  ogType: 'website',
+};
+
+ROUTES['/school/composite-skill-lab-cbse-skill-education-grades-6-to-10'] = {
+  title: 'Composite Skill Lab (CSL) for CBSE Schools · Grades 6–10 · NEP 2020 | OLL',
+  description: 'Turnkey Composite Skill Lab setup compliant with CBSE Circular Skill-75/2024. Multi-sector hands-on learning in Life Forms, Machines & Human Services.',
+  ogTitle: 'CBSE Composite Skill Lab (CSL) · Grades 6–10 · OLL',
+  ogDescription: '110 hours/year multi-skill education lab setup: Hydroponics, Electronics, Mechatronics, Apparel, Healthcare & Kaushal Bodh.',
+  ogImage: OG.school,
+  ogType: 'website',
+};
+
+ROUTES['/school/after-school-robo-club-robotics-ai-stem-learning-center'] = {
+  title: 'After-School Robo Club · In-School Robotics & AI Learning Center | OLL',
+  description: 'Turn available school space into a revenue-generating After-School Robo Club for ages 3–16. 3D printers, laser cutters, AI vision & IIT Bombay finale.',
+  ogTitle: 'After-School Robo Club · Robotics & AI Learning Center · OLL',
+  ogDescription: 'Turnkey in-school club: 3D printing, laser cutting, competition training & flexible revenue sharing for schools.',
+  ogImage: OG.roboticsKit,
+  ogType: 'website',
+};
+
+ROUTES['/school/entrepreneurship-and-financial-literacy-bootcamp-for-schools'] = {
+  title: 'Financial Literacy & Entrepreneurship Bootcamp for Schools · Ages 3–16 | OLL',
+  description: 'Experiential Financial Literacy & Entrepreneurship bootcamp for schools. Mock banks, simulations, product design, and startup pitches.',
+  ogTitle: 'Financial Literacy & Entrepreneurship Bootcamp for Schools · OLL',
+  ogDescription: 'Real-world money management and entrepreneurial skills for students ages 3–16. Founded by Shark Tank prodigy Shreyaan Daga.',
+  ogImage: OG.entrepreneur,
+  ogType: 'website',
+};
+
 module.exports = { SITE, ROUTES, DEFAULT_OG_IMAGE, ogImage };
