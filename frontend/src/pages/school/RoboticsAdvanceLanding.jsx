@@ -289,77 +289,78 @@ export default function RoboticsAdvanceLanding() {
   };
 
   return (
-    <div style={{ background: '#FAFBFD', color: '#0F1E33', fontFamily: "'Proxima Nova', 'Montserrat', system-ui, sans-serif", minHeight: '100vh' }}>
+    <div className="min-h-screen relative icse-page" style={{ background: '#FAFBFD', color: '#0F1E33', fontFamily: "'Proxima Nova', 'Montserrat', system-ui, sans-serif" }}>
       <Toaster position="top-right" richColors />
 
-      {/* 1. STICKY TOP NAVIGATION BAR */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '0.75rem 1.5rem',
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-              <img src={OLL_LOGO_COLOR} alt="OLL.co" style={{ height: 34, width: 'auto' }} />
-            </button>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              background: '#FEE2E2', color: '#B91C1C',
-              fontSize: '0.75rem', fontWeight: 700, padding: '0.25rem 0.65rem',
-              borderRadius: '9999px', letterSpacing: '0.04em', textTransform: 'uppercase'
-            }}>
-              <Sparkles size={12} /> Advance Robotics · Grades 3–10
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800;900&family=Caveat:wght@400;700&display=swap');
+        @font-face {
+          font-family: 'Zing Rust';
+          src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
+          font-weight: 400; font-style: normal; font-display: swap;
+        }
+        .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
+        .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
+        .icse-btn.primary { background:#DC2626; color:#fff; box-shadow:0 14px 28px rgba(220,38,38,0.28); }
+        .icse-btn.primary:hover { background:#B91C1C; transform:translateY(-1px); }
+        .icse-btn.outline { background:#fff; color:#0A1F44; border:1.5px solid #0A1F44; }
+        .icse-btn.outline:hover { background:#0A1F44; color:#fff; }
+        .icse-mobile-cta {
+          position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+          padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0));
+          display: none;
+          gap: 8px;
+          background: rgba(255,255,255,0.96);
+          backdrop-filter: saturate(180%) blur(14px);
+          border-top: 1px solid rgba(10,31,68,0.08);
+          box-shadow: 0 -12px 32px rgba(10,31,68,0.10);
+        }
+        .icse-mobile-cta .icse-btn { flex: 1; justify-content: center; padding: 12px 14px !important; font-size: 0.75rem !important; }
+        @media (max-width: 640px) {
+          .icse-nav-pill { padding: 6px 10px 6px 12px; }
+          .icse-nav-pill img { height: 34px !important; }
+          .icse-page { padding-bottom: 84px; }
+          .icse-btn { padding: 12px 18px !important; font-size: 0.78rem !important; }
+          .icse-btn.primary, .icse-btn.outline { min-height: 46px; }
+          .icse-mobile-cta { display: flex; }
+        }
+      `}</style>
+
+      {/* ── Sticky Nav (desktop/tablet only — mobile uses the sticky bottom CTA bar). ─── */}
+      <nav className="fixed top-3 left-0 right-0 z-50 px-3 hidden sm:block" data-testid="advance-nav">
+        <div className="icse-nav-pill">
+          <a href="/" className="flex items-center gap-3">
+            <img src={OLL_LOGO_COLOR} alt="OLL — Skills for All logo · Official Advance Robotics partner" className="h-9 sm:h-10 w-auto" />
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-[#0A1F44] border-l border-slate-200 pl-3 leading-tight">
+              Advance Robotics &amp; AI<br/>Grades 3 to 10
             </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              onClick={() => setGateOpen(true)}
-              data-testid="nav-download-curriculum"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                background: '#F1F5F9', color: '#0F1E33', border: '1px solid #CBD5E1',
-                padding: '0.55rem 1rem', borderRadius: '0.75rem',
-                fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#E2E8F0'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#F1F5F9'; }}
-            >
-              <Download size={14} /> Curriculum PDF (2027–28)
+          </a>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setGateOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#0A1F44] px-3 py-2 rounded-full hover:bg-slate-100 transition"
+              data-testid="advance-nav-download">
+              <Download className="w-3.5 h-3.5" /> Curriculum PDF
             </button>
-
-            <a
-              href="#book-demo-section"
-              data-testid="nav-book-demo"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
-                color: '#fff', border: 'none',
-                padding: '0.55rem 1.15rem', borderRadius: '0.75rem',
-                fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)', textDecoration: 'none'
-              }}
-            >
-              Book School Demo <ArrowRight size={14} />
+            <a href="#book-demo-section" className="icse-btn primary" style={{ padding: '10px 20px', fontSize: '0.72rem' }} data-testid="advance-nav-cta">
+              Book Demo <ArrowRight className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
-      </header>
+      </nav>
 
-      {/* 2. BREADCRUMBS */}
-      <SchoolBreadcrumbs
-        items={[
-          { label: 'Home', href: '/' },
-          { label: 'For Schools', href: '/school/robotics-ai-lab-for-schools-turnkey-solution/' },
-          { label: 'Advance Robotics & AI (Grades 3–10)' }
-        ]}
-        schemaId="advance-robotics-breadcrumbs-schema"
-        testid="advance-breadcrumbs"
-      />
+      {/* ── Visible breadcrumb trail (with top padding to account for fixed floating pill nav) ── */}
+      <div style={{ paddingTop: 'clamp(2.5rem, 8vw, 5.5rem)' }}>
+        <SchoolBreadcrumbs
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'For Schools', href: '/school' },
+            { label: 'Robotics', href: '/school#robotics' },
+            { label: 'Advance Robotics & AI (Grades 3–10)' }
+          ]}
+          schemaId="advance-robotics-breadcrumbs-schema"
+          testid="advance-breadcrumbs"
+        />
+      </div>
 
       {/* 3. HERO SECTION */}
       <section style={{ maxWidth: 1200, margin: '1.5rem auto 3rem', padding: '0 1.25rem' }}>
@@ -1187,6 +1188,16 @@ export default function RoboticsAdvanceLanding() {
         source="advance-robotics-curriculum-download-gate"
         testid="advance-curriculum-gate"
       />
+
+      {/* ── Mobile-only sticky bottom CTA (thumb-reachable) ─────────── */}
+      <div className="icse-mobile-cta" data-testid="advance-mobile-cta">
+        <button type="button" onClick={() => setGateOpen(true)} className="icse-btn outline" data-testid="advance-mobile-cta-brochure">
+          <Download className="w-3.5 h-3.5" /> Brochure
+        </button>
+        <a href="#book-demo-section" className="icse-btn primary" data-testid="advance-mobile-cta-demo">
+          Book Demo <ArrowRight className="w-3.5 h-3.5" />
+        </a>
+      </div>
     </div>
   );
 }
