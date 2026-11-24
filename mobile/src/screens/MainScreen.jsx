@@ -3046,11 +3046,12 @@ export default function MainScreen({ user, onLogout }) {
 
   // ── Handle Sending Custom Text in Chat ───────────────────────────────────────
   const handleSend = async (overrideText = null) => {
-    const rawText = (overrideText !== null ? overrideText : inputText).trim();
+    const hasOverride = typeof overrideText === 'string';
+    const rawText = String((hasOverride ? overrideText : inputText) || '').trim();
     if (!rawText) return;
 
     const userText = rawText;
-    if (overrideText === null) {
+    if (!hasOverride) {
       setInputText('');
     }
     setChatMode(true);

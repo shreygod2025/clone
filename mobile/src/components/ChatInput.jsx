@@ -68,7 +68,7 @@ export default function ChatInput({
             styles.sendButton,
             { backgroundColor: value.trim().length > 0 ? COLORS.brandEmerald : COLORS.brandEmerald },
           ]}
-          onPress={onSend}
+          onPress={() => onSend && onSend()}
         >
           <Feather name="arrow-up" size={20} color="#FFFFFF" />
         </TouchableOpacity>
