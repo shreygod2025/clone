@@ -98,12 +98,27 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
 
   const canAssignToOthers = isUserAdmin || managedUsers.length > 0;
 
-  // Determine whether current user has permission to edit a particular task
+  // Determine whether current user has permission to edit/delete a particular task
   const canEditTask = useCallback((task) => {
     if (!task) return false;
     if (isUserAdmin) return true;
-    if (task.assigned_to === currentUserId || task.assigned_by === currentUserId) return true;
-    if (managedUserIds.includes(task.assigned_to) || managedUserIds.includes(task.assigned_by)) return true;
+
+    const taskAssigner = task.assigned_by || task.creator_id || task.created_by;
+    const taskAssignee = task.assigned_to;
+
+    const isAssignedByMe = Boolean(currentUserId && taskAssigner && taskAssigner === currentUserId);
+    const isAssignedToMe = Boolean(currentUserId && taskAssignee && taskAssignee === currentUserId);
+
+    // If task is assigned to me: strictly require that it was assigned by me to myself
+    if (isAssignedToMe) {
+      return isAssignedByMe;
+    }
+
+    // If task is assigned to another person: require that it was assigned by me and the person is in managed subordinates
+    if (isAssignedByMe && Array.isArray(managedUserIds) && managedUserIds.includes(taskAssignee)) {
+      return true;
+    }
+
     return false;
   }, [isUserAdmin, currentUserId, managedUserIds]);
 
@@ -160,9 +175,8 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
     return d.toISOString().split('T')[0];
   };
 
-  // ── Open Task Creation for Self ──
-  const openAddTaskForMe = () => {
-    setCreateMode('self');
+  // ── Open Task Creation Modal ──
+  const openCreateTask = () => {
     setTaskTitle('');
     setTaskDescription('');
     setTaskPriority('medium');
@@ -173,32 +187,15 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
     setCreateModalVisible(true);
   };
 
-  // ── Open Task Creation for Another Person ──
-  const openAddTaskForOther = () => {
-    if (!canAssignToOthers) {
-      Alert.alert('Access Denied', 'You do not have permission to assign tasks to other people.');
-      return;
-    }
-    setCreateMode('assign');
-    setTaskTitle('');
-    setTaskDescription('');
-    setTaskPriority('medium');
-    setTaskDueDate(getQuickDueDate(1));
-    setTaskStatus('pending');
-    const firstManaged = managedUsers[0];
-    setSelectedAssigneeId(firstManaged ? firstManaged.id : '');
-    setSelectedAssigneeName(firstManaged ? firstManaged.name : '');
-    setCreateModalVisible(true);
-  };
-
   // ── On Clicking Submit in Create Modal: Trigger Confirmation Dialog ──
   const handleReviewCreateTask = () => {
     if (!taskTitle.trim()) {
       Alert.alert('Required', 'Please enter a task title.');
       return;
     }
-    if (createMode === 'assign' && !selectedAssigneeId) {
-      Alert.alert('Required', 'Please select an assigned team member.');
+    const assigneeId = (canAssignToOthers && selectedAssigneeId) ? selectedAssigneeId : currentUserId;
+    if (!assigneeId) {
+      Alert.alert('Required', 'Please select an assigned person.');
       return;
     }
     setConfirmActionType('create');
@@ -208,7 +205,7 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
   // ── On Confirming Task Creation: Call Backend API ──
   const handleExecuteCreateTask = async () => {
     setIsSubmitting(true);
-    const assigneeId = createMode === 'self' ? currentUserId : selectedAssigneeId;
+    const assigneeId = (canAssignToOthers && selectedAssigneeId) ? selectedAssigneeId : currentUserId;
     const payload = {
       title: taskTitle.trim(),
       description: taskDescription.trim(),
@@ -375,7 +372,7 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
 
       {/* ── Action Buttons Bar ── */}
       <View style={styles.actionButtonsBar}>
-        {/* 1. "My Task" Button (Always Visible, Fully Functional) */}
+        {/* 1. "My Task" Button */}
         <TouchableOpacity
           activeOpacity={0.8}
           style={[styles.primaryActionBtn, styles.btnMyTasks]}
@@ -385,27 +382,15 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
           <Text style={styles.btnMyTasksText}>My Task</Text>
         </TouchableOpacity>
 
-        {/* 2. "Add Task for Me" Button (Available to Every User) */}
+        {/* 2. "Create Task" Button */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.primaryActionBtn, styles.btnAddTaskForMe]}
-          onPress={openAddTaskForMe}
+          style={[styles.primaryActionBtn, styles.btnAddTask]}
+          onPress={openCreateTask}
         >
-          <Feather name="user-check" size={14} color="#2563EB" style={{ marginRight: 6 }} />
-          <Text style={styles.btnAddTaskForMeText}>Add Task for Me</Text>
+          <Feather name="plus-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Text style={styles.btnAddTaskText}>Create Task</Text>
         </TouchableOpacity>
-
-        {/* 3. "Add Task" (Assign to Another Person) - ONLY Visible if User Has Assignment Permission */}
-        {canAssignToOthers && (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.primaryActionBtn, styles.btnAddTask]}
-            onPress={openAddTaskForOther}
-          >
-            <Feather name="user-plus" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.btnAddTaskText}>Add Task</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* ── Search & Filter Tabs ── */}
@@ -477,10 +462,10 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
               </Text>
               <TouchableOpacity
                 style={styles.emptyCreateBtn}
-                onPress={openAddTaskForMe}
+                onPress={openCreateTask}
               >
                 <Feather name="plus" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.emptyCreateBtnText}>Create Task for Me</Text>
+                <Text style={styles.emptyCreateBtnText}>Create Task</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -592,13 +577,9 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>
-                  {createMode === 'self' ? 'Add Task for Me' : 'Add Task (Assign to Team)'}
-                </Text>
+                <Text style={styles.modalTitle}>Create Task</Text>
                 <Text style={styles.modalSubtitle}>
-                  {createMode === 'self'
-                    ? `Assigning task to yourself (${currentUserName})`
-                    : 'Assign task to an authorized subordinate team member'}
+                  Add a new task to Mission Control
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
@@ -628,39 +609,54 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
                 multiline
               />
 
-              {/* Assignee Selection (Omitted if createMode === 'self') */}
-              {createMode === 'assign' && (
+              {/* Assignee Selection (Only when canAssignToOthers) */}
+              {canAssignToOthers && (
                 <View>
-                  <Text style={styles.fieldLabel}>Assign To (Eligible Managed Members) *</Text>
-                  {managedUsers.length === 0 ? (
-                    <Text style={styles.warnText}>No subordinate team members found in your account.</Text>
-                  ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                      {managedUsers.map((u) => {
-                        const isSelected = selectedAssigneeId === u.id;
-                        return (
-                          <TouchableOpacity
-                            key={u.id}
-                            style={[styles.assigneePill, isSelected && styles.assigneePillActive]}
-                            onPress={() => {
-                              setSelectedAssigneeId(u.id);
-                              setSelectedAssigneeName(u.name);
-                            }}
-                          >
-                            <Feather
-                              name="user"
-                              size={12}
-                              color={isSelected ? '#FFFFFF' : '#475569'}
-                              style={{ marginRight: 4 }}
-                            />
-                            <Text style={[styles.assigneePillText, isSelected && styles.assigneePillTextActive]}>
-                              {u.name}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  )}
+                  <Text style={styles.fieldLabel}>Assign To</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.assigneePill,
+                        (!selectedAssigneeId || selectedAssigneeId === currentUserId) && styles.assigneePillActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedAssigneeId(currentUserId);
+                        setSelectedAssigneeName(currentUserName);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.assigneePillText,
+                          (!selectedAssigneeId || selectedAssigneeId === currentUserId) && styles.assigneePillTextActive,
+                        ]}
+                      >
+                        👤 Myself ({currentUserName})
+                      </Text>
+                    </TouchableOpacity>
+                    {managedUsers.map((u) => {
+                      const isSelected = selectedAssigneeId === u.id;
+                      return (
+                        <TouchableOpacity
+                          key={u.id}
+                          style={[styles.assigneePill, isSelected && styles.assigneePillActive]}
+                          onPress={() => {
+                            setSelectedAssigneeId(u.id);
+                            setSelectedAssigneeName(u.name);
+                          }}
+                        >
+                          <Feather
+                            name="user"
+                            size={12}
+                            color={isSelected ? '#FFFFFF' : '#475569'}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={[styles.assigneePillText, isSelected && styles.assigneePillTextActive]}>
+                            {u.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
               )}
 
@@ -959,7 +955,7 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
                 <Text style={styles.summaryLabel}>Assigned Person:</Text>
                 <Text style={styles.summaryValue}>
                   {confirmActionType === 'create'
-                    ? (createMode === 'self' ? `Myself (${currentUserName})` : selectedAssigneeName || 'Team Member')
+                    ? (selectedAssigneeId === currentUserId ? `Myself (${currentUserName})` : (selectedAssigneeName || 'Team Member'))
                     : (editAssigneeName || 'Team Member')}
                 </Text>
               </View>

@@ -45,7 +45,7 @@ function TaskItemCard({
   onEditTask,
   onDeleteTask,
   onCommentTask,
-  canEdit = true,
+  canEdit = false,
 }) {
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -197,7 +197,7 @@ function TaskListCard({
   canAssignToOthers = false,
   canEditTask,
   onMyTaskPress,
-  onAddTaskForMePress,
+  onCreateTaskPress,
   onAddTaskPress,
 }) {
   return (
@@ -224,27 +224,15 @@ function TaskListCard({
           <Text style={styles.btnMyTaskSmallText}>My Task</Text>
         </TouchableOpacity>
 
-        {/* 2. "Add Task for Me" Button (Available to all) */}
+        {/* 2. "Create Task" Button */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.taskListBtn, styles.btnAddTaskForMeSmall]}
-          onPress={onAddTaskForMePress}
+          style={[styles.taskListBtn, styles.btnAddTaskSmall]}
+          onPress={onCreateTaskPress || onAddTaskPress}
         >
-          <Feather name="user-check" size={11} color="#2563EB" style={{ marginRight: 4 }} />
-          <Text style={styles.btnAddTaskForMeSmallText}>Add Task for Me</Text>
+          <Feather name="plus-circle" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={styles.btnAddTaskSmallText}>Create Task</Text>
         </TouchableOpacity>
-
-        {/* 3. "Add Task" (Assign to Another Person) - ONLY if authorized */}
-        {canAssignToOthers && (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.taskListBtn, styles.btnAddTaskSmall]}
-            onPress={onAddTaskPress}
-          >
-            <Feather name="user-plus" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.btnAddTaskSmallText}>Add Task</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {tasks.length === 0 ? (
@@ -253,7 +241,7 @@ function TaskListCard({
         </View>
       ) : (
         tasks.map((task, idx) => {
-          const canEdit = typeof canEditTask === 'function' ? canEditTask(task) : true;
+          const canEdit = typeof canEditTask === 'function' ? Boolean(canEditTask(task)) : false;
           return (
             <TaskItemCard
               key={task.id || idx}
@@ -290,13 +278,15 @@ function InlineTaskCreationCard({
   const handleSubmit = () => {
     if (!title.trim()) return;
     const due = new Date(Date.now() + dueDateDays * 86400000).toISOString().split('T')[0];
+    const finalAssigneeId = (canAssignToOthers && assignedToId) ? assignedToId : initialAssigneeId;
+    const finalAssigneeName = (canAssignToOthers && assigneeName) ? assigneeName : (initialAssigneeName || 'Myself');
     if (onSubmit) {
       onSubmit({
         title: title.trim(),
         priority,
         due_date: due,
-        assigned_to: (canAssignToOthers && mode === 'assign' && assignedToId) ? assignedToId : initialAssigneeId,
-        assignee_name: (canAssignToOthers && mode === 'assign' && assigneeName) ? assigneeName : initialAssigneeName,
+        assigned_to: finalAssigneeId,
+        assignee_name: finalAssigneeName,
       });
     }
   };
@@ -308,11 +298,9 @@ function InlineTaskCreationCard({
           <Feather name="plus-circle" size={15} color="#059669" />
         </View>
         <View style={{ marginLeft: 8 }}>
-          <Text style={styles.taskCreationTitle}>
-            {mode === 'self' || !canAssignToOthers ? 'Add Task for Me' : 'New Mission Control Task'}
-          </Text>
+          <Text style={styles.taskCreationTitle}>Create Task</Text>
           <Text style={styles.taskCreationSubtitle}>
-            {mode === 'self' || !canAssignToOthers ? 'Automatically assigned to yourself' : 'Auto-logged to tasks database'}
+            {canAssignToOthers ? 'Create task for yourself or team members' : 'Automatically assigned to yourself'}
           </Text>
         </View>
       </View>
@@ -326,11 +314,30 @@ function InlineTaskCreationCard({
         placeholderTextColor="#94A3B8"
       />
 
-      {/* Assignee Selection (Only when mode === 'assign' AND canAssignToOthers) */}
-      {canAssignToOthers && mode === 'assign' && (
+      {/* Assignee Selection (Only when canAssignToOthers) */}
+      {canAssignToOthers && (
         <>
-          <Text style={styles.taskCreationLabel}>Assign Task To (Managed Team Members)</Text>
+          <Text style={styles.taskCreationLabel}>Assign Task To</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <TouchableOpacity
+              style={[
+                styles.selectorPill,
+                (!assignedToId || assignedToId === initialAssigneeId) && styles.selectorPillActive,
+              ]}
+              onPress={() => {
+                setAssignedToId(initialAssigneeId);
+                setAssigneeName(initialAssigneeName || 'Myself');
+              }}
+            >
+              <Text
+                style={[
+                  styles.selectorPillText,
+                  (!assignedToId || assignedToId === initialAssigneeId) && styles.selectorPillTextActive,
+                ]}
+              >
+                👤 Myself
+              </Text>
+            </TouchableOpacity>
             {(teamUsers || [])
               .filter((u) => !u.is_self && u.id !== initialAssigneeId)
               .map((u) => {
@@ -339,7 +346,10 @@ function InlineTaskCreationCard({
                   <TouchableOpacity
                     key={u.id}
                     style={[styles.selectorPill, isSelected && styles.selectorPillActive]}
-                    onPress={() => { setAssignedToId(u.id); setAssigneeName(u.name); }}
+                    onPress={() => {
+                      setAssignedToId(u.id);
+                      setAssigneeName(u.name);
+                    }}
                   >
                     <Text style={[styles.selectorPillText, isSelected && styles.selectorPillTextActive]}>
                       {u.name}
@@ -435,7 +445,7 @@ export default function ChatMessagesView({
   canAssignToOthers = false,
   canEditTask,
   onMyTaskPress,
-  onAddTaskForMePress,
+  onCreateTaskPress,
   onAddTaskPress,
 }) {
   const scrollViewRef = useRef(null);
@@ -1089,8 +1099,8 @@ export default function ChatMessagesView({
                     canAssignToOthers={canAssignToOthers}
                     canEditTask={canEditTask}
                     onMyTaskPress={onMyTaskPress}
-                    onAddTaskForMePress={onAddTaskForMePress}
-                    onAddTaskPress={onAddTaskPress}
+                    onCreateTaskPress={onCreateTaskPress || onAddTaskPress}
+                    onAddTaskPress={onAddTaskPress || onCreateTaskPress}
                   />
                 )}
 
@@ -1104,7 +1114,7 @@ export default function ChatMessagesView({
                       onEditTask={onEditTask}
                       onDeleteTask={onDeleteTask}
                       onCommentTask={onCommentTask}
-                      canEdit={typeof canEditTask === 'function' ? canEditTask(msg.taskCard) : true}
+                      canEdit={typeof canEditTask === 'function' ? Boolean(canEditTask(msg.taskCard)) : false}
                     />
                   </View>
                 )}

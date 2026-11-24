@@ -271,20 +271,32 @@ export default function MainScreen({ user, onLogout }) {
   const managedUserIds = managedUsers.map((u) => u.id);
   const canAssignToOthers = isUserAdmin || managedUsers.length > 0;
 
-  // Determine whether current user can edit a particular task
+  // Determine whether current user can edit/delete a particular task
   const canEditTask = (task) => {
     if (!task) return false;
     if (isUserAdmin) return true;
-    if (task.assigned_to === currentUserId || task.assigned_by === currentUserId) return true;
-    if (managedUserIds.includes(task.assigned_to) || managedUserIds.includes(task.assigned_by)) return true;
+
+    const taskAssigner = task.assigned_by || task.creator_id || task.created_by;
+    const taskAssignee = task.assigned_to;
+
+    const isAssignedByMe = Boolean(currentUserId && taskAssigner && taskAssigner === currentUserId);
+    const isAssignedToMe = Boolean(currentUserId && taskAssignee && taskAssignee === currentUserId);
+
+    // If task is assigned to me: strictly require that it was assigned by me to myself
+    if (isAssignedToMe) {
+      return isAssignedByMe;
+    }
+
+    // If task is assigned to another person: require that it was assigned by me and the person is in managed subordinates
+    if (isAssignedByMe && Array.isArray(managedUserIds) && managedUserIds.includes(taskAssignee)) {
+      return true;
+    }
+
     return false;
   };
 
   const getTaskActionChips = () => {
-    if (canAssignToOthers) {
-      return ['My Task', 'Add Task for Me', 'Add Task'];
-    }
-    return ['My Task', 'Add Task for Me'];
+    return ['My Task', 'Create Task'];
   };
 
   // 11b. Edit Task Modal State
@@ -1395,17 +1407,14 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   const promptDeleteTaskConfirmation = (task) => {
-    const userUid = user?.id || user?.user_id || '';
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-    const isCreator = !task.assigned_by || task.assigned_by === userUid;
-
-    if (!isAdmin && !isCreator) {
+    if (!task) return;
+    if (!canEditTask(task)) {
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`,
-          nextActions: ['My Tasks'],
+          text: 'Access denied.',
+          nextActions: getTaskActionChips(),
           time: 'Just now',
         },
       ]);
@@ -1571,17 +1580,13 @@ export default function MainScreen({ user, onLogout }) {
 
   const handleDeleteTask = (task) => {
     if (!task) return;
-    const userUid = effectiveUser?.id || effectiveUser?.user_id || '';
-    const isCreator = !task.assigned_by || task.assigned_by === userUid;
-    const canDelete = isUserAdmin || isCreator || (assignableUsers || []).some((u) => u.id === task.assigned_to);
-
-    if (!canDelete) {
+    if (!canEditTask(task)) {
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
           text: 'Access denied.',
-          nextActions: ['My Tasks'],
+          nextActions: getTaskActionChips(),
           time: 'Just now',
         },
       ]);
@@ -3120,7 +3125,7 @@ export default function MainScreen({ user, onLogout }) {
         ...prev,
         {
           sender: 'ai',
-          text: '➕ **Add Task for Me:**\nFill in the title, priority, and deadline below. It will be assigned to you automatically:',
+          text: '➕ **Create Task:**\nFill in the title, priority, and deadline below:',
           taskCreationCard: {
             initialTitle: userText.replace(/(?:create\s+(?:a\s+)?task\s+for\s+myself|add\s+task\s+for\s+me)[:\s-]*/i, '').trim(),
             initialPriority: 'medium',
@@ -3423,15 +3428,13 @@ export default function MainScreen({ user, onLogout }) {
         ...prev,
         {
           sender: 'ai',
-          text: canAssignToOthers
-            ? '➕ **Add Task (Assign to Another Person):**\nSelect an eligible team member and fill in task details below:'
-            : '➕ **Add Task for Me:**\nFill in the task details below. The task will be assigned to you automatically:',
+          text: '➕ **Create Task:**\nFill in the task details below:',
           taskCreationCard: {
             initialTitle: '',
             initialPriority: 'medium',
-            initialAssigneeId: mode === 'self' ? myId : (managedUsers[0]?.id || ''),
-            initialAssigneeName: mode === 'self' ? myName : (managedUsers[0]?.name || ''),
-            mode: mode,
+            initialAssigneeId: myId,
+            initialAssigneeName: myName,
+            mode: canAssignToOthers ? 'assign' : 'self',
             canAssignToOthers,
             teamUsers: eligibleUsers,
           },
@@ -5107,17 +5110,16 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
-    if (lower === 'add task for me' || lower.includes('add task for me') || lower.includes('create task for myself')) {
-      handleSend('Add task for me');
-      return;
-    }
-
-    if (lower === 'create task' || lower === 'new task' || lower === 'add task') {
-      if (canAssignToOthers) {
-        handleSend('Create Task');
-      } else {
-        handleSend('Add task for me');
-      }
+    if (
+      lower === 'create task' ||
+      lower === 'new task' ||
+      lower === 'add task' ||
+      lower.includes('create task') ||
+      lower.includes('add task') ||
+      lower.includes('task for me') ||
+      lower.includes('task for myself')
+    ) {
+      handleSend('Create Task');
       return;
     }
 
@@ -5310,7 +5312,7 @@ export default function MainScreen({ user, onLogout }) {
                 canAssignToOthers={canAssignToOthers}
                 canEditTask={canEditTask}
                 onMyTaskPress={() => handleSend('My Tasks')}
-                onAddTaskForMePress={() => handleSend('Add task for me')}
+                onCreateTaskPress={() => handleSend('Create Task')}
                 onAddTaskPress={() => handleSend('Create Task')}
               />
             ) : (
