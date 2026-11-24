@@ -530,13 +530,14 @@ export default function RoboticsAdvanceLanding() {
                   </div>
                 </div>
 
-                {/* Brochure Page Image Container */}
-                <div className="relative rounded-2xl overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100/70 border border-slate-100 p-2 sm:p-3 flex items-center justify-center">
+                {/* Full-Cover Hero Visual Box (Edge-to-edge, no page margins) */}
+                <div className="relative rounded-2xl overflow-hidden w-full h-[380px] sm:h-[420px] shadow-md bg-slate-900 group">
                   <img
                     src={activeSlide.src}
                     alt={activeSlide.title}
-                    className="w-full max-h-[350px] sm:max-h-[380px] object-contain rounded-xl shadow-md transition-opacity duration-300"
+                    className="w-full h-full object-cover object-top transition-all duration-500 group-hover:scale-105"
                   />
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 via-black/20 to-transparent pointer-events-none" />
                 </div>
 
                 {/* Info / Metadata Row */}
