@@ -4,10 +4,18 @@ import { toast } from 'sonner';
 import {
   Calendar, User as UserIcon, Flag, X, Search, ChevronDown, Check,
   Repeat, Link2, Tag as TagIcon, FolderKanban as FolderIcon,
-  Paperclip, Upload, FileText, Trash2
+  Paperclip, Upload, FileText, Trash2, CheckSquare, HelpCircle, UserCheck
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const STATUS_META = {
+  pending:          { label: 'Pending',          dot: 'bg-slate-400' },
+  in_progress:      { label: 'In Progress',      dot: 'bg-blue-500' },
+  pending_approval: { label: 'Pending Approval', dot: 'bg-amber-500' },
+  completed:        { label: 'Completed',        dot: 'bg-green-500' },
+  rejected:         { label: 'Rejected',         dot: 'bg-red-500' },
+};
 
 const PRIORITY_META = {
   low:    { label: 'Low',    dot: 'bg-slate-300' },
@@ -283,17 +291,18 @@ export const AttachmentsPanel = ({ attachments = [], onChange, getAuthHeaders, c
 };
 
 // ── Main modal ───────────────────────────────────────────────────────────────
-const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '', existingTask = null, defaultAssigneeId = '' }) => {
+const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = null, defaultProjectId = '', existingTask = null, defaultAssigneeId = '', assignToSelfOnly = false }) => {
   const isEdit = !!existingTask;
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [form, setForm] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [rows, setRows] = useState([]); // [{ id, title, description, expanded, overrides }]
 
-  const supportsBulk = !isEdit && !parentTask; // no bulk when editing / creating sub-tasks
+  const supportsBulk = !isEdit && !parentTask && !assignToSelfOnly; // no bulk when editing, subtasks, or self-only
 
   const newRow = () => ({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -311,6 +320,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
 
   const chipRefs = {
     assignee: useRef(null),
+    status:   useRef(null),
     due:      useRef(null),
     priority: useRef(null),
     project:  useRef(null),
@@ -325,10 +335,6 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
   };
 
   // Reset form state ONLY when the modal transitions from closed → open.
-  // Previously depended on [open, currentUser, parentTask, …] which caused a full
-  // form + bulk-rows reset every time the parent re-rendered (e.g., a browser tab
-  // switch that refreshed AuthContext gave `currentUser` a new object reference and
-  // nuked the bulk-added rows).
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!open) { wasOpenRef.current = false; return; }
@@ -337,15 +343,17 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
 
     // Reset bulk state on every FRESH open
     setBulkMode(false);
+    setShowConfirm(false);
     setRows([newRow()]);
     if (isEdit) {
       // Prefill from existing task
       setForm({
         title: existingTask.title || '',
         description: existingTask.description || '',
-        assigned_to: existingTask.assigned_to || currentUser?.id || '',
+        assigned_to: assignToSelfOnly ? (currentUser?.id || existingTask.assigned_to || '') : (existingTask.assigned_to || currentUser?.id || ''),
+        status: existingTask.status || 'pending',
         priority: existingTask.priority || 'medium',
-        due_date: existingTask.due_date ? existingTask.due_date.slice(0, 10) : '',
+        due_date: existingTask.due_date ? existingTask.due_date.slice(0, 16) : '',
         project_id: existingTask.project_id || '',
         parent_task_id: existingTask.parent_task_id || null,
         tags: Array.isArray(existingTask.tags) ? existingTask.tags.join(', ') : '',
@@ -359,7 +367,8 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       setForm({
         title: '',
         description: '',
-        assigned_to: defaultAssigneeId || currentUser?.id || '',
+        assigned_to: assignToSelfOnly ? (currentUser?.id || '') : (defaultAssigneeId || currentUser?.id || ''),
+        status: 'pending',
         priority: 'medium',
         due_date: '',
         project_id: defaultProjectId || '',
@@ -375,20 +384,30 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
     setOpenPanel(null);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load team-users + projects once when the modal opens — independent of the
-  // reset effect, and NOT wired to `currentUser` reference changes.
+  // Load assignable-users + projects once when the modal opens
   useEffect(() => {
     if (!open) return;
-    axios.get(`${API}/team-users`, { headers: getAuthHeaders() })
+    axios.get(`${API}/tasks/assignable-users`, { headers: getAuthHeaders() })
       .then(r => {
-        const list = r.data || [];
+        let list = r.data || [];
         if (currentUser?.id && !list.find(u => u.id === currentUser.id)) {
-          list.unshift({ id: currentUser.id, name: currentUser.name || 'Me (Admin)', email: currentUser.email || '' });
+          list.unshift({ id: currentUser.id, name: currentUser.name || 'Myself', email: currentUser.email || '', is_self: true });
         }
         list.sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : 0));
         setUsers(list);
       })
-      .catch(() => {});
+      .catch(() => {
+        axios.get(`${API}/team-users`, { headers: getAuthHeaders() })
+          .then(r => {
+            const list = r.data || [];
+            if (currentUser?.id && !list.find(u => u.id === currentUser.id)) {
+              list.unshift({ id: currentUser.id, name: currentUser.name || 'Me', email: currentUser.email || '' });
+            }
+            list.sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : 0));
+            setUsers(list);
+          })
+          .catch(() => {});
+      });
     axios.get(`${API}/projects`, { headers: getAuthHeaders() })
       .then(r => setProjects(r.data || []))
       .catch(() => {});
@@ -409,27 +428,49 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
 
   if (!open || !form) return null;
 
-  const handleSubmit = async () => {
+  const handleSubmit = (e) => {
+    e?.preventDefault();
     // ── Bulk mode: create many tasks in one shot ─────────────────────
     if (bulkMode) {
-      const clean = rows
-        .map((r, i) => ({ r, i }))
-        .filter(({ r }) => r.title.trim());
+      const clean = rows.filter(r => r.title.trim());
       if (clean.length === 0) {
         toast.error('Add at least one task with a title');
         return;
       }
-      const sharedAssignee = form.assigned_to;
-      if (!sharedAssignee && !clean.every(({ r }) => r.overrides.assigned_to)) {
-        toast.error('Pick a default assignee (or set one on every row)');
+      const sharedAssignee = assignToSelfOnly ? (currentUser?.id || form.assigned_to) : form.assigned_to;
+      if (!sharedAssignee && !clean.every(r => r.overrides.assigned_to)) {
+        toast.error('Pick an assignee for your tasks');
         return;
       }
+      setShowConfirm(true);
+      return;
+    }
+
+    // ── Single-task path ─────────────────────────────────────────────
+    if (!form.title.trim()) {
+      toast.error('Task title is required');
+      return;
+    }
+    const targetAssignee = assignToSelfOnly ? (currentUser?.id || form.assigned_to) : form.assigned_to;
+    if (!targetAssignee) {
+      toast.error('Assignee is required');
+      return;
+    }
+
+    setShowConfirm(true);
+  };
+
+  const handleExecuteSave = async () => {
+    // ── Bulk mode ───────────────────────────────────────────────────
+    if (bulkMode) {
+      const clean = rows.filter(r => r.title.trim());
+      const sharedAssignee = assignToSelfOnly ? currentUser?.id : form.assigned_to;
       setSubmitting(true);
       try {
-        const payloadTasks = clean.map(({ r }) => ({
+        const payloadTasks = clean.map(r => ({
           title: r.title.trim(),
           description: r.description || form.description || '',
-          assigned_to: r.overrides.assigned_to || sharedAssignee,
+          assigned_to: assignToSelfOnly ? currentUser?.id : (r.overrides.assigned_to || sharedAssignee),
           priority: r.overrides.priority || form.priority,
           due_date: (r.overrides.due_date
             ? new Date(r.overrides.due_date).toISOString()
@@ -445,12 +486,13 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         const created = res.data?.count ?? 0;
         const errors = res.data?.errors || [];
         if (created > 0) {
-          toast.success(`${created} task${created === 1 ? '' : 's'} created`);
+          toast.success(`${created} task${created === 1 ? '' : 's'} created successfully`);
         }
         if (errors.length) {
           toast.error(`${errors.length} row${errors.length === 1 ? '' : 's'} failed: ${errors[0].detail}`);
         }
         if (created > 0) {
+          setShowConfirm(false);
           onCreated?.(res.data);
           onClose();
         }
@@ -462,17 +504,14 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       return;
     }
 
-    // ── Single-task path (unchanged) ─────────────────────────────────
-    if (!form.title.trim() || !form.assigned_to) {
-      toast.error('Title and assignee are required');
-      return;
-    }
+    // ── Single-task path ─────────────────────────────────────────────
+    const targetAssignee = assignToSelfOnly ? (currentUser?.id || form.assigned_to) : form.assigned_to;
     setSubmitting(true);
     try {
       const body = {
         title: form.title.trim(),
         description: form.description,
-        assigned_to: form.assigned_to,
+        assigned_to: targetAssignee,
         priority: form.priority,
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
         project_id: form.project_id || null,
@@ -483,6 +522,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
 
       let result;
       if (isEdit) {
+        if (form.status) body.status = form.status;
         result = await axios.patch(`${API}/tasks/${existingTask.id}`, body, { headers: getAuthHeaders() });
       } else {
         body.parent_task_id = form.parent_task_id || null;
@@ -500,7 +540,7 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
                 ? [(form.repeat_day_of_week + 6) % 7]
                 : [],
               day_of_month: form.repeat_freq === 'monthly' ? form.repeat_day_of_month : null,
-              assigned_to: form.assigned_to,
+              assigned_to: targetAssignee,
               project_id: form.project_id || null,
               is_active: true,
             }, { headers: getAuthHeaders() });
@@ -508,7 +548,8 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
         }
       }
 
-      toast.success(isEdit ? 'Task updated' : form.parent_task_id ? 'Sub-task created' : 'Task created');
+      toast.success(isEdit ? 'Task updated successfully' : form.parent_task_id ? 'Sub-task created successfully' : 'Task created successfully');
+      setShowConfirm(false);
       onCreated?.(result.data);
       onClose();
     } catch (e) {
@@ -706,15 +747,37 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <span className="w-2 h-2 bg-slate-400 rounded-full" /> TO DO
-            </span>
-            <Chip ref={chipRefs.assignee}
-              onClick={() => togglePanel('assignee')}
-              icon={UserIcon}
-              label={selectedAssignee ? `${selectedAssignee.name}${selectedAssignee.id === currentUser?.id ? ' (you)' : ''}` : 'Assignee'}
-              active={!!selectedAssignee && selectedAssignee.id !== currentUser?.id}
-              testid="chip-assignee" />
+            {isEdit ? (
+              <Chip ref={chipRefs.status}
+                onClick={() => togglePanel('status')}
+                icon={CheckSquare}
+                label={`Status: ${(form.status || 'pending').replace('_', ' ')}`}
+                active={true}
+                dotColor={STATUS_META[form.status]?.dot || 'bg-slate-400'}
+                testid="chip-status"
+              />
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                <span className="w-2 h-2 bg-slate-400 rounded-full" /> TO DO
+              </span>
+            )}
+            {assignToSelfOnly ? (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 border border-blue-200 text-blue-800"
+                data-testid="chip-assignee-self"
+                title="This task will be assigned to you"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                Assigned to: <strong className="font-semibold text-slate-900">{currentUser?.name || 'Myself'}</strong>
+              </span>
+            ) : (
+              <Chip ref={chipRefs.assignee}
+                onClick={() => togglePanel('assignee')}
+                icon={UserIcon}
+                label={selectedAssignee ? `${selectedAssignee.name}${selectedAssignee.id === currentUser?.id ? ' (you)' : ''}` : 'Assignee'}
+                active={!!selectedAssignee && selectedAssignee.id !== currentUser?.id}
+                testid="chip-assignee" />
+            )}
             <Chip ref={chipRefs.due}
               onClick={() => togglePanel('due')}
               icon={Calendar}
@@ -783,6 +846,25 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
       </div>
 
       {/* Floating popovers positioned above their chip */}
+      {openPanel === 'status' && isEdit && (
+        <Popover anchor={chipRefs.status} onClose={closePanel} testid="panel-status" width={220}>
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Status</p>
+            {Object.entries(STATUS_META).map(([v, m]) => (
+              <button key={v} type="button"
+                onClick={() => { setForm({ ...form, status: v }); closePanel(); }}
+                className={`w-full inline-flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-slate-50 ${
+                  form.status === v ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'
+                }`}
+                data-testid={`status-option-${v}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </Popover>
+      )}
       {openPanel === 'assignee' && (
         <Popover anchor={chipRefs.assignee} onClose={closePanel} testid="panel-assignee" width={280}>
           <AssigneeList value={form.assigned_to}
@@ -928,6 +1010,111 @@ const TaskCreateModal = ({ open, onClose, onCreated, currentUser, parentTask = n
             className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-slate-400"
             data-testid="task-tags-input" autoFocus />
         </Popover>
+      )}
+
+      {/* Confirmation Dialog Overlay */}
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          data-testid="task-confirm-modal"
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <HelpCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-slate-900" data-testid="task-confirm-title">
+                  {isEdit ? 'Are you sure you want to update this task?' : 'Are you sure you want to create this task?'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Please review the task details below before saving.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2.5 text-xs">
+              <div>
+                <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">Task Title</span>
+                <p className="font-semibold text-slate-900 text-sm break-words mt-0.5">
+                  {bulkMode ? `${rows.filter(r => r.title.trim()).length} Tasks (Bulk mode)` : (form.title.trim() || 'Untitled')}
+                </p>
+              </div>
+
+              {form.description && (
+                <div>
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">Description</span>
+                  <p className="text-slate-700 whitespace-pre-wrap max-h-24 overflow-y-auto mt-0.5">
+                    {form.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/70">
+                <div>
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">Assigned Person</span>
+                  <p className="font-medium text-slate-800 mt-0.5 truncate">
+                    {assignToSelfOnly
+                      ? (currentUser?.name ? `${currentUser.name} (You)` : 'Myself')
+                      : (selectedAssignee ? `${selectedAssignee.name}${selectedAssignee.id === currentUser?.id ? ' (You)' : ''}` : (currentUser?.name || 'Myself'))}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">Deadline</span>
+                  <p className="font-medium text-slate-800 mt-0.5">
+                    {form.due_date ? new Date(form.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No deadline'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/70">
+                <div>
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">Priority</span>
+                  <p className="font-medium text-slate-800 mt-0.5 flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${pMeta.dot}`} />
+                    {pMeta.label}
+                  </p>
+                </div>
+
+                {isEdit && (
+                  <div>
+                    <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">Status</span>
+                    <p className="font-medium text-slate-800 mt-0.5 capitalize">
+                      {(form.status || 'pending').replace('_', ' ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+                data-testid="task-confirm-cancel-btn"
+              >
+                Cancel – Return to Editing
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteSave}
+                disabled={submitting}
+                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-60"
+                data-testid="task-confirm-save-btn"
+              >
+                {submitting
+                  ? (isEdit ? 'Updating…' : 'Creating…')
+                  : (isEdit ? 'Confirm – Update Task' : 'Confirm – Create Task')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

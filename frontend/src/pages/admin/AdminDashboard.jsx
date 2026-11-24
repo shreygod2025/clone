@@ -440,11 +440,15 @@ const MyKpisWidget = () => {
 // ── This Week's Tasks widget (shown on Admin Dashboard) ──────────────────────
 const TodaysTasksWidget = () => {
   const { user, getAuthHeaders } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const [today, setToday] = useState([]);
   const [thisWeek, setThisWeek] = useState([]);
   const [overdue, setOverdue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [createModalSelfOnly, setCreateModalSelfOnly] = useState(false);
+  const [canAssignToOthers, setCanAssignToOthers] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
 
   const reload = () => {
@@ -462,6 +466,22 @@ const TodaysTasksWidget = () => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    axios.get(`${API}/tasks/assignable-users`, { headers: getAuthHeaders() })
+      .then(res => {
+        const list = res.data || [];
+        setAssignableUsers(list);
+        if (isAdmin) {
+          setCanAssignToOthers(true);
+        } else {
+          setCanAssignToOthers(list.some(u => !u.is_self && u.id !== user?.id));
+        }
+      })
+      .catch(() => setCanAssignToOthers(isAdmin));
+  }, [isAdmin, user?.id, getAuthHeaders]);
+
+  const managedUserIds = useMemo(() => assignableUsers.map(u => u.id), [assignableUsers]);
 
   const deleteTask = async (t) => {
     if (!window.confirm(`Delete task "${t.title}"?`)) return;
@@ -490,15 +510,24 @@ const TodaysTasksWidget = () => {
             <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{overdue.length} overdue</span>
           )}
         </h3>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg shadow-sm shadow-blue-500/20"
-            data-testid="dashboard-add-task-btn"
+            onClick={() => { setCreateModalSelfOnly(true); setShowCreate(true); }}
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg shadow-sm shadow-blue-600/20"
+            data-testid="dashboard-add-task-for-me-btn"
           >
-            + Add Task
+            + Add Task for Me
           </button>
-          <Link to="/admin/tasks" className="text-xs text-blue-600 hover:underline">View all →</Link>
+          {canAssignToOthers && (
+            <button
+              onClick={() => { setCreateModalSelfOnly(false); setShowCreate(true); }}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg shadow-sm"
+              data-testid="dashboard-add-task-btn"
+            >
+              + Add Task
+            </button>
+          )}
+          <Link to="/admin/tasks?filter=my" className="text-xs text-blue-600 hover:underline font-medium ml-1">View all →</Link>
         </div>
       </div>
 
@@ -517,11 +546,12 @@ const TodaysTasksWidget = () => {
               onOpen={() => setEditingTask(t)}
               onDelete={() => deleteTask(t)}
               onStatus={(s) => { if (s === '__reload__') reload(); }}
-              onAddSubtask={() => setShowCreate(true)}
+              onAddSubtask={() => { setCreateModalSelfOnly(false); setShowCreate(true); }}
               onEdit={() => setEditingTask(t)}
               getAuthHeaders={getAuthHeaders}
               currentUserId={user?.id}
-              isAdmin={user?.role === 'admin'}
+              isAdmin={isAdmin}
+              managedUserIds={managedUserIds}
             />
           ))}
         </div>
@@ -531,6 +561,7 @@ const TodaysTasksWidget = () => {
         onClose={() => setShowCreate(false)}
         onCreated={reload}
         currentUser={user}
+        assignToSelfOnly={createModalSelfOnly}
       />
       <TaskCreateModal
         open={!!editingTask}
@@ -538,6 +569,7 @@ const TodaysTasksWidget = () => {
         onCreated={reload}
         currentUser={user}
         existingTask={editingTask}
+        assignToSelfOnly={!canAssignToOthers}
       />
     </div>
   );

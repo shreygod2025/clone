@@ -18,7 +18,9 @@ from datetime import datetime, timezone, timedelta
 import uuid
 import os
 
-from routes.shared import db, get_current_user
+from routes.shared import (
+    db, get_current_user, can_manage_user, get_managed_user_ids, get_assignable_users
+)
 from routes.inapp_notifications import create_notification
 from routes.notifications import send_whatsapp_notification
 try:
@@ -349,6 +351,12 @@ async def _list_reports_of(manager_id: str) -> List[str]:
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+@router.get("/assignable-users")
+async def list_assignable_users(user: dict = Depends(get_current_user)):
+    """Return list of users that the current user is authorized to assign tasks to."""
+    return await get_assignable_users(user)
+
+
 @router.post("")
 async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
     if not data.title.strip():
@@ -362,6 +370,9 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
 
     if not await _user_exists(data.assigned_to):
         raise HTTPException(status_code=404, detail="Assignee not found")
+
+    if not await can_manage_user(user, data.assigned_to):
+        raise HTTPException(status_code=403, detail="Access denied.")
 
     if data.project_id:
         if not await db.projects.find_one({"id": data.project_id}, {"_id": 0, "id": 1}):
@@ -381,6 +392,8 @@ async def create_task(data: TaskCreate, user: dict = Depends(get_current_user)):
         "priority": data.priority,
         "assigned_to": data.assigned_to,
         "assigned_by": _current_user_id(user),
+        "created_by": _current_user_id(user),
+        "account_id": user.get("account_id") or "default",
         "due_date": data.due_date,
         "project_id": data.project_id,
         "parent_task_id": data.parent_task_id,
@@ -446,6 +459,9 @@ async def create_tasks_bulk(payload: BulkTaskCreate, user: dict = Depends(get_cu
             if not await _user_exists(row.assigned_to):
                 errors.append({"index": idx, "detail": "Assignee not found"})
                 continue
+            if not await can_manage_user(user, row.assigned_to):
+                errors.append({"index": idx, "detail": "Access denied."})
+                continue
             if row.project_id and not await db.projects.find_one({"id": row.project_id}, {"_id": 0, "id": 1}):
                 errors.append({"index": idx, "detail": "Project not found"})
                 continue
@@ -459,6 +475,8 @@ async def create_tasks_bulk(payload: BulkTaskCreate, user: dict = Depends(get_cu
                 "priority": row.priority,
                 "assigned_to": row.assigned_to,
                 "assigned_by": actor_id,
+                "created_by": actor_id,
+                "account_id": user.get("account_id") or "default",
                 "due_date": row.due_date,
                 "project_id": row.project_id,
                 "parent_task_id": row.parent_task_id,
@@ -521,6 +539,9 @@ async def list_tasks(
         if proj and (uid == proj.get("lead_id") or uid == proj.get("created_by") or uid in (proj.get("member_ids") or [])):
             project_scope_unlocked = True
 
+    managed_ids = await get_managed_user_ids(uid)
+    allowed_ids = list(set([uid] + managed_ids))
+
     query: dict = {}
     if project_scope_unlocked:
         pass  # no per-user restriction — the project_id filter below does the scoping
@@ -532,24 +553,17 @@ async def list_tasks(
         if is_admin:
             pass
         else:
-            reports = await _list_reports_of(uid)
-            ids = reports + [uid]
-            query["assigned_to"] = {"$in": ids}
+            query["assigned_to"] = {"$in": allowed_ids}
     elif filter == "all":
         if not is_admin:
-            query["$or"] = [{"assigned_to": uid}, {"assigned_by": uid}]
+            query["$or"] = [{"assigned_to": {"$in": allowed_ids}}, {"assigned_by": {"$in": allowed_ids}}]
 
     # Explicit assignee filter (admins & managers can drill into one user's tasks)
     if assignee:
-        if is_admin or assignee == uid:
+        if is_admin or assignee == uid or assignee in managed_ids:
             query["assigned_to"] = assignee
         else:
-            # allow managers to filter by their reports
-            reports = await _list_reports_of(uid)
-            if assignee in reports:
-                query["assigned_to"] = assignee
-            else:
-                raise HTTPException(status_code=403, detail="Not allowed to view this user's tasks")
+            raise HTTPException(status_code=403, detail="Access denied.")
 
     if status:
         query["status"] = status
@@ -619,6 +633,13 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
     t = await db.tasks.find_one({"id": task_id})
     if not t:
         raise HTTPException(status_code=404, detail="Task not found")
+    uid = _current_user_id(user)
+    is_admin = user.get("role") in ("admin", "super_admin")
+    if not is_admin:
+        managed = await get_managed_user_ids(uid)
+        allowed = set([uid] + managed)
+        if t.get("assigned_to") not in allowed and t.get("assigned_by") not in allowed:
+            raise HTTPException(status_code=403, detail="Access denied.")
     return await _enrich_task(t)
 
 
@@ -629,13 +650,19 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         raise HTTPException(status_code=404, detail="Task not found")
 
     uid = _current_user_id(user)
-    is_admin = user.get("role") == "admin"
+    is_admin = user.get("role") in ("admin", "super_admin")
 
-    # Reassignment (changing assigned_to) stays admin-only — that changes task ownership.
-    # Every other edit (title/description/priority/due date/tags/status/etc.) is open
-    # to any signed-in team member so people don't get blocked waiting on an approver.
-    if data.assigned_to is not None and not is_admin:
-        raise HTTPException(status_code=403, detail="Only admin can reassign a task")
+    # Authorize task edit: must be admin, task creator, assignee, or manager of assignee/creator
+    if not is_admin:
+        managed = await get_managed_user_ids(uid)
+        allowed = set([uid] + managed)
+        if t.get("assigned_to") not in allowed and t.get("assigned_by") not in allowed:
+            raise HTTPException(status_code=403, detail="Access denied.")
+
+    # Reassignment check: user must be eligible to assign to the new assignee
+    if data.assigned_to is not None and data.assigned_to != t.get("assigned_to"):
+        if data.assigned_to and not await can_manage_user(user, data.assigned_to):
+            raise HTTPException(status_code=403, detail="Access denied.")
 
     updates: dict = {}
     for field in ("title", "description", "priority", "due_date", "project_id", "tags", "gdrive_link", "attachments", "assigned_to"):
@@ -657,7 +684,6 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
         raise HTTPException(status_code=400, detail=f"Invalid priority: {data.priority}")
 
     if data.assigned_to is not None:
-        # Only admin can reassign — guard already applied at the top, keep validation here
         if data.assigned_to and not await _user_exists(data.assigned_to):
             raise HTTPException(status_code=404, detail="Assignee not found")
         updates["assigned_to"] = data.assigned_to
@@ -705,22 +731,21 @@ async def update_task(task_id: str, data: TaskUpdate, user: dict = Depends(get_c
 async def delete_task(task_id: str, user: dict = Depends(get_current_user)):
     """Delete a task.
 
-    Authorization: only the task **creator** (`assigned_by`) or an admin
-    may delete. Assignees (`assigned_to`) are explicitly NOT allowed to
-    delete — they can only work on / submit / decline the task. This
-    prevents a team member from wiping a task their manager assigned to
-    them.
+    Authorization: only the task **creator** (`assigned_by`), a manager of the assignee,
+    or an admin may delete.
     """
     t = await db.tasks.find_one({"id": task_id})
     if not t:
         raise HTTPException(status_code=404, detail="Task not found")
 
     uid = _current_user_id(user)
-    is_admin = user.get("role") == "admin"
-    if not is_admin and uid != t.get("assigned_by"):
+    is_admin = user.get("role") in ("admin", "super_admin")
+    is_creator = (uid == t.get("assigned_by"))
+    is_assignee_mgr = await can_manage_user(user, t.get("assigned_to") or "")
+    if not is_admin and not is_creator and not is_assignee_mgr:
         raise HTTPException(
             status_code=403,
-            detail="Only the task creator or an admin can delete this task.",
+            detail="Access denied.",
         )
 
     # Cascade delete sub-tasks & comments

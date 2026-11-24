@@ -32,7 +32,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, EmailStr
 
-from .shared import db, get_current_user
+from .shared import db, get_current_user, has_field_visit_permission, get_managed_user_ids
 
 
 router = APIRouter(tags=["field-reports"])
@@ -98,6 +98,8 @@ def _is_admin(user: dict) -> bool:
 @router.post("/field-reports/checkin")
 async def create_checkin(payload: CheckInIn, user: dict = Depends(get_current_user)):
     """Open a new field-day session."""
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     uid = user.get("id") or user.get("user_id")
     doc = {
         "id": str(uuid.uuid4()),
@@ -156,11 +158,13 @@ def _report_distance_km(report: dict) -> float:
 
 @router.patch("/field-reports/{report_id}/checkout")
 async def check_out(report_id: str, payload: CheckOutIn, user: dict = Depends(get_current_user)):
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     r = await db.field_reports.find_one({"id": report_id})
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
-        raise HTTPException(status_code=403, detail="Not your field day")
+        raise HTTPException(status_code=403, detail="Access denied.")
 
     check_out = {"at": _now_iso(), "notes": payload.end_notes}
     if payload.latitude is not None: check_out["latitude"] = payload.latitude
@@ -183,11 +187,13 @@ async def check_out(report_id: str, payload: CheckOutIn, user: dict = Depends(ge
 
 @router.post("/field-reports/{report_id}/school-visits")
 async def add_school_visit(report_id: str, payload: SchoolVisitIn, user: dict = Depends(get_current_user)):
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     r = await db.field_reports.find_one({"id": report_id})
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
-        raise HTTPException(status_code=403, detail="Not your field day")
+        raise HTTPException(status_code=403, detail="Access denied.")
 
     visit = {
         "id": str(uuid.uuid4()),
@@ -251,11 +257,13 @@ async def add_school_visit(report_id: str, payload: SchoolVisitIn, user: dict = 
 
 @router.patch("/field-reports/{report_id}/school-visits/{visit_id}")
 async def edit_visit(report_id: str, visit_id: str, payload: SchoolVisitIn, user: dict = Depends(get_current_user)):
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     r = await db.field_reports.find_one({"id": report_id})
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
-        raise HTTPException(status_code=403, detail="Not your field day")
+        raise HTTPException(status_code=403, detail="Access denied.")
 
     visits = r.get("school_visits") or []
     idx = next((i for i, v in enumerate(visits) if v.get("id") == visit_id), -1)
@@ -270,9 +278,6 @@ async def edit_visit(report_id: str, visit_id: str, payload: SchoolVisitIn, user
     updated_fields["meeting"]           = existing.get("meeting")
     updated_fields["school_inquiry_id"] = existing.get("school_inquiry_id")
 
-    # If the visit was NOT interested previously but now is, seed a CRM
-    # inquiry (same rules as create). If it was interested and still is, we
-    # leave the linked inquiry alone (admin can edit it directly in CRM).
     if (updated_fields.get("lead_interested") or "").lower() == "yes" and not existing.get("school_inquiry_id"):
         try:
             first_contact = (updated_fields.get("contacts") or [{}])[0]
@@ -311,11 +316,13 @@ async def edit_visit(report_id: str, visit_id: str, payload: SchoolVisitIn, user
 
 @router.post("/field-reports/{report_id}/school-visits/{visit_id}/meeting")
 async def upsert_meeting(report_id: str, visit_id: str, payload: MeetingIn, user: dict = Depends(get_current_user)):
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     r = await db.field_reports.find_one({"id": report_id})
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
-        raise HTTPException(status_code=403, detail="Not your field day")
+        raise HTTPException(status_code=403, detail="Access denied.")
     meeting = {
         "at": _now_iso(),
         **payload.model_dump(),
@@ -336,10 +343,21 @@ async def list_field_reports(
     end_date: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     query: dict = {}
+    uid = user.get("id") or user.get("user_id")
     if not _is_admin(user):
-        # Non-admins only see their own reports.
-        query["user_id"] = user.get("id") or user.get("user_id")
+        managed_ids = await get_managed_user_ids(uid)
+        allowed_uids = [uid] + managed_ids
+        if user_id:
+            if user_id in allowed_uids:
+                query["user_id"] = user_id
+            else:
+                raise HTTPException(status_code=403, detail="Access denied.")
+        else:
+            query["user_id"] = {"$in": allowed_uids}
     elif user_id:
         query["user_id"] = user_id
     if start_date or end_date:
@@ -353,39 +371,54 @@ async def list_field_reports(
 
 @router.get("/field-reports/{report_id}")
 async def get_field_report(report_id: str, user: dict = Depends(get_current_user)):
-    r = await db.field_reports.find_one({"id": report_id}, {"_id": 0})
-    if not r:
-        raise HTTPException(status_code=404, detail="Report not found")
-    if not _is_admin(user) and r.get("user_id") != (user.get("id") or user.get("user_id")):
-        raise HTTPException(status_code=403, detail="Not your report")
-    return r
-
-
-# ── Delete endpoints (admin OR owner) ────────────────────────────────
-@router.delete("/field-reports/{report_id}")
-async def delete_field_report(report_id: str, user: dict = Depends(get_current_user)):
-    """Delete an entire field-day session (check-in + all school visits).
-    Only the user who created the check-in OR an admin can delete it."""
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     r = await db.field_reports.find_one({"id": report_id}, {"_id": 0})
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     uid = user.get("id") or user.get("user_id")
     if not _is_admin(user) and r.get("user_id") != uid:
-        raise HTTPException(status_code=403, detail="You can only delete your own check-ins")
+        managed = await get_managed_user_ids(uid)
+        if r.get("user_id") not in managed:
+            raise HTTPException(status_code=403, detail="Access denied.")
+    return r
+
+
+# ── Delete endpoints (admin OR owner OR manager) ────────────────────
+@router.delete("/field-reports/{report_id}")
+async def delete_field_report(report_id: str, user: dict = Depends(get_current_user)):
+    """Delete an entire field-day session (check-in + all school visits)."""
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+    r = await db.field_reports.find_one({"id": report_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+    uid = user.get("id") or user.get("user_id")
+    is_owner = (r.get("user_id") == uid)
+    is_admin = _is_admin(user)
+    managed = await get_managed_user_ids(uid)
+    is_manager = r.get("user_id") in managed
+    if not is_admin and not is_owner and not is_manager:
+        raise HTTPException(status_code=403, detail="Access denied.")
     await db.field_reports.delete_one({"id": report_id})
     return {"ok": True, "deleted_id": report_id}
 
 
 @router.delete("/field-reports/{report_id}/school-visits/{visit_id}")
 async def delete_school_visit(report_id: str, visit_id: str, user: dict = Depends(get_current_user)):
-    """Remove a single school visit from a field report.
-    Only the report owner OR an admin can delete."""
+    """Remove a single school visit from a field report."""
+    if not has_field_visit_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     r = await db.field_reports.find_one({"id": report_id})
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     uid = user.get("id") or user.get("user_id")
-    if not _is_admin(user) and r.get("user_id") != uid:
-        raise HTTPException(status_code=403, detail="You can only edit your own check-ins")
+    is_owner = (r.get("user_id") == uid)
+    is_admin = _is_admin(user)
+    managed = await get_managed_user_ids(uid)
+    is_manager = r.get("user_id") in managed
+    if not is_admin and not is_owner and not is_manager:
+        raise HTTPException(status_code=403, detail="Access denied.")
     visits = [v for v in (r.get("school_visits") or []) if v.get("id") != visit_id]
     if len(visits) == len(r.get("school_visits") or []):
         raise HTTPException(status_code=404, detail="Visit not found")

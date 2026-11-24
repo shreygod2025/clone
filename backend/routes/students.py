@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 from .shared import (
     db, get_current_user,
-    auto_assign_educator, auto_assign_lead, generate_meeting_link
+    auto_assign_educator, auto_assign_lead, generate_meeting_link,
+    has_school_permission, can_access_school
 )
 from .notifications import (
     send_demo_confirmation_notifications,
@@ -587,6 +588,15 @@ async def add_comment(collection: str, item_id: str, data: dict, user: dict = De
     db_collection = collection_map.get(collection)
     if not db_collection:
         raise HTTPException(status_code=400, detail="Invalid collection")
+
+    if collection == "schools":
+        if not has_school_permission(user):
+            raise HTTPException(status_code=403, detail="Access denied.")
+        school_doc = await db.school_inquiries.find_one({"id": item_id}, {"_id": 0})
+        if not school_doc:
+            raise HTTPException(status_code=404, detail="School not found")
+        if not await can_access_school(user, school_doc):
+            raise HTTPException(status_code=403, detail="Access denied.")
     
     comment = {
         "id": str(uuid.uuid4()),
@@ -596,7 +606,7 @@ async def add_comment(collection: str, item_id: str, data: dict, user: dict = De
     }
     
     await db[db_collection].update_one(
-        {"id": item_id},
+        {"id": item_id}, 
         {"$push": {"comments": comment}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"message": "Comment added", "comment": comment}
@@ -614,6 +624,15 @@ async def get_comments(collection: str, item_id: str, user: dict = Depends(get_c
     db_collection = collection_map.get(collection)
     if not db_collection:
         raise HTTPException(status_code=400, detail="Invalid collection")
+
+    if collection == "schools":
+        if not has_school_permission(user):
+            raise HTTPException(status_code=403, detail="Access denied.")
+        school_doc = await db.school_inquiries.find_one({"id": item_id}, {"_id": 0})
+        if not school_doc:
+            raise HTTPException(status_code=404, detail="School not found")
+        if not await can_access_school(user, school_doc):
+            raise HTTPException(status_code=403, detail="Access denied.")
     
     item = await db[db_collection].find_one({"id": item_id}, {"_id": 0, "comments": 1})
     if not item:

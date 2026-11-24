@@ -12,7 +12,10 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from database import db
 from routes.auth import get_current_user
-from routes.shared import get_next_ticket_number
+from routes.shared import (
+    get_next_ticket_number, has_school_permission, can_access_school,
+    get_authorized_school_query, can_manage_user, get_assignable_users, get_managed_user_ids
+)
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -394,6 +397,25 @@ When the user pastes Minutes of Meeting (MoM) text — recognisable by patterns 
 - If only a time is given for meeting, assume today's date
 - If only a date is given, default time to "11:00"
 
+## PERMISSION & ROLE-BASED ACCESS CONTROL (STRICT RULES — NEVER VIOLATE)
+1. **SCHOOL CRM PERMISSIONS**: If your context indicates that School CRM access is NOT GRANTED, you CANNOT view leads, create leads, update leads, change status, add notes, or perform any CRM operation. If the user asks for ANY CRM operation or lead update without permission, your response message must be EXACTLY:
+"Access denied."
+Do not emit any CRM action in the actions array.
+2. **CRM SCOPE ISOLATION**: If you have School CRM access, you may ONLY view or modify leads that appear in your authorized CRM scope. If the user asks to modify a lead outside your authorized scope, respond with EXACTLY:
+"Access denied."
+Do not emit any action.
+3. **TASK ASSIGNMENT PERMISSIONS**: You may ONLY assign tasks to yourself or people explicitly listed in the "Team members (assignable)" section in your context. If the user asks to assign or create a task for someone who is NOT in that assignable list, you MUST NOT create or assign the task. Respond with EXACTLY:
+"Access denied."
+4. **TASK EDITING & DELETION**: You may only edit or delete tasks assigned to you, created by you, or assigned to people you manage. If the user asks to edit or delete a task belonging to someone outside your scope, respond with EXACTLY:
+"Access denied."
+5. **SUPPORTED TASK QUERIES**:
+- "Create a task for myself" → emit create_task with assigned_to as your own id / blank.
+- "Create a task for [person]" → check if person is in the assignable team members list. If not, output EXACTLY "Access denied." with NO action. If eligible, emit create_task.
+- "Show my tasks" → summarize/list the open tasks assigned to you from the Open tasks list.
+- "Show tasks assigned to people I manage" → list open tasks from the Open tasks list assigned to managed team members.
+- "Edit the task assigned to [person]" / "Update the deadline of [person]'s task" / "Change the status of a particular task" → if person is yourself or managed, emit update_task. If person is not in your management scope, output EXACTLY "Access denied."
+6. When responding with "Access denied.", do NOT add any additional explanation, apologies, pleasantries, or action payloads. The output MUST be EXACTLY "Access denied.".
+
 ## RESPONSE FORMAT — always return valid JSON, no markdown fences:
 {"message": "...", "actions": [...]}
 
@@ -402,15 +424,27 @@ When the user pastes Minutes of Meeting (MoM) text — recognisable by patterns 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-async def _crm_context() -> str:
-    """Return a rich snapshot of all school leads including date fields."""
+# ─────────────────────────────────────────────────────────────────────────────
+async def _crm_context(user: dict) -> str:
+    """Return a rich snapshot of school leads scoped strictly to the user's permissions."""
+    if not has_school_permission(user):
+        return (
+            "\n\n## Context\n"
+            "School CRM access: NOT GRANTED.\n"
+            "The authenticated user DOES NOT have permission to access School CRM. "
+            "If the user asks to view leads, create leads, update leads, change lead status, "
+            "schedule meetings, add notes, or perform any CRM operation, you MUST refuse and "
+            "respond with exactly: \"Access denied.\"\n"
+        )
+
     from datetime import timedelta
     today = datetime.now(timezone.utc)
     week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
     week_end   = (today - timedelta(days=today.weekday()-6)).strftime('%Y-%m-%d')
 
+    query = await get_authorized_school_query(user)
     schools = await db.school_inquiries.find(
-        {},
+        query,
         {"_id": 0, "id": 1, "school_name": 1, "status": 1, "city": 1, "board": 1,
          "contact_name": 1, "phone": 1, "email": 1, "source": 1, "lead_value": 1,
          "notes": 1, "meeting_date": 1, "meeting_time": 1, "meeting_type": 1,
@@ -425,11 +459,11 @@ async def _crm_context() -> str:
         f"- Today: {today.strftime('%A, %d %B %Y')} (IST)\n"
         f"- This week: {week_start} to {week_end} (Mon–Sun)\n"
         f"- Total leads: {len(schools)}\n\n"
-        f"## Live CRM Data (latest 150 leads)\n"
+        f"## Live CRM Data (latest {len(schools)} leads authorized for your account)\n"
     )
 
     if not schools:
-        return header + "No schools found."
+        return header + "No schools found in your authorized CRM scope."
 
     lines = []
     for s in schools:
@@ -475,29 +509,15 @@ async def _crm_context() -> str:
     return header + "\n".join(f"- {l}" for l in lines)
 
 
-async def _tasks_projects_context() -> str:
-    """Compact snapshot of open tasks, projects and team members for the AI.
-
-    Injected alongside _crm_context so the assistant can add / edit /
-    delete / assign / remind on tasks & projects without asking who
-    someone is or which task they meant.
-    """
-    from datetime import timedelta
+async def _tasks_projects_context(user: dict) -> str:
+    """Compact snapshot of open tasks, projects and team members strictly for the authenticated user."""
     today = datetime.now(timezone.utc)
     today_str = today.strftime('%Y-%m-%d')
+    uid = user.get("id") or user.get("user_id") or ""
+    is_admin = user.get("role") in ("admin", "super_admin")
 
-    # Team members (assignable) — team_users + admins with name + role + id.
-    team_users = await db.team_users.find(
-        {"is_active": {"$ne": False}},
-        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "department": 1}
-    ).limit(200).to_list(length=200)
-    admins = await db.admins.find(
-        {}, {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1}
-    ).limit(50).to_list(length=50)
-    people = [{"id": u["id"], "name": u.get("name") or u.get("email"),
-               "role": u.get("role") or u.get("department") or "team"} for u in team_users if u.get("id")]
-    people += [{"id": a["id"], "name": a.get("name") or a.get("email"),
-                "role": a.get("role") or "admin"} for a in admins if a.get("id")]
+    # Team members (assignable strictly based on management hierarchy)
+    people = await get_assignable_users(user)
 
     # Projects
     projects = await db.projects.find(
@@ -505,17 +525,26 @@ async def _tasks_projects_context() -> str:
         {"_id": 0, "id": 1, "name": 1, "status": 1, "lead_id": 1, "end_date": 1}
     ).sort("created_at", -1).limit(80).to_list(length=80)
 
-    # Open + due-soon tasks
+    # Open + due-soon tasks scoped to user and managed team
+    task_query = {"status": {"$nin": ["done", "cancelled", "rejected", "completed"]}}
+    if not is_admin:
+        managed_ids = await get_managed_user_ids(uid)
+        allowed_ids = list(set([uid] + managed_ids))
+        task_query["$or"] = [
+            {"assigned_to": {"$in": allowed_ids}},
+            {"assigned_by": {"$in": allowed_ids}},
+        ]
+
     tasks = await db.tasks.find(
-        {"status": {"$nin": ["done", "cancelled", "rejected"]}},
+        task_query,
         {"_id": 0, "id": 1, "code": 1, "title": 1, "status": 1, "priority": 1,
          "assigned_to": 1, "due_date": 1, "project_id": 1, "created_at": 1}
     ).sort("due_date", 1).limit(120).to_list(length=120)
 
     lines = []
-    lines.append(f"\n\n## Team members (assignable — use id when creating tasks)")
+    lines.append(f"\n\n## Team members (assignable — you may ONLY assign tasks to these eligible people)")
     for p in people[:80]:
-        lines.append(f"- {p['name']} ({p['role']}) id:{p['id']}")
+        lines.append(f"- {p['name']} ({p['role']}) id:{p['id']}{' [MYSELF]' if p.get('is_self') else ''}")
     if len(people) > 80:
         lines.append(f"- …and {len(people)-80} more")
 
@@ -627,8 +656,15 @@ async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
 
     # ── CREATE TASK ──────────────────────────────────────────────
     if t == "create_task":
-        assignee = await _resolve_team_user_id(action.get("assigned_to") or action.get("assigned_to_name") or "")
-        assignee = assignee or uid  # fallback: assign to self
+        target_assignee_input = action.get("assigned_to") or action.get("assigned_to_name") or ""
+        if target_assignee_input:
+            assignee = await _resolve_team_user_id(target_assignee_input)
+            if not assignee:
+                assignee = target_assignee_input
+            if not await can_manage_user(user, assignee):
+                return {"status": "error", "detail": "Access denied."}
+        else:
+            assignee = uid
         project_id = await _resolve_project_id(action.get("project_id"), action.get("project_name"))
 
         task_id = str(uuid.uuid4())
@@ -678,9 +714,30 @@ async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
         tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
         if not tid:
             return {"status": "error", "detail": "Task not found"}
+        old = await db.tasks.find_one({"id": tid}, {"_id": 0})
+        if not old:
+            return {"status": "error", "detail": "Task not found"}
+        is_admin = user.get("role") in ("admin", "super_admin")
+        if not is_admin:
+            can_edit = (
+                old.get("created_by") == uid
+                or old.get("assigned_to") == uid
+                or await can_manage_user(user, old.get("assigned_to"))
+                or await can_manage_user(user, old.get("created_by"))
+            )
+            if not can_edit:
+                return {"status": "error", "detail": "Access denied."}
+
         raw_fields = action.get("fields") or {}
-        allowed = {"title", "description", "status", "priority", "due_date", "project_id", "tags"}
+        allowed = {"title", "description", "status", "priority", "due_date", "project_id", "tags", "assigned_to"}
         set_fields = {k: v for k, v in raw_fields.items() if k in allowed and v is not None}
+        if "assigned_to" in set_fields:
+            new_assignee = await _resolve_team_user_id(set_fields["assigned_to"])
+            if not new_assignee:
+                return {"status": "error", "detail": "Assignee not found"}
+            if not await can_manage_user(user, new_assignee):
+                return {"status": "error", "detail": "Access denied."}
+            set_fields["assigned_to"] = new_assignee
         if "project_id" not in set_fields and raw_fields.get("project_name"):
             resolved = await _resolve_project_id(None, raw_fields.get("project_name"))
             if resolved:
@@ -688,7 +745,6 @@ async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
         if not set_fields:
             return {"status": "error", "detail": "No valid fields to update"}
         set_fields["updated_at"] = now
-        old = await db.tasks.find_one({"id": tid}, {"_id": 0})
         await db.tasks.update_one(
             {"id": tid},
             {"$set": set_fields,
@@ -709,6 +765,17 @@ async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
         tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
         if not tid:
             return {"status": "error", "detail": "Task not found"}
+        task = await db.tasks.find_one({"id": tid}, {"_id": 0})
+        if not task:
+            return {"status": "error", "detail": "Task not found"}
+        is_admin = user.get("role") in ("admin", "super_admin")
+        if not is_admin:
+            can_del = (
+                task.get("created_by") == uid
+                or await can_manage_user(user, task.get("assigned_to"))
+            )
+            if not can_del:
+                return {"status": "error", "detail": "Access denied."}
         res = await db.tasks.delete_one({"id": tid})
         if res.deleted_count == 0:
             return {"status": "error", "detail": "Task not deleted"}
@@ -719,9 +786,23 @@ async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
         tid = await _resolve_task_id(action.get("task_id"), action.get("task_title"))
         if not tid:
             return {"status": "error", "detail": "Task not found"}
+        task = await db.tasks.find_one({"id": tid}, {"_id": 0})
+        if not task:
+            return {"status": "error", "detail": "Task not found"}
+        is_admin = user.get("role") in ("admin", "super_admin")
+        if not is_admin:
+            can_mod = (
+                task.get("created_by") == uid
+                or task.get("assigned_to") == uid
+                or await can_manage_user(user, task.get("assigned_to"))
+            )
+            if not can_mod:
+                return {"status": "error", "detail": "Access denied."}
         assignee = await _resolve_team_user_id(action.get("assigned_to") or action.get("assigned_to_name") or "")
         if not assignee:
             return {"status": "error", "detail": "Assignee not found"}
+        if not await can_manage_user(user, assignee):
+            return {"status": "error", "detail": "Access denied."}
         await db.tasks.update_one(
             {"id": tid},
             {"$set": {"assigned_to": assignee, "updated_at": now},
@@ -744,6 +825,15 @@ async def _execute_tasks_projects(action: dict, user: dict, log, now: str):
         task = await db.tasks.find_one({"id": tid}, {"_id": 0})
         if not task:
             return {"status": "error", "detail": "Task not found"}
+        is_admin = user.get("role") in ("admin", "super_admin")
+        if not is_admin:
+            can_rem = (
+                task.get("created_by") == uid
+                or task.get("assigned_to") == uid
+                or await can_manage_user(user, task.get("assigned_to"))
+            )
+            if not can_rem:
+                return {"status": "error", "detail": "Access denied."}
         # Push activity log entry
         reminder_text = (action.get("reminder_text") or "Gentle reminder").strip()
         await db.tasks.update_one(
@@ -852,6 +942,31 @@ async def _execute(action: dict, user: dict) -> dict:
                 "performed_by": user.get("name", "Admin"), "performed_at": now}
 
     try:
+        if t in ("update_lead_status", "update_status"):
+            t = "change_status"
+        elif t in ("add_comment", "comment_lead"):
+            t = "add_note"
+
+        SCHOOL_ACTIONS = {
+            "create_lead", "update_lead", "delete_lead", "change_status", "update_lead_status", "update_status",
+            "add_note", "add_comment", "convert_lead", "send_email", "schedule_meeting",
+            "schedule_followup", "generate_proposal", "generate_mou", "generate_invoice"
+        }
+        school_doc = None
+        if t in SCHOOL_ACTIONS:
+            if not has_school_permission(user):
+                return {"status": "error", "detail": "Access denied."}
+            if t != "create_lead":
+                sid = await _resolve_school_id(sid, action.get("school_name"))
+                if not sid:
+                    return {"status": "error", "detail": "School not found"}
+                action["school_id"] = sid
+                school_doc = await db.school_inquiries.find_one({"id": sid}, {"_id": 0})
+                if not school_doc:
+                    return {"status": "error", "detail": "School not found"}
+                if not await can_access_school(user, school_doc):
+                    return {"status": "error", "detail": "Access denied."}
+
         # ── CREATE LEAD ──────────────────────────────────────────────
         if t == "create_lead":
             new_id = str(uuid.uuid4())
@@ -890,6 +1005,10 @@ async def _execute(action: dict, user: dict) -> dict:
             }
             raw_fields = {field_aliases.get(k, k): v for k, v in raw_fields.items()}
 
+            if "assigned_to" in raw_fields:
+                if not await can_manage_user(user, raw_fields["assigned_to"]):
+                    return {"status": "error", "detail": "Access denied."}
+
             fields = {**raw_fields, "updated_at": now}
 
             # If training_type is being updated, also sync it into onboarding_data
@@ -915,6 +1034,17 @@ async def _execute(action: dict, user: dict) -> dict:
         elif t == "delete_lead":
             if not sid:
                 return {"status": "error", "detail": "school_id required"}
+            is_admin = user.get("role") in ("admin", "super_admin")
+            if not is_admin and school_doc:
+                can_del = (
+                    school_doc.get("created_by") == user.get("id")
+                    or school_doc.get("added_by") == user.get("id")
+                    or school_doc.get("assigned_to") == user.get("id")
+                    or await can_manage_user(user, school_doc.get("assigned_to"))
+                    or await can_manage_user(user, school_doc.get("created_by"))
+                )
+                if not can_del:
+                    return {"status": "error", "detail": "Access denied."}
             res = await db.school_inquiries.delete_one({"id": sid})
             if res.deleted_count == 0:
                 return {"status": "error", "detail": "School not found"}
@@ -1525,8 +1655,8 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
         )
 
     # Build system prompt with live CRM data + tasks/projects/team snapshot
-    crm_ctx = await _crm_context()
-    tp_ctx  = await _tasks_projects_context()
+    crm_ctx = await _crm_context(user)
+    tp_ctx  = await _tasks_projects_context(user)
     system = AI_SYSTEM_PROMPT + crm_ctx + tp_ctx
 
     # Load prior conversation history so the LLM has full memory across
@@ -1716,6 +1846,9 @@ async def run_ai_chat_turn(session_id: str, user_text: str, user: dict, attachme
             name_key = action.get("school_name", "").lower().strip()
             if name_key and exec_result.get("school_id"):
                 created_ids[name_key] = exec_result["school_id"]
+
+    if any(r.get("execution", {}).get("detail") == "Access denied." for r in results):
+        message = "Access denied."
 
     # Save to DB for UI history (save original user_text + attachment thumbnails
     # so the chat replay reconstructs what the admin uploaded). When images
