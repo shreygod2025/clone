@@ -69,17 +69,21 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
 
   // Fetch current user & assignable users on mount
   useEffect(() => {
-    api.getMe().then((res) => {
-      if (res.success && res.user) {
-        setCurrentUser(res.user);
-      }
-    }).catch(() => {});
+    if (typeof api?.getMe === 'function') {
+      api.getMe().then((res) => {
+        if (res?.success && res.user) {
+          setCurrentUser(res.user);
+        }
+      }).catch(() => {});
+    }
 
-    api.fetchAssignableUsers().then((res) => {
-      if (res.success && Array.isArray(res.users)) {
-        setAssignableUsers(res.users);
-      }
-    }).catch(() => {});
+    if (typeof api?.fetchAssignableUsers === 'function') {
+      api.fetchAssignableUsers().then((res) => {
+        if (res?.success && Array.isArray(res.users)) {
+          setAssignableUsers(res.users);
+        }
+      }).catch(() => {});
+    }
   }, []);
 
   const effectiveUser = currentUser || user;

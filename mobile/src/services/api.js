@@ -39,17 +39,21 @@ class ApiService {
 
   // Safe fetch helper with timeout
   async fetchWithTimeout(resource, options = {}, timeout = 12000) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
+    let id = null;
     try {
-      const response = await fetch(resource, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(id);
+      const hasAbort = typeof AbortController !== 'undefined';
+      const controller = hasAbort ? new AbortController() : null;
+      if (controller && typeof controller.abort === 'function') {
+        id = setTimeout(() => {
+          try { controller.abort(); } catch {}
+        }, timeout);
+      }
+      const fetchOpts = (controller && controller.signal) ? { ...options, signal: controller.signal } : { ...options };
+      const response = await fetch(resource, fetchOpts);
+      if (id) clearTimeout(id);
       return response;
     } catch (error) {
-      clearTimeout(id);
+      if (id) clearTimeout(id);
       throw error;
     }
   }

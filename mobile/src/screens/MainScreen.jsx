@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +15,7 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import Header from '../components/Header';
@@ -107,6 +107,8 @@ export default function MainScreen({ user, onLogout }) {
 
   // Monitor virtual keyboard on mobile to maximize chat input visibility
   useEffect(() => {
+    if (!Keyboard || typeof Keyboard.addListener !== 'function') return;
+
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
@@ -119,8 +121,8 @@ export default function MainScreen({ user, onLogout }) {
     const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
 
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      showSub?.remove?.();
+      hideSub?.remove?.();
     };
   }, []);
 
@@ -235,23 +237,29 @@ export default function MainScreen({ user, onLogout }) {
   const [assignableUsers, setAssignableUsers] = useState([]);
 
   useEffect(() => {
-    api.getMe().then((res) => {
-      if (res.success && res.user) {
-        setCurrentUser(res.user);
-      }
-    }).catch(() => {});
+    if (typeof api?.getMe === 'function') {
+      api.getMe().then((res) => {
+        if (res?.success && res.user) {
+          setCurrentUser(res.user);
+        }
+      }).catch(() => {});
+    }
 
-    api.fetchAssignableUsers().then((res) => {
-      if (res.success && Array.isArray(res.users)) {
-        setAssignableUsers(res.users);
-      }
-    }).catch(() => {});
+    if (typeof api?.fetchAssignableUsers === 'function') {
+      api.fetchAssignableUsers().then((res) => {
+        if (res?.success && Array.isArray(res.users)) {
+          setAssignableUsers(res.users);
+        }
+      }).catch(() => {});
+    }
 
-    api.fetchTeamUsers().then((res) => {
-      if (res.success && Array.isArray(res.users)) {
-        setTeamUsers(res.users);
-      }
-    }).catch(() => {});
+    if (typeof api?.fetchTeamUsers === 'function') {
+      api.fetchTeamUsers().then((res) => {
+        if (res?.success && Array.isArray(res.users)) {
+          setTeamUsers(res.users);
+        }
+      }).catch(() => {});
+    }
   }, []);
 
   const effectiveUser = currentUser || user;
