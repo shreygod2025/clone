@@ -61,46 +61,37 @@ const SCHOOL_PROGRAMS = [
 
 const MEETING_TYPES = ['In-Person Campus Visit', 'Online Demo', 'Phone Call'];
 
-const FALLBACK_LEADS = [
-  {
-    id: 'bb836251-4829-4667-837d-ff5a05a660dc',
-    school_name: 'Limbu Maharaj School',
-    schoolName: 'Limbu Maharaj School',
-    contact_name: 'Yash Limbachiya',
-    contactPerson: 'Yash Limbachiya (Principal)',
-    contact_role: 'Principal',
-    contactRole: 'Principal',
-    email: 'yashlimbachiya900@gmail.com',
-    phone: '9326754955',
-    location: 'Mumbai, Maharashtra',
-    board: 'CBSE',
-    studentCount: '800-1000',
-    recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
-    programs_interested: ['Agentic AI & Coding Excellence Lab (K-12)'],
-    status: 'new',
-    notes:
-      'Lead recorded for Limbu Maharaj School. Primary contact Yash Limbachiya (Principal). Interested in NEP-aligned AI lab and robotics demonstration.',
-  },
-  {
-    id: 'dps-mumbai-4829',
-    school_name: 'Delhi Public School Mumbai',
-    schoolName: 'Delhi Public School Mumbai',
-    contact_name: 'Dr. Arvind Mehta',
-    contactPerson: 'Dr. Arvind Mehta (Principal)',
-    contact_role: 'Principal',
-    contactRole: 'Principal',
-    email: 'principal@dpsmumbai.edu.in',
-    phone: '9820144921',
-    location: 'Mumbai, Maharashtra',
-    board: 'CBSE',
-    studentCount: '1000-1500',
-    recommendedProgram: 'Agentic AI & Coding Excellence Lab (K-12)',
-    programs_interested: ['Agentic AI & Coding Excellence Lab (K-12)'],
-    status: 'new',
-    notes:
-      'High-priority lead at DPS Mumbai. Discussion scheduled regarding AI lab infrastructure and teacher training.',
-  },
-];
+function AccessDeniedView({ moduleName, onBackToChat }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+        <Feather name="lock" size={32} color="#EF4444" />
+      </View>
+      <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' }}>
+        Access Denied
+      </Text>
+      <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 24, maxWidth: 300 }}>
+        You do not have permission to access {moduleName}. Please contact your administrator.
+      </Text>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={{
+          backgroundColor: '#059669',
+          paddingHorizontal: 22,
+          paddingVertical: 11,
+          borderRadius: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        }}
+        onPress={onBackToChat}
+      >
+        <Ionicons name="chatbubbles" size={16} color="#FFFFFF" />
+        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>Back to AI Chat</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function MainScreen({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('ai_chat');
@@ -239,14 +230,105 @@ export default function MainScreen({ user, onLogout }) {
   const [pendingConfirmation, setPendingConfirmation] = useState(null);
   const [pendingNoteTarget, setPendingNoteTarget] = useState(null);
   const [teamUsers, setTeamUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(user || null);
+  const [assignableUsers, setAssignableUsers] = useState([]);
 
   useEffect(() => {
+    api.getMe().then((res) => {
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+      }
+    }).catch(() => {});
+
+    api.fetchAssignableUsers().then((res) => {
+      if (res.success && Array.isArray(res.users)) {
+        setAssignableUsers(res.users);
+      }
+    }).catch(() => {});
+
     api.fetchTeamUsers().then((res) => {
       if (res.success && Array.isArray(res.users)) {
         setTeamUsers(res.users);
       }
     }).catch(() => {});
   }, []);
+
+  const effectiveUser = currentUser || user;
+  const userRole = effectiveUser?.role;
+  const userPerms = Array.isArray(effectiveUser?.permissions) ? effectiveUser.permissions : [];
+  const isUserAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const canAccessFieldVisit = isUserAdmin || userPerms.includes('field_reports') || userPerms.includes('field_visit') || userPerms.includes('field_reports_admin');
+  const canAccessSchoolCrm = isUserAdmin || userPerms.includes('schools');
+
+  // 11b. Edit Task Modal State
+  const [editTaskModalVisible, setEditTaskModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskDescription, setEditTaskDescription] = useState('');
+  const [editTaskDueDate, setEditTaskDueDate] = useState('');
+  const [editTaskPriority, setEditTaskPriority] = useState('medium');
+  const [editTaskStatus, setEditTaskStatus] = useState('pending');
+  const [editTaskAssignee, setEditTaskAssignee] = useState('');
+  const [isSavingEditTask, setIsSavingEditTask] = useState(false);
+
+  const openEditTaskModal = (task) => {
+    if (!task) return;
+    setEditingTask(task);
+    setEditTaskTitle(task.title || '');
+    setEditTaskDescription(task.description || '');
+    setEditTaskDueDate(task.due_date ? task.due_date.split('T')[0] : '');
+    setEditTaskPriority(task.priority || 'medium');
+    setEditTaskStatus(task.status || 'pending');
+    setEditTaskAssignee(task.assigned_to || '');
+    setEditTaskModalVisible(true);
+  };
+
+  const handleSaveEditTaskSubmit = async () => {
+    if (!editingTask) return;
+    if (!editTaskTitle.trim()) {
+      Alert.alert('Required', 'Task title cannot be blank.');
+      return;
+    }
+    setIsSavingEditTask(true);
+    const updatePayload = {
+      title: editTaskTitle.trim(),
+      description: editTaskDescription.trim(),
+      due_date: editTaskDueDate || null,
+      priority: editTaskPriority,
+      status: editTaskStatus,
+      assigned_to: editTaskAssignee || null,
+    };
+    const res = await api.updateTask(editingTask.id, updatePayload);
+    setIsSavingEditTask(false);
+
+    if (res.success && res.task) {
+      setEditTaskModalVisible(false);
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.taskCard && m.taskCard.id === editingTask.id) {
+            return { ...m, taskCard: res.task };
+          }
+          if (m.taskListCard && Array.isArray(m.taskListCard.tasks)) {
+            return {
+              ...m,
+              taskListCard: {
+                ...m.taskListCard,
+                tasks: m.taskListCard.tasks.map((t) => (t.id === editingTask.id ? res.task : t)),
+              },
+            };
+          }
+          return m;
+        })
+      );
+      Alert.alert('Updated', 'Task updated successfully.');
+    } else {
+      if (res.status === 403 || (res.error && res.error.toLowerCase().includes('access denied'))) {
+        Alert.alert('Access Denied', 'Access denied.');
+      } else {
+        Alert.alert('Error', res.error || 'Failed to update task.');
+      }
+    }
+  };
 
   // 12. View Comments & Activity History Modal State (Web App CRM View)
   const [viewModalVisible, setViewModalVisible] = useState(false);
@@ -867,11 +949,6 @@ export default function MainScreen({ user, onLogout }) {
     const res = await api.fetchSchoolInquiries(100);
     const leadsMap = new Map();
 
-    FALLBACK_LEADS.forEach((l) => {
-      const key = (l.school_name || l.schoolName || '').toLowerCase();
-      if (key) leadsMap.set(key, l);
-    });
-
     if (res.success && Array.isArray(res.inquiries)) {
       res.inquiries.forEach((l) => {
         const key = (l.school_name || l.schoolName || '').toLowerCase();
@@ -1197,8 +1274,9 @@ export default function MainScreen({ user, onLogout }) {
     let assignee_name = user?.name || 'Bhumi Sanghvi';
 
     // Scan for assigned team member in text (e.g. "assign task to Rahul: ...", "create task for Priya", "... to Yash")
-    if (Array.isArray(teamUsers) && teamUsers.length > 0) {
-      for (const u of teamUsers) {
+    const searchUsersList = (assignableUsers && assignableUsers.length > 0) ? assignableUsers : teamUsers;
+    if (Array.isArray(searchUsersList) && searchUsersList.length > 0) {
+      for (const u of searchUsersList) {
         if (!u.name) continue;
         const fullName = u.name.trim();
         const firstName = fullName.split(/\s+/)[0];
@@ -1324,13 +1402,13 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   const promptReassignTaskConfirmation = (task, targetUser) => {
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-    if (!isAdmin) {
+    const canManageTarget = isUserAdmin || (assignableUsers || []).some((u) => u.id === targetUser?.id);
+    if (!canManageTarget) {
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: `⛔ **Access Denied:** You don't have access to it. Only administrators can reassign tasks in Mission Control.`,
+          text: 'Access denied.',
           nextActions: ['My Tasks'],
           time: 'Just now',
         },
@@ -1451,16 +1529,16 @@ export default function MainScreen({ user, onLogout }) {
 
   const handleDeleteTask = (task) => {
     if (!task) return;
-    const userUid = user?.id || user?.user_id || '';
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const userUid = effectiveUser?.id || effectiveUser?.user_id || '';
     const isCreator = !task.assigned_by || task.assigned_by === userUid;
+    const canDelete = isUserAdmin || isCreator || (assignableUsers || []).some((u) => u.id === task.assigned_to);
 
-    if (!isAdmin && !isCreator) {
+    if (!canDelete) {
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`,
+          text: 'Access denied.',
           nextActions: ['My Tasks'],
           time: 'Just now',
         },
@@ -1484,9 +1562,9 @@ export default function MainScreen({ user, onLogout }) {
         },
       ]);
     } else {
-      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed');
+      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed') || res.error?.toLowerCase().includes('access denied');
       const errText = isAccess
-        ? `⛔ **Access Denied:** You don't have access to it. ${res.error || 'You lack permissions to add comments.'}`
+        ? 'Access denied.'
         : `❌ **Failed to add comment:** ${res.error || 'Could not post comment'}`;
 
       setMessages((prev) => [
@@ -1501,8 +1579,62 @@ export default function MainScreen({ user, onLogout }) {
     }
   };
 
-  const handleSubmitInlineTask = (taskData) => {
-    promptCreateTaskConfirmation(taskData);
+  const handleSubmitInlineTask = async (taskData) => {
+    if (!taskData || !taskData.title) return;
+    setIsTyping(true);
+    const myId = effectiveUser?.id || effectiveUser?.user_id;
+    const assignedId = taskData.assigned_to || myId;
+
+    // Check authorization: can user assign to assignedId?
+    const canAssign = isUserAdmin || assignedId === myId || (assignableUsers || []).some((u) => u.id === assignedId);
+    if (!canAssign) {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: 'Access denied.',
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    const payload = {
+      title: taskData.title.trim(),
+      priority: taskData.priority || 'medium',
+      due_date: taskData.due_date || null,
+      assigned_to: assignedId,
+    };
+
+    const res = await api.createTask(payload);
+    setIsTyping(false);
+    if (res.success && res.task) {
+      const isSelf = assignedId === myId;
+      const assigneeLabel = taskData.assignee_name || (isSelf ? 'Myself' : 'Team Member');
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `✅ **Task Created Successfully!**\n\nTask **${res.task.code || 'TSK'} — "${res.task.title}"** has been assigned to **${assigneeLabel}** and saved to Mission Control.`,
+          taskCard: res.task,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+    } else {
+      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('access denied');
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: isAccess ? 'Access denied.' : `❌ **Failed to create task:** ${res.error || 'Server error'}`,
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+    }
   };
 
   // ── Execute Confirmed & Cancelled Operations ────────────────────────────────
@@ -1869,9 +2001,9 @@ export default function MainScreen({ user, onLogout }) {
           },
         ]);
       } else {
-        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed');
+        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('not allowed') || res.error?.toLowerCase().includes('access denied');
         const errText = isAccess
-          ? `⛔ **Access Denied:** You don't have access to it. ${res.error || 'You lack permissions to assign tasks.'}`
+          ? 'Access denied.'
           : `❌ **Failed to create task:** ${res.error || 'Server error'}`;
         setMessages((prev) => [
           ...prev,
@@ -1902,9 +2034,9 @@ export default function MainScreen({ user, onLogout }) {
           },
         ]);
       } else {
-        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('only');
+        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('only') || res.error?.toLowerCase().includes('access denied');
         const errText = isAccess
-          ? `⛔ **Access Denied:** You don't have access to it. Only administrators can reassign tasks in Mission Control.`
+          ? 'Access denied.'
           : `❌ **Failed to reassign task:** ${res.error || 'Server error'}`;
         setMessages((prev) => [
           ...prev,
@@ -1934,9 +2066,9 @@ export default function MainScreen({ user, onLogout }) {
           },
         ]);
       } else {
-        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('creator');
+        const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('creator') || res.error?.toLowerCase().includes('access denied');
         const errText = isAccess
-          ? `⛔ **Access Denied:** You don't have access to it. Only the task creator or an administrator can delete tasks from Mission Control.`
+          ? 'Access denied.'
           : `❌ **Failed to delete task:** ${res.error || 'Permission denied or not found'}`;
         setMessages((prev) => [
           ...prev,
@@ -2038,16 +2170,26 @@ export default function MainScreen({ user, onLogout }) {
       Alert.alert('Notice', 'No active school lead found to delete.');
       return;
     }
-    const userUid = user?.id || user?.user_id || '';
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    if (!canAccessSchoolCrm) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: 'Access denied.',
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+    const userUid = effectiveUser?.id || effectiveUser?.user_id || '';
+    const isAdmin = isUserAdmin;
     const isOwner = !target.assigned_to || target.assigned_to === userUid || target.added_by === userUid;
     if (!isAdmin && !isOwner) {
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: `⛔ **Access Denied:** You don't have access to it. Only the lead owner or an administrator can delete leads from the CRM database.`,
-          nextActions: ['Add School Lead'],
+          text: 'Access denied.',
           time: 'Just now',
         },
       ]);
@@ -2674,6 +2816,19 @@ export default function MainScreen({ user, onLogout }) {
     setMessages([userMsg]);
     setIsTyping(true);
 
+    if (['create_lead', 'retrieve_leads', 'follow_up'].includes(action.id) && !canAccessSchoolCrm) {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: 'Access denied.',
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
     if (action.id === 'create_lead') {
       setIsTyping(false);
       openAddLeadModal({
@@ -2705,7 +2860,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: `📋 **Live CRM School Leads (${res.inquiries.length} Total):**\n\n${leadLines}\n\n*Tip: To inspect or take actions on any school, type "Show lead [School Name]" or "Retrieve lead for [School Name]".*`,
-            nextActions: ['Add School Lead'],
+            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2715,7 +2870,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: `📋 **No School Leads Found:** No active inquiries currently recorded in your CRM pipeline.`,
-            nextActions: ['Add School Lead'],
+            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2741,19 +2896,17 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `📊 **Live CRM Leads:** Found ${res.inquiries.length} active entries in your database:`,
             followUpList: liveLeads,
-            nextActions: ['Add School Lead', 'Filter by Mumbai Region', 'Export Pipeline'],
+            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
             time: 'Just now',
           },
         ]);
       } else {
-        const fallback = MOCK_RESPONSES[action.id];
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
-            text: fallback?.text || 'Here is your current pipeline review:',
-            followUpList: fallback?.data,
-            nextActions: fallback?.nextActions || ['Add School Lead'],
+            text: res.error || 'No follow-up leads found for your account.',
+            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2874,9 +3027,212 @@ export default function MainScreen({ user, onLogout }) {
       return;
     }
 
+    // ── CRM ACCESS CHECK (Chatbot Permission-Aware Operations) ──
+    const isCrmIntent =
+      lower.includes('lead') ||
+      lower.includes('school') ||
+      lower.includes('follow-up') ||
+      lower.includes('followup') ||
+      lower.includes('proposal') ||
+      lower.includes('mou') ||
+      lower.includes('invoice') ||
+      ((lower.includes('meeting') || lower.includes('demo')) && !lower.includes('task')) ||
+      (lower.includes('status') && !lower.includes('task')) ||
+      lower.includes('convert') ||
+      lower.includes('inquiry');
+
+    if (isCrmIntent && !canAccessSchoolCrm) {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: 'Access denied.',
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // ── TASK MANAGEMENT IN AI CHAT (OLL Mission Control Integration) ─────────
     // ══════════════════════════════════════════════════════════════════════════
+
+    // ── T0. Create Task for Myself ──
+    const isCreateTaskForMyself =
+      lower === 'create task for myself' ||
+      lower === 'create a task for myself' ||
+      lower === 'task for myself' ||
+      lower.startsWith('create task for myself') ||
+      lower.startsWith('create a task for myself');
+
+    if (isCreateTaskForMyself) {
+      setIsTyping(false);
+      const myId = effectiveUser?.id || effectiveUser?.user_id;
+      const myName = effectiveUser?.name || 'Myself';
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: '➕ **Create Task for Myself:**\nFill in the title, priority, and deadline below:',
+          taskCreationCard: {
+            initialTitle: userText.replace(/create\s+(?:a\s+)?task\s+for\s+myself[:\s-]*/i, '').trim(),
+            initialPriority: 'medium',
+            initialAssigneeId: myId,
+            initialAssigneeName: myName,
+            teamUsers: assignableUsers.length > 0 ? assignableUsers : teamUsers,
+          },
+          nextActions: ['My Tasks'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── T0b. Verify Assignment Scope if Target Person Specified ──
+    const assignPersonMatch = userText.match(/(?:create\s+(?:a\s+)?task\s+for|assign\s+(?:a\s+)?task\s+to|new\s+task\s+for|assign\s+to)\s+([A-Za-z\s]+?)(?:\s*[:;,]|\s+due|\s+with|\s+priority|$)/i);
+    if (assignPersonMatch) {
+      const targetNameRaw = assignPersonMatch[1].trim().toLowerCase();
+      const isTargetMyself = targetNameRaw === 'myself' || targetNameRaw === 'me';
+      if (!isTargetMyself) {
+        const eligible = (assignableUsers || []).find((u) => {
+          const fn = (u.name || '').toLowerCase();
+          const first = fn.split(/\s+/)[0];
+          return fn.includes(targetNameRaw) || targetNameRaw.includes(fn) || (first.length >= 3 && targetNameRaw.includes(first));
+        });
+
+        if (!eligible) {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: 'Access denied.',
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+      }
+    }
+
+    // ── T0c. Show Tasks Assigned to People I Manage ──
+    const isManagedTasks =
+      lower.includes("people i manage") ||
+      lower.includes("managed users") ||
+      lower.includes("managed tasks") ||
+      lower.includes("team tasks") ||
+      lower.includes("tasks of my team") ||
+      lower === "team tasks";
+
+    if (isManagedTasks) {
+      const res = await api.fetchTasks('team');
+      setIsTyping(false);
+      let tasksList = (res.success && Array.isArray(res.tasks)) ? res.tasks : [];
+      const taskCount = tasksList.length;
+      const pendingCount = tasksList.filter((t) => t.status !== 'completed').length;
+      const completedCount = taskCount - pendingCount;
+
+      const teamTasksText = taskCount > 0
+        ? `📋 **Tasks Assigned to People You Manage (${taskCount}):**\nThere are **${pendingCount} active / pending** tasks and **${completedCount} completed** tasks in your managed scope:`
+        : `📋 **Managed Tasks:** No tasks currently found for people in your management scope.`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: teamTasksText,
+          taskListCard: {
+            title: 'Managed Team Tasks',
+            subtitle: `${pendingCount} active • ${completedCount} completed`,
+            tasks: tasksList,
+          },
+          nextActions: ['My Tasks', 'Create Task'],
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
+    // ── T0d. Edit / Update Task for a Particular Person ──
+    const isEditTaskIntent =
+      lower.startsWith('edit task') ||
+      lower.startsWith('edit the task') ||
+      lower.startsWith('update task') ||
+      lower.startsWith('update the task') ||
+      lower.startsWith('update deadline') ||
+      lower.startsWith('update the deadline') ||
+      lower.startsWith('change status of task') ||
+      lower.startsWith('change the status of');
+
+    if (isEditTaskIntent) {
+      setIsTyping(false);
+      let matchedTargetPerson = null;
+      const forPersonMatch = userText.match(/(?:for|assigned to|of)\s+([A-Za-z\s]+?)(?:'s|\s+task|\s*$)/i);
+      if (forPersonMatch) {
+        const rawPersonName = forPersonMatch[1].trim().toLowerCase();
+        if (rawPersonName !== 'myself' && rawPersonName !== 'me') {
+          const eligible = (assignableUsers || []).find((u) => {
+            const fn = (u.name || '').toLowerCase();
+            const first = fn.split(/\s+/)[0];
+            return fn.includes(rawPersonName) || rawPersonName.includes(fn) || (first.length >= 3 && rawPersonName.includes(first));
+          });
+          if (!eligible) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: 'ai',
+                text: 'Access denied.',
+                time: 'Just now',
+              },
+            ]);
+            return;
+          }
+          matchedTargetPerson = eligible;
+        }
+      }
+
+      const taskRes = await api.fetchTasks(matchedTargetPerson ? 'team' : 'my');
+      const allTasks = (taskRes.success && Array.isArray(taskRes.tasks)) ? taskRes.tasks : [];
+      let taskToEdit = null;
+      if (matchedTargetPerson) {
+        taskToEdit = allTasks.find((t) => t.assigned_to === matchedTargetPerson.id);
+      }
+      if (!taskToEdit) {
+        const codeM = userText.match(/tsk-\d+/i);
+        if (codeM) {
+          taskToEdit = allTasks.find((t) => (t.code || '').toUpperCase() === codeM[0].toUpperCase());
+        }
+      }
+      if (!taskToEdit && allTasks.length > 0) {
+        taskToEdit = allTasks[0];
+      }
+
+      if (taskToEdit) {
+        openEditTaskModal(taskToEdit);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: `✏️ Opened task editor for **"${taskToEdit.title}"** (${taskToEdit.code || 'TASK'}).`,
+            nextActions: ['My Tasks'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: '🔍 Could not find a matching task to edit.',
+            nextActions: ['My Tasks', 'Create Task'],
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
+    }
 
     // ── T1. Task Listing: Today's Tasks, Overdue Tasks, My Tasks ──
     const isTodayTasks =
@@ -3010,12 +3366,13 @@ export default function MainScreen({ user, onLogout }) {
 
     if (isCreateTaskPromptIntent) {
       setIsTyping(false);
+      const eligibleUsers = (assignableUsers && assignableUsers.length > 0) ? assignableUsers : teamUsers;
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
           text: '➕ **Create New Task:**\nFill in the title, priority, assignee, and due date below, or type in plain language (e.g., *"Create task for Rahul: Prepare syllabus by Friday, priority high"*):',
-          taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers },
+          taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers: eligibleUsers },
           nextActions: ['My Tasks', "Today's Tasks"],
           time: 'Just now',
         },
@@ -3030,27 +3387,13 @@ export default function MainScreen({ user, onLogout }) {
       (hasTaskCode && (lower.startsWith('assign task') || lower.startsWith('assign') || lower.startsWith('reassign task')));
 
     if (isReassignIntent) {
-      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-      if (!isAdmin) {
-        setIsTyping(false);
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'ai',
-            text: `⛔ **Access Denied:** You don't have access to it. Only administrators can reassign tasks in Mission Control.`,
-            nextActions: ['My Tasks'],
-            time: 'Just now',
-          },
-        ]);
-        return;
-      }
-
       const codeMatch = userText.match(/tsk-\d+/i);
       const taskCode = codeMatch ? codeMatch[0].toUpperCase() : '';
 
       let targetUser = null;
-      if (Array.isArray(teamUsers)) {
-        for (const u of teamUsers) {
+      const allCandidateUsers = (teamUsers && teamUsers.length > 0) ? teamUsers : assignableUsers;
+      if (Array.isArray(allCandidateUsers)) {
+        for (const u of allCandidateUsers) {
           if (!u.name) continue;
           const fullName = u.name.trim();
           const firstName = fullName.split(/\s+/)[0];
@@ -3060,6 +3403,23 @@ export default function MainScreen({ user, onLogout }) {
             targetUser = u;
             break;
           }
+        }
+      }
+
+      if (targetUser) {
+        const canManageTarget = isUserAdmin || (assignableUsers || []).some((u) => u.id === targetUser.id);
+        if (!canManageTarget) {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: 'Access denied.',
+              nextActions: ['My Tasks'],
+              time: 'Just now',
+            },
+          ]);
+          return;
         }
       }
 
@@ -3116,8 +3476,9 @@ export default function MainScreen({ user, onLogout }) {
 
     if (isAssignForMemberPrompt) {
       let matchedMember = null;
-      if (Array.isArray(teamUsers)) {
-        for (const u of teamUsers) {
+      const allCandidateUsers = (teamUsers && teamUsers.length > 0) ? teamUsers : assignableUsers;
+      if (Array.isArray(allCandidateUsers)) {
+        for (const u of allCandidateUsers) {
           if (!u.name) continue;
           const fullName = u.name.trim();
           const firstName = fullName.split(/\s+/)[0];
@@ -3132,6 +3493,22 @@ export default function MainScreen({ user, onLogout }) {
       }
 
       if (matchedMember) {
+        const canManageMember = isUserAdmin || (assignableUsers || []).some((u) => u.id === matchedMember.id);
+        if (!canManageMember) {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: 'Access denied.',
+              nextActions: ['My Tasks'],
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+
+        const eligibleUsers = (assignableUsers && assignableUsers.length > 0) ? assignableUsers : teamUsers;
         setIsTyping(false);
         setMessages((prev) => [
           ...prev,
@@ -3143,7 +3520,7 @@ export default function MainScreen({ user, onLogout }) {
               initialPriority: 'medium',
               initialAssigneeId: matchedMember.id,
               initialAssigneeName: matchedMember.name,
-              teamUsers,
+              teamUsers: eligibleUsers,
             },
             nextActions: ['My Tasks', "Today's Tasks"],
             time: 'Just now',
@@ -3167,13 +3544,14 @@ export default function MainScreen({ user, onLogout }) {
     if (isCreateTaskWithDetails) {
       setIsTyping(false);
       const taskDetails = extractTaskDetailsFromText(userText);
+      const eligibleUsers = (assignableUsers && assignableUsers.length > 0) ? assignableUsers : teamUsers;
       if (!taskDetails.title || taskDetails.title.toLowerCase() === 'new task') {
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
             text: '➕ **Create New Task:** Please specify the task title or fill the quick form below:',
-            taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers },
+            taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers: eligibleUsers },
             nextActions: ['My Tasks'],
             time: 'Just now',
           },
@@ -3539,26 +3917,29 @@ export default function MainScreen({ user, onLogout }) {
         }
       }
 
-      // Priority 3: Search FALLBACK_LEADS
-      if (!matched && queryLower) {
-        matched = FALLBACK_LEADS.find((l) => {
-          const sName = (l.school_name || l.schoolName || '').toLowerCase();
-          const cName = (l.contact_name || l.contactPerson || '').toLowerCase();
-          return (sName && (sName.includes(queryLower) || queryLower.includes(sName))) ||
-                 (cName && (cName.includes(queryLower) || queryLower.includes(cName)));
-        });
-      }
-
-      // Priority 4: Generic queries (e.g. "retrieve a particular lead", "retrieve lead", "particular lead", "show lead")
+      // Priority 3: Generic queries without specific school name
       if (!matched && !queryLower) {
         const latest = findLatestLead();
         if (latest) {
           matched = { ...latest };
         } else if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
           matched = res.inquiries[0];
-        } else {
-          matched = FALLBACK_LEADS[0];
         }
+      }
+
+      if (!matched) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: queryLower
+              ? `🔍 No matching lead found for "${query}" in your CRM records.`
+              : '🔍 No school leads found in your CRM records.',
+            time: 'Just now',
+          },
+        ]);
+        return;
       }
 
       if (matched) {
@@ -4865,10 +5246,11 @@ export default function MainScreen({ user, onLogout }) {
                 onSubmitInlineNote={(lead, noteText) => promptAddNoteConfirmation(lead, noteText)}
                 onCompleteTask={handleCompleteTask}
                 onStartTask={handleStartTask}
+                onEditTask={openEditTaskModal}
                 onDeleteTask={handleDeleteTask}
                 onCommentTask={handleCommentTask}
                 onSubmitInlineTask={handleSubmitInlineTask}
-                teamUsers={teamUsers}
+                teamUsers={assignableUsers.length > 0 ? assignableUsers : teamUsers}
               />
             ) : (
               /* Default Suggestions Landing Screen */
@@ -4911,19 +5293,31 @@ export default function MainScreen({ user, onLogout }) {
             />
           </View>
         ) : activeTab === 'field_visit' ? (
-          /* Live Field Visit & Reports Screen matching user screenshot */
-          <FieldVisitScreen
-            user={user}
-            onBackToChat={() => setActiveTab('ai_chat')}
-            onLogout={onLogout}
-          />
+          canAccessFieldVisit ? (
+            <FieldVisitScreen
+              user={effectiveUser}
+              onBackToChat={() => setActiveTab('ai_chat')}
+              onLogout={onLogout}
+            />
+          ) : (
+            <AccessDeniedView
+              moduleName="Field Visit"
+              onBackToChat={() => setActiveTab('ai_chat')}
+            />
+          )
         ) : activeTab === 'schools' ? (
-          /* Live School CRM Screen matching user screenshot */
-          <SchoolsCrmScreen
-            user={user}
-            onBackToChat={() => setActiveTab('ai_chat')}
-            onLogout={onLogout}
-          />
+          canAccessSchoolCrm ? (
+            <SchoolsCrmScreen
+              user={effectiveUser}
+              onBackToChat={() => setActiveTab('ai_chat')}
+              onLogout={onLogout}
+            />
+          ) : (
+            <AccessDeniedView
+              moduleName="School CRM"
+              onBackToChat={() => setActiveTab('ai_chat')}
+            />
+          )
         ) : (
           /* Animated Coming Soon View for other tabs */
           <ComingSoonView
@@ -4937,6 +5331,7 @@ export default function MainScreen({ user, onLogout }) {
           <BottomTabBar
             activeTab={activeTab}
             onTabChange={(tabId) => setActiveTab(tabId)}
+            user={effectiveUser}
           />
         )}
       </KeyboardAvoidingView>
@@ -6415,6 +6810,143 @@ export default function MainScreen({ user, onLogout }) {
               onPress={() => setViewModalVisible(false)}
             >
               <Text style={styles.modalPrimaryBtnText}>Close Dossier</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL 13: Edit Task Modal ────────────────────────────────────────── */}
+      <Modal
+        visible={editTaskModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditTaskModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalLargeCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="edit-3" size={18} color="#0284C7" style={{ marginRight: 8 }} />
+                <Text style={styles.modalLargeTitle}>Edit Task</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditTaskModalVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Task Title *</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="Task title..."
+                  placeholderTextColor="#94A3B8"
+                  value={editTaskTitle}
+                  onChangeText={setEditTaskTitle}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Description</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 60, textAlignVertical: 'top' }]}
+                  placeholder="Task description / notes..."
+                  placeholderTextColor="#94A3B8"
+                  value={editTaskDescription}
+                  onChangeText={setEditTaskDescription}
+                  multiline
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Assignee</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusPillsPicker}>
+                  <TouchableOpacity
+                    style={[styles.statusOptionPill, (!editTaskAssignee || editTaskAssignee === (effectiveUser?.id || effectiveUser?.user_id)) && styles.statusOptionPillActive]}
+                    onPress={() => setEditTaskAssignee(effectiveUser?.id || effectiveUser?.user_id || '')}
+                  >
+                    <Text style={[styles.statusOptionText, (!editTaskAssignee || editTaskAssignee === (effectiveUser?.id || effectiveUser?.user_id)) && styles.statusOptionTextActive]}>
+                      👤 Myself
+                    </Text>
+                  </TouchableOpacity>
+                  {(assignableUsers || []).filter(u => u.id !== (effectiveUser?.id || effectiveUser?.user_id)).map((u) => {
+                    const isSelected = editTaskAssignee === u.id;
+                    return (
+                      <TouchableOpacity
+                        key={u.id}
+                        style={[styles.statusOptionPill, isSelected && styles.statusOptionPillActive]}
+                        onPress={() => setEditTaskAssignee(u.id)}
+                      >
+                        <Text style={[styles.statusOptionText, isSelected && styles.statusOptionTextActive]}>
+                          {u.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Status</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'pending', label: '🕒 Pending' },
+                    { key: 'in_progress', label: '⏳ In Progress' },
+                    { key: 'completed', label: '✓ Completed' },
+                  ].map((s) => (
+                    <TouchableOpacity
+                      key={s.key}
+                      style={[styles.statusOptionPill, editTaskStatus === s.key && styles.statusOptionPillActive]}
+                      onPress={() => setEditTaskStatus(s.key)}
+                    >
+                      <Text style={[styles.statusOptionText, editTaskStatus === s.key && styles.statusOptionTextActive]}>
+                        {s.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Priority</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {['low', 'medium', 'high', 'urgent'].map((p) => (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.statusOptionPill, editTaskPriority === p && styles.statusOptionPillActive]}
+                      onPress={() => setEditTaskPriority(p)}
+                    >
+                      <Text style={[styles.statusOptionText, editTaskPriority === p && styles.statusOptionTextActive]}>
+                        {p.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={styles.modalFieldLabel}>Due Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94A3B8"
+                  value={editTaskDueDate}
+                  onChangeText={setEditTaskDueDate}
+                />
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#0284C7' }]}
+              onPress={handleSaveEditTaskSubmit}
+              disabled={isSavingEditTask}
+            >
+              {isSavingEditTask ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalPrimaryBtnText}>Save Task Changes</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

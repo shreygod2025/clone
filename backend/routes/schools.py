@@ -20,7 +20,8 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from .shared import (
     db, get_current_user, auto_assign_lead, get_relationship_managers,
     ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL,
-    get_next_ticket_number
+    get_next_ticket_number, has_school_permission, can_access_school,
+    get_authorized_school_query, can_manage_user
 )
 from .notifications import send_whatsapp_notification
 from .expenses import transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
@@ -244,8 +245,11 @@ async def create_school_inquiry(data: SchoolInquiryCreate):
 
 @router.get("/schools/names")
 async def get_school_names_list(user: dict = Depends(get_current_user)):
-    """Lightweight endpoint returning only id + school_name for dropdowns"""
-    schools = await db.school_inquiries.find({}, {"_id": 0, "id": 1, "school_name": 1}).sort("school_name", 1).to_list(2000)
+    """Lightweight endpoint returning only id + school_name for dropdowns, scoped to permitted records"""
+    if not has_school_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+    query = await get_authorized_school_query(user)
+    schools = await db.school_inquiries.find(query, {"_id": 0, "id": 1, "school_name": 1}).sort("school_name", 1).to_list(2000)
     return schools
 
 
@@ -255,38 +259,29 @@ async def get_school_inquiries(
     view_all: bool = False,
     user: dict = Depends(get_current_user)
 ):
-    query = {}
+    if not has_school_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    base_query = await get_authorized_school_query(user)
+    status_query = {}
     if status:
-        # Handle comma-separated status values
         if "," in status:
-            query["status"] = {"$in": status.split(",")}
+            status_query["status"] = {"$in": status.split(",")}
         else:
-            query["status"] = status
-    
-    user_role = user.get("role", "")
+            status_query["status"] = status
+
+    if base_query:
+        if status_query:
+            query = {"$and": [base_query, status_query]}
+        else:
+            query = base_query
+    else:
+        query = status_query
+
     user_id = user.get("user_id", user.get("id", ""))
     user_email = (user.get("email") or "").strip()
     user_name  = (user.get("name")  or "").strip()
 
-    # Check if user is admin - admins see all leads
-    is_admin = user_role == "admin" or user.get("email") == "admin@oll.co"
-    
-    # Non-admin users only see leads assigned to them
-    # Unless view_all is explicitly True (for managers with special permission)
-    if not is_admin and not view_all:
-        # Match by user_id (canonical) OR legacy email/name strings, on
-        # any of the ownership fields: assigned_to, added_by,
-        # relationship_manager_id / _name. RMs must see every school
-        # they've been assigned to across ALL stages.
-        candidates = [v for v in (user_id, user_email, user_name) if v]
-        query["$or"] = [
-            {"assigned_to":               {"$in": candidates}},
-            {"assigned_to_name":          {"$in": candidates}},
-            {"added_by":                  {"$in": candidates}},
-            {"relationship_manager_id":   {"$in": candidates}},
-            {"relationship_manager_name": {"$in": candidates}},
-        ]
-    
     inquiries = await db.school_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     # Add ownership flag for display purposes
@@ -296,7 +291,6 @@ async def get_school_inquiries(
         if isinstance(inq.get('updated_at'), str):
             inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
         
-        # Ownership = user-id/email/name match on any owning field.
         owner_candidates = {c for c in (user_id, user_email, user_name) if c}
         is_owner = bool(owner_candidates.intersection({
             inq.get('assigned_to'), inq.get('assigned_to_name'),
@@ -306,7 +300,6 @@ async def get_school_inquiries(
         inq['is_owner']  = is_owner
         inq['is_viewer'] = not is_owner
         
-        # Transform any stale preview tracking URLs in po_requests
         for po_req in inq.get('po_requests', []):
             if po_req.get('tracking_url'):
                 po_req['tracking_url'] = transform_tracking_url(po_req['tracking_url'])
@@ -316,17 +309,23 @@ async def get_school_inquiries(
 @router.delete("/schools/inquiry/{inquiry_id}")
 async def delete_school_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
     """Delete a school inquiry/lead"""
-    # Check if user has permission (admin or owner)
+    if not has_school_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
     if not inquiry:
         raise HTTPException(status_code=404, detail="Lead not found")
     
+    if not await can_access_school(user, inquiry):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     user_id = user.get("user_id", user.get("id", ""))
     is_admin = user.get("role") in ["admin", "super_admin"]
     is_owner = inquiry.get("assigned_to") == user_id or inquiry.get("added_by") == user_id
+    is_manager = await can_manage_user(user, inquiry.get("assigned_to") or "")
     
-    if not is_admin and not is_owner:
-        raise HTTPException(status_code=403, detail="You don't have permission to delete this lead")
+    if not is_admin and not is_owner and not is_manager:
+        raise HTTPException(status_code=403, detail="Access denied.")
     
     await db.school_inquiries.delete_one({"id": inquiry_id})
     return {"message": "Lead deleted successfully"}
@@ -334,9 +333,15 @@ async def delete_school_inquiry(inquiry_id: str, user: dict = Depends(get_curren
 @router.delete("/schools/inquiry/{inquiry_id}/contacts/{contact_index}")
 async def delete_school_contact(inquiry_id: str, contact_index: int, user: dict = Depends(get_current_user)):
     """Delete a contact from a school inquiry"""
+    if not has_school_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
     if not inquiry:
         raise HTTPException(status_code=404, detail="School not found")
+
+    if not await can_access_school(user, inquiry):
+        raise HTTPException(status_code=403, detail="Access denied.")
     
     school_contacts = inquiry.get("school_contacts", [])
     if contact_index < 0 or contact_index >= len(school_contacts):
@@ -385,9 +390,13 @@ async def delete_growth_partner_application(application_id: str, user: dict = De
 @router.get("/schools/inquiry/{inquiry_id}")
 async def get_school_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
     """Get a single school inquiry by ID."""
+    if not has_school_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
     doc = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Inquiry not found")
+    if not await can_access_school(user, doc):
+        raise HTTPException(status_code=403, detail="Access denied.")
     return doc
 
 @router.patch("/schools/inquiry/{inquiry_id}")
@@ -396,10 +405,15 @@ async def update_school_inquiry(
     data: SchoolInquiryUpdate,
     user: dict = Depends(get_current_user)
 ):
+    if not has_school_permission(user):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     # Get current inquiry to track changes
     current_inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
     if not current_inquiry:
         raise HTTPException(status_code=404, detail="Inquiry not found")
+    if not await can_access_school(user, current_inquiry):
+        raise HTTPException(status_code=403, detail="Access denied.")
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
@@ -410,6 +424,8 @@ async def update_school_inquiry(
     if 'assigned_to' in update_data and update_data.get('assigned_to') != current_inquiry.get('assigned_to'):
         new_uid = (update_data.get('assigned_to') or '').strip()
         if new_uid:
+            if not await can_manage_user(user, new_uid):
+                raise HTTPException(status_code=403, detail="Access denied.")
             assignee_doc = await db.team_users.find_one(
                 {"id": new_uid},
                 {"_id": 0, "name": 1, "email": 1},

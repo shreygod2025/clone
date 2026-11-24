@@ -3,33 +3,46 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
-export default function BottomTabBar({ activeTab, onTabChange }) {
-  const tabs = [
+export default function BottomTabBar({ activeTab, onTabChange, user }) {
+  const role = user?.role;
+  const perms = Array.isArray(user?.permissions) ? user.permissions : [];
+  const isAdmin = role === 'admin' || role === 'super_admin';
+
+  const canFieldVisit = isAdmin || perms.includes('field_reports') || perms.includes('field_visit') || perms.includes('field_reports_admin');
+  const canSchoolCrm = isAdmin || perms.includes('schools');
+
+  const allTabs = [
     {
       id: 'field_visit',
       label: 'Field Visit',
       iconSet: 'Ionicons',
       iconName: 'location-outline',
+      allowed: canFieldVisit,
     },
     {
       id: 'ai_chat',
       label: 'AI Chat',
       iconSet: 'Ionicons',
       iconName: 'chatbubbles',
+      allowed: true,
     },
     {
       id: 'my_space',
       label: 'My Space',
       iconSet: 'Feather',
       iconName: 'check-square',
+      allowed: true,
     },
     {
       id: 'schools',
       label: 'School CRM',
       iconSet: 'Ionicons',
       iconName: 'school-outline',
+      allowed: canSchoolCrm,
     },
   ];
+
+  const tabs = allTabs.filter((tab) => tab.allowed);
 
   const renderIcon = (tab, isActive) => {
     const color = isActive ? COLORS.tabActive : COLORS.tabInactive;

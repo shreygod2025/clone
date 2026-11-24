@@ -158,6 +158,201 @@ def require_admin():
     """Shortcut for admin/super_admin role requirement"""
     return require_role("admin", "super_admin")
 
+
+# ── RBAC & Data Isolation Helpers ─────────────────────────────────────────────
+
+def has_permission(user: dict, perm: str) -> bool:
+    """Check if user has a specific permission or is an admin."""
+    if not user:
+        return False
+    if user.get("role") in ("admin", "super_admin"):
+        return True
+    return perm in (user.get("permissions") or [])
+
+
+def has_school_permission(user: dict) -> bool:
+    return has_permission(user, "schools")
+
+
+def has_field_visit_permission(user: dict) -> bool:
+    if user.get("role") in ("admin", "super_admin"):
+        return True
+    perms = user.get("permissions") or []
+    return any(p in perms for p in ("field_reports", "field_visit", "field_reports_admin"))
+
+
+async def get_managed_user_ids(manager_id: str) -> list:
+    """Recursively return all team_user IDs who report directly or indirectly to manager_id."""
+    if not manager_id:
+        return []
+    managed = set()
+    to_visit = [manager_id]
+    visited = set()
+    while to_visit:
+        curr = to_visit.pop(0)
+        if curr in visited:
+            continue
+        visited.add(curr)
+        cursor = db.team_users.find({"reports_to": curr, "is_active": {"$ne": False}}, {"_id": 0, "id": 1})
+        async for doc in cursor:
+            uid = doc.get("id")
+            if uid and uid not in managed:
+                managed.add(uid)
+                to_visit.append(uid)
+    return list(managed)
+
+
+async def can_manage_user(manager: dict, target_user_id: str) -> bool:
+    """Return True if manager is admin, target is self, or target is in manager's reporting line."""
+    if not manager or not target_user_id:
+        return False
+    if manager.get("role") in ("admin", "super_admin"):
+        return True
+    uid = manager.get("id") or manager.get("user_id")
+    if target_user_id == uid:
+        return True
+    managed_ids = await get_managed_user_ids(uid)
+    return target_user_id in managed_ids
+
+
+async def get_assignable_users(user: dict) -> list:
+    """
+    Returns list of eligible users the given user can assign tasks to:
+    - If admin: all active team users + admins
+    - If manager: self + managed team users
+    - If regular: only self
+    """
+    uid = user.get("id") or user.get("user_id")
+    is_admin = user.get("role") in ("admin", "super_admin")
+
+    if is_admin:
+        team_users = await db.team_users.find(
+            {"is_active": {"$ne": False}},
+            {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "department": 1}
+        ).sort("name", 1).to_list(1000)
+        admins = await db.admins.find(
+            {},
+            {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1}
+        ).sort("name", 1).to_list(100)
+
+        seen = set()
+        result = []
+        for u in team_users:
+            if u.get("id") and u["id"] not in seen:
+                seen.add(u["id"])
+                result.append({
+                    "id": u["id"],
+                    "name": u.get("name") or u.get("email"),
+                    "email": u.get("email", ""),
+                    "role": u.get("role") or u.get("department") or "Team Member",
+                    "is_self": u["id"] == uid,
+                })
+        for a in admins:
+            if a.get("id") and a["id"] not in seen:
+                seen.add(a["id"])
+                result.append({
+                    "id": a["id"],
+                    "name": a.get("name") or a.get("email"),
+                    "email": a.get("email", ""),
+                    "role": a.get("role") or "Admin",
+                    "is_self": a["id"] == uid,
+                })
+        return result
+
+    managed_ids = await get_managed_user_ids(uid)
+    allowed_ids = list(set([uid] + managed_ids))
+
+    docs = await db.team_users.find(
+        {"id": {"$in": allowed_ids}, "is_active": {"$ne": False}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "department": 1}
+    ).sort("name", 1).to_list(500)
+
+    result = []
+    self_found = False
+    for u in docs:
+        is_self = (u["id"] == uid)
+        if is_self:
+            self_found = True
+        result.append({
+            "id": u["id"],
+            "name": u.get("name") or u.get("email"),
+            "email": u.get("email", ""),
+            "role": u.get("role") or u.get("department") or "Team Member",
+            "is_self": is_self,
+        })
+
+    if not self_found:
+        result.insert(0, {
+            "id": uid,
+            "name": user.get("name") or user.get("email") or "Myself",
+            "email": user.get("email", ""),
+            "role": user.get("role") or "Team Member",
+            "is_self": True,
+        })
+
+    return result
+
+
+async def can_access_school(user: dict, school: dict) -> bool:
+    """Check if user is authorized to view/modify the given school lead."""
+    if not user or not school:
+        return False
+    if not has_school_permission(user):
+        return False
+    if user.get("role") in ("admin", "super_admin"):
+        return True
+
+    uid = user.get("id") or user.get("user_id")
+    uemail = (user.get("email") or "").strip().lower()
+    uname = (user.get("name") or "").strip().lower()
+
+    school_assigned_to = str(school.get("assigned_to") or "")
+    school_assigned_name = str(school.get("assigned_to_name") or "").lower()
+    school_added_by = str(school.get("added_by") or "")
+    school_rm_id = str(school.get("relationship_manager_id") or "")
+    school_rm_name = str(school.get("relationship_manager_name") or "").lower()
+
+    if uid and uid in (school_assigned_to, school_added_by, school_rm_id):
+        return True
+    if uemail and uemail in (school_assigned_to.lower(), school_added_by.lower(), school_rm_id.lower()):
+        return True
+    if uname and (uname == school_assigned_name or uname == school_rm_name):
+        return True
+
+    managed_ids = await get_managed_user_ids(uid)
+    if set(managed_ids).intersection({school_assigned_to, school_added_by, school_rm_id}):
+        return True
+
+    return False
+
+
+async def get_authorized_school_query(user: dict) -> dict:
+    """Build a MongoDB filter dict that strictly limits schools to those the user may access."""
+    if user.get("role") in ("admin", "super_admin"):
+        return {}
+
+    uid = user.get("id") or user.get("user_id")
+    user_email = (user.get("email") or "").strip()
+    user_name = (user.get("name") or "").strip()
+
+    managed_ids = await get_managed_user_ids(uid)
+    all_scoped_ids = list(set([uid] + managed_ids))
+    candidates = [v for v in all_scoped_ids if v]
+    if user_email:
+        candidates.append(user_email)
+    if user_name:
+        candidates.append(user_name)
+
+    return {
+        "$or": [
+            {"assigned_to": {"$in": candidates}},
+            {"assigned_to_name": {"$in": candidates}},
+            {"added_by": {"$in": candidates}},
+            {"relationship_manager_id": {"$in": candidates}},
+            {"relationship_manager_name": {"$in": candidates}},
+        ]
+    }
+
 def serialize_doc(doc: dict) -> dict:
     """Remove MongoDB _id and convert datetime to ISO string"""
     if doc is None:

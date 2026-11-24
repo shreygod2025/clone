@@ -42,6 +42,7 @@ function TaskItemCard({
   task,
   onCompleteTask,
   onStartTask,
+  onEditTask,
   onDeleteTask,
   onCommentTask,
 }) {
@@ -129,6 +130,15 @@ function TaskItemCard({
 
         <TouchableOpacity
           activeOpacity={0.8}
+          style={[styles.taskActionBtn, styles.taskBtnEdit]}
+          onPress={() => onEditTask && onEditTask(task)}
+        >
+          <Feather name="edit-2" size={10} color="#0284C7" style={{ marginRight: 3 }} />
+          <Text style={[styles.taskActionBtnText, { color: '#0284C7' }]}>Edit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
           style={[styles.taskActionBtn, styles.taskBtnComment]}
           onPress={() => setCommentOpen(!commentOpen)}
         >
@@ -174,6 +184,7 @@ function TaskListCard({
   tasks = [],
   onCompleteTask,
   onStartTask,
+  onEditTask,
   onDeleteTask,
   onCommentTask,
 }) {
@@ -200,6 +211,7 @@ function TaskListCard({
             task={task}
             onCompleteTask={onCompleteTask}
             onStartTask={onStartTask}
+            onEditTask={onEditTask}
             onDeleteTask={onDeleteTask}
             onCommentTask={onCommentTask}
           />
@@ -360,6 +372,7 @@ export default function ChatMessagesView({
   onSubmitInlineNote,
   onCompleteTask,
   onStartTask,
+  onEditTask,
   onDeleteTask,
   onCommentTask,
   onSubmitInlineTask,
@@ -1010,6 +1023,7 @@ export default function ChatMessagesView({
                     tasks={msg.taskListCard.tasks}
                     onCompleteTask={onCompleteTask}
                     onStartTask={onStartTask}
+                    onEditTask={onEditTask}
                     onDeleteTask={onDeleteTask}
                     onCommentTask={onCommentTask}
                   />
@@ -1022,6 +1036,7 @@ export default function ChatMessagesView({
                       task={msg.taskCard}
                       onCompleteTask={onCompleteTask}
                       onStartTask={onStartTask}
+                      onEditTask={onEditTask}
                       onDeleteTask={onDeleteTask}
                       onCommentTask={onCommentTask}
                     />
@@ -2413,6 +2428,10 @@ const styles = StyleSheet.create({
   taskBtnStart: {
     backgroundColor: '#EFF6FF',
     borderColor: '#BFDBFE',
+  },
+  taskBtnEdit: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
   },
   taskBtnComment: {
     backgroundColor: '#F1F5F9',

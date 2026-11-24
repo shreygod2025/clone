@@ -91,6 +91,25 @@ class ApiService {
     };
   }
 
+  // 1b. Fetch Current Authenticated User & Permissions: GET /api/auth/me
+  async getMe() {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/auth/me`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 12000);
+
+      if (response.ok) {
+        const user = await response.json();
+        this.setUser(user);
+        return { success: true, user };
+      }
+      return { success: false, status: response.status };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
   // 2. Add School Lead directly into the CRM database: POST /api/schools/inquiry
   async createSchoolLead(leadData) {
     try {
@@ -986,6 +1005,23 @@ class ApiService {
       return { success: false, users: [] };
     } catch {
       return { success: false, users: [] };
+    }
+  }
+
+  async fetchAssignableUsers() {
+    try {
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/api/tasks/assignable-users`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }, 15000);
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, users: Array.isArray(data) ? data : [] };
+      }
+      return { success: false, users: [] };
+    } catch (err) {
+      return { success: false, users: [], error: err.message };
     }
   }
 }
