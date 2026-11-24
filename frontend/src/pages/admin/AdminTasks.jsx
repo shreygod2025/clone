@@ -10,7 +10,7 @@ import {
   Plus, Calendar, Trash2, X, Search,
   CheckCircle2, Circle, Clock, MessageSquare, ChevronDown, ChevronRight,
   Check, XCircle, Send, ListChecks, Link2, MoreHorizontal, AlertCircle,
-  Sparkles, Paperclip, FileText, Edit2, Play, Mail, UserPlus, UserCheck, CheckSquare
+  Sparkles, Paperclip, FileText, Edit2, Play, Mail
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -67,18 +67,12 @@ const Avatar = ({ name, size = 'sm' }) => {
 // ── Main page ────────────────────────────────────────────────────────────────
 const AdminTasks = ({ embedded = false }) => {
   const { user, getAuthHeaders } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isAdmin = user?.role === 'admin';
   const currentUserId = user?.id;
 
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [assignableUsers, setAssignableUsers] = useState([]);
-  const [canAssignToOthers, setCanAssignToOthers] = useState(false);
-  const [createModalSelfOnly, setCreateModalSelfOnly] = useState(false);
-
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialFilter = searchParams.get('filter') || (isAdmin ? 'team' : 'my');
-  const [filter, setFilter] = useState(initialFilter);
+  const [filter, setFilter] = useState(isAdmin ? 'team' : 'all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default'); // default | latest_completed | oldest_completed
   const [query, setQuery] = useState('');
@@ -86,37 +80,17 @@ const AdminTasks = ({ embedded = false }) => {
   const [editingTask, setEditingTask] = useState(null);
   const [detailTask, setDetailTask] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [searchParams, setSearchParams] = useSearchParams();
   const [subTaskParent, setSubTaskParent] = useState(null);
   const [groupByStatus, setGroupByStatus] = useState(true);
-
-  // Load assignable users to determine whether current user can assign to others and who they manage
-  useEffect(() => {
-    axios.get(`${API}/tasks/assignable-users`, { headers: getAuthHeaders() })
-      .then(res => {
-        const list = res.data || [];
-        setAssignableUsers(list);
-        if (isAdmin) {
-          setCanAssignToOthers(true);
-        } else {
-          const hasOthers = list.some(u => !u.is_self && u.id !== currentUserId);
-          setCanAssignToOthers(hasOthers);
-        }
-      })
-      .catch(() => {
-        setCanAssignToOthers(isAdmin);
-      });
-  }, [isAdmin, currentUserId, getAuthHeaders]);
-
-  const managedUserIds = useMemo(() => assignableUsers.map(u => u.id), [assignableUsers]);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
       const assigneeFilter = searchParams.get('assignee') || '';
-      const activeFilter = searchParams.get('filter') || filter;
       const url = assigneeFilter
         ? `${API}/tasks?filter=team&assignee=${assigneeFilter}`
-        : `${API}/tasks?filter=${activeFilter}`;
+        : `${API}/tasks?filter=${filter}`;
       const res = await axios.get(url, { headers: getAuthHeaders() });
       setTasks(res.data || []);
     } catch { toast.error('Failed to load tasks'); }
@@ -127,7 +101,6 @@ const AdminTasks = ({ embedded = false }) => {
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
-      setCreateModalSelfOnly(false);
       setShowCreate(true);
       searchParams.delete('new');
       setSearchParams(searchParams, { replace: true });
@@ -135,9 +108,8 @@ const AdminTasks = ({ embedded = false }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openCreate = (parent = null, selfOnly = false) => {
+  const openCreate = (parent = null) => {
     setSubTaskParent(parent);
-    setCreateModalSelfOnly(selfOnly);
     setShowCreate(true);
   };
 
@@ -225,26 +197,9 @@ const AdminTasks = ({ embedded = false }) => {
     return order.map(k => ({ key: k, tasks: g[k] })).filter(g => g.tasks.length > 0);
   }, [filteredTasks]);
 
-  const filterOptions = useMemo(() => {
-    if (isAdmin) {
-      return [
-        { v: 'team', l: 'All Team' },
-        { v: 'my', l: 'My Tasks' },
-        { v: 'by_me', l: 'Assigned by me' },
-      ];
-    }
-    if (canAssignToOthers) {
-      return [
-        { v: 'my', l: 'My Tasks' },
-        { v: 'team', l: 'My Team' },
-        { v: 'by_me', l: 'Assigned by me' },
-      ];
-    }
-    return [
-      { v: 'my', l: 'My Tasks' },
-      { v: 'by_me', l: 'Created by me' },
-    ];
-  }, [isAdmin, canAssignToOthers]);
+  const filterOptions = isAdmin
+    ? [{ v: 'team', l: 'All Team' }, { v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }]
+    : [{ v: 'all', l: 'All Tasks' }, { v: 'my', l: 'Assigned to me' }, { v: 'by_me', l: 'Assigned by me' }];
 
   const body = (
     <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-5" data-testid="admin-tasks-page">
@@ -261,48 +216,7 @@ const AdminTasks = ({ embedded = false }) => {
               {counts.pending_approval > 0 && <> • <span className="text-amber-600 font-medium">{counts.pending_approval}</span> awaiting approval</>}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* My Task button */}
-            <button
-              onClick={() => {
-                setFilter('my');
-                setSearchParams(prev => {
-                  prev.set('filter', 'my');
-                  prev.delete('assignee');
-                  return prev;
-                });
-              }}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                (searchParams.get('filter') === 'my' || (!searchParams.get('filter') && filter === 'my'))
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
-              data-testid="my-task-btn"
-            >
-              <UserCheck className="w-4 h-4 text-blue-500" />
-              My Task
-            </button>
-
-            {/* Add Task for Me button */}
-            <button
-              onClick={() => openCreate(null, true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm shadow-blue-600/20 transition-colors"
-              data-testid="add-task-for-me-btn"
-            >
-              <Plus className="w-4 h-4" /> Add Task for Me
-            </button>
-
-            {/* Add Task button (Assign to Another Person) - ONLY visible if canAssignToOthers */}
-            {canAssignToOthers && (
-              <button
-                onClick={() => openCreate(null, false)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium shadow-sm transition-colors"
-                data-testid="add-task-btn"
-              >
-                <UserPlus className="w-4 h-4 text-blue-400" /> Add Task
-              </button>
-            )}
-
+          <div className="flex items-center gap-2">
             {isAdmin && (
               <button
                 onClick={async () => {
@@ -332,6 +246,13 @@ const AdminTasks = ({ embedded = false }) => {
                 <Mail className="w-4 h-4" /> Nudge Overdue
               </button>
             )}
+            <button
+              onClick={() => openCreate(null)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium shadow-sm shadow-blue-500/20 transition-colors"
+              data-testid="new-task-btn"
+            >
+              <Plus className="w-4 h-4" /> New Task
+            </button>
           </div>
         </div>
 
@@ -427,7 +348,7 @@ const AdminTasks = ({ embedded = false }) => {
                 <ListChecks className="w-5 h-5 text-slate-400" />
               </div>
               <p className="text-sm text-slate-500 mb-1">No tasks match your filters</p>
-              <button onClick={() => openCreate(null, true)}
+              <button onClick={() => openCreate(null)}
                 className="text-sm text-blue-600 hover:underline font-medium">
                 Create your first task
               </button>
@@ -446,7 +367,6 @@ const AdminTasks = ({ embedded = false }) => {
                   getAuthHeaders={getAuthHeaders}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
-                  managedUserIds={managedUserIds}
                 />
               ))}
             </div>
@@ -466,7 +386,6 @@ const AdminTasks = ({ embedded = false }) => {
                   getAuthHeaders={getAuthHeaders}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
-                  managedUserIds={managedUserIds}
                 />
               ))}
             </div>
@@ -480,7 +399,6 @@ const AdminTasks = ({ embedded = false }) => {
           onCreated={() => loadTasks()}
           currentUser={user}
           parentTask={subTaskParent}
-          assignToSelfOnly={createModalSelfOnly}
         />
 
         {/* Edit modal (same shared component in edit mode) */}
@@ -490,7 +408,6 @@ const AdminTasks = ({ embedded = false }) => {
           onCreated={() => loadTasks()}
           currentUser={user}
           existingTask={editingTask}
-          assignToSelfOnly={!canAssignToOthers}
         />
 
         {/* Detail modal */}
@@ -531,7 +448,7 @@ const StatusChip = ({ label, count, active, onClick, dot, testid }) => (
 );
 
 // ── Status section (grouped card container) ──────────────────────────────────
-const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin, managedUserIds = [] }) => {
+const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDelete, onStatus, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin }) => {
   const [collapsed, setCollapsed] = useState(false);
   const S = STATUS_META[statusKey];
 
@@ -562,7 +479,6 @@ const StatusSection = ({ statusKey, tasks, expandedIds, onToggle, onOpen, onDele
               getAuthHeaders={getAuthHeaders}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
-              managedUserIds={managedUserIds}
             />
           ))}
         </div>
@@ -608,7 +524,7 @@ export const FloatingMenu = ({ anchorRef, onClose, children, testid }) => {
   );
 };
 
-export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin, managedUserIds = [] }) => {
+export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus, onAddSubtask, onEdit, getAuthHeaders, currentUserId, isAdmin }) => {
   const S = STATUS_META[task.status] || STATUS_META.pending;
   const P = PRIORITY_META[task.priority] || PRIORITY_META.medium;
   const overdue = isOverdue(task);
@@ -630,16 +546,9 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
   const isSelfAssigned = task.assigned_to === task.assigned_by;
   const isAssignee = currentUserId === task.assigned_to;
   const isApprover = currentUserId === task.assigned_by;
-  const isCreator = currentUserId === (task.created_by || task.assigned_by);
-  const isManagerOfAssignee = (managedUserIds || []).includes(task.assigned_to);
-  const isManagerOfCreator = (managedUserIds || []).includes(task.created_by || task.assigned_by);
-
   // Deletion is restricted to the task creator (or admin). Assignees cannot
   // delete tasks assigned to them — mirrors the backend guard in tasks.py.
-  const canDelete = isAdmin || isApprover || isCreator;
-
-  // Edit permission: admin, task creator, assignee, or manager of assignee/creator
-  const canEdit = isAdmin || isAssignee || isCreator || isManagerOfAssignee || isManagerOfCreator;
+  const canDelete = isAdmin || isApprover;
 
   const completeTask = async (e) => {
     e?.stopPropagation();
@@ -683,6 +592,9 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
     (task.status === 'pending_approval' && (isApprover || isAdmin))
   );
   const canStart = task.status === 'pending' && isAssignee;
+  // Anyone signed into the tasks module can edit (no more "waiting on the assignee/admin" bottleneck).
+  // Reassignment stays admin-only; that's enforced at the backend PATCH endpoint.
+  const canEdit = true;
 
   const attachmentCount = (task.attachments || []).length + (task.gdrive_link ? 1 : 0);
   const tagList = Array.isArray(task.tags) ? task.tags : [];
@@ -848,20 +760,6 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
           )}
         </div>
 
-        {/* Edit button */}
-        <div className="pt-1 w-[32px] shrink-0 flex justify-center">
-          {canEdit && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit?.(task); }}
-              title="Edit task"
-              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 opacity-70 group-hover:opacity-100 transition-all"
-              data-testid={`task-edit-btn-${task.id}`}
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
         {/* Assignee */}
         <div className="flex items-center gap-2 pt-0.5 w-[180px] shrink-0">
           <Avatar name={task.assigned_to_name} />
@@ -892,7 +790,7 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
             <FloatingMenu anchorRef={menuBtnRef} onClose={() => setMenuOpen(false)} testid={`task-menu-popup-${task.id}`}>
               {canEdit && onEdit && (
                 <button
-                  onClick={() => { setMenuOpen(false); onEdit?.(task); }}
+                  onClick={() => { setMenuOpen(false); onEdit(); }}
                   className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                   data-testid={`task-edit-${task.id}`}
                 >
@@ -1007,16 +905,6 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {canEdit && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit?.(task); }}
-                className="p-1.5 rounded-lg text-slate-500 bg-slate-100 hover:bg-slate-200"
-                title="Edit task"
-                data-testid={`task-edit-m-${task.id}`}
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-            )}
             {canStart && (
               <button onClick={startTask}
                 className="p-1.5 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100"
@@ -1040,7 +928,7 @@ export const TaskCard = ({ task, expanded, onToggle, onOpen, onDelete, onStatus,
         {menuOpen && (
           <FloatingMenu anchorRef={menuBtnRefMobile} onClose={() => setMenuOpen(false)} testid={`task-menu-popup-m-${task.id}`}>
             {canEdit && onEdit && (
-              <button onClick={() => { setMenuOpen(false); onEdit?.(task); }}
+              <button onClick={() => { setMenuOpen(false); onEdit(); }}
                 className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                 <Edit2 className="w-3.5 h-3.5" /> Edit task
               </button>
