@@ -28,8 +28,8 @@ import { toast, Toaster } from 'sonner';
 import {
   ArrowRight, Download, ShieldCheck, Trophy, Cpu, Code2, Brain,
   CheckCircle2, Sparkles, Users, BookOpen, Package, Award, Star,
-  School, MapPin, Play, Heart, ChevronRight, Phone, Mail, Building,
-  Layers, Radio, Gauge, Zap, Cog, Compass, Monitor, Check
+  School, MapPin, Play, Heart, ChevronRight, ChevronLeft, Phone, Mail, Building,
+  Layers, Radio, Gauge, Zap, Cog, Compass, Monitor, Check, Globe, Maximize2, X, Eye
 } from 'lucide-react';
 
 import Footer from '../../components/Footer';
@@ -42,6 +42,70 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const OLL_LOGO_COLOR =
   'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png';
+
+// High-resolution brochure slides extracted from the official 2027-28 OLL Advance Robotics Curriculum
+const BROCHURE_PAGES = [
+  {
+    page: 1,
+    tag: 'Page 1 · Cover',
+    badge: 'Curriculum Brochure (2027–28)',
+    title: 'OLL Advanced Robotics & AI Curriculum',
+    subtitle: 'Grades 3 – 10 · Robotics | Coding | AI | STEM',
+    src: '/school/advance/advance_page_1.webp',
+    desc: 'Official curriculum edition featuring turnkey student kits, grade-wise student workbooks, teacher lesson plans, and LMS software.',
+    keyPoints: [
+      'Comprehensive continuum across Grades 3 to 10',
+      'Turnkey physical hardware kits with snap-fit parts & sensors',
+      'Interactive coding with tablet & computer interfaces',
+      'STEM.org accredited & gateway to IIT Bombay Techfest'
+    ]
+  },
+  {
+    page: 3,
+    tag: 'Page 3 · Global Classrooms',
+    badge: 'Global Adaptation for Indian Schools',
+    title: 'From Global Classrooms to Your School',
+    subtitle: 'Adapting World-Leading Robotics Models (US & China)',
+    src: '/school/advance/advance_page_3.webp',
+    desc: 'We study, source, and adapt the world\'s best robotics education models (LEGO® Education, Mindstorms, SPIKE, and WeDo 2.0-style platforms) to design a holistic, school-ready program for Indian learners.',
+    keyPoints: [
+      'Study Global Models: Benchmarked against international standards',
+      'Source World-Class Kits: High-durability snap-fit parts & smart hubs',
+      'Grade-Wise Structured Curriculum: Aligned with NEP 2020 & NCF',
+      'Expert OLL Educators: Certified instructors dedicated to your school'
+    ]
+  },
+  {
+    page: 2,
+    tag: 'Page 2 · Global Mandates',
+    badge: 'International Workforce Blueprint',
+    title: 'Global Perspectives on Robotics Education',
+    subtitle: 'National Mandates & Methodologies Across Leading Economies',
+    src: '/school/advance/advance_page_2.webp',
+    desc: 'A primary driver for preparing future workforces, backed by national mandates and innovative methodologies across leading global economies like China and the United States.',
+    keyPoints: [
+      'China: Top-down national AI mandates & structured hardware',
+      'United States: STEM problem-solving & competition leagues (VEX, FIRST)',
+      'Bridging academic research with hands-on school application',
+      'Moving towards hands-on, future-ready technology education'
+    ]
+  },
+  {
+    page: 4,
+    tag: 'Page 4 · Curriculum Stack',
+    badge: 'Grade 3 to 10 Continuum',
+    title: 'Grade-wise Concept Explanation & Learning Approach',
+    subtitle: 'Explore Concepts > Build Models > Code & Program > Test & Improve > Create Real Projects',
+    src: '/school/advance/advance_page_4.webp',
+    desc: 'Complete modular learning roadmap transitioning from mechanical linkages and optical sensors to Arduino embedded C++, OLED graphics, and ESP32 Voice AI.',
+    keyPoints: [
+      'Grade 3–4: Robotics with Motion, Gears & Sensor Automation',
+      'Grade 5–6: Power Transmission, Torque & RF Wireless Control',
+      'Grade 7–8: Arduino Breadboarding, Microcontrollers & Industrial Automation',
+      'Grade 9–10: OLED Arcade Gaming, ESP32 IoT & Local Voice AI (STT/TTS)'
+    ]
+  }
+];
 
 const CANONICAL_PATH =
   '/school/advance-robotics-and-ai-curriculum-books-with-kits-for-grades-3-to-10';
@@ -229,6 +293,17 @@ export default function RoboticsAdvanceLanding() {
   const [selectedGradeIdx, setSelectedGradeIdx] = useState(0);
   const [gateOpen, setGateOpen] = useState(false);
   const [activeVideoModal, setActiveVideoModal] = useState(null);
+  const [heroBrochureIdx, setHeroBrochureIdx] = useState(0);
+  const [lightboxPageIdx, setLightboxPageIdx] = useState(null);
+
+  // Close lightbox on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setLightboxPageIdx(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Form submission state
   const [leadForm, setLeadForm] = useState({
@@ -453,59 +528,126 @@ export default function RoboticsAdvanceLanding() {
               </div>
             </div>
 
-            {/* Hero Right: Showcase Banner Card */}
+            {/* Hero Right: Showcase Banner Card - Featuring Page 1 Cover & Quick Tabs */}
             <div style={{ position: 'relative' }}>
               <div style={{
                 background: '#FFFFFF', borderRadius: '1.75rem',
                 border: '2px solid #E2E8F0', overflow: 'hidden',
-                boxShadow: '0 16px 40px rgba(15, 30, 80, 0.1)'
+                boxShadow: '0 20px 45px rgba(15, 30, 80, 0.12)'
               }}>
+                {/* Header Bar */}
                 <div style={{
                   background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 100%)',
-                  padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff'
+                  padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Package size={18} style={{ color: '#F87171' }} />
-                    <span style={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '0.02em' }}>
-                      Advance Robotics Kit (2027–28 Edition)
+                    <Package size={17} style={{ color: '#F87171' }} />
+                    <span style={{ fontWeight: 800, fontSize: '0.88rem', letterSpacing: '0.01em' }}>
+                      Advance Robotics · {BROCHURE_PAGES[heroBrochureIdx].tag}
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'rgba(255,255,255,0.15)', padding: '0.2rem 0.6rem', borderRadius: '999px' }}>
-                    Turnkey Solution
-                  </span>
-                </div>
-
-                <div style={{ padding: '1rem', textAlign: 'center', background: '#F8FAFC' }}>
-                  <img
-                    src="/school/advance/advance_overview_hero.webp"
-                    alt="Advance Robotics Curriculum Overview"
+                  <button
+                    onClick={() => setLightboxPageIdx(heroBrochureIdx)}
+                    title="Click to zoom brochure page"
                     style={{
-                      width: '100%', maxHeight: 380, objectFit: 'contain',
-                      borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#fff'
+                      background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+                      fontSize: '0.72rem', fontWeight: 700, padding: '0.25rem 0.65rem', borderRadius: '999px',
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem'
                     }}
-                  />
+                  >
+                    <Maximize2 size={12} /> Fullpage Zoom
+                  </button>
                 </div>
 
-                <div style={{ padding: '1.25rem 1.5rem', background: '#fff', borderTop: '1px solid #E2E8F0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Modular Progression
-                      </div>
-                      <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#0A1F44' }}>
-                        Grades 3 to 10 Curriculum Stack
-                      </div>
-                    </div>
+                {/* Interactive Mini-Tab Strip */}
+                <div style={{
+                  display: 'flex', background: '#F1F5F9', borderBottom: '1px solid #E2E8F0', padding: '0.35rem 0.5rem', gap: '0.35rem'
+                }}>
+                  {[
+                    { idx: 0, label: 'Page 1 · Cover' },
+                    { idx: 1, label: 'Page 3 · Global Models' },
+                    { idx: 3, label: 'Page 4 · Grade Stack' }
+                  ].map((tb) => (
                     <button
-                      onClick={() => setGateOpen(true)}
+                      key={tb.idx}
+                      onClick={() => setHeroBrochureIdx(tb.idx)}
                       style={{
-                        background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '0.75rem',
-                        padding: '0.5rem 0.9rem', fontSize: '0.8rem', fontWeight: 700, color: '#0F1E33',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'
+                        flex: 1, padding: '0.45rem 0.6rem', borderRadius: '0.6rem',
+                        border: heroBrochureIdx === tb.idx ? '1px solid #DC2626' : '1px solid transparent',
+                        background: heroBrochureIdx === tb.idx ? '#FFFFFF' : 'transparent',
+                        color: heroBrochureIdx === tb.idx ? '#DC2626' : '#64748B',
+                        fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer',
+                        boxShadow: heroBrochureIdx === tb.idx ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                        transition: 'all 0.15s'
                       }}
                     >
-                      <Download size={14} /> View PDF
+                      {tb.label}
                     </button>
+                  ))}
+                </div>
+
+                {/* Image Container with Hover Lightbox Trigger */}
+                <div
+                  onClick={() => setLightboxPageIdx(heroBrochureIdx)}
+                  style={{
+                    padding: '1rem', textAlign: 'center', background: '#F8FAFC',
+                    cursor: 'pointer', position: 'relative'
+                  }}
+                  title="Click to view fullpage high-res preview"
+                >
+                  <img
+                    src={BROCHURE_PAGES[heroBrochureIdx].src}
+                    alt={BROCHURE_PAGES[heroBrochureIdx].title}
+                    style={{
+                      width: '100%', maxHeight: 390, objectFit: 'contain',
+                      borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#fff',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.05)', transition: 'transform 0.2s'
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute', bottom: '1.5rem', right: '1.5rem',
+                    background: 'rgba(10,31,68,0.85)', backdropFilter: 'blur(6px)', color: '#fff',
+                    padding: '0.35rem 0.75rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: '0.35rem', pointerEvents: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}>
+                    <Maximize2 size={12} /> Click to expand
+                  </div>
+                </div>
+
+                {/* Footer Bar */}
+                <div style={{ padding: '1.1rem 1.35rem', background: '#fff', borderTop: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {BROCHURE_PAGES[heroBrochureIdx].badge}
+                      </div>
+                      <div style={{ fontWeight: 900, fontSize: '1rem', color: '#0A1F44', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {BROCHURE_PAGES[heroBrochureIdx].title}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                      <button
+                        onClick={() => setLightboxPageIdx(heroBrochureIdx)}
+                        style={{
+                          background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '0.65rem',
+                          padding: '0.45rem 0.75rem', fontSize: '0.76rem', fontWeight: 700, color: '#1D4ED8',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                        }}
+                      >
+                        <Eye size={13} /> Inspect
+                      </button>
+                      <button
+                        onClick={() => setGateOpen(true)}
+                        style={{
+                          background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '0.65rem',
+                          padding: '0.45rem 0.75rem', fontSize: '0.76rem', fontWeight: 700, color: '#0F1E33',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                        }}
+                      >
+                        <Download size={13} /> PDF
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -549,6 +691,282 @@ export default function RoboticsAdvanceLanding() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 4.5 GLOBAL ROBOTICS BENCHMARK & METHODOLOGY SHOWCASE (PAGE 2 & PAGE 3 DEEP-DIVE) */}
+      <section id="global-methodology" style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+            fontSize: '0.75rem', fontWeight: 800, color: '#DC2626',
+            letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.5rem',
+            background: '#FEF2F2', padding: '0.35rem 0.85rem', borderRadius: '999px', border: '1px solid #FECACA'
+          }}>
+            <Globe size={14} /> Global Standards · Local Relevance
+          </div>
+          <h2 style={{ fontSize: 'clamp(1.75rem, 3.2vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
+            From Global Classrooms to Your School
+          </h2>
+          <p style={{ color: '#64748B', maxWidth: 720, margin: '0.5rem auto 0', fontSize: '0.98rem', lineHeight: 1.6 }}>
+            We study, source, and adapt the world’s leading robotics education models (US &amp; China)
+            into an accredited, turnkey, school-ready curriculum designed for Indian students.
+          </p>
+        </div>
+
+        {/* 2-Card Side-by-Side Visual Showcase: Page 3 and Page 2 */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: '2rem', alignItems: 'stretch'
+        }}>
+          {/* Card 1: Page 3 - From Global Classrooms to Your School */}
+          <div style={{
+            background: '#FFFFFF', borderRadius: '1.75rem', border: '2px solid #E2E8F0',
+            overflow: 'hidden', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 12px 32px rgba(15, 30, 80, 0.06)', transition: 'transform 0.2s, box-shadow 0.2s'
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 100%)',
+              padding: '1.1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#F87171' }}>
+                  Brochure Page 3
+                </span>
+                <div style={{ fontSize: '1rem', fontWeight: 800 }}>
+                  From Global Classrooms to Your School
+                </div>
+              </div>
+              <button
+                onClick={() => setLightboxPageIdx(1)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '0.5rem',
+                  padding: '0.4rem 0.75rem', color: '#fff', fontSize: '0.75rem', fontWeight: 700,
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem'
+                }}
+              >
+                <Maximize2 size={13} /> Zoom
+              </button>
+            </div>
+
+            {/* Image Preview with Hover Overlay */}
+            <div
+              onClick={() => setLightboxPageIdx(1)}
+              style={{
+                background: '#F8FAFC', padding: '1.25rem', textAlign: 'center',
+                cursor: 'pointer', position: 'relative', overflow: 'hidden'
+              }}
+            >
+              <img
+                src="/school/advance/advance_page_3.webp"
+                alt="From Global Classrooms to Your School - OLL Robotics Models"
+                style={{
+                  width: '100%', maxHeight: 340, objectFit: 'contain',
+                  borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#fff',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
+                }}
+              />
+              <div style={{
+                marginTop: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                fontSize: '0.75rem', fontWeight: 700, color: '#2563EB'
+              }}>
+                <Eye size={13} /> Click to view full high-res brochure page
+              </div>
+            </div>
+
+            {/* Key Content Breakdown from Page 3 */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
+                  4 Pillars of OLL Adaptation
+                </div>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0A1F44', marginBottom: '0.75rem' }}>
+                  Proven LEGO® &amp; WeDo 2.0-Style Kits Made Affordable
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {[
+                    { label: 'Study Global Models', desc: 'Researched international curricula across the United States (LEGO® Education, SPIKE, Mindstorms) and China.' },
+                    { label: 'Source World-Class Kits', desc: 'Procure proven platforms like LEGO® and WeDo 2.0-style kits with rechargeable hubs and precision motors.' },
+                    { label: 'Grade-Wise Structured Curriculum', desc: 'Progressive, hands-on syllabus seamlessly mapped to NEP 2020 and Indian school timetables.' },
+                    { label: 'Expert OLL Educator', desc: 'Trained, certified facilitators stationed in school to deliver robotics & AI lessons with ongoing teacher mentoring.' }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: 999, background: '#EFF6FF',
+                        color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, marginTop: 2
+                      }}>
+                        {idx + 1}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#0A1F44' }}>{item.label}:</strong> {item.desc}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B' }}>
+                  Global Innovation · Local Relevance
+                </span>
+                <button
+                  onClick={() => setLightboxPageIdx(1)}
+                  style={{
+                    background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '0.6rem',
+                    padding: '0.45rem 0.85rem', fontSize: '0.78rem', fontWeight: 700, color: '#0A1F44',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                  }}
+                >
+                  <Eye size={13} /> Inspect Page 3
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Page 2 - Global Perspectives on Robotics Education */}
+          <div style={{
+            background: '#FFFFFF', borderRadius: '1.75rem', border: '2px solid #E2E8F0',
+            overflow: 'hidden', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 12px 32px rgba(15, 30, 80, 0.06)', transition: 'transform 0.2s, box-shadow 0.2s'
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+              padding: '1.1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#60A5FA' }}>
+                  Brochure Page 2
+                </span>
+                <div style={{ fontSize: '1rem', fontWeight: 800 }}>
+                  Global Perspectives on Robotics Education
+                </div>
+              </div>
+              <button
+                onClick={() => setLightboxPageIdx(2)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '0.5rem',
+                  padding: '0.4rem 0.75rem', color: '#fff', fontSize: '0.75rem', fontWeight: 700,
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem'
+                }}
+              >
+                <Maximize2 size={13} /> Zoom
+              </button>
+            </div>
+
+            {/* Image Preview with Hover Overlay */}
+            <div
+              onClick={() => setLightboxPageIdx(2)}
+              style={{
+                background: '#F8FAFC', padding: '1.25rem', textAlign: 'center',
+                cursor: 'pointer', position: 'relative', overflow: 'hidden'
+              }}
+            >
+              <img
+                src="/school/advance/advance_page_2.webp"
+                alt="Global Perspectives on Robotics Education - China & USA"
+                style={{
+                  width: '100%', maxHeight: 340, objectFit: 'contain',
+                  borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#fff',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
+                }}
+              />
+              <div style={{
+                marginTop: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                fontSize: '0.75rem', fontWeight: 700, color: '#2563EB'
+              }}>
+                <Eye size={13} /> Click to view full high-res brochure page
+              </div>
+            </div>
+
+            {/* Key Content Breakdown from Page 2 */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
+                  Why World Economies Mandate Robotics
+                </div>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0A1F44', marginBottom: '0.75rem' }}>
+                  Preparing Future Workforces from Grade 3 Upwards
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {[
+                    { country: '🇨🇳 China Mandate', desc: 'Central AI & automation industrial planning. Mass AI literacy and specialized maker facilities like Hangzhou Robot School.' },
+                    { country: '🇺🇸 United States', desc: 'STEM problem-solving, open-ended design thinking, programming logic, and competitive leagues (VEX, FIRST Robotics).' },
+                    { country: '⚡ Real-World Relevance', desc: 'Connecting academic research with industry-ready robotics learning and interactive humanoid classroom tools.' },
+                    { country: '🇮🇳 India’s Opportunity', desc: 'NEP 2020 calls for experiential learning. OLL gives every Indian school an international-grade lab turnkey.' }
+                  ].map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: 999, background: '#FEF2F2',
+                        color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, marginTop: 2
+                      }}>
+                        ✓
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#0A1F44' }}>{item.country}:</strong> {item.desc}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B' }}>
+                  Backed by Global National Frameworks
+                </span>
+                <button
+                  onClick={() => setLightboxPageIdx(2)}
+                  style={{
+                    background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '0.6rem',
+                    padding: '0.45rem 0.85rem', fontSize: '0.78rem', fontWeight: 700, color: '#0A1F44',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                  }}
+                >
+                  <Eye size={13} /> Inspect Page 2
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Banner Strip */}
+        <div style={{
+          marginTop: '2rem', background: 'linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)',
+          borderRadius: '1.25rem', border: '1px solid #DBEAFE', padding: '1.25rem 1.75rem',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem'
+        }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0A1F44' }}>
+              Want to review the complete 32-page Advance Curriculum &amp; Kit Blueprint?
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '0.2rem' }}>
+              Download the official brochure PDF or request an on-campus demonstration with physical kits.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              onClick={() => setGateOpen(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                background: '#DC2626', color: '#fff', border: 'none', borderRadius: '0.75rem',
+                padding: '0.65rem 1.25rem', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)'
+              }}
+            >
+              <Download size={15} /> Download PDF
+            </button>
+            <a
+              href="#book-demo-section"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                background: '#FFFFFF', color: '#0A1F44', border: '1px solid #CBD5E1', borderRadius: '0.75rem',
+                padding: '0.65rem 1.25rem', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'none'
+              }}
+            >
+              Book School Demo <ArrowRight size={15} />
+            </a>
+          </div>
         </div>
       </section>
 
@@ -1175,6 +1593,150 @@ export default function RoboticsAdvanceLanding() {
 
       {/* 13. FOOTER */}
       <Footer />
+
+      {/* ── HIGH-RESOLUTION CURRICULUM BROCHURE LIGHTBOX MODAL ─────── */}
+      {lightboxPageIdx !== null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Brochure Page Viewer"
+          onClick={() => setLightboxPageIdx(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem', background: 'rgba(10, 31, 68, 0.88)', backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', maxWidth: 860, maxHeight: '94vh',
+              background: '#FFFFFF', borderRadius: '1.5rem', overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+              border: '2px solid rgba(255,255,255,0.2)'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0A1F44 0%, #1E3A5F 100%)',
+              padding: '0.9rem 1.25rem', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem'
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#F87171', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {BROCHURE_PAGES[lightboxPageIdx].badge}
+                </span>
+                <div style={{ fontWeight: 800, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {BROCHURE_PAGES[lightboxPageIdx].title}
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                {/* Page Navigation */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.12)',
+                  borderRadius: '999px', padding: '0.2rem 0.5rem', gap: '0.35rem'
+                }}>
+                  <button
+                    onClick={() => setLightboxPageIdx((lightboxPageIdx - 1 + BROCHURE_PAGES.length) % BROCHURE_PAGES.length)}
+                    aria-label="Previous page"
+                    style={{
+                      background: 'none', border: 'none', color: '#fff', cursor: 'pointer',
+                      padding: 2, display: 'flex', alignItems: 'center'
+                    }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0 0.35rem' }}>
+                    {lightboxPageIdx + 1} / {BROCHURE_PAGES.length}
+                  </span>
+                  <button
+                    onClick={() => setLightboxPageIdx((lightboxPageIdx + 1) % BROCHURE_PAGES.length)}
+                    aria-label="Next page"
+                    style={{
+                      background: 'none', border: 'none', color: '#fff', cursor: 'pointer',
+                      padding: 2, display: 'flex', alignItems: 'center'
+                    }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Download PDF button */}
+                <button
+                  onClick={() => { setLightboxPageIdx(null); setGateOpen(true); }}
+                  style={{
+                    background: '#DC2626', color: '#fff', border: 'none', borderRadius: '0.5rem',
+                    padding: '0.45rem 0.85rem', fontSize: '0.75rem', fontWeight: 800,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem'
+                  }}
+                >
+                  <Download size={13} /> PDF
+                </button>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setLightboxPageIdx(null)}
+                  aria-label="Close modal"
+                  style={{
+                    width: 32, height: 32, borderRadius: 999,
+                    background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Body */}
+            <div style={{
+              flex: 1, overflowY: 'auto', background: '#0F172A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+            }}>
+              <img
+                src={BROCHURE_PAGES[lightboxPageIdx].src}
+                alt={BROCHURE_PAGES[lightboxPageIdx].title}
+                style={{
+                  maxWidth: '100%', maxHeight: 'calc(80vh - 100px)',
+                  objectFit: 'contain', borderRadius: '0.75rem',
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.5)'
+                }}
+              />
+            </div>
+
+            {/* Modal Footer Thumbnail Strip */}
+            <div style={{
+              background: '#FFFFFF', padding: '0.75rem 1rem', borderTop: '1px solid #E2E8F0',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', overflowX: 'auto'
+            }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {BROCHURE_PAGES.map((bp, idx) => (
+                  <button
+                    key={bp.page}
+                    onClick={() => setLightboxPageIdx(idx)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.4rem',
+                      padding: '0.35rem 0.65rem', borderRadius: '0.5rem',
+                      border: lightboxPageIdx === idx ? '2px solid #DC2626' : '1px solid #E2E8F0',
+                      background: lightboxPageIdx === idx ? '#FEF2F2' : '#F8FAFC',
+                      color: lightboxPageIdx === idx ? '#DC2626' : '#475569',
+                      fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer'
+                    }}
+                  >
+                    <span>{bp.tag}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ fontSize: '0.75rem', color: '#64748B', whiteSpace: 'nowrap' }}>
+                Press <strong style={{ color: '#0A1F44' }}>ESC</strong> or click outside to close
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 14. CURRICULUM DOWNLOAD LEAD-GATE MODAL */}
       <CurriculumGateModal
