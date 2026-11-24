@@ -29,6 +29,7 @@ import ComingSoonView from '../components/ComingSoonView';
 import ChatMessagesView from '../components/ChatMessagesView';
 import SchoolsCrmScreen from './SchoolsCrmScreen';
 import FieldVisitScreen from './FieldVisitScreen';
+import TasksScreen from './TasksScreen';
 import { SUGGESTED_ACTIONS, MOCK_RESPONSES } from '../data/suggestedActions';
 import { api } from '../services/api';
 
@@ -260,6 +261,32 @@ export default function MainScreen({ user, onLogout }) {
   const canAccessFieldVisit = isUserAdmin || userPerms.includes('field_reports') || userPerms.includes('field_visit') || userPerms.includes('field_reports_admin');
   const canAccessSchoolCrm = isUserAdmin || userPerms.includes('schools');
 
+  const currentUserId = effectiveUser?.id || effectiveUser?.user_id || '';
+  const currentUserName = effectiveUser?.name || effectiveUser?.email || 'Myself';
+
+  // Subordinates calculation
+  const managedUsers = (assignableUsers || []).filter(
+    (u) => !u.is_self && u.id !== currentUserId
+  );
+  const managedUserIds = managedUsers.map((u) => u.id);
+  const canAssignToOthers = isUserAdmin || managedUsers.length > 0;
+
+  // Determine whether current user can edit a particular task
+  const canEditTask = (task) => {
+    if (!task) return false;
+    if (isUserAdmin) return true;
+    if (task.assigned_to === currentUserId || task.assigned_by === currentUserId) return true;
+    if (managedUserIds.includes(task.assigned_to) || managedUserIds.includes(task.assigned_by)) return true;
+    return false;
+  };
+
+  const getTaskActionChips = () => {
+    if (canAssignToOthers) {
+      return ['My Task', 'Add Task for Me', 'Add Task'];
+    }
+    return ['My Task', 'Add Task for Me'];
+  };
+
   // 11b. Edit Task Modal State
   const [editTaskModalVisible, setEditTaskModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -273,6 +300,10 @@ export default function MainScreen({ user, onLogout }) {
 
   const openEditTaskModal = (task) => {
     if (!task) return;
+    if (!canEditTask(task)) {
+      Alert.alert('Access Denied', 'You do not have permission to edit this task.');
+      return;
+    }
     setEditingTask(task);
     setEditTaskTitle(task.title || '');
     setEditTaskDescription(task.description || '');
@@ -283,51 +314,65 @@ export default function MainScreen({ user, onLogout }) {
     setEditTaskModalVisible(true);
   };
 
-  const handleSaveEditTaskSubmit = async () => {
+  const handleSaveEditTaskSubmit = () => {
     if (!editingTask) return;
     if (!editTaskTitle.trim()) {
       Alert.alert('Required', 'Task title cannot be blank.');
       return;
     }
-    setIsSavingEditTask(true);
-    const updatePayload = {
-      title: editTaskTitle.trim(),
-      description: editTaskDescription.trim(),
-      due_date: editTaskDueDate || null,
-      priority: editTaskPriority,
-      status: editTaskStatus,
-      assigned_to: editTaskAssignee || null,
-    };
-    const res = await api.updateTask(editingTask.id, updatePayload);
-    setIsSavingEditTask(false);
 
-    if (res.success && res.task) {
-      setEditTaskModalVisible(false);
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.taskCard && m.taskCard.id === editingTask.id) {
-            return { ...m, taskCard: res.task };
-          }
-          if (m.taskListCard && Array.isArray(m.taskListCard.tasks)) {
-            return {
-              ...m,
-              taskListCard: {
-                ...m.taskListCard,
-                tasks: m.taskListCard.tasks.map((t) => (t.id === editingTask.id ? res.task : t)),
-              },
+    // Confirmation dialog before saving task updates
+    Alert.alert(
+      'Are you sure you want to update this task?',
+      `• Title: ${editTaskTitle.trim()}\n• Description: ${editTaskDescription.trim() || 'None'}\n• Priority: ${editTaskPriority.toUpperCase()}\n• Deadline: ${editTaskDueDate || 'None'}\n• Status: ${editTaskStatus}`,
+      [
+        { text: 'Cancel – Return to Editing', style: 'cancel' },
+        {
+          text: 'Confirm – Update Task',
+          onPress: async () => {
+            setIsSavingEditTask(true);
+            const updatePayload = {
+              title: editTaskTitle.trim(),
+              description: editTaskDescription.trim(),
+              due_date: editTaskDueDate || null,
+              priority: editTaskPriority,
+              status: editTaskStatus,
+              assigned_to: canAssignToOthers ? (editTaskAssignee || editingTask.assigned_to) : editingTask.assigned_to,
             };
-          }
-          return m;
-        })
-      );
-      Alert.alert('Updated', 'Task updated successfully.');
-    } else {
-      if (res.status === 403 || (res.error && res.error.toLowerCase().includes('access denied'))) {
-        Alert.alert('Access Denied', 'Access denied.');
-      } else {
-        Alert.alert('Error', res.error || 'Failed to update task.');
-      }
-    }
+            const res = await api.updateTask(editingTask.id, updatePayload);
+            setIsSavingEditTask(false);
+
+            if (res.success && res.task) {
+              setEditTaskModalVisible(false);
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.taskCard && m.taskCard.id === editingTask.id) {
+                    return { ...m, taskCard: res.task };
+                  }
+                  if (m.taskListCard && Array.isArray(m.taskListCard.tasks)) {
+                    return {
+                      ...m,
+                      taskListCard: {
+                        ...m.taskListCard,
+                        tasks: m.taskListCard.tasks.map((t) => (t.id === editingTask.id ? res.task : t)),
+                      },
+                    };
+                  }
+                  return m;
+                })
+              );
+              Alert.alert('Updated', 'Task updated successfully.');
+            } else {
+              if (res.status === 403 || (res.error && res.error.toLowerCase().includes('access denied'))) {
+                Alert.alert('Access Denied', 'Access denied.');
+              } else {
+                Alert.alert('Error', res.error || 'Failed to update task.');
+              }
+            }
+          },
+        },
+      ]
+    );
   };
 
   // 12. View Comments & Activity History Modal State (Web App CRM View)
@@ -1314,25 +1359,24 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   const promptCreateTaskConfirmation = (taskDetails) => {
-    const isSelf = !taskDetails.assigned_to || taskDetails.assigned_to === (user?.id || user?.user_id);
-    const assignedLabel = taskDetails.assignee_name || (isSelf ? (user?.name || 'Bhumi Sanghvi') : 'Team Member');
+    const isSelf = !taskDetails.assigned_to || taskDetails.assigned_to === currentUserId;
+    const assignedLabel = taskDetails.assignee_name || (isSelf ? `Myself (${currentUserName})` : 'Team Member');
 
     const confCard = {
       id: `task-create-${Date.now()}`,
       actionType: 'create_task',
-      title: isSelf ? 'Confirm Task Creation' : `Confirm Assigning Task to ${assignedLabel}`,
-      description: isSelf
-        ? 'Please confirm adding this task to OLL Mission Control:'
-        : `Please confirm assigning this task to ${assignedLabel} in Mission Control:`,
+      title: 'Are you sure you want to create this task?',
+      description: 'Please review the important task details before saving to Mission Control:',
       details: [
         { label: 'Task Title', value: taskDetails.title },
-        { label: 'Assigned To', value: assignedLabel },
+        { label: 'Description', value: taskDetails.description || 'None provided' },
+        { label: 'Assigned Person', value: assignedLabel },
+        { label: 'Deadline', value: taskDetails.due_date ? taskDetails.due_date.split('T')[0] : 'None' },
         { label: 'Priority', value: (taskDetails.priority || 'medium').toUpperCase() },
-        { label: 'Due Date', value: taskDetails.due_date ? taskDetails.due_date.split('T')[0] : 'Tomorrow' },
       ],
       payload: taskDetails,
-      confirmLabel: isSelf ? 'Yes, Create Task' : `Yes, Assign Task`,
-      cancelLabel: 'No, Cancel',
+      confirmLabel: 'Confirm – Create Task',
+      cancelLabel: 'Cancel – Return to Editing',
       danger: false,
       status: 'pending',
     };
@@ -1342,11 +1386,9 @@ export default function MainScreen({ user, onLogout }) {
       ...prev,
       {
         sender: 'ai',
-        text: isSelf
-          ? `📋 **Confirm Task Creation:**\n\nI have prepared the task **"${taskDetails.title}"** for Mission Control.\n\nPlease confirm to create this task:`
-          : `📋 **Confirm Assigning Task to ${assignedLabel}:**\n\nI have prepared the task **"${taskDetails.title}"** assigned to **${assignedLabel}**.\n\nPlease confirm to dispatch this task:`,
+        text: `📋 **Are you sure you want to create this task?**\n\n• **Task Title:** ${taskDetails.title}\n• **Assigned Person:** ${assignedLabel}\n• **Deadline:** ${taskDetails.due_date ? taskDetails.due_date.split('T')[0] : 'None'}\n• **Priority:** ${(taskDetails.priority || 'medium').toUpperCase()}`,
         confirmationCard: confCard,
-        nextActions: ['My Tasks', 'Create Task'],
+        nextActions: getTaskActionChips(),
         time: 'Just now',
       },
     ]);
@@ -1581,60 +1623,32 @@ export default function MainScreen({ user, onLogout }) {
 
   const handleSubmitInlineTask = async (taskData) => {
     if (!taskData || !taskData.title) return;
-    setIsTyping(true);
     const myId = effectiveUser?.id || effectiveUser?.user_id;
     const assignedId = taskData.assigned_to || myId;
 
     // Check authorization: can user assign to assignedId?
     const canAssign = isUserAdmin || assignedId === myId || (assignableUsers || []).some((u) => u.id === assignedId);
     if (!canAssign) {
-      setIsTyping(false);
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
           text: 'Access denied.',
-          nextActions: ['My Tasks'],
+          nextActions: getTaskActionChips(),
           time: 'Just now',
         },
       ]);
       return;
     }
 
-    const payload = {
+    promptCreateTaskConfirmation({
       title: taskData.title.trim(),
+      description: taskData.description || '',
       priority: taskData.priority || 'medium',
       due_date: taskData.due_date || null,
       assigned_to: assignedId,
-    };
-
-    const res = await api.createTask(payload);
-    setIsTyping(false);
-    if (res.success && res.task) {
-      const isSelf = assignedId === myId;
-      const assigneeLabel = taskData.assignee_name || (isSelf ? 'Myself' : 'Team Member');
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: `✅ **Task Created Successfully!**\n\nTask **${res.task.code || 'TSK'} — "${res.task.title}"** has been assigned to **${assigneeLabel}** and saved to Mission Control.`,
-          taskCard: res.task,
-          nextActions: ['My Tasks'],
-          time: 'Just now',
-        },
-      ]);
-    } else {
-      const isAccess = res.status === 403 || res.error?.includes('403') || res.error?.toLowerCase().includes('permission') || res.error?.toLowerCase().includes('access denied');
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: isAccess ? 'Access denied.' : `❌ **Failed to create task:** ${res.error || 'Server error'}`,
-          nextActions: ['My Tasks'],
-          time: 'Just now',
-        },
-      ]);
-    }
+      assignee_name: taskData.assignee_name,
+    });
   };
 
   // ── Execute Confirmed & Cancelled Operations ────────────────────────────────
@@ -1996,7 +2010,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `✅ **Task Created Successfully!**\n\nTask **${res.task.code || 'TSK'} — "${res.task.title}"** has been assigned to **${assigneeLabel}** and saved to OLL Mission Control. In-app & WhatsApp notifications triggered.`,
             taskCard: res.task,
-            nextActions: ['My Tasks', 'Create Task'],
+            nextActions: getTaskActionChips(),
             time: 'Just now',
           },
         ]);
@@ -2010,7 +2024,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: errText,
-            nextActions: ['My Tasks'],
+            nextActions: getTaskActionChips(),
             time: 'Just now',
           },
         ]);
@@ -2029,7 +2043,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `✅ **Task Reassigned Successfully!**\n\nTask **${res.task.code || payload.taskCode} — "${res.task.title || payload.taskTitle}"** is now assigned to **${payload.targetUserName}**.\n• In-app & WhatsApp notifications dispatched.`,
             taskCard: res.task,
-            nextActions: ['My Tasks', 'Create Task'],
+            nextActions: getTaskActionChips(),
             time: 'Just now',
           },
         ]);
@@ -2114,6 +2128,31 @@ export default function MainScreen({ user, onLogout }) {
     );
 
     setPendingConfirmation(null);
+
+    if (confCard.actionType === 'create_task') {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `↩️ **Returned to Editing:** Here is your task draft. You can make adjustments before submitting:`,
+          taskCreationCard: {
+            initialTitle: confCard.payload?.title || '',
+            initialPriority: confCard.payload?.priority || 'medium',
+            initialAssigneeId: confCard.payload?.assigned_to || '',
+            initialAssigneeName: confCard.payload?.assignee_name || '',
+            initialDueDate: confCard.payload?.due_date || '',
+            initialDescription: confCard.payload?.description || '',
+            mode: confCard.payload?.assigned_to && confCard.payload?.assigned_to !== currentUserId ? 'assign' : 'self',
+            canAssignToOthers,
+            teamUsers: assignableUsers.length > 0 ? assignableUsers : teamUsers,
+          },
+          nextActions: getTaskActionChips(),
+          time: 'Just now',
+        },
+      ]);
+      return;
+    }
+
     setMessages((prev) => [
       ...prev,
       {
@@ -2426,7 +2465,7 @@ export default function MainScreen({ user, onLogout }) {
       {
         sender: 'ai',
         text: `✉️ **Email Dispatched:** Personalized pitch sent to **${emailTargetLead.email}** for ${emailTargetLead.schoolName || emailTargetLead.school_name}.`,
-        nextActions: ['Follow Up on WhatsApp', 'Schedule Demo Session', 'Generate Proposal Quote'],
+        nextActions: ['Follow Up on WhatsApp', 'Follow Up Call', 'Generate Proposal Quote'],
         time: 'Just now',
       },
     ]);
@@ -2962,11 +3001,14 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   // ── Handle Sending Custom Text in Chat ───────────────────────────────────────
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
+  const handleSend = async (overrideText = null) => {
+    const rawText = (overrideText !== null ? overrideText : inputText).trim();
+    if (!rawText) return;
 
-    const userText = inputText.trim();
-    setInputText('');
+    const userText = rawText;
+    if (overrideText === null) {
+      setInputText('');
+    }
     setChatMode(true);
 
     const userMsg = {
@@ -3063,8 +3105,12 @@ export default function MainScreen({ user, onLogout }) {
       lower === 'create task for myself' ||
       lower === 'create a task for myself' ||
       lower === 'task for myself' ||
+      lower === 'add task for me' ||
+      lower === 'task for me' ||
       lower.startsWith('create task for myself') ||
-      lower.startsWith('create a task for myself');
+      lower.startsWith('create a task for myself') ||
+      lower.startsWith('add task for me') ||
+      lower.includes('add task for me');
 
     if (isCreateTaskForMyself) {
       setIsTyping(false);
@@ -3074,15 +3120,17 @@ export default function MainScreen({ user, onLogout }) {
         ...prev,
         {
           sender: 'ai',
-          text: '➕ **Create Task for Myself:**\nFill in the title, priority, and deadline below:',
+          text: '➕ **Add Task for Me:**\nFill in the title, priority, and deadline below. It will be assigned to you automatically:',
           taskCreationCard: {
-            initialTitle: userText.replace(/create\s+(?:a\s+)?task\s+for\s+myself[:\s-]*/i, '').trim(),
+            initialTitle: userText.replace(/(?:create\s+(?:a\s+)?task\s+for\s+myself|add\s+task\s+for\s+me)[:\s-]*/i, '').trim(),
             initialPriority: 'medium',
             initialAssigneeId: myId,
             initialAssigneeName: myName,
+            mode: 'self',
+            canAssignToOthers,
             teamUsers: assignableUsers.length > 0 ? assignableUsers : teamUsers,
           },
-          nextActions: ['My Tasks'],
+          nextActions: getTaskActionChips(),
           time: 'Just now',
         },
       ]);
@@ -3289,7 +3337,7 @@ export default function MainScreen({ user, onLogout }) {
               subtitle: `${combined.length} tasks assigned to you`,
               tasks: combined,
             },
-            nextActions: ['Create Task', 'My Tasks', 'Add School Lead'],
+            nextActions: getTaskActionChips(),
             time: 'Just now',
           },
         ]);
@@ -3323,7 +3371,7 @@ export default function MainScreen({ user, onLogout }) {
               subtitle: `${tasksList.length} past-due items`,
               tasks: tasksList,
             },
-            nextActions: ['My Tasks', 'Create Task', 'Add School Lead'],
+            nextActions: getTaskActionChips(),
             time: 'Just now',
           },
         ]);
@@ -3337,7 +3385,7 @@ export default function MainScreen({ user, onLogout }) {
 
       const myTasksText = taskCount > 0
         ? `📋 **OLL Mission Control — My Tasks (${taskCount}):**\nYou have **${pendingCount} active / pending** tasks and **${completedCount} completed** tasks:`
-        : `📋 **Mission Control Tasks:** You currently have no tasks assigned to you. Tap **Create Task** to add one.`;
+        : `📋 **Mission Control Tasks:** You currently have no tasks assigned to you.`;
 
       setMessages((prev) => [
         ...prev,
@@ -3349,7 +3397,7 @@ export default function MainScreen({ user, onLogout }) {
             subtitle: `${pendingCount} active • ${completedCount} completed`,
             tasks: tasksList,
           },
-          nextActions: ['Create Task', "Today's Tasks", 'Add School Lead'],
+          nextActions: getTaskActionChips(),
           time: 'Just now',
         },
       ]);
@@ -3366,14 +3414,28 @@ export default function MainScreen({ user, onLogout }) {
 
     if (isCreateTaskPromptIntent) {
       setIsTyping(false);
+      const myId = effectiveUser?.id || effectiveUser?.user_id;
+      const myName = effectiveUser?.name || 'Myself';
       const eligibleUsers = (assignableUsers && assignableUsers.length > 0) ? assignableUsers : teamUsers;
+      const mode = canAssignToOthers ? 'assign' : 'self';
+
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: '➕ **Create New Task:**\nFill in the title, priority, assignee, and due date below, or type in plain language (e.g., *"Create task for Rahul: Prepare syllabus by Friday, priority high"*):',
-          taskCreationCard: { initialTitle: '', initialPriority: 'medium', teamUsers: eligibleUsers },
-          nextActions: ['My Tasks', "Today's Tasks"],
+          text: canAssignToOthers
+            ? '➕ **Add Task (Assign to Another Person):**\nSelect an eligible team member and fill in task details below:'
+            : '➕ **Add Task for Me:**\nFill in the task details below. The task will be assigned to you automatically:',
+          taskCreationCard: {
+            initialTitle: '',
+            initialPriority: 'medium',
+            initialAssigneeId: mode === 'self' ? myId : (managedUsers[0]?.id || ''),
+            initialAssigneeName: mode === 'self' ? myName : (managedUsers[0]?.name || ''),
+            mode: mode,
+            canAssignToOthers,
+            teamUsers: eligibleUsers,
+          },
+          nextActions: getTaskActionChips(),
           time: 'Just now',
         },
       ]);
@@ -5040,35 +5102,32 @@ export default function MainScreen({ user, onLogout }) {
     const lower = chip.toLowerCase();
     const target = findLatestLead();
 
-    if (lower === 'my tasks' || lower.includes('my tasks')) {
-      setInputText('My Tasks');
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+    if (lower === 'my task' || lower === 'my tasks' || lower.includes('my task')) {
+      handleSend('My Tasks');
       return;
     }
 
-    if (lower.includes("today's tasks") || lower === "today's tasks" || lower === 'today tasks') {
-      setInputText("Today's Tasks");
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+    if (lower === 'add task for me' || lower.includes('add task for me') || lower.includes('create task for myself')) {
+      handleSend('Add task for me');
       return;
     }
 
     if (lower === 'create task' || lower === 'new task' || lower === 'add task') {
-      setInputText('Create Task');
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+      if (canAssignToOthers) {
+        handleSend('Create Task');
+      } else {
+        handleSend('Add task for me');
+      }
+      return;
+    }
+
+    if (lower.includes("today's tasks") || lower === "today's tasks" || lower === 'today tasks') {
+      handleSend("Today's Tasks");
       return;
     }
 
     if (lower.includes('overdue tasks') || lower === 'overdue tasks') {
-      setInputText('Overdue Tasks');
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+      handleSend('Overdue Tasks');
       return;
     }
 
@@ -5092,10 +5151,7 @@ export default function MainScreen({ user, onLogout }) {
       lower === 'show leads' ||
       lower === 'list leads'
     ) {
-      setInputText('Retrieve all leads');
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+      handleSend('Retrieve all leads');
       return;
     }
 
@@ -5191,8 +5247,8 @@ export default function MainScreen({ user, onLogout }) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
 
-      {/* Top Dark Green Header (hidden when Schools CRM or Field Visit is active, as they have dedicated headers) */}
-      {activeTab !== 'schools' && activeTab !== 'field_visit' && (
+      {/* Top Dark Green Header (hidden when Schools CRM, Field Visit, or Tasks is active, as they have dedicated headers) */}
+      {activeTab !== 'schools' && activeTab !== 'field_visit' && activeTab !== 'my_space' && (
         <Header
           onNewChatPress={handleNewChat}
           user={user}
@@ -5251,6 +5307,11 @@ export default function MainScreen({ user, onLogout }) {
                 onCommentTask={handleCommentTask}
                 onSubmitInlineTask={handleSubmitInlineTask}
                 teamUsers={assignableUsers.length > 0 ? assignableUsers : teamUsers}
+                canAssignToOthers={canAssignToOthers}
+                canEditTask={canEditTask}
+                onMyTaskPress={() => handleSend('My Tasks')}
+                onAddTaskForMePress={() => handleSend('Add task for me')}
+                onAddTaskPress={() => handleSend('Create Task')}
               />
             ) : (
               /* Default Suggestions Landing Screen */
@@ -5318,6 +5379,12 @@ export default function MainScreen({ user, onLogout }) {
               onBackToChat={() => setActiveTab('ai_chat')}
             />
           )
+        ) : activeTab === 'my_space' ? (
+          <TasksScreen
+            user={effectiveUser}
+            onBackToChat={() => setActiveTab('ai_chat')}
+            onLogout={onLogout}
+          />
         ) : (
           /* Animated Coming Soon View for other tabs */
           <ComingSoonView

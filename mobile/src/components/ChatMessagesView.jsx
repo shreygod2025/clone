@@ -45,6 +45,7 @@ function TaskItemCard({
   onEditTask,
   onDeleteTask,
   onCommentTask,
+  canEdit = true,
 }) {
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -128,14 +129,17 @@ function TaskItemCard({
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.taskActionBtn, styles.taskBtnEdit]}
-          onPress={() => onEditTask && onEditTask(task)}
-        >
-          <Feather name="edit-2" size={10} color="#0284C7" style={{ marginRight: 3 }} />
-          <Text style={[styles.taskActionBtnText, { color: '#0284C7' }]}>Edit</Text>
-        </TouchableOpacity>
+        {/* Edit Task: Only if user has permission */}
+        {canEdit && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.taskActionBtn, styles.taskBtnEdit]}
+            onPress={() => onEditTask && onEditTask(task)}
+          >
+            <Feather name="edit-2" size={10} color="#0284C7" style={{ marginRight: 3 }} />
+            <Text style={[styles.taskActionBtnText, { color: '#0284C7' }]}>Edit</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           activeOpacity={0.8}
@@ -146,14 +150,17 @@ function TaskItemCard({
           <Text style={[styles.taskActionBtnText, { color: '#64748B' }]}>Comment</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.taskActionBtn, styles.taskBtnDelete]}
-          onPress={() => onDeleteTask && onDeleteTask(task)}
-        >
-          <Feather name="trash-2" size={11} color="#EF4444" style={{ marginRight: 3 }} />
-          <Text style={[styles.taskActionBtnText, { color: '#EF4444' }]}>Delete</Text>
-        </TouchableOpacity>
+        {/* Delete Task: Only if user has permission */}
+        {canEdit && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.taskActionBtn, styles.taskBtnDelete]}
+            onPress={() => onDeleteTask && onDeleteTask(task)}
+          >
+            <Feather name="trash-2" size={11} color="#EF4444" style={{ marginRight: 3 }} />
+            <Text style={[styles.taskActionBtnText, { color: '#EF4444' }]}>Delete</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {commentOpen && (
@@ -187,6 +194,11 @@ function TaskListCard({
   onEditTask,
   onDeleteTask,
   onCommentTask,
+  canAssignToOthers = false,
+  canEditTask,
+  onMyTaskPress,
+  onAddTaskForMePress,
+  onAddTaskPress,
 }) {
   return (
     <View style={styles.taskListCardContainer}>
@@ -200,22 +212,61 @@ function TaskListCard({
         </View>
       </View>
 
+      {/* Task Action Buttons Bar */}
+      <View style={styles.taskListButtonBar}>
+        {/* 1. "My Task" Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.taskListBtn, styles.btnMyTaskSmall]}
+          onPress={onMyTaskPress}
+        >
+          <Feather name="check-square" size={11} color="#059669" style={{ marginRight: 4 }} />
+          <Text style={styles.btnMyTaskSmallText}>My Task</Text>
+        </TouchableOpacity>
+
+        {/* 2. "Add Task for Me" Button (Available to all) */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.taskListBtn, styles.btnAddTaskForMeSmall]}
+          onPress={onAddTaskForMePress}
+        >
+          <Feather name="user-check" size={11} color="#2563EB" style={{ marginRight: 4 }} />
+          <Text style={styles.btnAddTaskForMeSmallText}>Add Task for Me</Text>
+        </TouchableOpacity>
+
+        {/* 3. "Add Task" (Assign to Another Person) - ONLY if authorized */}
+        {canAssignToOthers && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.taskListBtn, styles.btnAddTaskSmall]}
+            onPress={onAddTaskPress}
+          >
+            <Feather name="user-plus" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
+            <Text style={styles.btnAddTaskSmallText}>Add Task</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {tasks.length === 0 ? (
         <View style={styles.emptyTaskState}>
           <Text style={styles.emptyTaskText}>No tasks found in this view.</Text>
         </View>
       ) : (
-        tasks.map((task, idx) => (
-          <TaskItemCard
-            key={task.id || idx}
-            task={task}
-            onCompleteTask={onCompleteTask}
-            onStartTask={onStartTask}
-            onEditTask={onEditTask}
-            onDeleteTask={onDeleteTask}
-            onCommentTask={onCommentTask}
-          />
-        ))
+        tasks.map((task, idx) => {
+          const canEdit = typeof canEditTask === 'function' ? canEditTask(task) : true;
+          return (
+            <TaskItemCard
+              key={task.id || idx}
+              task={task}
+              onCompleteTask={onCompleteTask}
+              onStartTask={onStartTask}
+              onEditTask={onEditTask}
+              onDeleteTask={onDeleteTask}
+              onCommentTask={onCommentTask}
+              canEdit={canEdit}
+            />
+          );
+        })
       )}
     </View>
   );
@@ -226,6 +277,8 @@ function InlineTaskCreationCard({
   initialAssigneeId = '',
   initialAssigneeName = '',
   teamUsers = [],
+  mode = 'self',
+  canAssignToOthers = false,
   onSubmit,
 }) {
   const [title, setTitle] = useState(initialTitle);
@@ -242,8 +295,8 @@ function InlineTaskCreationCard({
         title: title.trim(),
         priority,
         due_date: due,
-        assigned_to: assignedToId,
-        assignee_name: assigneeName,
+        assigned_to: (canAssignToOthers && mode === 'assign' && assignedToId) ? assignedToId : initialAssigneeId,
+        assignee_name: (canAssignToOthers && mode === 'assign' && assigneeName) ? assigneeName : initialAssigneeName,
       });
     }
   };
@@ -255,8 +308,12 @@ function InlineTaskCreationCard({
           <Feather name="plus-circle" size={15} color="#059669" />
         </View>
         <View style={{ marginLeft: 8 }}>
-          <Text style={styles.taskCreationTitle}>New Mission Control Task</Text>
-          <Text style={styles.taskCreationSubtitle}>Auto-logged to tasks database</Text>
+          <Text style={styles.taskCreationTitle}>
+            {mode === 'self' || !canAssignToOthers ? 'Add Task for Me' : 'New Mission Control Task'}
+          </Text>
+          <Text style={styles.taskCreationSubtitle}>
+            {mode === 'self' || !canAssignToOthers ? 'Automatically assigned to yourself' : 'Auto-logged to tasks database'}
+          </Text>
         </View>
       </View>
 
@@ -269,32 +326,30 @@ function InlineTaskCreationCard({
         placeholderTextColor="#94A3B8"
       />
 
-      {/* Assignee Selection */}
-      <Text style={styles.taskCreationLabel}>Assign Task To</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-        <TouchableOpacity
-          style={[styles.selectorPill, !assignedToId && styles.selectorPillActive]}
-          onPress={() => { setAssignedToId(''); setAssigneeName(''); }}
-        >
-          <Text style={[styles.selectorPillText, !assignedToId && styles.selectorPillTextActive]}>
-            👤 Assign to Myself
-          </Text>
-        </TouchableOpacity>
-        {(teamUsers || []).map((u) => {
-          const isSelected = assignedToId === u.id;
-          return (
-            <TouchableOpacity
-              key={u.id}
-              style={[styles.selectorPill, isSelected && styles.selectorPillActive]}
-              onPress={() => { setAssignedToId(u.id); setAssigneeName(u.name); }}
-            >
-              <Text style={[styles.selectorPillText, isSelected && styles.selectorPillTextActive]}>
-                {u.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      {/* Assignee Selection (Only when mode === 'assign' AND canAssignToOthers) */}
+      {canAssignToOthers && mode === 'assign' && (
+        <>
+          <Text style={styles.taskCreationLabel}>Assign Task To (Managed Team Members)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            {(teamUsers || [])
+              .filter((u) => !u.is_self && u.id !== initialAssigneeId)
+              .map((u) => {
+                const isSelected = assignedToId === u.id;
+                return (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={[styles.selectorPill, isSelected && styles.selectorPillActive]}
+                    onPress={() => { setAssignedToId(u.id); setAssigneeName(u.name); }}
+                  >
+                    <Text style={[styles.selectorPillText, isSelected && styles.selectorPillTextActive]}>
+                      {u.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+          </ScrollView>
+        </>
+      )}
 
       <Text style={styles.taskCreationLabel}>Priority</Text>
       <View style={styles.pillSelectorRow}>
@@ -377,6 +432,11 @@ export default function ChatMessagesView({
   onCommentTask,
   onSubmitInlineTask,
   teamUsers = [],
+  canAssignToOthers = false,
+  canEditTask,
+  onMyTaskPress,
+  onAddTaskForMePress,
+  onAddTaskPress,
 }) {
   const scrollViewRef = useRef(null);
 
@@ -1026,6 +1086,11 @@ export default function ChatMessagesView({
                     onEditTask={onEditTask}
                     onDeleteTask={onDeleteTask}
                     onCommentTask={onCommentTask}
+                    canAssignToOthers={canAssignToOthers}
+                    canEditTask={canEditTask}
+                    onMyTaskPress={onMyTaskPress}
+                    onAddTaskForMePress={onAddTaskForMePress}
+                    onAddTaskPress={onAddTaskPress}
                   />
                 )}
 
@@ -1039,6 +1104,7 @@ export default function ChatMessagesView({
                       onEditTask={onEditTask}
                       onDeleteTask={onDeleteTask}
                       onCommentTask={onCommentTask}
+                      canEdit={typeof canEditTask === 'function' ? canEditTask(msg.taskCard) : true}
                     />
                   </View>
                 )}
@@ -1050,6 +1116,8 @@ export default function ChatMessagesView({
                     initialAssigneeId={msg.taskCreationCard.initialAssigneeId}
                     initialAssigneeName={msg.taskCreationCard.initialAssigneeName}
                     teamUsers={msg.taskCreationCard.teamUsers || teamUsers}
+                    mode={msg.taskCreationCard.mode || (canAssignToOthers ? 'assign' : 'self')}
+                    canAssignToOthers={canAssignToOthers}
                     onSubmit={onSubmitInlineTask}
                   />
                 )}
@@ -2329,6 +2397,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 1,
+  },
+  taskListButtonBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  taskListBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  btnMyTaskSmall: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  btnMyTaskSmallText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  btnAddTaskForMeSmall: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  btnAddTaskForMeSmallText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  btnAddTaskSmall: {
+    backgroundColor: '#059669',
+    borderColor: '#047857',
+  },
+  btnAddTaskSmallText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   emptyTaskState: {
     paddingVertical: 16,

@@ -105,20 +105,4 @@ export const MOCK_RESPONSES = {
     },
     nextActions: ["Export PDF Proposal", "Edit Price Quote"],
   },
-
-  active_schools: {
-    text: "📊 Here are your **Active Enrolled Schools** in the Western Region:",
-    schools: [
-      { name: "Delhi Public School (Nerul)", tier: "Tier 1 Enterprise", students: 1200, status: "Active" },
-      { name: "Ryan International School (Kandivali)", tier: "Tier 2 Standard", students: 850, status: "Active" },
-      { name: "Vibgyor High (Goregaon)", tier: "Tier 1 Enterprise", students: 1100, status: "Active" },
-      { name: "Billabong High International", tier: "Tier 2 Standard", students: 620, status: "Renewal Due" },
-    ],
-    nextActions: ["View School LMS Reports", "Schedule Teacher Refreshers", "Request Invoices"],
-  },
-
-  schedule_meeting: {
-    text: "📅 Ready to book a demonstration meeting. Which date, time, and meeting type (online/offline) would you like to schedule?",
-    nextActions: ["Mark Meeting Done", "Generate Proposal Quote"],
-  },
 };

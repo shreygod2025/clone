@@ -28,7 +28,7 @@ export default function BottomTabBar({ activeTab, onTabChange, user }) {
     },
     {
       id: 'my_space',
-      label: 'My Space',
+      label: 'Tasks',
       iconSet: 'Feather',
       iconName: 'check-square',
       allowed: true,
