@@ -314,6 +314,10 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
 
   // ── Delete Task with confirmation ──
   const handleDeleteTask = (task) => {
+    if ((task?.status || '').toLowerCase() === 'completed') {
+      Alert.alert('Cannot Delete', 'Completed tasks cannot be deleted.');
+      return;
+    }
     if (!canEditTask(task)) {
       Alert.alert('Access Denied', 'You do not have permission to delete this task.');
       return;
@@ -541,8 +545,8 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
                       </TouchableOpacity>
                     )}
 
-                    {/* Delete Option: ONLY Displayed if Authorized */}
-                    {canEdit && (
+                    {/* Delete Option: ONLY Displayed if Authorized and Task NOT Completed */}
+                    {canEdit && !isCompleted && (
                       <TouchableOpacity
                         activeOpacity={0.8}
                         style={[styles.taskActionBtn, styles.btnDelete]}

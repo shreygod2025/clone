@@ -1420,6 +1420,10 @@ export default function MainScreen({ user, onLogout }) {
 
   const promptDeleteTaskConfirmation = (task) => {
     if (!task) return;
+    if ((task.status || '').toLowerCase() === 'completed') {
+      Alert.alert('Cannot Delete', 'Completed tasks cannot be deleted.');
+      return;
+    }
     if (!canEditTask(task)) {
       setMessages((prev) => [
         ...prev,
@@ -1592,6 +1596,10 @@ export default function MainScreen({ user, onLogout }) {
 
   const handleDeleteTask = (task) => {
     if (!task) return;
+    if ((task.status || '').toLowerCase() === 'completed') {
+      Alert.alert('Cannot Delete', 'Completed tasks cannot be deleted.');
+      return;
+    }
     if (!canEditTask(task)) {
       setMessages((prev) => [
         ...prev,
@@ -3732,6 +3740,19 @@ export default function MainScreen({ user, onLogout }) {
       }
 
       if (matchedTask) {
+        if ((matchedTask.status || '').toLowerCase() === 'completed') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: `ℹ️ **Task Completed:** Task **"${matchedTask.title}"** (${matchedTask.code || 'TASK'}) is already completed and cannot be deleted.`,
+              nextActions: getTaskActionChips(),
+              time: 'Just now',
+            },
+          ]);
+          return;
+        }
+
         const userUid = user?.id || user?.user_id || '';
         const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
         const isCreator = !matchedTask.assigned_by || matchedTask.assigned_by === userUid;
@@ -3890,7 +3911,7 @@ export default function MainScreen({ user, onLogout }) {
         const leadLines = res.inquiries.slice(0, 15).map((l, idx) => {
           if (!l) return '';
           const sName = l.school_name || l.schoolName || l.name || 'School';
-          const statusBadge = (l.status || 'new').toUpperCase();
+          const statusBadge = String(l.status || 'new').toUpperCase();
           const contact = l.contact_name ? `${l.contact_name} (${l.contact_role || 'Contact'})` : 'Principal';
           const loc = l.location || l.city || 'Mumbai';
           const board = l.board || 'CBSE';
@@ -4065,7 +4086,7 @@ export default function MainScreen({ user, onLogout }) {
         const contactRole = matched.contactRole || matched.contact_role || 'Principal';
 
         const leadCardObj = {
-          id: matched.id || `lead_${Date.now()}`,
+          id: matched.id ? String(matched.id) : `lead_${Date.now()}`,
           schoolName: schoolName,
           school_name: schoolName,
           contactPerson: (contactPerson && String(contactPerson).includes('(')) ? contactPerson : `${contactPerson} (${contactRole})`,
@@ -5068,7 +5089,7 @@ export default function MainScreen({ user, onLogout }) {
         sender: 'ai',
         text: `🎯 **New School Lead Successfully Added!**\n\nI have registered **${lead.school_name}** directly in the School CRM database.\n\n• **Database ID:** \`${lead.id}\`\n• **Status:** \`${(lead.status || 'new').toUpperCase()}\``,
         leadCard: {
-          id: lead.id,
+          id: String(lead.id),
           schoolName: lead.school_name,
           board: lead.board || 'CBSE',
           location: lead.location || 'Mumbai, Maharashtra',

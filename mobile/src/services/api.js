@@ -275,7 +275,7 @@ class ApiService {
 
       if (response.ok) {
         const data = await response.json();
-        const list = Array.isArray(data) ? data : data.data || [];
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.inquiries) ? data.inquiries : []));
         return { success: true, inquiries: list };
       }
       return { success: false, inquiries: [] };

@@ -6,7 +6,7 @@ import MarkdownView from './MarkdownView';
 
 // Helper to sanitize and format assistant notes, stripping any legacy extraction boilerplate
 function formatAssistantNote(notes, leadCard) {
-  if (!notes) {
+  if (!notes || typeof notes !== 'string') {
     return `Lead recorded for ${leadCard?.schoolName || leadCard?.school_name || 'the school'}. Demonstration and customized curriculum quote requested.`;
   }
   let clean = notes
@@ -150,8 +150,8 @@ function TaskItemCard({
           <Text style={[styles.taskActionBtnText, { color: '#64748B' }]}>Comment</Text>
         </TouchableOpacity>
 
-        {/* Delete Task: Only if user has permission */}
-        {canEdit && (
+        {/* Delete Task: Only if user has permission and task is not completed */}
+        {canEdit && !isCompleted && (
           <TouchableOpacity
             activeOpacity={0.8}
             style={[styles.taskActionBtn, styles.taskBtnDelete]}
@@ -550,7 +550,7 @@ export default function ChatMessagesView({
                         </View>
                         {lead.id ? (
                           <View style={styles.dbIdBadge}>
-                            <Text style={styles.dbIdText}>ID: {lead.id.substring(0, 8)}</Text>
+                            <Text style={styles.dbIdText}>ID: {String(lead.id).substring(0, 8)}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -631,7 +631,7 @@ export default function ChatMessagesView({
                       </View>
 
                       {/* CRM Activity Log & Comments History */}
-                      {lead.comments && lead.comments.length > 0 ? (
+                      {Array.isArray(lead.comments) && lead.comments.length > 0 ? (
                         <View style={styles.activityLogContainer}>
                           <View style={styles.activityLogHeader}>
                             <Feather name="clock" size={11} color="#059669" style={{ marginRight: 5 }} />
@@ -652,7 +652,7 @@ export default function ChatMessagesView({
                       ) : null}
 
                       {/* Automated Follow-up Tasks from Backend */}
-                      {lead.followup_tasks && lead.followup_tasks.length > 0 ? (
+                      {Array.isArray(lead.followup_tasks) && lead.followup_tasks.length > 0 ? (
                         <View style={styles.followupTasksBox}>
                           <Text style={styles.followupBoxTitle}>Auto-Scheduled Follow-up Reminders:</Text>
                           {lead.followup_tasks.slice(0, 4).map((task, idx) => (
