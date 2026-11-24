@@ -101,6 +101,9 @@ export default function MainScreen({ user, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const recognitionRef = useRef(null);
   const [whatsAppModalVisible, setWhatsAppModalVisible] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const landingScrollRef = useRef(null);
@@ -5327,12 +5330,131 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   const handleMicPress = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      setInputText('Create a new lead for Podar International School Mumbai with principal contact');
-      setTimeout(() => {
+    const SpeechRecognition = typeof window !== 'undefined'
+      ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+      : null;
+
+    if (SpeechRecognition) {
+      if (isRecording) {
+        try {
+          recognitionRef.current?.stop();
+        } catch {}
         setIsRecording(false);
-      }, 1500);
+        return;
+      }
+
+      try {
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.lang = 'en-IN';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+          setIsRecording(true);
+        };
+
+        recognition.onresult = (event) => {
+          let transcript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          if (transcript) {
+            setInputText(transcript);
+            setVoiceTranscript(transcript);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.warn('Speech recognition error:', event?.error);
+          setIsRecording(false);
+          setVoiceModalVisible(true);
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+        };
+
+        recognition.start();
+        return;
+      } catch (err) {
+        console.warn('Speech recognition init error:', err);
+        setIsRecording(false);
+      }
+    }
+
+    // When Web Speech API is absent (native app) or on error, open interactive Voice Command modal
+    setVoiceModalVisible(true);
+  };
+
+  const handleExecuteVoiceCommand = (cmdText) => {
+    setVoiceModalVisible(false);
+    if (isRecording) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      setIsRecording(false);
+    }
+    setVoiceTranscript('');
+    handleSend(cmdText);
+  };
+
+  const handleToggleModalMic = () => {
+    const SpeechRecognition = typeof window !== 'undefined'
+      ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+      : null;
+
+    if (!SpeechRecognition) {
+      Alert.alert(
+        'Speech Recognition',
+        'Direct microphone speech-to-text is available on web engines. You can tap any of the categorized voice commands below to execute them instantly in OLL CRM.'
+      );
+      return;
+    }
+
+    if (isRecording) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.lang = 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setVoiceTranscript(transcript);
+          setInputText(transcript);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Modal speech recognition error:', event?.error);
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.warn('Failed to start modal speech recognition:', err);
+      setIsRecording(false);
     }
   };
 
@@ -5440,7 +5562,6 @@ export default function MainScreen({ user, onLogout }) {
               value={inputText}
               onChangeText={setInputText}
               onSend={handleSend}
-              onAttach={handlePasteSampleMom}
               onMicPress={handleMicPress}
               isRecording={isRecording}
               onFocus={handleInputFocus}
@@ -7111,6 +7232,161 @@ export default function MainScreen({ user, onLogout }) {
           </View>
         </View>
       </Modal>
+
+      {/* ── 12. Voice Command & Dictation Modal ── */}
+      <Modal
+        visible={voiceModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setVoiceModalVisible(false);
+          if (isRecording) {
+            try { recognitionRef.current?.stop(); } catch {}
+            setIsRecording(false);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalLargeCard, { maxHeight: '88%' }]}>
+            {/* Header */}
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.voiceModalMicHeader, isRecording && { backgroundColor: '#FEE2E2' }]}>
+                  <Feather name="mic" size={18} color={isRecording ? '#E11D48' : '#059669'} />
+                </View>
+                <View style={{ marginLeft: 8 }}>
+                  <Text style={styles.modalLargeTitle}>Voice Commands</Text>
+                  <Text style={{ fontSize: 11.5, color: '#64748B' }}>
+                    {isRecording ? 'Listening now... Speak clearly' : 'Tap mic to speak or choose a command'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setVoiceModalVisible(false);
+                  if (isRecording) {
+                    try { recognitionRef.current?.stop(); } catch {}
+                    setIsRecording(false);
+                  }
+                }}
+              >
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Mic Action & Live Transcript */}
+            <View style={{ alignItems: 'center', marginVertical: 14 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.voiceModalCenterMic,
+                  isRecording && styles.voiceModalCenterMicActive,
+                ]}
+                onPress={handleToggleModalMic}
+              >
+                <Feather
+                  name="mic"
+                  size={32}
+                  color={isRecording ? '#FFFFFF' : '#059669'}
+                />
+              </TouchableOpacity>
+              <Text style={[styles.voiceStatusText, isRecording && { color: '#E11D48', fontWeight: '700' }]}>
+                {isRecording ? '🔴 Listening... (Tap to finish)' : 'Tap to Speak Command'}
+              </Text>
+
+              {voiceTranscript ? (
+                <View style={styles.voiceTranscriptCard}>
+                  <Text style={styles.voiceTranscriptLabel}>Recognized Speech:</Text>
+                  <Text style={styles.voiceTranscriptText}>"{voiceTranscript}"</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.voiceExecuteBtn}
+                    onPress={() => handleExecuteVoiceCommand(voiceTranscript)}
+                  >
+                    <Feather name="send" size={13} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.voiceExecuteBtnText}>Execute Spoken Command</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Quick Voice Command Presets */}
+            <Text style={styles.voiceSectionHeading}>Popular Voice Commands</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 250 }}>
+              <Text style={styles.voiceCategoryLabel}>School CRM & Leads</Text>
+              {[
+                { label: 'Retrieve all school leads', desc: 'Lists recent CRM school leads' },
+                { label: "Retrieve lead for St. Xavier's", desc: 'View dossier for specific school' },
+                { label: 'Add school lead for Podar International School Mumbai', desc: 'Auto-logs new school inquiry' },
+              ].map((cmd, idx) => (
+                <TouchableOpacity
+                  key={`crm-${idx}`}
+                  activeOpacity={0.7}
+                  style={styles.voiceCommandItem}
+                  onPress={() => handleExecuteVoiceCommand(cmd.label)}
+                >
+                  <View style={styles.voiceItemIconCircle}>
+                    <Feather name="mic" size={12} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={styles.voiceItemCommandText}>"{cmd.label}"</Text>
+                    <Text style={styles.voiceItemDescText}>{cmd.desc}</Text>
+                  </View>
+                  <Feather name="arrow-up-right" size={14} color="#94A3B8" />
+                </TouchableOpacity>
+              ))}
+
+              <Text style={[styles.voiceCategoryLabel, { marginTop: 10 }]}>Task Management</Text>
+              {[
+                { label: 'Create task for myself', desc: 'Opens quick self-assignment task card' },
+                { label: "Today's tasks", desc: 'Lists all tasks due or scheduled today' },
+                { label: 'Overdue tasks', desc: 'Alerts of all past-due deliverables' },
+                { label: 'My tasks', desc: 'Displays all assigned mission tasks' },
+                { label: 'Show team tasks', desc: 'Tasks assigned to managed team members' },
+              ].map((cmd, idx) => (
+                <TouchableOpacity
+                  key={`task-${idx}`}
+                  activeOpacity={0.7}
+                  style={styles.voiceCommandItem}
+                  onPress={() => handleExecuteVoiceCommand(cmd.label)}
+                >
+                  <View style={[styles.voiceItemIconCircle, { backgroundColor: '#EFF6FF' }]}>
+                    <Feather name="check-square" size={12} color="#2563EB" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={styles.voiceItemCommandText}>"{cmd.label}"</Text>
+                    <Text style={styles.voiceItemDescText}>{cmd.desc}</Text>
+                  </View>
+                  <Feather name="arrow-up-right" size={14} color="#94A3B8" />
+                </TouchableOpacity>
+              ))}
+
+              <Text style={[styles.voiceCategoryLabel, { marginTop: 10 }]}>Meetings & Actions</Text>
+              {[
+                { label: 'Mark meeting done', desc: 'Completes meeting status for current school' },
+                { label: 'Schedule meeting with Principal', desc: 'Books demonstration or quote meeting' },
+                { label: 'Generate proposal quote', desc: 'Prepares AI lab quotation' },
+              ].map((cmd, idx) => (
+                <TouchableOpacity
+                  key={`meet-${idx}`}
+                  activeOpacity={0.7}
+                  style={styles.voiceCommandItem}
+                  onPress={() => handleExecuteVoiceCommand(cmd.label)}
+                >
+                  <View style={[styles.voiceItemIconCircle, { backgroundColor: '#FDF2F8' }]}>
+                    <Feather name="calendar" size={12} color="#DB2777" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={styles.voiceItemCommandText}>"{cmd.label}"</Text>
+                    <Text style={styles.voiceItemDescText}>{cmd.desc}</Text>
+                  </View>
+                  <Feather name="arrow-up-right" size={14} color="#94A3B8" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -7419,5 +7695,119 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 3,
     fontStyle: 'italic',
+  },
+  voiceModalMicHeader: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceModalCenterMic: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 3,
+    borderColor: '#A7F3D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  voiceModalCenterMicActive: {
+    backgroundColor: '#E11D48',
+    borderColor: '#FECDD3',
+    shadowColor: '#E11D48',
+  },
+  voiceStatusText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 10,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  voiceTranscriptCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 12,
+  },
+  voiceTranscriptLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  voiceTranscriptText: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '600',
+    marginVertical: 6,
+  },
+  voiceExecuteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.brandEmerald,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginTop: 4,
+  },
+  voiceExecuteBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  voiceSectionHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  voiceCategoryLabel: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#059669',
+    marginBottom: 6,
+  },
+  voiceCommandItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  voiceItemIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceItemCommandText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  voiceItemDescText: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

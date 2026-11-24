@@ -7,7 +7,6 @@ export default function ChatInput({
   value,
   onChangeText,
   onSend,
-  onAttach,
   onMicPress,
   isRecording = false,
   onFocus,
@@ -16,27 +15,18 @@ export default function ChatInput({
   const handleKeyDown = (e) => {
     if (Platform.OS === 'web' && e.nativeEvent?.key === 'Enter' && !e.nativeEvent?.shiftKey) {
       e.preventDefault?.();
-      onSend();
+      onSend && onSend();
     }
   };
 
   return (
     <View style={styles.outerWrapper}>
-      <View style={styles.pillContainer}>
-        {/* Attachment Button */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.iconButton}
-          onPress={onAttach}
-        >
-          <Feather name="paperclip" size={19} color="#64748B" />
-        </TouchableOpacity>
-
+      <View style={[styles.pillContainer, isRecording && styles.pillContainerRecording]}>
         {/* Input Text Field */}
         <TextInput
           style={styles.textInput}
-          placeholder="Ask anything or paste MOM notes..."
-          placeholderTextColor="#94A3B8"
+          placeholder={isRecording ? "Listening... Speak your command..." : "Ask anything or say a command..."}
+          placeholderTextColor={isRecording ? '#059669' : '#94A3B8'}
           value={value}
           onChangeText={onChangeText}
           multiline={true}
@@ -48,16 +38,20 @@ export default function ChatInput({
           onBlur={onBlur}
         />
 
-        {/* Mic Button */}
+        {/* Voice Command Mic Button */}
         <TouchableOpacity
           activeOpacity={0.7}
-          style={styles.iconButton}
+          style={[
+            styles.micButton,
+            isRecording && styles.micButtonRecording
+          ]}
           onPress={onMicPress}
+          accessibilityLabel="Voice Command"
         >
           <Feather
             name="mic"
             size={18}
-            color={isRecording ? '#E11D48' : '#64748B'}
+            color={isRecording ? '#FFFFFF' : '#059669'}
           />
         </TouchableOpacity>
 
@@ -66,9 +60,10 @@ export default function ChatInput({
           activeOpacity={0.8}
           style={[
             styles.sendButton,
-            { backgroundColor: value.trim().length > 0 ? COLORS.brandEmerald : COLORS.brandEmerald },
+            { backgroundColor: value && value.trim().length > 0 ? COLORS.brandEmerald : COLORS.brandEmerald },
           ]}
           onPress={() => onSend && onSend()}
+          accessibilityLabel="Send Message"
         >
           <Feather name="arrow-up" size={20} color="#FFFFFF" />
         </TouchableOpacity>
@@ -91,7 +86,8 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1.2,
     borderColor: '#CBD5E1',
-    paddingHorizontal: 12,
+    paddingLeft: 16,
+    paddingRight: 6,
     paddingVertical: Platform.OS === 'ios' ? 6 : 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -99,20 +95,31 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  iconButton: {
-    padding: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pillContainerRecording: {
+    borderColor: '#059669',
+    backgroundColor: '#F0FDF4',
   },
   textInput: {
     flex: 1,
     fontSize: 14.5,
     color: COLORS.textPrimary,
-    paddingHorizontal: 8,
+    paddingRight: 8,
     paddingVertical: Platform.OS === 'ios' ? 8 : 4,
     minHeight: 38,
     maxHeight: 90,
     textAlignVertical: 'center',
+  },
+  micButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+  micButtonRecording: {
+    backgroundColor: '#E11D48',
   },
   sendButton: {
     width: 38,
@@ -121,7 +128,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.brandEmerald,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
     shadowColor: COLORS.brandEmerald,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
