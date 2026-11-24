@@ -296,7 +296,7 @@ export default function MainScreen({ user, onLogout }) {
   };
 
   const getTaskActionChips = () => {
-    return ['My Task', 'Create Task'];
+    return ['Create Task'];
   };
 
   // 11b. Edit Task Modal State
@@ -410,6 +410,10 @@ export default function MainScreen({ user, onLogout }) {
 
   // ── Open Modals ─────────────────────────────────────────────────────────────
   const openAddLeadModal = (initialData = {}) => {
+    if (!isUserAdmin) {
+      Alert.alert('Access Denied', 'Access denied.');
+      return;
+    }
     setNewSchoolName(initialData.school_name || initialData.schoolName || '');
     setNewContactName(initialData.contact_name || initialData.contactPerson || '');
     setNewContactRole(initialData.contact_role || 'Principal');
@@ -2261,6 +2265,10 @@ export default function MainScreen({ user, onLogout }) {
 
   // 3b. Save New School Lead from Form Modal to Backend Database (Matching AdminSchoolCRM)
   const handleSaveNewLeadSubmit = async () => {
+    if (!isUserAdmin) {
+      Alert.alert('Access Denied', 'Access denied.');
+      return;
+    }
     if (!newSchoolName.trim() || !newContactName.trim() || !newPhone.trim()) {
       Alert.alert('Required Fields', 'School Name, Primary Contact Person, and Phone Number are required.');
       return;
@@ -2874,6 +2882,18 @@ export default function MainScreen({ user, onLogout }) {
     }
 
     if (action.id === 'create_lead') {
+      if (!isUserAdmin) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: 'Access denied.',
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
       setIsTyping(false);
       openAddLeadModal({
         school_name: 'ABC International School',
@@ -2892,19 +2912,22 @@ export default function MainScreen({ user, onLogout }) {
 
       if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
         const leadLines = res.inquiries.slice(0, 15).map((l, idx) => {
+          if (!l) return '';
+          const sName = l.school_name || l.schoolName || l.name || 'School';
           const statusBadge = (l.status || 'new').toUpperCase();
           const contact = l.contact_name ? `${l.contact_name} (${l.contact_role || 'Contact'})` : 'Principal';
-          const loc = l.location || 'Mumbai';
+          const loc = l.location || l.city || 'Mumbai';
           const board = l.board || 'CBSE';
-          return `${idx + 1}. **${l.school_name}** • \`${statusBadge}\`\n   📍 ${loc} • 🎓 ${board}\n   👤 ${contact} • 📞 \`${l.phone || 'N/A'}\``;
-        }).join('\n\n');
+          const phone = l.phone || l.mobile || 'N/A';
+          return `${idx + 1}. **${sName}** • \`${statusBadge}\`\n   📍 ${loc} • 🎓 ${board}\n   👤 ${contact} • 📞 \`${phone}\``;
+        }).filter(Boolean).join('\n\n');
 
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
             text: `📋 **Live CRM School Leads (${res.inquiries.length} Total):**\n\n${leadLines}\n\n*Tip: To inspect or take actions on any school, type "Show lead [School Name]" or "Retrieve lead for [School Name]".*`,
-            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
+            nextActions: isUserAdmin ? ['Add School Lead'] : ['Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2914,7 +2937,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: `📋 **No School Leads Found:** No active inquiries currently recorded in your CRM pipeline.`,
-            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
+            nextActions: isUserAdmin ? ['Add School Lead'] : ['Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2940,7 +2963,7 @@ export default function MainScreen({ user, onLogout }) {
             sender: 'ai',
             text: `📊 **Live CRM Leads:** Found ${res.inquiries.length} active entries in your database:`,
             followUpList: liveLeads,
-            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
+            nextActions: isUserAdmin ? ['Add School Lead'] : ['Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2950,7 +2973,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: res.error || 'No follow-up leads found for your account.',
-            nextActions: canAccessSchoolCrm ? ['Add School Lead'] : ['My Tasks'],
+            nextActions: isUserAdmin ? ['Add School Lead'] : ['Tasks'],
             time: 'Just now',
           },
         ]);
@@ -2977,7 +3000,7 @@ export default function MainScreen({ user, onLogout }) {
             subtitle: `${pendingCount} active • ${completedCount} completed`,
             tasks: tasksList,
           },
-          nextActions: ['Create Task', "Today's Tasks", 'Add School Lead'],
+          nextActions: isUserAdmin ? ['Create Task', "Today's Tasks", 'Add School Lead'] : ['Create Task', "Today's Tasks"],
           time: 'Just now',
         },
       ]);
@@ -3812,6 +3835,17 @@ export default function MainScreen({ user, onLogout }) {
 
     if (isAddLeadFormIntent) {
       setIsTyping(false);
+      if (!isUserAdmin) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: 'Access denied.',
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
       openAddLeadModal();
       setMessages((prev) => [
         ...prev,
@@ -3846,19 +3880,22 @@ export default function MainScreen({ user, onLogout }) {
 
       if (res.success && Array.isArray(res.inquiries) && res.inquiries.length > 0) {
         const leadLines = res.inquiries.slice(0, 15).map((l, idx) => {
+          if (!l) return '';
+          const sName = l.school_name || l.schoolName || l.name || 'School';
           const statusBadge = (l.status || 'new').toUpperCase();
           const contact = l.contact_name ? `${l.contact_name} (${l.contact_role || 'Contact'})` : 'Principal';
-          const loc = l.location || 'Mumbai';
+          const loc = l.location || l.city || 'Mumbai';
           const board = l.board || 'CBSE';
-          return `${idx + 1}. **${l.school_name}** • \`${statusBadge}\`\n   📍 ${loc} • 🎓 ${board}\n   👤 ${contact} • 📞 \`${l.phone || 'N/A'}\``;
-        }).join('\n\n');
+          const phone = l.phone || l.mobile || 'N/A';
+          return `${idx + 1}. **${sName}** • \`${statusBadge}\`\n   📍 ${loc} • 🎓 ${board}\n   👤 ${contact} • 📞 \`${phone}\``;
+        }).filter(Boolean).join('\n\n');
 
         setMessages((prev) => [
           ...prev,
           {
             sender: 'ai',
             text: `📋 **Live CRM School Leads (${res.inquiries.length} Total):**\n\n${leadLines}\n\n*Tip: To inspect or take actions on any school, type "Show lead [School Name]" or "Retrieve lead for [School Name]".*`,
-            nextActions: ['Add School Lead'],
+            nextActions: isUserAdmin ? ['Add School Lead'] : ['Tasks'],
             time: 'Just now',
           },
         ]);
@@ -3868,7 +3905,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: `📋 **No School Leads Found:** No active inquiries currently recorded in your CRM pipeline.`,
-            nextActions: ['Add School Lead'],
+            nextActions: isUserAdmin ? ['Add School Lead'] : ['Tasks'],
             time: 'Just now',
           },
         ]);
@@ -3999,7 +4036,7 @@ export default function MainScreen({ user, onLogout }) {
           {
             sender: 'ai',
             text: queryLower
-              ? `🔍 No matching lead found for "${query}" in your CRM records.`
+              ? `🔍 No matching lead found for "${queryName || 'this school'}" in your CRM records.`
               : '🔍 No school leads found in your CRM records.',
             time: 'Just now',
           },
@@ -4023,8 +4060,8 @@ export default function MainScreen({ user, onLogout }) {
           id: matched.id || `lead_${Date.now()}`,
           schoolName: schoolName,
           school_name: schoolName,
-          contactPerson: contactPerson.includes('(') ? contactPerson : `${contactPerson} (${contactRole})`,
-          contact_name: contactPerson.replace(/\s*\([^)]*\)/, '').trim(),
+          contactPerson: (contactPerson && String(contactPerson).includes('(')) ? contactPerson : `${contactPerson} (${contactRole})`,
+          contact_name: contactPerson ? String(contactPerson).replace(/\s*\([^)]*\)/, '').trim() : 'Principal',
           contactRole: contactRole,
           contact_role: contactRole,
           phone: matched.phone || '',
@@ -4989,6 +5026,18 @@ export default function MainScreen({ user, onLogout }) {
       (lower.includes('school') && (lower.includes('create') || lower.includes('add') || lower.includes('register') || lower.includes('new')));
 
     if (isCreateLeadIntent && !lower.includes('what are') && !lower.includes('show me')) {
+      if (!isUserAdmin) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: 'Access denied.',
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
       const extractedLead = api.extractLeadFromPrompt(userText);
       const res = await api.createSchoolLead(extractedLead);
       setIsTyping(false);
@@ -5142,6 +5191,18 @@ export default function MainScreen({ user, onLogout }) {
       lower === 'create lead' ||
       lower === 'add school'
     ) {
+      if (!isUserAdmin) {
+        setChatMode(true);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: 'Access denied.',
+            time: 'Just now',
+          },
+        ]);
+        return;
+      }
       openAddLeadModal();
       return;
     }
@@ -5311,7 +5372,7 @@ export default function MainScreen({ user, onLogout }) {
                 teamUsers={assignableUsers.length > 0 ? assignableUsers : teamUsers}
                 canAssignToOthers={canAssignToOthers}
                 canEditTask={canEditTask}
-                onMyTaskPress={() => handleSend('My Tasks')}
+                isUserAdmin={isUserAdmin}
                 onCreateTaskPress={() => handleSend('Create Task')}
                 onAddTaskPress={() => handleSend('Create Task')}
               />

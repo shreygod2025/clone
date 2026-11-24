@@ -506,6 +506,9 @@ const LeadTableRow = React.memo(function LeadTableRow({
 });
 
 export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
+  const userRole = (user?.role || '').toLowerCase();
+  const isUserAdmin = userRole === 'admin' || userRole === 'super_admin' || user?.is_admin === true;
+
   const [subTab, setSubTab] = useState('leads'); // 'dashboard', 'leads', 'contacts'
   const [stageFilter, setStageFilter] = useState('new'); // 'all', 'new', 'meeting_done', 'converted', 'active', etc.
   const [searchQuery, setSearchQuery] = useState('');
@@ -707,6 +710,10 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
 
   // Open Add Lead Modal
   const openAddLeadModal = () => {
+    if (!isUserAdmin) {
+      Alert.alert('Access Denied', 'Access denied.');
+      return;
+    }
     setFormSchoolName('');
     setFormContactName('');
     setFormContactRole('Principal');
@@ -722,6 +729,10 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
 
   // Save Add Lead
   const handleSaveNewLead = async () => {
+    if (!isUserAdmin) {
+      Alert.alert('Access Denied', 'Access denied.');
+      return;
+    }
     if (!formSchoolName.trim()) {
       Alert.alert('Required', 'Please enter a school name.');
       return;
@@ -751,10 +762,7 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
       setLeads((prev) => [res.lead, ...prev]);
       Alert.alert('Success', `Lead for "${formSchoolName}" added to live CRM!`);
     } else {
-      // Local fallback
-      const localLead = { ...newLeadPayload, id: `lead-${Date.now()}`, created_at: new Date().toISOString() };
-      setLeads((prev) => [localLead, ...prev]);
-      Alert.alert('Saved', `Lead for "${formSchoolName}" created locally.`);
+      Alert.alert('Error', res.error || 'Failed to save lead to CRM server.');
     }
   };
 
@@ -1401,10 +1409,12 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity activeOpacity={0.8} style={styles.addLeadBtn} onPress={openAddLeadModal}>
-                <Feather name="plus" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
-                <Text style={styles.addLeadBtnText}>+ Add Lead</Text>
-              </TouchableOpacity>
+              {isUserAdmin && (
+                <TouchableOpacity activeOpacity={0.8} style={styles.addLeadBtn} onPress={openAddLeadModal}>
+                  <Feather name="plus" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.addLeadBtnText}>+ Add Lead</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
 
@@ -1474,7 +1484,9 @@ export default function SchoolsCrmScreen({ user, onBackToChat, onLogout }) {
             <View style={styles.emptyStateBox}>
               <Ionicons name="school-outline" size={40} color="#CBD5E1" />
               <Text style={styles.emptyTitle}>No school leads in this stage</Text>
-              <Text style={styles.emptySubtitle}>Tap "+ Add Lead" above to create an entry or switch stages.</Text>
+              <Text style={styles.emptySubtitle}>
+                {isUserAdmin ? 'Tap "+ Add Lead" above to create an entry or switch stages.' : 'No school leads recorded in this stage.'}
+              </Text>
             </View>
           ) : viewMode === 'table' ? (
             /* Table View */

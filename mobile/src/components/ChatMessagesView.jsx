@@ -196,7 +196,6 @@ function TaskListCard({
   onCommentTask,
   canAssignToOthers = false,
   canEditTask,
-  onMyTaskPress,
   onCreateTaskPress,
   onAddTaskPress,
 }) {
@@ -214,20 +213,10 @@ function TaskListCard({
 
       {/* Task Action Buttons Bar */}
       <View style={styles.taskListButtonBar}>
-        {/* 1. "My Task" Button */}
+        {/* "Create Task" Button */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.taskListBtn, styles.btnMyTaskSmall]}
-          onPress={onMyTaskPress}
-        >
-          <Feather name="check-square" size={11} color="#059669" style={{ marginRight: 4 }} />
-          <Text style={styles.btnMyTaskSmallText}>My Task</Text>
-        </TouchableOpacity>
-
-        {/* 2. "Create Task" Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.taskListBtn, styles.btnAddTaskSmall]}
+          style={[styles.taskListBtn, styles.btnAddTaskSmall, { flex: 1, justifyContent: 'center' }]}
           onPress={onCreateTaskPress || onAddTaskPress}
         >
           <Feather name="plus-circle" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
@@ -444,6 +433,7 @@ export default function ChatMessagesView({
   teamUsers = [],
   canAssignToOthers = false,
   canEditTask,
+  isUserAdmin = false,
   onMyTaskPress,
   onCreateTaskPress,
   onAddTaskPress,
@@ -1098,7 +1088,6 @@ export default function ChatMessagesView({
                     onCommentTask={onCommentTask}
                     canAssignToOthers={canAssignToOthers}
                     canEditTask={canEditTask}
-                    onMyTaskPress={onMyTaskPress}
                     onCreateTaskPress={onCreateTaskPress || onAddTaskPress}
                     onAddTaskPress={onAddTaskPress || onCreateTaskPress}
                   />
@@ -1135,17 +1124,24 @@ export default function ChatMessagesView({
                 {/* Render Action Chips (hidden when leadCard is shown to avoid duplicate buttons) */}
                 {!msg.leadCard && msg.nextActions && msg.nextActions.length > 0 && (
                   <View style={styles.chipsRow}>
-                    {msg.nextActions.map((chip, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        activeOpacity={0.7}
-                        style={styles.chipButton}
-                        onPress={() => onActionChipPress && onActionChipPress(chip)}
-                      >
-                        <Feather name="chevron-right" size={13} color={COLORS.brandEmerald} style={{ marginRight: 3 }} />
-                        <Text style={styles.chipText}>{chip}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {msg.nextActions
+                      .filter((chip) => {
+                        const c = String(chip || '').toLowerCase().trim();
+                        if (c === 'my task' || c === 'my tasks') return false;
+                        if (!isUserAdmin && (c.includes('add school lead') || c.includes('create school lead') || c === 'add lead' || c === 'create lead')) return false;
+                        return true;
+                      })
+                      .map((chip, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          activeOpacity={0.7}
+                          style={styles.chipButton}
+                          onPress={() => onActionChipPress && onActionChipPress(chip)}
+                        >
+                          <Feather name="chevron-right" size={13} color={COLORS.brandEmerald} style={{ marginRight: 3 }} />
+                          <Text style={styles.chipText}>{chip}</Text>
+                        </TouchableOpacity>
+                      ))}
                   </View>
                 )}
               </View>

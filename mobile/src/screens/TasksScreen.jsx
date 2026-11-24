@@ -372,20 +372,10 @@ export default function TasksScreen({ user, onBackToChat, onLogout }) {
 
       {/* ── Action Buttons Bar ── */}
       <View style={styles.actionButtonsBar}>
-        {/* 1. "My Task" Button */}
+        {/* "Create Task" Button */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.primaryActionBtn, styles.btnMyTasks]}
-          onPress={loadTasks}
-        >
-          <Feather name="check-square" size={14} color="#059669" style={{ marginRight: 6 }} />
-          <Text style={styles.btnMyTasksText}>My Task</Text>
-        </TouchableOpacity>
-
-        {/* 2. "Create Task" Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.primaryActionBtn, styles.btnAddTask]}
+          style={[styles.primaryActionBtn, styles.btnAddTask, { flex: 1, justifyContent: 'center' }]}
           onPress={openCreateTask}
         >
           <Feather name="plus-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
