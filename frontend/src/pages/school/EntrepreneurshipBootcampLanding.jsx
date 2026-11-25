@@ -3,7 +3,7 @@
  * Inspired by Founder Shreyaan Daga's journey (Shark Tank India S2 & KBC S16).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import {
@@ -12,7 +12,8 @@ import {
   School, Heart, Play, ChevronRight, Phone, Mail, Building,
   Layers, Radio, Gauge, Zap, Cog, Compass, Monitor, Check,
   TrendingUp, DollarSign, PiggyBank, Briefcase, Lightbulb, ShoppingCart,
-  Store, Presentation, Target, Shield, Landmark, LineChart
+  Store, Presentation, Target, Shield, Landmark, LineChart,
+  Maximize2, X, Eye
 } from 'lucide-react';
 
 import Footer from '../../components/Footer';
@@ -32,6 +33,45 @@ const BROCHURE_PDF_URL =
   'https://drive.google.com/uc?export=download&id=16Siku0iyrHGMsQKWAMizaKPQdjMXGCoJ';
 const BROCHURE_NAME =
   'OLL-Entrepreneurship-and-Financial-Literacy-Bootcamp-Brochure.pdf';
+
+const ENT_HERO_SLIDES = [
+  {
+    badge: 'Experiential Bootcamp · Ages 3–16',
+    tag: 'Future-Ready Mindset',
+    title: 'Financial Literacy & Entrepreneurship',
+    subtitle: 'Manage Money, Build Ventures & Think Like Founders',
+    src: '/school/entrepreneurship/ent_page_1.webp',
+    highlight: 'NEP 2020 Aligned',
+    edition: 'All Age Groups',
+  },
+  {
+    badge: 'Why Financial Literacy Matters',
+    tag: 'Empowering Young Minds',
+    title: 'Life Skills Beyond Academics',
+    subtitle: 'From Piggy Banks to Stock Trading & Real Startup Pitches',
+    src: '/school/entrepreneurship/ent_page_3.webp',
+    highlight: 'Shark Tank Backed',
+    edition: 'Nationwide Model',
+  },
+  {
+    badge: 'Experiential Simulations',
+    tag: 'Action-Based Learning',
+    title: 'Mock Banks, Markets & Prototypes',
+    subtitle: 'Hands-on role-plays, trading simulations, and student stalls',
+    src: '/school/entrepreneurship/ent_page_4.webp',
+    highlight: 'Real Ventures',
+    edition: '100% Practical',
+  },
+  {
+    badge: 'Age-Wise 12-Module Syllabi',
+    tag: 'Structured Progression',
+    title: 'Age 3–7, 8–11 & 12–16 Roadmaps',
+    subtitle: 'Developmentally calibrated wealth and venture curriculums',
+    src: '/school/entrepreneurship/ent_page_6.webp',
+    highlight: 'Workbook Stack',
+    edition: 'Classroom Ready',
+  },
+];
 
 const SHARK_TANK_IMG =
   'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
@@ -175,6 +215,26 @@ export default function EntrepreneurshipBootcampLanding() {
   const [gateOpen, setGateOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(1);
   const [selectedBand, setSelectedBand] = useState(0);
+  const [activeHeroSlideIdx, setActiveHeroSlideIdx] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Auto-rotate hero slider
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveHeroSlideIdx((i) => (i + 1) % ENT_HERO_SLIDES.length);
+    }, 4500);
+    return () => clearInterval(id);
+  }, []);
+
+  // Listen for ESC to close zoom modal
+  useEffect(() => {
+    if (!previewImage) return;
+    const onKey = (e) => { if (e.key === 'Escape') setPreviewImage(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewImage]);
+
+  const activeHeroSlide = ENT_HERO_SLIDES[activeHeroSlideIdx];
 
   const [form, setForm] = useState({
     school_name: '', contact_name: '', phone: '', email: '', city: '', format: 'In-School Bootcamp (5–10 Days)', message: ''
@@ -231,6 +291,16 @@ export default function EntrepreneurshipBootcampLanding() {
           src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
           font-weight: 400; font-style: normal; font-display: swap;
         }
+        @keyframes icseFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-7px); }
+        }
+        @keyframes icseSpinSlow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .icse-anim-float { animation: icseFloat 4s ease-in-out infinite; }
+        .icse-anim-spin { animation: icseSpinSlow 22s linear infinite; }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
         .icse-btn.primary { background:#D97706; color:#fff; box-shadow:0 14px 28px rgba(217,119,6,0.28); }
@@ -355,30 +425,94 @@ export default function EntrepreneurshipBootcampLanding() {
               </div>
             </div>
 
-            {/* Right Column: Hero Cover */}
-            <div className="lg:col-span-5">
-              <div className="relative mx-auto max-w-md lg:max-w-none">
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-slate-900 aspect-[3/4]">
+            {/* Right Column: Hero Floating Card with ambient glow, counter, full cover image */}
+            <div className="lg:col-span-5 relative">
+              {/* Ambient blur glow behind card */}
+              <div
+                className="absolute -inset-4 rounded-[2.5rem] opacity-35 blur-2xl pointer-events-none icse-anim-spin"
+                style={{
+                  background: 'conic-gradient(from 0deg, #D97706, #F59E0B, #DC2626, #B45309, #D97706)',
+                }}
+              />
+
+              <div
+                className="relative bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-5 border-2 border-amber-100 shadow-2xl icse-anim-float transition-all duration-300"
+                style={{
+                  boxShadow: '0 25px 60px -15px rgba(217, 119, 6, 0.22), 0 0 0 1px rgba(217, 119, 6, 0.08)',
+                }}
+              >
+                {/* Header pill badge + counter */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#D97706] bg-amber-50 border border-amber-200/80 px-3 py-1 rounded-full shadow-sm">
+                    <Sparkles size={11} className="text-[#D97706]" />
+                    {activeHeroSlide.badge}
+                  </span>
+                  <span className="text-[11px] font-black tracking-widest text-slate-400 font-mono">
+                    {String(activeHeroSlideIdx + 1).padStart(2, '0')} / {String(ENT_HERO_SLIDES.length).padStart(2, '0')}
+                  </span>
+                </div>
+
+                {/* Full-Cover Hero Visual Box */}
+                <div
+                  onClick={() => setPreviewImage({
+                    src: activeHeroSlide.src,
+                    title: activeHeroSlide.title,
+                    caption: `${activeHeroSlide.badge} — ${activeHeroSlide.subtitle}`
+                  })}
+                  className="relative rounded-2xl overflow-hidden w-full h-[380px] sm:h-[420px] shadow-md bg-slate-900 group cursor-pointer"
+                  title="Click to view full size"
+                >
                   <img
-                    src="/school/entrepreneurship/ent_page_1.webp"
-                    alt="Financial Literacy and Entrepreneurship Bootcamp"
-                    className="w-full h-full object-cover"
+                    src={activeHeroSlide.src}
+                    alt={activeHeroSlide.title}
+                    className="w-full h-full object-cover object-top transition-all duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
-                    <p className="text-xs uppercase tracking-widest text-amber-300 font-bold mb-1">Ages 3–16 Curriculum</p>
-                    <h3 className="text-xl font-bold">Practical Wealth & Venture Skills</h3>
-                    <p className="text-xs text-slate-300 mt-1">No boring theory. 100% simulations, mock markets & real pitches.</p>
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 via-black/20 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center rounded-2xl">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                      <Maximize2 size={13} className="text-[#D97706]" /> Tap to Inspect Slide
+                    </span>
                   </div>
                 </div>
 
-                <div className="absolute -bottom-5 -left-5 bg-white p-4 rounded-2xl shadow-xl border border-slate-200 hidden sm:flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 font-black text-lg">
-                    ★
+                {/* Info / Metadata Row */}
+                <div className="mt-4 pt-3.5 border-t border-amber-100 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#D97706]">
+                      {activeHeroSlide.tag}
+                    </div>
+                    <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
+                      {activeHeroSlide.title}
+                    </div>
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                      {activeHeroSlide.subtitle}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500 font-bold">Founded by Teen Prodigy</p>
-                    <p className="text-sm font-extrabold text-slate-900">Mr. Shreyaan Daga</p>
+                  <div className="text-right flex-shrink-0">
+                    <div className="inline-block bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                      {activeHeroSlide.highlight}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                      {activeHeroSlide.edition}
+                    </div>
                   </div>
+                </div>
+
+                {/* Bottom Carousel Indicator Dots */}
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                  {ENT_HERO_SLIDES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveHeroSlideIdx(idx)}
+                      aria-label={`Go to slide ${idx + 1}`}
+                      className={`transition-all duration-300 cursor-pointer border-none p-0 ${
+                        activeHeroSlideIdx === idx
+                          ? 'w-6 h-2 rounded-full bg-[#D97706]'
+                          : 'w-2 h-2 rounded-full bg-slate-300 hover:bg-slate-400'
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -449,12 +583,27 @@ export default function EntrepreneurshipBootcampLanding() {
             ))}
           </div>
 
-          <div className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-4 sm:p-6">
-            <img
-              src="/school/entrepreneurship/ent_page_2.webp"
-              alt="The Journey of Shreyaan Daga Slide"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/entrepreneurship/ent_page_2.webp',
+              title: 'The Real-World Story Behind OLL — Mr. Shreyaan Daga',
+              caption: 'Age 8 painting business to stock internships at 13, founding OLL at 15, Shark Tank funding at 18, and KBC 16 Hot Seat at 20.'
+            })}
+            className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom journey timeline"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/entrepreneurship/ent_page_2.webp"
+                alt="The Journey of Shreyaan Daga Slide"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#D97706]" /> Click to Zoom Founder Journey
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -497,12 +646,27 @@ export default function EntrepreneurshipBootcampLanding() {
             </div>
 
             <div className="lg:col-span-6">
-              <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white p-4">
-                <img
-                  src="/school/entrepreneurship/ent_page_3.webp"
-                  alt="Why Financial Literacy and Entrepreneurship Slide"
-                  className="w-full rounded-2xl object-cover"
-                />
+              <div
+                onClick={() => setPreviewImage({
+                  src: '/school/entrepreneurship/ent_page_3.webp',
+                  title: 'Why Financial Literacy & Entrepreneurship in Schools?',
+                  caption: 'From pocket money awareness to risk, budgeting, investment diversification, and enterprise building.'
+                })}
+                className="rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white p-3 sm:p-4 cursor-pointer group relative"
+                title="Click to zoom full slide"
+              >
+                <div className="relative overflow-hidden rounded-2xl">
+                  <img
+                    src="/school/entrepreneurship/ent_page_3.webp"
+                    alt="Why Financial Literacy and Entrepreneurship Slide"
+                    className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                      <Maximize2 size={14} className="text-[#D97706]" /> Click to Zoom Full Blueprint
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -542,12 +706,27 @@ export default function EntrepreneurshipBootcampLanding() {
             ))}
           </div>
 
-          <div className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-4 sm:p-6">
-            <img
-              src="/school/entrepreneurship/ent_page_4.webp"
-              alt="Real Life Applications Slide"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/entrepreneurship/ent_page_4.webp',
+              title: 'Real-Life Application Modules & Simulations',
+              caption: 'Money management challenges, mock banks, product prototyping, branding contests, and virtual stock market.'
+            })}
+            className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom simulations slide"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/entrepreneurship/ent_page_4.webp"
+                alt="Real Life Applications Slide"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#D97706]" /> Click to Zoom Simulations
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -648,14 +827,61 @@ export default function EntrepreneurshipBootcampLanding() {
 
           {/* Age Slides Showcase */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
-              <img src="/school/entrepreneurship/ent_page_6.webp" alt="Age 3-7 Modules" className="w-full object-cover" />
+            <div
+              onClick={() => setPreviewImage({
+                src: '/school/entrepreneurship/ent_page_6.webp',
+                title: 'Little Money Explorers (Ages 3–7) — 12 Modules',
+                caption: 'Small Steps Towards Smart Money Habits: Value of coins, needs vs wants, savings jar, and first little shop.'
+              })}
+              className="rounded-2xl overflow-hidden border border-slate-200 shadow-md cursor-pointer group relative bg-white p-2"
+              title="Click to zoom Age 3-7 modules"
+            >
+              <div className="relative overflow-hidden rounded-xl">
+                <img src="/school/entrepreneurship/ent_page_6.webp" alt="Age 3-7 Modules" className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/25 transition-all flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                    <Maximize2 size={12} className="text-[#D97706]" /> Tap to Zoom Age 3–7
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
-              <img src="/school/entrepreneurship/ent_page_8.webp" alt="Age 8-11 Modules" className="w-full object-cover" />
+
+            <div
+              onClick={() => setPreviewImage({
+                src: '/school/entrepreneurship/ent_page_8.webp',
+                title: 'Young Money Makers (Ages 8–11) — 12 Modules',
+                caption: 'Building Smart Money Habits & Financial Confidence: Digital money & UPI, compounding, budgeting matrix, and school stall.'
+              })}
+              className="rounded-2xl overflow-hidden border border-slate-200 shadow-md cursor-pointer group relative bg-white p-2"
+              title="Click to zoom Age 8-11 modules"
+            >
+              <div className="relative overflow-hidden rounded-xl">
+                <img src="/school/entrepreneurship/ent_page_8.webp" alt="Age 8-11 Modules" className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/25 transition-all flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                    <Maximize2 size={12} className="text-[#D97706]" /> Tap to Zoom Age 8–11
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
-              <img src="/school/entrepreneurship/ent_page_10.webp" alt="Age 12-16 Modules" className="w-full object-cover" />
+
+            <div
+              onClick={() => setPreviewImage({
+                src: '/school/entrepreneurship/ent_page_10.webp',
+                title: 'Future Money Leaders (Ages 12–16) — 12 Modules',
+                caption: 'Finance, Wealth & Venture Building: NSE/BSE stock exchanges, investment diversification, unit economics, and pitch deck.'
+              })}
+              className="rounded-2xl overflow-hidden border border-slate-200 shadow-md cursor-pointer group relative bg-white p-2"
+              title="Click to zoom Age 12-16 modules"
+            >
+              <div className="relative overflow-hidden rounded-xl">
+                <img src="/school/entrepreneurship/ent_page_10.webp" alt="Age 12-16 Modules" className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/25 transition-all flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                    <Maximize2 size={12} className="text-[#D97706]" /> Tap to Zoom Age 12–16
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -677,12 +903,25 @@ export default function EntrepreneurshipBootcampLanding() {
           </div>
 
           <div className="max-w-4xl mx-auto bg-slate-950 rounded-3xl p-4 sm:p-6 border border-slate-800 shadow-2xl">
-            <div className="relative rounded-2xl overflow-hidden border border-slate-800 aspect-[16/10] sm:aspect-[16/9] bg-black">
+            <div
+              onClick={() => setPreviewImage({
+                src: `/school/entrepreneurship/ent_page_${activeSlide}.webp`,
+                title: `Bootcamp Prospectus — Slide ${activeSlide} of 12`,
+                caption: 'Official OLL Financial Literacy & Entrepreneurship Bootcamp Presentation Slide.'
+              })}
+              className="relative rounded-2xl overflow-hidden border border-slate-800 aspect-[16/10] sm:aspect-[16/9] bg-black cursor-pointer group"
+              title="Click to zoom current slide"
+            >
               <img
                 src={`/school/entrepreneurship/ent_page_${activeSlide}.webp`}
                 alt={`Bootcamp Slide ${activeSlide}`}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
               />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/30 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#D97706]" /> Click to Zoom Slide {activeSlide}
+                </span>
+              </div>
             </div>
 
             {/* Thumbnail bar */}
@@ -921,6 +1160,60 @@ export default function EntrepreneurshipBootcampLanding() {
 
       {/* Footer */}
       <Footer />
+
+      {/* ── High-Resolution Zoom Lightbox Modal ─────────── */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6"
+          onClick={() => setPreviewImage(null)}
+          data-testid="bootcamp-image-lightbox"
+        >
+          <div
+            className="relative bg-white rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-slate-50">
+              <div className="pr-4">
+                <h3 className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight">
+                  {previewImage.title}
+                </h3>
+                {previewImage.caption && (
+                  <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                    {previewImage.caption}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border-none flex-shrink-0"
+                aria-label="Close Preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-slate-900/5 flex items-center justify-center">
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg bg-white"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-slate-500 font-semibold">
+                Official OLL Financial Literacy &amp; Entrepreneurship Bootcamp Syllabus
+              </span>
+              <button
+                type="button"
+                onClick={() => { setPreviewImage(null); setGateOpen(true); }}
+                className="inline-flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border-none cursor-pointer"
+              >
+                <Download size={14} /> Download Syllabus PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Download Curriculum Gate Modal */}
       {gateOpen && (

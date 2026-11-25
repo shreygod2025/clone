@@ -120,7 +120,15 @@ const GRADE_CURRICULUM = [
       'Automated Flood Gate', 'Rescue Helicopter', 'Spider Crawler', 'Recycling Truck',
       'Garbage Lorry', 'Robotic Fish', 'Exhibition Capstone Project'
     ],
-    skills: ['Gear Movement', 'Kinetic Systems', 'Structural Rigidity', 'Problem Solving']
+    skills: ['Gear Movement', 'Kinetic Systems', 'Structural Rigidity', 'Problem Solving'],
+    featuredModels: [
+      { name: 'Mini Robot Car', desc: 'Dual-wheel motorized propulsion with front caster steering.' },
+      { name: 'Walking Robot', desc: 'Bipedal kinetic linkage reproducing natural walking gait.' },
+      { name: 'Drawing Bot', desc: 'Precision marker holder that traces geometric math patterns.' },
+      { name: 'Crocodile Mouth', desc: 'Geared reciprocating snap mechanism with kinetic jaws.' },
+      { name: 'Line Follower', desc: 'Basic sensor tracking mechanism navigating black track lines.' },
+      { name: 'Moving Insect', desc: 'Multi-joint linkage mimicking insect locomotion.' }
+    ]
   },
   {
     grade: 'Grade 4',
@@ -137,7 +145,15 @@ const GRADE_CURRICULUM = [
       'Automated Floor Sweeper', 'Distance Measuring Bot', 'Blinking Firefly', 'Joystick Luna Rover',
       'Scan Bot Detector', 'Autonomous Security Rover', 'Exhibition Capstone Project'
     ],
-    skills: ['Distance Sensing', 'Sensor Automation', 'Closed-Loop Feedback', 'Autonomous Navigation']
+    skills: ['Distance Sensing', 'Sensor Automation', 'Closed-Loop Feedback', 'Autonomous Navigation'],
+    featuredModels: [
+      { name: 'Helicopter', desc: 'High-speed dual-rotor assembly demonstrating torque and lift.' },
+      { name: 'Explorer Bot', desc: 'Multi-directional rover equipped with reactive motion sensing.' },
+      { name: 'Insect Robot', desc: 'Kinetic legs paired with obstacle evasion sensors.' },
+      { name: 'All-Terrain Rover', desc: '6-wheel independent suspension for traversing rough surfaces.' },
+      { name: 'Frog Bot', desc: 'Spring-loaded mechanism simulating biological leaping motion.' },
+      { name: 'Dump Truck', desc: 'Motorized tipping bed with heavy-duty gear reduction.' }
+    ]
   },
   {
     grade: 'Grade 5',
@@ -154,7 +170,15 @@ const GRADE_CURRICULUM = [
       'Precision Weighing Scale', 'Insect Crawler Bot', 'Dragster Speed Car', 'Wind-Powered Vehicle',
       'Flywheeler Inertia Car', 'F1 Racing Robot', 'Trundle Measuring Wheel', 'Motorised Harbor Crane'
     ],
-    skills: ['Compound Gears', 'Torque & RPM', 'Mechanical Advantage', 'Kinetic Linkages']
+    skills: ['Compound Gears', 'Torque & RPM', 'Mechanical Advantage', 'Kinetic Linkages'],
+    featuredModels: [
+      { name: 'Power Transmission Car', desc: 'Configurable multi-stage gearbox demonstrating torque transfer.' },
+      { name: 'Heavy Duty Crane Arm', desc: 'Winch & pulley system calculating mechanical advantage.' },
+      { name: 'Dragster Speed Car', desc: 'High RPM gear ratio optimization for acceleration trials.' },
+      { name: 'F1 Racing Robot', desc: 'Streamlined aerodynamic chassis with low-friction drive.' },
+      { name: 'Geared Windmill', desc: 'Kinetic energy conversion transforming wind to rotary torque.' },
+      { name: 'Trundle Wheel', desc: 'Calibrated gear-click counter for real-world distance measurement.' }
+    ]
   },
   {
     grade: 'Grade 6',
@@ -171,7 +195,15 @@ const GRADE_CURRICULUM = [
       'Bicycle Stabilizer', 'Snail Motion Bot', 'Dragon Dance Robot', 'Obstacle Avoiding Rover',
       'Twin Spin Aeroplane', 'High-Speed RC Car', 'Chinook Tandem Helicopter', 'Cable Ski Lift', 'Dragon Boat'
     ],
-    skills: ['RF Wireless Control', 'Differential Steering', 'Tracked Propulsion', 'Aerodynamic Motion']
+    skills: ['RF Wireless Control', 'Differential Steering', 'Tracked Propulsion', 'Aerodynamic Motion'],
+    featuredModels: [
+      { name: 'Remote Controlled Helicopter', desc: '2.4 GHz wireless RF signal control with differential yaw.' },
+      { name: 'Two-Wheeled Balancing Car', desc: 'Dynamic balance robotics with wireless joystick throttle.' },
+      { name: 'Mechanical Crab Walker', desc: '6-legged articulated motion for sideways traversal.' },
+      { name: 'Armoured Tank with Treads', desc: 'High-traction rubber treads conquering steep 35° inclines.' },
+      { name: 'High-Speed RC Car', desc: 'Proportional steering with responsive wireless telemetry.' },
+      { name: 'Cable Ski Lift', desc: 'Motorized aerial suspension cable car system.' }
+    ]
   },
   {
     grade: 'Grade 7',
@@ -191,7 +223,15 @@ const GRADE_CURRICULUM = [
       'Automated Car Windshield Wiper', 'Automatic Plant Irrigation System',
       'Smart Home Integrated Automation', 'Exhibition Capstone Project'
     ],
-    skills: ['Arduino IDE & C++', 'Breadboard Prototyping', 'PWM & Analog Read', 'Smart Infrastructure']
+    skills: ['Arduino IDE & C++', 'Breadboard Prototyping', 'PWM & Analog Read', 'Smart Infrastructure'],
+    featuredModels: [
+      { name: 'Solar Panel Sun Tracker', desc: 'Dual LDR optical sensors driving servo to maximize solar absorption.' },
+      { name: 'Automated Toll Booth Barrier', desc: 'Ultrasonic proximity trigger with precision servo barrier arm.' },
+      { name: 'Automatic Fire Extinguisher', desc: 'Flame sensor detects fire, triggers relay, and pumps water spray.' },
+      { name: 'Automated Car Windshield Wiper', desc: 'Raindrop detection board triggering auto variable-speed servo wipes.' },
+      { name: 'Smart Visitor Alert & Counter', desc: 'IR beam break counter with numeric display and audio buzzer.' },
+      { name: 'Smart Home Automation System', desc: 'Capstone integrating temperature, light sensing, and automated cooling fan.' }
+    ]
   },
   {
     grade: 'Grade 8',
@@ -212,7 +252,15 @@ const GRADE_CURRICULUM = [
       'Edge Avoider Table-Safe Robot', 'Autonomous PID Line Follower Bot',
       'Exhibition Capstone Project'
     ],
-    skills: ['PWM Motor Control', 'Infrared Arrays', 'PID Path Tracking', 'Industrial Mechatronics']
+    skills: ['PWM Motor Control', 'Infrared Arrays', 'PID Path Tracking', 'Industrial Mechatronics'],
+    featuredModels: [
+      { name: 'Autonomous Obstacle Avoider', desc: 'HC-SR04 sonar sensor scanning 180° to calculate collision-free path.' },
+      { name: 'Industrial Conveyor Belt', desc: 'Motor-driven production line with optical object counter.' },
+      { name: 'PID Line Follower Rover', desc: 'Dual infrared array for high-speed line tracking with closed loop control.' },
+      { name: 'Edge Avoider Table-Safe Bot', desc: 'Downward-facing optical sensors preventing table-fall disasters.' },
+      { name: 'Smart Factory Gate Opener', desc: 'Dual-limit switch security gate with indicator traffic lights.' },
+      { name: 'Infrared Intruder Alarm', desc: 'Tripwire security circuit with latching alarm and buzzer.' }
+    ]
   },
   {
     grade: 'Grade 9',
@@ -233,7 +281,15 @@ const GRADE_CURRICULUM = [
       'Classic Snake Game with Joystick Input', 'Space Shooter Multi-Enemy Arcade Game',
       'Memory Sequence Direction Game'
     ],
-    skills: ['I2C Protocol', 'Pixel Matrix Buffering', 'Hardware Game Engines', 'Analog Joystick ADC']
+    skills: ['I2C Protocol', 'Pixel Matrix Buffering', 'Hardware Game Engines', 'Analog Joystick ADC'],
+    featuredModels: [
+      { name: 'Custom Emoji OLED Display', desc: 'Hexadecimal byte array animation rendering smiling faces and icons on 0.96" OLED.' },
+      { name: 'Car Reverse Parking Sonar', desc: 'Ultrasonic sonar with progressive LED bar graph and proximity tone frequency.' },
+      { name: 'Flappy Bird Hardware Console', desc: 'Microcontroller arcade game featuring gravity physics, obstacles, and high score tracking.' },
+      { name: 'Local Weather Station Alarm', desc: 'DHT11 sensor reading live room temperature & humidity with OLED graph.' },
+      { name: 'Snake Game & Space Shooter', desc: 'Analog 2-axis joystick driving player coordinates on a high-refresh OLED canvas.' },
+      { name: 'Memory Sequence Game', desc: 'Simon Says 4-color LED & buzzer memory puzzle testing cognitive recall.' }
+    ]
   },
   {
     grade: 'Grade 10',
@@ -251,7 +307,15 @@ const GRADE_CURRICULUM = [
       'Smart IoT Environmental Cloud Dashboard', 'Wireless Telemetry & Sensor Logger',
       'AI Voice-Assisted Receptionist Bot', 'Grand Finale Capstone Project'
     ],
-    skills: ['ESP32 & Wireless IoT', 'Local Speech-to-Text', 'Text-to-Speech Synthesis', 'Mobile Telemetry']
+    skills: ['ESP32 & Wireless IoT', 'Local Speech-to-Text', 'Text-to-Speech Synthesis', 'Mobile Telemetry'],
+    featuredModels: [
+      { name: 'Voice Command Smart Lights', desc: 'Local speech recognition processing spoken English commands without internet.' },
+      { name: 'Voice-Assisted Receptionist Bot', desc: 'Text-to-Speech (TTS) synthesized audio greetings responding to presence.' },
+      { name: 'Bluetooth Mobile Home Automation', desc: 'Custom smartphone dashboard controlling high-voltage appliances via relays.' },
+      { name: 'Smart Cloud Environment Dashboard', desc: 'ESP32 Wi-Fi telemetry posting temperature, air quality to cloud charts.' },
+      { name: 'Smart Railway Barrier System', desc: 'Automated train detection with dual crossing arms and flashing signal towers.' },
+      { name: 'Grand Finale Capstone Project', desc: 'Multi-sensor autonomous IoT system presented for ICSE/CBSE board evaluation.' }
+    ]
   }
 ];
 
@@ -261,6 +325,7 @@ export default function RoboticsAdvanceLanding() {
   const [gateOpen, setGateOpen] = useState(false);
   const [activeVideoModal, setActiveVideoModal] = useState(null);
   const [activeSlideIdx, setActiveSlideIdx] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
 
   // Auto-rotate the brochure slider every 4.5s (matching the second screenshot)
   useEffect(() => {
@@ -269,6 +334,14 @@ export default function RoboticsAdvanceLanding() {
     }, 4500);
     return () => clearInterval(id);
   }, []);
+
+  // Listen for ESC to close image zoom lightbox
+  useEffect(() => {
+    if (!previewImage) return;
+    const onKey = (e) => { if (e.key === 'Escape') setPreviewImage(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewImage]);
 
   // Form submission state
   const [leadForm, setLeadForm] = useState({
@@ -671,17 +744,26 @@ export default function RoboticsAdvanceLanding() {
               </span>
             </div>
 
-            {/* Image Preview */}
-            <div style={{ background: '#F8FAFC', padding: '1.25rem', textAlign: 'center' }}>
+            {/* Image Preview with Zoom */}
+            <div
+              onClick={() => setPreviewImage({
+                src: '/school/advance/advance_page_3.webp',
+                title: 'From Global Classrooms to Your School — OLL Models',
+                caption: 'Research-backed curriculum adapting US & China robotics models (LEGO® & WeDo 2.0-style kits) into affordable Indian classroom stacks.'
+              })}
+              className="relative cursor-pointer overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 p-2 text-center group transition-all hover:shadow-lg"
+              title="Click to view full size"
+            >
               <img
                 src="/school/advance/advance_page_3.webp"
                 alt="From Global Classrooms to Your School - OLL Robotics Models"
-                style={{
-                  width: '100%', maxHeight: 340, objectFit: 'contain',
-                  borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#fff',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
-                }}
+                className="w-full max-h-[380px] object-contain rounded-xl transition-transform duration-300 group-hover:scale-[1.02] bg-white shadow-sm"
               />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/25 transition-all flex items-center justify-center rounded-2xl">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                  <Maximize2 size={13} className="text-[#DC2626]" /> Tap to Expand Page
+                </span>
+              </div>
             </div>
 
             {/* Key Content Breakdown from Page 3 */}
@@ -750,17 +832,26 @@ export default function RoboticsAdvanceLanding() {
               </span>
             </div>
 
-            {/* Image Preview */}
-            <div style={{ background: '#F8FAFC', padding: '1.25rem', textAlign: 'center' }}>
+            {/* Image Preview with Zoom */}
+            <div
+              onClick={() => setPreviewImage({
+                src: '/school/advance/advance_page_2.webp',
+                title: 'Global Perspectives on Robotics Education — China & USA',
+                caption: 'How leading world economies prepare future-ready workforces from Grade 3 upwards with mandatory robotics and AI literacy.'
+              })}
+              className="relative cursor-pointer overflow-hidden rounded-2xl bg-slate-50 border border-slate-200 p-2 text-center group transition-all hover:shadow-lg"
+              title="Click to view full size"
+            >
               <img
                 src="/school/advance/advance_page_2.webp"
                 alt="Global Perspectives on Robotics Education - China & USA"
-                style={{
-                  width: '100%', maxHeight: 340, objectFit: 'contain',
-                  borderRadius: '1rem', border: '1px solid #E2E8F0', background: '#fff',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.04)'
-                }}
+                className="w-full max-h-[380px] object-contain rounded-xl transition-transform duration-300 group-hover:scale-[1.02] bg-white shadow-sm"
               />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/25 transition-all flex items-center justify-center rounded-2xl">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                  <Maximize2 size={13} className="text-[#2563EB]" /> Tap to Expand Page
+                </span>
+              </div>
             </div>
 
             {/* Key Content Breakdown from Page 2 */}
@@ -982,38 +1073,113 @@ export default function RoboticsAdvanceLanding() {
             </div>
 
             {/* Right: Grade Kit Visual */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                background: '#F8FAFC', borderRadius: '1.5rem', border: '2px solid #E2E8F0',
-                padding: '1.25rem', overflow: 'hidden', boxShadow: '0 12px 30px rgba(15, 30, 80, 0.05)'
-              }}>
-                <img
-                  src={activeGrade.kitImg}
-                  alt={`${activeGrade.grade} Robotics Kit & Models`}
-                  style={{
-                    width: '100%', maxHeight: 360, objectFit: 'contain',
-                    borderRadius: '1rem', background: '#fff', border: '1px solid #E2E8F0'
-                  }}
-                />
-                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0A1F44' }}>
-                    {activeGrade.grade} Official Models & Hardware
+            <div>
+              <div className="bg-white rounded-2xl border-2 border-slate-200 p-4 shadow-lg overflow-hidden group">
+                <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#0A1F44]">
+                    {activeGrade.grade} Kit Box &amp; Physical Models
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Official Hardware Stack
+                  </span>
+                </div>
+                <div
+                  onClick={() => setPreviewImage({
+                    src: activeGrade.kitImg,
+                    title: `${activeGrade.grade} Official Robotics Kit & Student Build Models`,
+                    caption: `${activeGrade.theme} — ${activeGrade.kitIncludes}`
+                  })}
+                  className="relative cursor-pointer overflow-hidden rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center p-2 group"
+                  title="Click to zoom and inspect kit box models"
+                >
+                  <img
+                    src={activeGrade.kitImg}
+                    alt={`${activeGrade.grade} Robotics Kit & Models`}
+                    className="w-full h-[280px] sm:h-[340px] object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center rounded-xl">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                      <Maximize2 size={13} className="text-[#DC2626]" /> Zoom In to Inspect Models
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <span className="text-xs text-slate-600 font-semibold">
+                    🔍 Tap image to inspect all {activeGrade.grade} physical models
                   </span>
                   <button
                     onClick={() => setGateOpen(true)}
-                    style={{
-                      background: '#DC2626', color: '#fff', border: 'none',
-                      borderRadius: '0.5rem', padding: '0.4rem 0.8rem', fontSize: '0.78rem',
-                      fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
-                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#DC2626] hover:bg-[#B91C1C] px-3 py-1.5 rounded-lg transition-colors border-none cursor-pointer"
                   >
-                    <Download size={12} /> Brochure Page
+                    <Download size={13} /> Brochure Page
                   </button>
                 </div>
               </div>
             </div>
 
           </div>
+
+          {/* Featured Real-World Builds for Selected Grade */}
+          {activeGrade.featuredModels && activeGrade.featuredModels.length > 0 && (
+            <div className="mt-8 pt-7 border-t border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#DC2626]">
+                    Real-World Builds &amp; Physical Hardware
+                  </span>
+                  <h4 className="text-lg sm:text-xl font-black text-[#0A1F44]">
+                    Featured Student Projects in {activeGrade.grade}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage({
+                    src: activeGrade.kitImg,
+                    title: `${activeGrade.grade} Full Kit & Project Models Showcase`,
+                    caption: `${activeGrade.theme} — ${activeGrade.kitIncludes}`
+                  })}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A1F44] hover:text-[#DC2626] bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer border-none"
+                >
+                  <Maximize2 size={13} /> View Full Kit Box ({activeGrade.projectsCount} Models)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {activeGrade.featuredModels.map((m, mIdx) => (
+                  <div
+                    key={mIdx}
+                    onClick={() => setPreviewImage({
+                      src: activeGrade.kitImg,
+                      title: `${activeGrade.grade} Project: ${m.name}`,
+                      caption: `${m.desc} (Part of the ${activeGrade.grade} ${activeGrade.theme} curriculum)`
+                    })}
+                    className="group bg-slate-50 hover:bg-white border border-slate-200 hover:border-[#DC2626] rounded-2xl p-4 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                          Model 0{mIdx + 1}
+                        </span>
+                        <span className="text-[10px] font-bold text-[#DC2626] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                          Inspect <Maximize2 size={11} />
+                        </span>
+                      </div>
+                      <h5 className="text-[#0A1F44] font-black text-sm group-hover:text-[#DC2626] transition-colors">
+                        {m.name}
+                      </h5>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                        {m.desc}
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+                      <span>{activeGrade.grade} Hardware</span>
+                      <span className="text-emerald-600 font-bold">✓ Hands-on Lab</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1468,8 +1634,59 @@ export default function RoboticsAdvanceLanding() {
       {/* 12. RELATED PROGRAMS CROSS-LINKING */}
       <SchoolRelatedPrograms current="advance-robotics" theme="light" />
 
-      {/* 13. FOOTER */}
-      <Footer />
+      {/* 13.5 HIGH-RESOLUTION ZOOM LIGHTBOX MODAL */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6"
+          onClick={() => setPreviewImage(null)}
+          data-testid="advance-image-lightbox"
+        >
+          <div
+            className="relative bg-white rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-slate-50">
+              <div className="pr-4">
+                <h3 className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight">
+                  {previewImage.title}
+                </h3>
+                {previewImage.caption && (
+                  <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                    {previewImage.caption}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border-none flex-shrink-0"
+                aria-label="Close Preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-slate-900/5 flex items-center justify-center">
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg bg-white"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-slate-500 font-semibold">
+                Official OLL Advance Robotics Curriculum &amp; Kit Specifications
+              </span>
+              <button
+                type="button"
+                onClick={() => { setPreviewImage(null); setGateOpen(true); }}
+                className="inline-flex items-center gap-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border-none cursor-pointer"
+              >
+                <Download size={14} /> Download Curriculum PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 14. CURRICULUM DOWNLOAD LEAD-GATE MODAL */}
       <CurriculumGateModal

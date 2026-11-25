@@ -3,7 +3,7 @@
  * Complete Robotics & AI Learning Center for Schools (Ages 3–16).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import {
@@ -12,7 +12,7 @@ import {
   School, Heart, Play, ChevronRight, Phone, Mail, Building,
   Layers, Radio, Gauge, Zap, Cog, Compass, Monitor, Check,
   Printer, Wrench, Eye, Shield, DollarSign, Target, Calendar,
-  Rocket
+  Rocket, Maximize2, X
 } from 'lucide-react';
 
 import Footer from '../../components/Footer';
@@ -32,6 +32,36 @@ const BROCHURE_PDF_URL =
   'https://drive.google.com/uc?export=download&id=1rYT5N4s6amn6EHCNhD6V83n93pOY3uH5';
 const BROCHURE_NAME =
   'OLL-After-School-Robo-Club-Brochure.pdf';
+
+const ASC_HERO_SLIDES = [
+  {
+    badge: 'Turnkey Robo Club · Ages 3–16',
+    tag: 'After-School Innovation Hub',
+    title: 'Transform Campus Classrooms',
+    subtitle: 'Robotics, AI, 3D Printing & Coding Center Outside Regular Hours',
+    src: '/school/afterschool/asc_page_1.webp',
+    highlight: 'Zero Capex Model',
+    edition: 'Revenue Share',
+  },
+  {
+    badge: 'Complete Physical Ecosystem',
+    tag: 'Turnkey Hardware & Kits',
+    title: 'Hardware, LMS & Curriculum',
+    subtitle: '3D Printers, Laser Cutters, Electronics & Age-Wise Workbooks',
+    src: '/school/afterschool/asc_page_4.webp',
+    highlight: '6 Pillars Turnkey',
+    edition: 'Full Operations',
+  },
+  {
+    badge: 'Industrial Prototyping Space',
+    tag: 'Modern Lab Fit-Out',
+    title: 'Complete RoboLab Physical Layout',
+    subtitle: 'Robotics Arenas, Coding Workstations & Tool Pegboards',
+    src: '/school/afterschool/asc_page_6.webp',
+    highlight: 'Safety & Tools',
+    edition: '40+ Students',
+  },
+];
 
 const SHARK_TANK_IMG =
   'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
@@ -176,7 +206,26 @@ const SPECIALISED_COURSES = [
 export default function AfterSchoolClubLanding() {
   const navigate = useNavigate();
   const [gateOpen, setGateOpen] = useState(false);
-  const [activeSlide, setActiveSlide] = useState(1);
+  const [activeSlideIdx, setActiveSlideIdx] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Auto-rotate hero slider
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveSlideIdx((i) => (i + 1) % ASC_HERO_SLIDES.length);
+    }, 4500);
+    return () => clearInterval(id);
+  }, []);
+
+  // Listen for ESC to close zoom modal
+  useEffect(() => {
+    if (!previewImage) return;
+    const onKey = (e) => { if (e.key === 'Escape') setPreviewImage(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewImage]);
+
+  const activeHeroSlide = ASC_HERO_SLIDES[activeSlideIdx];
 
   const [form, setForm] = useState({
     school_name: '', contact_name: '', phone: '', email: '', city: '', model: 'School-Managed Model', message: ''
@@ -233,6 +282,16 @@ export default function AfterSchoolClubLanding() {
           src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
           font-weight: 400; font-style: normal; font-display: swap;
         }
+        @keyframes icseFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-7px); }
+        }
+        @keyframes icseSpinSlow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .icse-anim-float { animation: icseFloat 4s ease-in-out infinite; }
+        .icse-anim-spin { animation: icseSpinSlow 22s linear infinite; }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
         .icse-btn.primary { background:#DC2626; color:#fff; box-shadow:0 14px 28px rgba(220,38,38,0.28); }
@@ -356,30 +415,94 @@ export default function AfterSchoolClubLanding() {
               </div>
             </div>
 
-            {/* Right Column: Hero Cover / Slide Preview */}
-            <div className="lg:col-span-5">
-              <div className="relative mx-auto max-w-md lg:max-w-none">
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-slate-900 aspect-[3/4]">
+            {/* Right Column: Hero Floating Card with ambient glow, counter, full cover image */}
+            <div className="lg:col-span-5 relative">
+              {/* Ambient blur glow behind card */}
+              <div
+                className="absolute -inset-4 rounded-[2.5rem] opacity-35 blur-2xl pointer-events-none icse-anim-spin"
+                style={{
+                  background: 'conic-gradient(from 0deg, #DC2626, #F97316, #DC2626, #B91C1C, #DC2626)',
+                }}
+              />
+
+              <div
+                className="relative bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-5 border-2 border-red-100 shadow-2xl icse-anim-float transition-all duration-300"
+                style={{
+                  boxShadow: '0 25px 60px -15px rgba(220, 38, 38, 0.22), 0 0 0 1px rgba(220, 38, 38, 0.08)',
+                }}
+              >
+                {/* Header pill badge + counter */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#DC2626] bg-red-50 border border-red-200/80 px-3 py-1 rounded-full shadow-sm">
+                    <Sparkles size={11} className="text-[#DC2626]" />
+                    {activeHeroSlide.badge}
+                  </span>
+                  <span className="text-[11px] font-black tracking-widest text-slate-400 font-mono">
+                    {String(activeSlideIdx + 1).padStart(2, '0')} / {String(ASC_HERO_SLIDES.length).padStart(2, '0')}
+                  </span>
+                </div>
+
+                {/* Full-Cover Hero Visual Box */}
+                <div
+                  onClick={() => setPreviewImage({
+                    src: activeHeroSlide.src,
+                    title: activeHeroSlide.title,
+                    caption: `${activeHeroSlide.badge} — ${activeHeroSlide.subtitle}`
+                  })}
+                  className="relative rounded-2xl overflow-hidden w-full h-[380px] sm:h-[420px] shadow-md bg-slate-900 group cursor-pointer"
+                  title="Click to view full size"
+                >
                   <img
-                    src="/school/afterschool/asc_page_1.webp"
-                    alt="After School Robo Club Overview"
-                    className="w-full h-full object-cover"
+                    src={activeHeroSlide.src}
+                    alt={activeHeroSlide.title}
+                    className="w-full h-full object-cover object-top transition-all duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
-                    <p className="text-xs uppercase tracking-widest text-amber-300 font-bold mb-1">Turnkey School Club</p>
-                    <h3 className="text-xl font-bold">State-of-the-Art In-School Lab</h3>
-                    <p className="text-xs text-slate-300 mt-1">Monetize space, boost school admissions, and nurture next-gen innovators.</p>
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 via-black/20 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center rounded-2xl">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                      <Maximize2 size={13} className="text-[#DC2626]" /> Tap to Inspect Slide
+                    </span>
                   </div>
                 </div>
 
-                <div className="absolute -bottom-5 -left-5 bg-white p-4 rounded-2xl shadow-xl border border-slate-200 hidden sm:flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 font-black text-lg">
-                    ₹0
+                {/* Info / Metadata Row */}
+                <div className="mt-4 pt-3.5 border-t border-red-100 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#DC2626]">
+                      {activeHeroSlide.tag}
+                    </div>
+                    <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
+                      {activeHeroSlide.title}
+                    </div>
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                      {activeHeroSlide.subtitle}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500 font-bold">Zero Capital Overhead</p>
-                    <p className="text-sm font-extrabold text-slate-900">Flexible Revenue Share</p>
+                  <div className="text-right flex-shrink-0">
+                    <div className="inline-block bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                      {activeHeroSlide.highlight}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                      {activeHeroSlide.edition}
+                    </div>
                   </div>
+                </div>
+
+                {/* Bottom Carousel Indicator Dots */}
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                  {ASC_HERO_SLIDES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveSlideIdx(idx)}
+                      aria-label={`Go to slide ${idx + 1}`}
+                      className={`transition-all duration-300 cursor-pointer border-none p-0 ${
+                        activeSlideIdx === idx
+                          ? 'w-6 h-2 rounded-full bg-[#DC2626]'
+                          : 'w-2 h-2 rounded-full bg-slate-300 hover:bg-slate-400'
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -461,12 +584,27 @@ export default function AfterSchoolClubLanding() {
           </div>
 
           {/* Full slide visual card */}
-          <div className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-4 sm:p-6">
-            <img
-              src="/school/afterschool/asc_page_3.webp"
-              alt="Why an After-School Robo Club Slide"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/afterschool/asc_page_3.webp',
+              title: 'Why Launch an After-School Robo Club? — 4 Strategic Pillars',
+              caption: 'Monetize spare classrooms after hours, prepare students for global championships, boost admissions, and build a futuristic school brand.'
+            })}
+            className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom full slide"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/afterschool/asc_page_3.webp"
+                alt="Why an After-School Robo Club Slide"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#DC2626]" /> Click to Zoom Full Blueprint
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -501,12 +639,27 @@ export default function AfterSchoolClubLanding() {
             ))}
           </div>
 
-          <div className="mt-10 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-4 sm:p-6">
-            <img
-              src="/school/afterschool/asc_page_4.webp"
-              alt="Complete Robo Club Ecosystem Slide"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/afterschool/asc_page_4.webp',
+              title: 'Complete Robo Club Turnkey Ecosystem',
+              caption: 'Hardware kits, advanced learning stations, structured curriculum books, teacher certification, digital LMS, and operational support.'
+            })}
+            className="mt-10 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom full ecosystem"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/afterschool/asc_page_4.webp"
+                alt="Complete Robo Club Ecosystem Slide"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#DC2626]" /> Click to Zoom Full Ecosystem
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -567,12 +720,27 @@ export default function AfterSchoolClubLanding() {
             ))}
           </div>
 
-          <div className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-4 sm:p-6">
-            <img
-              src="/school/afterschool/asc_page_5.webp"
-              alt="Learning Pathways Slide"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/afterschool/asc_page_5.webp',
+              title: 'One Program That Grows With the Child (Ages 3 to 16)',
+              caption: 'Phase 1: Explore & Discover (3-6) · Phase 2: Build & Create (7-11) · Phase 3: Innovate & Apply (12-16).'
+            })}
+            className="mt-12 rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom learning pathways"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/afterschool/asc_page_5.webp"
+                alt="Learning Pathways Slide"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#DC2626]" /> Click to Zoom Age Pathways
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -593,12 +761,27 @@ export default function AfterSchoolClubLanding() {
           </div>
 
           {/* Slide 6 Showcase Image */}
-          <div className="rounded-3xl overflow-hidden border border-slate-800 shadow-2xl mb-12 bg-slate-950 p-3 sm:p-6">
-            <img
-              src="/school/afterschool/asc_page_6.webp"
-              alt="Complete RoboLab Physical Layout"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/afterschool/asc_page_6.webp',
+              title: 'Complete RoboLab Physical Layout Inside School',
+              caption: '3D printing stations, electronics soldering bays, Raspberry Pi AI stations, and competition arena.'
+            })}
+            className="rounded-3xl overflow-hidden border border-slate-800 shadow-2xl mb-12 bg-slate-950 p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom lab layout"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/afterschool/asc_page_6.webp"
+                alt="Complete RoboLab Physical Layout"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/30 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#DC2626]" /> Click to Zoom Lab Layout &amp; Arena
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Lab Equipment Grid */}
@@ -620,12 +803,27 @@ export default function AfterSchoolClubLanding() {
           </div>
 
           {/* Slide 7 Showcase Image */}
-          <div className="mt-12 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950 p-3 sm:p-6">
-            <img
-              src="/school/afterschool/asc_page_7.webp"
-              alt="Lab Equipment and Tools Inventory"
-              className="w-full rounded-2xl object-cover"
-            />
+          <div
+            onClick={() => setPreviewImage({
+              src: '/school/afterschool/asc_page_7.webp',
+              title: 'RoboLab Equipment & Consumables Turnkey Inventory',
+              caption: 'Comprehensive breakdown of 3D printers, laser cutting, hand tools, electronics stations, and security infrastructure.'
+            })}
+            className="mt-12 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950 p-3 sm:p-5 cursor-pointer group relative"
+            title="Click to zoom equipment inventory"
+          >
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src="/school/afterschool/asc_page_7.webp"
+                alt="Lab Equipment and Tools Inventory"
+                className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/30 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Maximize2 size={14} className="text-[#DC2626]" /> Click to Zoom Equipment Inventory
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -663,12 +861,27 @@ export default function AfterSchoolClubLanding() {
             </div>
 
             <div className="lg:col-span-6">
-              <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white p-4">
-                <img
-                  src="/school/afterschool/asc_page_9.webp"
-                  alt="Competitions and IIT Bombay Grand Finale"
-                  className="w-full rounded-2xl object-cover"
-                />
+              <div
+                onClick={() => setPreviewImage({
+                  src: '/school/afterschool/asc_page_9.webp',
+                  title: 'National Robotics Championship & Grand Finale at IIT Bombay',
+                  caption: 'Inter-school leagues, STEM credentials, and high-stakes arena competitions on premier campus stages.'
+                })}
+                className="rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white p-3 sm:p-4 cursor-pointer group relative"
+                title="Click to zoom competition showcase"
+              >
+                <div className="relative overflow-hidden rounded-2xl">
+                  <img
+                    src="/school/afterschool/asc_page_9.webp"
+                    alt="Competitions and IIT Bombay Grand Finale"
+                    className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                      <Maximize2 size={14} className="text-[#DC2626]" /> Click to Zoom Competition Showcase
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1092,6 +1305,60 @@ export default function AfterSchoolClubLanding() {
 
       {/* Footer */}
       <Footer />
+
+      {/* ── High-Resolution Zoom Lightbox Modal ─────────── */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6"
+          onClick={() => setPreviewImage(null)}
+          data-testid="afterschool-image-lightbox"
+        >
+          <div
+            className="relative bg-white rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-slate-50">
+              <div className="pr-4">
+                <h3 className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight">
+                  {previewImage.title}
+                </h3>
+                {previewImage.caption && (
+                  <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                    {previewImage.caption}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border-none flex-shrink-0"
+                aria-label="Close Preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-slate-900/5 flex items-center justify-center">
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg bg-white"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-slate-500 font-semibold">
+                Official OLL After-School Robo Club Specifications &amp; Layout Blueprint
+              </span>
+              <button
+                type="button"
+                onClick={() => { setPreviewImage(null); setGateOpen(true); }}
+                className="inline-flex items-center gap-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border-none cursor-pointer"
+              >
+                <Download size={14} /> Download Club Brochure
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Download Curriculum Gate Modal */}
       {gateOpen && (

@@ -3,14 +3,14 @@
  * Mandated as per CBSE Circular Skill-75/2024 · NEP 2020 & NCF-SE 2023 (Grades 6–10).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 import {
   ArrowRight, Download, ShieldCheck, Trophy, Cpu, Code2, Brain,
   CheckCircle2, Sparkles, Users, BookOpen, Package, Award, Star,
   School, Heart, Play, Leaf, Hammer, Shirt, Stethoscope, ShoppingBag,
-  Wrench, Check, Clock, Compass, Layers, Shield
+  Wrench, Check, Clock, Compass, Layers, Shield, Maximize2, X, Eye
 } from 'lucide-react';
 
 import Footer from '../../components/Footer';
@@ -35,6 +35,83 @@ const SHARK_TANK_IMG =
   'https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png';
 const SHARK_TANK_YT = 'https://www.youtube.com/watch?v=aVzl6yzPPTw';
 const KBC_YT = 'https://www.youtube.com/watch?v=8M3A_InpVKw&t=883s';
+
+const CSL_HERO_SLIDES = [
+  {
+    badge: 'CBSE Skill-75/2024 · Grades 6–10',
+    tag: 'Official Lab Blueprint · 2026-27',
+    title: 'Composite Skill Lab Solution',
+    subtitle: 'Life Forms · Machines & Materials · Human Services',
+    src: '/school/composite/csl_page_1.webp',
+    highlight: 'Mandatory CBSE Norms',
+    edition: '110 Hours / Year',
+  },
+  {
+    badge: 'Turnkey Lab Setup · NEP 2020',
+    tag: 'State-of-the-Art Learning Space',
+    title: 'Explore · Create · Innovate',
+    subtitle: 'Robotics, AI, 3D Printing, Electronics & Apparel Stations',
+    src: '/school/composite/csl_page_2.webp',
+    highlight: 'Turnkey Lab Fitout',
+    edition: 'Complete Equipment',
+  },
+  {
+    badge: 'NCF-SE 2023 Aligned · Textbooks',
+    tag: 'Curriculum & Hardware Ecosystem',
+    title: 'Curriculum Alignment & Textbooks',
+    subtitle: 'Grade-Wise Textbooks, Kits & LMS for CBSE Mandate',
+    src: '/school/composite/csl_page_3.webp',
+    highlight: 'Official Syllabus',
+    edition: 'Ready to Implement',
+  },
+];
+
+const CSL_EQUIPMENT_STATIONS = [
+  {
+    id: 'electronics',
+    name: 'Electronics, AI & Mechatronics',
+    tag: 'Sector 2: Machines & Materials',
+    color: '#0284C7',
+    bg: '#E0F2FE',
+    img: '/school/composite/csl_page_8.webp',
+    title: 'Electronics, Mechatronics, AI & IoT Hardware Stack',
+    desc: 'Arduino UNO boards, breadboards, ESP32 dev boards, digital multimeters, DC gear motors, servo motors, soldering stations, humidity sensors, ultrasonic sensors, and autonomous mobile robot kits.',
+    highlights: ['Arduino UNO with USB Cables (4 Nos)', 'ESP32 Wi-Fi & Bluetooth IoT Boards (4 Nos)', 'Digital Multimeters & Pen Testers', 'Soldering Station & Helping Hands', 'Autonomous Mobile Robot Kits with L298P Shields']
+  },
+  {
+    id: 'agriculture',
+    name: 'Agriculture, Gardening & Safety',
+    tag: 'Sector 1: Life Forms & Utilities',
+    color: '#16A34A',
+    bg: '#DCFCE7',
+    img: '/school/composite/csl_page_6.webp',
+    title: 'Agriculture, Drip Irrigation & Lab Safety Equipment',
+    desc: 'Soil measurement kits (digital pH + moisture), hydroponics DWC kits, drip irrigation kits, grow lights, plant grow bags, pruning shears, along with ABC fire extinguishers, fire blankets, first aid kits, PPE and safety goggles.',
+    highlights: ['Soil Digital pH & Moisture Meters', 'Hydroponics NFT / DWC Starter Kit', 'Drip Irrigation Tubing & Emitters', 'ABC Fire Extinguishers & Fire Blankets', 'Student Safety Goggles (20 Nos) & First Aid Training Kit']
+  },
+  {
+    id: 'woodwork-health',
+    name: 'Carpentry & Healthcare Services',
+    tag: 'Sector 2 & 3: Materials & Human Services',
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    img: '/school/composite/csl_page_10.webp',
+    title: 'Carpentry, Joinery & Healthcare Consumables Stack',
+    desc: 'Bench vises, chisels, hammers, electric hand drill machines, hacksaws, paired with half-body CPR training mannequins with feedback, digital BP monitors, pulse oximeters, glucometers, reflex hammers, and WHO health posters.',
+    highlights: ['Adult CPR Half-Body Mannequin with Feedback', 'Digital BP Monitors & Fingertip Pulse Oximeters', 'Carpentry & Bench Vises (Workbench Mount)', 'Electric Hand Drill & Bit Set', 'Patient Record Sheets & WHO Health Chart Posters']
+  },
+  {
+    id: 'lab-setup',
+    name: 'Complete Lab Room Architecture',
+    tag: 'Turnkey Classroom Transformation',
+    color: '#7C3AED',
+    bg: '#EDE9FE',
+    img: '/school/composite/csl_page_2.webp',
+    title: 'Explore · Create · Innovate Integrated Lab Environment',
+    desc: 'Ergonomic multi-station layout accommodating 40+ students simultaneously across robotics tables, sewing and textile craft tables, carpentry benches, hydroponics growing racks, and multimedia coding displays.',
+    highlights: ['600 – 1,200 sq. ft. Flexible Room Fit-Out', 'Branded OLL Lab Signage & Workstations', 'Dedicated Heavy-Duty Storage Bins', 'LMS-Connected Facilitator Laptop Desk', 'Kaushal Mela Exhibition Capstone Readiness']
+  }
+];
 
 const SECTORS = [
   {
@@ -73,7 +150,27 @@ const SECTORS = [
 export default function CompositeSkillLabLanding() {
   const navigate = useNavigate();
   const [gateOpen, setGateOpen] = useState(false);
-  const [activeSlide, setActiveSlide] = useState(1);
+  const [activeSlideIdx, setActiveSlideIdx] = useState(0);
+  const [selectedStationIdx, setSelectedStationIdx] = useState(0);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Auto-rotate hero slider
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveSlideIdx((i) => (i + 1) % CSL_HERO_SLIDES.length);
+    }, 4500);
+    return () => clearInterval(id);
+  }, []);
+
+  // Listen for ESC to close zoom modal
+  useEffect(() => {
+    if (!previewImage) return;
+    const onKey = (e) => { if (e.key === 'Escape') setPreviewImage(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewImage]);
+
+  const activeHeroSlide = CSL_HERO_SLIDES[activeSlideIdx];
 
   const [form, setForm] = useState({
     school_name: '', contact_name: '', phone: '', email: '', city: '', board: 'CBSE', message: ''
@@ -135,6 +232,10 @@ export default function CompositeSkillLabLanding() {
         .icse-btn.primary:hover { background:#1D4ED8; transform:translateY(-1px); }
         .icse-btn.outline { background:#fff; color:#0A1F44; border:1.5px solid #0A1F44; }
         .icse-btn.outline:hover { background:#0A1F44; color:#fff; }
+        @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+        .icse-anim-float { animation: floatY 6s ease-in-out infinite; }
+        @keyframes sparkleSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+        .icse-anim-spin { animation: sparkleSpin 12s linear infinite; }
         .icse-mobile-cta {
           position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
           padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0));
@@ -276,18 +377,88 @@ export default function CompositeSkillLabLanding() {
               </div>
             </div>
 
-            {/* Right Column: Hero Graphic */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                background: '#FFFFFF', borderRadius: '1.75rem',
-                border: '2px solid #E2E8F0', overflow: 'hidden',
-                boxShadow: '0 16px 40px rgba(15, 30, 80, 0.08)'
-              }}>
-                <img
-                  src="/school/composite/csl_page_1.webp"
-                  alt="OLL Composite Skill Lab Overview"
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
-                />
+            {/* Right Column: Hero Showcase Floating Card */}
+            <div className="relative" data-testid="csl-hero-card">
+              {/* Ambient glowing gradient behind the card */}
+              <div className="absolute -inset-6 rounded-[36px] bg-gradient-to-br from-[#0A1F44]/25 via-transparent to-[#2563EB]/25 blur-3xl icse-anim-spin" />
+
+              {/* White floating card */}
+              <div className="relative bg-white rounded-[32px] p-5 sm:p-6 border border-blue-100 shadow-2xl icse-anim-float">
+                {/* Header Bar */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="inline-flex items-center gap-1.5 bg-[#0A1F44] px-3.5 py-1.5 rounded-full">
+                    <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">
+                      {activeHeroSlide.badge}
+                    </span>
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 tabular-nums">
+                    {String(activeSlideIdx + 1).padStart(2, '0')} / {String(CSL_HERO_SLIDES.length).padStart(2, '0')}
+                  </div>
+                </div>
+
+                {/* Full-Cover Hero Visual Box */}
+                <div
+                  onClick={() => setPreviewImage({
+                    src: activeHeroSlide.src,
+                    title: activeHeroSlide.title,
+                    caption: `${activeHeroSlide.badge} — ${activeHeroSlide.subtitle}`
+                  })}
+                  className="relative rounded-2xl overflow-hidden w-full h-[380px] sm:h-[420px] shadow-md bg-slate-900 group cursor-pointer"
+                  title="Click to view full size"
+                >
+                  <img
+                    src={activeHeroSlide.src}
+                    alt={activeHeroSlide.title}
+                    className="w-full h-full object-cover object-top transition-all duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 via-black/20 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center rounded-2xl">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                      <Maximize2 size={13} className="text-[#2563EB]" /> Tap to Inspect Slide
+                    </span>
+                  </div>
+                </div>
+
+                {/* Info / Metadata Row */}
+                <div className="mt-4 pt-3.5 border-t border-blue-100 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#2563EB]">
+                      {activeHeroSlide.tag}
+                    </div>
+                    <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
+                      {activeHeroSlide.title}
+                    </div>
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                      {activeHeroSlide.subtitle}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="inline-block bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                      {activeHeroSlide.highlight}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                      {activeHeroSlide.edition}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Carousel Indicator Dots */}
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                  {CSL_HERO_SLIDES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveSlideIdx(idx)}
+                      aria-label={`Go to slide ${idx + 1}`}
+                      className={`transition-all duration-300 cursor-pointer border-none p-0 ${
+                        activeSlideIdx === idx
+                          ? 'w-6 h-2 rounded-full bg-[#2563EB]'
+                          : 'w-2 h-2 rounded-full bg-slate-300 hover:bg-slate-400'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -346,6 +517,163 @@ export default function CompositeSkillLabLanding() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* TURNKEY EQUIPMENT & CONSUMABLES STACK (Interactive Station Explorer) */}
+      <section style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563EB', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+            Official CBSE Skill-75/2024 Lab Inventory
+          </div>
+          <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
+            Turnkey Equipment, Tools &amp; Consumables Stack
+          </h2>
+          <p style={{ color: '#64748B', maxWidth: 700, margin: '0.5rem auto 0', fontSize: '0.95rem' }}>
+            Examine our high-spec multi-station inventories designed specifically for schools to deliver hands-on vocational excellence without sourcing headaches.
+          </p>
+        </div>
+
+        {/* Station Navigation Pills */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center', marginBottom: '2.5rem' }}>
+          {CSL_EQUIPMENT_STATIONS.map((station, idx) => (
+            <button
+              key={station.id}
+              type="button"
+              onClick={() => setSelectedStationIdx(idx)}
+              style={{
+                padding: '0.75rem 1.4rem',
+                borderRadius: '999px',
+                border: selectedStationIdx === idx ? `2px solid ${station.color}` : '2px solid #E2E8F0',
+                background: selectedStationIdx === idx ? station.bg : '#FFFFFF',
+                color: selectedStationIdx === idx ? station.color : '#475569',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: selectedStationIdx === idx ? `0 4px 14px ${station.color}25` : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: station.color }} />
+              {station.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Selected Station Card Showcase */}
+        {(() => {
+          const currentStation = CSL_EQUIPMENT_STATIONS[selectedStationIdx];
+          return (
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: '2rem',
+              border: '2px solid #E2E8F0',
+              overflow: 'hidden',
+              boxShadow: '0 16px 40px rgba(15, 30, 80, 0.06)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '2.5rem',
+              padding: '2.5rem',
+              alignItems: 'center'
+            }}>
+              {/* Left Column: Details & Checklist */}
+              <div>
+                <span style={{
+                  display: 'inline-block',
+                  background: currentStation.bg,
+                  color: currentStation.color,
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '999px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '1rem'
+                }}>
+                  {currentStation.tag}
+                </span>
+
+                <h3 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0A1F44', marginBottom: '0.85rem', lineHeight: 1.25 }}>
+                  {currentStation.title}
+                </h3>
+
+                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                  {currentStation.desc}
+                </p>
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0A1F44', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>
+                    Key Inventory Highlights (Included Turnkey):
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {currentStation.highlights.map((h, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: '50%', background: currentStation.bg,
+                          color: currentStation.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, marginTop: 2
+                        }}>
+                          ✓
+                        </div>
+                        <span style={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 600 }}>{h}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.85rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImage({
+                      src: currentStation.img,
+                      title: currentStation.title,
+                      caption: currentStation.desc
+                    })}
+                    className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border-none cursor-pointer shadow-md"
+                  >
+                    <Eye size={15} /> Inspect Full Inventory Spec
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGateOpen(true)}
+                    className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border-none cursor-pointer"
+                  >
+                    <Download size={14} /> Download Blueprint PDF
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Click-to-Zoom High-Res Spec Card */}
+              <div
+                onClick={() => setPreviewImage({
+                  src: currentStation.img,
+                  title: currentStation.title,
+                  caption: currentStation.desc
+                })}
+                className="relative cursor-pointer group rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 p-2 shadow-md hover:shadow-xl transition-all"
+                title="Click to zoom high-resolution inventory"
+              >
+                <div className="relative overflow-hidden rounded-xl bg-white">
+                  <img
+                    src={currentStation.img}
+                    alt={currentStation.title}
+                    className="w-full h-[360px] sm:h-[400px] object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-all flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                      <Maximize2 size={14} className="text-[#2563EB]" /> Click to Zoom Full Image
+                    </span>
+                  </div>
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-[11px] font-bold text-slate-700 shadow-sm border border-slate-200">
+                    High-Res CBSE Spec
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
       {/* SLIDE GALLERY / LAB FEATURES */}
@@ -634,6 +962,60 @@ export default function CompositeSkillLabLanding() {
       <LMSSection theme="light" />
       <SchoolRelatedPrograms current="composite-skill-lab" theme="light" />
       <Footer />
+
+      {/* ── High-Resolution Zoom Lightbox Modal ─────────── */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6"
+          onClick={() => setPreviewImage(null)}
+          data-testid="csl-image-lightbox"
+        >
+          <div
+            className="relative bg-white rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-slate-50">
+              <div className="pr-4">
+                <h3 className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight">
+                  {previewImage.title}
+                </h3>
+                {previewImage.caption && (
+                  <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                    {previewImage.caption}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border-none flex-shrink-0"
+                aria-label="Close Preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-slate-900/5 flex items-center justify-center">
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-lg bg-white"
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-slate-500 font-semibold">
+                Official CBSE Skill-75/2024 Composite Skill Lab Inventory &amp; Specifications
+              </span>
+              <button
+                type="button"
+                onClick={() => { setPreviewImage(null); setGateOpen(true); }}
+                className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border-none cursor-pointer"
+              >
+                <Download size={14} /> Download Blueprint PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BROCHURE GATE MODAL */}
       <CurriculumGateModal
