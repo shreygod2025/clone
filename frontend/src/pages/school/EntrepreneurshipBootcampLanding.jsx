@@ -301,6 +301,12 @@ export default function EntrepreneurshipBootcampLanding() {
         }
         .icse-anim-float { animation: icseFloat 4s ease-in-out infinite; }
         .icse-anim-spin { animation: icseSpinSlow 22s linear infinite; }
+        .icse-script {
+          font-family: 'Caveat', cursive;
+          font-weight: 700;
+          letter-spacing: 0;
+          text-transform: none;
+        }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
         .icse-btn.primary { background:#D97706; color:#fff; box-shadow:0 14px 28px rgba(217,119,6,0.28); }
@@ -362,6 +368,7 @@ export default function EntrepreneurshipBootcampLanding() {
             
             {/* Left Column */}
             <div className="lg:col-span-7 space-y-6">
+              <div className="icse-script text-[#D97706] text-3xl mb-1">future business leaders</div>
               <div className="inline-flex items-center gap-2 bg-amber-100/80 border border-amber-200 text-amber-900 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold">
                 <Sparkles className="w-4 h-4 text-amber-600" />
                 <span>Smart Money Skills · Big Business Ideas · Bright Futures</span>
@@ -375,12 +382,12 @@ export default function EntrepreneurshipBootcampLanding() {
                 BOOTCAMP
               </h1>
 
-              <p className="text-lg sm:text-xl font-bold text-slate-700">
-                Schools Teach Students How to Earn a Living. We Teach Them How to Manage Money & Build Opportunities.
+              <p className="text-lg sm:text-xl font-bold text-slate-700 italic">
+                "Schools teach students how to earn a living. We teach them how to manage money &amp; build opportunities."
               </p>
 
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                An experiential in-school program designed for <strong>Ages 3 to 16</strong>. From piggy bank savings to virtual stock market trading and live startup pitch contests, students acquire the financial confidence and entrepreneurial mindset needed to thrive.
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed italic">
+                An experiential in-school program designed for <strong className="not-italic text-slate-900">Ages 3 to 16</strong>. From piggy bank savings to virtual stock market trading and live startup pitch contests, students acquire the financial confidence and entrepreneurial mindset needed to thrive.
               </p>
 
               {/* 4 Pillars */}
@@ -484,7 +491,7 @@ export default function EntrepreneurshipBootcampLanding() {
                     <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
                       {activeHeroSlide.title}
                     </div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate italic">
                       {activeHeroSlide.subtitle}
                     </div>
                   </div>
@@ -549,13 +556,14 @@ export default function EntrepreneurshipBootcampLanding() {
       <section className="py-16 sm:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#D97706] text-3xl mb-1">real-world story</div>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-100 px-3 py-1 rounded-full">
               The Real-World Story Behind OLL
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               The Journey of Mr. Shreyaan Daga
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               A young entrepreneur and educator on a mission to build financially aware, future-ready learners with an entrepreneurial mindset.
             </p>
           </div>
@@ -574,7 +582,7 @@ export default function EntrepreneurshipBootcampLanding() {
                     <span className="text-xs font-bold text-slate-400">{step.age}</span>
                   </div>
                   <h4 className="font-bold text-slate-900 text-sm mb-1.5">{step.title}</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">{step.desc}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed italic">{step.desc}</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{step.tag}</span>
@@ -613,16 +621,17 @@ export default function EntrepreneurshipBootcampLanding() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-6 space-y-6">
+              <div className="icse-script text-[#DC2626] text-3xl mb-1">life skills beyond marks</div>
               <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100 px-3 py-1 rounded-full">
                 Core Life Skills
               </span>
               <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-                Why Financial Literacy & Entrepreneurship?
+                Why Financial Literacy &amp; Entrepreneurship?
               </h2>
               <blockquote className="border-l-4 border-amber-500 pl-4 italic text-slate-700 text-sm sm:text-base font-medium">
                 "Schools teach students how to earn a living. But are we teaching them how to manage money, create opportunities, and invest responsibly?"
               </blockquote>
-              <p className="text-slate-600 text-sm leading-relaxed">
+              <p className="text-slate-600 text-sm leading-relaxed italic">
                 Financial literacy and entrepreneurship are essential life skills, not just career choices. Our bootcamp helps students learn to:
               </p>
 
@@ -677,13 +686,14 @@ export default function EntrepreneurshipBootcampLanding() {
       <section className="py-16 sm:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#059669] text-3xl mb-1">learning by doing</div>
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">
               Learning Through Real-World Experiences
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Not Just Financial Concepts. Real-Life Applications.
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               Students do not memorize definitions — they open mock bank accounts, produce physical goods, run stalls, and trade stocks.
             </p>
           </div>
@@ -701,7 +711,7 @@ export default function EntrepreneurshipBootcampLanding() {
                   <exp.icon className="w-6 h-6" />
                 </div>
                 <h3 className="text-base font-bold text-slate-900 mb-2">{exp.title}</h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{exp.desc}</p>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed italic">{exp.desc}</p>
               </div>
             ))}
           </div>
@@ -735,13 +745,14 @@ export default function EntrepreneurshipBootcampLanding() {
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
+            <div className="icse-script text-[#7C3AED] text-3xl mb-1">tailored for every age</div>
             <span className="text-xs font-bold uppercase tracking-wider text-purple-600 bg-purple-100 px-3 py-1 rounded-full">
               Tailored by Age
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Every Age. A New Challenge. A Bigger Idea.
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               Explore the customized 18-module curriculum designed specifically for each developmental stage.
             </p>
           </div>
@@ -776,7 +787,7 @@ export default function EntrepreneurshipBootcampLanding() {
                       {b.age}
                     </span>
                     <h3 className="text-2xl font-black text-slate-900 mt-2">{b.title}</h3>
-                    <p className="text-xs sm:text-sm text-slate-500">{b.sub}</p>
+                    <p className="text-xs sm:text-sm text-slate-500 italic">{b.sub}</p>
                   </div>
 
                   <a
@@ -791,11 +802,11 @@ export default function EntrepreneurshipBootcampLanding() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                   <div className="bg-white p-5 rounded-2xl border border-slate-200">
                     <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Financial Literacy Project</p>
-                    <h4 className="font-extrabold text-slate-900 text-sm mt-1">{b.finProject}</h4>
+                    <h4 className="font-extrabold text-slate-900 text-sm mt-1 italic">{b.finProject}</h4>
                   </div>
                   <div className="bg-white p-5 rounded-2xl border border-slate-200">
                     <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Entrepreneurship Project</p>
-                    <h4 className="font-extrabold text-slate-900 text-sm mt-1">{b.entProject}</h4>
+                    <h4 className="font-extrabold text-slate-900 text-sm mt-1 italic">{b.entProject}</h4>
                   </div>
                 </div>
 
@@ -891,13 +902,14 @@ export default function EntrepreneurshipBootcampLanding() {
       <section className="py-16 sm:py-20 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-10">
+            <div className="icse-script text-[#F59E0B] text-3xl mb-1">flip through the slides</div>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
               Complete Slide Prospectus
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-white mt-3 tracking-tight">
               Flip Through the Bootcamp Presentation
             </h2>
-            <p className="text-slate-400 text-xs sm:text-sm mt-2">
+            <p className="text-slate-400 text-xs sm:text-sm mt-2 italic">
               Review all 12 slides explaining student outcomes, age divisions, simulation activities, and national recognition.
             </p>
           </div>
@@ -958,6 +970,7 @@ export default function EntrepreneurshipBootcampLanding() {
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
+            <div className="icse-script text-[#DC2626] text-3xl mb-1">national acclaim</div>
             <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100 px-3 py-1 rounded-full">
               National Recognition
             </span>
@@ -967,6 +980,9 @@ export default function EntrepreneurshipBootcampLanding() {
             <p className="text-slate-600 text-sm sm:text-base mt-2">
               Shreyaan Daga's entrepreneurial vision has received national spotlight across Shark Tank India and KBC Season 16.
             </p>
+            <blockquote className="border-l-4 border-amber-500 pl-4 my-4 max-w-xl mx-auto italic text-slate-600 text-sm text-left leading-relaxed">
+              "If students can learn algebra in school, they can certainly learn how compounding, equity, and venture creation work." — <span className="font-bold text-slate-900 not-italic">Shreyaan Daga</span>
+            </blockquote>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -985,7 +1001,7 @@ export default function EntrepreneurshipBootcampLanding() {
                 </a>
               </div>
               <h4 className="font-bold text-slate-900 text-base">Shark Tank India Season 2</h4>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1 italic">
                 Youngest founder funded on Shark Tank India at age 18, inspiring millions of school students nationwide.
               </p>
             </div>
@@ -1005,7 +1021,7 @@ export default function EntrepreneurshipBootcampLanding() {
                 </a>
               </div>
               <h4 className="font-bold text-slate-900 text-base">Kaun Banega Crorepati Season 16</h4>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1 italic">
                 Applauded on the hot seat with Mr. Amitabh Bachchan for bringing financial literacy and future skills to 500+ schools.
               </p>
             </div>
@@ -1018,13 +1034,14 @@ export default function EntrepreneurshipBootcampLanding() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 sm:p-12">
             <div className="text-center max-w-xl mx-auto mb-8">
+              <div className="icse-script text-[#D97706] text-3xl mb-1">get started today</div>
               <span className="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-100 px-3 py-1 rounded-full">
                 School Consultation
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-3">
                 Book a Financial Literacy & Entrepreneurship Bootcamp
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2">
+              <p className="text-xs sm:text-sm text-slate-500 mt-2 italic">
                 Available as a 5-day holiday bootcamp, weekend club, or year-round curriculum integrated into your school timetable.
               </p>
             </div>
@@ -1151,7 +1168,7 @@ export default function EntrepreneurshipBootcampLanding() {
       </section>
 
       {/* LMS & Operational Backbone */}
-      <LMSSection />
+      <LMSSection scriptClass="icse-script" />
 
       {/* Cross-linking to related school programs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

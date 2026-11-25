@@ -413,6 +413,7 @@ export default function RoboticsAdvanceLanding() {
           src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
           font-weight: 400; font-style: normal; font-display: swap;
         }
+        .icse-script  { font-family: 'Caveat', cursive; font-weight: 700; letter-spacing: 0; text-transform: none; }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
         .icse-btn.primary { background:#DC2626; color:#fff; box-shadow:0 14px 28px rgba(220,38,38,0.28); }
@@ -503,6 +504,9 @@ export default function RoboticsAdvanceLanding() {
             
             {/* Hero Left: Text & CTA */}
             <div>
+              <div className="icse-script text-[#DC2626] text-3xl mb-1">
+                hands-on future engineers
+              </div>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                 background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626',
@@ -518,16 +522,14 @@ export default function RoboticsAdvanceLanding() {
                 letterSpacing: '-0.02em'
               }}>
                 Advance Robotics & AI Curriculum for Schools{' '}
-                <span style={{ color: '#DC2626', display: 'inline-block' }}>(Grades 3 to 10)</span>
+                <span style={{ color: '#DC2626', display: 'inline-block' }} className="italic font-serif">(Grades 3 to 10)</span>
               </h1>
 
               <p style={{
                 fontSize: '1.05rem', lineHeight: 1.6, color: '#475569',
                 marginBottom: '2rem', maxWidth: 560
               }}>
-                From foundational mechanical motion and sensors in middle school to Arduino microcontrollers,
-                I2C OLED displays, autonomous rovers, and ESP32 Voice AI in high school. Complete hands-on lab kits,
-                grade-mapped textbooks, and comprehensive teacher empowerment.
+                From foundational mechanical motion and sensors in middle school to <em className="italic text-[#0A1F44] font-semibold">Arduino microcontrollers, I2C OLED displays, autonomous rovers</em>, and <em className="italic text-[#0A1F44] font-semibold">ESP32 Voice AI</em> in high school. Complete hands-on lab kits, grade-mapped textbooks, and comprehensive teacher empowerment.
               </p>
 
               {/* Primary Action Buttons */}
@@ -622,7 +624,7 @@ export default function RoboticsAdvanceLanding() {
                     <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
                       {activeSlide.title}
                     </div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate italic">
                       {activeSlide.subtitle}
                     </div>
                   </div>
@@ -699,6 +701,9 @@ export default function RoboticsAdvanceLanding() {
       {/* 4.5 GLOBAL ROBOTICS BENCHMARK & METHODOLOGY SHOWCASE (PAGE 2 & PAGE 3 DEEP-DIVE) */}
       <section id="global-methodology" style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div className="icse-script text-[#DC2626] text-3xl mb-1">
+            global benchmark
+          </div>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
             fontSize: '0.75rem', fontWeight: 800, color: '#DC2626',
@@ -711,8 +716,7 @@ export default function RoboticsAdvanceLanding() {
             From Global Classrooms to Your School
           </h2>
           <p style={{ color: '#64748B', maxWidth: 720, margin: '0.5rem auto 0', fontSize: '0.98rem', lineHeight: 1.6 }}>
-            We study, source, and adapt the world’s leading robotics education models (US &amp; China)
-            into an accredited, turnkey, school-ready curriculum designed for Indian students.
+            We study, source, and adapt the world’s leading robotics education models <span className="italic font-semibold text-[#0A1F44]">(US &amp; China)</span> into an accredited, turnkey, school-ready curriculum designed for Indian students.
           </p>
         </div>
 
@@ -941,6 +945,7 @@ export default function RoboticsAdvanceLanding() {
       {/* 5. GRADE-BY-GRADE INTERACTIVE EXPLORER */}
       <section id="curriculum-explorer" style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div className="icse-script text-[#DC2626] text-3xl mb-1">step-by-step roadmap</div>
           <div style={{
             display: 'inline-block', fontSize: '0.75rem', fontWeight: 800,
             color: '#DC2626', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem'
@@ -950,7 +955,7 @@ export default function RoboticsAdvanceLanding() {
           <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
             Grade 3 to Grade 10 Modular Progression
           </h2>
-          <p style={{ color: '#64748B', maxWidth: 650, margin: '0.5rem auto 0', fontSize: '0.95rem' }}>
+          <p style={{ color: '#64748B', maxWidth: 650, margin: '0.5rem auto 0', fontSize: '0.95rem' }} className="italic">
             Explore what students build, code, and master in each grade with dedicated kit configurations.
           </p>
         </div>
@@ -1015,7 +1020,7 @@ export default function RoboticsAdvanceLanding() {
                 {activeGrade.theme}
               </h3>
 
-              <p style={{ fontSize: '0.95rem', color: '#475569', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.95rem', color: '#475569', lineHeight: 1.6, marginBottom: '1.5rem' }} className="italic">
                 {activeGrade.summary}
               </p>
 
@@ -1027,7 +1032,7 @@ export default function RoboticsAdvanceLanding() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                   <Package size={15} /> Hardware Inclusions
                 </div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1E293B' }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1E293B' }} className="italic">
                   {activeGrade.kitIncludes}
                 </div>
               </div>
@@ -1124,6 +1129,7 @@ export default function RoboticsAdvanceLanding() {
             <div className="mt-8 pt-7 border-t border-slate-200">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
+                  <div className="icse-script text-[#DC2626] text-2xl -mb-1">hands-on builds</div>
                   <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#DC2626]">
                     Real-World Builds &amp; Physical Hardware
                   </span>
@@ -1167,7 +1173,7 @@ export default function RoboticsAdvanceLanding() {
                       <h5 className="text-[#0A1F44] font-black text-sm group-hover:text-[#DC2626] transition-colors">
                         {m.name}
                       </h5>
-                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed italic">
                         {m.desc}
                       </p>
                     </div>
@@ -1186,13 +1192,14 @@ export default function RoboticsAdvanceLanding() {
       {/* 6. WHAT'S IN THE ADVANCE ROBOTICS KITS */}
       <section style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <div className="icse-script text-[#DC2626] text-3xl mb-1">what's in the box</div>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#DC2626', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             Built for Years of Classroom Use
           </div>
           <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
             Inside the Advance Robotics Hardware Stack
           </h2>
-          <p style={{ color: '#64748B', maxWidth: 650, margin: '0.5rem auto 0', fontSize: '0.95rem' }}>
+          <p style={{ color: '#64748B', maxWidth: 650, margin: '0.5rem auto 0', fontSize: '0.95rem' }} className="italic">
             Classroom-grade modular components designed for high reuse, student safety, and deep exploration.
           </p>
         </div>
@@ -1252,7 +1259,7 @@ export default function RoboticsAdvanceLanding() {
                 <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0A1F44', marginBottom: '0.5rem' }}>
                   {item.title}
                 </h4>
-                <p style={{ fontSize: '0.9rem', color: '#64748B', lineHeight: 1.55 }}>
+                <p style={{ fontSize: '0.9rem', color: '#64748B', lineHeight: 1.55 }} className="italic">
                   {item.desc}
                 </p>
               </div>
@@ -1268,6 +1275,7 @@ export default function RoboticsAdvanceLanding() {
           borderRadius: '2rem', padding: '3.5rem 2.5rem', color: '#fff'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="icse-script text-[#F87171] text-3xl mb-1">turnkey partnership</div>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#F87171', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
               Turnkey School Partnership
             </div>
@@ -1317,7 +1325,7 @@ export default function RoboticsAdvanceLanding() {
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.75rem', color: '#fff' }}>
                   {p.title}
                 </h3>
-                <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.6 }}>
+                <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.6 }} className="italic">
                   {p.desc}
                 </p>
               </div>
@@ -1334,6 +1342,7 @@ export default function RoboticsAdvanceLanding() {
           gap: '2.5rem', alignItems: 'center', boxShadow: '0 12px 36px rgba(15, 30, 80, 0.05)'
         }}>
           <div>
+            <div className="icse-script text-[#DC2626] text-3xl mb-1">national recognition</div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
               background: '#FEF2F2', color: '#DC2626', borderRadius: '999px',
@@ -1345,9 +1354,12 @@ export default function RoboticsAdvanceLanding() {
             <h2 style={{ fontSize: 'clamp(1.75rem, 2.5vw, 2.2rem)', fontWeight: 900, color: '#0A1F44', marginBottom: '1rem' }}>
               Backed by Shark Tank India & Celebrated on KBC Hot Seat
             </h2>
-            <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+            <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
               Founded by Shreyaan Daga (Youngest to secure funding on Shark Tank India S2 and Hot Seat contestant on KBC S16 with Mr. Amitabh Bachchan), OLL is driven by an obsession to make quality STEM education hands-on and accessible to every school.
             </p>
+            <blockquote className="border-l-4 border-red-500 pl-4 my-3 italic text-slate-600 text-sm leading-relaxed">
+              "OLL's mission is to make 1 Billion learners capable enough to fulfil their dreams through practical, live future skills." — <span className="font-bold text-[#0A1F44] not-italic">Shreyaan Daga</span>
+            </blockquote>
             <div style={{ display: 'flex', gap: '1rem' }}>
               <a
                 href={SHARK_TANK_YT}
@@ -1394,12 +1406,14 @@ export default function RoboticsAdvanceLanding() {
       {/* 9. PARTNER SCHOOLS VIDEO TESTIMONIALS */}
       <section style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div className="icse-script text-[#DC2626] text-3xl mb-1">proof, not promises</div>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#DC2626', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             Real Classrooms · Real Impact
           </div>
           <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
             Hear from Principals & Educators
           </h2>
+          <p className="text-slate-500 italic text-sm mt-1">Direct feedback from school leadership, teachers, and student innovators.</p>
         </div>
 
         <div style={{
@@ -1460,6 +1474,7 @@ export default function RoboticsAdvanceLanding() {
           boxShadow: '0 24px 60px rgba(10, 31, 68, 0.25)', border: '1px solid rgba(255,255,255,0.1)'
         }}>
           <div style={{ maxWidth: 650, margin: '0 auto', textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="icse-script text-[#F87171] text-3xl mb-1">let's talk</div>
             <span style={{
               background: 'rgba(239, 68, 68, 0.2)', color: '#F87171',
               padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.75rem',
@@ -1470,7 +1485,7 @@ export default function RoboticsAdvanceLanding() {
             <h2 style={{ fontSize: 'clamp(1.85rem, 3vw, 2.6rem)', fontWeight: 900, marginTop: '0.75rem', color: '#fff' }}>
               Bring the Advance Robotics Lab to Your School
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.95rem', marginTop: '0.5rem' }} className="italic">
               Request a free physical sample kit demo or speak with our curriculum director to evaluate for your school's 2027–28 academic session.
             </p>
           </div>

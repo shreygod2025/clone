@@ -292,6 +292,12 @@ export default function AfterSchoolClubLanding() {
         }
         .icse-anim-float { animation: icseFloat 4s ease-in-out infinite; }
         .icse-anim-spin { animation: icseSpinSlow 22s linear infinite; }
+        .icse-script {
+          font-family: 'Caveat', cursive;
+          font-weight: 700;
+          letter-spacing: 0;
+          text-transform: none;
+        }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
         .icse-btn.primary { background:#DC2626; color:#fff; box-shadow:0 14px 28px rgba(220,38,38,0.28); }
@@ -353,6 +359,7 @@ export default function AfterSchoolClubLanding() {
             
             {/* Left Column: Headings & Call to Actions */}
             <div className="lg:col-span-7 space-y-6">
+              <div className="icse-script text-[#DC2626] text-3xl mb-1">monetize &amp; innovate</div>
               <div className="inline-flex items-center gap-2 bg-red-100/80 border border-red-200 text-red-800 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold">
                 <Sparkles className="w-4 h-4 text-red-600" />
                 <span>Creating Next-Gen Leaders · Robotics & AI Learning Center</span>
@@ -365,12 +372,12 @@ export default function AfterSchoolClubLanding() {
                 </span>
               </h1>
 
-              <p className="text-lg sm:text-xl font-bold text-slate-700">
-                Build. Code. Create. Innovate.
+              <p className="text-lg sm:text-xl font-bold text-slate-700 italic">
+                "Build. Code. Create. Innovate."
               </p>
 
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                An OLL-powered Robotics & Technology Club right within your school campus. Transform available space outside regular hours into a cutting-edge hub for <strong>Robotics, Coding, AI, and 3D Design</strong>.
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed italic">
+                An OLL-powered Robotics & Technology Club right within your school campus. Transform available space outside regular hours into a cutting-edge hub for <strong className="not-italic text-slate-900">Robotics, Coding, AI, and 3D Design</strong>.
               </p>
 
               {/* 4 Feature Badges */}
@@ -474,7 +481,7 @@ export default function AfterSchoolClubLanding() {
                     <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
                       {activeHeroSlide.title}
                     </div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate italic">
                       {activeHeroSlide.subtitle}
                     </div>
                   </div>
@@ -539,13 +546,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#DC2626] text-3xl mb-1">strategic advantages</div>
             <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100/70 px-3 py-1 rounded-full">
               Strategic Advantages for Schools
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Why Launch an After-School Robo Club?
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               Turn your school’s skills, space, and innovation into real revenue and prestige.
             </p>
           </div>
@@ -572,7 +580,7 @@ export default function AfterSchoolClubLanding() {
                     </span>
                   </div>
                   <h3 className="text-xl font-bold text-slate-900 mb-2">{pillar.title}</h3>
-                  <p className="text-slate-600 text-sm leading-relaxed">{pillar.desc}</p>
+                  <p className="text-slate-600 text-sm leading-relaxed italic">{pillar.desc}</p>
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-100 flex items-center text-xs font-bold text-slate-500">
@@ -613,13 +621,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#2563EB] text-3xl mb-1">turnkey components</div>
             <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
               Everything Included · Turnkey
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               The Complete Robo Club Ecosystem
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               We provide the physical kits, digital LMS, certified curriculum, master trainers, and ongoing operational support.
             </p>
           </div>
@@ -634,7 +643,7 @@ export default function AfterSchoolClubLanding() {
                   <item.icon className="w-5 h-5" />
                 </div>
                 <h3 className="text-base font-bold text-slate-900 mb-1">{item.title}</h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed italic">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -668,13 +677,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#059669] text-3xl mb-1">ages 3 to 16 progression</div>
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">
               Ages 3 to 16
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               One Program That Grows With the Child
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               Progressive learning pathway from early curiosity to real-world innovation and competitive robotics.
             </p>
           </div>
@@ -696,7 +706,7 @@ export default function AfterSchoolClubLanding() {
                     <span className="text-xs font-bold text-slate-400">Phase 0{idx + 1}</span>
                   </div>
                   <h3 className="text-xl font-extrabold text-slate-900 mb-1">{path.band}</h3>
-                  <p className="text-xs font-medium text-slate-500 mb-6">{path.sub}</p>
+                  <p className="text-xs font-medium text-slate-500 mb-6 italic">{path.sub}</p>
 
                   <ul className="space-y-3">
                     {path.points.map((pt, pidx) => (
@@ -749,13 +759,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#F59E0B] text-3xl mb-1">pro hardware stack</div>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
               State-of-the-Art Hardware
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-white mt-3 tracking-tight">
               A Complete RoboLab Setup Inside Your School
             </h2>
-            <p className="text-slate-400 text-sm sm:text-base mt-3">
+            <p className="text-slate-400 text-sm sm:text-base mt-3 italic">
               A curated set of industrial-grade tools, prototyping machines, electronics, and kits for hands-on learning.
             </p>
           </div>
@@ -796,7 +807,7 @@ export default function AfterSchoolClubLanding() {
                     <Cog className="w-4 h-4 text-red-400 flex-shrink-0" />
                     <h3 className="font-bold text-white text-sm">{eq.name}</h3>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">{eq.desc}</p>
+                  <p className="text-xs text-slate-300 leading-relaxed italic">{eq.desc}</p>
                 </div>
               </div>
             ))}
@@ -833,13 +844,14 @@ export default function AfterSchoolClubLanding() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-6 space-y-6">
+              <div className="icse-script text-[#DC2626] text-3xl mb-1">national prestige</div>
               <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100 px-3 py-1 rounded-full">
                 National Prestige
               </span>
               <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
                 Compete on National Stages · Grand Finale at IIT Bombay
               </h2>
-              <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+              <p className="text-slate-600 text-sm sm:text-base leading-relaxed italic">
                 Our After-School Robo Club is not just about classroom learning; it’s a competitive platform. Students design autonomous rovers, battle bots, and AI solutions to qualify for national and international championships.
               </p>
 
@@ -853,7 +865,7 @@ export default function AfterSchoolClubLanding() {
                     <Trophy className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">{item.title}</h4>
-                      <p className="text-xs text-slate-600">{item.desc}</p>
+                      <p className="text-xs text-slate-600 italic">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -892,13 +904,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#DC2626] text-3xl mb-1">tailored formats</div>
             <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100 px-3 py-1 rounded-full">
               Curriculum & Fee Formats
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Flexible Club Course Offerings
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               Multiple formats tailored to school schedules: Annual memberships, short-term bootcamps, holiday camps, and weekend workshops.
             </p>
           </div>
@@ -979,13 +992,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="icse-script text-[#7C3AED] text-3xl mb-1">flexible school partnership</div>
             <span className="text-xs font-bold uppercase tracking-wider text-purple-600 bg-purple-100 px-3 py-1 rounded-full">
               Flexible School Models
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Choose Your Robo Club Model
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-3">
+            <p className="text-slate-600 text-sm sm:text-base mt-3 italic">
               Two transparent ways to launch in your school — retain total control or let OLL handle full program delivery.
             </p>
           </div>
@@ -1050,13 +1064,14 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-10">
+            <div className="icse-script text-[#F59E0B] text-3xl mb-1">flip through the slides</div>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
               Visual Presentation
             </span>
             <h2 className="text-2xl sm:text-4xl font-black text-white mt-3 tracking-tight">
               Explore the Complete Club Presentation
             </h2>
-            <p className="text-slate-400 text-xs sm:text-sm mt-2">
+            <p className="text-slate-400 text-xs sm:text-sm mt-2 italic">
               Browse through all 12 slides of the official After-School Robo Club prospectus.
             </p>
           </div>
@@ -1104,6 +1119,7 @@ export default function AfterSchoolClubLanding() {
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
+            <div className="icse-script text-[#DC2626] text-3xl mb-1">national acclaim</div>
             <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100 px-3 py-1 rounded-full">
               Nationally Recognized
             </span>
@@ -1113,6 +1129,9 @@ export default function AfterSchoolClubLanding() {
             <p className="text-slate-600 text-sm sm:text-base mt-2">
               OLL is recognized across India for pioneering STEM, Robotics, and practical Future Skills education.
             </p>
+            <blockquote className="border-l-4 border-red-500 pl-4 my-4 max-w-xl mx-auto italic text-slate-600 text-sm text-left leading-relaxed">
+              "OLL empowers school campuses to become local innovation engines without imposing capital risks on school trustees." — <span className="font-bold text-slate-900 not-italic">Shreyaan Daga</span>
+            </blockquote>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -1131,7 +1150,7 @@ export default function AfterSchoolClubLanding() {
                 </a>
               </div>
               <h4 className="font-bold text-slate-900 text-base">Shark Tank India Season 2</h4>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1 italic">
                 Founder Shreyaan Daga became the youngest founder to secure institutional funding on Shark Tank India.
               </p>
             </div>
@@ -1151,7 +1170,7 @@ export default function AfterSchoolClubLanding() {
                 </a>
               </div>
               <h4 className="font-bold text-slate-900 text-base">Kaun Banega Crorepati Season 16</h4>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1 italic">
                 Featured on the hot seat with Mr. Amitabh Bachchan, spotlighting practical skills for young Indians.
               </p>
             </div>
@@ -1164,13 +1183,14 @@ export default function AfterSchoolClubLanding() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 sm:p-12">
             <div className="text-center max-w-xl mx-auto mb-8">
+              <div className="icse-script text-[#DC2626] text-3xl mb-1">launch your club</div>
               <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-100 px-3 py-1 rounded-full">
                 Get in Touch
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-3">
                 Launch After-School Robo Club at Your School
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2">
+              <p className="text-xs sm:text-sm text-slate-500 mt-2 italic">
                 Our Club Director will walk you through room requirements, equipment delivery, faculty training, and revenue estimates.
               </p>
             </div>
@@ -1296,7 +1316,7 @@ export default function AfterSchoolClubLanding() {
       </section>
 
       {/* LMS & Operational Backbone */}
-      <LMSSection />
+      <LMSSection scriptClass="icse-script" />
 
       {/* Cross-linking to related school programs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

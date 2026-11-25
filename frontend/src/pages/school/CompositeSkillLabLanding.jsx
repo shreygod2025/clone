@@ -226,6 +226,12 @@ export default function CompositeSkillLabLanding() {
           src: url('https://customer-assets-v7afamib.emergentagent.net/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/kfh1elso_zing.rust-demo-base.otf') format('opentype');
           font-weight: 400; font-style: normal; font-display: swap;
         }
+        .icse-script {
+          font-family: 'Caveat', cursive;
+          font-weight: 700;
+          letter-spacing: 0;
+          text-transform: none;
+        }
         .icse-nav-pill { max-width: 1220px; margin: 0 auto; background: rgba(255,255,255,0.98); backdrop-filter: saturate(180%) blur(14px); border: 1px solid rgba(10,31,68,0.08); box-shadow: 0 20px 44px rgba(10,31,68,0.12); border-radius: 999px; display:flex; align-items:center; justify-content: space-between; padding: 8px 14px 8px 18px; }
         .icse-btn     { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:999px; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; cursor:pointer; text-decoration:none; border:none; }
         .icse-btn.primary { background:#2563EB; color:#fff; box-shadow:0 14px 28px rgba(37,99,235,0.28); }
@@ -304,6 +310,7 @@ export default function CompositeSkillLabLanding() {
             
             {/* Left Column */}
             <div>
+              <div className="icse-script text-[#2563EB] text-3xl mb-1">holistic vocational education</div>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                 background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8',
@@ -319,15 +326,15 @@ export default function CompositeSkillLabLanding() {
                 letterSpacing: '-0.02em'
               }}>
                 Composite Skill Lab for Schools{' '}
-                <span style={{ color: '#2563EB', display: 'inline-block' }}>(Grades 6 to 10)</span>
+                <span style={{ color: '#2563EB', display: 'inline-block' }} className="italic font-serif">(Grades 6 to 10)</span>
               </h1>
 
               <p style={{
                 fontSize: '1.05rem', lineHeight: 1.6, color: '#475569',
                 marginBottom: '2rem', maxWidth: 580
-              }}>
+              }} className="italic">
                 Empower your school with an integrated, multi-sector hands-on learning hub.
-                Fulfills <strong>CBSE Circular Skill-75/2024</strong>, <strong>NEP 2020</strong>, and <strong>NCF-SE 2023</strong> mandates across Life Forms, Machines & Materials, and Human Services.
+                Fulfills <strong className="not-italic text-[#0A1F44]">CBSE Circular Skill-75/2024</strong>, <strong className="not-italic text-[#0A1F44]">NEP 2020</strong>, and <strong className="not-italic text-[#0A1F44]">NCF-SE 2023</strong> mandates across Life Forms, Machines &amp; Materials, and Human Services.
               </p>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '2.5rem' }}>
@@ -429,7 +436,7 @@ export default function CompositeSkillLabLanding() {
                     <div className="text-[#0A1F44] font-black text-base sm:text-lg leading-tight mt-0.5 truncate">
                       {activeHeroSlide.title}
                     </div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate">
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5 truncate italic">
                       {activeHeroSlide.subtitle}
                     </div>
                   </div>
@@ -469,13 +476,14 @@ export default function CompositeSkillLabLanding() {
       {/* 3 CORE SECTORS SECTION */}
       <section style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <div className="icse-script text-[#2563EB] text-3xl mb-1">multi-sector exposure</div>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563EB', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             Comprehensive Multi-Sector Learning
           </div>
           <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
             The 3 Pillars of CBSE Composite Skill Education
           </h2>
-          <p style={{ color: '#64748B', maxWidth: 650, margin: '0.5rem auto 0', fontSize: '0.95rem' }}>
+          <p style={{ color: '#64748B', maxWidth: 650, margin: '0.5rem auto 0', fontSize: '0.95rem' }} className="italic">
             Exposing students across Grades 6–10 to agriculture, modern manufacturing, electronics, healthcare, and retail.
           </p>
         </div>
@@ -507,7 +515,7 @@ export default function CompositeSkillLabLanding() {
                       <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1E293B', marginBottom: '0.25rem' }}>
                         {dom.name}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.5 }}>
+                      <div style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.5 }} className="italic">
                         {dom.desc}
                       </div>
                     </div>
@@ -522,13 +530,14 @@ export default function CompositeSkillLabLanding() {
       {/* TURNKEY EQUIPMENT & CONSUMABLES STACK (Interactive Station Explorer) */}
       <section style={{ maxWidth: 1200, margin: '0 auto 5rem', padding: '0 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div className="icse-script text-[#0284C7] text-3xl mb-1">in-depth inventory</div>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563EB', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             Official CBSE Skill-75/2024 Lab Inventory
           </div>
           <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 900, color: '#0A1F44' }}>
             Turnkey Equipment, Tools &amp; Consumables Stack
           </h2>
-          <p style={{ color: '#64748B', maxWidth: 700, margin: '0.5rem auto 0', fontSize: '0.95rem' }}>
+          <p style={{ color: '#64748B', maxWidth: 700, margin: '0.5rem auto 0', fontSize: '0.95rem' }} className="italic">
             Examine our high-spec multi-station inventories designed specifically for schools to deliver hands-on vocational excellence without sourcing headaches.
           </p>
         </div>
@@ -599,7 +608,7 @@ export default function CompositeSkillLabLanding() {
                   {currentStation.title}
                 </h3>
 
-                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem' }} className="italic">
                   {currentStation.desc}
                 </p>
 
@@ -683,6 +692,7 @@ export default function CompositeSkillLabLanding() {
           borderRadius: '2rem', padding: '3.5rem 2.5rem', color: '#fff'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="icse-script text-[#93C5FD] text-3xl mb-1">everything included</div>
             <span style={{
               background: 'rgba(255,255,255,0.15)', color: '#93C5FD',
               padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.75rem',
@@ -709,7 +719,7 @@ export default function CompositeSkillLabLanding() {
                 <h4 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.5rem', color: '#60A5FA' }}>
                   {f.title}
                 </h4>
-                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55 }}>
+                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55 }} className="italic">
                   {f.desc}
                 </p>
               </div>
@@ -726,6 +736,7 @@ export default function CompositeSkillLabLanding() {
           gap: '2.5rem', alignItems: 'center', boxShadow: '0 12px 36px rgba(15, 30, 80, 0.05)'
         }}>
           <div>
+            <div className="icse-script text-[#2563EB] text-3xl mb-1">validated &amp; accredited</div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
               background: '#EFF6FF', color: '#1D4ED8', borderRadius: '999px',
@@ -737,9 +748,12 @@ export default function CompositeSkillLabLanding() {
             <h2 style={{ fontSize: 'clamp(1.75rem, 2.5vw, 2.2rem)', fontWeight: 900, color: '#0A1F44', marginBottom: '1rem' }}>
               Backed by Shark Tank India & KBC Hot Seat
             </h2>
-            <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+            <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
               OLL provides educational institutions across India with validated, NEP 2020-compliant curricula, certified by STEM.org and recognized nationwide.
             </p>
+            <blockquote className="border-l-4 border-blue-500 pl-4 my-3 italic text-slate-600 text-sm leading-relaxed">
+              "Vocational skilling shouldn't be secondary—it must be hands-on, multi-sector, and future-ready for every student." — <span className="font-bold text-[#0A1F44] not-italic">Shreyaan Daga</span>
+            </blockquote>
             <div style={{ display: 'flex', gap: '1rem' }}>
               <a
                 href={SHARK_TANK_YT}
@@ -791,6 +805,7 @@ export default function CompositeSkillLabLanding() {
           boxShadow: '0 24px 60px rgba(10, 31, 68, 0.25)', border: '1px solid rgba(255,255,255,0.1)'
         }}>
           <div style={{ maxWidth: 650, margin: '0 auto', textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="icse-script text-[#93C5FD] text-3xl mb-1">let's build your lab</div>
             <span style={{
               background: 'rgba(37, 99, 235, 0.2)', color: '#60A5FA',
               padding: '0.35rem 0.85rem', borderRadius: '999px', fontSize: '0.75rem',
@@ -801,7 +816,7 @@ export default function CompositeSkillLabLanding() {
             <h2 style={{ fontSize: 'clamp(1.85rem, 3vw, 2.6rem)', fontWeight: 900, marginTop: '0.75rem', color: '#fff' }}>
               Bring the Composite Skill Lab to Your Campus
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.95rem', marginTop: '0.5rem' }} className="italic">
               Request a customized floorplan, equipment budget, and syllabus demo for your school.
             </p>
           </div>
@@ -959,7 +974,7 @@ export default function CompositeSkillLabLanding() {
       </section>
 
       {/* LMS & CROSS-LINKS */}
-      <LMSSection theme="light" />
+      <LMSSection theme="light" scriptClass="icse-script" />
       <SchoolRelatedPrograms current="composite-skill-lab" theme="light" />
       <Footer />
 
