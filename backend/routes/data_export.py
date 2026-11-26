@@ -28,15 +28,11 @@ from .shared import get_current_user
 
 router = APIRouter()
 
-# Reuse a single client for all export requests so we don't churn connections
-_client: Optional[AsyncIOMotorClient] = None
+from database import client as _canonical_client
 
 
 def _get_client() -> AsyncIOMotorClient:
-    global _client
-    if _client is None:
-        _client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    return _client
+    return _canonical_client
 
 
 # Default DB the app uses — always allow it; allow others if listDatabases is permitted.

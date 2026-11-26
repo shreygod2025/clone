@@ -15,10 +15,17 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.onlinelivelearning.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "https://clone-x386.onrender.com",
+      "eas": {
+        "projectId": "1dc58d20-1246-49c1-838e-863228284a89"
+      }
     }
   }
 }

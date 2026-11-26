@@ -299,7 +299,7 @@ async def create_student_inquiry(data: StudentInquiryCreate, background_tasks: B
     
     return inquiry
 
-@router.get("/students/inquiries", response_model=List[StudentInquiry])
+@router.get("/students/inquiries")
 async def get_student_inquiries(
     status: Optional[str] = None,
     user: dict = Depends(get_current_user)
@@ -318,10 +318,10 @@ async def get_student_inquiries(
     
     inquiries = await db.student_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for inq in inquiries:
-        if isinstance(inq.get('created_at'), str):
-            inq['created_at'] = datetime.fromisoformat(inq['created_at'])
-        if isinstance(inq.get('updated_at'), str):
-            inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
+        if isinstance(inq.get('created_at'), datetime):
+            inq['created_at'] = inq['created_at'].isoformat()
+        if isinstance(inq.get('updated_at'), datetime):
+            inq['updated_at'] = inq['updated_at'].isoformat()
     return inquiries
 
 @router.get("/students/inquiry/{inquiry_id}", response_model=StudentInquiry)

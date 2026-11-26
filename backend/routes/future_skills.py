@@ -9,6 +9,7 @@ Reuses Cashfree credentials from the summer-camp module.
 """
 import asyncio
 import logging
+import math
 import os
 import re
 import secrets
@@ -1547,6 +1548,8 @@ async def admin_list_leads(
     q: Optional[str] = Query(None),
     center_id: Optional[str] = Query(None),
     assignee: Optional[str] = Query(None),
+    page: Optional[int] = Query(None, ge=1),
+    limit: Optional[int] = Query(None, ge=1),
     user: dict = Depends(get_current_user),
 ):
     if not _is_admin(user):
@@ -1579,7 +1582,13 @@ async def admin_list_leads(
     if effective_cid:
         query["center_id"] = effective_cid
     query.update(_assignee_q(user, assignee))
-    cursor = db.future_skills_leads.find(query, {"_id": 0}).sort("created_at", -1).limit(1000)
+    total_matching = await db.future_skills_leads.count_documents(query)
+    cursor = db.future_skills_leads.find(query, {"_id": 0}).sort("created_at", -1)
+    if limit is not None and limit > 0:
+        p = max(1, page or 1)
+        cursor = cursor.skip((p - 1) * limit).limit(limit)
+    else:
+        cursor = cursor.limit(1000)
     rows = [r async for r in cursor]
     scope_q = {**({"center_id": scope_cid} if scope_cid else {}), **_assignee_q(user, assignee)}
     total = await db.future_skills_leads.count_documents(scope_q)
@@ -1591,6 +1600,10 @@ async def admin_list_leads(
     lost = await db.future_skills_leads.count_documents({**scope_q, "status": "lost"})
     return {
         "leads": rows,
+        "page": page or 1,
+        "limit": limit or len(rows),
+        "total": total_matching,
+        "total_pages": math.ceil(total_matching / limit) if (limit and limit > 0) else 1,
         "stats": {
             "total": total,
             "active": active,

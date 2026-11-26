@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, timezone, timedelta
 from calendar import monthrange
 from typing import Optional
+import asyncio
 
 from routes.shared import db, get_current_user
 
@@ -720,12 +721,12 @@ async def _timeseries_payload(uid: str, scope: str, ref_iso: Optional[str]) -> d
 
     buckets = _buckets_for_scope(scope, ref_iso)
 
-    # Compute metrics for each bucket in parallel-friendly sequential loop
-    bucket_metrics = []
+    # Compute metrics for each bucket concurrently
+    bucket_metrics = await asyncio.gather(
+        *[_compute_selected_metrics(uid, role_kpi_ids, b["start_iso"], b["end_iso"]) for b in buckets]
+    )
     totals: dict = {kid: 0 for kid in role_kpi_ids}
-    for b in buckets:
-        m = await _compute_selected_metrics(uid, role_kpi_ids, b["start_iso"], b["end_iso"])
-        bucket_metrics.append(m)
+    for m in bucket_metrics:
         for kid in role_kpi_ids:
             v = m.get(kid, 0) or 0
             try:
@@ -894,9 +895,11 @@ async def _compute_future_skills_metrics(start_iso: str, end_iso: str) -> dict:
     q_trials  = {"created_at":     {"$gte": start_iso, "$lte": end_iso}}
     q_paid    = {"created_at":     {"$gte": start_iso, "$lte": end_iso}, "payment_status": "paid"}
 
-    leads_total_raw = await db.future_skills_leads.count_documents(q_leads)
-    trials_total    = await db.future_skills_trials.count_documents(q_trials)
-    customers_paid  = await db.future_skills_subscriptions.count_documents(q_paid)
+    leads_total_raw, trials_total, customers_paid = await asyncio.gather(
+        db.future_skills_leads.count_documents(q_leads),
+        db.future_skills_trials.count_documents(q_trials),
+        db.future_skills_subscriptions.count_documents(q_paid),
+    )
 
     # True lead count = unique parent phones across leads + trials + subs
     # created in this window (a trial/sub created directly is still funnel intake).
@@ -1014,28 +1017,34 @@ async def _compute_selected_metrics(
     needs_fs = any(k.startswith("fs_") for k in role_kpi_ids)
     needs_field = any(k.startswith("field_") for k in role_kpi_ids)
     needs_tc    = any(k.startswith("tc_") for k in role_kpi_ids)
+    tasks = []
     if needs_support:
-        metrics.update(await _compute_support_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_support_metrics(user_id, start_iso, end_iso))
     if needs_b2b:
-        metrics.update(await _compute_b2b_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_b2b_metrics(user_id, start_iso, end_iso))
     if needs_b2c:
-        metrics.update(await _compute_b2c_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_b2c_metrics(user_id, start_iso, end_iso))
     if needs_tasks:
-        metrics.update(await _compute_task_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_task_metrics(user_id, start_iso, end_iso))
     if needs_hr:
-        metrics.update(await _compute_hr_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_hr_metrics(user_id, start_iso, end_iso))
     if needs_edu:
-        metrics.update(await _compute_educator_hr_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_educator_hr_metrics(user_id, start_iso, end_iso))
     if needs_gp:
-        metrics.update(await _compute_growth_partner_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_growth_partner_metrics(user_id, start_iso, end_iso))
     if needs_social:
-        metrics.update(await _compute_social_media_metrics(start_iso, end_iso))
+        tasks.append(_compute_social_media_metrics(start_iso, end_iso))
     if needs_fs:
-        metrics.update(await _compute_future_skills_metrics(start_iso, end_iso))
+        tasks.append(_compute_future_skills_metrics(start_iso, end_iso))
     if needs_field:
-        metrics.update(await _compute_field_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_field_metrics(user_id, start_iso, end_iso))
     if needs_tc:
-        metrics.update(await _compute_telecalling_metrics(user_id, start_iso, end_iso))
+        tasks.append(_compute_telecalling_metrics(user_id, start_iso, end_iso))
+
+    if tasks:
+        results = await asyncio.gather(*tasks)
+        for res in results:
+            metrics.update(res)
     return metrics
 
 

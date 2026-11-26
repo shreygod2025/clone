@@ -36,10 +36,8 @@ async def create_backup(user: dict = Depends(get_current_user)):
 
     # Determine which databases to dump — skip Mongo internal DBs
     try:
-        from motor.motor_asyncio import AsyncIOMotorClient
-        client = AsyncIOMotorClient(MONGO_URL)
+        from database import client
         all_dbs = await client.list_database_names()
-        client.close()
     except Exception as e:
         logging.warning(f"listDatabases failed, falling back to primary db only: {e}")
         all_dbs = [DB_NAME]

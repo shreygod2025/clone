@@ -132,9 +132,14 @@ async def get_school_payments(
     # Broadened to include renewal_meeting so extra-student tranches added
     # from the Renewal Convert modal are visible on the Orders page while
     # the renewal is still in progress (before the status flips to renewed).
-    schools = await db.school_inquiries.find({
-        "status": {"$in": ["converted", "active", "renewed", "renewal_meeting"]},
-    }).to_list(length=None)
+    schools = await db.school_inquiries.find(
+        {"status": {"$in": ["converted", "active", "renewed", "renewal_meeting"]}},
+        {
+            "_id": 0, "id": 1, "school_name": 1, "contact_name": 1,
+            "accounts_reminders_enabled": 1, "created_at": 1,
+            "onboarding_data": 1, "payments": 1
+        }
+    ).to_list(length=None)
     
     for school in schools:
         onboarding_data = school.get("onboarding_data") or {}
@@ -210,10 +215,27 @@ async def get_student_payments(
     """Get all student payments (from converted students with payment details)"""
     payments = []
     
-    # Get converted students from student_inquiries collection
-    students = await db.student_inquiries.find({
-        "status": {"$in": ["converted", "active", "enrolled"]}
-    }).to_list(length=None)
+    # Parallel fetch with slim projections for instant response
+    stu_proj = {
+        "_id": 0, "id": 1, "name": 1, "parent_name": 1, "contact_name": 1, "phone": 1,
+        "email": 1, "skill": 1, "age_group": 1, "onboarding_data": 1, "payments": 1,
+        "conversion_amount": 1, "due_date": 1, "created_at": 1, "batch_name": 1,
+        "learning_mode": 1, "selected_center": 1, "city": 1, "demo_date": 1,
+        "converted_at": 1, "updated_at": 1
+    }
+    dp_proj = {
+        "_id": 1, "id": 1, "student_id": 1, "student_name": 1, "student_phone": 1,
+        "student_email": 1, "batch_name": 1, "amount": 1, "status": 1, "paid_at": 1,
+        "created_at": 1, "transaction_id": 1, "cf_payment_id": 1, "cf_order_id": 1,
+        "payment_method": 1, "payment_from": 1
+    }
+    students, direct_payments = await asyncio.gather(
+        db.student_inquiries.find(
+            {"status": {"$in": ["converted", "active", "enrolled"]}},
+            stu_proj
+        ).to_list(length=None),
+        db.student_payments.find({}, dp_proj).to_list(length=None),
+    )
     
     for student in students:
         onboarding_data = student.get("onboarding_data") or {}
@@ -267,8 +289,7 @@ async def get_student_payments(
         }
         payments.append(payment)
     
-    # Also get payments from dedicated student_payments collection (Cashfree payments)
-    direct_payments = await db.student_payments.find({}).to_list(length=None)
+    # Process payments from dedicated student_payments collection (Cashfree payments)
     direct_payment_student_ids = set()
     
     for dp in direct_payments:
@@ -841,7 +862,12 @@ async def delete_school_payment(
 async def get_summer_camp_payments(user: dict = Depends(get_current_user)):
     """Payment rows for the Orders → Student Payments → Summer Camp sub-tab."""
     payments = []
-    async for b in db.summer_camp_bookings.find({}).sort("created_at", -1):
+    sc_proj = {
+        "_id": 1, "id": 1, "student_name": 1, "parent_name": 1, "phone": 1, "email": 1,
+        "program": 1, "batch_week": 1, "mode": 1, "center_label": 1, "amount": 1,
+        "payment_status": 1, "paid_at": 1, "updated_at": 1, "created_at": 1
+    }
+    async for b in db.summer_camp_bookings.find({}, sc_proj).sort("created_at", -1):
         payments.append({
             "id": b.get("id", str(b.get("_id"))),
             "student_id": b.get("id"),
@@ -867,7 +893,13 @@ async def get_summer_camp_payments(user: dict = Depends(get_current_user)):
 async def get_future_skills_payments(user: dict = Depends(get_current_user)):
     """Payment rows for the Orders → Student Payments → Future Skills sub-tab."""
     payments = []
-    async for s in db.future_skills_subscriptions.find({}).sort("created_at", -1):
+    fs_proj = {
+        "_id": 1, "id": 1, "student_name": 1, "parent_name": 1, "parent_phone": 1,
+        "phone": 1, "parent_email": 1, "email": 1, "program_key": 1, "batch_label": 1,
+        "preferred_center": 1, "amount": 1, "payment_status": 1, "paid_at": 1,
+        "updated_at": 1, "created_at": 1
+    }
+    async for s in db.future_skills_subscriptions.find({}, fs_proj).sort("created_at", -1):
         payments.append({
             "id": s.get("id", str(s.get("_id"))),
             "student_id": s.get("id"),
