@@ -54,7 +54,6 @@ def _decode_token(token: str) -> Optional[dict]:
         return None
 
 
-# ─── Load vendor-shipped PDF-extracted knowledge files once ───────────────
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 # NEW (2026-10-05): The official rulebook PDF uploaded by the OLL product
 # team. This supersedes the older techfest_faqs.txt / techfest_problem_statement.txt

@@ -19,6 +19,7 @@ import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { Textarea } from '../../../components/ui/textarea';
 import { useAuth } from '../../../context/AuthContext';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -354,7 +355,7 @@ export default function EducatorPaymentsTab() {
           Payments by Educator
         </div>
         {loading ? (
-          <div className="p-10 text-center text-slate-400 text-sm">Loading…</div>
+          <LoadingSpinner text="Loading educator payments…" />
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-slate-400 text-sm" data-testid="pay-empty">
             No educator payments recorded yet. Click <b>Add Payment</b> — it will flow into the School P&L Educator Cost automatically.

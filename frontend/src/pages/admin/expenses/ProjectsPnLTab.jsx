@@ -16,6 +16,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../context/AuthContext';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -125,7 +126,7 @@ export default function ProjectsPnLTab() {
         </div>
 
         {loading ? (
-          <div className="p-10 text-center text-slate-400 text-sm">Loading…</div>
+          <LoadingSpinner text="Loading project P&L…" />
         ) : projects.length === 0 ? (
           <div className="p-10 text-center text-slate-400 text-sm" data-testid="projects-pnl-empty">
             No projects yet. Create one under <Link to="/admin/projects" className="text-blue-600 underline">Projects</Link>.

@@ -248,10 +248,11 @@ export default function AdminLive() {
     [nowIST]
   );
 
-  if (authLoading) {
+  if (authLoading || (!data && !error)) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-300 grid place-items-center">
-        Loading…
+      <div className="min-h-screen bg-slate-950 text-slate-300 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
+        <p className="text-slate-400 font-mono text-sm tracking-wider uppercase">Loading Live Ops Command Center…</p>
       </div>
     );
   }

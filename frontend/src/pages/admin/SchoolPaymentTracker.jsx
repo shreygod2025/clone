@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { downloadReceiptPDF } from '../../utils/receiptPdfGenerator';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -17,11 +19,15 @@ const SchoolPaymentTracker = () => {
   const navigate = useNavigate();
   const hasFetched = useRef(false);
   
-  const [loading, setLoading] = useState(true);
-  const [payments, setPayments] = useState([]);
-  const [stats, setStats] = useState({});
-  const [gradeStats, setGradeStats] = useState({});
-  const [schoolName, setSchoolName] = useState('');
+  const trackerKey = `/school-payment/tracker/${schoolId}`;
+  const [payments, setPayments] = useState(() => getCachedData(trackerKey)?.payments || []);
+  const [stats, setStats] = useState(() => getCachedData(trackerKey)?.stats || {});
+  const [gradeStats, setGradeStats] = useState(() => getCachedData(trackerKey)?.grade_stats || {});
+  const [schoolName, setSchoolName] = useState(() => {
+    const cached = getCachedData(trackerKey);
+    return cached?.payments?.[0]?.school_name || '';
+  });
+  const [loading, setLoading] = useState(() => !hasCachedData(trackerKey));
   
   // Filters
   const [gradeFilter, setGradeFilter] = useState('all');
@@ -113,8 +119,11 @@ const SchoolPaymentTracker = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gradeFilter]);
 
-  const fetchPayments = async () => {
-    setLoading(true);
+  const fetchPayments = async (options = {}) => {
+    const force = options?.force === true;
+    if (!hasCachedData(trackerKey) || force) {
+      setLoading(true);
+    }
     try {
       const token = localStorage.getItem('oll_token');
       if (!token) { navigate('/admin/login'); return; }
@@ -296,11 +305,7 @@ const SchoolPaymentTracker = () => {
   const grades = [...new Set(payments.map(p => p.grade))].filter(Boolean).sort();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#C53030]"></div>
-      </div>
-    );
+    return <LoadingSpinner text="Loading school payment tracker..." fullScreen />;
   }
 
   return (

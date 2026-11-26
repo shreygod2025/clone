@@ -5,6 +5,7 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Trophy, Star, Award, Sparkles, ArrowRight, ExternalLink } from 'lucide-react';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -129,7 +130,7 @@ const SuccessStoriesPage = () => {
       <section className="max-w-6xl mx-auto px-4 pb-16">
         {flagship.length > 0 && <h2 className="text-lg md:text-xl font-bold text-slate-900 mb-4">More success stories</h2>}
         {loading ? (
-          <div className="text-center py-16 text-slate-500">Loading stories…</div>
+          <LoadingSpinner text="Loading success stories…" />
         ) : rest.length === 0 && flagship.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-slate-300 rounded-2xl">
             <Award className="w-10 h-10 text-slate-300 mx-auto mb-2" />

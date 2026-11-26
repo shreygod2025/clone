@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import GmailBotPanel from './GmailBotPanel';
 import CouponsSection from './CouponsSection';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -1128,8 +1129,12 @@ const AdminSettings = () => {
           </div>
         )}
 
+        {loading && ['api-keys', 'case-studies', 'team-requirements', 'cities', 'centers', 'blogs'].includes(activeTab) && (
+          <LoadingSpinner text={`Loading ${activeTab.replace('-', ' ')}...`} />
+        )}
+
         {/* API Keys Tab */}
-        {activeTab === 'api-keys' && (
+        {!loading && activeTab === 'api-keys' && (
           <div className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
@@ -1454,7 +1459,7 @@ const AdminSettings = () => {
         )}
 
         {/* Case Studies Tab */}
-        {activeTab === 'case-studies' && (
+        {!loading && activeTab === 'case-studies' && (
           <div className="grid gap-4">
             {filteredCaseStudies.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
@@ -1536,7 +1541,7 @@ const AdminSettings = () => {
         )}
 
         {/* Team Requirements Tab */}
-        {activeTab === 'team-requirements' && (
+        {!loading && activeTab === 'team-requirements' && (
           <div className="grid gap-4">
             {filteredTeamReqs.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
@@ -1616,7 +1621,7 @@ const AdminSettings = () => {
         )}
 
         {/* Cities Tab */}
-        {activeTab === 'cities' && (
+        {!loading && activeTab === 'cities' && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
               <p className="text-sm text-blue-700 font-medium">Cities are shared across Schools, Educators, Students, and all other location fields.</p>
@@ -1689,7 +1694,7 @@ const AdminSettings = () => {
         )}
 
         {/* Centers Tab */}
-        {activeTab === 'centers' && (
+        {!loading && activeTab === 'centers' && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <table className="w-full">
               <thead className="bg-slate-50">
@@ -1753,7 +1758,7 @@ const AdminSettings = () => {
         )}
 
         {/* Blogs Tab */}
-        {activeTab === 'blogs' && (
+        {!loading && activeTab === 'blogs' && (
           <div className="grid gap-4">
             {filteredBlogs.map(blog => (
               <div key={blog.id} className="bg-white rounded-xl p-4 shadow-sm flex gap-4">
@@ -2431,7 +2436,7 @@ const DailyReportPanel = ({ getAuthHeaders }) => {
   };
 
   if (loading && !status) {
-    return <div className="bg-white rounded-xl p-8 text-center text-slate-500">Loading…</div>;
+    return <LoadingSpinner text="Loading daily briefing status…" />;
   }
   if (!status) return null;
 

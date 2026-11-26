@@ -261,16 +261,19 @@ async def get_data_center_stats(user: dict = Depends(get_current_user)):
     
     # Get status breakdowns
     student_statuses = {}
-    async for doc in db.student_inquiries.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
-        student_statuses[doc["_id"] or "unknown"] = doc["count"]
+    async for doc in db.student_inquiries.find({}, {"_id": 0, "status": 1}):
+        st = doc.get("status") or "unknown"
+        student_statuses[st] = student_statuses.get(st, 0) + 1
     
     school_statuses = {}
-    async for doc in db.school_inquiries.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
-        school_statuses[doc["_id"] or "unknown"] = doc["count"]
+    async for doc in db.school_inquiries.find({}, {"_id": 0, "status": 1}):
+        st = doc.get("status") or "unknown"
+        school_statuses[st] = school_statuses.get(st, 0) + 1
     
     educator_statuses = {}
-    async for doc in db.educator_applications.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
-        educator_statuses[doc["_id"] or "unknown"] = doc["count"]
+    async for doc in db.educator_applications.find({}, {"_id": 0, "status": 1}):
+        st = doc.get("status") or "unknown"
+        educator_statuses[st] = educator_statuses.get(st, 0) + 1
     
     # Team status breakdown (active/inactive)
     team_active = await db.team_users.count_documents({"is_active": True})
@@ -279,8 +282,9 @@ async def get_data_center_stats(user: dict = Depends(get_current_user)):
     
     # Growth partners status breakdown
     gp_statuses = {}
-    async for doc in db.growth_partners.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
-        gp_statuses[doc["_id"] or "unknown"] = doc["count"]
+    async for doc in db.growth_partners.find({}, {"_id": 0, "status": 1}):
+        st = doc.get("status") or "unknown"
+        gp_statuses[st] = gp_statuses.get(st, 0) + 1
     
     return {
         "totals": {
@@ -673,26 +677,24 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         if user_filter:
             base_filter["assigned_to"] = user_filter
         
-        # Overdue student demos (demo_date < today and status is new)
-        overdue_students = await db.student_inquiries.find(
-            {**base_filter, "demo_date": {"$lt": today, "$ne": None, "$exists": True}},
-            {"_id": 0, "id": 1, "name": 1, "phone": 1, "demo_date": 1, "demo_time": 1, "skill": 1}
-        ).to_list(20)
-        
-        # Overdue school meetings
-        overdue_schools = await db.school_inquiries.find(
-            {**base_filter, "meeting_date": {"$lt": today, "$ne": None, "$exists": True}},
-            {"_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_date": 1, "meeting_time": 1}
-        ).to_list(20)
-        
-        # Overdue educator demos
         overdue_filter = {"status": {"$in": ["new", "demo_scheduled"]}}
         if user_filter:
             overdue_filter["assigned_to"] = user_filter
-        overdue_educators = await db.educator_applications.find(
-            {**overdue_filter, "demo_date": {"$lt": today, "$ne": None, "$exists": True}},
-            {"_id": 0, "id": 1, "name": 1, "phone": 1, "demo_date": 1, "demo_time": 1, "skills": 1}
-        ).to_list(20)
+        
+        overdue_students, overdue_schools, overdue_educators = await asyncio.gather(
+            db.student_inquiries.find(
+                {**base_filter, "demo_date": {"$lt": today, "$ne": None, "$exists": True}},
+                {"_id": 0, "id": 1, "name": 1, "phone": 1, "demo_date": 1, "demo_time": 1, "skill": 1}
+            ).to_list(20),
+            db.school_inquiries.find(
+                {**base_filter, "meeting_date": {"$lt": today, "$ne": None, "$exists": True}},
+                {"_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_date": 1, "meeting_time": 1}
+            ).to_list(20),
+            db.educator_applications.find(
+                {**overdue_filter, "demo_date": {"$lt": today, "$ne": None, "$exists": True}},
+                {"_id": 0, "id": 1, "name": 1, "phone": 1, "demo_date": 1, "demo_time": 1, "skills": 1}
+            ).to_list(20)
+        )
         
         return {
             "overdue_students": overdue_students,
@@ -703,44 +705,57 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     
     # If team member, filter by assigned_to
     if is_team_member and user_id:
-        student_count = await db.student_inquiries.count_documents({"assigned_to": user_id})
-        school_count = await db.school_inquiries.count_documents({"assigned_to": user_id})
-        educator_count = await db.educator_applications.count_documents({"assigned_to": user_id})
-        ticket_count = await db.support_tickets.count_documents({"assigned_to": user_id, "status": "open"})
+        (
+            student_count,
+            school_count,
+            educator_count,
+            ticket_count,
+            student_new,
+            student_converted,
+            school_new,
+            educator_new,
+            followups_today,
+            student_leads_added,
+            school_leads_added,
+            edu_leads_added,
+            todays_student_demos,
+            todays_school_meetings,
+            todays_educator_demos,
+            overdue_data,
+            success_count
+        ) = await asyncio.gather(
+            db.student_inquiries.count_documents({"assigned_to": user_id}),
+            db.school_inquiries.count_documents({"assigned_to": user_id}),
+            db.educator_applications.count_documents({"assigned_to": user_id}),
+            db.support_tickets.count_documents({"assigned_to": user_id, "status": "open"}),
+            db.student_inquiries.count_documents({"assigned_to": user_id, "status": "new"}),
+            db.student_inquiries.count_documents({"assigned_to": user_id, "status": "converted"}),
+            db.school_inquiries.count_documents({"assigned_to": user_id, "status": "new"}),
+            db.educator_applications.count_documents({"assigned_to": user_id, "status": "new"}),
+            db.school_inquiries.count_documents({
+                "assigned_to": user_id,
+                "followup_date": {"$in": [today, tomorrow]}
+            }),
+            db.student_inquiries.count_documents({"added_by": user_id}),
+            db.school_inquiries.count_documents({"added_by": user_id}),
+            db.educator_applications.count_documents({"added_by": user_id}),
+            db.student_inquiries.find(
+                {"assigned_to": user_id, "demo_date": today, "status": "new"},
+                {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skill": 1}
+            ).to_list(20),
+            db.school_inquiries.find(
+                {"assigned_to": user_id, "meeting_date": today, "status": "new"},
+                {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_time": 1}
+            ).to_list(20),
+            db.educator_applications.find(
+                {"assigned_to": user_id, "demo_date": today, "status": {"$in": ["new", "demo_scheduled"]}},
+                {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1}
+            ).to_list(20),
+            get_overdue_items(user_id),
+            db.success_stories.count_documents({"is_published": True})
+        )
         
-        student_new = await db.student_inquiries.count_documents({"assigned_to": user_id, "status": "new"})
-        student_converted = await db.student_inquiries.count_documents({"assigned_to": user_id, "status": "converted"})
-        school_new = await db.school_inquiries.count_documents({"assigned_to": user_id, "status": "new"})
-        educator_new = await db.educator_applications.count_documents({"assigned_to": user_id, "status": "new"})
-        
-        followups_today = await db.school_inquiries.count_documents({
-            "assigned_to": user_id,
-            "followup_date": {"$in": [today, tomorrow]}
-        })
-        
-        # Count leads added by this user
-        leads_added = await db.student_inquiries.count_documents({"added_by": user_id})
-        leads_added += await db.school_inquiries.count_documents({"added_by": user_id})
-        leads_added += await db.educator_applications.count_documents({"added_by": user_id})
-        
-        # Get today's meetings/demos for team member
-        todays_student_demos = await db.student_inquiries.find(
-            {"assigned_to": user_id, "demo_date": today, "status": "new"},
-            {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skill": 1}
-        ).to_list(20)
-        
-        todays_school_meetings = await db.school_inquiries.find(
-            {"assigned_to": user_id, "meeting_date": today, "status": "new"},
-            {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_time": 1}
-        ).to_list(20)
-        
-        todays_educator_demos = await db.educator_applications.find(
-            {"assigned_to": user_id, "demo_date": today, "status": {"$in": ["new", "demo_scheduled"]}},
-            {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1}
-        ).to_list(20)
-        
-        # Get overdue items for team member
-        overdue_data = await get_overdue_items(user_id)
+        leads_added = student_leads_added + school_leads_added + edu_leads_added
         
         return {
             "total_students": student_count,
@@ -760,40 +775,49 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
             "overdue_schools": overdue_data["overdue_schools"],
             "overdue_educators": overdue_data["overdue_educators"],
             "total_overdue": overdue_data["total_overdue"],
-            "success_stories_count": await db.success_stories.count_documents({"is_published": True}),
+            "success_stories_count": success_count,
             "is_team_member": True
         }
     
-    # Admin gets all stats
-    student_count = await db.student_inquiries.count_documents({})
-    school_count = await db.school_inquiries.count_documents({})
-    educator_count = await db.educator_applications.count_documents({})
-    ticket_count = await db.support_tickets.count_documents({"status": "open"})
-    
-    # Get counts by status
-    student_new = await db.student_inquiries.count_documents({"status": "new"})
-    student_converted = await db.student_inquiries.count_documents({"status": "converted"})
-    school_new = await db.school_inquiries.count_documents({"status": "new"})
-    educator_new = await db.educator_applications.count_documents({"status": "new"})
-    
-    # Get today's meetings/demos for admin (all)
-    todays_student_demos = await db.student_inquiries.find(
-        {"demo_date": today, "status": "new"},
-        {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skill": 1, "assigned_to": 1}
-    ).to_list(50)
-    
-    todays_school_meetings = await db.school_inquiries.find(
-        {"meeting_date": today, "status": "new"},
-        {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_time": 1, "assigned_to": 1}
-    ).to_list(50)
-    
-    todays_educator_demos = await db.educator_applications.find(
-        {"demo_date": today, "status": {"$in": ["new", "demo_scheduled"]}},
-        {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1, "assigned_to": 1}
-    ).to_list(50)
-    
-    # Get overdue items for admin (all)
-    overdue_data = await get_overdue_items(None)
+    # Admin gets all stats in parallel
+    (
+        student_count,
+        school_count,
+        educator_count,
+        ticket_count,
+        student_new,
+        student_converted,
+        school_new,
+        educator_new,
+        todays_student_demos,
+        todays_school_meetings,
+        todays_educator_demos,
+        overdue_data,
+        success_count
+    ) = await asyncio.gather(
+        db.student_inquiries.count_documents({}),
+        db.school_inquiries.count_documents({}),
+        db.educator_applications.count_documents({}),
+        db.support_tickets.count_documents({"status": "open"}),
+        db.student_inquiries.count_documents({"status": "new"}),
+        db.student_inquiries.count_documents({"status": "converted"}),
+        db.school_inquiries.count_documents({"status": "new"}),
+        db.educator_applications.count_documents({"status": "new"}),
+        db.student_inquiries.find(
+            {"demo_date": today, "status": "new"},
+            {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skill": 1, "assigned_to": 1}
+        ).to_list(50),
+        db.school_inquiries.find(
+            {"meeting_date": today, "status": "new"},
+            {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_time": 1, "assigned_to": 1}
+        ).to_list(50),
+        db.educator_applications.find(
+            {"demo_date": today, "status": {"$in": ["new", "demo_scheduled"]}},
+            {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1, "assigned_to": 1}
+        ).to_list(50),
+        get_overdue_items(None),
+        db.success_stories.count_documents({"is_published": True})
+    )
     
     return {
         "total_students": student_count,
@@ -811,7 +835,7 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "overdue_schools": overdue_data["overdue_schools"],
         "overdue_educators": overdue_data["overdue_educators"],
         "total_overdue": overdue_data["total_overdue"],
-        "success_stories_count": await db.success_stories.count_documents({"is_published": True}),
+        "success_stories_count": success_count,
         "is_team_member": False
     }
 

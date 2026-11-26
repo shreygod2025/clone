@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
 import { TaskCard } from './AdminTasks';
 import UserPicker from '../../components/UserPicker';
@@ -93,7 +94,11 @@ const AdminProjectDetail = () => {
   };
 
   if (loading || !project) {
-    return <AdminLayout><div className="p-6 text-slate-500 text-sm">Loading…</div></AdminLayout>;
+    return (
+      <AdminLayout>
+        <LoadingSpinner text="Loading project details…" />
+      </AdminLayout>
+    );
   }
 
   const S = STATUS_META[project.status] || STATUS_META.active;

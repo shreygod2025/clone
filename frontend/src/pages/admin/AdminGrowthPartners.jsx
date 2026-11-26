@@ -712,6 +712,7 @@ const AdminGrowthPartners = () => {
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
+          <p className="mt-3 text-slate-500 text-sm font-medium">Loading growth partners...</p>
         </div>
       ) : ['active', 'inactive'].includes(activeSection) ? (
         /* Team-user based partner list (login accounts) */

@@ -28,6 +28,7 @@ import { AdminLayout } from './AdminDashboard';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../context/AuthContext';
 import { mdToHtml } from '../../utils/richContent';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -171,7 +172,7 @@ const AdminFaqAnalytics = () => {
             </div>
           </div>
           {loading && !data ? (
-            <div className="p-10 text-center text-slate-400 text-sm">Loading analytics…</div>
+            <LoadingSpinner text="Loading chatbot analytics…" />
           ) : !data?.top_queries?.length ? (
             <div className="p-10 text-center text-slate-400 text-sm">No chatbot queries yet in this window.</div>
           ) : (

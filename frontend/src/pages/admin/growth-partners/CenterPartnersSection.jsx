@@ -15,6 +15,7 @@ import { Input } from '../../../components/ui/input';
 import { Textarea } from '../../../components/ui/textarea';
 import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../context/AuthContext';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const initials = (n) => (n || '?').split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
@@ -204,7 +205,7 @@ export default function CenterPartnersSection() {
       </div>
 
       {loading ? (
-        <div className="text-center py-10 text-slate-500 text-sm">Loading…</div>
+        <LoadingSpinner text="Loading center partners…" />
       ) : tab === 'leads' ? (
         rowsLeads.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">

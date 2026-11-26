@@ -150,6 +150,14 @@ security = HTTPBearer()
 async def ping():
     return {"ok": True}
 
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "OLL Platform API",
+        "version": "2.0.0"
+    }
+
 # ── Security middleware ───────────────────────────────────────────────────
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -4317,26 +4325,34 @@ async def _create_db_indexes():
         await db.school_inquiries.create_index("status")
         await db.school_inquiries.create_index("assigned_to")
         await db.school_inquiries.create_index("created_at")
+        await db.school_inquiries.create_index([("created_at", -1)])
         await db.school_inquiries.create_index([("status", 1), ("created_at", -1)])
+        await db.school_inquiries.create_index([("assigned_to", 1), ("created_at", -1)])
+        await db.school_inquiries.create_index([("relationship_manager_id", 1), ("created_at", -1)])
+        await db.school_inquiries.create_index([("added_by", 1), ("created_at", -1)])
 
         # Student Inquiries indexes
         await db.student_inquiries.create_index("id", unique=True)
         await db.student_inquiries.create_index("status")
         await db.student_inquiries.create_index("assigned_to")
         await db.student_inquiries.create_index("demo_date")
+        await db.student_inquiries.create_index([("created_at", -1)])
         await db.student_inquiries.create_index([("status", 1), ("created_at", -1)])
+        await db.student_inquiries.create_index([("assigned_to", 1), ("created_at", -1)])
 
         # Educator Applications indexes
         await db.educator_applications.create_index("id", unique=True)
         await db.educator_applications.create_index("status")
         await db.educator_applications.create_index("assigned_to")
         await db.educator_applications.create_index([("status", 1), ("created_at", -1)])
+        await db.educator_applications.create_index([("assigned_to", 1), ("created_at", -1)])
 
         # Support Queries indexes
         await db.support_queries.create_index("id", unique=True)
         await db.support_queries.create_index("status")
         await db.support_queries.create_index("assigned_to")
         await db.support_queries.create_index([("status", 1), ("created_at", -1)])
+        await db.support_queries.create_index([("assigned_to", 1), ("created_at", -1)])
 
         # Inquiry Queries indexes
         await db.inquiry_queries.create_index("id", unique=True)
@@ -4352,11 +4368,62 @@ async def _create_db_indexes():
         # Team Users indexes
         await db.team_users.create_index("id", unique=True)
         await db.team_users.create_index("email")
+        await db.team_users.create_index("role_id")
+        await db.team_users.create_index("reports_to")
 
         # School Expenses indexes
         await db.school_expenses.create_index("id", unique=True)
         await db.school_expenses.create_index("school_id")
+        await db.school_expenses.create_index([("expense_date", -1)])
         await db.school_expenses.create_index([("school_id", 1), ("created_at", -1)])
+        await db.school_expenses.create_index([("school_id", 1), ("expense_date", -1)])
+        await db.school_expenses.create_index([("project_id", 1), ("expense_date", -1)])
+
+        # Orders indexes
+        await db.orders.create_index("id", unique=True)
+        await db.orders.create_index("order_id")
+        await db.orders.create_index("status")
+        await db.orders.create_index([("status", 1), ("created_at", -1)])
+
+        # Tasks indexes
+        await db.tasks.create_index("id", unique=True)
+        await db.tasks.create_index("assigned_to")
+        await db.tasks.create_index("status")
+        await db.tasks.create_index("due_date")
+        await db.tasks.create_index([("assigned_to", 1), ("status", 1)])
+        await db.tasks.create_index([("assigned_to", 1), ("due_date", 1)])
+        await db.tasks.create_index("parent_task_id")
+
+        # Task Comments indexes
+        await db.task_comments.create_index("task_id")
+
+        # Expenses indexes
+        await db.expenses.create_index("id", unique=True)
+        await db.expenses.create_index("date")
+        await db.expenses.create_index("category")
+        await db.expenses.create_index([("status", 1), ("date", -1)])
+        await db.expenses.create_index([("category", 1), ("date", -1)])
+
+        # Student & School Payments indexes
+        await db.student_payments.create_index("id", unique=True)
+        await db.student_payments.create_index("school_id")
+        await db.student_payments.create_index([("school_id", 1), ("created_at", -1)])
+        await db.school_payments.create_index("id", unique=True)
+        await db.school_payments.create_index("school_id")
+        await db.school_payments.create_index([("school_id", 1), ("created_at", -1)])
+
+        # Notifications In-App indexes
+        await db.notifications_inapp.create_index([("user_id", 1), ("created_at", -1)])
+        await db.notifications_inapp.create_index([("user_id", 1), ("is_read", 1)])
+
+        # Summer Camp Bookings & Future Skills indexes
+        await db.summer_camp_bookings.create_index("created_at")
+        await db.summer_camp_bookings.create_index("payment_status")
+        await db.summer_camp_bookings.create_index([("payment_status", 1), ("created_at", -1)])
+        await db.future_skills_subscriptions.create_index("created_at")
+        await db.future_skills_subscriptions.create_index("payment_status")
+        await db.future_skills_subscriptions.create_index("batch_id")
+        await db.future_skills_subscriptions.create_index([("payment_status", 1), ("created_at", -1)])
 
         # External API Keys indexes
         await db.external_api_keys.create_index("id", unique=True)
@@ -4369,6 +4436,10 @@ async def _create_db_indexes():
         # Growth Partners indexes
         await db.growth_partners.create_index("id", unique=True)
         await db.growth_partners.create_index("status")
+
+        # Telecalling Activity indexes
+        await db.telecalling_activity.create_index("user_id")
+        await db.telecalling_activity.create_index([("user_id", 1), ("created_at", -1)])
 
         print("[STARTUP] Database indexes created successfully")
     except Exception as e:

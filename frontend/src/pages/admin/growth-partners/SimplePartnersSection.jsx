@@ -23,6 +23,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { Button } from '../../../components/ui/button';
 import CitySearch from '../../../components/CitySearch';
 import { useAuth } from '../../../context/AuthContext';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const fmtINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
@@ -294,7 +295,7 @@ const PartnerRow = ({ partner, onEdit, onDelete, onAssignSchools, onKpisChanged 
       {expanded && (
         <div className="border-t border-slate-100 bg-slate-50 p-4">
           {loading ? (
-            <div className="text-sm text-slate-500 py-4 text-center">Loading…</div>
+            <LoadingSpinner size="sm" text="Loading partner schools…" />
           ) : !kpis || kpis.schools.length === 0 ? (
             <div className="text-sm text-slate-500 py-4 text-center">
               No schools linked yet. Click <b>Assign Schools</b> to attribute revenue to this partner.
@@ -436,7 +437,7 @@ export default function SimplePartnersSection({ type }) {
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-10 text-slate-500 text-sm">Loading…</div>
+        <LoadingSpinner text={`Loading ${label.toLowerCase()} partners…`} />
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />

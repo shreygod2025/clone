@@ -5,8 +5,13 @@ import axios from "axios";
 import "./index.css";
 import App from "@/App";
 
+import { setupAxiosCache, clearCache } from "./utils/apiCache";
+
 // Global axios configuration
 axios.defaults.timeout = 30000; // 30 second timeout
+
+// Setup in-memory query caching & auto-invalidation on global axios instance
+setupAxiosCache(axios);
 
 // Global axios interceptor for handling auth errors
 axios.interceptors.response.use(
@@ -28,6 +33,7 @@ axios.interceptors.response.use(
       if (!alreadyOnLogin && (errorDetail.includes('expired') || errorDetail.includes('invalid') || errorDetail.includes('not authenticated'))) {
         localStorage.removeItem('oll_token');
         localStorage.removeItem('oll_user');
+        clearCache();
         const isAdmin = currentPath.startsWith('/admin');
         window.location.href = isAdmin ? '/admin/login?reason=session_expired' : '/login?reason=session_expired';
       }

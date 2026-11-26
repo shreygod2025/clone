@@ -6,6 +6,7 @@ import {
   CheckCircle, XCircle, Clock, TrendingUp, RefreshCw, Trash2, Pencil,
   Filter, IndianRupee, AlertCircle,
 } from 'lucide-react';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -169,7 +170,7 @@ export default function SocialMediaInternCRM({ getAuthHeaders }) {
 
       {/* Leads Table */}
       {loading ? (
-        <div className="text-center py-12 text-slate-500">Loading...</div>
+        <LoadingSpinner text="Loading social media intern leads…" />
       ) : leads.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
           <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />

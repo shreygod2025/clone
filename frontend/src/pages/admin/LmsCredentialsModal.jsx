@@ -239,7 +239,10 @@ export default function LmsCredentialsModal({ open, ticket, preselectedSchoolLms
               {error}
             </div>
           ) : loadingUsers ? (
-            <div className="text-center text-sm text-slate-500 py-6">Loading LMS users…</div>
+            <div className="flex flex-col items-center justify-center py-6 gap-2 text-sm text-slate-500">
+              <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <span>Loading LMS users…</span>
+            </div>
           ) : schoolId && filteredUsers.length === 0 ? (
             <div className="text-center text-sm text-slate-500 py-6">
               No users match the current filter.

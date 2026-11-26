@@ -55,6 +55,7 @@ const LMSSchoolReport = () => {
 
   useEffect(() => {
     fetchReport();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId, month]);
 
   const openShareModal = async () => {
@@ -189,8 +190,9 @@ const LMSSchoolReport = () => {
             </div>
 
             {shareBusy && !shareToken ? (
-              <div className="text-center py-8 text-slate-500 text-sm" data-testid="lms-share-loading">
-                Generating link…
+              <div className="flex flex-col items-center justify-center py-8 gap-2 text-slate-500 text-sm" data-testid="lms-share-loading">
+                <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <span>Generating link…</span>
               </div>
             ) : shareToken ? (
               <>

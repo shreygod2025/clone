@@ -45,7 +45,11 @@ const AdminOnboardingTracker = () => {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [stage]);
+
+  useEffect(() => {
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
   const filtered = useMemo(() => {
     if (!data?.rows) return [];
@@ -131,6 +135,7 @@ const AdminOnboardingTracker = () => {
         {loading ? (
           <div className="bg-white rounded-xl border border-slate-200 p-16 text-center text-slate-400">
             <Loader2 className="w-6 h-6 mx-auto animate-spin" />
+            <p className="mt-2 text-sm text-slate-500 font-medium">Loading onboarding tracker...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center text-slate-500 text-sm">

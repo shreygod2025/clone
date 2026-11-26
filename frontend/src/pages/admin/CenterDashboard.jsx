@@ -511,6 +511,7 @@ const CenterDashboard = () => {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
+            <p className="mt-3 text-slate-500 text-sm font-medium">Loading center inquiries...</p>
           </div>
         ) : filteredDemos.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">

@@ -153,7 +153,10 @@ export default function LinkLmsSchoolModal({ open, crmSchool, onClose, onLinked 
               {error}
             </div>
           ) : loading ? (
-            <div className="text-center text-sm text-slate-500 py-6">Loading LMS schools…</div>
+            <div className="flex flex-col items-center justify-center py-6 gap-2 text-sm text-slate-500">
+              <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <span>Loading LMS schools…</span>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="text-center text-sm text-slate-500 py-6">No LMS schools match this search.</div>
           ) : (

@@ -9,6 +9,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import RichEmailEditor from '../../components/RichEmailEditor';
 import SubjectField from '../../components/SubjectField';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -99,7 +100,9 @@ export default function AdminBroadcasts() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl p-8 text-center text-slate-500">Loading…</div>
+        <div className="bg-white rounded-xl border border-slate-200">
+          <LoadingSpinner text="Loading broadcast campaigns…" />
+        </div>
       ) : campaigns.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center border border-dashed border-slate-300">
           <Mail className="w-10 h-10 mx-auto text-slate-300 mb-3" />
@@ -813,7 +816,7 @@ const CampaignDetail = ({ campaignId, onClose, onChanged, getAuthHeaders }) => {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()} data-testid="campaign-detail">
         {loading || !camp ? (
-          <div className="p-10 text-center text-slate-500">Loading…</div>
+          <LoadingSpinner text="Loading campaign details…" />
         ) : (
           <>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">

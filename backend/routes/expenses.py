@@ -84,10 +84,6 @@ async def get_all_school_expenses(
         else:
             query["expense_date"] = {"$lte": end_date}
 
-    # Idempotent: MongoDB skips if already present. Cheap (~1ms).
-    await db.school_expenses.create_index([("expense_date", -1)])
-    await db.school_expenses.create_index([("school_id", 1), ("expense_date", -1)])
-    await db.school_expenses.create_index([("project_id", 1), ("expense_date", -1)])
 
     cursor = (
         db.school_expenses
@@ -96,7 +92,7 @@ async def get_all_school_expenses(
         .skip(max(0, int(skip)))
         .limit(max(1, min(int(limit), 1000)))
     )
-    docs = await cursor.to_list(length=None)
+    docs = await cursor.to_list(length=max(1, min(int(limit), 1000)))
 
     # PERF: legacy rows sometimes stored file uploads as base64 `data:` URIs
     # directly on the document (some going into the MB range each). The
@@ -105,11 +101,11 @@ async def get_all_school_expenses(
     # and multi-second list loads on /admin/expenses. Strip them here so the
     # table endpoint stays lean; individual detail views can fetch the raw
     # doc if we ever need it.
-    _URL_FIELDS = ("invoice_file_url", "logistics_bill_url", "delivery_proof_url")
+    _URL_FIELDS = ("invoice_file_url", "logistics_bill_url", "delivery_proof_url", "po_pdf_url")
     for d in docs:
         for f in _URL_FIELDS:
             v = d.get(f)
-            if isinstance(v, str) and v.startswith("data:"):
+            if isinstance(v, str) and (v.startswith("data:") or len(v) > 500):
                 d[f] = ""
         atts = d.get("attachments")
         if isinstance(atts, list) and atts:
@@ -118,7 +114,7 @@ async def get_all_school_expenses(
                 if not (
                     isinstance(a, dict)
                     and isinstance(a.get("url"), str)
-                    and a["url"].startswith("data:")
+                    and (a["url"].startswith("data:") or len(a["url"]) > 500)
                 )
             ]
     return docs
@@ -130,61 +126,53 @@ async def get_school_expenses_summary(
     user: dict = Depends(get_current_user)
 ):
     """Get expense summary by school and category"""
-    match_stage = {}
+    query = {}
     if school_id:
-        match_stage["school_id"] = school_id
+        query["school_id"] = school_id
     
-    # Aggregate by school
-    pipeline = [
-        {"$match": match_stage} if match_stage else {"$match": {}},
-        {
-            "$group": {
-                "_id": {
-                    "school_id": "$school_id",
-                    "school_name": "$school_name",
-                    "category": "$category"
-                },
-                "total_amount": {"$sum": "$amount"},
-                "count": {"$sum": 1}
-            }
-        },
-        {"$sort": {"_id.school_name": 1, "_id.category": 1}}
-    ]
-    
-    results = await db.school_expenses.aggregate(pipeline).to_list(1000)
+    docs = await db.school_expenses.find(
+        query,
+        {"_id": 0, "school_id": 1, "school_name": 1, "category": 1, "amount": 1}
+    ).to_list(5000)
     
     # Organize by school
     schools_summary = {}
-    for r in results:
-        school_id = r["_id"]["school_id"]
-        school_name = r["_id"]["school_name"]
-        category = r["_id"]["category"]
+    for r in docs:
+        sid = r.get("school_id") or "unknown"
+        sname = r.get("school_name") or "Unknown School"
+        category = r.get("category") or "other"
+        amount = float(r.get("amount") or 0.0)
         
-        if school_id not in schools_summary:
-            schools_summary[school_id] = {
-                "school_id": school_id,
-                "school_name": school_name,
-                "total_expenses": 0,
+        if sid not in schools_summary:
+            schools_summary[sid] = {
+                "school_id": sid,
+                "school_name": sname,
+                "total_expenses": 0.0,
                 "by_category": {}
             }
         
-        schools_summary[school_id]["by_category"][category] = {
-            "amount": r["total_amount"],
-            "count": r["count"]
-        }
-        schools_summary[school_id]["total_expenses"] += r["total_amount"]
+        if category not in schools_summary[sid]["by_category"]:
+            schools_summary[sid]["by_category"][category] = {
+                "amount": 0.0,
+                "count": 0
+            }
+        
+        schools_summary[sid]["by_category"][category]["amount"] += amount
+        schools_summary[sid]["by_category"][category]["count"] += 1
+        schools_summary[sid]["total_expenses"] += amount
+
+    # Sort schools by name for consistent presentation and round amounts
+    sorted_schools = sorted(schools_summary.values(), key=lambda s: (s.get("school_name") or "").lower())
+    for s in sorted_schools:
+        s["total_expenses"] = round(s["total_expenses"], 2)
+        for cat_info in s["by_category"].values():
+            cat_info["amount"] = round(cat_info["amount"], 2)
     
-    # Get grand total
-    total_pipeline = [
-        {"$match": match_stage} if match_stage else {"$match": {}},
-        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
-    ]
-    total_result = await db.school_expenses.aggregate(total_pipeline).to_list(1)
-    grand_total = total_result[0]["total"] if total_result else 0
+    grand_total = round(sum(s["total_expenses"] for s in sorted_schools), 2)
     
     return {
         "grand_total": grand_total,
-        "schools": list(schools_summary.values())
+        "schools": sorted_schools
     }
 
 
@@ -539,28 +527,30 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
     # amounts, and derive the 2 % gateway cost. This runs after the tranche
     # aggregation so it deterministically wins for online-link schools even
     # if there's a stale/empty `payments` array on the inquiry.
-    online_pipeline = [
-        {"$match": {"school_id": {"$exists": True, "$nin": ["", None]}}},
-        {"$group": {
-            "_id": "$school_id",
-            "paid_amount":   {"$sum": {"$cond": [
-                {"$in": [{"$toUpper": {"$ifNull": ["$status", ""]}}, list(PAID_STATUSES)]},
-                {"$ifNull": ["$amount", 0]}, 0,
-            ]}},
-            "paid_count":    {"$sum": {"$cond": [
-                {"$in": [{"$toUpper": {"$ifNull": ["$status", ""]}}, list(PAID_STATUSES)]},
-                1, 0,
-            ]}},
-            "pending_count": {"$sum": {"$cond": [
-                {"$in": [{"$toUpper": {"$ifNull": ["$status", ""]}}, list(PAID_STATUSES)]},
-                0, 1,
-            ]}},
-            "total_count":   {"$sum": 1},
-        }},
-    ]
     online_by_school: dict = {}
-    async for row in db.school_student_payments.aggregate(online_pipeline):
-        online_by_school[row["_id"]] = row
+    ssp_docs = await db.school_student_payments.find(
+        {"school_id": {"$exists": True, "$nin": ["", None]}},
+        {"_id": 0, "school_id": 1, "amount": 1, "status": 1}
+    ).to_list(10000)
+    for p in ssp_docs:
+        sid = p.get("school_id")
+        if not sid:
+            continue
+        row = online_by_school.setdefault(sid, {
+            "_id": sid,
+            "paid_amount": 0.0,
+            "paid_count": 0,
+            "pending_count": 0,
+            "total_count": 0
+        })
+        row["total_count"] += 1
+        st = str(p.get("status") or "").upper()
+        amt = float(p.get("amount") or 0.0)
+        if st in PAID_STATUSES:
+            row["paid_amount"] += amt
+            row["paid_count"] += 1
+        else:
+            row["pending_count"] += 1
 
     for sid, rev in school_rev.items():
         pmethod = (rev.get("payment_method") or "").lower()
@@ -659,19 +649,19 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
     # been written with mixed case ("Kit Cost", "KIT_COST", "kitCost") — those
     # would otherwise be bucketed separately and disappear into Misc instead of
     # rolling up under the canonical lowercase IDs in PNL_COST_KEYS.
-    exp_pipeline = [
-        {"$match": {"school_id": {"$exists": True, "$nin": ["", None]}}},
-        {"$group": {
-            "_id": {"school_id": "$school_id", "category": {"$toLower": "$category"}},
-            "total": {"$sum": "$amount"},
-        }},
-    ]
-    exp_docs = await db.school_expenses.aggregate(exp_pipeline).to_list(10000)
+    exp_docs = await db.school_expenses.find(
+        {"school_id": {"$exists": True, "$nin": ["", None]}},
+        {"_id": 0, "school_id": 1, "category": 1, "amount": 1}
+    ).to_list(10000)
     exp_map: dict = {}
     for row in exp_docs:
-        sid = row["_id"]["school_id"]
-        cat = row["_id"]["category"]
-        exp_map.setdefault(sid, {})[cat] = row["total"]
+        sid = row.get("school_id")
+        if not sid:
+            continue
+        cat = (row.get("category") or "").lower()
+        amt = float(row.get("amount") or 0.0)
+        school_cats = exp_map.setdefault(sid, {})
+        school_cats[cat] = school_cats.get(cat, 0.0) + amt
 
     # Backfill: if an expense references a school not in the revenue set (e.g.
     # school still in `new`/`follow_up`/`lost`, or the id has drifted), we
@@ -931,12 +921,11 @@ async def _resync_school_share_from_expenses(school_id: str, category: str):
         return
     field = "school_share_amount" if category == "school_share" else "gp_share_amount"
     type_field = "school_share_type" if category == "school_share" else "gp_share_type"
-    pipeline = [
-        {"$match": {"school_id": school_id, "category": category}},
-        {"$group": {"_id": None, "total": {"$sum": "$amount"}}},
-    ]
-    agg = await db.school_expenses.aggregate(pipeline).to_list(1)
-    total = float(agg[0]["total"]) if agg else 0.0
+    docs = await db.school_expenses.find(
+        {"school_id": school_id, "category": category},
+        {"_id": 0, "amount": 1}
+    ).to_list(2000)
+    total = float(sum(float(d.get("amount") or 0.0) for d in docs))
     existing = await db.school_inquiries.find_one(
         {"id": school_id},
         {"_id": 0, "onboarding_data": 1},
@@ -1113,28 +1102,42 @@ async def educator_payments_summary(user: dict = Depends(get_current_user)):
     Records missing educator_id are grouped under a synthetic "unassigned"
     bucket so no payment silently disappears from the tab."""
 
-    pipeline = [
-        {"$match": {"category": "teacher_cost"}},
+    docs = await db.school_expenses.find(
+        {"category": "teacher_cost"},
         {
-            "$group": {
-                "_id": {
-                    "educator_id": {"$ifNull": ["$educator_id", ""]},
-                    "school_id":   {"$ifNull": ["$school_id", ""]},
-                },
-                "educator_name": {"$first": "$educator_name"},
-                "school_name":   {"$first": "$school_name"},
-                "count":         {"$sum": 1},
-                "total_amount":  {"$sum": "$amount"},
-                "paid_amount": {
-                    "$sum": {
-                        "$cond": [{"$eq": ["$payment_status", "paid"]}, "$amount", 0],
-                    },
-                },
-                "last_date": {"$max": "$expense_date"},
+            "_id": 0, "educator_id": 1, "school_id": 1, "educator_name": 1,
+            "school_name": 1, "amount": 1, "payment_status": 1, "expense_date": 1
+        }
+    ).to_list(5000)
+
+    groups: dict = {}
+    for d in docs:
+        eid = d.get("educator_id") or ""
+        sid = d.get("school_id") or ""
+        key = (eid, sid)
+        amt = float(d.get("amount") or 0.0)
+        p_status = str(d.get("payment_status") or "").lower()
+        paid_amt = amt if p_status == "paid" else 0.0
+        exp_date = str(d.get("expense_date") or "")
+
+        if key not in groups:
+            groups[key] = {
+                "_id": {"educator_id": eid, "school_id": sid},
+                "educator_name": d.get("educator_name") or "",
+                "school_name": d.get("school_name") or "",
+                "count": 0,
+                "total_amount": 0.0,
+                "paid_amount": 0.0,
+                "last_date": "",
             }
-        },
-    ]
-    grouped = await db.school_expenses.aggregate(pipeline).to_list(5000)
+        g = groups[key]
+        g["count"] += 1
+        g["total_amount"] += amt
+        g["paid_amount"] += paid_amt
+        if exp_date and exp_date > g["last_date"]:
+            g["last_date"] = exp_date
+
+    grouped = list(groups.values())
 
     # Roll into per-educator rows with a nested schools[] array.
     by_educator: dict = {}
@@ -1251,9 +1254,13 @@ PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "")
 PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendor-panel-1rt3.vercel.app")
 
 def transform_tracking_url(url: str) -> str:
-    """Transform preview tracking URLs to production URLs"""
+    """Transform preview tracking URLs to production URLs.
+    Never return base64 data URIs to avoid database document bloating.
+    """
     if not url:
-        return url
+        return ""
+    if isinstance(url, str) and url.startswith("data:"):
+        return ""
     # Replace any *.preview.emergentagent.com or *.stage-preview.emergentagent.com with production domain
     url = re.sub(r'https?://[^/]*\.preview\.emergentagent\.com', PO_TRACKING_PROD_URL, url)
     url = re.sub(r'https?://[^/]*\.stage-preview\.emergentagent\.com', PO_TRACKING_PROD_URL, url)

@@ -88,8 +88,26 @@ async def get_reports_overview(
     """Get overall metrics for the dashboard"""
     start, end = get_date_range(start_date, end_date, period)
     
-    # Get all student inquiries for date filtering
-    all_student_inquiries = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    # Parallel fetch with slim projections for optimal throughput and memory efficiency
+    all_student_inquiries, all_school_inquiries, all_educators, all_demos = await asyncio.gather(
+        db.student_inquiries.find(
+            {}, 
+            {"_id": 0, "created_at": 1, "assigned_to": 1, "status": 1, "payment_status": 1, "conversion_amount": 1, "amount_paid": 1}
+        ).to_list(10000),
+        db.school_inquiries.find(
+            {}, 
+            {"_id": 0, "created_at": 1, "assigned_to": 1, "status": 1, "conversion_amount": 1, "onboarding_data": 1, "amount_paid": 1, "quoted_price": 1}
+        ).to_list(10000),
+        db.educator_applications.find(
+            {}, 
+            {"_id": 0, "created_at": 1, "assigned_to": 1, "status": 1}
+        ).to_list(10000),
+        db.demo_bookings.find(
+            {}, 
+            {"_id": 0, "created_at": 1, "status": 1}
+        ).to_list(10000)
+    )
+    
     student_inquiries = []
     for inq in all_student_inquiries:
         created = parse_date_field(inq.get('created_at'))
@@ -98,8 +116,6 @@ async def get_reports_overview(
                 continue
             student_inquiries.append(inq)
     
-    # Get all school inquiries
-    all_school_inquiries = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
     school_inquiries = []
     for inq in all_school_inquiries:
         created = parse_date_field(inq.get('created_at'))
@@ -108,8 +124,6 @@ async def get_reports_overview(
                 continue
             school_inquiries.append(inq)
     
-    # Get all educator applications
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
     educators = []
     for edu in all_educators:
         created = parse_date_field(edu.get('created_at'))
@@ -118,8 +132,6 @@ async def get_reports_overview(
                 continue
             educators.append(edu)
     
-    # Get demo bookings
-    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
     demos = []
     for demo in all_demos:
         created = parse_date_field(demo.get('created_at'))
@@ -211,7 +223,11 @@ async def get_sales_funnel_report(
     else:
         collection = db.school_inquiries
     
-    all_items = await collection.find({}, {"_id": 0}).to_list(10000)
+    funnel_proj = {
+        "_id": 0, "created_at": 1, "assigned_to": 1, "status": 1,
+        "conversion_amount": 1, "amount_paid": 1, "payment_status": 1
+    }
+    all_items = await collection.find({}, funnel_proj).to_list(10000)
     items = []
     for item in all_items:
         created = parse_date_field(item.get('created_at'))
@@ -293,7 +309,11 @@ async def get_lead_analytics(
     """Get lead analytics - source, age group, course interest breakdown"""
     start, end = get_date_range(start_date, end_date, period)
     
-    all_items = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    la_proj = {
+        "_id": 0, "created_at": 1, "source": 1, "child_age": 1,
+        "age_group": 1, "course_interest": 1, "skill": 1, "status": 1
+    }
+    all_items = await db.student_inquiries.find({}, la_proj).to_list(10000)
     items = []
     for item in all_items:
         created = parse_date_field(item.get('created_at'))
@@ -358,8 +378,15 @@ async def get_educator_metrics(
     """Get educator/teacher quality metrics"""
     start, end = get_date_range(start_date, end_date, period)
     
-    # Get all educators
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
+    # Parallel fetch with slim projections
+    all_educators, all_demos = await asyncio.gather(
+        db.educator_applications.find(
+            {}, {"_id": 0, "id": 1, "name": 1, "status": 1, "created_at": 1}
+        ).to_list(10000),
+        db.demo_bookings.find(
+            {}, {"_id": 0, "educator_id": 1, "created_at": 1}
+        ).to_list(10000),
+    )
     
     # Filter by date range for new educators
     new_educators = []
@@ -371,8 +398,6 @@ async def get_educator_metrics(
         if edu.get('status') == 'active':
             all_active.append(edu)
     
-    # Get demo bookings to calculate demos per educator
-    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
     demos_in_period = []
     for demo in all_demos:
         created = parse_date_field(demo.get('created_at'))
@@ -442,7 +467,11 @@ async def get_support_metrics(
     if start and end:
         query_filter["created_at"] = {"$gte": start.isoformat(), "$lte": end.isoformat()}
     
-    all_queries = await db.support_queries.find(query_filter, {"_id": 0}).to_list(5000)
+    supp_proj = {
+        "_id": 0, "created_at": 1, "status": 1, "query_type": 1,
+        "category": 1, "resolved_at": 1, "updated_at": 1, "priority": 1
+    }
+    all_queries = await db.support_queries.find(query_filter, supp_proj).to_list(5000)
     queries = []
     for q in all_queries:
         created = parse_date_field(q.get('created_at'))
@@ -509,19 +538,26 @@ async def get_user_stages_report(
             return True  # Include items without dates
         return start <= created <= end
     
-    # Students
-    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    # Parallel fetch across all collections with slim projections
+    all_students, all_schools, all_educators, all_team, all_gps = await asyncio.gather(
+        db.student_inquiries.find({}, {"_id": 0, "status": 1, "created_at": 1}).to_list(10000),
+        db.school_inquiries.find({}, {
+            "_id": 0, "status": 1, "created_at": 1, "lost_reason": 1, 
+            "lead_value": 1, "conversion_amount": 1, "onboarding_data": 1,
+            "quoted_price": 1, "expected_value": 1
+        }).to_list(10000),
+        db.educator_applications.find({}, {"_id": 0, "status": 1, "created_at": 1}).to_list(10000),
+        db.team_applications.find({}, {"_id": 0, "status": 1, "created_at": 1}).to_list(10000),
+        db.growth_partners.find({}, {"_id": 0, "status": 1, "created_at": 1}).to_list(10000)
+    )
+
     students = [s for s in all_students if is_in_range(s)]
-    
     student_stages = {}
     for s in students:
         stage = s.get('status', 'new')
         student_stages[stage] = student_stages.get(stage, 0) + 1
     
-    # Schools
-    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
     schools = [s for s in all_schools if is_in_range(s)]
-    
     school_stages = {}
     for s in schools:
         stage = s.get('status', 'new')
@@ -563,28 +599,19 @@ async def get_user_stages_report(
     meeting_done_count = len([s for s in all_schools if s.get('status') == 'meeting_done'])
     renewal_meeting_count = len([s for s in all_schools if s.get('status') == 'renewal_meeting'])
     
-    # Educators
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
     educators = [e for e in all_educators if is_in_range(e)]
-    
     educator_stages = {}
     for e in educators:
         stage = e.get('status', 'new')
         educator_stages[stage] = educator_stages.get(stage, 0) + 1
     
-    # Team applications
-    all_team = await db.team_applications.find({}, {"_id": 0}).to_list(10000)
     team = [t for t in all_team if is_in_range(t)]
-    
     team_stages = {}
     for t in team:
         stage = t.get('status', 'new')
         team_stages[stage] = team_stages.get(stage, 0) + 1
     
-    # Growth Partners
-    all_gps = await db.growth_partners.find({}, {"_id": 0}).to_list(10000)
     gps = [g for g in all_gps if is_in_range(g)]
-    
     gp_stages = {}
     for g in gps:
         stage = g.get('status', 'new')
@@ -649,33 +676,36 @@ async def get_team_member_report(
             return True
         return start <= created <= end
     
-    # Calculate metrics based on assigned leads and activities
-    # Students assigned
-    all_student_leads = await db.student_inquiries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
+    # Parallel fetch with slim projections for all 6 metric collections
+    (
+        all_student_leads,
+        all_school_leads,
+        all_rm_schools,
+        all_educator_leads,
+        all_tickets,
+        all_demos,
+    ) = await asyncio.gather(
+        db.student_inquiries.find({"assigned_to": user_id}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.school_inquiries.find({"assigned_to": user_id}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.school_inquiries.find({"relationship_manager": user_id}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.educator_applications.find({"assigned_to": user_id}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.support_queries.find({"assigned_to": user_id}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.demo_bookings.find({"assigned_to": user_id}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+    )
     student_leads = [s for s in all_student_leads if is_in_range(s)]
     student_converted = len([s for s in student_leads if s.get('status') == 'converted'])
     
-    # Schools assigned
-    all_school_leads = await db.school_inquiries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
     school_leads = [s for s in all_school_leads if is_in_range(s)]
     school_converted = len([s for s in school_leads if s.get('status') in ['converted', 'active', 'renewed']])
     
-    # Schools as RM
-    all_rm_schools = await db.school_inquiries.find({"relationship_manager": user_id}, {"_id": 0}).to_list(10000)
     rm_schools = [s for s in all_rm_schools if is_in_range(s)]
     
-    # Educators assigned
-    all_educator_leads = await db.educator_applications.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
     educator_leads = [e for e in all_educator_leads if is_in_range(e)]
     educator_active = len([e for e in educator_leads if e.get('status') == 'active'])
     
-    # Support tickets handled
-    all_tickets = await db.support_queries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
     tickets = [t for t in all_tickets if is_in_range(t)]
     tickets_resolved = len([t for t in tickets if t.get('status') == 'resolved'])
     
-    # Demo bookings facilitated
-    all_demos = await db.demo_bookings.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
     demos = [d for d in all_demos if is_in_range(d)]
     demos_completed = len([d for d in demos if d.get('status') == 'completed'])
     
@@ -733,7 +763,19 @@ async def get_b2c_insights(
     """Get B2C (Student) insights - courses, age groups, cities, modes, preferred times"""
     start, end = get_date_range(start_date, end_date, period)
     
-    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    # Parallel fetch with slim projections
+    stu_proj = {
+        "_id": 0, "created_at": 1, "course": 1, "skill": 1, "interest": 1,
+        "age": 1, "student_age": 1, "learning_goal": 1, "goal": 1,
+        "city": 1, "preferred_mode": 1, "mode": 1, "status": 1, "payment_amount": 1
+    }
+    demo_proj = {
+        "_id": 0, "scheduled_date": 1, "date": 1, "scheduled_time": 1, "time": 1
+    }
+    all_students, all_demos = await asyncio.gather(
+        db.student_inquiries.find({}, stu_proj).to_list(10000),
+        db.demo_bookings.find({}, demo_proj).to_list(10000),
+    )
     students = []
     for s in all_students:
         created = parse_date_field(s.get('created_at'))
@@ -784,7 +826,6 @@ async def get_b2c_insights(
             modes['unknown'] += 1
     
     # Preferred days (from demo bookings)
-    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
     day_counts = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
     time_slots = {'Morning (9-12)': 0, 'Afternoon (12-4)': 0, 'Evening (4-8)': 0, 'Night (8+)': 0}
     
@@ -834,7 +875,12 @@ async def get_b2b_insights(
     """Get B2B (School) insights - offerings, cities, boards, active schools"""
     start, end = get_date_range(start_date, end_date, period)
     
-    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
+    b2b_proj = {
+        "_id": 0, "created_at": 1, "status": 1, "selected_offerings": 1,
+        "onboarding_data": 1, "city": 1, "board": 1, "school_type": 1, "type": 1,
+        "conversion_amount": 1, "amount_paid": 1, "quoted_price": 1
+    }
+    all_schools = await db.school_inquiries.find({}, b2b_proj).to_list(10000)
     schools = []
     for s in all_schools:
         created = parse_date_field(s.get('created_at'))
@@ -984,21 +1030,23 @@ async def get_cashflow(
     user: dict = Depends(get_current_user)
 ):
     """Cashflow snapshot: receivables (owed to OLL) and payables (owed by OLL)."""
-    # Receivables — converted schools with outstanding conversion_amount
-    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
-    receivable_schools = [
-        s for s in all_schools
-        if s.get('status') == 'converted' and s.get('conversion_amount')
-    ]
+    # Receivables & Payables fetched concurrently with slim projections
+    schools, payable_expenses = await asyncio.gather(
+        db.school_inquiries.find(
+            {"status": "converted", "conversion_amount": {"$exists": True, "$ne": None}},
+            {"_id": 0, "school_name": 1, "conversion_amount": 1}
+        ).to_list(10000),
+        db.expenses.find(
+            {"status": {"$nin": ["paid", "cleared"]}},
+            {"_id": 0, "amount": 1, "category": 1}
+        ).to_list(10000),
+    )
+    receivable_schools = [s for s in schools if s.get('conversion_amount')]
     total_receivables = sum(float(s.get('conversion_amount', 0)) for s in receivable_schools)
     receivable_items = sorted(
         [{'name': s.get('school_name', 'Unknown'), 'amount': float(s.get('conversion_amount', 0))} for s in receivable_schools],
         key=lambda x: -x['amount']
     )
-
-    # Payables — expenses not yet paid/cleared
-    all_expenses = await db.expenses.find({}, {"_id": 0}).to_list(10000)
-    payable_expenses = [e for e in all_expenses if e.get('status', '') not in ['paid', 'cleared']]
     total_payables = sum(float(e.get('amount', 0)) for e in payable_expenses)
     payable_by_cat = {}
     for e in payable_expenses:
@@ -1032,10 +1080,19 @@ async def get_support_insights(
     """
     start, end = get_date_range(start_date, end_date, period)
 
-    # ── Fetch & NORMALIZE tickets across all 3 collections ────────────
-    raw_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
-    raw_tickets = await db.support_tickets.find({}, {"_id": 0}).to_list(10000)
-    raw_inquiries = await db.inquiry_queries.find({}, {"_id": 0}).to_list(10000)
+    # ── Fetch & NORMALIZE tickets across all 3 collections concurrently with slim projections ──
+    supp_proj = {
+        "_id": 0, "id": 1, "status": 1, "query_type": 1, "type": 1, "category": 1,
+        "main_category": 1, "inquiry_type": 1, "source": 1, "user_type": 1,
+        "priority": 1, "assigned_to": 1, "created_at": 1, "resolved_at": 1, "updated_at": 1
+    }
+    raw_queries, raw_tickets, raw_inquiries, team_users = await asyncio.gather(
+        db.support_queries.find({}, supp_proj).to_list(10000),
+        db.support_tickets.find({}, supp_proj).to_list(10000),
+        db.inquiry_queries.find({}, supp_proj).to_list(10000),
+        db.team_users.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(1000),
+    )
+    user_names = {u['id']: u.get('name', 'Unknown') for u in team_users}
 
     def _norm(doc: dict, kind: str) -> dict:
         """Flatten a ticket/query into a unified shape."""
@@ -1116,8 +1173,6 @@ async def get_support_insights(
 
     # Team member performance
     team_performance = {}
-    team_users = await db.team_users.find({}, {"_id": 0}).to_list(1000)
-    user_names = {u['id']: u.get('name', 'Unknown') for u in team_users}
 
     for q in queries:
         assigned = q.get('assigned_to')
@@ -1227,7 +1282,8 @@ async def get_support_timeline(
             buckets.append({'start': current, 'end': nxt, 'label': current.strftime('%b %Y')})
             current = nxt
 
-    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    tl_proj = {"_id": 0, "created_at": 1, "status": 1, "resolved_at": 1, "updated_at": 1}
+    all_queries = await db.support_queries.find({}, tl_proj).to_list(10000)
 
     result = []
     for bucket in buckets:
@@ -1493,50 +1549,52 @@ async def get_public_report_data(
     
     start, end = get_date_range(start_date, end_date, period)
     
-    # ── Fetch all data (reusing existing logic) ──
+    # ── Fetch all data concurrently with slim projections ──
+    (
+        all_students,
+        all_schools,
+        all_educators,
+        all_team,
+        all_gps,
+        all_support,
+        all_expenses,
+    ) = await asyncio.gather(
+        db.student_inquiries.find({}, {"_id": 0, "created_at": 1, "status": 1, "payment_status": 1, "conversion_amount": 1, "amount_paid": 1}).to_list(10000),
+        db.school_inquiries.find({}, {"_id": 0, "created_at": 1, "status": 1, "conversion_amount": 1, "onboarding_data": 1, "is_renewal": 1, "city": 1, "location": 1, "lost_reason": 1, "lead_value": 1, "quoted_price": 1, "expected_value": 1}).to_list(10000),
+        db.educator_applications.find({}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.team_applications.find({}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.growth_partners.find({}, {"_id": 0, "created_at": 1, "status": 1}).to_list(10000),
+        db.support_queries.find({}, {"_id": 0, "created_at": 1, "status": 1, "query_type": 1, "type": 1, "category": 1, "priority": 1, "resolved_at": 1, "updated_at": 1}).to_list(10000),
+        db.expenses.find({}, {"_id": 0, "date": 1, "amount": 1, "category": 1}).to_list(10000),
+    )
     
-    # Students
-    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
     students = []
     for s in all_students:
         created = parse_date_field(s.get('created_at'))
         if created and start <= created <= end:
             students.append(s)
     
-    # Schools
-    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
     schools = []
     for s in all_schools:
         created = parse_date_field(s.get('created_at'))
         if created and start <= created <= end:
             schools.append(s)
     
-    # Educators
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
     educators = []
     for e in all_educators:
         created = parse_date_field(e.get('created_at'))
         if created and start <= created <= end:
             educators.append(e)
     
-    # Team
-    all_team = await db.team_applications.find({}, {"_id": 0}).to_list(10000)
     team = [t for t in all_team if parse_date_field(t.get('created_at')) and start <= parse_date_field(t.get('created_at')) <= end]
-    
-    # Growth Partners
-    all_gps = await db.growth_partners.find({}, {"_id": 0}).to_list(10000)
     gps = [g for g in all_gps if parse_date_field(g.get('created_at')) and start <= parse_date_field(g.get('created_at')) <= end]
     
-    # Support queries
-    all_support = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
     support = []
     for q in all_support:
         created = parse_date_field(q.get('created_at'))
         if created and start <= created <= end:
             support.append(q)
     
-    # Expenses
-    all_expenses = await db.expenses.find({}, {"_id": 0}).to_list(10000)
     expenses = []
     for e in all_expenses:
         exp_date = e.get('date')
@@ -1788,7 +1846,7 @@ async def _b2c_summer_camp_stats(start, end) -> dict:
     total_bookings = 0
     paying = 0
     revenue = 0.0
-    async for s in db.summer_camp_bookings.find({}, {"_id": 0}):
+    async for s in db.summer_camp_bookings.find({}, {"_id": 0, "created_at": 1, "crm_status": 1, "payment_status": 1, "amount": 1}):
         if not _dt_between(s.get("created_at"), start, end):
             continue
         total_leads += 1
@@ -1825,7 +1883,7 @@ async def _b2c_future_skills_stats(start, end) -> dict:
                 lead_phones.add(p)
     paying = 0
     revenue = 0.0
-    async for s in db.future_skills_subscriptions.find({}, {"_id": 0}):
+    async for s in db.future_skills_subscriptions.find({}, {"_id": 0, "created_at": 1, "parent_phone": 1, "payment_status": 1, "amount": 1}):
         if not _dt_between(s.get("created_at"), start, end):
             continue
         p = (s.get("parent_phone") or "").strip()
@@ -1844,7 +1902,7 @@ async def _b2c_student_crm_stats(start, end) -> dict:
     leads = 0
     demos = 0
     customers = 0
-    async for s in db.student_inquiries.find({}, {"_id": 0}):
+    async for s in db.student_inquiries.find({}, {"_id": 0, "created_at": 1, "demo_date": 1, "status": 1}):
         if not _dt_between(s.get("created_at"), start, end):
             continue
         leads += 1
@@ -1853,12 +1911,12 @@ async def _b2c_student_crm_stats(start, end) -> dict:
         if s.get("status") == "converted":
             customers += 1
     # Demo bookings collection is also part of Student CRM funnel
-    async for d in db.demo_bookings.find({}, {"_id": 0}):
+    async for d in db.demo_bookings.find({}, {"_id": 0, "created_at": 1}):
         if _dt_between(d.get("created_at"), start, end):
             demos += 1
     # Revenue solely from Orders (student_crm source)
     revenue = 0.0
-    async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0}):
+    async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0, "created_at": 1, "amount": 1, "final_amount": 1, "total": 1}):
         if not _dt_between(o.get("created_at"), start, end):
             continue
         for k in ("amount", "final_amount", "total"):
@@ -1913,8 +1971,10 @@ async def b2c_consolidated_report(
 @router.get("/admin/reports/centers-batches")
 async def centers_batches_report(user: dict = Depends(get_current_user)):
     """Snapshot of Future Skills centres + batches + how full each batch is."""
-    centers = await db.centers.find({}, {"_id": 0}).to_list(1000)
-    batches = await db.future_skills_batches.find({}, {"_id": 0}).to_list(2000)
+    centers, batches = await asyncio.gather(
+        db.centers.find({}, {"_id": 0, "id": 1, "name": 1, "city": 1, "area": 1, "is_active": 1}).to_list(1000),
+        db.future_skills_batches.find({}, {"_id": 0, "id": 1, "name": 1, "center_name": 1, "days": 1, "start_time": 1, "end_time": 1, "capacity": 1, "is_active": 1}).to_list(2000),
+    )
 
     active_centers = [c for c in centers if c.get("is_active", True)]
     active_batches = [b for b in batches if b.get("is_active", True)]
@@ -1987,29 +2047,36 @@ async def revenue_split_report(
     payment_status == 'paid'."""
     start, end = get_date_range(start_date, end_date, period)
 
-    sc_rev = 0.0
-    async for s in db.summer_camp_bookings.find({"payment_status": "paid"}, {"_id": 0}):
-        if _dt_between(s.get("created_at"), start, end):
-            sc_rev += float(s.get("amount") or 0)
+    async def _get_sc_rev():
+        rev = 0.0
+        async for s in db.summer_camp_bookings.find({"payment_status": "paid"}, {"_id": 0, "created_at": 1, "amount": 1}):
+            if _dt_between(s.get("created_at"), start, end):
+                rev += float(s.get("amount") or 0)
+        return rev
 
-    cc_rev = 0.0  # Center Classes = FS subscriptions
-    async for s in db.future_skills_subscriptions.find({"payment_status": "paid"}, {"_id": 0}):
-        if _dt_between(s.get("created_at"), start, end):
-            cc_rev += float(s.get("amount") or 0)
+    async def _get_cc_rev():
+        rev = 0.0
+        async for s in db.future_skills_subscriptions.find({"payment_status": "paid"}, {"_id": 0, "created_at": 1, "amount": 1}):
+            if _dt_between(s.get("created_at"), start, end):
+                rev += float(s.get("amount") or 0)
+        return rev
 
-    hc_rev = 0.0  # Home Classes = student orders (Student CRM converted)
-    async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0}):
-        if not _dt_between(o.get("created_at"), start, end):
-            continue
-        for k in ("amount", "final_amount", "total"):
-            v = o.get(k)
-            if v:
-                try:
-                    hc_rev += float(v)
-                    break
-                except (TypeError, ValueError):
-                    pass
+    async def _get_hc_rev():
+        rev = 0.0
+        async for o in db.orders.find({"user_type": "student", "payment_status": "paid"}, {"_id": 0, "created_at": 1, "amount": 1, "final_amount": 1, "total": 1}):
+            if not _dt_between(o.get("created_at"), start, end):
+                continue
+            for k in ("amount", "final_amount", "total"):
+                v = o.get(k)
+                if v:
+                    try:
+                        rev += float(v)
+                        break
+                    except (TypeError, ValueError):
+                        pass
+        return rev
 
+    sc_rev, cc_rev, hc_rev = await asyncio.gather(_get_sc_rev(), _get_cc_rev(), _get_hc_rev())
     total = sc_rev + hc_rev + cc_rev
     def _pct(x):
         return round((x / total) * 100.0, 1) if total > 0 else 0.0
@@ -2042,46 +2109,55 @@ async def expenses_summary_report(
     start_day = start.strftime("%Y-%m-%d")
     end_day   = end.strftime("%Y-%m-%d")
 
-    rows: list = []
+    async def _fetch_expenses():
+        exp = []
+        async for e in db.expenses.find({}, {"_id": 0, "date": 1, "created_at": 1, "title": 1, "amount": 1, "category": 1, "subcategory": 1}):
+            d = parse_date_field(e.get("date") or e.get("created_at"))
+            if not d or not (start <= d <= end):
+                continue
+            exp.append({
+                "date": e.get("date") or d.strftime("%Y-%m-%d"),
+                "title": e.get("title") or "",
+                "amount": float(e.get("amount") or 0),
+                "category": (e.get("category") or "uncategorized").lower(),
+                "subcategory": e.get("subcategory") or "",
+                "source": "expenses",
+            })
+        return exp
 
-    # Main expenses collection
-    async for e in db.expenses.find({}, {"_id": 0}):
-        d = parse_date_field(e.get("date") or e.get("created_at"))
-        if not d or not (start <= d <= end):
-            continue
-        rows.append({
-            "date": e.get("date") or d.strftime("%Y-%m-%d"),
-            "title": e.get("title") or "",
-            "amount": float(e.get("amount") or 0),
-            "category": (e.get("category") or "uncategorized").lower(),
-            "subcategory": e.get("subcategory") or "",
-            "source": "expenses",
-        })
+    async def _fetch_fs_expenses():
+        fse = []
+        async for e in db.future_skills_expenses.find({"date": {"$gte": start_day, "$lte": end_day}}, {"_id": 0, "date": 1, "note": 1, "category": 1, "amount": 1, "subcategory": 1}):
+            fse.append({
+                "date": e.get("date"),
+                "title": e.get("note") or e.get("category") or "FS centre expense",
+                "amount": float(e.get("amount") or 0),
+                "category": (e.get("category") or "fs_centre").lower(),
+                "subcategory": e.get("subcategory") or "",
+                "source": "future_skills",
+            })
+        return fse
 
-    # Future Skills centre economics (dates are stored as 'YYYY-MM-DD' strings)
-    async for e in db.future_skills_expenses.find({"date": {"$gte": start_day, "$lte": end_day}}, {"_id": 0}):
-        rows.append({
-            "date": e.get("date"),
-            "title": e.get("note") or e.get("category") or "FS centre expense",
-            "amount": float(e.get("amount") or 0),
-            "category": (e.get("category") or "fs_centre").lower(),
-            "subcategory": e.get("subcategory") or "",
-            "source": "future_skills",
-        })
+    async def _fetch_school_expenses():
+        se = []
+        async for e in db.school_expenses.find({}, {"_id": 0, "expense_date": 1, "created_at": 1, "description": 1, "category_name": 1, "amount": 1, "category": 1}):
+            d = parse_date_field(e.get("expense_date") or e.get("created_at"))
+            if not d or not (start <= d <= end):
+                continue
+            se.append({
+                "date": e.get("expense_date") or (d.strftime("%Y-%m-%d") if d else ""),
+                "title": e.get("description") or e.get("category_name") or "School expense",
+                "amount": float(e.get("amount") or 0),
+                "category": (e.get("category") or "school").lower(),
+                "subcategory": e.get("category_name") or "",
+                "source": "school_expenses",
+            })
+        return se
 
-    # School B2B expenses (dates stored as `expense_date` string)
-    async for e in db.school_expenses.find({}, {"_id": 0}):
-        d = parse_date_field(e.get("expense_date") or e.get("created_at"))
-        if not d or not (start <= d <= end):
-            continue
-        rows.append({
-            "date": e.get("expense_date") or (d.strftime("%Y-%m-%d") if d else ""),
-            "title": e.get("description") or e.get("category_name") or "School expense",
-            "amount": float(e.get("amount") or 0),
-            "category": (e.get("category") or "school").lower(),
-            "subcategory": e.get("category_name") or "",
-            "source": "school_expenses",
-        })
+    exp_list, fs_list, school_list = await asyncio.gather(
+        _fetch_expenses(), _fetch_fs_expenses(), _fetch_school_expenses()
+    )
+    rows = exp_list + fs_list + school_list
 
     total = sum(r["amount"] for r in rows)
     by_category: dict = {}

@@ -19,6 +19,8 @@ import { format } from 'date-fns';
 import MonthlyFixedExpensesTab from './expenses/MonthlyFixedExpensesTab';
 import B2CPnLTab from './expenses/B2CPnLTab';
 import ProjectsPnLTab from './expenses/ProjectsPnLTab';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -56,11 +58,17 @@ const AdminExpenses = () => {
   const [activeTab, setActiveTab] = useState(defaultTab); // 'expenses' | 'pnl'
   const [pnlData, setPnlData] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [expenses, setExpenses] = useState([]);
-  const [summary, setSummary] = useState({ grand_total: 0, schools: [] });
-  const [categories, setCategories] = useState([]);
-  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(() => !hasCachedData('/school-expenses'));
+  const [expenses, setExpenses] = useState(() => {
+    const cached = getCachedData('/school-expenses');
+    return Array.isArray(cached) ? cached : (cached?.expenses || []);
+  });
+  const [summary, setSummary] = useState(() => getCachedData('/school-expenses/summary') || { grand_total: 0, schools: [] });
+  const [categories, setCategories] = useState(() => getCachedData('/school-expenses/categories') || []);
+  const [schools, setSchools] = useState(() => {
+    const cached = getCachedData('/schools/names');
+    return cached?.inquiries || (Array.isArray(cached) ? cached : []);
+  });
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [filters, setFilters] = useState({
@@ -115,7 +123,7 @@ const AdminExpenses = () => {
 
   // Project mapping (2026-07-22): active projects fed into the form dropdown
   // and used to render the linked-project chip on each expense row.
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState(() => getCachedData('/projects?status=active') || []);
 
   useEffect(() => {
     fetchData();
@@ -132,9 +140,13 @@ const AdminExpenses = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (options = {}) => {
+    const force = options?.force === true;
     try {
-      setLoading(true);
+      // Only show full blocking loading spinner if no cached data exists or explicit refresh was forced
+      if (!hasCachedData('/school-expenses') || force) {
+        setLoading(true);
+      }
       const headers = getAuthHeaders();
 
       // Build expense query params
@@ -146,12 +158,21 @@ const AdminExpenses = () => {
       if (filters.end_date) params.append('end_date', filters.end_date);
       const summaryQuery = filters.school_id ? `?school_id=${filters.school_id}` : '';
 
-      // Run all API calls in parallel for faster load
+      // Run all API calls in parallel for faster load with defense-in-depth fallbacks
       const [catRes, schoolsRes, expRes, summaryRes, projectsRes] = await Promise.all([
-        axios.get(`${API}/school-expenses/categories`, { headers }),
-        axios.get(`${API}/schools/names`, { headers }),
+        axios.get(`${API}/school-expenses/categories`, { headers }).catch(err => {
+          console.warn('Failed to fetch categories:', err);
+          return { data: [] };
+        }),
+        axios.get(`${API}/schools/names`, { headers }).catch(err => {
+          console.warn('Failed to fetch schools list:', err);
+          return { data: [] };
+        }),
         axios.get(`${API}/school-expenses?${params.toString()}`, { headers }),
-        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers }),
+        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers }).catch(err => {
+          console.warn('Failed to fetch summary:', err);
+          return { data: { grand_total: 0, schools: [] } };
+        }),
         // Active projects for the mapping dropdown. Silent-swallow errors so
         // the expenses page still renders if projects service is temporarily
         // unavailable (defence in depth).
@@ -170,11 +191,12 @@ const AdminExpenses = () => {
       setExpenses(expenseData);
       setSelectedIds([]);
 
-      setSummary(summaryRes.data);
+      setSummary(summaryRes.data || { grand_total: 0, schools: [] });
 
     } catch (error) {
       console.error('Failed to fetch expenses:', error);
-      toast.error('Failed to load expenses');
+      const detail = error.response?.data?.detail || error.message || '';
+      toast.error(detail ? `Failed to load expenses: ${detail}` : 'Failed to load expenses');
     } finally {
       setLoading(false);
     }
@@ -529,6 +551,8 @@ const AdminExpenses = () => {
           <ProjectsPnLTab />
         ) : activeTab === 'pnl' ? (
           <PnLSheet data={pnlData} loading={pnlLoading} getAuthHeaders={getAuthHeaders} onRefresh={fetchPnl} />
+        ) : loading ? (
+          <LoadingSpinner text="Loading expenses..." />
         ) : (<>
 
         {/* Summary Cards */}

@@ -17,6 +17,7 @@ from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 import uuid
 import os
+import asyncio
 
 from routes.shared import (
     db, get_current_user, can_manage_user, get_managed_user_ids, get_assignable_users
@@ -604,27 +605,32 @@ async def list_todays_tasks(user: dict = Depends(get_current_user)):
     start_week = datetime.combine(tomorrow, datetime.min.time(), tzinfo=timezone.utc).isoformat()
     end_week = datetime.combine(week_end, datetime.max.time(), tzinfo=timezone.utc).isoformat()
 
-    due_today = await db.tasks.find({
-        "assigned_to": uid,
-        "due_date": {"$gte": start_today, "$lte": end_today},
-    }).sort("priority", -1).to_list(500)
+    due_today, this_week, overdue = await asyncio.gather(
+        db.tasks.find({
+            "assigned_to": uid,
+            "due_date": {"$gte": start_today, "$lte": end_today},
+        }).sort("priority", -1).to_list(500),
+        db.tasks.find({
+            "assigned_to": uid,
+            "status": {"$ne": "completed"},
+            "due_date": {"$gte": start_week, "$lte": end_week},
+        }).sort("due_date", 1).to_list(500),
+        db.tasks.find({
+            "assigned_to": uid,
+            "due_date": {"$lt": start_today},
+            "status": {"$ne": "completed"},
+        }).sort("due_date", 1).to_list(500),
+    )
 
-    this_week = await db.tasks.find({
-        "assigned_to": uid,
-        "status": {"$ne": "completed"},
-        "due_date": {"$gte": start_week, "$lte": end_week},
-    }).sort("due_date", 1).to_list(500)
-
-    overdue = await db.tasks.find({
-        "assigned_to": uid,
-        "due_date": {"$lt": start_today},
-        "status": {"$ne": "completed"},
-    }).sort("due_date", 1).to_list(500)
+    all_tasks = due_today + this_week + overdue
+    enriched = await _batch_enrich_tasks(all_tasks)
+    l_today = len(due_today)
+    l_week = len(this_week)
 
     return {
-        "today":     await _batch_enrich_tasks(due_today),
-        "this_week": await _batch_enrich_tasks(this_week),
-        "overdue":   await _batch_enrich_tasks(overdue),
+        "today":     enriched[:l_today],
+        "this_week": enriched[l_today:l_today + l_week],
+        "overdue":   enriched[l_today + l_week:],
     }
 
 

@@ -930,7 +930,10 @@ const StudentFunnel = () => {
               ))}
             </div>
             {cities.length === 0 && (
-              <p className="text-center text-slate-500 py-4">Loading cities...</p>
+              <div className="flex flex-col items-center justify-center py-6 gap-2">
+                <div className="w-6 h-6 border-2 border-[#D63031] border-t-transparent rounded-full animate-spin" />
+                <p className="text-center text-slate-500 text-sm">Loading cities...</p>
+              </div>
             )}
           </div>
         );

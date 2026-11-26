@@ -897,7 +897,10 @@ export default function CustomInvoiceModal({ open, onClose }) {
           <div className="pt-4 border-t border-slate-200">
             <h3 className="text-sm font-semibold text-slate-800 mb-2">Recent Custom Invoices</h3>
             {loadingHistory ? (
-              <p className="text-xs text-slate-500">Loading…</p>
+              <div className="flex items-center gap-2 py-3 text-xs text-slate-500">
+                <div className="w-3.5 h-3.5 border-2 border-[#D63031] border-t-transparent rounded-full animate-spin" />
+                <span>Loading invoices…</span>
+              </div>
             ) : history.length === 0 ? (
               <p className="text-xs text-slate-500 italic">No custom invoices yet.</p>
             ) : (

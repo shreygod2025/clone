@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { Users, Building2, CheckCircle, Clock, Search, Download, Filter, X } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -92,11 +93,7 @@ const SchoolPaymentTrackerPublic = () => {
   const hasActiveFilters = searchQuery || selectedGrade || selectedDivision;
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#1E3A5F] border-t-transparent rounded-full" />
-      </div>
-    );
+    return <LoadingSpinner text="Loading fee collection status..." fullScreen />;
   }
 
   if (error) {

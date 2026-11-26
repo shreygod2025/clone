@@ -8,7 +8,7 @@
  *   Cashfree     — verify endpoint + webhook already flip payment_status to 'paid'
  *                  when the order is captured, so "Converted" here is 1:1 with real revenue.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -56,6 +56,9 @@ const FutureSkillsCRMTab = ({ getAuthHeaders }) => {
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -74,6 +77,12 @@ const FutureSkillsCRMTab = ({ getAuthHeaders }) => {
   }, [subTab, statusFilter, search, getAuthHeaders]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { setPage(1); }, [subTab, statusFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pageOffset = (safePage - 1) * pageSize;
+  const paginatedRows = useMemo(() => rows.slice(pageOffset, pageOffset + pageSize), [rows, pageOffset, pageSize]);
 
   const openDetail = (r) => {
     setSelected(r);
@@ -259,7 +268,7 @@ const FutureSkillsCRMTab = ({ getAuthHeaders }) => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(r => (
+                {paginatedRows.map(r => (
                   <tr key={r.id} onClick={() => openDetail(r)}
                     className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer transition-colors"
                     data-testid={`fscrm-row-${r.trial_ref || r.subscription_ref}`}>
@@ -288,6 +297,37 @@ const FutureSkillsCRMTab = ({ getAuthHeaders }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {rows.length > pageSize && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50/70 text-xs text-slate-600">
+            <div>
+              Showing <span className="font-bold text-[#0F1E33]">{pageOffset + 1}</span> to{' '}
+              <span className="font-bold text-[#0F1E33]">{Math.min(pageOffset + pageSize, rows.length)}</span> of{' '}
+              <span className="font-bold text-[#0F1E33]">{rows.length}</span> entries
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold"
+              >
+                ‹ Prev
+              </button>
+              <span className="px-2 font-bold text-slate-700">
+                Page {safePage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold"
+              >
+                Next ›
+              </button>
+            </div>
           </div>
         )}
       </div>

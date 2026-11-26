@@ -17,6 +17,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../context/AuthContext';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -55,7 +56,10 @@ export default function B2CPnLTab() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const summary = data?.summary || { revenue: 0, cost: 0, profit: 0, margin_pct: 0, paying_customers: 0, cost_by_category: {} };
+  const summary = useMemo(
+    () => data?.summary || { revenue: 0, cost: 0, profit: 0, margin_pct: 0, paying_customers: 0, cost_by_category: {} },
+    [data?.summary]
+  );
   const perCentre = data?.per_centre || [];
 
   const costCats = useMemo(() => {
@@ -153,7 +157,7 @@ export default function B2CPnLTab() {
           <Target className="w-4 h-4" /> Per-centre P&amp;L
         </div>
         {loading ? (
-          <div className="p-10 text-center text-slate-400 text-sm">Loading…</div>
+          <LoadingSpinner text="Loading per-centre P&L…" />
         ) : perCentre.length === 0 ? (
           <div className="p-10 text-center text-slate-400 text-sm" data-testid="b2c-pnl-empty">
             No centre economics data for the current filter yet.

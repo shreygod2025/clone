@@ -13,6 +13,7 @@ import axios from 'axios';
 import CitySearch from '../../components/CitySearch';
 import EducatorPaymentsTab from './educators/EducatorPaymentsTab';
 import EducatorReportModal from './educators/EducatorReportModal';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -1472,7 +1473,9 @@ const AdminEducators = () => {
       {/* Requirements Tab Content */}
       {activeTab === 'requirements' && (
         <div className="space-y-6">
-          {requirements.length === 0 ? (
+          {loading ? (
+            <LoadingSpinner text="Loading educator requirements..." />
+          ) : requirements.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
               <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500">No requirements posted yet</p>

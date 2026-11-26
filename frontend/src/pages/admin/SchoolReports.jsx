@@ -6,6 +6,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
   ArrowLeft, RefreshCw, Search, Building2, Users, CheckCircle2, XCircle,
   Clock, MapPin, Camera, UserCheck, Repeat, CalendarDays, Download,
@@ -103,6 +104,7 @@ const SchoolReports = () => {
     };
     fetchReports();
     return () => { cancelled = true; controller.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId, page, startDate, endDate, statusFilter, debouncedSearch]);
 
   const refreshManual = async () => {
@@ -276,7 +278,7 @@ const SchoolReports = () => {
 
         {/* Body */}
         {loading ? (
-          <div className="text-center py-16 text-slate-500" data-testid="reports-loading">Loading sessions…</div>
+          <LoadingSpinner text="Loading school sessions…" />
         ) : error ? (
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700" data-testid="reports-error">
             {error}

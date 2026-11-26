@@ -145,6 +145,8 @@ const AdminFutureSkills = () => {
   // Client-side column filters (source/centre) — driven by SheetFilterTh headers.
   const [sourceFilter, setSourceFilter] = useState('');
   const [centerNameFilter, setCenterNameFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25); // 25 | 50 | 100 | 'all'
   const fileInputRef = useRef(null);
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [assigneeMeta, setAssigneeMeta] = useState({ assignees: [], me: null, isManager: false });
@@ -243,6 +245,17 @@ const AdminFutureSkills = () => {
     return out;
   }, [rows, sortKey, dateFrom, dateTo, sourceFilter, centerNameFilter, centersForFilter]);
 
+  const totalFiltered = filteredRows.length;
+  const isAll = pageSize === 'all';
+  const numPageSize = isAll ? Math.max(1, totalFiltered) : Number(pageSize);
+  const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalFiltered / numPageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pageOffset = isAll ? 0 : (safePage - 1) * numPageSize;
+  const paginatedRows = useMemo(() => {
+    if (isAll) return filteredRows;
+    return filteredRows.slice(pageOffset, pageOffset + numPageSize);
+  }, [filteredRows, pageOffset, numPageSize, isAll]);
+
   // Reset sort/date/column filters whenever the tab or status changes so users start clean.
   useEffect(() => {
     setSortKey('');
@@ -250,7 +263,13 @@ const AdminFutureSkills = () => {
     setDateTo('');
     setSourceFilter('');
     setCenterNameFilter('');
+    setPage(1);
   }, [tab, statusFilter]);
+
+  // Reset page whenever search or other filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, centerFilter, assigneeFilter, renewalBucket, sortKey, dateFrom, dateTo, sourceFilter, centerNameFilter, pageSize]);
 
   // Clear bulk-selection whenever the underlying tab or filters change.
   useEffect(() => { setSelectedIds(new Set()); }, [tab, statusFilter, search, centerFilter, renewalBucket]);
@@ -572,7 +591,10 @@ const AdminFutureSkills = () => {
 
               <div className="ml-auto flex flex-wrap items-center gap-2">
                 {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && (
-                  <span className="text-[11px] text-slate-400" data-testid="fs-row-count">{filteredRows.length} of {rows.length}</span>
+                  <span className="text-[11px] text-slate-400" data-testid="fs-row-count">
+                    {filteredRows.length === rows.length ? `${rows.length} total` : `${filteredRows.length} of ${rows.length}`}
+                    {pageSize !== 'all' && totalFiltered > numPageSize ? ` · Pg ${safePage}/${totalPages}` : ''}
+                  </span>
                 )}
                 {tab === 'leads' && (
                   <>
@@ -640,7 +662,8 @@ const AdminFutureSkills = () => {
               {tab === 'lost' && 'Marked-lost leads, trials and customers appear here.'}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="overflow-x-auto">
               {tab === 'leads' && selectedIds.size > 0 && (
                 <div className="mb-2 flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100" data-testid="leads-bulk-bar">
                   <div className="text-xs font-bold text-[#1E3A5F]" data-testid="leads-bulk-count">
@@ -665,7 +688,7 @@ const AdminFutureSkills = () => {
                   </div>
                 </div>
               )}
-              {tab === 'leads'     && <LeadsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+              {tab === 'leads'     && <LeadsTable rows={paginatedRows} allRows={filteredRows} pageOffset={pageOffset} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 selectedIds={selectedIds} onToggleSelect={toggleLeadSelection} onToggleSelectAll={toggleSelectAllLeads}
                 onSaveNotes={handleInlineNotesSave}
                 onUpdateStatus={handleUpdateLeadStatus}
@@ -682,7 +705,7 @@ const AdminFutureSkills = () => {
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'lead' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'lead' });
               }} />}
-              {tab === 'trials'    && <TrialsTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+              {tab === 'trials'    && <TrialsTable rows={paginatedRows} allRows={filteredRows} pageOffset={pageOffset} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 onSaveNotes={handleInlineNotesSaveTrial}
                 sortKey={sortKey} onSortChange={setSortKey}
                 onAction={async (action, r) => {
@@ -708,7 +731,7 @@ const AdminFutureSkills = () => {
                   } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
                 }
               }} />}
-              {tab === 'customers' && <CustomersTable rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+              {tab === 'customers' && <CustomersTable rows={paginatedRows} allRows={filteredRows} pageOffset={pageOffset} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 onSaveNotes={handleInlineNotesSaveCustomer}
                 sortKey={sortKey} onSortChange={setSortKey}
                 onAction={(action, r) => {
@@ -717,7 +740,7 @@ const AdminFutureSkills = () => {
                 if (action === 'mark-lost')  setModal({ type: 'lost', entity: r, entityType: 'customer' });
                 if (action === 'delete')     setModal({ type: 'delete', entity: r, entityType: 'customer' });
               }} />}
-              {tab === 'renewals'  && <RenewalsTable  rows={filteredRows} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
+              {tab === 'renewals'  && <RenewalsTable  rows={paginatedRows} allRows={filteredRows} pageOffset={pageOffset} onOpen={setSelected} centers={centersForFilter} batches={batchesForFilter}
                 onSaveNotes={handleInlineNotesSaveCustomer}
                 sortKey={sortKey} onSortChange={setSortKey}
                 onAction={(action, r) => {
@@ -728,8 +751,111 @@ const AdminFutureSkills = () => {
                 if (action === 'delete')       setModal({ type: 'delete', entity: r, entityType: 'customer' });
                 if (action === 'payment-link') setModal({ type: 'payment-link', customer: r });
               }} />}
-              {tab === 'lost'      && <LostTable rows={filteredRows} onOpen={setSelected} />}
+              {tab === 'lost'      && <LostTable rows={paginatedRows} pageOffset={pageOffset} onOpen={setSelected} />}
             </div>
+
+            {/* Pagination controls */}
+            {['leads', 'trials', 'customers', 'renewals', 'lost'].includes(tab) && totalFiltered > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50/70 text-xs text-slate-600 select-none" data-testid="fs-pagination">
+                <div className="flex items-center gap-3">
+                  <span>
+                    Showing <span className="font-bold text-[#0F1E33]">{pageOffset + 1}</span> to{' '}
+                    <span className="font-bold text-[#0F1E33]">{Math.min(pageOffset + numPageSize, totalFiltered)}</span> of{' '}
+                    <span className="font-bold text-[#0F1E33]">{totalFiltered}</span> {tab === 'leads' ? 'leads' : 'entries'}
+                  </span>
+                  <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-3">
+                    <span className="text-slate-500">Rows:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                        setPageSize(val);
+                      }}
+                      className="border border-slate-200 rounded px-2 py-1 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      data-testid="fs-page-size-select"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value="all">All</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1" data-testid="fs-page-controls">
+                  <button
+                    type="button"
+                    onClick={() => setPage(1)}
+                    disabled={safePage <= 1}
+                    className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-slate-700 font-bold transition-colors"
+                    title="First page"
+                    data-testid="fs-page-first"
+                  >
+                    «
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-slate-700 font-bold transition-colors"
+                    title="Previous page"
+                    data-testid="fs-page-prev"
+                  >
+                    ‹
+                  </button>
+
+                  {(() => {
+                    const pages = [];
+                    const maxVisible = 5;
+                    let start = Math.max(1, safePage - Math.floor(maxVisible / 2));
+                    let end = Math.min(totalPages, start + maxVisible - 1);
+                    if (end - start + 1 < maxVisible) {
+                      start = Math.max(1, end - maxVisible + 1);
+                    }
+                    for (let i = start; i <= end; i++) {
+                      pages.push(i);
+                    }
+                    return pages.map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPage(p)}
+                        className={`min-w-[28px] px-2 py-1 rounded text-xs font-bold border transition-colors ${
+                          safePage === p
+                            ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                        }`}
+                        data-testid={`fs-page-${p}`}
+                      >
+                        {p}
+                      </button>
+                    ));
+                  })()}
+
+                  <button
+                    type="button"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-slate-700 font-bold transition-colors"
+                    title="Next page"
+                    data-testid="fs-page-next"
+                  >
+                    ›
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage(totalPages)}
+                    disabled={safePage >= totalPages}
+                    className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-slate-700 font-bold transition-colors"
+                    title="Last page"
+                    data-testid="fs-page-last"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
         )}
@@ -966,25 +1092,25 @@ const StatusCell = ({ status, onChange, refId }) => {
 };
 
 // ── Tables ──────────────────────────────────────────────────────────
-const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, dateFrom, onDateFromChange, dateTo, onDateToChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange, onUpdateStatus }) => {
+const LeadsTable = ({ rows, allRows = rows, pageOffset = 0, onOpen, onAction, centers = [], batches = [], selectedIds = new Set(), onToggleSelect, onToggleSelectAll, onSaveNotes, sortKey, onSortChange, dateFrom, onDateFromChange, dateTo, onDateToChange, sourceFilter, onSourceFilterChange, centerFilter, onCenterFilterChange, statusFilter, onStatusFilterChange, onUpdateStatus }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => {
     const b = batches.find(x => x.id === bid);
     return b ? `${b.name}` : '';
   };
-  const allIds = rows.map(r => r.id);
+  const allIds = (allRows || rows).map(r => r.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
   // Compute unique filter options from the rows currently loaded.
   const sourceOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => { const v = r.source || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    (allRows || rows).forEach(r => { const v = r.source || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows]);
+  }, [allRows, rows]);
   const centerOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => { const v = centerName(r.center_id) || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    (allRows || rows).forEach(r => { const v = centerName(r.center_id) || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows, centers]);
+  }, [allRows, rows, centers]);
   const statusOptions = LEAD_STATUSES.map(s => ({ value: s.value, label: s.label }));
 
   return (
@@ -1027,7 +1153,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
               testId={`row-select-${r.lead_ref}`}
               title="Click to select this row"
             >
-              {rowSelected ? '✓' : idx + 1}
+              {rowSelected ? '✓' : (pageOffset || 0) + idx + 1}
             </SheetTd>
             <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)} testId={`row-added-${r.lead_ref}`}>
               <div className="font-bold text-[#0F1E33] leading-tight text-xs">{fmtDateTime(r.created_at)}</div>
@@ -1107,7 +1233,7 @@ const LeadsTable = ({ rows, onOpen, onAction, centers = [], batches = [], select
 // Statuses that have an auto-tint in ExcelSheet (kept in sync with STATUS_TINT there).
 const STATUS_TINT_KNOWN = ['new', 'followup', 'no_answer', 'interested'];
 
-const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
+const TrialsTable = ({ rows, allRows = rows, pageOffset = 0, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchInfo = (bid, fallback) => {
     const b = batches.find(x => x.id === bid);
@@ -1119,7 +1245,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
   const [centerBatchFilter, setCenterBatchFilter] = useState('');
   const centerBatchOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => {
+    (allRows || rows).forEach(r => {
       const label = [
         centerName(r.center_id) || r.preferred_center || '',
         batchInfo(r.batch_id, r.batch_label) || '',
@@ -1127,7 +1253,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
       if (label) seen.set(label, (seen.get(label) || 0) + 1);
     });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows, centers, batches]);
+  }, [allRows, rows, centers, batches]);
   const visibleRows = useMemo(() => {
     if (!centerBatchFilter) return rows;
     return rows.filter(r => {
@@ -1165,7 +1291,7 @@ const TrialsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSav
           <tr key={r.id}
             className={`${rowTintClass(r.crm_status)} ${!STATUS_TINT_KNOWN.includes(r.crm_status) && idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.trial_ref}`}>
-            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{(pageOffset || 0) + idx + 1}</SheetTd>
             <SheetTd className="cursor-pointer whitespace-nowrap" onClick={() => onOpen(r)} testId={`row-trial-added-${r.trial_ref}`}>
               <div className="font-bold text-[#0F1E33] leading-tight text-xs">{fmtDateTime(r.created_at)}</div>
             </SheetTd>
@@ -1296,26 +1422,26 @@ const AttendanceCell = ({ trial, onAction }) => {
   );
 };
 
-const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
+const CustomersTable = ({ rows, allRows = rows, pageOffset = 0, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   // Column-level Centre filter — shows unique centre names from loaded rows.
   const [centerFilter, setCenterFilter] = useState('');
   const centerOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => {
+    (allRows || rows).forEach(r => {
       const v = centerName(r.center_id) || r.preferred_center || '';
       if (v) seen.set(v, (seen.get(v) || 0) + 1);
     });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows, centers]);
+  }, [allRows, rows, centers]);
   // Plan filter — Monthly / Half-yearly / Yearly (uses plan_label saved on the sub).
   const [planFilter, setPlanFilter] = useState('');
   const planOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => { const v = r.plan_label || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    (allRows || rows).forEach(r => { const v = r.plan_label || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows]);
+  }, [allRows, rows]);
   const visibleRows = useMemo(() => {
     return rows.filter(r => {
       if (centerFilter && (centerName(r.center_id) || r.preferred_center || '') !== centerFilter) return false;
@@ -1356,7 +1482,7 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
           <tr key={r.id}
             className={`${idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
-            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{(pageOffset || 0) + idx + 1}</SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name}</div>
             </SheetTd>
@@ -1404,25 +1530,25 @@ const CustomersTable = ({ rows, onOpen, onAction, centers = [], batches = [], on
   );
 };
 
-const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
+const RenewalsTable = ({ rows, allRows = rows, pageOffset = 0, onOpen, onAction, centers = [], batches = [], onSaveNotes, sortKey, onSortChange }) => {
   const centerName = (cid) => centers.find(c => c.id === cid)?.name || '';
   const batchName  = (bid) => batches.find(x => x.id === bid)?.name || '';
   // Column-level filters — Centre + Plan (client-side).
   const [centerFilter, setCenterFilter] = useState('');
   const centerOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => {
+    (allRows || rows).forEach(r => {
       const v = centerName(r.center_id) || r.preferred_center || '';
       if (v) seen.set(v, (seen.get(v) || 0) + 1);
     });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows, centers]);
+  }, [allRows, rows, centers]);
   const [planFilter, setPlanFilter] = useState('');
   const planOptions = useMemo(() => {
     const seen = new Map();
-    rows.forEach(r => { const v = r.plan_label || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
+    (allRows || rows).forEach(r => { const v = r.plan_label || ''; if (v) seen.set(v, (seen.get(v) || 0) + 1); });
     return Array.from(seen.entries()).sort().map(([v, c]) => ({ value: v, label: v, count: c }));
-  }, [rows]);
+  }, [allRows, rows]);
   const visibleRows = useMemo(() => rows.filter(r => {
     if (centerFilter && (centerName(r.center_id) || r.preferred_center || '') !== centerFilter) return false;
     if (planFilter && (r.plan_label || '') !== planFilter) return false;
@@ -1461,7 +1587,7 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onS
           <tr key={r.id}
             className={`${r.renewal_bucket === 'overdue' ? 'bg-rose-50/40' : (idx % 2 === 1 ? 'bg-slate-50/40' : '')} hover:bg-blue-50/50`}
             data-testid={`row-${r.subscription_ref}`}>
-            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+            <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{(pageOffset || 0) + idx + 1}</SheetTd>
             <SheetTd className="cursor-pointer" onClick={() => onOpen(r)}>
               <div className="font-bold text-[#0F1E33] leading-tight">{r.student_name}</div>
             </SheetTd>
@@ -1522,7 +1648,7 @@ const RenewalsTable = ({ rows, onOpen, onAction, centers = [], batches = [], onS
   );
 };
 
-const LostTable = ({ rows, onOpen }) => (
+const LostTable = ({ rows, pageOffset = 0, onOpen }) => (
   <SheetTable testId="lost-sheet">
     <thead>
       <tr>
@@ -1540,7 +1666,7 @@ const LostTable = ({ rows, onOpen }) => (
         <tr key={`${r.entity_type}-${r.id}`} onClick={() => onOpen({ ...r, __lost_row: true })}
           className={`${idx % 2 === 1 ? 'bg-slate-50/40' : ''} hover:bg-blue-50/50 cursor-pointer`}
           data-testid={`row-lost-${r.entity_ref}`}>
-          <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{idx + 1}</SheetTd>
+          <SheetTd className="text-center text-slate-500 font-bold text-[11px] bg-slate-50/60">{(pageOffset || 0) + idx + 1}</SheetTd>
           <SheetTd className="font-mono font-bold text-[#1E3A5F]">{r.entity_ref}</SheetTd>
           <SheetTd>
             <div className="font-bold text-[#0F1E33] leading-tight">{r.display_name || '—'}</div>

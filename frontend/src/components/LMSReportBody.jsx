@@ -3,6 +3,7 @@ import {
   RefreshCw, Users, BookOpen, Award, Calendar,
   ChevronDown, ChevronUp, User as UserIcon, Star, Zap, AlertCircle,
 } from 'lucide-react';
+import LoadingSpinner from './common/LoadingSpinner';
 
 const fmtDate = (d) => {
   if (!d) return '—';
@@ -206,6 +207,7 @@ export const LMSReportBody = ({
     if (data?.classes) {
       setExpandedClasses(new Set(data.classes.map(c => c.class_id)));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.school_name]); // reset when a fresh report loads
 
   const toggleClass = (cid) => {
@@ -315,7 +317,7 @@ export const LMSReportBody = ({
       )}
 
       {loading ? (
-        <div className="text-center py-16 text-slate-500" data-testid="lms-report-loading">Loading LMS data…</div>
+        <LoadingSpinner text="Loading LMS data…" />
       ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700" data-testid="lms-report-error">{error}</div>
       ) : data?.linked && visibleClasses.length === 0 ? (

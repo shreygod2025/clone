@@ -22,6 +22,7 @@ import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -450,7 +451,9 @@ export default function AdminCentralDatabase() {
 
         {/* Content: Map or List */}
         {loading ? (
-          <div className="p-10 text-center text-slate-500 bg-white rounded-2xl border border-slate-100">Loading…</div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-8">
+            <LoadingSpinner text="Loading central database…" />
+          </div>
         ) : view === 'map' ? (
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" data-testid="city-map-view">
             <div className="h-[560px]">

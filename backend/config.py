@@ -51,3 +51,29 @@ OTP_EXPIRE_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5          # block after N wrong guesses
 OTP_LOCKOUT_MINUTES = 15      # lock phone for this long after max attempts
 OTP_SEND_COOLDOWN_SECONDS = 30  # minimum gap between two OTP sends to same phone
+
+
+# ── Settings Object ───────────────────────────────────────────────────────
+class Settings:
+    PROJECT_NAME: str = "OLL Learning Platform API"
+    VERSION: str = "2.0.0"
+    API_V1_STR: str = "/api"
+    MONGO_URL: str = MONGO_URL
+    DB_NAME: str = DB_NAME
+    JWT_SECRET: str = JWT_SECRET
+    ALGORITHM: str = ALGORITHM
+    ACCESS_TOKEN_EXPIRE_HOURS: int = ACCESS_TOKEN_EXPIRE_HOURS
+    CORS_ORIGINS: list = ["*"]
+    RESEND_API_KEY: str = RESEND_API_KEY
+    SENDER_EMAIL: str = SENDER_EMAIL
+    CASHFREE_APP_ID: str = CASHFREE_APP_ID
+    CASHFREE_SECRET_KEY: str = CASHFREE_SECRET_KEY
+    CASHFREE_ENVIRONMENT: str = CASHFREE_ENVIRONMENT
+    CLOUDINARY_CLOUD_NAME: str = CLOUDINARY_CLOUD_NAME
+    CLOUDINARY_API_KEY: str = CLOUDINARY_API_KEY
+    CLOUDINARY_API_SECRET: str = CLOUDINARY_API_SECRET
+    FRONTEND_URL: str = FRONTEND_URL
+
+
+settings = Settings()
+

@@ -18,6 +18,8 @@ import CitySearch from '../../components/CitySearch';
 import BulkEmailModal from '../../components/BulkEmailModal';
 import ImportSalariesModal from '../../components/ImportSalariesModal';
 import OrgChartView from './OrgChartView';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -94,9 +96,9 @@ const AdminUsers = () => {
   const { getAuthHeaders } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('users');
-  const [users, setUsers] = useState([]);
-  const [roles, setRoles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState(() => getCachedData('/team-users') || []);
+  const [roles, setRoles] = useState(() => getCachedData('/roles') || []);
+  const [loading, setLoading] = useState(() => !hasCachedData('/team-users'));
   const [searchQuery, setSearchQuery] = useState('');
   
   // Filters for users
@@ -169,8 +171,11 @@ const AdminUsers = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (options = {}) => {
+    const force = options?.force === true;
+    if (!hasCachedData('/team-users') || force) {
+      setLoading(true);
+    }
     try {
       const [usersRes, rolesRes] = await Promise.all([
         axios.get(`${API}/team-users`, { headers: getAuthHeaders() }),
@@ -769,13 +774,19 @@ const AdminUsers = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredUsers.length === 0 && (
+                {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <LoadingSpinner text="Loading team members..." />
+                    </td>
+                  </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                       No users found. Click &quot;Add User&quot; to create a new team member.
                     </td>
                   </tr>
-                )}
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -785,7 +796,7 @@ const AdminUsers = () => {
         {activeTab === 'past-team' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden" data-testid="past-team-panel">
             {pastLoading ? (
-              <div className="p-12 text-center text-slate-500">Loading…</div>
+              <LoadingSpinner text="Loading past team members…" />
             ) : pastUsers.length === 0 ? (
               <div className="p-12 text-center">
                 <UserMinus className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -848,6 +859,9 @@ const AdminUsers = () => {
 
         {/* Roles Tab */}
         {activeTab === 'roles' && (
+          loading ? (
+            <LoadingSpinner text="Loading roles..." />
+          ) : (
           <div className="grid gap-4">
             {filteredRoles.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
@@ -927,6 +941,7 @@ const AdminUsers = () => {
               ))
             )}
           </div>
+          )
         )}
       </div>
 
@@ -1255,7 +1270,10 @@ const AdminUsers = () => {
               <p className="text-xs text-slate-500 mb-2">Select the KPIs to track for users under this role. Visible on each user&apos;s Performance page.</p>
               <div className="space-y-3 max-h-72 overflow-y-auto border rounded-lg p-3" data-testid="role-kpi-selector">
                 {Object.keys(kpiCatalog.grouped || {}).length === 0 && (
-                  <p className="text-xs text-slate-500 italic">Loading KPI catalog…</p>
+                  <div className="flex items-center justify-center py-6 gap-2 text-xs text-slate-500">
+                    <div className="w-4 h-4 border-2 border-[#D63031] border-t-transparent rounded-full animate-spin" />
+                    <span>Loading KPI catalog…</span>
+                  </div>
                 )}
                 {Object.entries(kpiCatalog.grouped || {}).map(([category, kpis]) => (
                   <div key={category}>

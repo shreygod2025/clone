@@ -4,6 +4,7 @@ import { AdminLayout } from './AdminDashboard';
 import TaskCreateModal, { AttachmentsPanel } from '../../components/tasks/TaskCreateModal';
 import { useAuth } from '../../context/AuthContext';
 import { celebrateTaskComplete } from '../../lib/celebrate';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import axios from 'axios';
 import { toast } from 'sonner';
 import {
@@ -339,8 +340,8 @@ const AdminTasks = ({ embedded = false }) => {
         {/* List view */}
         <div data-testid="tasks-list">
           {loading ? (
-            <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center text-slate-400 text-sm">
-              Loading tasks…
+            <div className="bg-white border border-slate-200 rounded-2xl py-12">
+              <LoadingSpinner text="Loading tasks…" />
             </div>
           ) : filteredTasks.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center">

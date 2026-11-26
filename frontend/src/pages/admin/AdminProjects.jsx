@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Card } from '../../components/ui/card';
@@ -104,7 +105,7 @@ const AdminProjects = ({ embedded = false }) => {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-slate-500">Loading…</div>
+          <LoadingSpinner text="Loading projects…" />
         ) : projects.length === 0 ? (
           <Card className="p-8 text-center text-slate-500">No projects yet. Create your first one.</Card>
         ) : (

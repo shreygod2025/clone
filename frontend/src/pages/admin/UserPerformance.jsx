@@ -6,6 +6,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
 import { generateTeamMemberReportPDF } from '../../utils/teamMemberReportPdf';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, Legend,
@@ -143,6 +144,7 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
     };
     run();
     return () => { cancelled = true; controller.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, scope, selMonth, selQuarter, selYear, selWeekRef, selfMode]);
 
   // Load user switcher list only for admin/manager mode
@@ -342,8 +344,8 @@ const UserPerformance = ({ mode = 'admin', embedded = false }) => {
 
         {/* Loading */}
         {loading && (
-          <div className="text-center py-12 text-slate-500" data-testid="performance-loading">
-            Loading performance…
+          <div data-testid="performance-loading">
+            <LoadingSpinner text="Loading performance…" />
           </div>
         )}
 
@@ -566,7 +568,7 @@ const FinancialGrowthSection = ({ userId, selfMode }) => {
       </div>
 
       {loading ? (
-        <div className="text-center py-8 text-sm text-slate-500">Loading compensation…</div>
+        <LoadingSpinner text="Loading compensation…" />
       ) : records.length === 0 ? (
         <div className="bg-slate-50 border border-dashed border-slate-200 rounded-lg p-6 text-center text-sm text-slate-500" data-testid="financial-growth-empty">
           <PiggyBank className="w-8 h-8 text-slate-300 mx-auto mb-2" />

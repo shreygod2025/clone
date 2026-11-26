@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { clearCache } from '../utils/apiCache';
 
 const AuthContext = createContext(null);
 
@@ -107,6 +108,7 @@ export const AuthProvider = ({ children }) => {
     const response = await axios.post(`${API}/auth/login`, { email, password });
     const { access_token, user: userData } = response.data;
     localStorage.setItem('oll_token', access_token);
+    clearCache(); // Fresh cache for newly authenticated session
     // Fetch enriched profile (adds is_manager, etc.) — falls back to login payload if it fails
     let fullUser = userData;
     try {
@@ -133,6 +135,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('oll_token');
     localStorage.removeItem('oll_user');
+    clearCache();
     setUser(null);
     setIsAuthenticated(false);
     verifyAttempted.current = false;

@@ -21,7 +21,7 @@ from .shared import (
     db, get_current_user, auto_assign_lead, get_relationship_managers,
     ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL,
     get_next_ticket_number, has_school_permission, can_access_school,
-    get_authorized_school_query, can_manage_user
+    get_authorized_school_query, can_manage_user, has_permission
 )
 from .notifications import send_whatsapp_notification
 from .expenses import transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
@@ -246,7 +246,7 @@ async def create_school_inquiry(data: SchoolInquiryCreate):
 @router.get("/schools/names")
 async def get_school_names_list(user: dict = Depends(get_current_user)):
     """Lightweight endpoint returning only id + school_name for dropdowns, scoped to permitted records"""
-    if not has_school_permission(user):
+    if not (has_school_permission(user) or has_permission(user, "expenses") or has_permission(user, "pnl") or has_permission(user, "reports")):
         raise HTTPException(status_code=403, detail="Access denied.")
     query = await get_authorized_school_query(user)
     schools = await db.school_inquiries.find(query, {"_id": 0, "id": 1, "school_name": 1}).sort("school_name", 1).to_list(2000)
@@ -282,14 +282,17 @@ async def get_school_inquiries(
     user_email = (user.get("email") or "").strip()
     user_name  = (user.get("name")  or "").strip()
 
-    inquiries = await db.school_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    inquiries = await db.school_inquiries.find(
+        query,
+        {"_id": 0, "activity_log": 0, "onboarding_workflow.timeline": 0}
+    ).sort("created_at", -1).to_list(1000)
     
     # Add ownership flag for display purposes
     for inq in inquiries:
-        if isinstance(inq.get('created_at'), str):
-            inq['created_at'] = datetime.fromisoformat(inq['created_at'])
-        if isinstance(inq.get('updated_at'), str):
-            inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
+        if isinstance(inq.get('created_at'), datetime):
+            inq['created_at'] = inq['created_at'].isoformat()
+        if isinstance(inq.get('updated_at'), datetime):
+            inq['updated_at'] = inq['updated_at'].isoformat()
         
         owner_candidates = {c for c in (user_id, user_email, user_name) if c}
         is_owner = bool(owner_candidates.intersection({

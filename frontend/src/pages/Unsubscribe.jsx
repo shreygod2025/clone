@@ -36,7 +36,12 @@ export default function Unsubscribe() {
           <svg className="w-7 h-7 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
         </div>
 
-        {state.loading && <p className="text-slate-500">Loading…</p>}
+        {state.loading && (
+          <div className="py-4">
+            <div className="w-8 h-8 border-2 border-[#D63031] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-slate-500 text-sm">Loading…</p>
+          </div>
+        )}
 
         {!state.loading && state.error && (
           <>

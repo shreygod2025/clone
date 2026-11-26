@@ -15,6 +15,7 @@ import {
 import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../context/AuthContext';
 import ImportSalariesModal from '../../../components/ImportSalariesModal';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -114,7 +115,7 @@ export default function MonthlyFixedExpensesTab() {
           <span className="text-xs text-slate-500">{records.length} records</span>
         </div>
         {loading ? (
-          <div className="p-10 text-center text-slate-400 text-sm">Loading…</div>
+          <LoadingSpinner text="Loading monthly salaries…" />
         ) : records.length === 0 ? (
           <div className="p-10 text-center text-slate-400 text-sm" data-testid="monthly-fixed-empty">
             No salary records for {month}. Click "Import Salary Sheet" to upload an Excel / CSV,

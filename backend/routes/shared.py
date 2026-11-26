@@ -22,19 +22,12 @@ async def send_email_gmail(*_args, **_kwargs):  # pragma: no cover
     resolved lazily at call sites (see routes/techfest.py::_dispatch_email)."""
     return {"success": False, "error": "Gmail helper not loaded"}
 
-ROOT_DIR = Path(__file__).parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection — explicit timeouts prevent indefinite hangs on Atlas in production
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(
-    mongo_url,
-    serverSelectionTimeoutMS=5000,   # 5 s to find a suitable server (reduced from 10s)
-    connectTimeoutMS=5000,            # 5 s to establish TCP connection
-    socketTimeoutMS=20000,            # 20 s for individual socket operations
-    waitQueueTimeoutMS=5000,          # 5 s to wait for a connection from the pool
-)
-db = client[os.environ['DB_NAME']]
+# Canonical MongoDB connection — shared single instance from db
+from database import client, db
+mongo_url = str(client.topology_description) if hasattr(client, 'topology_description') else ""
 
 # JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET', 'oll-secret-key-change-in-production')

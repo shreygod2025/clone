@@ -20,6 +20,7 @@ import AiFoundationsCRMTab from './AiFoundationsCRMTab';
 import FathersDayWorkshopCRMTab from './FathersDayWorkshopCRMTab';
 import FriendshipDayCRMTab from './FriendshipDayCRMTab';
 import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -64,12 +65,17 @@ const LEARNING_GOALS = [
 
 const AdminStudentCRM = () => {
   const { getAuthHeaders, user } = useAuth();
-  const [inquiries, setInquiries] = useState([]);
-  const [teamUsers, setTeamUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [inquiries, setInquiries] = useState(() => getCachedData('/students/inquiries') || []);
+  const [teamUsers, setTeamUsers] = useState(() => getCachedData('/team-users') || []);
+  const [loading, setLoading] = useState(() => !hasCachedData('/students/inquiries'));
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [visibleLeadCount, setVisibleLeadCount] = useState(30);
+
+  useEffect(() => {
+    setVisibleLeadCount(30);
+  }, [activeSection, searchQuery, assigneeFilter]);
   
   // Modal states
   const [viewInquiry, setViewInquiry] = useState(null);
@@ -211,10 +217,12 @@ const AdminStudentCRM = () => {
   const [deleteInquiryTarget, setDeleteInquiryTarget] = useState(null);
 
   useEffect(() => {
-    fetchInquiries();
-    fetchTeamUsers();
-    fetchOnboardedEducators();
-    fetchBatches();
+    Promise.allSettled([
+      fetchInquiries(),
+      fetchTeamUsers(),
+      fetchOnboardedEducators(),
+      fetchBatches(),
+    ]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -309,8 +317,11 @@ const AdminStudentCRM = () => {
     toast.info('Form auto-filled from existing record');
   };
 
-  const fetchInquiries = async () => {
-    setLoading(true);
+  const fetchInquiries = async (options = {}) => {
+    const force = options?.force === true;
+    if (!hasCachedData('/students/inquiries') || force) {
+      setLoading(true);
+    }
     try {
       const response = await axios.get(`${API}/students/inquiries`, {
         headers: getAuthHeaders()
@@ -3384,14 +3395,16 @@ const AdminStudentCRM = () => {
       ) : loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
+          <p className="mt-3 text-slate-500 text-sm font-medium">Loading student inquiries...</p>
         </div>
       ) : filteredInquiries.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <p className="text-slate-500">No leads in this section</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredInquiries.map((inquiry) => (
+        <>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredInquiries.slice(0, visibleLeadCount).map((inquiry) => (
             <div 
               key={inquiry.id} 
               className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition-shadow"
@@ -3516,7 +3529,26 @@ const AdminStudentCRM = () => {
               {renderActionButtons(inquiry)}
             </div>
           ))}
-        </div>
+          </div>
+          {filteredInquiries.length > visibleLeadCount && (
+            <div className="flex justify-center items-center gap-3 pt-6 pb-2">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleLeadCount(prev => prev + 30)}
+                className="text-sm font-medium border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                Load More ({filteredInquiries.length - visibleLeadCount} remaining)
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setVisibleLeadCount(filteredInquiries.length)}
+                className="text-sm text-slate-500 hover:text-slate-800"
+              >
+                Show All ({filteredInquiries.length})
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* View/Edit Details Dialog */}

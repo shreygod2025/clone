@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import RichTextEditor from '../../components/RichTextEditor';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
   Trophy, Plus, Search, Edit, Trash2, Upload, ExternalLink,
   Paperclip, X, Loader2, Award, Eye, EyeOff, Star,
@@ -163,7 +164,7 @@ const AdminSuccessStories = () => {
 
         {/* List */}
         {loading ? (
-          <div className="text-center py-10 text-slate-500" data-testid="success-stories-loading">Loading…</div>
+          <LoadingSpinner text="Loading success stories…" />
         ) : stories.length === 0 ? (
           <div className="bg-white border border-dashed border-slate-300 rounded-xl p-10 text-center" data-testid="success-stories-empty">
             <Award className="w-10 h-10 text-slate-300 mx-auto mb-2" />

@@ -22,6 +22,8 @@ import { generateMOUDocument } from '../../utils/mouPdfGenerator';
 import BulkEmailModal from '../../components/BulkEmailModal';
 import { generateParentCircularDocument } from '../../utils/parentCircularGenerator';
 import { SchoolMapPicker } from '../../components/SchoolMapPicker';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -727,9 +729,12 @@ const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
 const AdminSchoolCRM = () => {
   const navigate = useNavigate();
   const { getAuthHeaders, user } = useAuth();
-  const [inquiries, setInquiries] = useState([]);
-  const [teamUsers, setTeamUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [inquiries, setInquiries] = useState(() => {
+    const cached = getCachedData('/schools/inquiries');
+    return Array.isArray(cached) ? cached : (cached?.inquiries || []);
+  });
+  const [teamUsers, setTeamUsers] = useState(() => getCachedData('/team-users') || []);
+  const [loading, setLoading] = useState(() => !hasCachedData('/schools/inquiries'));
   const [searchQuery, setSearchQuery] = useState('');
   // Search across ALL stages by default — the previous stage-scoped behaviour
   // hid legitimate matches sitting in a different pipeline stage. Users still
@@ -741,6 +746,11 @@ const AdminSchoolCRM = () => {
   const [offeringFilter, setOfferingFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [sortMode, setSortMode] = useState('default'); // 'default' | 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc'
+  const [visibleSchoolCount, setVisibleSchoolCount] = useState(30);
+
+  useEffect(() => {
+    setVisibleSchoolCount(30);
+  }, [activeSection, searchQuery, assigneeFilter, cityFilter, offeringFilter, sortMode]);
   
   // Main Tab State - dashboard, leads, contacts
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -1077,11 +1087,14 @@ const AdminSchoolCRM = () => {
   });
 
   useEffect(() => {
-    fetchInquiries({ background: false });  // initial load — show spinner
-    fetchTeamUsers();
-    fetchOfferings();
-    fetchRelationshipManagers();
-    fetchLmsSyncStatus();
+    const cachedAvailable = hasCachedData('/schools/inquiries');
+    fetchInquiries({ background: cachedAvailable }); // if cached, revalidate silently in background!
+    Promise.allSettled([
+      fetchTeamUsers(),
+      fetchOfferings(),
+      fetchRelationshipManagers(),
+      fetchLmsSyncStatus(),
+    ]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -5480,6 +5493,9 @@ ${FOOTER}</div></body></html>`
 
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
+        loading ? (
+          <LoadingSpinner text="Loading School CRM dashboard..." />
+        ) : (
         <div className="space-y-6">
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -5580,6 +5596,7 @@ ${FOOTER}</div></body></html>`
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* Leads Tab */}
@@ -5740,9 +5757,7 @@ ${FOOTER}</div></body></html>`
 
       {/* Lead Cards */}
       {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
-        </div>
+        <LoadingSpinner text="Loading school inquiries..." />
       ) : filteredInquiries.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -5860,9 +5875,29 @@ ${FOOTER}</div></body></html>`
           </table>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedInquiries.map((inquiry) => renderSchoolCard(inquiry))}
-        </div>
+        <>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedInquiries.slice(0, visibleSchoolCount).map((inquiry) => renderSchoolCard(inquiry))}
+          </div>
+          {sortedInquiries.length > visibleSchoolCount && (
+            <div className="flex justify-center items-center gap-3 pt-6 pb-2">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleSchoolCount(prev => prev + 30)}
+                className="text-sm font-medium border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                Load More ({sortedInquiries.length - visibleSchoolCount} remaining)
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setVisibleSchoolCount(sortedInquiries.length)}
+                className="text-sm text-slate-500 hover:text-slate-800"
+              >
+                Show All ({sortedInquiries.length})
+              </Button>
+            </div>
+          )}
+        </>
       )}
         </>
       )}
@@ -6521,10 +6556,7 @@ ${FOOTER}</div></body></html>`
                     {showHistoryTab && (
                       <div className="space-y-2 max-h-[250px] overflow-y-auto" data-testid="school-history-timeline">
                         {loadingHistory ? (
-                          <div className="text-center py-4">
-                            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" />
-                            <p className="text-sm text-slate-500 mt-2">Loading history...</p>
-                          </div>
+                          <LoadingSpinner text="Loading history..." size="sm" />
                         ) : schoolHistory.length === 0 ? (
                           <p className="text-sm text-slate-500 text-center py-4">No history available</p>
                         ) : (
@@ -14658,7 +14690,10 @@ ${FOOTER}</div></body></html>`
             {/* Sessions Table */}
             <div className="overflow-y-auto flex-1 px-4 py-3">
               {sessionsLoading ? (
-                <div className="flex items-center justify-center h-32 text-slate-400 text-sm">Loading sessions...</div>
+                <div className="flex flex-col items-center justify-center h-32 gap-2 text-slate-400 text-sm">
+                  <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  <span>Loading sessions...</span>
+                </div>
               ) : sessionsData.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-slate-400">
                   <CalendarDays className="w-10 h-10 mb-2 opacity-40" />
@@ -14900,7 +14935,10 @@ ${FOOTER}</div></body></html>`
             )}
 
             {standaloneTimetableLoading ? (
-              <div className="flex items-center justify-center py-12 text-slate-400 text-sm">Loading timetable...</div>
+              <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-400 text-sm">
+                <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                <span>Loading timetable...</span>
+              </div>
             ) : (
               <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Basic Information</p>

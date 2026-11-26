@@ -11,6 +11,7 @@ import { ArrowLeft } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import OrgChartView from './OrgChartView';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -53,7 +54,9 @@ export default function AdminOrgChart() {
           </p>
         </div>
         {loading ? (
-          <div className="p-10 text-center text-slate-500 border border-dashed border-slate-200 rounded-2xl">Loading team…</div>
+          <div className="p-8 border border-slate-200 rounded-2xl bg-white">
+            <LoadingSpinner text="Loading organisation tree…" />
+          </div>
         ) : (
           <OrgChartView users={users} roles={roles} />
         )}

@@ -18,6 +18,8 @@ import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import axios from 'axios';
 import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
 import SortFilterBar, { applySortFilter } from '../../components/SortFilterBar';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -192,14 +194,14 @@ const AdminOrders = () => {
   };
   const firstAllowedTab = ['school', 'student', 'school-students', 'robotics-shop'].find(k => tabAccess[k]) || 'school';
   const [activeTab, setActiveTab] = useState(firstAllowedTab);
-  const [payments, setPayments] = useState([]);
-  const [schoolStudentPayments, setSchoolStudentPayments] = useState([]);
-  const [schoolStudentStats, setSchoolStudentStats] = useState({});
+  const [payments, setPayments] = useState(() => getCachedData(`/orders/${firstAllowedTab}-payments`) || []);
+  const [schoolStudentPayments, setSchoolStudentPayments] = useState(() => getCachedData('/orders/school-student-payments')?.schools || []);
+  const [schoolStudentStats, setSchoolStudentStats] = useState(() => getCachedData('/orders/school-student-payments')?.overall_stats || {});
   // Student Payments sub-tabs (Home Classes · Summer Camp · Future Skills)
   const [studentSubTab, setStudentSubTab] = useState('home');
-  const [summerCampPayments, setSummerCampPayments] = useState([]);
-  const [futureSkillsPayments, setFutureSkillsPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [summerCampPayments, setSummerCampPayments] = useState(() => getCachedData('/orders/summer-camp-payments')?.payments || []);
+  const [futureSkillsPayments, setFutureSkillsPayments] = useState(() => getCachedData('/orders/future-skills-payments')?.payments || []);
+  const [loading, setLoading] = useState(() => !hasCachedData(`/orders/${firstAllowedTab}-payments`));
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   // Sort + date-range filter (Student Payments sub-tabs). Applied on top of search/status.
@@ -260,8 +262,11 @@ const AdminOrders = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, studentSubTab]);
 
-  const fetchSummerCampPayments = async () => {
-    setLoading(true);
+  const fetchSummerCampPayments = async (options = {}) => {
+    const force = options?.force === true;
+    if (!hasCachedData('/orders/summer-camp-payments') || force) {
+      setLoading(true);
+    }
     try {
       const r = await axios.get(`${API}/orders/summer-camp-payments`, { headers: getAuthHeaders() });
       setSummerCampPayments(r.data?.payments || []);
@@ -272,8 +277,11 @@ const AdminOrders = () => {
     }
   };
 
-  const fetchFutureSkillsPayments = async () => {
-    setLoading(true);
+  const fetchFutureSkillsPayments = async (options = {}) => {
+    const force = options?.force === true;
+    if (!hasCachedData('/orders/future-skills-payments') || force) {
+      setLoading(true);
+    }
     try {
       const r = await axios.get(`${API}/orders/future-skills-payments`, { headers: getAuthHeaders() });
       setFutureSkillsPayments(r.data?.payments || []);
@@ -284,8 +292,12 @@ const AdminOrders = () => {
     }
   };
 
-  const fetchPayments = async () => {
-    setLoading(true);
+  const fetchPayments = async (options = {}) => {
+    const force = options?.force === true;
+    const cacheKey = `/orders/${activeTab}-payments`;
+    if (!hasCachedData(cacheKey) || force) {
+      setLoading(true);
+    }
     try {
       const response = await axios.get(`${API}/orders/${activeTab}-payments`, {
         headers: getAuthHeaders()
@@ -320,8 +332,11 @@ const AdminOrders = () => {
     }
   };
 
-  const fetchSchoolStudentPayments = async () => {
-    setLoading(true);
+  const fetchSchoolStudentPayments = async (options = {}) => {
+    const force = options?.force === true;
+    if (!hasCachedData('/orders/school-student-payments') || force) {
+      setLoading(true);
+    }
     try {
       // Use new aggregated endpoint
       const response = await axios.get(`${API}/orders/school-student-payments`, {
@@ -1290,8 +1305,17 @@ const AdminOrders = () => {
           </div>
         )}
 
-        {/* Stats Cards - Show different stats based on active tab (shop tab has its own) */}
-        {activeTab === 'robotics-shop' ? null : activeTab !== 'school-students' ? (
+        {/* Main Content Area */}
+        {activeTab === 'robotics-shop' ? (
+          <div className="mt-6">
+            <ShopOrdersSection />
+          </div>
+        ) : loading ? (
+          <LoadingSpinner text="Loading orders & payments..." />
+        ) : (
+          <>
+            {/* Stats Cards - Show different stats based on active tab */}
+            {activeTab !== 'school-students' ? (
           /* Stats for School Payments and Student Payments tabs */
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
@@ -1479,10 +1503,7 @@ const AdminOrders = () => {
         {(activeTab === 'school' || activeTab === 'student') && (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-3 border-orange-500 border-t-transparent mx-auto"></div>
-              <p className="text-slate-500 mt-4 font-medium">Loading payments...</p>
-            </div>
+            <LoadingSpinner text="Loading payments..." />
           ) : sortedPayments.length === 0 ? (
             <div className="p-20 text-center">
               <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
@@ -2063,23 +2084,11 @@ const AdminOrders = () => {
           )}
         </div>
         )}
-        {/* Robotics Shop Orders Tab */}
-        {activeTab === 'robotics-shop' && (
-          <div className="mt-6">
-            <ShopOrdersSection />
-          </div>
-        )}
-
-
-
         {/* School Student Payments (Online) Tab */}
         {activeTab === 'school-students' && (
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mt-6">
             {loading ? (
-              <div className="p-12 text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-3 border-green-500 border-t-transparent mx-auto"></div>
-                <p className="text-slate-500 mt-4 font-medium">Loading school student payments...</p>
-              </div>
+              <LoadingSpinner text="Loading school student payments..." />
             ) : Object.keys(schoolStudentStats).length === 0 ? (
               <div className="p-20 text-center">
                 <div className="w-24 h-24 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
@@ -2214,6 +2223,8 @@ const AdminOrders = () => {
               </div>
             )}
           </div>
+        )}
+          </>
         )}
       </div>
 
@@ -2637,10 +2648,7 @@ const AdminOrders = () => {
           </DialogHeader>
 
           {loadingSchoolDetails ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-slate-500 mt-4">Loading school details...</p>
-            </div>
+            <LoadingSpinner text="Loading school details..." size="sm" />
           ) : showSchoolDetails && (
             <div className="space-y-6">
               {/* Basic School Info */}

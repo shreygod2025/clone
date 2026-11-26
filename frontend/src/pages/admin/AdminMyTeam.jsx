@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/ui/card';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import TaskCreateModal from '../../components/tasks/TaskCreateModal';
 import { generateTeamMemberReportPDF } from '../../utils/teamMemberReportPdf';
 import {
@@ -240,7 +241,7 @@ const AdminMyTeam = () => {
         )}
 
         {loading ? (
-          <div className="py-12 text-center text-slate-400 text-sm">Loading team…</div>
+          <LoadingSpinner text="Loading team members…" />
         ) : members.length === 0 ? (
           <Card className="p-10 text-center" data-testid="team-empty">
             <UsersIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />

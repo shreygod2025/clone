@@ -13,6 +13,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import WhatsAppLinkDialog from '../../components/admin/WhatsAppLinkDialog';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -408,7 +410,10 @@ const MyKpisWidget = () => {
         </div>
       </div>
       {loading ? (
-        <div className="text-center py-6 text-slate-400 text-sm">Loading KPIs…</div>
+        <div className="flex items-center justify-center py-6 gap-2 text-slate-400 text-sm">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#D63031]" />
+          <span>Loading KPIs…</span>
+        </div>
       ) : kpis.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-slate-700">
           No KPIs configured for your role yet. An admin can assign KPIs under <Link to="/admin/users" className="underline text-blue-600">Users &amp; Roles</Link>.
@@ -471,7 +476,14 @@ const TodaysTasksWidget = () => {
     } catch { /* noop */ }
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="mb-8 p-6 bg-white rounded-xl border border-slate-100 flex items-center justify-center gap-2">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#D63031]" />
+        <span className="text-slate-400 text-sm">Loading tasks…</span>
+      </div>
+    );
+  }
 
   // Priority order: Overdue first, then Today, then rest of week (each already sorted by backend)
   const rows = [...overdue, ...today, ...thisWeek];
@@ -552,7 +564,7 @@ const AdminDashboard = () => {
       navigate('/admin/future-skills', { replace: true });
     }
   }, [user, navigate]);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState(() => getCachedData('/dashboard/stats') || ({
     total_students: 0,
     total_schools: 0,
     total_educators: 0,
@@ -567,15 +579,15 @@ const AdminDashboard = () => {
     todays_school_meetings: [],
     todays_educator_demos: [],
     is_team_member: false
-  });
-  const [loading, setLoading] = useState(true);
+  }));
+  const [loading, setLoading] = useState(() => !hasCachedData('/dashboard/stats'));
 
   useEffect(() => {
     fetchStats();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = async (options = {}) => {
     try {
       const response = await axios.get(`${API}/dashboard/stats`, {
         headers: getAuthHeaders()
@@ -616,9 +628,7 @@ const AdminDashboard = () => {
   return (
     <AdminLayout title={stats.is_team_member ? `Welcome, ${user?.name || 'Team Member'}` : 'Dashboard'}>
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031]"></div>
-        </div>
+        <LoadingSpinner text="Loading dashboard..." />
       ) : (
         <>
           {/* Welcome Banner */}
