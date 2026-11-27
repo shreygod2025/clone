@@ -24,10 +24,21 @@ router = APIRouter()
 
 
 def _require_admin(user: dict) -> None:
-    """Custom invoices are financial records — restrict CRUD to admins only
-    (security review SEC-003)."""
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+    """Custom invoices are financial/order records — restrict CRUD to admins
+    and team members with orders access."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    role = (user.get("role") or "").lower()
+    perms = user.get("permissions") or []
+    if (
+        role in ("admin", "super_admin")
+        or "orders" in perms
+        or any(isinstance(p, str) and p.startswith("orders") for p in perms)
+        or "all" in perms
+    ):
+        return
+    raise HTTPException(status_code=403, detail="Admin or orders access required")
+
 
 
 def _increment_invoice_number(last_no: str, year: int) -> str:
