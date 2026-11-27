@@ -1721,14 +1721,28 @@ async def initiate_cashfree_refund(payment_id: str, data: dict, user: dict = Dep
         raise HTTPException(status_code=500, detail=f"Refund failed: {str(e)}")
 
 # ========================
-# PAYMENT SYNC ENDPOINTS (Admin)
+# PAYMENT SYNC ENDPOINTS (Admin / Orders)
 # ========================
+
+def _require_admin_or_orders(user: dict) -> None:
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    role = (user.get("role") or "").lower()
+    perms = user.get("permissions") or []
+    if (
+        role in ("admin", "super_admin")
+        or "orders" in perms
+        or any(isinstance(p, str) and p.startswith("orders") for p in perms)
+        or "all" in perms
+    ):
+        return
+    raise HTTPException(status_code=403, detail="Admin or orders access required")
+
 
 @router.post("/payments/sync-single/{order_id}")
 async def sync_single_payment_status(order_id: str, user: dict = Depends(get_current_user)):
     """Manually sync a single payment status from Cashfree"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin_or_orders(user)
     
     if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
         raise HTTPException(status_code=500, detail="Payment gateway not configured")
@@ -1864,9 +1878,7 @@ async def sync_all_pending_payments(
     payment_type: Optional[str] = Query(None, description="student, school, or all"),
     user: dict = Depends(get_current_user)
 ):
-    """Sync all pending/non-PAID payments with Cashfree - checks every payment status"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin_or_orders(user)
     
     if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
         raise HTTPException(status_code=500, detail="Payment gateway not configured")
@@ -2038,8 +2050,7 @@ async def sync_all_pending_payments(
 @router.get("/payments/status-report")
 async def get_payment_status_report(user: dict = Depends(get_current_user)):
     """Get a report of all payments and their statuses for diagnostics"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin_or_orders(user)
     
     # Student payments stats
     student_payments = await db.student_payments.find({}, {"_id": 0, "id": 1, "status": 1, "student_name": 1, "amount": 1, "created_at": 1}).to_list(1000)
@@ -2087,8 +2098,7 @@ async def get_payment_status_report(user: dict = Depends(get_current_user)):
 @router.get("/payments/scheduler-status")
 async def get_scheduler_status(user: dict = Depends(get_current_user)):
     """Get the payment sync scheduler status"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin_or_orders(user)
     
     job = scheduler.get_job("payment_sync_job")
     
@@ -2104,8 +2114,7 @@ async def get_scheduler_status(user: dict = Depends(get_current_user)):
 @router.post("/payments/trigger-sync")
 async def trigger_manual_sync(user: dict = Depends(get_current_user)):
     """Manually trigger a payment sync (runs immediately)"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin_or_orders(user)
     
     if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
         raise HTTPException(status_code=500, detail="Cashfree credentials not configured")
