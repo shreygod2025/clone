@@ -167,6 +167,11 @@ class FranchiseLeadCreate(BaseModel):
     source: Optional[str] = "manual"
     details: Optional[str] = ""
     assigned_to: Optional[str] = ""
+    demo_session_scheduled: Optional[bool] = False
+    scheduled_demo_at: Optional[str] = None
+    demo_type: Optional[str] = "online_meet"
+    demo_link: Optional[str] = ""
+    demo_notes: Optional[str] = ""
 
 
 class FranchiseLeadUpdate(BaseModel):
@@ -182,6 +187,12 @@ class FranchiseLeadUpdate(BaseModel):
     details: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+    demo_session_scheduled: Optional[bool] = None
+    scheduled_demo_at: Optional[str] = None
+    demo_type: Optional[str] = None
+    demo_link: Optional[str] = None
+    demo_status: Optional[str] = None
+    demo_notes: Optional[str] = None
 
 
 class AssignLeadRequest(BaseModel):
@@ -340,6 +351,14 @@ async def create_franchise_lead(
             assigned_email = assignee.get("email", "")
             assigned_role = assignee.get("role", "")
 
+    demo_is_scheduled = bool(payload.demo_session_scheduled or payload.scheduled_demo_at)
+    initial_status = "demo_scheduled" if demo_is_scheduled else "new"
+    demo_status = "scheduled" if demo_is_scheduled else "none"
+    scheduled_demo_at = payload.scheduled_demo_at if demo_is_scheduled else None
+    demo_type = payload.demo_type or "online_meet"
+    demo_link = payload.demo_link or ""
+    demo_notes = payload.demo_notes or ""
+
     doc = {
         "id": lead_id,
         "name": payload.name.strip(),
@@ -353,7 +372,7 @@ async def create_franchise_lead(
         "source": payload.source or "manual",
         "details": (payload.details or "").strip(),
         "notes": "",
-        "status": "new",
+        "status": initial_status,
         "assigned_to": payload.assigned_to or "",
         "assigned_to_name": assigned_name,
         "assigned_to_email": assigned_email,
@@ -366,11 +385,11 @@ async def create_franchise_lead(
         "call_notes": "",
         "calls_count": 0,
         "last_call_at": None,
-        "demo_status": "none",
-        "scheduled_demo_at": None,
-        "demo_type": "online_meet",
-        "demo_link": "",
-        "demo_notes": "",
+        "demo_status": demo_status,
+        "scheduled_demo_at": scheduled_demo_at,
+        "demo_type": demo_type,
+        "demo_link": demo_link,
+        "demo_notes": demo_notes,
         "demos_count": 0,
         "last_demo_at": None,
         "followup_status": "none",
@@ -380,7 +399,7 @@ async def create_franchise_lead(
         "comments": [{
             "id": str(uuid.uuid4()),
             "user_name": user.get("name") or user.get("email"),
-            "text": f"Lead created via {payload.source or 'manual entry'}",
+            "text": f"Lead created via {payload.source or 'manual entry'}" + (f" (Demo scheduled on {scheduled_demo_at})" if demo_is_scheduled else ""),
             "created_at": now_iso,
         }],
         "created_at": now_iso,
@@ -394,8 +413,22 @@ async def create_franchise_lead(
         lead_phone=doc["phone"],
         user=user,
         action="lead_created",
-        details={"source": doc["source"], "assigned_to": assigned_name},
+        details={"source": doc["source"], "assigned_to": assigned_name, "demo_scheduled": demo_is_scheduled},
     )
+
+    if demo_is_scheduled and scheduled_demo_at:
+        await _log_activity(
+            lead_id=lead_id,
+            lead_name=doc["name"],
+            lead_phone=doc["phone"],
+            user=user,
+            action="demo_scheduled",
+            details={
+                "scheduled_demo_at": scheduled_demo_at,
+                "demo_type": demo_type,
+                "notes": "Demo scheduled at lead creation",
+            },
+        )
 
     return {"ok": True, "lead": {k: v for k, v in doc.items() if k != "_id"}}
 
@@ -443,6 +476,21 @@ async def update_franchise_lead(
         raise HTTPException(status_code=403, detail="Access denied to this lead")
 
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+
+    # Handle demo scheduling updates
+    if "demo_session_scheduled" in updates:
+        if updates["demo_session_scheduled"]:
+            updates["demo_status"] = "scheduled"
+            if not updates.get("status") and lead.get("status") in ("new", "contacted"):
+                updates["status"] = "demo_scheduled"
+        else:
+            updates["demo_status"] = "none"
+            updates["scheduled_demo_at"] = None
+    elif updates.get("scheduled_demo_at"):
+        updates["demo_status"] = "scheduled"
+        if not updates.get("status") and lead.get("status") in ("new", "contacted"):
+            updates["status"] = "demo_scheduled"
+
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     await db.franchise_leads.update_one({"id": lead_id}, {"$set": updates})
@@ -1205,9 +1253,9 @@ async def delete_franchise_lead(
     lead_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Admin only: delete a franchise lead."""
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail="Admin access only")
+    """Admin and GP Managers can delete a franchise lead."""
+    if not _is_manager(user):
+        raise HTTPException(status_code=403, detail="Manager access required to delete lead")
 
     res = await db.franchise_leads.delete_one({"id": lead_id})
     if res.deleted_count == 0:

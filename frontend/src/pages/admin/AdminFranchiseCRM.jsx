@@ -6,7 +6,8 @@ import {
   AlertCircle, Search, Filter, Plus, ChevronRight, UserCheck,
   UserPlus, MessageSquare, BarChart3, ArrowUpDown, RefreshCw,
   ExternalLink, Eye, Check, X, Shield, Star, Award, TrendingUp,
-  MapPin, Mail, Briefcase, FileText, ChevronDown, Send, ArrowRight
+  MapPin, Mail, Briefcase, FileText, ChevronDown, Send, ArrowRight,
+  Edit, Trash2, CalendarClock
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -106,7 +107,7 @@ export default function AdminFranchiseCRM() {
   const [newCommentText, setNewCommentText] = useState('');
   const [savingComment, setSavingComment] = useState(false);
 
-  // New Lead Form state
+  // New Lead Form state (includes optional demo scheduling)
   const [newLeadForm, setNewLeadForm] = useState({
     name: '',
     phone: '',
@@ -119,8 +120,41 @@ export default function AdminFranchiseCRM() {
     source: 'manual',
     details: '',
     assigned_to: '',
+    demo_session_scheduled: false,
+    scheduled_demo_at: '',
+    demo_type: 'online_meet',
   });
   const [savingNewLead, setSavingNewLead] = useState(false);
+
+  // Edit Lead Modal state
+  const [showEditLeadModal, setShowEditLeadModal] = useState(null);
+  const [editLeadForm, setEditLeadForm] = useState({
+    id: '',
+    name: '',
+    phone: '',
+    email: '',
+    city: '',
+    state: 'Maharashtra',
+    occupation: '',
+    has_space: 'looking',
+    investment_budget: '₹2.5 Lakhs',
+    source: 'manual',
+    details: '',
+    status: 'new',
+    demo_session_scheduled: false,
+    scheduled_demo_at: '',
+    demo_type: 'online_meet',
+  });
+  const [savingEditLead, setSavingEditLead] = useState(false);
+
+  // Lost Lead Modal state
+  const [showLostModal, setShowLostModal] = useState(null);
+  const [lostReason, setLostReason] = useState('');
+  const [savingLost, setSavingLost] = useState(false);
+
+  // Delete Confirm Modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(null);
+  const [deletingLead, setDeletingLead] = useState(false);
 
   // Fetch Leads
   const fetchLeads = useCallback(async () => {
@@ -443,7 +477,7 @@ export default function AdminFranchiseCRM() {
     }
   };
 
-  // Create Manual Lead
+  // Create Manual Lead (with optional demo scheduling)
   const handleCreateNewLead = async (e) => {
     e.preventDefault();
     if (!newLeadForm.name.trim() || !newLeadForm.phone.trim() || !newLeadForm.city.trim()) {
@@ -452,7 +486,16 @@ export default function AdminFranchiseCRM() {
     }
     setSavingNewLead(true);
     try {
-      await axios.post(`${API}/franchise-crm/leads`, newLeadForm, { headers: getAuthHeaders() });
+      const payload = {
+        ...newLeadForm,
+        name: newLeadForm.name.trim(),
+        phone: newLeadForm.phone.trim(),
+        email: newLeadForm.email.trim(),
+        city: newLeadForm.city.trim(),
+        demo_session_scheduled: newLeadForm.demo_session_scheduled,
+        scheduled_demo_at: newLeadForm.demo_session_scheduled && newLeadForm.scheduled_demo_at ? newLeadForm.scheduled_demo_at : null,
+      };
+      await axios.post(`${API}/franchise-crm/leads`, payload, { headers: getAuthHeaders() });
       toast.success('Franchise lead added successfully');
       setShowAddLeadModal(false);
       setNewLeadForm({
@@ -467,12 +510,151 @@ export default function AdminFranchiseCRM() {
         source: 'manual',
         details: '',
         assigned_to: '',
+        demo_session_scheduled: false,
+        scheduled_demo_at: '',
+        demo_type: 'online_meet',
       });
       fetchLeads();
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to create lead');
     } finally {
       setSavingNewLead(false);
+    }
+  };
+
+  // Open Edit Lead Modal
+  const openEditLead = (lead) => {
+    setEditLeadForm({
+      id: lead.id,
+      name: lead.name || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      city: lead.city || '',
+      state: lead.state || 'Maharashtra',
+      occupation: lead.occupation || '',
+      has_space: lead.has_space || 'looking',
+      investment_budget: lead.investment_budget || '₹2.5 Lakhs',
+      source: lead.source || 'manual',
+      details: lead.details || lead.notes || '',
+      status: lead.status || 'new',
+      demo_session_scheduled: Boolean(lead.scheduled_demo_at || lead.demo_status === 'scheduled'),
+      scheduled_demo_at: lead.scheduled_demo_at ? lead.scheduled_demo_at.slice(0, 16) : '',
+      demo_type: lead.demo_type || 'online_meet',
+    });
+    setShowEditLeadModal(lead);
+  };
+
+  // Save Edit Lead
+  const handleSaveEditLead = async (e) => {
+    e.preventDefault();
+    if (!editLeadForm.name.trim() || !editLeadForm.phone.trim() || !editLeadForm.city.trim()) {
+      toast.error('Name, Phone, and City are required');
+      return;
+    }
+    setSavingEditLead(true);
+    try {
+      const payload = {
+        name: editLeadForm.name.trim(),
+        phone: editLeadForm.phone.trim(),
+        email: editLeadForm.email.trim(),
+        city: editLeadForm.city.trim(),
+        state: editLeadForm.state.trim(),
+        occupation: editLeadForm.occupation.trim(),
+        has_space: editLeadForm.has_space,
+        investment_budget: editLeadForm.investment_budget,
+        details: editLeadForm.details.trim(),
+        status: editLeadForm.status,
+        demo_session_scheduled: editLeadForm.demo_session_scheduled,
+        scheduled_demo_at: editLeadForm.demo_session_scheduled && editLeadForm.scheduled_demo_at ? editLeadForm.scheduled_demo_at : null,
+        demo_type: editLeadForm.demo_type,
+      };
+      await axios.put(`${API}/franchise-crm/leads/${editLeadForm.id}`, payload, {
+        headers: getAuthHeaders(),
+      });
+      toast.success('Lead details updated successfully!');
+      setShowEditLeadModal(null);
+      fetchLeads();
+      if (activeLeadDetails && activeLeadDetails.id === editLeadForm.id) {
+        handleOpenLeadDetails({ ...activeLeadDetails, ...payload });
+      }
+    } catch (err) {
+      console.error('Failed to update lead:', err);
+      toast.error(err?.response?.data?.detail || 'Failed to update lead');
+    } finally {
+      setSavingEditLead(false);
+    }
+  };
+
+  // Open Schedule Demo Modal directly
+  const openScheduleDemo = (lead) => {
+    setDemoModalLead(lead);
+    setDemoModalMode('schedule');
+    setDemoScheduleTime(lead.scheduled_demo_at ? lead.scheduled_demo_at.slice(0, 16) : '');
+    setDemoType(lead.demo_type || 'online_meet');
+    setDemoLink(lead.demo_link || '');
+    setDemoNotes('');
+  };
+
+  // Open Demo Done Modal directly
+  const openDemoDone = (lead) => {
+    setDemoModalLead(lead);
+    setDemoModalMode('log');
+    setDemoOutcomeStatus('completed');
+    setDemoInterestLevel('high');
+    setDemoNotes('');
+  };
+
+  // Confirm Lost Lead
+  const handleConfirmLost = async (e) => {
+    e.preventDefault();
+    if (!showLostModal) return;
+    setSavingLost(true);
+    try {
+      await axios.patch(
+        `${API}/franchise-crm/leads/${showLostModal.id}/status`,
+        { status: 'lost', notes: lostReason.trim() || 'Marked as lost lead' },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Lead marked as Lost');
+      setShowLostModal(null);
+      setLostReason('');
+      fetchLeads();
+      if (activeLeadDetails && activeLeadDetails.id === showLostModal.id) {
+        setActiveLeadDetails(prev => ({ ...prev, status: 'lost' }));
+      }
+    } catch (err) {
+      console.error('Failed to mark lead as lost:', err);
+      toast.error(err?.response?.data?.detail || 'Failed to update lead status');
+    } finally {
+      setSavingLost(false);
+    }
+  };
+
+  // Open Delete Modal
+  const handleDeleteLead = (lead) => {
+    if (!lead) return;
+    setShowDeleteModal(lead);
+  };
+
+  // Confirm Delete Lead
+  const handleConfirmDelete = async () => {
+    if (!showDeleteModal) return;
+    setDeletingLead(true);
+    try {
+      await axios.delete(`${API}/franchise-crm/leads/${showDeleteModal.id}`, {
+        headers: getAuthHeaders(),
+      });
+      toast.success('Lead deleted successfully');
+      setShowDeleteModal(null);
+      if (activeLeadDetails && activeLeadDetails.id === showDeleteModal.id) {
+        setActiveLeadDetails(null);
+      }
+      fetchLeads();
+    } catch (err) {
+      console.error('Failed to delete lead:', err);
+      toast.error(err?.response?.data?.detail || 'Failed to delete lead');
+    } finally {
+      setDeletingLead(false);
     }
   };
 
@@ -835,53 +1017,94 @@ export default function AdminFranchiseCRM() {
                               </div>
                             </td>
 
-                            {/* Quick Actions */}
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-1">
-                                {/* Call Button */}
+                            {/* Actions (School CRM Style) */}
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                {/* Edit Lead */}
+                                <button
+                                  type="button"
+                                  onClick={() => openEditLead(lead)}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 font-semibold transition"
+                                  title="Edit Lead Details"
+                                >
+                                  <Edit className="w-3 h-3 text-amber-600" />
+                                  <span>Edit</span>
+                                </button>
+
+                                {/* Demo Schedule */}
+                                <button
+                                  type="button"
+                                  onClick={() => openScheduleDemo(lead)}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 font-semibold transition"
+                                  title="Schedule Demo Session"
+                                >
+                                  <CalendarClock className="w-3 h-3 text-purple-600" />
+                                  <span>Demo Schedule</span>
+                                </button>
+
+                                {/* Demo Done */}
+                                <button
+                                  type="button"
+                                  onClick={() => openDemoDone(lead)}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1 font-semibold transition"
+                                  title="Mark Demo Completed"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                                  <span>Demo Done</span>
+                                </button>
+
+                                {/* Lost Lead */}
+                                {lead.status !== 'lost' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowLostModal(lead);
+                                      setLostReason('');
+                                    }}
+                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 font-semibold transition"
+                                    title="Mark Lead as Lost"
+                                  >
+                                    <X className="w-3 h-3 text-rose-600" />
+                                    <span>Lost Lead</span>
+                                  </button>
+                                )}
+
+                                {/* Call */}
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setCallModalLead(lead);
                                     setCallModalMode(lead.scheduled_call_at ? 'log' : 'schedule');
                                   }}
-                                  className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700"
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1 font-semibold transition"
                                   title="Schedule or Log Call"
                                 >
-                                  <Phone className="w-3.5 h-3.5" />
+                                  <Phone className="w-3 h-3 text-indigo-600" />
+                                  <span>Call</span>
                                 </button>
 
-                                {/* Demo Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setDemoModalLead(lead);
-                                    setDemoModalMode(lead.scheduled_demo_at ? 'log' : 'schedule');
-                                  }}
-                                  className="p-1.5 rounded-lg border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-700"
-                                  title="Schedule or Log Demo"
-                                >
-                                  <Video className="w-3.5 h-3.5" />
-                                </button>
+                                {/* Delete (Admins & GP Managers) */}
+                                {isManager && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLead(lead)}
+                                    className="text-[11px] px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center gap-1 font-semibold transition"
+                                    title="Delete Lead"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-red-600" />
+                                    <span>Delete</span>
+                                  </button>
+                                )}
 
-                                {/* Followup Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => setFollowupModalLead(lead)}
-                                  className="p-1.5 rounded-lg border border-orange-200 bg-orange-50/70 hover:bg-orange-100 text-orange-700"
-                                  title="Schedule Follow-up"
-                                >
-                                  <Clock className="w-3.5 h-3.5" />
-                                </button>
-
-                                {/* Lead Details Drawer */}
+                                {/* View Details */}
                                 <button
                                   type="button"
                                   onClick={() => handleOpenLeadDetails(lead)}
-                                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700"
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1 font-semibold transition"
                                   title="View Full Profile & Timeline"
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Eye className="w-3 h-3 text-slate-500" />
+                                  <span>View</span>
                                 </button>
                               </div>
                             </td>
@@ -1226,6 +1449,52 @@ export default function AdminFranchiseCRM() {
                   </select>
                 </div>
               )}
+
+              {/* Demo Session Scheduled */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newLeadForm.demo_session_scheduled}
+                      onChange={(e) => setNewLeadForm(prev => ({ ...prev, demo_session_scheduled: e.target.checked }))}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>Demo Session is Scheduled?</span>
+                  </label>
+                  {newLeadForm.demo_session_scheduled && (
+                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                      Demo Scheduled
+                    </span>
+                  )}
+                </div>
+
+                {newLeadForm.demo_session_scheduled && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Demo Date & Time (Optional)</label>
+                      <Input
+                        type="datetime-local"
+                        value={newLeadForm.scheduled_demo_at}
+                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, scheduled_demo_at: e.target.value }))}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Demo Mode</label>
+                      <select
+                        value={newLeadForm.demo_type}
+                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, demo_type: e.target.value }))}
+                        className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
+                      >
+                        <option value="online_meet">Online Google Meet / Zoom</option>
+                        <option value="in_person_center">In-Person at Center</option>
+                        <option value="presentation">Presentation / Phone Walkthrough</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div>
                 <label className="font-semibold text-slate-700">Details / Background</label>
@@ -1621,38 +1890,101 @@ export default function AdminFranchiseCRM() {
                   </div>
                 )}
 
-                {/* Quick Stage Actions */}
+                {/* Actions Bar (School CRM Style) */}
                 <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between flex-wrap gap-2">
-                  <span className="font-semibold text-slate-700 text-xs">Update Status:</span>
+                  <span className="font-semibold text-slate-700 text-xs">Actions:</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Edit */}
                     <button
                       type="button"
-                      onClick={() => handleUpdateStatus(activeLeadDetails.id, 'contacted')}
-                      className="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 font-medium text-[11px]"
+                      onClick={() => openEditLead(activeLeadDetails)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 font-semibold transition"
                     >
-                      Contacted
+                      <Edit className="w-3 h-3 text-amber-600" />
+                      <span>Edit</span>
                     </button>
+
+                    {/* Demo Schedule */}
                     <button
                       type="button"
-                      onClick={() => handleUpdateStatus(activeLeadDetails.id, 'demo_completed')}
-                      className="px-2.5 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-800 font-medium text-[11px]"
+                      onClick={() => openScheduleDemo(activeLeadDetails)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 font-semibold transition"
                     >
-                      Demo Done
+                      <CalendarClock className="w-3 h-3 text-purple-600" />
+                      <span>Demo Schedule</span>
                     </button>
+
+                    {/* Demo Done */}
                     <button
                       type="button"
-                      onClick={() => handleUpdateStatus(activeLeadDetails.id, 'converted')}
-                      className="px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-[11px]"
+                      onClick={() => openDemoDone(activeLeadDetails)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1 font-semibold transition"
                     >
-                      ✓ Mark Converted
+                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                      <span>Demo Done</span>
                     </button>
+
+                    {/* Lost Lead */}
+                    {activeLeadDetails.status !== 'lost' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowLostModal(activeLeadDetails);
+                          setLostReason('');
+                        }}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 font-semibold transition"
+                      >
+                        <X className="w-3 h-3 text-rose-600" />
+                        <span>Lost Lead</span>
+                      </button>
+                    )}
+
+                    {/* Call */}
                     <button
                       type="button"
-                      onClick={() => handleUpdateStatus(activeLeadDetails.id, 'lost')}
-                      className="px-2.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-800 font-medium text-[11px]"
+                      onClick={() => {
+                        setCallModalLead(activeLeadDetails);
+                        setCallModalMode(activeLeadDetails.scheduled_call_at ? 'log' : 'schedule');
+                      }}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1 font-semibold transition"
                     >
-                      Mark Lost
+                      <Phone className="w-3 h-3 text-indigo-600" />
+                      <span>Call</span>
                     </button>
+
+                    {/* Followup */}
+                    <button
+                      type="button"
+                      onClick={() => setFollowupModalLead(activeLeadDetails)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 flex items-center gap-1 font-semibold transition"
+                    >
+                      <Clock className="w-3 h-3 text-orange-600" />
+                      <span>Follow-up</span>
+                    </button>
+
+                    {/* Convert */}
+                    {activeLeadDetails.status !== 'converted' && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(activeLeadDetails.id, 'converted')}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 font-semibold transition"
+                      >
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>Convert</span>
+                      </button>
+                    )}
+
+                    {/* Delete */}
+                    {isManager && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLead(activeLeadDetails)}
+                        className="text-[11px] px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center gap-1 font-semibold transition"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-600" />
+                        <span>Delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1708,6 +2040,257 @@ export default function AdminFranchiseCRM() {
                 </div>
               </div>
             ) : null}
+          </DialogContent>
+        </Dialog>
+
+        {/* 7. Edit Franchise Lead Modal */}
+        <Dialog open={!!showEditLeadModal} onOpenChange={() => setShowEditLeadModal(null)}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                <Edit className="w-5 h-5 text-amber-600" /> Edit Franchise Lead · {showEditLeadModal?.name}
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleSaveEditLead} className="space-y-3 text-xs mt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700">Full Name *</label>
+                  <Input
+                    required
+                    value={editLeadForm.name}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700">Phone Number *</label>
+                  <Input
+                    required
+                    value={editLeadForm.phone}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, phone: e.target.value }))}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700">Email Address</label>
+                  <Input
+                    type="email"
+                    value={editLeadForm.email}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700">City / Town *</label>
+                  <Input
+                    required
+                    value={editLeadForm.city}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, city: e.target.value }))}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700">State</label>
+                  <Input
+                    value={editLeadForm.state}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, state: e.target.value }))}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700">Current Occupation</label>
+                  <Input
+                    value={editLeadForm.occupation}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, occupation: e.target.value }))}
+                    placeholder="e.g. Business Owner, Educator"
+                    className="mt-1 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700">Pipeline Stage / Status</label>
+                  <select
+                    value={editLeadForm.status}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, status: e.target.value }))}
+                    className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
+                  >
+                    {STATUS_PIPELINE.map(s => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700">Has Commercial Space?</label>
+                  <select
+                    value={editLeadForm.has_space}
+                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, has_space: e.target.value }))}
+                    className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
+                  >
+                    <option value="owned">Owned space (500+ sq ft)</option>
+                    <option value="rented">Rented / Leased</option>
+                    <option value="looking">Actively Looking</option>
+                    <option value="none">No Space Yet</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">Investment Budget</label>
+                <Input
+                  value={editLeadForm.investment_budget}
+                  onChange={(e) => setEditLeadForm(prev => ({ ...prev, investment_budget: e.target.value }))}
+                  placeholder="₹2.5 Lakhs"
+                  className="mt-1 text-xs"
+                />
+              </div>
+
+              {/* Demo Session Scheduled */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editLeadForm.demo_session_scheduled}
+                      onChange={(e) => setEditLeadForm(prev => ({ ...prev, demo_session_scheduled: e.target.checked }))}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>Demo Session is Scheduled?</span>
+                  </label>
+                  {editLeadForm.demo_session_scheduled && (
+                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                      Demo Scheduled
+                    </span>
+                  )}
+                </div>
+
+                {editLeadForm.demo_session_scheduled && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Demo Date & Time (Optional)</label>
+                      <Input
+                        type="datetime-local"
+                        value={editLeadForm.scheduled_demo_at}
+                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, scheduled_demo_at: e.target.value }))}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Demo Mode</label>
+                      <select
+                        value={editLeadForm.demo_type}
+                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, demo_type: e.target.value }))}
+                        className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
+                      >
+                        <option value="online_meet">Online Google Meet / Zoom</option>
+                        <option value="in_person_center">In-Person at Center</option>
+                        <option value="presentation">Presentation / Phone Walkthrough</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">Details / Background Notes</label>
+                <Textarea
+                  value={editLeadForm.details}
+                  onChange={(e) => setEditLeadForm(prev => ({ ...prev, details: e.target.value }))}
+                  placeholder="Notes, background or specific requirements..."
+                  rows={2}
+                  className="mt-1 text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" type="button" onClick={() => setShowEditLeadModal(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={savingEditLead} className="bg-amber-600 hover:bg-amber-700 text-white">
+                  {savingEditLead ? 'Saving…' : 'Update Lead'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* 8. Lost Lead Reason Modal */}
+        <Dialog open={!!showLostModal} onOpenChange={() => setShowLostModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base font-bold text-rose-800">
+                <X className="w-5 h-5 text-rose-600" /> Mark Lead as Lost · {showLostModal?.name}
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleConfirmLost} className="space-y-3 text-xs mt-2">
+              <p className="text-slate-600">
+                Are you sure you want to mark <span className="font-semibold text-slate-800">{showLostModal?.name}</span> as lost? Please specify the reason below for tracking purposes.
+              </p>
+
+              <div>
+                <label className="font-semibold text-slate-700">Reason for Lost Lead *</label>
+                <Textarea
+                  required
+                  value={lostReason}
+                  onChange={(e) => setLostReason(e.target.value)}
+                  placeholder="e.g. Budget constraints, opted for competitor, space unavailable, unreachable after multiple attempts..."
+                  rows={3}
+                  className="mt-1 text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" type="button" onClick={() => setShowLostModal(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={savingLost} className="bg-rose-600 hover:bg-rose-700 text-white">
+                  {savingLost ? 'Marking Lost…' : 'Confirm Lost Lead'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* 9. Delete Confirmation Modal */}
+        <Dialog open={!!showDeleteModal} onOpenChange={() => setShowDeleteModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base font-bold text-red-600">
+                <Trash2 className="w-5 h-5 text-red-600" /> Delete Franchise Lead
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 text-xs mt-2">
+              <p className="text-slate-600">
+                Are you sure you want to permanently delete lead <span className="font-semibold text-slate-900">{showDeleteModal?.name}</span> ({showDeleteModal?.phone})?
+              </p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[11px]">
+                <strong>Warning:</strong> This will permanently delete the lead record along with all associated call logs, scheduled demos, and activity timeline entries.
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" type="button" onClick={() => setShowDeleteModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={deletingLead}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {deletingLead ? 'Deleting…' : 'Permanently Delete'}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
