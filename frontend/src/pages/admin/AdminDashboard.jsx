@@ -40,6 +40,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
     { path: '/admin/competitions', icon: Trophy, label: 'Competitions', permission: 'competitions' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
+    { path: '/admin/franchise-crm', icon: Building, label: 'Franchise CRM', permission: 'franchise_crm' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
     { path: '/admin/success-stories', icon: Trophy, label: 'Success Stories', permission: null },
@@ -89,7 +90,18 @@ const AdminLayout = ({ children, title }) => {
     // tab so the user can navigate there).
     if (userPermissions.includes(item.permission)) return true;
     const subPrefix = `${item.permission}.`;
-    return userPermissions.some(p => p.startsWith(subPrefix));
+    if (userPermissions.some(p => p.startsWith(subPrefix))) return true;
+
+    // Franchise CRM: visible to GP Managers, Admins, or users with growth_partners / telecalling permission
+    if (item.path === '/admin/franchise-crm') {
+      const isGPManager = user?.role === 'growth_partner_manager' || 
+                          user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
+                          ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase());
+      if (isGPManager || userPermissions.includes('growth_partners') || userPermissions.includes('telecalling')) {
+        return true;
+      }
+    }
+    return false;
   });
 
   const handleLogout = () => {

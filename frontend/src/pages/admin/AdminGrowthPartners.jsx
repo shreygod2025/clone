@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -51,6 +52,7 @@ const SOURCE_OPTIONS = [
 ];
 
 const AdminGrowthPartners = () => {
+  const navigate = useNavigate();
   const { getAuthHeaders, user } = useAuth();
   const [partners, setPartners] = useState([]);
   const [gpOnboardings, setGpOnboardings] = useState([]);
@@ -636,22 +638,32 @@ const AdminGrowthPartners = () => {
   return (
     <AdminLayout title="Growth Partners">
       {/* Top-level partner type selector */}
-      <div className="flex flex-wrap gap-2 mb-4 bg-slate-100 p-1 rounded-xl w-fit" data-testid="partner-type-tabs">
-        {[
-          { value: 'business',   label: 'Business Partner',   color: 'bg-white shadow-sm text-[#0A1F44]' },
-          { value: 'referral',   label: 'Referral Partner',   color: 'bg-white shadow-sm text-[#0A1F44]' },
-          { value: 'influencer', label: 'Influencer Partner', color: 'bg-white shadow-sm text-[#0A1F44]' },
-          { value: 'center',     label: 'Center Partner',     color: 'bg-white shadow-sm text-[#0A1F44]' },
-        ].map((t) => (
-          <button
-            key={t.value}
-            onClick={() => setPartnerType(t.value)}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition ${partnerType === t.value ? t.color : 'text-slate-600 hover:text-slate-900'}`}
-            data-testid={`partner-type-${t.value}`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap gap-2 bg-slate-100 p-1 rounded-xl w-fit" data-testid="partner-type-tabs">
+          {[
+            { value: 'business',   label: 'Business Partner',   color: 'bg-white shadow-sm text-[#0A1F44]' },
+            { value: 'referral',   label: 'Referral Partner',   color: 'bg-white shadow-sm text-[#0A1F44]' },
+            { value: 'influencer', label: 'Influencer Partner', color: 'bg-white shadow-sm text-[#0A1F44]' },
+            { value: 'center',     label: 'Center Partner',     color: 'bg-white shadow-sm text-[#0A1F44]' },
+          ].map((t) => (
+            <button
+              key={t.value}
+              onClick={() => setPartnerType(t.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition ${partnerType === t.value ? t.color : 'text-slate-600 hover:text-slate-900'}`}
+              data-testid={`partner-type-${t.value}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => navigate('/admin/franchise-crm')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-sm shadow-red-200 transition"
+          data-testid="goto-franchise-crm-btn"
+        >
+          <span>Open Franchise CRM</span>
+          <ExternalLink className="w-4 h-4" />
+        </button>
       </div>
 
       {partnerType === 'referral' ? (
