@@ -380,32 +380,45 @@ async def lookup_custom_invoice(
     _require_admin_or_accountant(user)
     raw_q = (q or "").strip()
     if not raw_q:
-        raise HTTPException(status_code=400, detail="Search query 'q' is required")
+        raise HTTPException(status_code=400, detail="Please enter an invoice number to search.")
+    clean_q = raw_q.lstrip("#").strip()
 
     # 1. Exact match in custom_invoices
     doc = await db.custom_invoices.find_one(
-        {"invoice_no": {"$regex": f"^{re.escape(raw_q)}$", "$options": "i"}},
+        {"$or": [
+            {"invoice_no": {"$regex": f"^{re.escape(raw_q)}$", "$options": "i"}},
+            {"invoice_no": {"$regex": f"^{re.escape(clean_q)}$", "$options": "i"}},
+        ]},
         {"_id": 0}
     )
     if doc:
+        if not doc.get("id"):
+            doc["id"] = doc.get("invoice_no")
         return doc
 
     # 2. Suffix / partial regex match in custom_invoices (e.g. '0011', '1100', 'CUST-0011')
     doc = await db.custom_invoices.find_one(
-        {"invoice_no": {"$regex": re.escape(raw_q), "$options": "i"}},
+        {"$or": [
+            {"invoice_no": {"$regex": re.escape(clean_q or raw_q), "$options": "i"}},
+        ]},
         {"_id": 0}
     )
     if doc:
+        if not doc.get("id"):
+            doc["id"] = doc.get("invoice_no")
         return doc
 
     # 3. Check school invoices in db.invoices
     inv = await db.invoices.find_one(
-        {"invoice_no": {"$regex": f"^{re.escape(raw_q)}$", "$options": "i"}},
+        {"$or": [
+            {"invoice_no": {"$regex": f"^{re.escape(raw_q)}$", "$options": "i"}},
+            {"invoice_no": {"$regex": f"^{re.escape(clean_q)}$", "$options": "i"}},
+        ]},
         {"_id": 0}
     )
     if not inv:
         inv = await db.invoices.find_one(
-            {"invoice_no": {"$regex": re.escape(raw_q), "$options": "i"}},
+            {"invoice_no": {"$regex": re.escape(clean_q or raw_q), "$options": "i"}},
             {"_id": 0}
         )
     if inv:
@@ -440,7 +453,7 @@ async def lookup_custom_invoice(
             "school_id": inv.get("school_id"),
         }
 
-    raise HTTPException(status_code=404, detail=f"Invoice '{raw_q}' not found")
+    raise HTTPException(status_code=404, detail=f"Invoice '{raw_q}' not found in the records. Please verify the invoice number.")
 
 
 @router.get("/admin/custom-invoices/by-number/{invoice_no:path}")

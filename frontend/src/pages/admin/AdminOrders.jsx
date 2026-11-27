@@ -215,6 +215,7 @@ const AdminOrders = () => {
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(null);
   const [showCustomInvoiceModal, setShowCustomInvoiceModal] = useState(false);
+  const [customInvoiceModalMode, setCustomInvoiceModalMode] = useState('create'); // 'create' | 'edit'
   const [invoiceOverrides, setInvoiceOverrides] = useState({
     invoice_name_override: '',
     invoice_bill_to: { name: '', address: '', gstin: '' },
@@ -1472,18 +1473,37 @@ const AdminOrders = () => {
             <option value="partial">Partial</option>
           </select>
 
-          {/* Custom Invoice — admin or accountant can author a standalone invoice for non-onboarded customers */}
+          {/* Custom Invoice & Edit Invoice Buttons — admin or accountant */}
           {canManageCustomInvoices && (
-            <button
-              type="button"
-              onClick={() => setShowCustomInvoiceModal(true)}
-              data-testid="open-custom-invoice-btn"
-              className="h-10 px-3 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors font-medium text-sm"
-              title="Create a custom invoice for a one-off customer"
-            >
-              <FilePlus className="w-4 h-4" />
-              <span className="hidden sm:inline">Custom Invoice</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomInvoiceModalMode('create');
+                  setShowCustomInvoiceModal(true);
+                }}
+                data-testid="open-create-custom-invoice-btn"
+                className="h-10 px-3.5 inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-colors font-semibold text-xs sm:text-sm"
+                title="Create a custom invoice for a one-off customer"
+              >
+                <FilePlus className="w-4 h-4" />
+                <span>Create Custom Invoice</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomInvoiceModalMode('edit');
+                  setShowCustomInvoiceModal(true);
+                }}
+                data-testid="open-edit-custom-invoice-btn"
+                className="h-10 px-3.5 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 shadow-sm transition-colors font-semibold text-xs sm:text-sm"
+                title="Look up and edit an existing invoice by number"
+              >
+                <Edit3 className="w-4 h-4 text-amber-700" />
+                <span>Edit Invoice</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -2238,6 +2258,7 @@ const AdminOrders = () => {
         open={showCustomInvoiceModal}
         onClose={() => setShowCustomInvoiceModal(false)}
         currentUser={user}
+        initialMode={customInvoiceModalMode}
       />
 
       <Dialog open={!!showPaymentModal} onOpenChange={() => setShowPaymentModal(null)}>
