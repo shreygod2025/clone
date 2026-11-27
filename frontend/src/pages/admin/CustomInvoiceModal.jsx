@@ -480,6 +480,12 @@ export default function CustomInvoiceModal({ open, onClose }) {
                 value={searchInvoiceNo}
                 onChange={(e) => setSearchInvoiceNo(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleLookupInvoice(searchInvoiceNo)}
+                onBlur={() => {
+                  const clean = searchInvoiceNo.trim();
+                  if (clean && (!editingInvoice || editingInvoice.invoice_no !== clean)) {
+                    handleLookupInvoice(clean);
+                  }
+                }}
                 className="pl-9 bg-white text-xs sm:text-sm font-mono"
                 data-testid="custom-invoice-lookup-input"
               />
