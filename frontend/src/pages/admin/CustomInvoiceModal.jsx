@@ -47,7 +47,7 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export default function CustomInvoiceModal({ open, onClose }) {
+export default function CustomInvoiceModal({ open, onClose, currentUser }) {
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     invoice_no: '',
@@ -83,6 +83,28 @@ export default function CustomInvoiceModal({ open, onClose }) {
   const [searchInvoiceNo, setSearchInvoiceNo] = useState('');
   const [loadingInvoice, setLoadingInvoice] = useState(false);
   const [nextSuggestedNumber, setNextSuggestedNumber] = useState('');
+
+  // MongoDB Audit Trail modal state
+  const [auditModalData, setAuditModalData] = useState(null); // { invoice_no, logs: [], loading: boolean }
+
+  const handleViewAuditHistory = async (row) => {
+    if (!row?.id) return;
+    setAuditModalData({ invoice_no: row.invoice_no, logs: [], loading: true });
+    try {
+      const res = await axios.get(`${API}/admin/custom-invoices/${row.id}/history`, {
+        headers: getAuthHeaders(),
+      });
+      setAuditModalData({
+        invoice_no: row.invoice_no,
+        logs: res.data?.logs || [],
+        loading: false,
+      });
+    } catch (err) {
+      toast.error('Failed to load audit history for this invoice');
+      setAuditModalData(null);
+    }
+  };
+
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -1131,13 +1153,14 @@ export default function CustomInvoiceModal({ open, onClose }) {
                       <th className="px-3 py-2 text-right">Total</th>
                       <th className="px-3 py-2">Invoice Date</th>
                       <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Updated By</th>
                       <th className="px-3 py-2"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.map(row => (
                       <tr key={row.id} className="border-t border-slate-100">
-                        <td className="px-3 py-2 font-mono">{row.invoice_no}</td>
+                        <td className="px-3 py-2 font-mono font-medium text-slate-800">{row.invoice_no}</td>
                         <td className="px-3 py-2 text-slate-800">{row.customer_name}</td>
                         <td className="px-3 py-2 text-right font-medium">
                           ₹{Number(row.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -1146,6 +1169,18 @@ export default function CustomInvoiceModal({ open, onClose }) {
                           {(row.invoice_date || row.created_at) ? new Date(row.invoice_date || row.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                         </td>
                         <td className="px-3 py-2">{statusPill(row)}</td>
+                        <td className="px-3 py-2 text-slate-600">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium text-slate-700">
+                              {row.updated_by_name || row.created_by_name || row.updated_by || row.created_by || 'Admin'}
+                            </span>
+                            {(row.updated_by_user_type === 'accountant' || row.created_by_user_type === 'accountant') && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Accountant
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
                           <button
                             type="button"
@@ -1159,6 +1194,15 @@ export default function CustomInvoiceModal({ open, onClose }) {
                             title="Edit this invoice"
                           >
                             <Edit3 className="w-3 h-3" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleViewAuditHistory(row)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-700 mr-1 font-medium"
+                            data-testid={`custom-invoice-audit-${row.id}`}
+                            title="View changes saved in MongoDB"
+                          >
+                            <Clock className="w-3 h-3" /> History
                           </button>
                           <button
                             type="button"
@@ -1267,6 +1311,69 @@ export default function CustomInvoiceModal({ open, onClose }) {
               </div>
             </div>
           )}
+
+          {/* Audit Trail Modal */}
+          <Dialog open={!!auditModalData} onOpenChange={() => setAuditModalData(null)}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+                  <Clock className="w-4 h-4 text-indigo-600" />
+                  Audit Trail & Changes · {auditModalData?.invoice_no}
+                </DialogTitle>
+              </DialogHeader>
+              {auditModalData?.loading ? (
+                <div className="py-8 flex items-center justify-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  <span>Loading audit history from MongoDB…</span>
+                </div>
+              ) : (!auditModalData?.logs || auditModalData.logs.length === 0) ? (
+                <p className="py-6 text-center text-xs text-slate-500 italic">No change history recorded yet for this invoice.</p>
+              ) : (
+                <div className="space-y-3 py-2">
+                  {auditModalData.logs.map((log, idx) => (
+                    <div key={log.id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
+                      <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-800">
+                            {log.updated_by?.name || log.updated_by?.email || 'System'}
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            log.updated_by?.user_type === 'accountant'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                          }`}>
+                            {log.updated_by?.user_type === 'accountant' ? 'Accountant' : (log.updated_by?.role || 'Admin')}
+                          </span>
+                        </div>
+                        <span>
+                          {log.timestamp ? new Date(log.timestamp).toLocaleString('en-IN', {
+                            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                          }) : ''}
+                        </span>
+                      </div>
+                      <p className="text-slate-800 font-medium">{log.summary}</p>
+                      {log.changes && Object.keys(log.changes).length > 0 && log.action !== 'create' && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 grid grid-cols-1 gap-1.5 text-[11px]">
+                          {Object.entries(log.changes).map(([k, v]) => (
+                            <div key={k} className="flex items-start gap-2 bg-white p-1.5 rounded border border-slate-100">
+                              <span className="font-mono text-slate-500 min-w-28 capitalize">{k.replace(/_/g, ' ')}:</span>
+                              <span className="text-rose-600 line-through max-w-xs truncate">
+                                {typeof v?.old === 'object' ? JSON.stringify(v?.old) : String(v?.old ?? 'None')}
+                              </span>
+                              <span className="text-slate-400">→</span>
+                              <span className="text-emerald-700 font-medium max-w-xs truncate">
+                                {typeof v?.new === 'object' ? JSON.stringify(v?.new) : String(v?.new ?? 'None')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </DialogContent>
     </Dialog>

@@ -184,7 +184,9 @@ const AdminOrders = () => {
   // Otherwise only tabs whose sub-perm (orders.<tab>) is in the user's list.
   const perms = user?.permissions || [];
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-  const fullOrdersAccess = isAdmin || perms.includes('orders');
+  const isAccountant = user?.user_type === 'accountant' || user?.role === 'accountant';
+  const canManageCustomInvoices = isAdmin || isAccountant;
+  const fullOrdersAccess = isAdmin || isAccountant || perms.includes('orders');
   const canSee = (subKey) => fullOrdersAccess || perms.includes(`orders.${subKey}`);
   const tabAccess = {
     school:           canSee('school'),
@@ -1470,8 +1472,8 @@ const AdminOrders = () => {
             <option value="partial">Partial</option>
           </select>
 
-          {/* Custom Invoice — admin can author a standalone invoice for non-onboarded customers */}
-          {isAdmin && (
+          {/* Custom Invoice — admin or accountant can author a standalone invoice for non-onboarded customers */}
+          {canManageCustomInvoices && (
             <button
               type="button"
               onClick={() => setShowCustomInvoiceModal(true)}
@@ -2235,6 +2237,7 @@ const AdminOrders = () => {
       <CustomInvoiceModal
         open={showCustomInvoiceModal}
         onClose={() => setShowCustomInvoiceModal(false)}
+        currentUser={user}
       />
 
       <Dialog open={!!showPaymentModal} onOpenChange={() => setShowPaymentModal(null)}>
