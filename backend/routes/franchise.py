@@ -87,6 +87,25 @@ async def create_franchise_enquiry(body: FranchiseEnquiryIn, background_tasks: B
         "created_at": now, "updated_at": now,
     }
     await db.growth_partners.insert_one(doc)
+    # Also mirror into franchise_leads for Franchise CRM
+    try:
+        franchise_crm_doc = {
+            "id": doc["id"], "name": doc["name"], "email": doc["email"], "phone": doc["phone"],
+            "city": doc["city"], "state": "", "occupation": doc["occupation"], "has_space": doc["has_space"],
+            "investment_budget": "₹2.5 Lakhs", "source": "franchise_landing", "details": doc["details"],
+            "notes": "", "status": "new", "assigned_to": "", "assigned_to_name": "", "assigned_to_email": "",
+            "assigned_to_role": "", "assigned_by": "", "assigned_by_name": "", "assigned_at": None,
+            "call_status": "none", "scheduled_call_at": None, "call_notes": "", "calls_count": 0, "last_call_at": None,
+            "demo_status": "none", "scheduled_demo_at": None, "demo_type": "online_meet", "demo_link": "",
+            "demo_notes": "", "demos_count": 0, "last_demo_at": None,
+            "followup_status": "none", "next_followup_at": None, "followup_notes": "", "followups_count": 0,
+            "comments": [{"id": str(uuid.uuid4()), "user_name": "System", "text": "Lead received from Franchise Landing Page", "created_at": now}],
+            "created_at": now, "updated_at": now,
+        }
+        await db.franchise_leads.insert_one(franchise_crm_doc)
+    except Exception as exc:
+        logger.warning("Error writing to franchise_leads: %s", exc)
+
     background_tasks.add_task(_notify, d)
     return {"ok": True, "id": doc["id"]}
 
@@ -106,10 +125,28 @@ async def create_brochure_lead(body: BrochureLeadIn):
     if recent:
         return {"ok": True, "duplicate": True}
     now = now_dt.isoformat()
-    await db.growth_partners.insert_one({
+    brochure_doc = {
         "id": str(uuid.uuid4()), "name": body.name.strip(), "email": "", "phone": body.phone, "city": body.city.strip(),
         "interest_type": "centre_franchise", "details": "Downloaded the franchise brochure from the franchise page.",
         "status": "new", "notes": "", "comments": [], "source": "franchise_brochure", "added_by": "", "assigned_to": "",
         "created_at": now, "updated_at": now,
-    })
+    }
+    await db.growth_partners.insert_one(brochure_doc)
+    try:
+        franchise_crm_doc = {
+            "id": brochure_doc["id"], "name": brochure_doc["name"], "email": "", "phone": brochure_doc["phone"],
+            "city": brochure_doc["city"], "state": "", "occupation": "", "has_space": "looking",
+            "investment_budget": "₹2.5 Lakhs", "source": "franchise_brochure", "details": brochure_doc["details"],
+            "notes": "", "status": "new", "assigned_to": "", "assigned_to_name": "", "assigned_to_email": "",
+            "assigned_to_role": "", "assigned_by": "", "assigned_by_name": "", "assigned_at": None,
+            "call_status": "none", "scheduled_call_at": None, "call_notes": "", "calls_count": 0, "last_call_at": None,
+            "demo_status": "none", "scheduled_demo_at": None, "demo_type": "online_meet", "demo_link": "",
+            "demo_notes": "", "demos_count": 0, "last_demo_at": None,
+            "followup_status": "none", "next_followup_at": None, "followup_notes": "", "followups_count": 0,
+            "comments": [{"id": str(uuid.uuid4()), "user_name": "System", "text": "Brochure downloaded from Franchise Page", "created_at": now}],
+            "created_at": now, "updated_at": now,
+        }
+        await db.franchise_leads.insert_one(franchise_crm_doc)
+    except Exception as exc:
+        logger.warning("Error writing brochure lead to franchise_leads: %s", exc)
     return {"ok": True}

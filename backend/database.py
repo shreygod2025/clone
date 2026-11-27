@@ -50,6 +50,9 @@ COLLECTION_MAPPING = {
     "growth_partners": ("partners", {"_source_collection": "growth_partners"}, {"partner_type": "growth_partner"}),
     "gp_onboarding": ("partners", {"_source_collection": "gp_onboarding"}, {"partner_type": "gp_onboarding"}),
     "simple_partners": ("partners", {"_source_collection": "simple_partners"}, {"partner_type": "simple_partner"}),
+    "franchise_leads": ("partners", {"_source_collection": "franchise_leads"}, {"partner_type": "franchise_lead"}),
+    "franchise_crm_activities": ("partners", {"_source_collection": "franchise_crm_activities"}, {"partner_type": "franchise_crm_activity"}),
+
     
     # 10. future_skills_students
     "future_skills_leads": ("future_skills_students", {"_source_collection": "future_skills_leads"}, {"funnel_stage": "lead"}),
