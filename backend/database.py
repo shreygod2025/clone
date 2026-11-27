@@ -71,6 +71,7 @@ COLLECTION_MAPPING = {
     
     # 13. invoices
     "custom_invoices": ("invoices", {"_source_collection": "custom_invoices"}, {"invoice_type": "custom"}),
+    "custom_invoice_audit_logs": ("invoices", {"_source_collection": "custom_invoice_audit_logs"}, {"invoice_type": "audit_log"}),
     
     # 14. shop_orders
     "shop_purchase_orders": ("shop_orders", {"_source_collection": "shop_purchase_orders"}, {"order_type": "purchase_order"}),

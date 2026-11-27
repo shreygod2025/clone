@@ -4,6 +4,7 @@ Handles admin login, registration, OTP authentication for students/educators.
 """
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from datetime import datetime, timezone
 import uuid
 import bcrypt
@@ -44,6 +45,7 @@ class AdminUser(BaseModel):
     permissions: list = []
     center_id: str = ""
     center_name: str = ""
+    user_type: Optional[str] = None
     created_at: datetime = None
 
 class TokenResponse(BaseModel):
@@ -127,7 +129,13 @@ async def login_admin(data: AdminLogin):
                     for p in (role_doc.get("permissions") or []):
                         if p not in merged_perms:
                             merged_perms.append(p)
-            token = create_access_token({"sub": data.email, "role": actual_role, "user_id": team_user["id"]})
+            u_type = team_user.get("user_type", "team_user")
+            token = create_access_token({
+                "sub": data.email,
+                "role": actual_role,
+                "user_id": team_user["id"],
+                "user_type": u_type,
+            })
             user = AdminUser(
                 id=team_user["id"],
                 email=team_user["email"],
@@ -135,6 +143,7 @@ async def login_admin(data: AdminLogin):
                 role=actual_role,
                 username=team_user.get("username", ""),
                 permissions=merged_perms,
+                user_type=u_type,
             )
             return TokenResponse(access_token=token, user=user)
 

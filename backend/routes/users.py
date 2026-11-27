@@ -59,6 +59,7 @@ class TeamUser(BaseModel):
     city: str = ""  # City for location-based assignment
     reports_to: str = ""  # id of another team_user this user reports to (manager)
     is_active: bool = True
+    user_type: Optional[str] = "team_user"
     permissions: List[str] = []  # ['students', 'schools', 'educators', 'growth_partners']
     # HR / people data
     date_of_birth: Optional[str] = None       # ISO date "YYYY-MM-DD"
@@ -82,6 +83,7 @@ class TeamUserCreate(BaseModel):
     role_id: str = ""
     city: str = ""
     reports_to: str = ""  # id of manager (another team_user)
+    user_type: Optional[str] = "team_user"
     permissions: List[str] = []
     date_of_birth: Optional[str] = None
     marital_status: Optional[str] = None
@@ -98,6 +100,7 @@ class TeamUserUpdate(BaseModel):
     role_id: Optional[str] = None
     city: Optional[str] = None
     reports_to: Optional[str] = None  # id of manager (another team_user); pass "" to clear
+    user_type: Optional[str] = None
     permissions: Optional[List[str]] = None
     date_of_birth: Optional[str] = None
     marital_status: Optional[str] = None

@@ -23,14 +23,98 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _is_admin(user: dict) -> bool:
+    if not user:
+        return False
+    role = (user.get("role") or "").lower()
+    return role in ("admin", "super_admin")
+
+
+def _is_accountant(user: dict) -> bool:
+    if not user:
+        return False
+    user_type = (user.get("user_type") or "").lower()
+    role = (user.get("role") or "").lower()
+    return user_type == "accountant" or role == "accountant"
+
+
+def _is_admin_or_accountant(user: dict) -> bool:
+    return _is_admin(user) or _is_accountant(user)
+
+
 def _require_admin(user: dict) -> None:
-    """Custom invoices are financial records — restrict CRUD to admins only
-    (security review SEC-003)."""
+    """Restricts access to admins only."""
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    role = (user.get("role") or "").lower()
-    if role not in ("admin", "super_admin"):
+    if not _is_admin(user):
         raise HTTPException(status_code=403, detail="Admin access only")
+
+
+def _require_admin_or_accountant(user: dict) -> None:
+    """Custom invoices are financial records — restrict authoring and editing
+    to admins and accountants only."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not _is_admin_or_accountant(user):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: only admins and accountants can access and edit invoices"
+        )
+
+
+def _get_user_audit_info(user: dict) -> dict:
+    """Extract standard audit metadata for whoever initiated the invoice change."""
+    user_type = user.get("user_type")
+    if not user_type:
+        if _is_accountant(user):
+            user_type = "accountant"
+        elif _is_admin(user):
+            user_type = "admin"
+        else:
+            user_type = "team_user"
+    return {
+        "id": str(user.get("_id") or user.get("id") or ""),
+        "email": user.get("email") or "",
+        "name": user.get("name") or user.get("username") or user.get("email") or "Unknown",
+        "user_type": user_type,
+        "role": user.get("role") or "",
+    }
+
+
+def _compute_invoice_diff(old_doc: dict, new_data: dict) -> dict:
+    """Compute field changes between existing document and updated payload."""
+    fields_to_track = [
+        "invoice_no",
+        "customer_name",
+        "address",
+        "gstin",
+        "state",
+        "place_of_supply",
+        "ship_to_name",
+        "ship_to_address",
+        "ship_to_state",
+        "gst_type",
+        "total_amount",
+        "invoice_date",
+        "payment_status",
+        "paid_amount",
+        "notes",
+        "line_items",
+        "tranches",
+    ]
+    diff = {}
+    for field in fields_to_track:
+        old_val = old_doc.get(field)
+        new_val = new_data.get(field)
+        if new_val is not None and old_val != new_val:
+            diff[field] = {
+                "old": old_val,
+                "new": new_val,
+            }
+    if new_data.get("pdf_base64") and new_data.get("pdf_base64") != old_doc.get("pdf_base64"):
+        diff["pdf_regenerated"] = {"old": bool(old_doc.get("pdf_base64")), "new": True}
+    return diff
+
 
 
 
@@ -126,7 +210,7 @@ async def create_custom_invoice(
         pdf_base64 (str — the PDF the frontend just generated)
         notes (str, optional)
     """
-    _require_admin(user)
+    _require_admin_or_accountant(user)
     customer_name = (payload.get("customer_name") or "").strip()
     if not customer_name:
         raise HTTPException(status_code=400, detail="customer_name is required")
@@ -218,6 +302,18 @@ async def create_custom_invoice(
             payment_status = "partial"
             paid_amount = paid_from_tranches
 
+    u_info = _get_user_audit_info(user)
+    created_at_iso = datetime.now(timezone.utc).isoformat()
+    history_item = {
+        "action": "create",
+        "user_name": u_info["name"],
+        "user_email": u_info["email"],
+        "user_type": u_info["user_type"],
+        "timestamp": created_at_iso,
+        "summary": f"Invoice created by {u_info['name']} ({u_info['user_type']})",
+        "changed_fields": ["initial_creation"],
+    }
+
     doc = {
         "id": str(uuid.uuid4()),
         "invoice_no": invoice_no,
@@ -240,9 +336,25 @@ async def create_custom_invoice(
         "paid_amount": paid_amount,
         "tranches": tranches_clean,
         "created_by": user.get("email", "admin"),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by_name": u_info["name"],
+        "created_by_user_type": u_info["user_type"],
+        "created_at": created_at_iso,
+        "change_history": [history_item],
     }
     await db.custom_invoices.insert_one(doc)
+
+    # Separately log audit history into custom_invoice_audit_logs collection in MongoDB
+    audit_entry = {
+        "id": str(uuid.uuid4()),
+        "invoice_id": doc["id"],
+        "invoice_no": doc["invoice_no"],
+        "action": "create",
+        "changes": {"all": {"old": None, "new": "created"}},
+        "updated_by": u_info,
+        "timestamp": created_at_iso,
+        "summary": f"Invoice {doc['invoice_no']} created by {u_info['name']} ({u_info['user_type']})",
+    }
+    await db.custom_invoice_audit_logs.insert_one(audit_entry)
 
     # Echo back without the heavy pdf_base64 payload
     res = {k: v for k, v in doc.items() if k not in {"_id", "pdf_base64"}}
@@ -254,7 +366,7 @@ async def get_next_invoice_number_route(
     user: dict = Depends(get_current_user),
 ):
     """Peek the next sequential custom invoice number without consuming the counter."""
-    _require_admin(user)
+    _require_admin_or_accountant(user)
     next_no = await _peek_next_invoice_number()
     return {"next_invoice_no": next_no}
 
@@ -265,7 +377,7 @@ async def lookup_custom_invoice(
     user: dict = Depends(get_current_user),
 ):
     """Lookup an invoice by number or query string for editing."""
-    _require_admin(user)
+    _require_admin_or_accountant(user)
     raw_q = (q or "").strip()
     if not raw_q:
         raise HTTPException(status_code=400, detail="Search query 'q' is required")
@@ -347,7 +459,7 @@ async def update_custom_invoice(
     user: dict = Depends(get_current_user),
 ):
     """Update an existing custom invoice and replace stored PDF base64."""
-    _require_admin(user)
+    _require_admin_or_accountant(user)
     existing = await db.custom_invoices.find_one({"id": invoice_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Custom invoice not found")
@@ -433,6 +545,9 @@ async def update_custom_invoice(
 
     invoice_date = (payload.get("invoice_date") or "").strip() or existing.get("invoice_date") or datetime.now(timezone.utc).date().isoformat()
 
+    u_info = _get_user_audit_info(user)
+    updated_at_iso = datetime.now(timezone.utc).isoformat()
+
     update_fields = {
         "invoice_no": invoice_no,
         "customer_name": customer_name,
@@ -452,12 +567,52 @@ async def update_custom_invoice(
         "paid_amount": paid_amount,
         "tranches": tranches_clean,
         "updated_by": user.get("email", "admin"),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by_name": u_info["name"],
+        "updated_by_user_type": u_info["user_type"],
+        "updated_at": updated_at_iso,
     }
     if payload.get("pdf_base64"):
         update_fields["pdf_base64"] = payload["pdf_base64"]
 
-    await db.custom_invoices.update_one({"id": invoice_id}, {"$set": update_fields})
+    # Compute changes diff against existing invoice
+    diff = _compute_invoice_diff(existing, update_fields)
+    changed_keys = [k for k in diff.keys() if k != "pdf_regenerated"]
+    summary_desc = (
+        f"Updated {', '.join(changed_keys)} by {u_info['name']} ({u_info['user_type']})"
+        if changed_keys
+        else f"Regenerated invoice PDF by {u_info['name']} ({u_info['user_type']})"
+    )
+
+    history_item = {
+        "action": "update",
+        "user_name": u_info["name"],
+        "user_email": u_info["email"],
+        "user_type": u_info["user_type"],
+        "timestamp": updated_at_iso,
+        "summary": summary_desc,
+        "changed_fields": list(diff.keys()),
+    }
+
+    # Separately log audit history into custom_invoice_audit_logs collection in MongoDB
+    audit_entry = {
+        "id": str(uuid.uuid4()),
+        "invoice_id": invoice_id,
+        "invoice_no": invoice_no,
+        "action": "update",
+        "changes": diff,
+        "updated_by": u_info,
+        "timestamp": updated_at_iso,
+        "summary": summary_desc,
+    }
+    await db.custom_invoice_audit_logs.insert_one(audit_entry)
+
+    await db.custom_invoices.update_one(
+        {"id": invoice_id},
+        {
+            "$set": update_fields,
+            "$push": {"change_history": history_item},
+        }
+    )
     updated_doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0, "pdf_base64": 0})
     return updated_doc
 
@@ -468,7 +623,7 @@ async def list_custom_invoices(
     user: dict = Depends(get_current_user),
 ):
     """List recent custom invoices (without the inline PDF base64)."""
-    _require_admin(user)
+    _require_admin_or_accountant(user)
     rows = await db.custom_invoices.find(
         {},
         {"_id": 0, "pdf_base64": 0},
@@ -482,7 +637,7 @@ async def download_custom_invoice_pdf(
     user: dict = Depends(get_current_user),
 ):
     """Stream back the saved PDF for re-download."""
-    _require_admin(user)
+    _require_admin_or_accountant(user)
     doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Custom invoice not found")
@@ -510,8 +665,8 @@ async def update_custom_invoice_status(
     """Update just the `payment_status` + `paid_amount` for a custom invoice.
     Used by the accounts team to mark a pending invoice as partial / paid
     without having to regenerate the PDF."""
-    _require_admin(user)
-    doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0, "total_amount": 1})
+    _require_admin_or_accountant(user)
+    doc = await db.custom_invoices.find_one({"id": invoice_id}, {"_id": 0, "total_amount": 1, "payment_status": 1, "paid_amount": 1, "invoice_no": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Custom invoice not found")
 
@@ -533,16 +688,79 @@ async def update_custom_invoice_status(
         if paid <= 0:
             raise HTTPException(status_code=400, detail="Partial status requires paid_amount > 0")
 
+    u_info = _get_user_audit_info(user)
+    updated_at_iso = datetime.now(timezone.utc).isoformat()
+
+    diff = {}
+    if doc.get("payment_status") != status:
+        diff["payment_status"] = {"old": doc.get("payment_status"), "new": status}
+    if doc.get("paid_amount") != paid:
+        diff["paid_amount"] = {"old": doc.get("paid_amount"), "new": paid}
+
+    summary_desc = f"Payment status set to '{status}' (paid: ₹{paid:.2f}) by {u_info['name']} ({u_info['user_type']})"
+    history_item = {
+        "action": "status_update",
+        "user_name": u_info["name"],
+        "user_email": u_info["email"],
+        "user_type": u_info["user_type"],
+        "timestamp": updated_at_iso,
+        "summary": summary_desc,
+        "changed_fields": list(diff.keys()),
+    }
+
+    # Separately log audit history into custom_invoice_audit_logs collection in MongoDB
+    audit_entry = {
+        "id": str(uuid.uuid4()),
+        "invoice_id": invoice_id,
+        "invoice_no": doc.get("invoice_no") or "",
+        "action": "status_update",
+        "changes": diff,
+        "updated_by": u_info,
+        "timestamp": updated_at_iso,
+        "summary": summary_desc,
+    }
+    await db.custom_invoice_audit_logs.insert_one(audit_entry)
+
     await db.custom_invoices.update_one(
         {"id": invoice_id},
         {"$set": {
             "payment_status": status,
             "paid_amount": paid,
-            "status_updated_at": datetime.now(timezone.utc).isoformat(),
+            "status_updated_at": updated_at_iso,
             "status_updated_by": user.get("email", "admin"),
-        }},
+            "status_updated_by_name": u_info["name"],
+            "status_updated_by_user_type": u_info["user_type"],
+        }, "$push": {"change_history": history_item}},
     )
     return {"ok": True, "payment_status": status, "paid_amount": paid}
+
+
+@router.get("/admin/custom-invoices/{invoice_id}/history")
+async def get_custom_invoice_history(
+    invoice_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Return the complete audit trail and change history for a specific custom invoice."""
+    _require_admin_or_accountant(user)
+    logs = await db.custom_invoice_audit_logs.find(
+        {"invoice_id": invoice_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).to_list(100)
+    return {"invoice_id": invoice_id, "count": len(logs), "logs": logs}
+
+
+@router.get("/admin/custom-invoices-audit-logs")
+async def list_custom_invoices_audit_logs(
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+):
+    """Return recent audit logs across all custom invoices."""
+    _require_admin_or_accountant(user)
+    logs = await db.custom_invoice_audit_logs.find(
+        {},
+        {"_id": 0}
+    ).sort("timestamp", -1).to_list(max(1, min(limit, 200)))
+    return {"count": len(logs), "logs": logs}
 
 
 @router.delete("/admin/custom-invoices/{invoice_id}")
@@ -551,7 +769,20 @@ async def delete_custom_invoice(
     user: dict = Depends(get_current_user),
 ):
     _require_admin(user)
-    res = await db.custom_invoices.delete_one({"id": invoice_id})
-    if res.deleted_count == 0:
+    existing = await db.custom_invoices.find_one({"id": invoice_id})
+    if not existing:
         raise HTTPException(status_code=404, detail="Custom invoice not found")
+    u_info = _get_user_audit_info(user)
+    await db.custom_invoice_audit_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "invoice_id": invoice_id,
+        "invoice_no": existing.get("invoice_no") or "",
+        "action": "delete",
+        "changes": {"deleted": {"old": existing.get("customer_name"), "new": None}},
+        "updated_by": u_info,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "summary": f"Invoice {existing.get('invoice_no')} deleted by {u_info['name']} ({u_info['user_type']})",
+    })
+    res = await db.custom_invoices.delete_one({"id": invoice_id})
     return {"ok": True}
+
