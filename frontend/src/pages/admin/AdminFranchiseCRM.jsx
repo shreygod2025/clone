@@ -2123,8 +2123,8 @@ export default function AdminFranchiseCRM() {
                     onChange={(e) => setEditLeadForm(prev => ({ ...prev, status: e.target.value }))}
                     className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
                   >
-                    {STATUS_PIPELINE.map(s => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
+                    {STAGES.filter(s => s.value !== 'all').map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
                 </div>
