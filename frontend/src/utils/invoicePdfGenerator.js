@@ -101,12 +101,13 @@ function loadImageAsDataURL(url, maxWidth = 200, maxHeight = 200) {
 }
 
 function generateInvoiceNumber(payment) {
+  if (payment?.invoice_no) return payment.invoice_no;
+  if (payment?.generated_invoice_no) return payment.generated_invoice_no;
   const now = new Date();
   const year = now.getFullYear();
-  const hash = (payment.school_id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  const idx = (payment.tranche_index || 0) + 1;
-  const seq = String(hash * 100 + idx + now.getMonth() * 10).slice(-6).padStart(6, '0');
-  return `OLL${year}/${seq}`;
+  const idx = (payment?.tranche_index || 0) + 1;
+  const schoolPart = (payment?.school_id || '').replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase() || 'SCH';
+  return `OLL${year}/${schoolPart}-${idx}`;
 }
 
 // ──────────────────────────────────────────────
@@ -171,6 +172,7 @@ function calculateGST(amount, gstType, schoolState) {
 // ──────────────────────────────────────────────
 export async function generateInvoicePDF(payment, schoolData, {
   skipDownload = false,
+  invoiceNo: optionsInvoiceNo = '',
   nameOverride = '',
   customLineItems = null,
   billTo = null,         // { name, address, gstin, state } — full override of Bill To
@@ -253,7 +255,7 @@ export async function generateInvoicePDF(payment, schoolData, {
   y += 4;
 
   // ─── Invoice Details ───
-  const invoiceNo = generateInvoiceNumber(payment);
+  const invoiceNo = String(optionsInvoiceNo || payment?.invoice_no || payment?.generated_invoice_no || generateInvoiceNumber(payment)).trim();
   // Prefer the actual invoice date from the record (custom invoices store it
   // as `invoice_date`; legacy records may use `date` / `payment_date` / `created_at`).
   // Falling back to `new Date()` caused every download to show today's date.

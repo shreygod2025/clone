@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Button } from '../../components/ui/button';
-import { Plus, Trash2, Download, FileText, Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Trash2, Download, FileText, Loader2, CheckCircle2, Clock, Search, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
@@ -29,6 +29,19 @@ const emptyTranche = (idx = 1) => ({
   status: 'pending', // paid | pending
 });
 
+const incrementInvoiceNumber = (lastNo, year = new Date().getFullYear()) => {
+  const raw = (lastNo || '').trim();
+  if (!raw) return `OLL${year}/CUST-0001`;
+  const match = raw.match(/^(.*?)(\d+)$/);
+  if (match) {
+    const [, prefix, digits] = match;
+    const nextNum = parseInt(digits, 10) + 1;
+    const formattedDigits = String(nextNum).padStart(digits.length, '0');
+    return `${prefix}${formattedDigits}`;
+  }
+  return `${raw}-1`;
+};
+
 const getAuthHeaders = () => {
   const token = localStorage.getItem('oll_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -37,6 +50,7 @@ const getAuthHeaders = () => {
 export default function CustomInvoiceModal({ open, onClose }) {
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
+    invoice_no: '',
     // Bill To
     customer_name: '',
     address: '',
@@ -64,6 +78,12 @@ export default function CustomInvoiceModal({ open, onClose }) {
   const [statusEditing, setStatusEditing] = useState(null); // { id, payment_status, paid_amount }
   const [savingStatus, setSavingStatus] = useState(false);
 
+  // Edit by Invoice Number states
+  const [editingInvoice, setEditingInvoice] = useState(null); // { id, invoice_no, is_school_invoice }
+  const [searchInvoiceNo, setSearchInvoiceNo] = useState('');
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+  const [nextSuggestedNumber, setNextSuggestedNumber] = useState('');
+
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
@@ -76,8 +96,30 @@ export default function CustomInvoiceModal({ open, onClose }) {
     }
   };
 
+  const fetchNextInvoiceNumber = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/custom-invoices/next-number`, { headers: getAuthHeaders() });
+      if (res.data?.next_invoice_no) {
+        setNextSuggestedNumber(res.data.next_invoice_no);
+        setForm(prev => {
+          if (!prev.invoice_no) {
+            return { ...prev, invoice_no: res.data.next_invoice_no };
+          }
+          return prev;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to load next invoice number:', err);
+    }
+  };
+
   useEffect(() => {
-    if (open) loadHistory();
+    if (open) {
+      loadHistory();
+      if (!editingInvoice) {
+        fetchNextInvoiceNumber();
+      }
+    }
   }, [open]);
 
   // Live totals
@@ -121,7 +163,80 @@ export default function CustomInvoiceModal({ open, onClose }) {
   const removeTranche = (id) => setTranches(prev => prev.filter(t => t.id !== id));
   const updateTranche = (id, patch) => setTranches(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
 
-  const handleGenerate = async () => {
+  const handleLookupInvoice = async (q) => {
+    const cleanQuery = (q || '').trim();
+    if (!cleanQuery) {
+      toast.error('Please enter an invoice number');
+      return;
+    }
+    setLoadingInvoice(true);
+    try {
+      const res = await axios.get(`${API}/admin/custom-invoices/lookup?q=${encodeURIComponent(cleanQuery)}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = res.data;
+      if (!data) {
+        toast.error(`Invoice "${cleanQuery}" not found`);
+        return;
+      }
+      setEditingInvoice({
+        id: data.id,
+        invoice_no: data.invoice_no,
+        is_school_invoice: !!data.is_school_invoice,
+      });
+      setForm({
+        invoice_no: data.invoice_no || cleanQuery,
+        customer_name: data.customer_name || '',
+        address: data.address || '',
+        gstin: data.gstin || '',
+        state: data.state || 'Maharashtra',
+        same_ship_to: data.ship_to_name ? (data.ship_to_name === data.customer_name) : true,
+        ship_to_name: data.ship_to_name || '',
+        ship_to_address: data.ship_to_address || '',
+        ship_to_state: data.ship_to_state || data.state || 'Maharashtra',
+        place_of_supply: data.place_of_supply || data.state || 'Maharashtra',
+        gst_type: data.gst_type || 'exclusive_18',
+        invoice_date: data.invoice_date || (data.created_at ? data.created_at.slice(0, 10) : today),
+        payment_status: data.payment_status || 'pending',
+        paid_amount: data.paid_amount || '',
+        notes: data.notes || '',
+      });
+      setItems(data.line_items && data.line_items.length > 0 ? data.line_items : [emptyRow()]);
+      setTranches(data.tranches || []);
+      toast.success(`Loaded invoice ${data.invoice_no} for editing`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || `Invoice "${cleanQuery}" not found`);
+    } finally {
+      setLoadingInvoice(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingInvoice(null);
+    setSearchInvoiceNo('');
+    setForm({
+      invoice_no: nextSuggestedNumber || '',
+      customer_name: '',
+      address: '',
+      gstin: '',
+      state: 'Maharashtra',
+      same_ship_to: true,
+      ship_to_name: '',
+      ship_to_address: '',
+      ship_to_state: 'Maharashtra',
+      place_of_supply: 'Maharashtra',
+      gst_type: 'exclusive_18',
+      invoice_date: today,
+      payment_status: 'pending',
+      paid_amount: '',
+      notes: '',
+    });
+    setItems([emptyRow()]);
+    setTranches([]);
+    fetchNextInvoiceNumber();
+  };
+
+  const handleGenerate = async (mode = 'create') => {
     // Validation
     if (!form.customer_name.trim()) {
       toast.error('Customer name is required');
@@ -151,20 +266,22 @@ export default function CustomInvoiceModal({ open, onClose }) {
 
     setGenerating(true);
     try {
-      // For exclusive_18 the payment.amount must equal the INCLUSIVE total
-      // (base + 18%). For inclusive_18 the rates already include GST. For
-      // book_gst_0 there's no GST.
       const totalAmount = (form.gst_type === 'exclusive_18' || form.gst_type === 'exclusive')
         ? subtotal * 1.18
         : subtotal;
 
-      // Fabricate payment + schoolData structures the existing PDF generator understands.
-      const fakeSchoolId = `custom-${Date.now()}`;
-      // The PDF generator uses `payment.payment_date` as the invoice date.
-      // Convert YYYY-MM-DD → ISO so the toLocaleDateString call renders correctly.
+      // Determine target invoice number based on mode:
+      let targetInvoiceNo = (form.invoice_no || '').trim();
+      if (mode === 'create_new_from_edit') {
+        targetInvoiceNo = incrementInvoiceNumber(form.invoice_no || editingInvoice?.invoice_no || nextSuggestedNumber);
+      } else if (!targetInvoiceNo) {
+        targetInvoiceNo = nextSuggestedNumber || incrementInvoiceNumber('');
+      }
+
       const invoiceDateISO = form.invoice_date ? new Date(form.invoice_date).toISOString() : new Date().toISOString();
       const fakePayment = {
-        school_id: fakeSchoolId,
+        invoice_no: targetInvoiceNo,
+        school_id: `custom-${targetInvoiceNo.replace(/[^a-zA-Z0-9]/g, '')}`,
         school_name: form.customer_name,
         amount: totalAmount,
         gst_type: form.gst_type,
@@ -175,9 +292,6 @@ export default function CustomInvoiceModal({ open, onClose }) {
         paid_amount: form.payment_status === 'partial' ? Number(form.paid_amount || 0) : (form.payment_status === 'paid' ? totalAmount : 0),
         payment_date: invoiceDateISO,
         qty: valid.reduce((s, r) => s + Number(r.qty || 0), 0),
-        // ── Payment tranches (optional) — the PDF generator renders a
-        //    "Payment Schedule" table when this array is non-empty and
-        //    treats Balance Due = Total − sum(tranches).
         tranches: tranches.map((t, i) => ({
           name: (t.name || `Tranche ${i + 1}`).trim(),
           amount: Number(t.amount) || 0,
@@ -185,8 +299,7 @@ export default function CustomInvoiceModal({ open, onClose }) {
           status: t.status || 'pending',
         })),
       };
-      // The schoolData is now mostly a carrier — billTo / shipTo overrides drive
-      // the actual rendering. We still pass state so it's available as fallback.
+
       const fakeSchoolData = {
         school_name: form.customer_name,
         state: form.state || 'Maharashtra',
@@ -207,6 +320,7 @@ export default function CustomInvoiceModal({ open, onClose }) {
         fakeSchoolData,
         {
           skipDownload: false,
+          invoiceNo: targetInvoiceNo,
           customLineItems: valid.map(r => ({
             desc: r.desc,
             qty: Number(r.qty),
@@ -225,74 +339,57 @@ export default function CustomInvoiceModal({ open, onClose }) {
         },
       );
 
-      // Persist to backend so admin can re-download later
-      try {
-        // When tranches are used, they take precedence for paid amount + status
-        const effectiveStatus = tranches.length > 0 ? derivedTrancheStatus : form.payment_status;
-        const effectivePaid = tranches.length > 0
-          ? tranchesPaidSum
-          : (form.payment_status === 'partial'
-              ? Number(form.paid_amount || 0)
-              : (form.payment_status === 'paid' ? totalAmount : 0));
+      const effectiveStatus = tranches.length > 0 ? derivedTrancheStatus : form.payment_status;
+      const effectivePaid = tranches.length > 0
+        ? tranchesPaidSum
+        : (form.payment_status === 'partial'
+            ? Number(form.paid_amount || 0)
+            : (form.payment_status === 'paid' ? totalAmount : 0));
 
-        await axios.post(`${API}/admin/custom-invoices`, {
-          customer_name: form.customer_name,
-          address: form.address,
-          gstin: form.gstin,
-          state: form.state,
-          gst_type: form.gst_type,
-          notes: form.notes,
-          place_of_supply: form.place_of_supply,
-          ship_to_name: form.same_ship_to ? form.customer_name : form.ship_to_name,
-          ship_to_address: form.same_ship_to ? form.address : form.ship_to_address,
-          ship_to_state: form.same_ship_to ? form.state : form.ship_to_state,
-          line_items: valid.map(r => ({ desc: r.desc, qty: Number(r.qty), rate: Number(r.rate) })),
-          total_amount: totalAmount,
-          generated_invoice_no: invoiceNo,
-          pdf_base64: base64,
-          // Invoice metadata
-          invoice_date: form.invoice_date || today,
-          payment_status: effectiveStatus,
-          paid_amount: effectivePaid,
-          // Payment tranches (optional)
-          tranches: tranches.map((t, i) => ({
-            name: (t.name || `Tranche ${i + 1}`).trim(),
-            amount: Number(t.amount || 0),
-            due_date: t.due_date || '',
-            status: t.status === 'paid' ? 'paid' : 'pending',
-          })),
-        }, { headers: getAuthHeaders() });
-        toast.success(`Custom invoice saved · ${invoiceNo}`);
-      } catch (saveErr) {
-        console.warn('Save failed (download succeeded):', saveErr);
-        toast.warning('PDF downloaded but failed to save to history');
+      const payload = {
+        invoice_no: invoiceNo,
+        customer_name: form.customer_name,
+        address: form.address,
+        gstin: form.gstin,
+        state: form.state,
+        gst_type: form.gst_type,
+        notes: form.notes,
+        place_of_supply: form.place_of_supply,
+        ship_to_name: form.same_ship_to ? form.customer_name : form.ship_to_name,
+        ship_to_address: form.same_ship_to ? form.address : form.ship_to_address,
+        ship_to_state: form.same_ship_to ? form.state : form.ship_to_state,
+        line_items: valid.map(r => ({ desc: r.desc, qty: Number(r.qty), rate: Number(r.rate) })),
+        total_amount: totalAmount,
+        generated_invoice_no: invoiceNo,
+        pdf_base64: base64,
+        invoice_date: form.invoice_date || today,
+        payment_status: effectiveStatus,
+        paid_amount: effectivePaid,
+        tranches: tranches.map((t, i) => ({
+          name: (t.name || `Tranche ${i + 1}`).trim(),
+          amount: Number(t.amount || 0),
+          due_date: t.due_date || '',
+          status: t.status === 'paid' ? 'paid' : 'pending',
+        })),
+      };
+
+      if (mode === 'update' && editingInvoice?.id && !editingInvoice.is_school_invoice) {
+        // Update existing invoice
+        await axios.put(`${API}/admin/custom-invoices/${editingInvoice.id}`, payload, { headers: getAuthHeaders() });
+        toast.success(`Invoice ${invoiceNo} updated successfully`);
+      } else {
+        // Create new invoice (either normal creation, or "create new from edit", or converting school invoice)
+        const res = await axios.post(`${API}/admin/custom-invoices`, payload, { headers: getAuthHeaders() });
+        const savedNo = res.data?.invoice_no || invoiceNo;
+        toast.success(`Custom invoice saved · ${savedNo}`);
+        setNextSuggestedNumber(incrementInvoiceNumber(savedNo));
       }
 
-      // Refresh history
       await loadHistory();
-
-      // Reset form so admin can punch in the next one quickly
-      setForm({
-        customer_name: '',
-        address: '',
-        gstin: '',
-        state: 'Maharashtra',
-        same_ship_to: true,
-        ship_to_name: '',
-        ship_to_address: '',
-        ship_to_state: 'Maharashtra',
-        place_of_supply: 'Maharashtra',
-        gst_type: 'exclusive_18',
-        invoice_date: today,
-        payment_status: 'pending',
-        paid_amount: '',
-        notes: '',
-      });
-      setItems([emptyRow()]);
-      setTranches([]);
+      handleCancelEdit();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to generate custom invoice');
+      toast.error(err?.response?.data?.detail || 'Failed to generate/save custom invoice');
     } finally {
       setGenerating(false);
     }
@@ -360,11 +457,65 @@ export default function CustomInvoiceModal({ open, onClose }) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto" data-testid="custom-invoice-modal">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-600" />
-            Create Custom Invoice
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-indigo-600" />
+              {editingInvoice ? 'Edit Custom Invoice' : 'Create Custom Invoice'}
+            </DialogTitle>
+            {editingInvoice && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                <Edit3 className="w-3.5 h-3.5" /> Editing: {editingInvoice.invoice_no}
+              </span>
+            )}
+          </div>
         </DialogHeader>
+
+        {/* ── Search / Edit by Invoice Number ────────────────────── */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                placeholder="Enter Invoice # to edit (e.g. 1100, OLL2026/CUST-0011)..."
+                value={searchInvoiceNo}
+                onChange={(e) => setSearchInvoiceNo(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLookupInvoice(searchInvoiceNo)}
+                className="pl-9 bg-white text-xs sm:text-sm font-mono"
+                data-testid="custom-invoice-lookup-input"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleLookupInvoice(searchInvoiceNo)}
+              disabled={loadingInvoice || !searchInvoiceNo.trim()}
+              className="border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 font-medium"
+              data-testid="custom-invoice-lookup-btn"
+            >
+              {loadingInvoice ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Edit3 className="w-4 h-4 mr-1.5" />}
+              {loadingInvoice ? 'Searching…' : 'Edit Invoice'}
+            </Button>
+          </div>
+          {editingInvoice && (
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/80 text-xs text-amber-900" data-testid="custom-invoice-edit-banner">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-semibold text-amber-800">Currently Editing:</span>
+                <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-300 font-bold">{editingInvoice.invoice_no}</span>
+                <span className="text-slate-600">({form.customer_name || 'No customer name'})</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="text-amber-800 hover:text-amber-900 hover:bg-amber-100 h-6 px-2 text-xs font-medium"
+                data-testid="custom-invoice-cancel-edit-btn"
+              >
+                Cancel Edit / New Form
+              </Button>
+            </div>
+          )}
+        </div>
 
         <div className="space-y-5">
           {/* ── Bill To ────────────────────────────────────────────── */}
@@ -485,7 +636,24 @@ export default function CustomInvoiceModal({ open, onClose }) {
           {/* ── Invoice Date & Payment Status ─────────────────────── */}
           <div className="rounded-lg border border-slate-200 bg-white p-3">
             <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Invoice Metadata</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-700">Invoice Number *</label>
+                  {form.invoice_no && (
+                    <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-mono font-medium">
+                      {form.invoice_no === nextSuggestedNumber ? 'Auto-sequential' : 'Custom'}
+                    </span>
+                  )}
+                </div>
+                <Input
+                  placeholder="e.g. 1100 or OLL2026/CUST-0012"
+                  value={form.invoice_no || ''}
+                  onChange={(e) => setForm(prev => ({ ...prev, invoice_no: e.target.value }))}
+                  className="mt-1 font-mono text-xs font-semibold"
+                  data-testid="custom-invoice-number-input"
+                />
+              </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">Invoice Date *</label>
                 <Input
@@ -878,19 +1046,59 @@ export default function CustomInvoiceModal({ open, onClose }) {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button variant="outline" onClick={onClose} data-testid="custom-invoice-cancel">
-              Close
-            </Button>
-            <Button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              data-testid="custom-invoice-generate-btn"
-            >
-              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-              {generating ? 'Generating…' : 'Generate & Download PDF'}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+            <div>
+              {editingInvoice && (
+                <Button
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  data-testid="custom-invoice-cancel-edit-bottom"
+                  className="text-xs text-amber-900 border-amber-300 hover:bg-amber-50"
+                >
+                  Cancel Edit / New Form
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={onClose} data-testid="custom-invoice-cancel">
+                Close
+              </Button>
+              {editingInvoice ? (
+                <>
+                  <Button
+                    onClick={() => handleGenerate('create_new_from_edit')}
+                    disabled={generating}
+                    variant="outline"
+                    className="border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                    data-testid="custom-invoice-generate-new-btn"
+                    title="Generate as a new invoice with next sequential number"
+                  >
+                    {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                    Generate as New Invoice
+                  </Button>
+                  <Button
+                    onClick={() => handleGenerate('update')}
+                    disabled={generating}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    data-testid="custom-invoice-update-btn"
+                    title="Save edits to this existing invoice"
+                  >
+                    {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                    {generating ? 'Updating…' : `Update Invoice (${form.invoice_no || editingInvoice.invoice_no})`}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => handleGenerate('create')}
+                  disabled={generating}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  data-testid="custom-invoice-generate-btn"
+                >
+                  {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  {generating ? 'Generating…' : 'Generate & Download PDF'}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* History */}
@@ -929,6 +1137,19 @@ export default function CustomInvoiceModal({ open, onClose }) {
                         </td>
                         <td className="px-3 py-2">{statusPill(row)}</td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleLookupInvoice(row.invoice_no);
+                              const modalEl = document.querySelector('[data-testid="custom-invoice-modal"]');
+                              if (modalEl) modalEl.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-700 mr-1 font-medium"
+                            data-testid={`custom-invoice-edit-${row.id}`}
+                            title="Edit this invoice"
+                          >
+                            <Edit3 className="w-3 h-3" /> Edit
+                          </button>
                           <button
                             type="button"
                             onClick={() => setStatusEditing({
