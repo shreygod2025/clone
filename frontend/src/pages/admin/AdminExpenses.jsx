@@ -1,0 +1,1576 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { AdminLayout } from './AdminDashboard';
+import { 
+  Wallet, Plus, Search, Building2, Calendar, Edit, Trash2, 
+  ChevronDown, ChevronUp, FileText, Download, Filter, X,
+  DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
+  Upload, Paperclip, ChevronRight, TrendingDown, BookOpen,
+  Package, Truck, Award, Users, BarChart2, Briefcase, Handshake,
+  IndianRupee, Layers, CreditCard,
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
+import { Textarea } from '../../components/ui/textarea';
+import { toast } from 'sonner';
+import axios from 'axios';
+import { format } from 'date-fns';
+import MonthlyFixedExpensesTab from './expenses/MonthlyFixedExpensesTab';
+import B2CPnLTab from './expenses/B2CPnLTab';
+import ProjectsPnLTab from './expenses/ProjectsPnLTab';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCachedData, hasCachedData, invalidateCache } from '../../utils/apiCache';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Normalize old ProcureWay/preview URLs to the current vendor host
+const VENDOR_HOST = 'https://vendor-panel-1rt3.vercel.app';
+const VENDOR_API_HOST = 'https://vendor-panel-6kjc.onrender.com';
+const normalizeVendorUrl = (url) => {
+  if (!url) return url;
+  const OLD = /https?:\/\/(?:[^/]*\.(?:stage-)?preview\.emergentagent\.com|vendorplus-4\.emergent\.host)/g;
+  return url
+    .replace(new RegExp(`${OLD.source}(?=/api/)`, 'g'), VENDOR_API_HOST)
+    .replace(OLD, VENDOR_HOST);
+};
+
+// Route all vendor/Cloudinary file URLs through backend proxy (handles auth headers).
+// Browser-tab opens (window.open / <a href>) drop the Authorization header, so
+// we also append the JWT as a `token` query param — the backend accepts either.
+const proxyFileUrl = (url, filename = '') => {
+  if (!url) return url;
+  const normalized = normalizeVendorUrl(url);
+  const jwtToken = (typeof localStorage !== 'undefined' && localStorage.getItem('oll_token')) || '';
+  const tokenParam = jwtToken ? `&token=${encodeURIComponent(jwtToken)}` : '';
+  return `${API}/proxy/file?url=${encodeURIComponent(normalized)}&filename=${encodeURIComponent(filename)}${tokenParam}`;
+};
+
+const AdminExpenses = () => {
+  const { user, getAuthHeaders } = useAuth();
+  // Sub-tab permission gating
+  const perms = user?.permissions || [];
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const fullExpensesAccess = isAdmin || perms.includes('expenses');
+  const canSeeExpensesList = fullExpensesAccess || perms.includes('expenses.list');
+  const canSeePnl = fullExpensesAccess || perms.includes('expenses.pnl');
+  const defaultTab = canSeeExpensesList ? 'expenses' : (canSeePnl ? 'pnl' : 'expenses');
+  const [activeTab, setActiveTab] = useState(defaultTab); // 'expenses' | 'pnl'
+  const [pnlData, setPnlData] = useState(null);
+  const [pnlLoading, setPnlLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !hasCachedData('/school-expenses'));
+  const [expenses, setExpenses] = useState(() => {
+    const cached = getCachedData('/school-expenses');
+    return Array.isArray(cached) ? cached : (cached?.expenses || []);
+  });
+  const [summary, setSummary] = useState(() => getCachedData('/school-expenses/summary') || { grand_total: 0, schools: [] });
+  const [categories, setCategories] = useState(() => getCachedData('/school-expenses/categories') || []);
+  const [schools, setSchools] = useState(() => {
+    const cached = getCachedData('/schools/names');
+    return cached?.inquiries || (Array.isArray(cached) ? cached : []);
+  });
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [filters, setFilters] = useState({
+    school_id: '',
+    project_id: '',
+    category: '',
+    start_date: '',
+    end_date: ''
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [invoiceUploading, setInvoiceUploading] = useState(false);
+  const schoolDropdownRef = useRef(null);
+
+  const [expenseForm, setExpenseForm] = useState({
+    school_id: '',
+    project_id: '',
+    category: '',
+    amount: '',
+    description: '',
+    expense_date: format(new Date(), 'yyyy-MM-dd'),
+    invoice_number: '',
+    vendor_name: '',
+    payment_status: 'pending',
+    payment_mode: '',
+    notes: '',
+    expense_breakup_type: '',
+    expense_breakup_value: '',
+    expected_payment_date: '',
+    partial_amount_paid: '',
+    partial_payment_date: '',
+    invoice_file_url: '',
+    // Allocation (2026-08-04): B2B (school) · B2C (program + batch) · Project · Office
+    allocation_type: '',
+    allocation_ref_id: '',
+    allocation_ref_label: '',
+    allocation_program: '',
+  });
+
+  // Cache batch/center lookups for the B2C allocation flow (Future Skills batches)
+  const [fsBatchesForAlloc, setFsBatchesForAlloc] = useState([]);
+  useEffect(() => {
+    if (expenseForm.allocation_type === 'b2c' && expenseForm.allocation_program === 'future_skills' && fsBatchesForAlloc.length === 0) {
+      axios.get(`${API}/future-skills/batches`)
+        .then(r => setFsBatchesForAlloc(r.data?.batches || []))
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expenseForm.allocation_type, expenseForm.allocation_program]);
+
+  // Project mapping (2026-07-22): active projects fed into the form dropdown
+  // and used to render the linked-project chip on each expense row.
+  const [projects, setProjects] = useState(() => getCachedData('/projects?status=active') || []);
+
+  useEffect(() => {
+    fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (schoolDropdownRef.current && !schoolDropdownRef.current.contains(e.target)) {
+        setShowSchoolDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchData = async (options = {}) => {
+    const force = options?.force === true;
+    try {
+      // Only show full blocking loading spinner if no cached data exists or explicit refresh was forced
+      if (!hasCachedData('/school-expenses') || force) {
+        setLoading(true);
+      }
+      const headers = getAuthHeaders();
+
+      // Build expense query params
+      const params = new URLSearchParams();
+      if (filters.school_id) params.append('school_id', filters.school_id);
+      if (filters.project_id) params.append('project_id', filters.project_id);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.start_date) params.append('start_date', filters.start_date);
+      if (filters.end_date) params.append('end_date', filters.end_date);
+      const summaryQuery = filters.school_id ? `?school_id=${filters.school_id}` : '';
+
+      // Run all API calls in parallel for faster load with defense-in-depth fallbacks
+      const [catRes, schoolsRes, expRes, summaryRes, projectsRes] = await Promise.all([
+        axios.get(`${API}/school-expenses/categories`, { headers }).catch(err => {
+          console.warn('Failed to fetch categories:', err);
+          return { data: [] };
+        }),
+        axios.get(`${API}/schools/names`, { headers }).catch(err => {
+          console.warn('Failed to fetch schools list:', err);
+          return { data: [] };
+        }),
+        axios.get(`${API}/school-expenses?${params.toString()}`, { headers }),
+        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers }).catch(err => {
+          console.warn('Failed to fetch summary:', err);
+          return { data: { grand_total: 0, schools: [] } };
+        }),
+        // Active projects for the mapping dropdown. Silent-swallow errors so
+        // the expenses page still renders if projects service is temporarily
+        // unavailable (defence in depth).
+        axios.get(`${API}/projects?status=active`, { headers }).catch(() => ({ data: [] })),
+      ]);
+
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+
+      const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
+      setSchools(Array.isArray(schoolsList) ? schoolsList : []);
+
+      const projectsList = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+      setProjects(projectsList);
+
+      const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
+      setExpenses(expenseData);
+      setSelectedIds([]);
+
+      setSummary(summaryRes.data || { grand_total: 0, schools: [] });
+
+    } catch (error) {
+      console.error('Failed to fetch expenses:', error);
+      const detail = error.response?.data?.detail || error.message || '';
+      toast.error(detail ? `Failed to load expenses: ${detail}` : 'Failed to load expenses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPnl = useCallback(async () => {
+    setPnlLoading(true);
+    try {
+      const res = await axios.get(`${API}/school-expenses/pnl-summary`, { headers: getAuthHeaders() });
+      setPnlData(res.data);
+    } catch (e) {
+      toast.error('Failed to load P&L data');
+    } finally {
+      setPnlLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (activeTab === 'pnl' && !pnlData) fetchPnl();
+  }, [activeTab, pnlData, fetchPnl]);
+
+  const handleSubmit = async () => {
+    if (!expenseForm.category || !expenseForm.amount) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+    
+    try {
+      const headers = getAuthHeaders();
+      
+      if (editingExpense) {
+        await axios.patch(`${API}/school-expenses/${editingExpense.id}`, expenseForm, { headers });
+        toast.success('Expense updated successfully');
+      } else {
+        await axios.post(`${API}/school-expenses`, expenseForm, { headers });
+        toast.success('Expense added successfully');
+      }
+      
+      setShowAddModal(false);
+      setEditingExpense(null);
+      resetForm();
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to save expense');
+    }
+  };
+
+  const handleDelete = async (expenseId) => {
+    if (!confirm('Are you sure you want to delete this expense? This cannot be undone.')) return;
+    try {
+      await axios.delete(`${API}/school-expenses/${expenseId}`, { headers: getAuthHeaders() });
+      toast.success('Expense deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete expense');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selectedIds.length} selected expense(s)? This cannot be undone.`)) return;
+    try {
+      await axios.post(`${API}/school-expenses/bulk-delete`, { ids: selectedIds }, { headers: getAuthHeaders() });
+      toast.success(`Deleted ${selectedIds.length} expense(s)`);
+      setSelectedIds([]);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete selected expenses');
+    }
+  };
+
+  const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleSelectAll = () => setSelectedIds(prev => prev.length === filteredExpenses.length ? [] : filteredExpenses.map(e => e.id));
+
+  const handleCleanDuplicates = async () => {
+    if (!confirm('This will remove duplicate auto-synced expenses (keeping one per school/PO/category). Manually added expenses will not be affected. Continue?')) return;
+    try {
+      const res = await axios.post(`${API}/expenses/cleanup-duplicates`, {}, { headers: getAuthHeaders() });
+      toast.success(res.data.message);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to clean duplicates');
+    }
+  };
+
+  const [syncingPos, setSyncingPos] = useState(false);
+  const handleSyncFromPOs = async () => {
+    if (syncingPos) return;
+    if (!confirm('Pull the latest kit & logistics costs from delivered POs into Expenses?\n\nThis runs the same sync the nightly cron uses — it will create any missing kit_cost / logistics_cost rows for schools whose POs were delivered but never auto-recorded.')) return;
+    setSyncingPos(true);
+    const t = toast.loading('Syncing costs from POs…');
+    try {
+      const res = await axios.post(`${API}/admin/sync-po-costs`, {}, { headers: getAuthHeaders(), timeout: 180_000 });
+      const r = res.data?.results || {};
+      const skipped = (r.skipped_pos || []).length;
+      toast.success(
+        `Sync complete — ${r.expenses_created || 0} new cost row${r.expenses_created === 1 ? '' : 's'} created across ${r.schools_processed || 0} schools.` +
+        (skipped ? `\n${skipped} PO${skipped === 1 ? '' : 's'} skipped due to name mismatch — see browser console for details.` : ''),
+        { id: t, duration: 8000 }
+      );
+      if (skipped) {
+        console.warn('[PO sync] Skipped POs (name mismatch):', r.skipped_pos);
+      }
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Sync failed', { id: t });
+    } finally {
+      setSyncingPos(false);
+    }
+  };
+
+  const resetForm = () => {
+    setExpenseForm({
+      school_id: '',
+      project_id: '',
+      category: '',
+      amount: '',
+      description: '',
+      expense_date: format(new Date(), 'yyyy-MM-dd'),
+      invoice_number: '',
+      vendor_name: '',
+      payment_status: 'pending',
+      payment_mode: '',
+      notes: '',
+      expense_breakup_type: '',
+      expense_breakup_value: '',
+      expected_payment_date: '',
+      partial_amount_paid: '',
+      partial_payment_date: '',
+      invoice_file_url: ''
+    });
+    setSchoolSearch('');
+  };
+
+  const openEditModal = (expense) => {
+    setEditingExpense(expense);
+    setExpenseForm({
+      school_id: expense.school_id,
+      project_id: expense.project_id || '',
+      category: expense.category,
+      amount: expense.amount,
+      description: expense.description || '',
+      expense_date: expense.expense_date || '',
+      invoice_number: expense.invoice_number || '',
+      vendor_name: expense.vendor_name || '',
+      payment_status: expense.payment_status || 'pending',
+      payment_mode: expense.payment_mode || '',
+      notes: expense.notes || '',
+      expense_breakup_type: expense.expense_breakup_type || '',
+      expense_breakup_value: expense.expense_breakup_value || '',
+      expected_payment_date: expense.expected_payment_date || '',
+      partial_amount_paid: expense.partial_amount_paid || '',
+      partial_payment_date: expense.partial_payment_date || '',
+      invoice_file_url: expense.invoice_file_url || ''
+    });
+    setSchoolSearch(expense.school_name || '');
+    setShowAddModal(true);
+  };
+
+  const handleInvoiceUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setInvoiceUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axios.post(`${API}/upload?type=invoice`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setExpenseForm(prev => ({ ...prev, invoice_file_url: res.data.url }));
+      toast.success('Invoice uploaded successfully');
+    } catch (err) {
+      toast.error('Failed to upload invoice');
+    } finally {
+      setInvoiceUploading(false);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount || 0);
+  };
+
+  const getCategoryColor = (categoryId) => {
+    const colors = {
+      kit_cost: 'bg-blue-100 text-blue-700',
+      teacher_cost: 'bg-purple-100 text-purple-700',
+      logistics_cost: 'bg-orange-100 text-orange-700',
+      books_cost: 'bg-green-100 text-green-700',
+      gp_share: 'bg-teal-100 text-teal-700',
+      school_share: 'bg-indigo-100 text-indigo-700',
+      printing_certification: 'bg-pink-100 text-pink-700',
+      payment_gateway: 'bg-fuchsia-100 text-fuchsia-700',
+      renewal_commission_team: 'bg-amber-100 text-amber-700',
+      renewal_commission_teachers: 'bg-cyan-100 text-cyan-700',
+      marketing_cost: 'bg-red-100 text-red-700',
+      technology_cost: 'bg-violet-100 text-violet-700',
+      office_expense: 'bg-stone-100 text-stone-700',
+      rent: 'bg-yellow-100 text-yellow-700',
+      employee_welfare: 'bg-emerald-100 text-emerald-700',
+      other: 'bg-slate-100 text-slate-700'
+    };
+    return colors[categoryId] || colors.other;
+  };
+
+  const filteredExpenses = expenses.filter(exp => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      exp.school_name?.toLowerCase().includes(query) ||
+      exp.project_name?.toLowerCase().includes(query) ||
+      exp.category_name?.toLowerCase().includes(query) ||
+      exp.description?.toLowerCase().includes(query) ||
+      exp.vendor_name?.toLowerCase().includes(query)
+    );
+  });
+
+  const exportExpensesToCSV = () => {
+    const headers = ['Date', 'School', 'Project', 'PO Number', 'Category', 'Description', 'Vendor', 'Subtotal', 'GST', 'Total', 'Status'];
+    const rows = filteredExpenses.map(exp => [
+      exp.expense_date ? format(new Date(exp.expense_date), 'dd MMM yyyy') : '',
+      exp.school_name || '',
+      exp.project_name || '',
+      exp.po_number || '',
+      exp.category_name || '',
+      exp.description || '',
+      exp.vendor_name || '',
+      exp.subtotal || 0,
+      exp.gst_amount || 0,
+      exp.total_amount || exp.total || 0,
+      exp.status || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredExpenses.length} expenses`);
+  };
+
+  return (
+    <AdminLayout title="Expenses">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1E3A5F] flex items-center gap-2">
+              <Wallet className="w-7 h-7" />
+              School Expenses
+            </h1>
+            <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
+          </div>
+          <div className="flex gap-2">
+            {activeTab === 'expenses' && <>
+            <Button
+              variant="outline"
+              onClick={exportExpensesToCSV}
+              className="text-green-700 border-green-300 hover:bg-green-50"
+              data-testid="export-expenses-csv-btn"
+              title="Export current view to CSV"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCleanDuplicates}
+              className="text-amber-600 border-amber-300 hover:bg-amber-50"
+              title="Remove duplicate auto-synced entries"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Clean Duplicates
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSyncFromPOs}
+              disabled={syncingPos}
+              className="text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+              data-testid="sync-po-costs-btn"
+              title="Pull kit & logistics costs from delivered POs into Expenses"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncingPos ? 'animate-spin' : ''}`} />
+              {syncingPos ? 'Syncing…' : 'Sync Costs from POs'}
+            </Button>
+            <Button 
+              onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
+              className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Expense
+            </Button>
+            </>}
+            {activeTab === 'pnl' && (
+              <Button variant="outline" onClick={fetchPnl} className="text-blue-700 border-blue-300 hover:bg-blue-50">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+          {canSeeExpensesList && <button
+            onClick={() => setActiveTab('expenses')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'expenses' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-expenses"
+          >
+            <span className="flex items-center gap-2"><FileText className="w-4 h-4" />All Expenses</span>
+          </button>}
+          {canSeePnl && <button
+            onClick={() => setActiveTab('pnl')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-pnl"
+          >
+            <span className="flex items-center gap-2"><BarChart2 className="w-4 h-4" />School P&amp;L Sheet</span>
+          </button>}
+          {fullExpensesAccess && <button
+            onClick={() => setActiveTab('monthly-fixed')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'monthly-fixed' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-monthly-fixed"
+          >
+            <span className="flex items-center gap-2"><IndianRupee className="w-4 h-4" />Monthly Fixed Expenses</span>
+          </button>}
+          {fullExpensesAccess && <button
+            onClick={() => setActiveTab('b2c-pnl')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'b2c-pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-b2c-pnl"
+          >
+            <span className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />B2C P&amp;L</span>
+          </button>}
+          {fullExpensesAccess && <button
+            onClick={() => setActiveTab('projects-pnl')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'projects-pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-projects-pnl"
+          >
+            <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Projects P&amp;L</span>
+          </button>}
+        </div>
+
+        {activeTab === 'monthly-fixed' ? (
+          <MonthlyFixedExpensesTab />
+        ) : activeTab === 'b2c-pnl' ? (
+          <B2CPnLTab />
+        ) : activeTab === 'projects-pnl' ? (
+          <ProjectsPnLTab />
+        ) : activeTab === 'pnl' ? (
+          <PnLSheet data={pnlData} loading={pnlLoading} getAuthHeaders={getAuthHeaders} onRefresh={fetchPnl} />
+        ) : loading ? (
+          <LoadingSpinner text="Loading expenses..." />
+        ) : (<>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2a5a8f] rounded-xl p-5 text-white">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <DollarSign className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-white/80 text-sm">Total Expenses</p>
+              <p className="text-2xl font-bold">{formatCurrency(summary.grand_total)}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-5 shadow-sm border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Building2 className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-slate-600 text-sm">Schools with Expenses</p>
+              <p className="text-2xl font-bold text-slate-800">{summary.schools?.length || 0}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-5 shadow-sm border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <BarChart3 className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-slate-600 text-sm">Total Entries</p>
+              <p className="text-2xl font-bold text-slate-800">{expenses.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-5 shadow-sm border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <TrendingUp className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-slate-600 text-sm">Avg per School</p>
+              <p className="text-2xl font-bold text-slate-800">
+                {formatCurrency(summary.schools?.length ? summary.grand_total / summary.schools.length : 0)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search expenses..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          
+          <select
+            value={filters.school_id}
+            onChange={(e) => setFilters({...filters, school_id: e.target.value})}
+            className="h-10 px-3 border border-slate-200 rounded-lg min-w-[180px]"
+          >
+            <option value="">All Schools</option>
+            {schools.map(school => (
+              <option key={school.id} value={school.id}>{school.school_name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters.project_id}
+            onChange={(e) => setFilters({...filters, project_id: e.target.value})}
+            className="h-10 px-3 border border-slate-200 rounded-lg min-w-[180px]"
+            data-testid="expense-filter-project"
+          >
+            <option value="">All Projects</option>
+            <option value="__none__" disabled>—</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters.category}
+            onChange={(e) => setFilters({...filters, category: e.target.value})}
+            className="h-10 px-3 border border-slate-200 rounded-lg min-w-[160px]"
+          >
+            <option value="">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          
+          <Input
+            type="date"
+            value={filters.start_date}
+            onChange={(e) => setFilters({...filters, start_date: e.target.value})}
+            className="w-[150px]"
+            placeholder="Start Date"
+          />
+          
+          <Input
+            type="date"
+            value={filters.end_date}
+            onChange={(e) => setFilters({...filters, end_date: e.target.value})}
+            className="w-[150px]"
+            placeholder="End Date"
+          />
+          
+          <Button variant="outline" onClick={() => setFilters({ school_id: '', project_id: '', category: '', start_date: '', end_date: '' })}>
+            <X className="w-4 h-4 mr-1" />
+            Clear
+          </Button>
+          
+          <Button variant="outline" onClick={fetchData}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Recent Expenses Table */}
+      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+          <h2 className="font-semibold text-slate-800 flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            All Expense Entries
+          </h2>
+          <div className="flex items-center gap-3">
+            {selectedIds.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+                data-testid="bulk-delete-btn"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete {selectedIds.length} selected
+              </button>
+            )}
+            <span className="text-sm text-slate-500">{filteredExpenses.length} entries</span>
+          </div>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px]">
+            <thead className="bg-slate-50 border-b">
+              <tr>
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredExpenses.length > 0 && selectedIds.length === filteredExpenses.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                    data-testid="select-all-expenses"
+                  />
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">School</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Project</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Category</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Description</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Vendor</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Subtotal</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">GST</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Total</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">Files</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">Status</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filteredExpenses.map((expense) => (
+                <tr key={expense.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.includes(expense.id) ? 'bg-red-50/40' : ''}`}>
+                  <td className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(expense.id)}
+                      onChange={() => toggleSelect(expense.id)}
+                      className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                      data-testid={`select-expense-${expense.id}`}
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {expense.expense_date ? format(new Date(expense.expense_date), 'dd MMM yyyy') : '-'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-800 text-sm">{expense.school_name}</p>
+                    {expense.po_number && (
+                      <p className="text-xs text-slate-500">PO: {expense.po_number}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {expense.project_name ? (
+                      <span
+                        className="inline-block text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 whitespace-nowrap"
+                        data-testid={`expense-project-chip-${expense.id}`}
+                        title={expense.project_name}
+                      >
+                        {expense.project_name}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${getCategoryColor(expense.category)}`}>
+                      {expense.category_name}
+                    </span>
+                    {expense.auto_synced && (
+                      <span className="ml-1 text-xs text-green-600">⚡</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 max-w-[220px]">
+                    <span className="whitespace-normal break-words leading-snug">{expense.description || '-'}</span>
+                    {expense.expense_breakup_type && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Breakup: {expense.expense_breakup_type === 'per_student' ? `₹${expense.expense_breakup_value}/student` :
+                          expense.expense_breakup_type === 'lumpsum' ? `Lumpsum ₹${expense.expense_breakup_value}` :
+                          `${expense.expense_breakup_value}%`}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {expense.vendor_name || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
+                    {expense.subtotal ? formatCurrency(expense.subtotal) : formatCurrency(expense.amount)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {expense.gst_amount > 0 ? (
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">{formatCurrency(expense.gst_amount)}</p>
+                        <p className="text-xs text-slate-500">{expense.gst_type} @ {expense.gst_rate}%</p>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    {expense.grand_total ? formatCurrency(expense.grand_total) : formatCurrency(expense.amount)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-center gap-1 flex-wrap">
+                      {expense.po_pdf_url && expense.po_pdf_url !== 'null' && expense.po_pdf_url.startsWith('http') && (
+                        <a
+                          href={proxyFileUrl(expense.po_pdf_url, `PO-${expense.po_number || expense.id}.pdf`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                          title="View PO"
+                        >
+                          PO
+                        </a>
+                      )}
+                      {expense.invoice_file_url && expense.invoice_file_url !== 'null' && expense.invoice_file_url.startsWith('http') && (
+                        <a
+                          href={proxyFileUrl(expense.invoice_file_url, `Invoice-${expense.po_number || expense.id}.pdf`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                          title="View Invoice"
+                        >
+                          INV
+                        </a>
+                      )}
+                      {expense.logistics_bill_url && expense.logistics_bill_url !== 'null' && expense.logistics_bill_url.startsWith('http') && (
+                        <a
+                          href={proxyFileUrl(expense.logistics_bill_url, `Logistics-${expense.po_number || expense.id}.pdf`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100"
+                          title="View Logistics Bill"
+                        >
+                          LB
+                        </a>
+                      )}
+                      {expense.delivery_proof_url && expense.delivery_proof_url !== 'null' && expense.delivery_proof_url.startsWith('http') && (
+                        <a
+                          href={proxyFileUrl(expense.delivery_proof_url, `DeliveryProof-${expense.po_number || expense.id}.pdf`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100"
+                          title="View Delivery Proof"
+                        >
+                          DP
+                        </a>
+                      )}
+                      {(!expense.po_pdf_url || !expense.po_pdf_url.startsWith('http')) && 
+                       (!expense.invoice_file_url || !expense.invoice_file_url.startsWith('http')) && 
+                       (!expense.logistics_bill_url || !expense.logistics_bill_url.startsWith('http')) && 
+                       (!expense.delivery_proof_url || !expense.delivery_proof_url.startsWith('http')) && (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      expense.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
+                      expense.payment_status === 'partial' ? 'bg-amber-100 text-amber-700' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {expense.payment_status || 'pending'}
+                    </span>
+                    {expense.payment_status === 'partial' && expense.partial_amount_paid && (
+                      <p className="text-xs text-amber-600 mt-0.5">Paid: {formatCurrency(expense.partial_amount_paid)}</p>
+                    )}
+                    {expense.expected_payment_date && expense.payment_status !== 'paid' && (
+                      <p className="text-xs text-slate-400 mt-0.5">Due: {format(new Date(expense.expected_payment_date), 'dd MMM yy')}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button 
+                        onClick={() => openEditModal(expense)}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600"
+                        title="Edit expense"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(expense.id)}
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-700"
+                        title="Delete expense"
+                        data-testid={`delete-expense-${expense.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredExpenses.length === 0 && (
+                <tr>
+                  <td colSpan="12" className="px-4 py-8 text-center text-slate-500">
+                    No expenses found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add/Edit Expense Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-[#1E3A5F]" />
+              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+            {/* Allocation Type — spent against: B2B, B2C, Project or Office */}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3" data-testid="expense-allocation">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Spent Against</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { key: 'b2b',     label: 'B2B (School)' },
+                  { key: 'b2c',     label: 'B2C (Batches)' },
+                  { key: 'project', label: 'Project' },
+                  { key: 'office',  label: 'Office' },
+                ].map(a => (
+                  <button key={a.key} type="button"
+                    onClick={() => setExpenseForm({ ...expenseForm, allocation_type: a.key, allocation_ref_id: '', allocation_ref_label: '', allocation_program: '' })}
+                    className={`px-2 py-2 rounded-lg text-xs font-semibold border-2 transition ${expenseForm.allocation_type === a.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}`}
+                    data-testid={`expense-alloc-${a.key}`}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+              {expenseForm.allocation_type === 'b2c' && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <select value={expenseForm.allocation_program}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, allocation_program: e.target.value, allocation_ref_id: '', allocation_ref_label: '' })}
+                    className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm bg-white"
+                    data-testid="expense-alloc-program">
+                    <option value="">Select program…</option>
+                    <option value="future_skills">Future Skills</option>
+                    <option value="student_crm">Student CRM</option>
+                    <option value="summer_camp">Summer Camp</option>
+                  </select>
+                  {expenseForm.allocation_program === 'future_skills' && (
+                    <select value={expenseForm.allocation_ref_id}
+                      onChange={(e) => {
+                        const b = fsBatchesForAlloc.find(x => x.id === e.target.value);
+                        setExpenseForm({ ...expenseForm, allocation_ref_id: e.target.value, allocation_ref_label: b ? `${b.name} · ${b.center_name || ''}` : '' });
+                      }}
+                      className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm bg-white"
+                      data-testid="expense-alloc-fs-batch">
+                      <option value="">Select FS batch…</option>
+                      {fsBatchesForAlloc.map(b => (
+                        <option key={b.id} value={b.id}>{b.name} · {b.center_name || 'no centre'}</option>
+                      ))}
+                    </select>
+                  )}
+                  {(expenseForm.allocation_program === 'student_crm' || expenseForm.allocation_program === 'summer_camp') && (
+                    <input type="text" placeholder={expenseForm.allocation_program === 'student_crm' ? 'Cohort / skill batch name' : 'Camp week / cohort name'}
+                      value={expenseForm.allocation_ref_label}
+                      onChange={(e) => setExpenseForm({ ...expenseForm, allocation_ref_label: e.target.value })}
+                      className="w-full h-9 px-2 border border-slate-200 rounded-md text-sm"
+                      data-testid="expense-alloc-cohort-name" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* School Selection - Searchable */}
+            <div ref={schoolDropdownRef} className="relative">
+              <label className="block text-sm font-medium text-slate-700 mb-1">School <span className="text-slate-400 font-normal">(optional)</span></label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={schoolSearch}
+                  onChange={(e) => {
+                    setSchoolSearch(e.target.value);
+                    setShowSchoolDropdown(true);
+                    if (!e.target.value) setExpenseForm(prev => ({ ...prev, school_id: '' }));
+                  }}
+                  onFocus={() => setShowSchoolDropdown(true)}
+                  placeholder="Search and select school..."
+                  className="w-full h-10 pl-9 pr-8 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30"
+                  data-testid="school-search-input"
+                />
+                {schoolSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setSchoolSearch(''); setExpenseForm(prev => ({ ...prev, school_id: '' })); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {showSchoolDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {schools
+                    .filter(s => s.school_name?.toLowerCase().includes(schoolSearch.toLowerCase()))
+                    .slice(0, 20)
+                    .map(school => (
+                      <button
+                        key={school.id}
+                        type="button"
+                        onClick={() => {
+                          setExpenseForm(prev => ({ ...prev, school_id: school.id }));
+                          setSchoolSearch(school.school_name);
+                          setShowSchoolDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors ${expenseForm.school_id === school.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                      >
+                        {school.school_name}
+                      </button>
+                    ))
+                  }
+                  {schools.filter(s => s.school_name?.toLowerCase().includes(schoolSearch.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-2 text-sm text-slate-400">No schools found</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Project Selection — optional. Empty = general expense. */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Project <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <select
+                value={expenseForm.project_id}
+                onChange={(e) => setExpenseForm({ ...expenseForm, project_id: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30"
+                data-testid="expense-project-select"
+              >
+                <option value="">— No project (general expense) —</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {expenseForm.project_id && (
+                <p className="text-[11px] text-slate-500 mt-1">
+                  This expense will appear on the linked project&apos;s Expenses tab.
+                </p>
+              )}
+            </div>
+
+            {/* Category Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expense Category *</label>
+              <select
+                value={expenseForm.category}
+                onChange={(e) => setExpenseForm({...expenseForm, category: e.target.value})}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+              >
+                <option value="">Select Category</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Amount and Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹) *</label>
+                <Input
+                  type="number"
+                  value={expenseForm.amount}
+                  onChange={(e) => setExpenseForm({...expenseForm, amount: e.target.value})}
+                  placeholder="0"
+                  data-testid="expense-amount-input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Expense Date *</label>
+                <Input
+                  type="date"
+                  value={expenseForm.expense_date}
+                  onChange={(e) => setExpenseForm({...expenseForm, expense_date: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Expected Payment Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expected Payment Date</label>
+              <Input
+                type="date"
+                value={expenseForm.expected_payment_date}
+                onChange={(e) => setExpenseForm({...expenseForm, expected_payment_date: e.target.value})}
+                data-testid="expected-payment-date-input"
+              />
+            </div>
+            
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <Textarea
+                value={expenseForm.description}
+                onChange={(e) => setExpenseForm({...expenseForm, description: e.target.value})}
+                placeholder="Full description of the expense"
+                rows={2}
+              />
+            </div>
+
+            {/* Expense Breakup */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expense Breakup</label>
+              <div className="flex gap-2">
+                <select
+                  value={expenseForm.expense_breakup_type}
+                  onChange={(e) => setExpenseForm({...expenseForm, expense_breakup_type: e.target.value})}
+                  className="h-10 px-3 border border-slate-200 rounded-lg text-sm flex-1"
+                  data-testid="breakup-type-select"
+                >
+                  <option value="">Select Type</option>
+                  <option value="per_student">Amount per Student</option>
+                  <option value="lumpsum">Lumpsum</option>
+                  <option value="percentage">Percentage (%)</option>
+                </select>
+                {expenseForm.expense_breakup_type && (
+                  <Input
+                    type="number"
+                    value={expenseForm.expense_breakup_value}
+                    onChange={(e) => setExpenseForm({...expenseForm, expense_breakup_value: e.target.value})}
+                    placeholder={expenseForm.expense_breakup_type === 'percentage' ? '0%' : '₹0'}
+                    className="w-28"
+                    data-testid="breakup-value-input"
+                  />
+                )}
+              </div>
+            </div>
+            
+            {/* Vendor and Invoice */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name</label>
+                <Input
+                  value={expenseForm.vendor_name}
+                  onChange={(e) => setExpenseForm({...expenseForm, vendor_name: e.target.value})}
+                  placeholder="Vendor/Supplier name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Invoice Number</label>
+                <Input
+                  value={expenseForm.invoice_number}
+                  onChange={(e) => setExpenseForm({...expenseForm, invoice_number: e.target.value})}
+                  placeholder="INV-001"
+                />
+              </div>
+            </div>
+            
+            {/* Payment Status and Mode */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Payment Status</label>
+                <select
+                  value={expenseForm.payment_status}
+                  onChange={(e) => setExpenseForm({...expenseForm, payment_status: e.target.value})}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="payment-status-select"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="partial">Partial</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
+                <select
+                  value={expenseForm.payment_mode}
+                  onChange={(e) => setExpenseForm({...expenseForm, payment_mode: e.target.value})}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select Mode</option>
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Partial Payment Details - shown only when status is 'partial' */}
+            {expenseForm.payment_status === 'partial' && (
+              <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">Partial Amount Paid (₹)</label>
+                  <Input
+                    type="number"
+                    value={expenseForm.partial_amount_paid}
+                    onChange={(e) => setExpenseForm({...expenseForm, partial_amount_paid: e.target.value})}
+                    placeholder="0"
+                    data-testid="partial-amount-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">Date Paid</label>
+                  <Input
+                    type="date"
+                    value={expenseForm.partial_payment_date}
+                    onChange={(e) => setExpenseForm({...expenseForm, partial_payment_date: e.target.value})}
+                    data-testid="partial-payment-date-input"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Invoice Upload */}
+            {(
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Upload Invoice Document</label>
+                <div className="space-y-2">
+                  {expenseForm.invoice_file_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <Paperclip className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <a href={expenseForm.invoice_file_url} target="_blank" rel="noopener noreferrer"
+                         className="text-sm text-green-700 hover:underline truncate flex-1">
+                        View Invoice
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setExpenseForm(prev => ({ ...prev, invoice_file_url: '' }))}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                      <Upload className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm text-slate-500">
+                        {invoiceUploading ? 'Uploading...' : 'Click to upload (PDF, image, max 10MB)'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                        onChange={handleInvoiceUpload}
+                        disabled={invoiceUploading}
+                        data-testid="invoice-file-input"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
+              <Textarea
+                value={expenseForm.notes}
+                onChange={(e) => setExpenseForm({...expenseForm, notes: e.target.value})}
+                placeholder="Any additional notes..."
+                rows={2}
+              />
+            </div>
+          </div>
+          
+          <div className="flex gap-3 pt-4 border-t mt-4">
+            <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} className="flex-1 bg-[#1E3A5F]">
+              {editingExpense ? 'Update Expense' : 'Add Expense'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      </>) /* end expenses tab */}
+      </div>
+    </AdminLayout>
+  );
+};
+
+// ─── P&L Sheet Component ──────────────────────────────────────────────────────
+const fmt  = (v) => v == null ? '—' : `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const pct  = (v) => (v == null || v === 0) ? '' : `${v}%`;
+
+const statusBadge = (s) => {
+  const map = { 'Paid': 'bg-green-100 text-green-700', 'Partially Paid': 'bg-yellow-100 text-yellow-700', 'Pending': 'bg-red-100 text-red-600' };
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${map[s] || 'bg-slate-100 text-slate-600'}`}>{s}</span>;
+};
+
+const CostCell = ({ amount, p }) => (
+  <td className="px-3 py-2.5 text-right border-l border-slate-100">
+    <div className="text-slate-700 font-medium">{fmt(amount)}</div>
+    {amount > 0 && <div className="text-[10px] text-slate-400">{pct(p)}</div>}
+  </td>
+);
+
+const PnLSheet = ({ data, loading, getAuthHeaders, onRefresh }) => {
+  const [search, setSearch]           = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [showSyncModal, setShowSyncModal] = useState(false);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-24">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1E3A5F]" />
+    </div>
+  );
+  if (!data) return (
+    <div className="text-center py-24 text-slate-400">Click "Refresh" to load the P&L sheet.</div>
+  );
+
+  const { rows, totals, cost_keys, checkin_sync } = data;
+  const STATUS_OPTIONS = ['All', 'Paid', 'Partially Paid', 'Pending'];
+  const filtered = rows.filter(r => {
+    const ok1 = !search || r.school_name.toLowerCase().includes(search.toLowerCase());
+    const ok2 = statusFilter === 'All' || r.payment_status === statusFilter;
+    return ok1 && ok2;
+  });
+
+  const COST_ICONS = {
+    kit_cost:               <Package className="w-3 h-3" />,
+    logistics_cost:         <Truck className="w-3 h-3" />,
+    books_cost:             <BookOpen className="w-3 h-3" />,
+    printing_certification: <Award className="w-3 h-3" />,
+    teacher_cost:           <Users className="w-3 h-3" />,
+    school_share:           <Briefcase className="w-3 h-3" />,
+    gp_share:               <Handshake className="w-3 h-3" />,
+    payment_gateway:        <CreditCard className="w-3 h-3" />,
+  };
+
+  const rowBg = (i) => i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Net Revenue',   val: totals.net_revenue,  sub: null,               color: 'from-[#1E3A5F] to-[#2a5a8f]' },
+          { label: 'Total Received',val: totals.received,     sub: null,               color: 'from-green-700 to-green-500' },
+          { label: 'Total Costs',   val: totals.total_costs,  sub: `${totals.misc_pct ?? 0}% misc`, color: 'from-orange-600 to-orange-400' },
+          { label: 'Gross Profit',  val: totals.gross_profit, sub: pct(totals.gp_pct), color: totals.gross_profit >= 0 ? 'from-emerald-700 to-emerald-500' : 'from-red-700 to-red-500' },
+        ].map(c => (
+          <div key={c.label} className={`bg-gradient-to-br ${c.color} rounded-xl p-4 text-white`}>
+            <p className="text-white/70 text-xs font-medium mb-1">{c.label}</p>
+            <p className="text-xl font-bold">{fmt(c.val)}</p>
+            {c.sub && <p className="text-white/60 text-xs mt-0.5">{c.sub} of Net Rev</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Search + Status Filter */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search school..."
+            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20"
+            data-testid="pnl-search"
+          />
+        </div>
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+          {STATUS_OPTIONS.map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${statusFilter === s ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        {checkin_sync && (
+            <button
+              onClick={() => setShowSyncModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap"
+              data-testid="pnl-checkin-sync-btn"
+              title="CheckIn Educator Earnings synced into Teacher Cost"
+            >
+              <Users className="w-3.5 h-3.5" />
+              CheckIn: {fmt(checkin_sync.total_teacher_cost)} · {checkin_sync.matched_schools} schools
+              {checkin_sync.unmatched?.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">
+                  {checkin_sync.unmatched.length} unmatched
+                </span>
+              )}
+            </button>
+        )}
+            <button
+              onClick={async () => {
+                if (!window.confirm('Materialize every educator\'s monthly salary from CheckIn into the Expenses ledger?\n\n• One line item per (educator × school × month)\n• Dated the 7th of the following month\n• Backfill from April 2026\n• Safe to re-run — existing rows are updated, not duplicated')) return;
+                try {
+                  const r = await axios.post(`${API}/school-expenses/import-educator-salaries?since_month=2026-04`, {}, { headers: getAuthHeaders() });
+                  toast.success(`Materialized ${r.data.inserted} new + updated ${r.data.updated} (₹${(r.data.total_amount).toLocaleString('en-IN')}) — expense_date set to 7th of each following month.`);
+                  onRefresh();
+                } catch (e) {
+                  toast.error(e?.response?.data?.detail || 'Materialize failed');
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 whitespace-nowrap"
+              data-testid="pnl-materialize-salaries-btn"
+              title="Create school_expenses line items — one per (educator × school × month), dated 7th of next month. Cron runs monthly on the 7th automatically."
+            >
+              <Users className="w-3.5 h-3.5" />
+              Sync Expenses (Educator Salaries)
+            </button>
+      </div>
+
+      {showSyncModal && checkin_sync && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowSyncModal(false)}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <div>
+                <div className="text-base font-bold text-slate-900">CheckIn Sync — Educator Earnings</div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {fmt(checkin_sync.total_teacher_cost)} across {checkin_sync.matched_schools} matched schools
+                  {' · '}{checkin_sync.educators} educators
+                </div>
+              </div>
+              <button onClick={() => setShowSyncModal(false)} className="p-1.5 rounded hover:bg-slate-100" data-testid="close-sync-modal">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto max-h-[65vh]">
+              {checkin_sync.unmatched?.length > 0 ? (
+                <>
+                  <div className="text-xs font-semibold text-amber-700 mb-2">
+                    Unmatched Earnings ({checkin_sync.unmatched.length}) — not counted in P&L
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Educator</th>
+                          <th className="px-3 py-2 text-left">CheckIn School</th>
+                          <th className="px-3 py-2 text-right">Amount</th>
+                          <th className="px-3 py-2 text-left">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {checkin_sync.unmatched.map((u, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-2 text-slate-700">{u.educator_name || <span className="text-slate-400 italic">unknown</span>}</td>
+                            <td className="px-3 py-2 text-slate-700">{u.school_name || <span className="text-slate-400 italic">no timetable</span>}</td>
+                            <td className="px-3 py-2 text-right font-medium">{fmt(u.amount)}</td>
+                            <td className="px-3 py-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                u.reason === 'no_timetable' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                              }`}>
+                                {u.reason === 'no_timetable' ? 'No timetable' : 'School not in CRM'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-3">
+                    Tip: Fix "No timetable" earnings by linking the educator's timetable in the CheckIn Panel. Fix "School not in CRM" by onboarding the school in the School Inquiries page (make sure the name matches exactly).
+                  </p>
+                </>
+              ) : (
+                <div className="text-center text-slate-400 py-8">All CheckIn earnings matched to schools ✓</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border p-12 text-center text-slate-400">
+          {rows.length === 0 ? 'No school payment data found.' : 'No schools match your search or filter.'}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={{ minWidth: 1700 }}>
+              <thead>
+                <tr className="bg-[#1E3A5F] text-white text-xs">
+                  <th rowSpan={2} className="px-4 py-3 text-left sticky left-0 bg-[#1E3A5F] z-20 min-w-[190px] border-r border-white/20">School</th>
+                  <th colSpan={5} className="px-2 py-2 text-center border-l border-white/20 bg-[#1e4a8f]">Revenue</th>
+                  <th colSpan={3} className="px-2 py-2 text-center border-l border-white/20 bg-[#0f5a3f]">Collections</th>
+                  <th colSpan={cost_keys.length + 1} className="px-2 py-2 text-center border-l border-white/20 bg-[#7c3d12]">Costs (% of Net Rev)</th>
+                  <th colSpan={2} className="px-2 py-2 text-center border-l border-white/20 bg-[#1a5e3a]">Profit</th>
+                </tr>
+                <tr className="bg-slate-100 text-slate-600 text-xs border-b">
+                  <th className="px-3 py-2 text-right border-l whitespace-nowrap">Students</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">Price/Student</th>
+                  <th className="px-3 py-2 text-right font-semibold text-blue-900 whitespace-nowrap">Total Revenue</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">GST</th>
+                  <th className="px-3 py-2 text-right font-semibold text-[#1E3A5F] whitespace-nowrap">Net Revenue</th>
+                  <th className="px-3 py-2 text-center border-l whitespace-nowrap">Status</th>
+                  <th className="px-3 py-2 text-right text-green-700 whitespace-nowrap">Received</th>
+                  <th className="px-3 py-2 text-right text-red-600 whitespace-nowrap">Receivable</th>
+                  {cost_keys.map(([k, label]) => (
+                    <th key={k} className="px-3 py-2 text-right border-l text-orange-700 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">{COST_ICONS[k]}{label}</div>
+                    </th>
+                  ))}
+                  <th className="px-3 py-2 text-right border-l text-slate-500 whitespace-nowrap">Misc</th>
+                  <th className="px-3 py-2 text-right border-l font-semibold text-emerald-700 whitespace-nowrap">Gross Profit</th>
+                  <th className="px-3 py-2 text-right text-emerald-700 whitespace-nowrap">% Rev</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row, i) => (
+                  <tr key={row.school_id} className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors ${rowBg(i)}`}>
+                    {/* Sticky school name — explicit solid bg prevents transparency overlap */}
+                    <td className={`px-4 py-2.5 font-medium text-slate-800 sticky left-0 z-10 border-r border-slate-200 ${rowBg(i)}`}>
+                      {row.school_name}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-slate-600 border-l">
+                      {row.student_count || '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">{row.price_per_student ? fmt(row.price_per_student) : '—'}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-blue-800">{fmt(row.total_revenue)}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-500">{row.gst > 0 ? fmt(row.gst) : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-[#1E3A5F]">{fmt(row.net_revenue)}</td>
+                    <td className="px-3 py-2.5 text-center border-l">{statusBadge(row.payment_status)}</td>
+                    <td className="px-3 py-2.5 text-right text-green-700 font-medium">
+                      {fmt(row.received)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      {row.receivable > 0 ? <span className="text-red-600">{fmt(row.receivable)}</span> : <span className="text-green-600 font-medium text-xs">✓ Cleared</span>}
+                    </td>
+                    {cost_keys.map(([k]) => {
+                      const c = row.costs?.[k] || {};
+                      return <CostCell key={k} amount={c.amount || 0} p={c.pct || 0} />;
+                    })}
+                    <CostCell amount={row.misc_cost} p={row.misc_pct} />
+                    <td className={`px-3 py-2.5 text-right font-bold border-l ${row.gross_profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {fmt(row.gross_profit)}
+                    </td>
+                    <td className={`px-3 py-2.5 text-right text-xs font-semibold ${row.gp_pct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {pct(row.gp_pct)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-[#1E3A5F] text-white font-bold text-sm">
+                  <td className="px-4 py-3 sticky left-0 bg-[#1E3A5F] z-10 border-r border-white/20">TOTAL ({filtered.length})</td>
+                  <td className="px-3 py-3 text-right border-l">{totals.student_count}</td>
+                  <td className="px-3 py-3 text-right text-white/50">—</td>
+                  <td className="px-3 py-3 text-right">{fmt(totals.total_revenue)}</td>
+                  <td className="px-3 py-3 text-right">{fmt(totals.gst)}</td>
+                  <td className="px-3 py-3 text-right">{fmt(totals.net_revenue)}</td>
+                  <td className="px-3 py-3 border-l"></td>
+                  <td className="px-3 py-3 text-right text-green-300">{fmt(totals.received)}</td>
+                  <td className="px-3 py-3 text-right text-red-300">{fmt(totals.receivable)}</td>
+                  {cost_keys.map(([k]) => (
+                    <td key={k} className="px-3 py-3 text-right border-l">
+                      <div>{fmt(totals[k])}</div>
+                      <div className="text-white/55 text-[10px]">{pct(totals[`${k}_pct`])}</div>
+                    </td>
+                  ))}
+                  <td className="px-3 py-3 text-right border-l">
+                    <div>{fmt(totals.misc_cost)}</div>
+                    <div className="text-white/55 text-[10px]">{pct(totals.misc_pct)}</div>
+                  </td>
+                  <td className="px-3 py-3 text-right border-l text-green-300">{fmt(totals.gross_profit)}</td>
+                  <td className="px-3 py-3 text-right text-green-300">{pct(totals.gp_pct)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div className="px-4 py-2.5 bg-slate-50 border-t text-xs text-slate-400">
+            Total Revenue = Net Rev + GST &nbsp;|&nbsp; Price/Student = Net Revenue ÷ Students &nbsp;|&nbsp; % in costs = % of school's Net Revenue &nbsp;|&nbsp; Misc = all unlisted expense categories
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminExpenses;

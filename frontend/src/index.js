@@ -1,0 +1,61 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
+import axios from "axios";
+import "./index.css";
+import App from "@/App";
+
+import { setupAxiosCache, clearCache } from "./utils/apiCache";
+
+// Global axios configuration
+axios.defaults.timeout = 30000; // 30 second timeout
+
+// Setup in-memory query caching & auto-invalidation on global axios instance
+setupAxiosCache(axios);
+
+// Global axios interceptor for handling auth errors
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Log errors for debugging
+    if (error.response) {
+      console.error(`API Error: ${error.response.status} - ${error.config?.url}`);
+    } else if (error.request) {
+      console.error('Network Error:', error.message);
+    }
+
+    if (error.response?.status === 401) {
+      const errorDetail = (error.response?.data?.detail || '').toLowerCase();
+      const currentPath = window.location.pathname;
+      const alreadyOnLogin = currentPath.includes('/login') || currentPath.includes('/admin/login');
+
+      // Redirect to login when token is explicitly expired or invalid
+      if (!alreadyOnLogin && (errorDetail.includes('expired') || errorDetail.includes('invalid') || errorDetail.includes('not authenticated'))) {
+        localStorage.removeItem('oll_token');
+        localStorage.removeItem('oll_user');
+        clearCache();
+        const isAdmin = currentPath.startsWith('/admin');
+        window.location.href = isAdmin ? '/admin/login?reason=session_expired' : '/login?reason=session_expired';
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// react-snap pre-renders each route at build-time → on first browser load
+// the DOM already exists, so we hydrate; on subsequent CSR loads we createRoot.
+const rootElement = document.getElementById("root");
+const tree = (
+  <React.StrictMode>
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  </React.StrictMode>
+);
+
+if (rootElement.hasChildNodes()) {
+  ReactDOM.hydrateRoot(rootElement, tree);
+} else {
+  ReactDOM.createRoot(rootElement).render(tree);
+}
