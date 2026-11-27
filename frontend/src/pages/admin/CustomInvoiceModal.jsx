@@ -90,7 +90,9 @@ export default function CustomInvoiceModal({ open, onClose }) {
       const res = await axios.get(`${API}/admin/custom-invoices?limit=50`, { headers: getAuthHeaders() });
       setHistory(res.data?.rows || []);
     } catch (err) {
-      console.error('Failed to load custom invoices:', err);
+      if (err?.response?.status !== 403) {
+        console.error('Failed to load custom invoices:', err);
+      }
     } finally {
       setLoadingHistory(false);
     }
@@ -109,7 +111,9 @@ export default function CustomInvoiceModal({ open, onClose }) {
         });
       }
     } catch (err) {
-      console.warn('Failed to load next invoice number:', err);
+      if (err?.response?.status !== 403) {
+        console.warn('Failed to load next invoice number:', err);
+      }
     }
   };
 

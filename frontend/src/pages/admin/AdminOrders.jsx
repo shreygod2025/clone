@@ -1471,16 +1471,18 @@ const AdminOrders = () => {
           </select>
 
           {/* Custom Invoice — admin can author a standalone invoice for non-onboarded customers */}
-          <button
-            type="button"
-            onClick={() => setShowCustomInvoiceModal(true)}
-            data-testid="open-custom-invoice-btn"
-            className="h-10 px-3 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors font-medium text-sm"
-            title="Create a custom invoice for a one-off customer"
-          >
-            <FilePlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Custom Invoice</span>
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowCustomInvoiceModal(true)}
+              data-testid="open-custom-invoice-btn"
+              className="h-10 px-3 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors font-medium text-sm"
+              title="Create a custom invoice for a one-off customer"
+            >
+              <FilePlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Custom Invoice</span>
+            </button>
+          )}
         </div>
 
         {/* Sort + date-range filter — Student Payments only (works across all sub-tabs) */}
