@@ -4238,6 +4238,8 @@ from routes.franchise import router as franchise_router
 api_router.include_router(franchise_router)
 from routes.franchise_crm import router as franchise_crm_router
 api_router.include_router(franchise_crm_router)
+from routes.b2b_crm import router as b2b_crm_router
+api_router.include_router(b2b_crm_router)
 from routes.techfest_submission_portal import router as techfest_portal_router
 api_router.include_router(techfest_portal_router)
 from routes.techfest_bulk_email import router as techfest_bulk_email_router

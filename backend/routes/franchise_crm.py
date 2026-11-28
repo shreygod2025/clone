@@ -6,13 +6,17 @@ schedule calls, demos, and follow-ups, and view performance track sheet reports.
 """
 from __future__ import annotations
 
+import io
 import logging
+import re
 import uuid
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, EmailStr
+from openpyxl import Workbook, load_workbook
 
 from .shared import db, get_current_user
 
@@ -21,6 +25,19 @@ router = APIRouter(prefix="/franchise-crm", tags=["Franchise CRM"])
 
 # GP Manager Role ID in database: 8741cb57-bbae-4cb1-9241-c90a9b54cd6d
 GP_MANAGER_ROLE_ID = "8741cb57-bbae-4cb1-9241-c90a9b54cd6d"
+
+FRANCHISE_XLSX_COLUMNS: List[Tuple[str, List[str]]] = [
+    ("name",              ["name", "full_name", "partner_name", "contact_person", "lead_name"]),
+    ("phone",             ["phone", "mobile", "contact_no", "contact_number", "phone_number", "cell"]),
+    ("email",             ["email", "mail", "e_mail", "email_id", "email_address"]),
+    ("city",              ["city", "location", "town", "district"]),
+    ("state",             ["state", "province", "region"]),
+    ("occupation",        ["occupation", "profession", "business", "current_role", "background"]),
+    ("has_space",         ["has_space", "space", "commercial_space", "property", "space_available"]),
+    ("investment_budget", ["investment_budget", "budget", "investment", "capital"]),
+    ("source",            ["source", "lead_source", "campaign"]),
+    ("notes",             ["notes", "remarks", "comment", "details", "reason"]),
+]
 
 
 # ── Role & Permission Helpers ──────────────────────────────────────────
@@ -92,42 +109,105 @@ async def _log_activity(
     await db.franchise_crm_activities.insert_one(activity_doc)
 
 
-async def _sync_growth_partners_franchise_leads() -> None:
-    """Sync franchise landing & brochure inquiries into franchise_leads collection."""
-    try:
-        inquiries = await db.growth_partners.find({
-            "$or": [
-                {"interest_type": "centre_franchise"},
-                {"source": {"$in": ["franchise_landing", "franchise_brochure"]}},
-            ]
-        }).to_list(100)
+def _norm_phone(p: str) -> str:
+    return re.sub(r"\D", "", str(p or ""))[-10:]
 
-        for inq in inquiries:
-            q = {"$or": [{"id": inq.get("id")}, {"phone": inq.get("phone")}]}
+
+async def _sync_to_telecalling(lead_doc: dict) -> None:
+    """Sync a franchise lead to telecalling_contacts."""
+    try:
+        raw_phone = str(lead_doc.get("phone") or "").strip()
+        norm = _norm_phone(raw_phone)
+        if not norm or len(norm) < 7:
+            return
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        update_fields: Dict[str, Any] = {
+            "name":             lead_doc.get("name") or "",
+            "phone":            raw_phone,
+            "email":            lead_doc.get("email") or "",
+            "city":             lead_doc.get("city") or "",
+            "role":             lead_doc.get("occupation") or "Franchise Lead",
+            "assigned_to":      lead_doc.get("assigned_to") or None,
+            "assigned_to_name": lead_doc.get("assigned_to_name") or None,
+            "call_type":         "franchise",
+            "notes":            lead_doc.get("notes") or lead_doc.get("details") or "",
+            "updated_at":        now_iso,
+        }
+
+        if lead_doc.get("scheduled_demo_at"):
+            update_fields["meeting_at"] = lead_doc.get("scheduled_demo_at")
+        if lead_doc.get("next_followup_at"):
+            update_fields["followup_at"] = lead_doc.get("next_followup_at")
+        if lead_doc.get("call_status") == "completed":
+            update_fields["call_picked"] = "yes"
+        elif lead_doc.get("call_status") == "no_answer":
+            update_fields["call_picked"] = "no"
+
+        existing = await db.telecalling_contacts.find_one({
+            "$or": [
+                {"phone": {"$regex": norm + "$"}},
+                {"id": lead_doc.get("id")},
+            ]
+        })
+
+        if existing:
+            await db.telecalling_contacts.update_one(
+                {"_id": existing["_id"]},
+                {"$set": update_fields}
+            )
+        else:
+            new_contact = {
+                "id":                  lead_doc.get("id") or str(uuid.uuid4()),
+                "source":              lead_doc.get("source") or "Franchise CRM",
+                "status":              lead_doc.get("status") or "new",
+                "call_picked":          None,
+                "lead_interested":      None,
+                "products_interested":  ["Franchise Center", "Growth Partner"],
+                "batch_name":          "Franchise Leads",
+                "created_at":          lead_doc.get("created_at") or now_iso,
+                **update_fields,
+            }
+            await db.telecalling_contacts.insert_one(new_contact)
+    except Exception as exc:
+        logger.warning("Error syncing franchise lead to telecalling: %s", exc)
+
+
+async def _sync_growth_partners_franchise_leads() -> None:
+    """Sync partners & telecalling franchise contacts into franchise_leads collection."""
+    try:
+        # Check partners collection
+        partner_items = await db.partners.find({}).to_list(100)
+        for p in partner_items:
+            raw_phone = str(p.get("phone") or "")
+            norm = _norm_phone(raw_phone)
+            if not norm or len(norm) < 7:
+                continue
+            q = {"$or": [{"id": p.get("id")}, {"phone": {"$regex": norm + "$" if norm else ""}}]}
             existing = await db.franchise_leads.find_one(q)
             if not existing:
-                now_iso = inq.get("created_at") or datetime.now(timezone.utc).isoformat()
+                now_iso = p.get("created_at") or datetime.now(timezone.utc).isoformat()
                 lead_doc = {
-                    "id": inq.get("id") or str(uuid.uuid4()),
-                    "name": inq.get("name") or "Franchise Lead",
-                    "phone": inq.get("phone") or "",
-                    "email": inq.get("email") or "",
-                    "city": inq.get("city") or "",
-                    "state": inq.get("state") or "",
-                    "occupation": inq.get("occupation") or "",
-                    "has_space": inq.get("has_space") or "looking",
-                    "investment_budget": inq.get("investment_budget") or "₹2.5 Lakhs",
-                    "source": inq.get("source") or "franchise_landing",
-                    "details": inq.get("details") or inq.get("reason") or "",
-                    "notes": inq.get("notes") or "",
-                    "status": inq.get("status") or "new",
-                    "assigned_to": inq.get("assigned_to") or "",
-                    "assigned_to_name": inq.get("assigned_to_name") or "",
-                    "assigned_to_email": inq.get("assigned_to_email") or "",
-                    "assigned_to_role": inq.get("assigned_to_role") or "",
+                    "id": p.get("id") or str(uuid.uuid4()),
+                    "name": p.get("name") or "Franchise Lead",
+                    "phone": raw_phone,
+                    "email": p.get("email") or "",
+                    "city": p.get("city") or "",
+                    "state": p.get("state") or "",
+                    "occupation": p.get("occupation") or p.get("category") or "",
+                    "has_space": p.get("has_space") or "looking",
+                    "investment_budget": p.get("investment_budget") or "₹2.5 Lakhs",
+                    "source": p.get("source") or "Growth Partner Franchise",
+                    "details": p.get("details") or p.get("notes") or "",
+                    "notes": p.get("notes") or "",
+                    "status": "converted" if p.get("status") == "approved" else "new",
+                    "assigned_to": p.get("assigned_to") or "",
+                    "assigned_to_name": p.get("assigned_to_name") or "",
+                    "assigned_to_email": "",
+                    "assigned_to_role": "",
                     "assigned_by": "",
                     "assigned_by_name": "",
-                    "assigned_at": inq.get("created_at") or now_iso,
+                    "assigned_at": p.get("created_at") or now_iso,
                     "call_status": "none",
                     "scheduled_call_at": None,
                     "call_notes": "",
@@ -144,13 +224,66 @@ async def _sync_growth_partners_franchise_leads() -> None:
                     "next_followup_at": None,
                     "followup_notes": "",
                     "followups_count": 0,
-                    "comments": inq.get("comments") or [],
+                    "comments": [],
                     "created_at": now_iso,
-                    "updated_at": inq.get("updated_at") or now_iso,
+                    "updated_at": now_iso,
+                }
+                await db.franchise_leads.insert_one(lead_doc)
+
+        # Check telecalling contacts with call_type='franchise'
+        tc_franchise = await db.telecalling_contacts.find({"call_type": "franchise"}).to_list(100)
+        for tc in tc_franchise:
+            raw_phone = str(tc.get("phone") or "")
+            norm = _norm_phone(raw_phone)
+            if not norm or len(norm) < 7:
+                continue
+            existing = await db.franchise_leads.find_one({"$or": [{"id": tc.get("id")}, {"phone": {"$regex": norm + "$"}}]})
+            if not existing:
+                now_iso = tc.get("created_at") or datetime.now(timezone.utc).isoformat()
+                lead_doc = {
+                    "id": tc.get("id") or str(uuid.uuid4()),
+                    "name": tc.get("name") or "Franchise Lead",
+                    "phone": raw_phone,
+                    "email": tc.get("email") or "",
+                    "city": tc.get("city") or "",
+                    "state": "",
+                    "occupation": tc.get("role") or "",
+                    "has_space": "looking",
+                    "investment_budget": "₹2.5 Lakhs",
+                    "source": tc.get("source") or "Franchise Leads",
+                    "details": tc.get("notes") or "",
+                    "notes": tc.get("notes") or "",
+                    "status": tc.get("status") or "new",
+                    "assigned_to": tc.get("assigned_to") or "",
+                    "assigned_to_name": tc.get("assigned_to_name") or "",
+                    "assigned_to_email": "",
+                    "assigned_to_role": "",
+                    "assigned_by": "",
+                    "assigned_by_name": "",
+                    "assigned_at": tc.get("created_at") or now_iso,
+                    "call_status": "completed" if tc.get("call_picked") == "yes" else "none",
+                    "scheduled_call_at": None,
+                    "call_notes": "",
+                    "calls_count": 1 if tc.get("call_picked") else 0,
+                    "last_call_at": None,
+                    "demo_status": "scheduled" if tc.get("meeting_at") else "none",
+                    "scheduled_demo_at": tc.get("meeting_at"),
+                    "demo_type": "online_meet",
+                    "demo_link": "",
+                    "demo_notes": "",
+                    "demos_count": 1 if tc.get("meeting_at") else 0,
+                    "last_demo_at": None,
+                    "followup_status": "scheduled" if tc.get("followup_at") else "none",
+                    "next_followup_at": tc.get("followup_at"),
+                    "followup_notes": "",
+                    "followups_count": 1 if tc.get("followup_at") else 0,
+                    "comments": [],
+                    "created_at": now_iso,
+                    "updated_at": now_iso,
                 }
                 await db.franchise_leads.insert_one(lead_doc)
     except Exception as exc:
-        logger.warning("Error syncing growth_partners to franchise_leads: %s", exc)
+        logger.warning("Error syncing growth_partners/telecalling to franchise_leads: %s", exc)
 
 
 # ── Pydantic Request Models ──────────────────────────────────────────
@@ -257,6 +390,187 @@ class AddCommentRequest(BaseModel):
 class UpdateStatusRequest(BaseModel):
     status: str
     notes: Optional[str] = ""
+
+
+# ── Sample Excel Template ───────────────────────────────────────────────
+
+@router.get("/sample-template.xlsx")
+async def download_franchise_sample_template(user: dict = Depends(get_current_user)):
+    _require_franchise_access(user)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Franchise Leads"
+    headers = [k for k, _ in FRANCHISE_XLSX_COLUMNS]
+    ws.append(headers)
+    ws.append([
+        "Anand Verma", "9876543210", "anand.verma@gmail.com", "Pune", "Maharashtra",
+        "EdTech Entrepreneur", "looking", "₹2.5 Lakhs", "Direct Referral", "Interested in STEM Learning Center"
+    ])
+    ws.append([
+        "Sunita Patel", "9123456780", "sunita.p@outlook.com", "Ahmedabad", "Gujarat",
+        "School Director", "yes", "₹5 Lakhs", "Franchise Expo", "Has 1200 sq ft commercial space ready"
+    ])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="franchise-leads-template.xlsx"'},
+    )
+
+
+# ── Bulk Import Excel ───────────────────────────────────────────────────
+
+@router.post("/import-excel")
+async def import_franchise_excel(
+    file:          UploadFile = File(...),
+    assign_mode:   str = Form("unassigned"),   # 'unassigned' | 'single' | 'auto'
+    assigned_to:   Optional[str] = Form(None),
+    auto_pool:     str = Form(""),             # comma-separated user_ids
+    batch_name:    Optional[str] = Form(None),
+    user: dict = Depends(get_current_user),
+):
+    _require_franchise_access(user)
+    contents = await file.read()
+    try:
+        wb = load_workbook(io.BytesIO(contents), read_only=True, data_only=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read spreadsheet: {e}")
+
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        raise HTTPException(status_code=400, detail="Spreadsheet is empty")
+
+    headers_raw = [str(h or "").strip() for h in rows[0]]
+    headers = [h.lower() for h in headers_raw]
+
+    def col_idx(canonical_key: str) -> Optional[int]:
+        aliases = dict(FRANCHISE_XLSX_COLUMNS).get(canonical_key, [])
+        for al in aliases:
+            if al in headers:
+                return headers.index(al)
+        return None
+
+    idx = {k: col_idx(k) for k, _ in FRANCHISE_XLSX_COLUMNS}
+    if idx["phone"] is None:
+        raise HTTPException(status_code=400, detail="Missing required 'phone' column in spreadsheet")
+
+    # Build assignee pool
+    pool_ids = [p.strip() for p in (auto_pool or "").split(",") if p.strip()]
+    pool_users = []
+    if assign_mode == "auto" and pool_ids:
+        pool_users = await db.team_users.find(
+            {"id": {"$in": pool_ids}}, {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1}
+        ).to_list(200)
+
+    single_user = None
+    if assign_mode == "single" and assigned_to:
+        single_user = await db.team_users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1})
+
+    default_batch_name = (batch_name or "").strip() or (file.filename or "").rsplit(".", 1)[0].strip() or "Franchise Excel Import"
+
+    # Duplicate check on phone
+    existing_phones = set()
+    raw_existing = await db.franchise_leads.distinct("phone")
+    for p in raw_existing:
+        norm = _norm_phone(p)
+        if norm:
+            existing_phones.add(norm)
+
+    seen_now: set[str] = set()
+    inserted = 0
+    duplicates = 0
+    skipped = 0
+    now_iso = datetime.now(timezone.utc).isoformat()
+    leads_to_insert = []
+
+    for r in rows[1:]:
+        if not r:
+            skipped += 1
+            continue
+        raw_phone = str(r[idx["phone"]] or "").strip()
+        norm = _norm_phone(raw_phone)
+        if not norm or len(norm) < 7:
+            skipped += 1
+            continue
+        if norm in existing_phones or norm in seen_now:
+            duplicates += 1
+            continue
+        seen_now.add(norm)
+
+        def _val(k: str) -> str:
+            i = idx.get(k)
+            if i is None or i >= len(r):
+                return ""
+            return str(r[i] or "").strip()
+
+        assignee = None
+        if assign_mode == "single" and single_user:
+            assignee = single_user
+        elif assign_mode == "auto" and pool_users:
+            assignee = pool_users[inserted % len(pool_users)]
+
+        contact_name = _val("name") or f"Partner {norm[-4:]}"
+        lead_id = str(uuid.uuid4())
+        doc = {
+            "id":                     lead_id,
+            "name":                   contact_name,
+            "phone":                  raw_phone,
+            "email":                  _val("email"),
+            "city":                   _val("city") or "India",
+            "state":                  _val("state"),
+            "occupation":             _val("occupation"),
+            "has_space":              _val("has_space") or "looking",
+            "investment_budget":      _val("investment_budget") or "₹2.5 Lakhs",
+            "source":                 _val("source") or default_batch_name,
+            "details":                _val("notes"),
+            "notes":                  _val("notes"),
+            "status":                 "new",
+            "assigned_to":            assignee["id"] if assignee else "",
+            "assigned_to_name":       assignee.get("name") or assignee.get("email") if assignee else "",
+            "assigned_to_email":      assignee.get("email") or "" if assignee else "",
+            "assigned_to_role":       assignee.get("role") or "" if assignee else "",
+            "assigned_by":            str(user.get("id") or ""),
+            "assigned_by_name":       user.get("name") or user.get("email") or "Admin",
+            "assigned_at":            now_iso if assignee else None,
+            "call_status":            "none",
+            "scheduled_call_at":      None,
+            "call_notes":             "",
+            "calls_count":            0,
+            "last_call_at":           None,
+            "demo_status":            "none",
+            "scheduled_demo_at":      None,
+            "demo_type":              "online_meet",
+            "demo_link":              "",
+            "demo_notes":             "",
+            "demos_count":            0,
+            "last_demo_at":           None,
+            "followup_status":        "none",
+            "next_followup_at":       None,
+            "followup_notes":         "",
+            "followups_count":        0,
+            "comments":               [],
+            "batch_name":             default_batch_name,
+            "created_at":             now_iso,
+            "updated_at":             now_iso,
+        }
+        leads_to_insert.append(doc)
+        inserted += 1
+
+    if leads_to_insert:
+        await db.franchise_leads.insert_many(leads_to_insert)
+        for ld in leads_to_insert:
+            await _sync_to_telecalling(ld)
+
+    return {
+        "ok":         True,
+        "inserted":   inserted,
+        "duplicates": duplicates,
+        "skipped":    skipped,
+        "batch_name": default_batch_name,
+    }
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
@@ -421,6 +735,7 @@ async def create_franchise_lead(
     }
 
     await db.franchise_leads.insert_one(doc)
+    await _sync_to_telecalling(doc)
     await _log_activity(
         lead_id=lead_id,
         lead_name=doc["name"],
@@ -540,6 +855,9 @@ async def update_franchise_lead(
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     await db.franchise_leads.update_one({"id": lead_id}, {"$set": updates})
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
     await _log_activity(
         lead_id=lead_id,
         lead_name=lead.get("name", ""),
@@ -596,6 +914,10 @@ async def assign_franchise_lead(
             "$push": {"comments": comment_entry},
         }
     )
+
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
 
     await _log_activity(
         lead_id=lead_id,
@@ -657,6 +979,10 @@ async def bulk_assign_franchise_leads(
         }
     )
 
+    updated_leads = await db.franchise_leads.find({"id": {"$in": payload.lead_ids}}, {"_id": 0}).to_list(len(payload.lead_ids))
+    for ld in updated_leads:
+        await _sync_to_telecalling(ld)
+
     for lid in payload.lead_ids:
         await _log_activity(
             lead_id=lid,
@@ -711,6 +1037,10 @@ async def schedule_franchise_call(
             "$push": {"comments": comment_entry},
         }
     )
+
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
 
     await _log_activity(
         lead_id=lead_id,
@@ -784,6 +1114,10 @@ async def log_franchise_call(
         }
     )
 
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
+
     action_name = "call_completed" if payload.call_status == "completed" else "call_no_answer"
     await _log_activity(
         lead_id=lead_id,
@@ -837,6 +1171,10 @@ async def schedule_franchise_demo(
             "$push": {"comments": comment_entry},
         }
     )
+
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
 
     await _log_activity(
         lead_id=lead_id,
@@ -892,6 +1230,10 @@ async def log_franchise_demo(
         }
     )
 
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
+
     action_name = "demo_completed" if payload.demo_status == "completed" else "demo_no_show"
     await _log_activity(
         lead_id=lead_id,
@@ -943,6 +1285,10 @@ async def schedule_franchise_followup(
         }
     )
 
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
+
     await _log_activity(
         lead_id=lead_id,
         lead_name=lead.get("name", ""),
@@ -991,6 +1337,10 @@ async def complete_franchise_followup(
         }
     )
 
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
+
     await _log_activity(
         lead_id=lead_id,
         lead_name=lead.get("name", ""),
@@ -1033,6 +1383,10 @@ async def update_franchise_lead_status(
             "$push": {"comments": comment_entry},
         }
     )
+
+    updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
+    if updated:
+        await _sync_to_telecalling(updated)
 
     await _log_activity(
         lead_id=lead_id,
