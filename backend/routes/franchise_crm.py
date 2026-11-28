@@ -52,12 +52,20 @@ def _is_gp_manager(user: dict) -> bool:
     if not user:
         return False
     role = (user.get("role") or "").lower()
+    designation = (user.get("designation") or "").lower()
     role_id = str(user.get("role_id") or "")
     if role_id == GP_MANAGER_ROLE_ID:
         return True
     if (user.get("email") or "").lower() in ("growth@oll.co", "parul.mittal1311@gmail.com"):
         return True
-    return "growth_partner_manager" in role or "gp_manager" in role
+    return (
+        "growth_partner_manager" in role
+        or "gp_manager" in role
+        or "gp manager" in role
+        or "growth partner manager" in role
+        or "gp manager" in designation
+        or "growth partner manager" in designation
+    )
 
 
 def _is_manager(user: dict) -> bool:
@@ -68,7 +76,11 @@ def _is_manager(user: dict) -> bool:
 def _require_franchise_access(user: dict) -> None:
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    # All authenticated team members, admins, and managers can access Franchise CRM
+    if not (_is_admin(user) or _is_gp_manager(user)):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: only GP Managers and Admins have access to Franchise CRM"
+        )
     return
 
 
