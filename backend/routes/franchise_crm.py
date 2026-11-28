@@ -18,7 +18,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import Workbook, load_workbook
 
-from .shared import db, get_current_user
+from .shared import db, get_current_user, get_next_ticket_number
+from .notifications import send_support_ticket_notification
+from .inapp_notifications import create_notification
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/franchise-crm", tags=["Franchise CRM"])
@@ -52,12 +54,20 @@ def _is_gp_manager(user: dict) -> bool:
     if not user:
         return False
     role = (user.get("role") or "").lower()
+    designation = (user.get("designation") or "").lower()
     role_id = str(user.get("role_id") or "")
     if role_id == GP_MANAGER_ROLE_ID:
         return True
     if (user.get("email") or "").lower() in ("growth@oll.co", "parul.mittal1311@gmail.com"):
         return True
-    return "growth_partner_manager" in role or "gp_manager" in role
+    return (
+        "growth_partner_manager" in role
+        or "gp_manager" in role
+        or "gp manager" in role
+        or "growth partner manager" in role
+        or "gp manager" in designation
+        or "growth partner manager" in designation
+    )
 
 
 def _is_manager(user: dict) -> bool:
@@ -68,7 +78,11 @@ def _is_manager(user: dict) -> bool:
 def _require_franchise_access(user: dict) -> None:
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    # All authenticated team members, admins, and managers can access Franchise CRM
+    if not (_is_admin(user) or _is_gp_manager(user)):
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: only GP Managers and Admins have access to Franchise CRM"
+        )
     return
 
 
@@ -109,6 +123,150 @@ async def _log_activity(
     await db.franchise_crm_activities.insert_one(activity_doc)
 
 
+async def _notify_support_center_queue(
+    lead: dict,
+    assignee_id: str,
+    manager_user: dict,
+    note: str = "",
+    scheduled_call_at: Optional[str] = None,
+    action_type: str = "call_assigned",
+) -> Optional[dict]:
+    """Notify the assigned person by adding a ticket into their Support Center queue (db.support_queries),
+    creating an in-app notification, and sending a WhatsApp message.
+    """
+    if not assignee_id:
+        return None
+
+    try:
+        # Lookup assignee details
+        assignee = await db.team_users.find_one({"id": assignee_id}, {"_id": 0})
+        if not assignee:
+            assignee = await db.users.find_one({"id": assignee_id}, {"_id": 0})
+        if not assignee:
+            assignee = await db.admins.find_one({"id": assignee_id}, {"_id": 0})
+
+        assignee_name = (
+            (assignee.get("name") or assignee.get("email") or "Assigned Executive")
+            if assignee
+            else "Assigned Executive"
+        )
+        assignee_phone = assignee.get("phone", "") if assignee else ""
+        assignee_email = assignee.get("email", "") if assignee else ""
+
+        manager_name = manager_user.get("name") or manager_user.get("email", "GP Manager")
+        manager_id = str(manager_user.get("id") or manager_user.get("_id") or "")
+
+        lead_id = lead.get("id") or ""
+        lead_name = lead.get("name") or lead.get("organization_name") or "Franchise Partner"
+        lead_phone = lead.get("phone") or lead.get("contact_no") or ""
+        lead_email = lead.get("email") or ""
+        lead_city = lead.get("city") or lead.get("address") or ""
+        offering = lead.get("offering_type") or lead.get("franchise_model") or "Franchise"
+
+        ticket_number = await get_next_ticket_number()
+        query_id = str(uuid.uuid4())
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        call_schedule_txt = f"\nScheduled Call: {scheduled_call_at}" if scheduled_call_at else ""
+        note_txt = f"\nInstructions: {note}" if note else ""
+
+        if action_type == "call_scheduled":
+            subject = f"Franchise Call Scheduled: {lead_name}"
+            msg_headline = f"Call scheduled for Franchise lead '{lead_name}'"
+        else:
+            subject = f"Franchise Call Assigned: {lead_name}"
+            msg_headline = f"New Franchise call assigned to you for '{lead_name}'"
+
+        message = (
+            f"{msg_headline}\n"
+            f"Contact Person: {lead_name}\n"
+            f"Phone: {lead_phone}\n"
+            f"Email: {lead_email or 'N/A'}\n"
+            f"City: {lead_city or 'N/A'}\n"
+            f"Offering / Model: {offering}\n"
+            f"Assigned By: {manager_name}"
+            f"{call_schedule_txt}"
+            f"{note_txt}"
+        ).strip()
+
+        viewers = [assignee_id]
+        if manager_id and manager_id != assignee_id:
+            viewers.append(manager_id)
+
+        doc = {
+            "id": query_id,
+            "ticket_number": ticket_number,
+            "name": lead_name,
+            "phone": lead_phone,
+            "email": lead_email,
+            "subject": subject,
+            "query_type": "partnership",
+            "category": "Franchise Call",
+            "category_label": "Franchise Call Assignment",
+            "subcategory_label": "Call Assignment",
+            "related_to": "Franchise Call Assignment",
+            "inquiry_type": "growth_partner",
+            "message": message,
+            "query_details": message,
+            "details": message,
+            "priority": "high",
+            "status": "open",
+            "source": "franchise_crm",
+            "created_by": manager_id,
+            "created_by_name": manager_name,
+            "assigned_to": assignee_id,
+            "assigned_to_name": assignee_name,
+            "assigned_to_email": assignee_email,
+            "viewers": viewers,
+            "franchise_lead_id": lead_id,
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "comments": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_name": manager_name,
+                    "text": f"Franchise call assigned to {assignee_name} via Franchise CRM.{note_txt}",
+                    "created_at": now_iso,
+                }
+            ],
+        }
+
+        await db.support_queries.insert_one(doc)
+        logger.info(f"Created support center query {query_id} (ticket #{ticket_number}) for assignee {assignee_name}")
+
+        # In-app notification for the bell icon
+        try:
+            await create_notification(
+                user_id=assignee_id,
+                type_="call_assigned",
+                title="New Franchise Call Assigned",
+                message=f"You have been assigned a call for Franchise lead: {lead_name}",
+                actor_id=manager_id,
+                cta_path="/admin/support",
+            )
+        except Exception as notif_err:
+            logger.warning(f"Could not emit in-app notification: {notif_err}")
+
+        # WhatsApp notification if assignee has a phone number
+        if assignee and assignee_phone:
+            try:
+                ticket_data = {
+                    "id": query_id,
+                    "subject": subject,
+                    "priority": "HIGH",
+                    "school_name": lead_name,
+                    "contact_name": lead_name,
+                }
+                await send_support_ticket_notification(ticket_data, assignee)
+            except Exception as whatsapp_err:
+                logger.warning(f"Could not dispatch ticket WhatsApp notification: {whatsapp_err}")
+
+        return doc
+    except Exception as e:
+        logger.error(f"Failed to notify support center queue for franchise call: {e}")
+        return None
+
+
 def _norm_phone(p: str) -> str:
     return re.sub(r"\D", "", str(p or ""))[-10:]
 
@@ -137,6 +295,8 @@ async def _sync_to_telecalling(lead_doc: dict) -> None:
 
         if lead_doc.get("scheduled_demo_at"):
             update_fields["meeting_at"] = lead_doc.get("scheduled_demo_at")
+            demo_t = lead_doc.get("demo_type") or ""
+            update_fields["meeting_mode"] = "online" if demo_t in ("online", "online_meet") else "offline"
         if lead_doc.get("next_followup_at"):
             update_fields["followup_at"] = lead_doc.get("next_followup_at")
         if lead_doc.get("call_status") == "completed":
@@ -306,6 +466,7 @@ class FranchiseLeadCreate(BaseModel):
     source: Optional[str] = "manual"
     details: Optional[str] = ""
     assigned_to: Optional[str] = ""
+    proposal_amount: Optional[str] = None
     demo_session_scheduled: Optional[bool] = False
     scheduled_demo_at: Optional[str] = None
     demo_type: Optional[str] = "online_meet"
@@ -327,6 +488,7 @@ class FranchiseLeadUpdate(BaseModel):
     investment_budget: Optional[str] = None
     source: Optional[str] = None
     details: Optional[str] = None
+    proposal_amount: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
     demo_session_scheduled: Optional[bool] = None
@@ -344,18 +506,21 @@ class FranchiseLeadUpdate(BaseModel):
 class AssignLeadRequest(BaseModel):
     assigned_to: str
     assignment_note: Optional[str] = ""
+    notes: Optional[str] = ""
 
 
 class BulkAssignRequest(BaseModel):
     lead_ids: List[str]
     assigned_to: str
     assignment_note: Optional[str] = ""
+    notes: Optional[str] = ""
 
 
 class ScheduleCallRequest(BaseModel):
     scheduled_call_at: str
     call_purpose: Optional[str] = "Franchise Presentation & Discovery"
     notes: Optional[str] = ""
+    assigned_to: Optional[str] = None
 
 
 class LogCallRequest(BaseModel):
@@ -371,6 +536,7 @@ class ScheduleDemoRequest(BaseModel):
     demo_type: Optional[str] = "online_meet"  # online_meet, in_person_center, presentation
     demo_link: Optional[str] = ""
     demo_notes: Optional[str] = ""
+    assigned_to: Optional[str] = None
 
 
 class LogDemoRequest(BaseModel):
@@ -577,6 +743,14 @@ async def import_franchise_excel(
         await db.franchise_leads.insert_many(leads_to_insert)
         for ld in leads_to_insert:
             await _sync_to_telecalling(ld)
+            if ld.get("assigned_to"):
+                await _notify_support_center_queue(
+                    lead=ld,
+                    assignee_id=ld["assigned_to"],
+                    manager_user=user,
+                    note="Assigned via Franchise Excel Import",
+                    action_type="call_assigned",
+                )
 
     return {
         "ok":         True,
@@ -713,6 +887,7 @@ async def create_franchise_lead(
         "investment_budget": payload.investment_budget or "₹2.5 Lakhs",
         "source": payload.source or "manual",
         "details": (payload.details or "").strip(),
+        "proposal_amount": payload.proposal_amount or "",
         "notes": "",
         "status": initial_status,
         "assigned_to": payload.assigned_to or "",
@@ -750,6 +925,15 @@ async def create_franchise_lead(
 
     await db.franchise_leads.insert_one(doc)
     await _sync_to_telecalling(doc)
+    if doc.get("assigned_to"):
+        await _notify_support_center_queue(
+            lead=doc,
+            assignee_id=doc["assigned_to"],
+            manager_user=user,
+            note=payload.details or "New franchise lead assigned",
+            scheduled_call_at=doc.get("scheduled_demo_at"),
+            action_type="call_scheduled" if doc.get("scheduled_demo_at") else "call_assigned",
+        )
     await _log_activity(
         lead_id=lead_id,
         lead_name=doc["name"],
@@ -866,12 +1050,32 @@ async def update_franchise_lead(
         if not updates.get("status") and lead.get("status") in ("new", "contacted"):
             updates["status"] = "follow_up"
 
+    prev_assigned = lead.get("assigned_to")
+    new_assigned = updates.get("assigned_to")
+    if new_assigned and new_assigned != prev_assigned:
+        assignee = await db.team_users.find_one({"id": new_assigned}, {"_id": 0, "name": 1, "email": 1, "role": 1})
+        if assignee:
+            updates["assigned_to_name"] = assignee.get("name") or assignee.get("email")
+            updates["assigned_to_email"] = assignee.get("email", "")
+            updates["assigned_to_role"] = assignee.get("role", "")
+            updates["assigned_by"] = str(user.get("id") or user.get("_id") or "")
+            updates["assigned_by_name"] = user.get("name") or user.get("email", "Admin")
+            updates["assigned_at"] = datetime.now(timezone.utc).isoformat()
+
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     await db.franchise_leads.update_one({"id": lead_id}, {"$set": updates})
     updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
     if updated:
         await _sync_to_telecalling(updated)
+        if new_assigned and new_assigned != prev_assigned:
+            await _notify_support_center_queue(
+                lead=updated,
+                assignee_id=new_assigned,
+                manager_user=user,
+                note="Franchise lead reassigned",
+                action_type="call_assigned",
+            )
     await _log_activity(
         lead_id=lead_id,
         lead_name=lead.get("name", ""),
@@ -905,10 +1109,11 @@ async def assign_franchise_lead(
     assignee_role = assignee.get("role", "")
     manager_name = user.get("name") or user.get("email", "Manager")
 
+    note_val = (payload.assignment_note or payload.notes or "").strip()
     comment_entry = {
         "id": str(uuid.uuid4()),
         "user_name": manager_name,
-        "text": f"Assigned to {assignee_name} ({assignee_role}). {payload.assignment_note or ''}".strip(),
+        "text": f"Assigned to {assignee_name} ({assignee_role}). {note_val}".strip(),
         "created_at": now_iso,
     }
 
@@ -933,6 +1138,15 @@ async def assign_franchise_lead(
     if updated:
         await _sync_to_telecalling(updated)
 
+    # Notify assigned person into their Support Center queue
+    await _notify_support_center_queue(
+        lead=updated or lead,
+        assignee_id=payload.assigned_to,
+        manager_user=user,
+        note=note_val,
+        action_type="call_assigned",
+    )
+
     await _log_activity(
         lead_id=lead_id,
         lead_name=lead.get("name", ""),
@@ -942,7 +1156,7 @@ async def assign_franchise_lead(
         details={
             "assigned_to": assignee_name,
             "assigned_to_id": payload.assigned_to,
-            "note": payload.assignment_note,
+            "note": note_val,
         },
     )
 
@@ -968,11 +1182,12 @@ async def bulk_assign_franchise_leads(
     assignee_email = assignee.get("email", "")
     assignee_role = assignee.get("role", "")
     manager_name = user.get("name") or user.get("email", "Manager")
+    note_val = (payload.assignment_note or payload.notes or "").strip()
 
     comment_entry = {
         "id": str(uuid.uuid4()),
         "user_name": manager_name,
-        "text": f"Bulk-assigned to {assignee_name} ({assignee_role}). {payload.assignment_note or ''}".strip(),
+        "text": f"Bulk-assigned to {assignee_name} ({assignee_role}). {note_val}".strip(),
         "created_at": now_iso,
     }
 
@@ -996,6 +1211,13 @@ async def bulk_assign_franchise_leads(
     updated_leads = await db.franchise_leads.find({"id": {"$in": payload.lead_ids}}, {"_id": 0}).to_list(len(payload.lead_ids))
     for ld in updated_leads:
         await _sync_to_telecalling(ld)
+        await _notify_support_center_queue(
+            lead=ld,
+            assignee_id=payload.assigned_to,
+            manager_user=user,
+            note=note_val,
+            action_type="call_assigned",
+        )
 
     for lid in payload.lead_ids:
         await _log_activity(
@@ -1007,7 +1229,7 @@ async def bulk_assign_franchise_leads(
             details={
                 "assigned_to": assignee_name,
                 "assigned_to_id": payload.assigned_to,
-                "note": payload.assignment_note,
+                "note": note_val,
             },
         )
 
@@ -1038,16 +1260,29 @@ async def schedule_franchise_call(
         "created_at": now_iso,
     }
 
+    set_ops = {
+        "call_status": "scheduled",
+        "scheduled_call_at": payload.scheduled_call_at,
+        "call_notes": payload.notes or payload.call_purpose,
+        "status": new_status,
+        "updated_at": now_iso,
+    }
+
+    if payload.assigned_to:
+        assignee = await db.team_users.find_one({"id": payload.assigned_to}, {"_id": 0, "name": 1, "email": 1, "role": 1})
+        if assignee:
+            set_ops["assigned_to"] = payload.assigned_to
+            set_ops["assigned_to_name"] = assignee.get("name") or assignee.get("email")
+            set_ops["assigned_to_email"] = assignee.get("email", "")
+            set_ops["assigned_to_role"] = assignee.get("role", "")
+            set_ops["assigned_by"] = str(user.get("id") or user.get("_id") or "")
+            set_ops["assigned_by_name"] = user.get("name") or user.get("email", "Admin")
+            set_ops["assigned_at"] = now_iso
+
     await db.franchise_leads.update_one(
         {"id": lead_id},
         {
-            "$set": {
-                "call_status": "scheduled",
-                "scheduled_call_at": payload.scheduled_call_at,
-                "call_notes": payload.notes or payload.call_purpose,
-                "status": new_status,
-                "updated_at": now_iso,
-            },
+            "$set": set_ops,
             "$push": {"comments": comment_entry},
         }
     )
@@ -1055,6 +1290,17 @@ async def schedule_franchise_call(
     updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
     if updated:
         await _sync_to_telecalling(updated)
+
+    target_assignee = getattr(payload, "assigned_to", None) or lead.get("assigned_to")
+    if target_assignee:
+        await _notify_support_center_queue(
+            lead=updated or lead,
+            assignee_id=target_assignee,
+            manager_user=user,
+            note=payload.notes or payload.call_purpose or "",
+            scheduled_call_at=payload.scheduled_call_at,
+            action_type="call_scheduled",
+        )
 
     await _log_activity(
         lead_id=lead_id,
@@ -1170,18 +1416,31 @@ async def schedule_franchise_demo(
         "created_at": now_iso,
     }
 
+    set_ops = {
+        "demo_status": "scheduled",
+        "scheduled_demo_at": payload.scheduled_demo_at,
+        "demo_type": payload.demo_type,
+        "demo_link": payload.demo_link or "",
+        "demo_notes": payload.demo_notes or "",
+        "status": "demo_scheduled",
+        "updated_at": now_iso,
+    }
+
+    if payload.assigned_to:
+        assignee = await db.team_users.find_one({"id": payload.assigned_to}, {"_id": 0, "name": 1, "email": 1, "role": 1})
+        if assignee:
+            set_ops["assigned_to"] = payload.assigned_to
+            set_ops["assigned_to_name"] = assignee.get("name") or assignee.get("email")
+            set_ops["assigned_to_email"] = assignee.get("email", "")
+            set_ops["assigned_to_role"] = assignee.get("role", "")
+            set_ops["assigned_by"] = str(user.get("id") or user.get("_id") or "")
+            set_ops["assigned_by_name"] = user.get("name") or user.get("email", "Admin")
+            set_ops["assigned_at"] = now_iso
+
     await db.franchise_leads.update_one(
         {"id": lead_id},
         {
-            "$set": {
-                "demo_status": "scheduled",
-                "scheduled_demo_at": payload.scheduled_demo_at,
-                "demo_type": payload.demo_type,
-                "demo_link": payload.demo_link or "",
-                "demo_notes": payload.demo_notes or "",
-                "status": "demo_scheduled",
-                "updated_at": now_iso,
-            },
+            "$set": set_ops,
             "$push": {"comments": comment_entry},
         }
     )
@@ -1189,6 +1448,17 @@ async def schedule_franchise_demo(
     updated = await db.franchise_leads.find_one({"id": lead_id}, {"_id": 0})
     if updated:
         await _sync_to_telecalling(updated)
+
+    target_assignee = getattr(payload, "assigned_to", None) or lead.get("assigned_to")
+    if target_assignee:
+        await _notify_support_center_queue(
+            lead=updated or lead,
+            assignee_id=target_assignee,
+            manager_user=user,
+            note=payload.demo_notes or f"Demo ({payload.demo_type})",
+            scheduled_call_at=payload.scheduled_demo_at,
+            action_type="call_scheduled",
+        )
 
     await _log_activity(
         lead_id=lead_id,

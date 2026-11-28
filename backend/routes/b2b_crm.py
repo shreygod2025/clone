@@ -131,6 +131,8 @@ async def _sync_to_telecalling(lead_doc: dict) -> None:
 
         if lead_doc.get("scheduled_demo_at"):
             update_fields["meeting_at"] = lead_doc.get("scheduled_demo_at")
+            demo_t = lead_doc.get("demo_type") or ""
+            update_fields["meeting_mode"] = "online" if demo_t in ("online", "online_meet") else "offline"
         if lead_doc.get("next_followup_at"):
             update_fields["followup_at"] = lead_doc.get("next_followup_at")
         if lead_doc.get("call_status") == "completed":
@@ -248,6 +250,7 @@ class B2BLeadCreate(BaseModel):
     role: Optional[str] = ""
     board: Optional[str] = ""
     deal_size: Optional[str] = ""
+    proposal_amount: Optional[str] = None
     source: Optional[str] = "manual"
     notes: Optional[str] = ""
     assigned_to: Optional[str] = ""
@@ -272,6 +275,7 @@ class B2BLeadUpdate(BaseModel):
     role: Optional[str] = None
     board: Optional[str] = None
     deal_size: Optional[str] = None
+    proposal_amount: Optional[str] = None
     source: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
@@ -662,6 +666,7 @@ async def create_b2b_lead(
         "role":                   (payload.role or "").strip(),
         "board":                  (payload.board or "").strip(),
         "deal_size":              (payload.deal_size or "").strip(),
+        "proposal_amount":        payload.proposal_amount or payload.deal_size or "",
         "source":                 (payload.source or "manual").strip(),
         "notes":                  (payload.notes or "").strip(),
         "status":                 "demo_scheduled" if payload.demo_session_scheduled and payload.scheduled_demo_at else "new",
