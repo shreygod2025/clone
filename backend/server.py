@@ -4171,7 +4171,9 @@ from routes.discover import router as discover_router
 from routes.friendship_day import router as friendship_day_router
 from routes.whatsapp_twilio import router as whatsapp_twilio_router
 from routes.proposal_pdf import router as proposal_pdf_router
+from routes.auth import router as auth_router
 
+api_router.include_router(auth_router)
 api_router.include_router(reports_router)
 api_router.include_router(social_media_router)
 api_router.include_router(jobs_router)
