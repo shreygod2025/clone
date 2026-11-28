@@ -40,8 +40,12 @@ export default function AdminFranchiseCRM() {
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const isGPManager = user?.role === 'growth_partner_manager' || 
                       user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
-                      ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase());
-  const isManager = isAdmin || isGPManager || Boolean(user?.is_manager);
+                      ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase()) ||
+                      (user?.role || '').toLowerCase().includes('gp_manager') ||
+                      (user?.role || '').toLowerCase().includes('gp manager') ||
+                      (user?.designation || '').toLowerCase().includes('gp manager');
+  const hasAccess = isAdmin || isGPManager;
+  const isManager = hasAccess || Boolean(user?.is_manager);
 
   // Sub-navigation tabs: 'leads' | 'dashboard' | 'tracksheet'
   const [activeSubTab, setActiveSubTab] = useState('leads');
@@ -809,6 +813,28 @@ export default function AdminFranchiseCRM() {
     }
   };
 
+  if (!hasAccess) {
+    return (
+      <AdminLayout title="Franchise CRM">
+        <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-4 border border-rose-200">
+            <Shield className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Access Restricted</h2>
+          <p className="text-sm text-slate-600 max-w-md mb-6">
+            Only GP Managers and Administrators have access to Franchise CRM.
+          </p>
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="px-4 py-2 bg-[#1E3A5F] hover:bg-[#0F203E] text-white text-sm font-medium rounded-lg transition"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout title="Franchise CRM">
       <div className="max-w-[1600px] mx-auto space-y-4 pb-16 px-1 sm:px-2">
@@ -1089,18 +1115,6 @@ export default function AdminFranchiseCRM() {
                     <List className="w-3.5 h-3.5" /> List
                   </button>
                 </div>
-
-                {/* Sync LMS / Sync Telecalling */}
-                <button
-                  type="button"
-                  onClick={handleSyncTelecalling}
-                  disabled={syncingTelecalling}
-                  className="h-8 px-3 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-semibold shadow-sm flex items-center gap-1.5 transition"
-                  data-testid="sync-telecalling-btn"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${syncingTelecalling ? 'animate-spin' : ''}`} />
-                  Sync LMS
-                </button>
 
                 {/* Export CSV */}
                 <button

@@ -241,6 +241,36 @@ export const ProtectedRoute = ({ children, permission = null }) => {
   );
 };
 
+// FranchiseCRMRoute: Strictly only GP Managers and Admins have access
+const FranchiseCRMRoute = ({ children }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <PageLoader />;
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isGPManager = user?.role === 'growth_partner_manager' || 
+                      user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
+                      ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase()) ||
+                      (user?.role || '').toLowerCase().includes('gp_manager') ||
+                      (user?.role || '').toLowerCase().includes('gp manager') ||
+                      (user?.designation || '').toLowerCase().includes('gp manager');
+  if (!isAdmin && !isGPManager) {
+    return (
+      <Navigate
+        to="/admin/access-denied"
+        state={{ attemptedPath: location.pathname, reason: 'Only GP Managers and Admins have access to Franchise CRM' }}
+        replace
+      />
+    );
+  }
+  return (
+    <>
+      <NoIndexMeta />
+      {children}
+    </>
+  );
+};
+
 export const AppRoutes = () => {
   return (
     <>
@@ -464,7 +494,7 @@ export const AppRoutes = () => {
           <Route path="/admin/educators" element={<ProtectedRoute permission="educators"><AdminEducators /></ProtectedRoute>} />
           <Route path="/admin/competitions" element={<ProtectedRoute permission="competitions"><AdminCompetitions /></ProtectedRoute>} />
           <Route path="/admin/growth-partners" element={<ProtectedRoute permission="growth_partners"><AdminGrowthPartners /></ProtectedRoute>} />
-          <Route path="/admin/franchise-crm" element={<ProtectedRoute><AdminFranchiseCRM /></ProtectedRoute>} />
+          <Route path="/admin/franchise-crm" element={<FranchiseCRMRoute><AdminFranchiseCRM /></FranchiseCRMRoute>} />
           <Route path="/admin/b2b-crm" element={<Navigate to="/admin/telecalling" replace />} />
           <Route path="/admin/gp-onboarding" element={<ProtectedRoute permission="growth_partners"><AdminGPOnboarding /></ProtectedRoute>} />
           <Route path="/admin/team-applications" element={<ProtectedRoute permission="team_applications"><AdminTeamApplications /></ProtectedRoute>} />

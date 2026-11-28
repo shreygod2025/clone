@@ -86,6 +86,18 @@ const AdminLayout = ({ children, title }) => {
     const userPermissions = user?.permissions || [];
     if (user?.role === 'admin' && userPermissions.length === 0) return true;
 
+    // Franchise CRM: strictly ONLY GP Managers and Admins have access
+    if (item.path === '/admin/franchise-crm') {
+      const isGPManager = user?.role === 'growth_partner_manager' || 
+                          user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
+                          ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase()) ||
+                          (user?.role || '').toLowerCase().includes('gp_manager') ||
+                          (user?.role || '').toLowerCase().includes('gp manager') ||
+                          (user?.designation || '').toLowerCase().includes('gp manager');
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+      return Boolean(isAdmin || isGPManager);
+    }
+
     // Check if team member has permission (supports sub-permissions e.g.
     // "orders.robotics_shop" implicitly grants access to the Orders parent
     // tab so the user can navigate there).
@@ -93,21 +105,6 @@ const AdminLayout = ({ children, title }) => {
     const subPrefix = `${item.permission}.`;
     if (userPermissions.some(p => p.startsWith(subPrefix))) return true;
 
-    // Franchise CRM: visible to GP Managers, Admins, or users with growth_partners / telecalling permission
-    if (item.path === '/admin/franchise-crm') {
-      const isGPManager = user?.role === 'growth_partner_manager' || 
-                          user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
-                          ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase());
-      if (
-        isGPManager ||
-        userPermissions.includes('growth_partners') ||
-        userPermissions.includes('franchise_crm') ||
-        userPermissions.includes('telecalling') ||
-        ['franchise', 'b2b', 'sales', 'bde', 'telecall'].some(r => (user?.role || '').toLowerCase().includes(r))
-      ) {
-        return true;
-      }
-    }
     return false;
   });
 
