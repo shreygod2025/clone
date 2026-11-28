@@ -938,6 +938,29 @@ async def verify_otp(data: OTPVerify):
         "portal_token": portal_token,
     }
 
+# ── Forgot & Reset Password ───────────────────────────────────────────────────
+from routes.auth import (
+    forgot_password as handle_forgot_password,
+    verify_reset_otp as handle_verify_reset_otp,
+    reset_password as handle_reset_password,
+    ForgotPasswordRequest,
+    VerifyResetOTPRequest,
+    ResetPasswordRequest,
+)
+
+@router.post("/auth/forgot-password")
+async def users_forgot_password(data: ForgotPasswordRequest):
+    return await handle_forgot_password(data)
+
+@router.post("/auth/verify-reset-otp")
+async def users_verify_reset_otp(data: VerifyResetOTPRequest):
+    return await handle_verify_reset_otp(data)
+
+@router.post("/auth/reset-password")
+async def users_reset_password(data: ResetPasswordRequest):
+    return await handle_reset_password(data)
+
+
 @router.get("/user/bookings/{phone}")
 async def get_user_bookings(
     phone: str,
