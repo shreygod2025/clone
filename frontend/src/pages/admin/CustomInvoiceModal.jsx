@@ -306,17 +306,7 @@ export default function CustomInvoiceModal({ open, onClose, currentUser, initial
     fetchNextInvoiceNumber();
   };
 
-  const handleSwitchToCreate = () => {
-    setMode('create');
-    handleCancelEdit();
-  };
 
-  const handleSwitchToEdit = () => {
-    setMode('edit');
-    if (!editingInvoice) {
-      setEditStep(1);
-    }
-  };
 
   const handleBackToStep1 = () => {
     setEditStep(1);
@@ -1089,39 +1079,15 @@ export default function CustomInvoiceModal({ open, onClose, currentUser, initial
             </div>
           </div>
 
-          {/* 2 Main Buttons Toggle in Header */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onClick={handleSwitchToCreate}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
-                mode === 'create'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-            >
-              <FilePlus className="w-3.5 h-3.5" />
-              <span>Create Custom Invoice</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSwitchToEdit}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
-                mode === 'edit'
-                  ? 'bg-amber-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Invoice</span>
-            </button>
+          {/* Close Button */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="ml-1 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition"
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
               aria-label="Close"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -1190,10 +1156,10 @@ export default function CustomInvoiceModal({ open, onClose, currentUser, initial
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={handleSwitchToCreate}
+                      onClick={onClose}
                       className="text-xs text-slate-600 hover:text-slate-900"
                     >
-                      ← Switch to Create
+                      Cancel
                     </Button>
                     <Button
                       type="submit"
@@ -1319,7 +1285,7 @@ export default function CustomInvoiceModal({ open, onClose, currentUser, initial
           {mode === 'create' && (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Create Header Banner */}
-              <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-indigo-200 text-indigo-900 uppercase tracking-wide">
                     New Invoice
@@ -1328,14 +1294,6 @@ export default function CustomInvoiceModal({ open, onClose, currentUser, initial
                     Target Invoice Number: <strong className="font-mono font-bold">{form.invoice_no || nextSuggestedNumber || 'OLL2026/CUST-0001'}</strong>
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSwitchToEdit}
-                  className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 underline flex items-center gap-1 self-start sm:self-auto"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  Have an existing invoice to edit? Click here
-                </button>
               </div>
 
               {/* The Create Form */}
