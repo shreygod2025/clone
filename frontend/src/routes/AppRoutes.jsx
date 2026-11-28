@@ -142,6 +142,7 @@ const AdminEducators = lazy(() => import('../pages/admin/AdminEducators'));
 const AdminCompetitions = lazy(() => import('../pages/admin/AdminCompetitions'));
 const AdminGrowthPartners = lazy(() => import('../pages/admin/AdminGrowthPartners'));
 const AdminFranchiseCRM = lazy(() => import('../pages/admin/AdminFranchiseCRM'));
+const AdminB2BCRM = lazy(() => import('../pages/admin/AdminB2BCRM'));
 const AdminGPOnboarding = lazy(() => import('../pages/admin/AdminGPOnboarding'));
 const AdminTeamApplications = lazy(() => import('../pages/admin/AdminTeamApplications'));
 const AdminTeamOnboarding = lazy(() => import('../pages/admin/AdminTeamOnboarding'));
@@ -464,6 +465,7 @@ export const AppRoutes = () => {
           <Route path="/admin/competitions" element={<ProtectedRoute permission="competitions"><AdminCompetitions /></ProtectedRoute>} />
           <Route path="/admin/growth-partners" element={<ProtectedRoute permission="growth_partners"><AdminGrowthPartners /></ProtectedRoute>} />
           <Route path="/admin/franchise-crm" element={<ProtectedRoute><AdminFranchiseCRM /></ProtectedRoute>} />
+          <Route path="/admin/b2b-crm" element={<ProtectedRoute><AdminB2BCRM /></ProtectedRoute>} />
           <Route path="/admin/gp-onboarding" element={<ProtectedRoute permission="growth_partners"><AdminGPOnboarding /></ProtectedRoute>} />
           <Route path="/admin/team-applications" element={<ProtectedRoute permission="team_applications"><AdminTeamApplications /></ProtectedRoute>} />
           <Route path="/admin/team-onboarding" element={<ProtectedRoute permission="team_applications"><AdminTeamOnboarding /></ProtectedRoute>} />

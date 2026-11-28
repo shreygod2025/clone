@@ -447,6 +447,29 @@ async def bulk_assign_contacts(payload: BulkAssign, user: dict = Depends(get_cur
         }}
 
     res = await db.telecalling_contacts.update_many({"id": {"$in": payload.ids}}, update)
+
+    # Sync assignments to b2b_leads and franchise_leads
+    try:
+        affected = await db.telecalling_contacts.find({"id": {"$in": payload.ids}}, {"_id": 0, "phone": 1, "call_type": 1}).to_list(len(payload.ids))
+        for c in affected:
+            phone_norm = _norm_phone(c.get("phone", ""))
+            if not phone_norm:
+                continue
+            assigned_id = update["$set"]["assigned_to"]
+            assigned_name = update["$set"]["assigned_to_name"]
+            if c.get("call_type") == "franchise":
+                await db.franchise_leads.update_many(
+                    {"phone": {"$regex": phone_norm + "$"}},
+                    {"$set": {"assigned_to": assigned_id or "", "assigned_to_name": assigned_name or "", "updated_at": _now()}}
+                )
+            else:
+                await db.b2b_leads.update_many(
+                    {"phone": {"$regex": phone_norm + "$"}},
+                    {"$set": {"assigned_to": assigned_id or "", "assigned_to_name": assigned_name or "", "updated_at": _now()}}
+                )
+    except Exception as e:
+        logger.warning("telecalling bulk-assign sync failed: %s", e)
+
     return {"ok": True, "updated": res.modified_count}
 
 
@@ -766,6 +789,35 @@ async def update_contact(contact_id: str, patch: ContactPatch, user: dict = Depe
     changes["updated_at"] = _now()
     await db.telecalling_contacts.update_one({"id": contact_id}, {"$set": changes})
     updated = await db.telecalling_contacts.find_one({"id": contact_id}, {"_id": 0})
+
+    # Sync updates back to b2b_leads and franchise_leads
+    try:
+        phone_norm = _norm_phone(updated.get("phone", ""))
+        if phone_norm:
+            lead_up: Dict[str, Any] = {"updated_at": _now()}
+            if "assigned_to" in changes:
+                lead_up["assigned_to"] = changes.get("assigned_to") or ""
+                lead_up["assigned_to_name"] = changes.get("assigned_to_name") or ""
+            if "notes" in changes and changes["notes"]:
+                lead_up["notes"] = changes["notes"]
+            if "followup_at" in changes:
+                lead_up["next_followup_at"] = changes["followup_at"]
+            if "meeting_at" in changes:
+                lead_up["scheduled_demo_at"] = changes["meeting_at"]
+            if changes.get("call_picked") == "yes":
+                lead_up["call_status"] = "completed"
+            elif changes.get("call_picked") == "no":
+                lead_up["call_status"] = "no_answer"
+            if changes.get("status") in {"converted", "lost", "interested"}:
+                lead_up["status"] = "converted" if changes["status"] == "converted" else ("lost" if changes["status"] == "lost" else "contacted")
+
+            if updated.get("call_type") == "franchise":
+                await db.franchise_leads.update_many({"phone": {"$regex": phone_norm + "$"}}, {"$set": lead_up})
+            else:
+                await db.b2b_leads.update_many({"phone": {"$regex": phone_norm + "$"}}, {"$set": lead_up})
+    except Exception as e:
+        logger.warning("telecalling single update sync failed: %s", e)
+
     return updated
 
 

@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
-  MessageCircle as MessageCircleIcon,
+  MessageCircle as MessageCircleIcon, Search,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
   Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot, Link2, Send, ShoppingBag,
   CheckSquare, FolderKanban, Bell, Trophy
@@ -23,6 +23,7 @@ const AdminLayout = ({ children, title }) => {
   const navigate = useNavigate();
   const { user, logout, getAuthHeaders } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState('');
   const [showWhatsAppLink, setShowWhatsAppLink] = useState(false);
   const isAIChat = location.pathname === '/admin/ai-chat';
 
@@ -41,6 +42,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/competitions', icon: Trophy, label: 'Competitions', permission: 'competitions' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/franchise-crm', icon: Building, label: 'Franchise CRM', permission: 'franchise_crm' },
+    { path: '/admin/b2b-crm', icon: Building2, label: 'B2B CRM', permission: 'b2b_crm' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
     { path: '/admin/success-stories', icon: Trophy, label: 'Success Stories', permission: null },
@@ -97,12 +99,34 @@ const AdminLayout = ({ children, title }) => {
       const isGPManager = user?.role === 'growth_partner_manager' || 
                           user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
                           ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase());
-      if (isGPManager || userPermissions.includes('growth_partners') || userPermissions.includes('telecalling')) {
+      if (
+        isGPManager ||
+        userPermissions.includes('growth_partners') ||
+        userPermissions.includes('franchise_crm') ||
+        userPermissions.includes('telecalling') ||
+        ['franchise', 'b2b', 'sales', 'bde', 'telecall'].some(r => (user?.role || '').toLowerCase().includes(r))
+      ) {
+        return true;
+      }
+    }
+
+    // B2B CRM: visible to Admins, or users with b2b_crm / schools / telecalling permission or B2B/Franchise/Sales roles
+    if (item.path === '/admin/b2b-crm') {
+      if (
+        userPermissions.includes('b2b_crm') ||
+        userPermissions.includes('schools') ||
+        userPermissions.includes('telecalling') ||
+        ['b2b', 'franchise', 'sales', 'bde', 'telecall'].some(r => (user?.role || '').toLowerCase().includes(r))
+      ) {
         return true;
       }
     }
     return false;
   });
+
+  const displayedNavItems = sidebarSearch.trim()
+    ? navItems.filter(item => item.label.toLowerCase().includes(sidebarSearch.trim().toLowerCase()))
+    : navItems;
 
   const handleLogout = () => {
     logout();
@@ -151,27 +175,56 @@ const AdminLayout = ({ children, title }) => {
           </button>
         </div>
 
-        <div className="px-4 py-2 mb-4 shrink-0">
+        <div className="px-4 py-2 mb-2 shrink-0">
           <div className="bg-white/10 rounded-xl p-3">
             <p className="text-white font-medium truncate">{user?.name || 'Admin'}</p>
             <p className="text-white/60 text-sm truncate">{user?.email}</p>
           </div>
         </div>
 
+        {/* Sidebar Tab Search */}
+        <div className="px-3 mb-2 shrink-0">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+            <input
+              type="text"
+              placeholder="Search tabs (e.g. My Space, CRM)..."
+              value={sidebarSearch}
+              onChange={(e) => setSidebarSearch(e.target.value)}
+              className="w-full pl-8 pr-7 py-1.5 text-xs bg-white/10 text-white placeholder-white/40 rounded-lg border border-white/10 focus:outline-none focus:bg-white/20 focus:border-white/30 transition"
+              data-testid="sidebar-search-input"
+            />
+            {sidebarSearch && (
+              <button
+                type="button"
+                onClick={() => setSidebarSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
         <nav className="px-2 space-y-1 flex-1 overflow-y-auto">
-          {navItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)}
-              className={`admin-nav-item ${(location.pathname === item.path || (item.path === '/admin/my-space' && ['/admin/tasks', '/admin/projects', '/admin/me/performance'].includes(location.pathname))) ? 'active' : ''}`}
-              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.label}</span>
-              {location.pathname === item.path && <ChevronRight className="w-4 h-4 ml-auto" />}
-            </Link>
-          ))}
+          {displayedNavItems.length === 0 ? (
+            <div className="px-3 py-4 text-xs text-white/50 text-center">No matching tabs</div>
+          ) : (
+            displayedNavItems.map(item => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`admin-nav-item ${(location.pathname === item.path || (item.path === '/admin/my-space' && ['/admin/tasks', '/admin/projects', '/admin/me/performance'].includes(location.pathname))) ? 'active' : ''}`}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <item.icon className="w-5 h-5" />
+                <span>{item.label}</span>
+                {location.pathname === item.path && <ChevronRight className="w-4 h-4 ml-auto" />}
+              </Link>
+            ))
+          )}
         </nav>
 
         <div className="p-2 border-t border-white/10 shrink-0 space-y-1">

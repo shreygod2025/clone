@@ -7,7 +7,7 @@ import {
   UserPlus, MessageSquare, BarChart3, ArrowUpDown, RefreshCw,
   ExternalLink, Eye, Check, X, Shield, Star, Award, TrendingUp,
   MapPin, Mail, Briefcase, FileText, ChevronDown, Send, ArrowRight,
-  Edit, Trash2, CalendarClock
+  Edit, Trash2, CalendarClock, Upload, Download
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -72,6 +72,15 @@ export default function AdminFranchiseCRM() {
   const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [assignmentNote, setAssignmentNote] = useState('');
   const [savingAssign, setSavingAssign] = useState(false);
+
+  // Excel Import modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importAssignMode, setImportAssignMode] = useState('unassigned'); // unassigned | single | auto
+  const [importAssignedTo, setImportAssignedTo] = useState('');
+  const [importAutoPool, setImportAutoPool] = useState([]);
+  const [importBatchName, setImportBatchName] = useState('');
+  const [uploadingImport, setUploadingImport] = useState(false);
 
   // Call scheduling / log modal
   const [callModalLead, setCallModalLead] = useState(null);
@@ -570,6 +579,65 @@ export default function AdminFranchiseCRM() {
     }
   };
 
+  // Excel Import handlers
+  const handleExcelImportSubmit = async () => {
+    if (!importFile) {
+      toast.error('Please select an Excel file (.xlsx) to import');
+      return;
+    }
+    if (importAssignMode === 'single' && !importAssignedTo) {
+      toast.error('Please select a salesperson to assign leads to');
+      return;
+    }
+    if (importAssignMode === 'auto' && importAutoPool.length === 0) {
+      toast.error('Please select at least one salesperson for auto-assignment');
+      return;
+    }
+
+    setUploadingImport(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      fd.append('assign_mode', importAssignMode);
+      if (importAssignMode === 'single') fd.append('assigned_to', importAssignedTo);
+      if (importAssignMode === 'auto') fd.append('auto_pool', importAutoPool.join(','));
+      if (importBatchName.trim()) fd.append('batch_name', importBatchName.trim());
+
+      const res = await axios.post(`${API}/franchise-crm/import-excel`, fd, { headers: getAuthHeaders() });
+      const dup = res.data?.duplicates ? `, ${res.data.duplicates} duplicates skipped` : '';
+      toast.success(`Imported ${res.data?.inserted || 0} Franchise leads into "${res.data?.batch_name}"${dup}`);
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportBatchName('');
+      setImportAssignedTo('');
+      setImportAutoPool([]);
+      fetchLeads();
+      fetchAssignees();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Excel import failed');
+    } finally {
+      setUploadingImport(false);
+    }
+  };
+
+  const downloadSampleTemplate = async () => {
+    try {
+      const r = await axios.get(`${API}/franchise-crm/sample-template.xlsx`, {
+        headers: getAuthHeaders(),
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'franchise-leads-template.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Sample Franchise template downloaded');
+    } catch (e) {
+      toast.error('Failed to download template');
+    }
+  };
+
   // Open Edit Lead Modal
   const openEditLead = (lead) => {
     setEditLeadForm({
@@ -768,6 +836,15 @@ export default function AdminFranchiseCRM() {
                 </button>
               )}
             </div>
+
+            <Button
+              onClick={() => setShowImportModal(true)}
+              variant="outline"
+              className="text-xs font-semibold px-3 py-2 rounded-xl border-slate-300 hover:bg-slate-50 flex items-center gap-1.5"
+              data-testid="franchise-import-excel-btn"
+            >
+              <Upload className="w-3.5 h-3.5 text-slate-600" /> Import Excel
+            </Button>
 
             <Button
               onClick={() => setShowAddLeadModal(true)}
@@ -2602,6 +2679,131 @@ export default function AdminFranchiseCRM() {
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   {deletingLead ? 'Deleting…' : 'Permanently Delete'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 10. Import Excel Modal (Franchise Leads) */}
+        <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+          <DialogContent className="max-w-md" data-testid="franchise-import-modal">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Upload className="w-5 h-5 text-indigo-600" />
+                Import Franchise Leads from Excel (.xlsx)
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 p-2.5 rounded-xl">
+                <span className="text-xs text-indigo-900 font-medium">Download the standard Franchise Excel template</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={downloadSampleTemplate}
+                  className="h-7 text-xs bg-white text-indigo-700 border-indigo-200"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1" /> Template
+                </Button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Spreadsheet File (.xlsx) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={e => setImportFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1.5"
+                  data-testid="franchise-import-file-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Batch / Campaign Name</label>
+                <Input
+                  placeholder="e.g. Pune Franchise Drive 2026"
+                  value={importBatchName}
+                  onChange={e => setImportBatchName(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              {isManager && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign Imported Leads</label>
+                  <div className="flex gap-2">
+                    {[
+                      ['unassigned', 'Leave Unassigned'],
+                      ['single', 'Single Salesperson'],
+                      ['auto', 'Round-Robin Pool'],
+                    ].map(([m, label]) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setImportAssignMode(m)}
+                        className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg border transition ${
+                          importAssignMode === m
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-400'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {importAssignMode === 'single' && (
+                    <div className="mt-2">
+                      <select
+                        value={importAssignedTo}
+                        onChange={e => setImportAssignedTo(e.target.value)}
+                        className="w-full h-9 px-3 text-xs border rounded-lg bg-white"
+                      >
+                        <option value="">Select team member...</option>
+                        {assignees.map(a => (
+                          <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {importAssignMode === 'auto' && (
+                    <div className="mt-2 max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1">
+                      {assignees.map(a => (
+                        <label key={a.id} className="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={importAutoPool.includes(a.id)}
+                            onChange={() => setImportAutoPool(prev => prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id])}
+                            className="rounded text-indigo-600"
+                          />
+                          <span>{a.name}</span>
+                          <span className="text-[10px] text-slate-400">({a.category})</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                ⚡ All imported Franchise leads will automatically appear in <b>Telecalling</b> under the Franchise tab and will be synced two-way.
+              </p>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowImportModal(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={handleExcelImportSubmit}
+                  disabled={uploadingImport || !importFile}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  data-testid="franchise-import-submit-btn"
+                >
+                  {uploadingImport ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+                  Import Franchise Leads
                 </Button>
               </div>
             </div>
