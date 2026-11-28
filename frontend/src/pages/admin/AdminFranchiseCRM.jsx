@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Building2, Users, Phone, Video, Calendar, Clock, CheckCircle2,
   AlertCircle, Search, Filter, Plus, ChevronRight, UserCheck,
   UserPlus, MessageSquare, BarChart3, ArrowUpDown, RefreshCw,
   ExternalLink, Eye, Check, X, Shield, Star, Award, TrendingUp,
   MapPin, Mail, Briefcase, FileText, ChevronDown, Send, ArrowRight,
-  Edit, Trash2, CalendarClock, Upload, Download
+  Edit, Trash2, CalendarClock, Upload, Download, LayoutGrid, List,
+  Ticket, Paperclip, Archive, History, RefreshCcw, DollarSign,
+  ClipboardList, CheckSquare, Tag, Globe, Sparkles
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -19,173 +22,167 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STAGES = [
-  { value: 'all', label: 'All Stages', color: 'bg-slate-100 text-slate-700' },
-  { value: 'new', label: 'New / Fresh', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { value: 'contacted', label: 'Contacted', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { value: 'call_scheduled', label: 'Call Scheduled', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  { value: 'demo_completed', label: 'Demo Done', color: 'bg-teal-100 text-teal-700 border-teal-200' },
-  { value: 'follow_up', label: 'Follow-up', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  { value: 'converted', label: 'Converted (Won)', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  { value: 'lost', label: 'Lost / Closed', color: 'bg-rose-100 text-rose-700 border-rose-200' },
+  { value: 'all', label: 'All Leads', dotColor: 'bg-slate-400' },
+  { value: 'new', label: 'New Leads', dotColor: 'bg-blue-500' },
+  { value: 'meeting_done', label: 'Meeting Done', dotColor: 'bg-purple-500' },
+  { value: 'converted', label: 'Converted', dotColor: 'bg-emerald-500' },
+  { value: 'active', label: 'Active Franchises', dotColor: 'bg-green-600' },
+  { value: 'call_scheduled', label: 'Renewal Meeting', dotColor: 'bg-teal-500' },
+  { value: 'follow_up', label: 'Renewed', dotColor: 'bg-amber-500' },
+  { value: 'lost', label: 'Lost', dotColor: 'bg-rose-500' },
+  { value: 'archived', label: 'Archived', dotColor: 'bg-slate-500' },
 ];
 
 export default function AdminFranchiseCRM() {
   const { user, getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
+
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const isGPManager = user?.role === 'growth_partner_manager' || 
                       user?.role_id === '8741cb57-bbae-4cb1-9241-c90a9b54cd6d' ||
                       ['growth@oll.co', 'parul.mittal1311@gmail.com'].includes((user?.email || '').toLowerCase());
   const isManager = isAdmin || isGPManager || Boolean(user?.is_manager);
 
-  // Active view: 'pipeline' | 'tracksheet'
-  const [activeTab, setActiveTab] = useState('pipeline');
+  // Sub-navigation tabs: 'leads' | 'dashboard' | 'tracksheet'
+  const [activeSubTab, setActiveSubTab] = useState('leads');
+
+  // View mode: 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid');
 
   // Leads list state
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncingTelecalling, setSyncingTelecalling] = useState(false);
   const [totalLeads, setTotalLeads] = useState(0);
   const [statusCounts, setStatusCounts] = useState({});
-  const [page, setPage] = useState(1);
+
+  // Filter & Search state
   const [search, setSearch] = useState('');
-  const [selectedStage, setSelectedStage] = useState('all');
+  const [searchStageOnly, setSearchStageOnly] = useState(false);
+  const [selectedStage, setSelectedStage] = useState('new');
   const [selectedAssignee, setSelectedAssignee] = useState('all');
+  const [selectedCity, setSelectedCity] = useState('all');
+  const [selectedOffering, setSelectedOffering] = useState('all');
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'name_asc' | 'budget_desc'
 
   // Multi-select for bulk assign
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
 
-  // Eligible assignees (B2C, B2B, BDE, Telecallers)
+  // Eligible assignees
   const [assignees, setAssignees] = useState([]);
   const [loadingAssignees, setLoadingAssignees] = useState(false);
 
   // Tracksheet state
   const [tracksheetData, setTracksheetData] = useState(null);
   const [tracksheetLoading, setTracksheetLoading] = useState(false);
-  const [trackDateFilter, setTrackDateFilter] = useState('month'); // today | week | month | custom
+  const [trackDateFilter, setTrackDateFilter] = useState('month');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [trackUserFilter, setTrackUserFilter] = useState('all');
 
   // Modals state
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(null); // single lead or 'bulk'
+  const [showAssignModal, setShowAssignModal] = useState(null); // lead doc or 'bulk'
   const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [assignmentNote, setAssignmentNote] = useState('');
   const [savingAssign, setSavingAssign] = useState(false);
 
-  // Excel Import modal state
+  // Edit / Proposal Modal
+  const [showEditLeadModal, setShowEditLeadModal] = useState(null);
+  const [editLeadForm, setEditLeadForm] = useState({
+    name: '', phone: '', email: '', city: '', state: '', occupation: '',
+    has_space: 'looking', investment_budget: '₹2.5 Lakhs', status: 'new',
+    proposal_amount: '', notes: ''
+  });
+  const [savingEditLead, setSavingEditLead] = useState(false);
+
+  // Meeting Done Modal
+  const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
+  const [meetingDoneData, setMeetingDoneData] = useState({
+    outcome: 'completed', notes: '', interest_level: 'high'
+  });
+  const [savingMeetingDone, setSavingMeetingDone] = useState(false);
+
+  // Schedule Meeting / Demo Modal
+  const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState(null);
+  const [scheduleMeetingData, setScheduleMeetingData] = useState({
+    date: '', time: '', type: 'online_meet', link: '', agenda: 'Franchise Model Discussion & Discovery'
+  });
+  const [savingScheduleMeeting, setSavingScheduleMeeting] = useState(false);
+
+  // Ticket Modal
+  const [showTicketModal, setShowTicketModal] = useState(null);
+  const [ticketData, setTicketData] = useState({
+    subject: '', description: '', priority: 'medium'
+  });
+  const [savingTicket, setSavingTicket] = useState(false);
+
+  // Followup Modal
+  const [showFollowupModal, setShowFollowupModal] = useState(null);
+  const [followupTime, setFollowupTime] = useState('');
+  const [followupNotes, setFollowupNotes] = useState('');
+  const [savingFollowup, setSavingFollowup] = useState(false);
+
+  // Docs Modal
+  const [showDocsModal, setShowDocsModal] = useState(null);
+
+  // Mail Modal
+  const [showMailModal, setShowMailModal] = useState(null);
+  const [mailData, setMailData] = useState({
+    to: '', subject: 'OLL Franchise Partnership Introduction', body: '', template: 'intro'
+  });
+  const [sendingMail, setSendingMail] = useState(false);
+
+  // Note Modal
+  const [showNoteModal, setShowNoteModal] = useState(null);
+  const [newComment, setNewComment] = useState('');
+  const [savingComment, setSavingComment] = useState(false);
+
+  // Lost Lead Modal
+  const [showLostModal, setShowLostModal] = useState(null);
+  const [lostReason, setLostReason] = useState('Not interested');
+  const [lostNotes, setLostNotes] = useState('');
+  const [savingLost, setSavingLost] = useState(false);
+
+  // Delete Lead Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(null);
+  const [deletingLead, setDeletingLead] = useState(false);
+
+  // Excel Import Modal
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState(null);
-  const [importAssignMode, setImportAssignMode] = useState('unassigned'); // unassigned | single | auto
+  const [importAssignMode, setImportAssignMode] = useState('unassigned');
   const [importAssignedTo, setImportAssignedTo] = useState('');
   const [importAutoPool, setImportAutoPool] = useState([]);
   const [importBatchName, setImportBatchName] = useState('');
   const [uploadingImport, setUploadingImport] = useState(false);
 
-  // Call scheduling / log modal
-  const [callModalLead, setCallModalLead] = useState(null);
-  const [callModalMode, setCallModalMode] = useState('schedule'); // schedule | log
-  const [callScheduleTime, setCallScheduleTime] = useState('');
-  const [callPurpose, setCallPurpose] = useState('Franchise Presentation & Discovery');
-  const [callOutcomeStatus, setCallOutcomeStatus] = useState('completed');
-  const [callNotes, setCallNotes] = useState('');
-  const [callDuration, setCallDuration] = useState(10);
-  const [savingCall, setSavingCall] = useState(false);
-
-  // Demo scheduling / log modal
-  const [demoModalLead, setDemoModalLead] = useState(null);
-  const [demoModalMode, setDemoModalMode] = useState('schedule'); // schedule | log
-  const [demoScheduleTime, setDemoScheduleTime] = useState('');
-  const [demoType, setDemoType] = useState('online_meet');
-  const [demoLink, setDemoLink] = useState('');
-  const [demoOutcomeStatus, setDemoOutcomeStatus] = useState('completed');
-  const [demoNotes, setDemoNotes] = useState('');
-  const [demoInterestLevel, setDemoInterestLevel] = useState('high');
-  const [savingDemo, setSavingDemo] = useState(false);
-
-  // Follow-up modal
-  const [followupModalLead, setFollowupModalLead] = useState(null);
-  const [followupTime, setFollowupTime] = useState('');
-  const [followupNotes, setFollowupNotes] = useState('');
-  const [savingFollowup, setSavingFollowup] = useState(false);
-
-  // Lead Details & Activity Timeline Drawer
+  // Lead Details Drawer
   const [activeLeadDetails, setActiveLeadDetails] = useState(null);
-  const [leadActivities, setLeadActivities] = useState([]);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [newCommentText, setNewCommentText] = useState('');
-  const [savingComment, setSavingComment] = useState(false);
 
-  // New Lead Form state (includes optional demo & follow-up scheduling)
+  // Add Lead Form
   const [newLeadForm, setNewLeadForm] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    city: '',
-    state: 'Maharashtra',
-    occupation: '',
-    has_space: 'looking',
-    investment_budget: '₹2.5 Lakhs',
-    source: 'manual',
-    details: '',
-    assigned_to: '',
-    demo_session_scheduled: false,
-    scheduled_demo_at: '',
-    demo_type: 'online_meet',
-    followup_scheduled: false,
-    next_followup_at: '',
-    followup_notes: '',
+    name: '', phone: '', email: '', city: '', state: 'Maharashtra',
+    occupation: '', has_space: 'looking', investment_budget: '₹2.5 Lakhs',
+    source: 'manual', details: '', assigned_to: '',
+    demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'online_meet',
+    followup_scheduled: false, next_followup_at: '', followup_notes: '',
   });
   const [savingNewLead, setSavingNewLead] = useState(false);
 
-  // Edit Lead Modal state
-  const [showEditLeadModal, setShowEditLeadModal] = useState(null);
-  const [editLeadForm, setEditLeadForm] = useState({
-    id: '',
-    name: '',
-    phone: '',
-    email: '',
-    city: '',
-    state: 'Maharashtra',
-    occupation: '',
-    has_space: 'looking',
-    investment_budget: '₹2.5 Lakhs',
-    source: 'manual',
-    details: '',
-    status: 'new',
-    demo_session_scheduled: false,
-    scheduled_demo_at: '',
-    demo_type: 'online_meet',
-    followup_scheduled: false,
-    next_followup_at: '',
-    followup_notes: '',
-  });
-  const [savingEditLead, setSavingEditLead] = useState(false);
-
-  // Follow-up Modal states
-  const [followupMode, setFollowupMode] = useState('schedule'); // 'schedule' | 'complete'
-  const [completingFollowup, setCompletingFollowup] = useState(false);
-  const [completeNotes, setCompleteNotes] = useState('');
-
-  // Lost Lead Modal state
-  const [showLostModal, setShowLostModal] = useState(null);
-  const [lostReason, setLostReason] = useState('');
-  const [savingLost, setSavingLost] = useState(false);
-
-  // Delete Confirm Modal state
-  const [showDeleteModal, setShowDeleteModal] = useState(null);
-  const [deletingLead, setDeletingLead] = useState(false);
-
-  // Fetch Leads
+  // Fetch leads
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `${API}/franchise-crm/leads?page=${page}&limit=50`;
-      if (selectedStage && selectedStage !== 'all') url += `&status=${selectedStage}`;
-      if (selectedAssignee && selectedAssignee !== 'all') url += `&assigned_to=${selectedAssignee}`;
-      if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
-
-      const res = await axios.get(url, { headers: getAuthHeaders() });
+      const res = await axios.get(`${API}/franchise-crm/leads`, {
+        headers: getAuthHeaders(),
+        params: {
+          search: search || undefined,
+          stage: selectedStage === 'all' ? undefined : selectedStage,
+          assignee: selectedAssignee === 'all' ? undefined : selectedAssignee,
+          limit: 1000,
+        },
+      });
       setLeads(res.data?.leads || []);
       setTotalLeads(res.data?.total || 0);
       setStatusCounts(res.data?.status_counts || {});
@@ -195,286 +192,343 @@ export default function AdminFranchiseCRM() {
     } finally {
       setLoading(false);
     }
-  }, [page, selectedStage, selectedAssignee, search]);
+  }, [getAuthHeaders, search, selectedStage, selectedAssignee]);
 
-  // Fetch Assignees
+  // Fetch assignees
   const fetchAssignees = useCallback(async () => {
     setLoadingAssignees(true);
     try {
-      const res = await axios.get(`${API}/franchise-crm/assignees`, { headers: getAuthHeaders() });
+      const res = await axios.get(`${API}/franchise-crm/assignees`, {
+        headers: getAuthHeaders(),
+      });
       setAssignees(res.data?.assignees || []);
     } catch (err) {
-      console.error('Failed to load assignees:', err);
+      console.error('Failed to load franchise assignees:', err);
     } finally {
       setLoadingAssignees(false);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
-  // Fetch Tracksheet
+  // Fetch tracksheet
   const fetchTracksheet = useCallback(async () => {
     setTracksheetLoading(true);
     try {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      let dFrom = todayStr;
-      let dTo = todayStr;
-
-      if (trackDateFilter === 'today') {
-        dFrom = todayStr;
-        dTo = todayStr;
-      } else if (trackDateFilter === 'week') {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        dFrom = d.toISOString().slice(0, 10);
-        dTo = todayStr;
-      } else if (trackDateFilter === 'month') {
-        const d = new Date();
-        d.setDate(1); // 1st of current month
-        dFrom = d.toISOString().slice(0, 10);
-        dTo = todayStr;
-      } else if (trackDateFilter === 'custom') {
-        dFrom = customFrom || todayStr;
-        dTo = customTo || todayStr;
-      }
-
-      let url = `${API}/franchise-crm/tracksheet?date_from=${dFrom}&date_to=${dTo}`;
-      if (trackUserFilter && trackUserFilter !== 'all') {
-        url += `&user_id=${trackUserFilter}`;
-      }
-
-      const res = await axios.get(url, { headers: getAuthHeaders() });
-      setTracksheetData(res.data || null);
+      const res = await axios.get(`${API}/franchise-crm/tracksheet`, {
+        headers: getAuthHeaders(),
+        params: {
+          range: trackDateFilter,
+          from_date: trackDateFilter === 'custom' ? customFrom : undefined,
+          to_date: trackDateFilter === 'custom' ? customTo : undefined,
+          user_id: trackUserFilter === 'all' ? undefined : trackUserFilter,
+        },
+      });
+      setTracksheetData(res.data);
     } catch (err) {
       console.error('Failed to load tracksheet:', err);
-      toast.error('Failed to load tracksheet report');
     } finally {
       setTracksheetLoading(false);
     }
-  }, [trackDateFilter, customFrom, customTo, trackUserFilter]);
+  }, [getAuthHeaders, trackDateFilter, customFrom, customTo, trackUserFilter]);
 
   useEffect(() => {
     fetchLeads();
-    fetchAssignees();
-  }, [fetchLeads, fetchAssignees]);
+  }, [fetchLeads]);
 
   useEffect(() => {
-    if (activeTab === 'tracksheet') {
+    fetchAssignees();
+  }, [fetchAssignees]);
+
+  useEffect(() => {
+    if (activeSubTab === 'tracksheet') {
       fetchTracksheet();
     }
-  }, [activeTab, fetchTracksheet]);
+  }, [activeSubTab, fetchTracksheet]);
 
-  // Open Lead Details
-  const handleOpenLeadDetails = async (lead) => {
-    setActiveLeadDetails(lead);
-    setLoadingDetails(true);
-    try {
-      const res = await axios.get(`${API}/franchise-crm/leads/${lead.id}`, { headers: getAuthHeaders() });
-      setActiveLeadDetails(res.data?.lead || lead);
-      setLeadActivities(res.data?.activities || []);
-    } catch (err) {
-      toast.error('Failed to load lead details');
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
+  // Unique cities list for dropdown
+  const uniqueCities = useMemo(() => {
+    const s = new Set();
+    leads.forEach(l => {
+      if (l.city && l.city.trim()) s.add(l.city.trim());
+    });
+    return Array.from(s).sort();
+  }, [leads]);
 
-  // Add Comment to Lead
-  const handleAddComment = async () => {
-    if (!newCommentText.trim() || !activeLeadDetails) return;
-    setSavingComment(true);
-    try {
-      const res = await axios.post(
-        `${API}/franchise-crm/leads/${activeLeadDetails.id}/comments`,
-        { text: newCommentText.trim() },
-        { headers: getAuthHeaders() }
-      );
-      if (res.data?.comment) {
-        setActiveLeadDetails(prev => ({
-          ...prev,
-          comments: [...(prev.comments || []), res.data.comment],
-        }));
+  // Filtered and sorted leads
+  const filteredLeads = useMemo(() => {
+    let result = [...leads];
+
+    // Stage filtering helper
+    if (selectedStage !== 'all') {
+      if (selectedStage === 'meeting_done') {
+        result = result.filter(l => ['demo_completed', 'meeting_done'].includes(l.status));
+      } else if (selectedStage === 'converted') {
+        result = result.filter(l => ['converted', 'won'].includes(l.status));
+      } else if (selectedStage === 'active') {
+        result = result.filter(l => ['active', 'converted'].includes(l.status));
+      } else if (selectedStage === 'call_scheduled') {
+        result = result.filter(l => ['call_scheduled', 'renewal_meeting'].includes(l.status));
+      } else if (selectedStage === 'follow_up') {
+        result = result.filter(l => ['follow_up', 'renewed'].includes(l.status));
+      } else if (selectedStage === 'lost') {
+        result = result.filter(l => ['lost', 'lost_lead'].includes(l.status));
+      } else if (selectedStage === 'archived') {
+        result = result.filter(l => l.status === 'archived');
+      } else {
+        result = result.filter(l => l.status === selectedStage);
       }
-      setNewCommentText('');
-      toast.success('Note added');
-      fetchLeads();
-    } catch (err) {
-      toast.error('Failed to add note');
-    } finally {
-      setSavingComment(false);
     }
-  };
 
-  // Execute Lead Assignment (Single or Bulk)
-  const handleExecuteAssign = async () => {
-    if (!selectedAssigneeId) {
-      toast.error('Please select an executive');
+    // City filter
+    if (selectedCity !== 'all') {
+      result = result.filter(l => (l.city || '').toLowerCase() === selectedCity.toLowerCase());
+    }
+
+    // Offering / Investment budget filter
+    if (selectedOffering !== 'all') {
+      result = result.filter(l => (l.investment_budget || '').includes(selectedOffering) || (l.has_space || '') === selectedOffering);
+    }
+
+    // Assignee filter
+    if (selectedAssignee === 'unassigned') {
+      result = result.filter(l => !l.assigned_to);
+    } else if (selectedAssignee !== 'all') {
+      result = result.filter(l => l.assigned_to === selectedAssignee);
+    }
+
+    // Search query
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(l =>
+        (l.name || '').toLowerCase().includes(q) ||
+        (l.phone || '').toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q) ||
+        (l.city || '').toLowerCase().includes(q) ||
+        (l.notes || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    if (sortBy === 'newest') {
+      result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    } else if (sortBy === 'name_asc') {
+      result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+
+    return result;
+  }, [leads, selectedStage, selectedCity, selectedOffering, selectedAssignee, search, sortBy]);
+
+  // Export CSV
+  const handleExportCSV = () => {
+    if (filteredLeads.length === 0) {
+      toast.error('No leads to export');
       return;
     }
-    setSavingAssign(true);
+    const headers = ['Name', 'Phone', 'Email', 'City', 'State', 'Occupation', 'Space', 'Budget', 'Status', 'Assigned To', 'Created At'];
+    const rows = filteredLeads.map(l => [
+      `"${(l.name || '').replace(/"/g, '""')}"`,
+      `"${l.phone || ''}"`,
+      `"${l.email || ''}"`,
+      `"${l.city || ''}"`,
+      `"${l.state || ''}"`,
+      `"${l.occupation || ''}"`,
+      `"${l.has_space || ''}"`,
+      `"${l.investment_budget || ''}"`,
+      `"${l.status || ''}"`,
+      `"${l.assigned_to_name || ''}"`,
+      `"${l.created_at || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `franchise-leads-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${filteredLeads.length} leads to CSV`);
+  };
+
+  // Sync Telecalling
+  const handleSyncTelecalling = async () => {
+    setSyncingTelecalling(true);
     try {
-      if (showAssignModal === 'bulk') {
-        const res = await axios.post(
-          `${API}/franchise-crm/leads/bulk-assign`,
-          {
-            lead_ids: selectedLeadIds,
-            assigned_to: selectedAssigneeId,
-            assignment_note: assignmentNote,
-          },
-          { headers: getAuthHeaders() }
-        );
-        toast.success(`Assigned ${res.data?.count || selectedLeadIds.length} leads to ${res.data?.assigned_to_name}`);
-        setSelectedLeadIds([]);
-      } else {
-        const res = await axios.post(
-          `${API}/franchise-crm/leads/${showAssignModal.id}/assign`,
-          {
-            assigned_to: selectedAssigneeId,
-            assignment_note: assignmentNote,
-          },
-          { headers: getAuthHeaders() }
-        );
-        toast.success(`Lead assigned to ${res.data?.assigned_to_name}`);
-      }
-      setShowAssignModal(null);
-      setSelectedAssigneeId('');
-      setAssignmentNote('');
-      fetchLeads();
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Assignment failed');
+      await fetchLeads();
+      toast.success('Synchronized with Telecalling & database!');
+    } catch {
+      toast.error('Sync failed');
     } finally {
-      setSavingAssign(false);
+      setSyncingTelecalling(false);
     }
   };
 
-  // Execute Call (Schedule or Log)
-  const handleExecuteCall = async () => {
-    if (!callModalLead) return;
-    setSavingCall(true);
+  // Open Edit Modal
+  const openEditModal = (lead) => {
+    setEditLeadForm({
+      id: lead.id,
+      name: lead.name || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      city: lead.city || '',
+      state: lead.state || '',
+      occupation: lead.occupation || '',
+      has_space: lead.has_space || 'looking',
+      investment_budget: lead.investment_budget || '₹2.5 Lakhs',
+      status: lead.status || 'new',
+      proposal_amount: lead.proposal_amount || '',
+      notes: lead.notes || '',
+    });
+    setShowEditLeadModal(lead);
+  };
+
+  // Submit Edit Modal
+  const handleSaveEditLead = async (e) => {
+    e.preventDefault();
+    if (!showEditLeadModal) return;
+    setSavingEditLead(true);
     try {
-      if (callModalMode === 'schedule') {
-        if (!callScheduleTime) {
-          toast.error('Please select date and time');
-          setSavingCall(false);
-          return;
-        }
-        await axios.post(
-          `${API}/franchise-crm/leads/${callModalLead.id}/schedule-call`,
-          {
-            scheduled_call_at: callScheduleTime,
-            call_purpose: callPurpose,
-            notes: callNotes,
-          },
-          { headers: getAuthHeaders() }
-        );
-        toast.success('Call scheduled successfully');
-      } else {
-        if (!callNotes.trim()) {
-          toast.error('Please enter discussion notes');
-          setSavingCall(false);
-          return;
-        }
-        await axios.post(
-          `${API}/franchise-crm/leads/${callModalLead.id}/log-call`,
-          {
-            call_status: callOutcomeStatus,
-            call_notes: callNotes,
-            duration_minutes: Number(callDuration) || 5,
-          },
-          { headers: getAuthHeaders() }
-        );
-        toast.success('Call outcome logged');
-      }
-      setCallModalLead(null);
-      setCallNotes('');
-      setCallScheduleTime('');
+      await axios.put(`${API}/franchise-crm/leads/${showEditLeadModal.id}`, editLeadForm, {
+        headers: getAuthHeaders(),
+      });
+      toast.success('Franchise lead updated successfully');
+      setShowEditLeadModal(null);
       fetchLeads();
-      if (activeLeadDetails?.id === callModalLead.id) {
-        handleOpenLeadDetails(callModalLead);
+      if (activeLeadDetails?.id === showEditLeadModal.id) {
+        setActiveLeadDetails(prev => ({ ...prev, ...editLeadForm }));
       }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Action failed');
+      toast.error(err?.response?.data?.detail || 'Failed to update lead');
     } finally {
-      setSavingCall(false);
+      setSavingEditLead(false);
     }
   };
 
-  // Execute Demo (Schedule or Log)
-  const handleExecuteDemo = async () => {
-    if (!demoModalLead) return;
-    setSavingDemo(true);
+  // Meeting / Demo Done
+  const openMeetingDoneModal = (lead) => {
+    setShowMeetingDoneModal(lead);
+    setMeetingDoneData({ outcome: 'completed', notes: '', interest_level: 'high' });
+  };
+
+  const handleMeetingDoneSubmit = async () => {
+    if (!showMeetingDoneModal) return;
+    setSavingMeetingDone(true);
     try {
-      if (demoModalMode === 'schedule') {
-        if (!demoScheduleTime) {
-          toast.error('Please pick demo date & time');
-          setSavingDemo(false);
-          return;
-        }
-        await axios.post(
-          `${API}/franchise-crm/leads/${demoModalLead.id}/schedule-demo`,
-          {
-            scheduled_demo_at: demoScheduleTime,
-            demo_type: demoType,
-            demo_link: demoLink,
-            demo_notes: demoNotes,
-          },
-          { headers: getAuthHeaders() }
-        );
-        toast.success('Franchise demo scheduled');
-      } else {
-        if (!demoNotes.trim()) {
-          toast.error('Please enter demo feedback / notes');
-          setSavingDemo(false);
-          return;
-        }
-        await axios.post(
-          `${API}/franchise-crm/leads/${demoModalLead.id}/log-demo`,
-          {
-            demo_status: demoOutcomeStatus,
-            demo_notes: demoNotes,
-            interest_level: demoInterestLevel,
-          },
-          { headers: getAuthHeaders() }
-        );
-        toast.success('Demo outcome logged');
-      }
-      setDemoModalLead(null);
-      setDemoNotes('');
-      setDemoScheduleTime('');
+      await axios.post(
+        `${API}/franchise-crm/leads/${showMeetingDoneModal.id}/log-demo`,
+        {
+          demo_status: meetingDoneData.outcome,
+          demo_notes: meetingDoneData.notes,
+          interest_level: meetingDoneData.interest_level,
+        },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Meeting / Demo logged as Done!');
+      setShowMeetingDoneModal(null);
       fetchLeads();
-      if (activeLeadDetails?.id === demoModalLead.id) {
-        handleOpenLeadDetails(demoModalLead);
-      }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Action failed');
+      toast.error(err?.response?.data?.detail || 'Failed to log meeting');
     } finally {
-      setSavingDemo(false);
+      setSavingMeetingDone(false);
     }
   };
 
-  // Execute Follow-up (Schedule or Reschedule)
-  const handleExecuteFollowup = async () => {
-    if (!followupModalLead) return;
-    if (!followupTime || !followupNotes.trim()) {
-      toast.error('Please set follow-up time and reminder note');
+  // Schedule Meeting / Demo
+  const openScheduleMeetingModal = (lead) => {
+    setShowScheduleMeetingModal(lead);
+    setScheduleMeetingData({
+      date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      time: '11:00',
+      type: 'online_meet',
+      link: 'https://meet.google.com/oll-franchise',
+      agenda: 'Franchise Business Discussion & Lab Setup',
+    });
+  };
+
+  const handleScheduleMeetingSubmit = async () => {
+    if (!showScheduleMeetingModal || !scheduleMeetingData.date) {
+      toast.error('Please pick a date');
+      return;
+    }
+    setSavingScheduleMeeting(true);
+    try {
+      const isoTime = `${scheduleMeetingData.date}T${scheduleMeetingData.time || '10:00'}:00`;
+      await axios.post(
+        `${API}/franchise-crm/leads/${showScheduleMeetingModal.id}/schedule-demo`,
+        {
+          scheduled_demo_at: isoTime,
+          demo_type: scheduleMeetingData.type,
+          demo_link: scheduleMeetingData.link,
+          demo_notes: scheduleMeetingData.agenda,
+        },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Meeting scheduled successfully!');
+      setShowScheduleMeetingModal(null);
+      fetchLeads();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to schedule meeting');
+    } finally {
+      setSavingScheduleMeeting(false);
+    }
+  };
+
+  // Raise Ticket
+  const openTicketModal = (lead) => {
+    setShowTicketModal(lead);
+    setTicketData({
+      subject: `Support required for ${lead.name}`,
+      description: '',
+      priority: 'medium',
+    });
+  };
+
+  const handleTicketSubmit = async () => {
+    if (!showTicketModal || !ticketData.subject.trim()) {
+      toast.error('Subject is required');
+      return;
+    }
+    setSavingTicket(true);
+    try {
+      await axios.post(
+        `${API}/franchise-crm/leads/${showTicketModal.id}/ticket`,
+        ticketData,
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Support ticket raised successfully!');
+      setShowTicketModal(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to raise ticket');
+    } finally {
+      setSavingTicket(false);
+    }
+  };
+
+  // Followup Modal
+  const openFollowupModal = (lead) => {
+    setShowFollowupModal(lead);
+    setFollowupTime(new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 16));
+    setFollowupNotes('');
+  };
+
+  const handleFollowupSubmit = async () => {
+    if (!showFollowupModal || !followupTime) {
+      toast.error('Please select follow-up date and time');
       return;
     }
     setSavingFollowup(true);
     try {
       await axios.post(
-        `${API}/franchise-crm/leads/${followupModalLead.id}/schedule-followup`,
+        `${API}/franchise-crm/leads/${showFollowupModal.id}/schedule-followup`,
         {
           next_followup_at: followupTime,
-          followup_notes: followupNotes.trim(),
+          followup_notes: followupNotes.trim() || 'Follow-up discussion',
         },
         { headers: getAuthHeaders() }
       );
-      toast.success('Follow-up scheduled');
-      setFollowupModalLead(null);
-      setFollowupTime('');
-      setFollowupNotes('');
+      toast.success('Follow-up scheduled successfully');
+      setShowFollowupModal(null);
       fetchLeads();
-      if (activeLeadDetails?.id === followupModalLead.id) {
-        handleOpenLeadDetails(followupModalLead);
-      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to schedule follow-up');
     } finally {
@@ -482,57 +536,183 @@ export default function AdminFranchiseCRM() {
     }
   };
 
-  // Execute Complete Follow-up
-  const handleExecuteCompleteFollowup = async () => {
-    if (!followupModalLead) return;
-    if (!completeNotes.trim()) {
-      toast.error('Please enter follow-up discussion summary / notes');
+  // Mail Modal
+  const openMailModal = (lead) => {
+    setShowMailModal(lead);
+    setMailData({
+      to: lead.email || '',
+      subject: `OLL Franchise Opportunity - ${lead.name}`,
+      body: `Hi ${lead.name},\n\nThank you for your interest in partnering with OLL Robotics & AI Learning Centers. We are excited to share our franchise brochure and investment model.\n\nBest regards,\nOLL Growth Team`,
+      template: 'intro',
+    });
+  };
+
+  const handleMailSubmit = async () => {
+    if (!showMailModal || !mailData.to) {
+      toast.error('Email address is required');
       return;
     }
-    setCompletingFollowup(true);
+    setSendingMail(true);
+    try {
+      // Record email log as comment
+      await axios.post(
+        `${API}/franchise-crm/leads/${showMailModal.id}/comments`,
+        { text: `✉️ Email sent to ${mailData.to}: "${mailData.subject}"` },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(`Email dispatched to ${mailData.to}`);
+      setShowMailModal(null);
+      fetchLeads();
+    } catch {
+      toast.error('Failed to send email');
+    } finally {
+      setSendingMail(false);
+    }
+  };
+
+  // Quick Note Modal
+  const openNoteModal = (lead) => {
+    setShowNoteModal(lead);
+    setNewComment('');
+  };
+
+  const handleNoteSubmit = async () => {
+    if (!showNoteModal || !newComment.trim()) {
+      toast.error('Note content is required');
+      return;
+    }
+    setSavingComment(true);
     try {
       await axios.post(
-        `${API}/franchise-crm/leads/${followupModalLead.id}/complete-followup`,
-        { notes: completeNotes.trim() },
+        `${API}/franchise-crm/leads/${showNoteModal.id}/comments`,
+        { text: newComment.trim() },
         { headers: getAuthHeaders() }
       );
-      toast.success('Follow-up marked as completed');
-      setFollowupModalLead(null);
-      setCompleteNotes('');
+      toast.success('Note added');
+      setShowNoteModal(null);
       fetchLeads();
-      if (activeLeadDetails?.id === followupModalLead.id) {
-        handleOpenLeadDetails(followupModalLead);
+      if (activeLeadDetails?.id === showNoteModal.id) {
+        setActiveLeadDetails(prev => ({
+          ...prev,
+          comments: [...(prev.comments || []), { user_name: user?.name, text: newComment.trim(), created_at: new Date().toISOString() }]
+        }));
       }
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Failed to complete follow-up');
+    } catch {
+      toast.error('Failed to add note');
     } finally {
-      setCompletingFollowup(false);
+      setSavingComment(false);
     }
   };
 
-  // Quick Status Update (e.g. Convert to Franchise Partner or Lost)
-  const handleUpdateStatus = async (leadId, newStatus) => {
+  // Lost Lead Modal
+  const openLostModal = (lead) => {
+    setShowLostModal(lead);
+    setLostReason('Not interested');
+    setLostNotes('');
+  };
+
+  const handleConfirmLost = async () => {
+    if (!showLostModal) return;
+    setSavingLost(true);
     try {
       await axios.patch(
-        `${API}/franchise-crm/leads/${leadId}/status`,
-        { status: newStatus, notes: `Status changed to ${newStatus}` },
+        `${API}/franchise-crm/leads/${showLostModal.id}/status`,
+        { status: 'lost', notes: lostNotes.trim(), lost_reason: lostReason },
         { headers: getAuthHeaders() }
       );
-      toast.success(`Lead marked as ${newStatus.replace('_', ' ')}`);
+      toast.success('Lead marked as Lost');
+      setShowLostModal(null);
       fetchLeads();
-      if (activeLeadDetails?.id === leadId) {
-        setActiveLeadDetails(prev => ({ ...prev, status: newStatus }));
-      }
-    } catch (err) {
-      toast.error('Failed to update status');
+    } catch {
+      toast.error('Failed to mark lead as lost');
+    } finally {
+      setSavingLost(false);
     }
   };
 
-  // Create Manual Lead (with optional demo scheduling)
-  const handleCreateNewLead = async (e) => {
+  // Archive Lead
+  const handleArchiveLead = async (lead) => {
+    if (!window.confirm(`Archive franchise lead "${lead.name}"?`)) return;
+    try {
+      await axios.patch(
+        `${API}/franchise-crm/leads/${lead.id}/status`,
+        { status: 'archived', notes: 'Lead archived' },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Lead archived');
+      fetchLeads();
+    } catch {
+      toast.error('Failed to archive lead');
+    }
+  };
+
+  // Delete Lead
+  const openDeleteModal = (lead) => {
+    setShowDeleteModal(lead);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!showDeleteModal) return;
+    setDeletingLead(true);
+    try {
+      await axios.delete(`${API}/franchise-crm/leads/${showDeleteModal.id}`, {
+        headers: getAuthHeaders(),
+      });
+      toast.success('Lead permanently deleted');
+      setShowDeleteModal(null);
+      fetchLeads();
+    } catch {
+      toast.error('Failed to delete lead');
+    } finally {
+      setDeletingLead(false);
+    }
+  };
+
+  // Assign Modal
+  const openAssignModal = (lead) => {
+    setShowAssignModal(lead);
+    setSelectedAssigneeId(lead?.assigned_to || '');
+    setAssignmentNote('');
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!showAssignModal || !selectedAssigneeId) {
+      toast.error('Please choose a team member');
+      return;
+    }
+    setSavingAssign(true);
+    try {
+      if (showAssignModal === 'bulk') {
+        await axios.post(
+          `${API}/franchise-crm/leads/bulk-assign`,
+          { lead_ids: selectedLeadIds, assigned_to: selectedAssigneeId, notes: assignmentNote },
+          { headers: getAuthHeaders() }
+        );
+        toast.success(`Assigned ${selectedLeadIds.length} leads`);
+        setSelectedLeadIds([]);
+      } else {
+        await axios.post(
+          `${API}/franchise-crm/leads/${showAssignModal.id}/assign`,
+          { assigned_to: selectedAssigneeId, notes: assignmentNote },
+          { headers: getAuthHeaders() }
+        );
+        toast.success('Lead assigned successfully');
+      }
+      setShowAssignModal(null);
+      fetchLeads();
+      fetchAssignees();
+    } catch {
+      toast.error('Assignment failed');
+    } finally {
+      setSavingAssign(false);
+    }
+  };
+
+  // Add Lead Modal Submit
+  const handleAddLeadSubmit = async (e) => {
     e.preventDefault();
-    if (!newLeadForm.name.trim() || !newLeadForm.phone.trim() || !newLeadForm.city.trim()) {
-      toast.error('Name, Phone, and City are required');
+    if (!newLeadForm.name.trim() || !newLeadForm.phone.trim()) {
+      toast.error('Name and phone are required');
       return;
     }
     setSavingNewLead(true);
@@ -543,33 +723,18 @@ export default function AdminFranchiseCRM() {
         phone: newLeadForm.phone.trim(),
         email: newLeadForm.email.trim(),
         city: newLeadForm.city.trim(),
-        demo_session_scheduled: newLeadForm.demo_session_scheduled,
         scheduled_demo_at: newLeadForm.demo_session_scheduled && newLeadForm.scheduled_demo_at ? newLeadForm.scheduled_demo_at : null,
-        followup_scheduled: newLeadForm.followup_scheduled,
         next_followup_at: newLeadForm.followup_scheduled && newLeadForm.next_followup_at ? newLeadForm.next_followup_at : null,
-        followup_notes: newLeadForm.followup_notes ? newLeadForm.followup_notes.trim() : '',
       };
       await axios.post(`${API}/franchise-crm/leads`, payload, { headers: getAuthHeaders() });
       toast.success('Franchise lead added successfully');
       setShowAddLeadModal(false);
       setNewLeadForm({
-        name: '',
-        phone: '',
-        email: '',
-        city: '',
-        state: 'Maharashtra',
-        occupation: '',
-        has_space: 'looking',
-        investment_budget: '₹2.5 Lakhs',
-        source: 'manual',
-        details: '',
-        assigned_to: '',
-        demo_session_scheduled: false,
-        scheduled_demo_at: '',
-        demo_type: 'online_meet',
-        followup_scheduled: false,
-        next_followup_at: '',
-        followup_notes: '',
+        name: '', phone: '', email: '', city: '', state: 'Maharashtra',
+        occupation: '', has_space: 'looking', investment_budget: '₹2.5 Lakhs',
+        source: 'manual', details: '', assigned_to: '',
+        demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'online_meet',
+        followup_scheduled: false, next_followup_at: '', followup_notes: '',
       });
       fetchLeads();
     } catch (err) {
@@ -579,21 +744,12 @@ export default function AdminFranchiseCRM() {
     }
   };
 
-  // Excel Import handlers
+  // Excel Import Submit
   const handleExcelImportSubmit = async () => {
     if (!importFile) {
       toast.error('Please select an Excel file (.xlsx) to import');
       return;
     }
-    if (importAssignMode === 'single' && !importAssignedTo) {
-      toast.error('Please select a salesperson to assign leads to');
-      return;
-    }
-    if (importAssignMode === 'auto' && importAutoPool.length === 0) {
-      toast.error('Please select at least one salesperson for auto-assignment');
-      return;
-    }
-
     setUploadingImport(true);
     try {
       const fd = new FormData();
@@ -633,907 +789,648 @@ export default function AdminFranchiseCRM() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Sample Franchise template downloaded');
-    } catch (e) {
+    } catch {
       toast.error('Failed to download template');
     }
   };
 
-  // Open Edit Lead Modal
-  const openEditLead = (lead) => {
-    setEditLeadForm({
-      id: lead.id,
-      name: lead.name || '',
-      phone: lead.phone || '',
-      email: lead.email || '',
-      city: lead.city || '',
-      state: lead.state || 'Maharashtra',
-      occupation: lead.occupation || '',
-      has_space: lead.has_space || 'looking',
-      investment_budget: lead.investment_budget || '₹2.5 Lakhs',
-      source: lead.source || 'manual',
-      details: lead.details || lead.notes || '',
-      status: lead.status || 'new',
-      demo_session_scheduled: Boolean(lead.scheduled_demo_at || lead.demo_status === 'scheduled'),
-      scheduled_demo_at: lead.scheduled_demo_at ? lead.scheduled_demo_at.slice(0, 16) : '',
-      demo_type: lead.demo_type || 'online_meet',
-      followup_scheduled: Boolean(lead.next_followup_at || lead.followup_status === 'scheduled'),
-      next_followup_at: lead.next_followup_at ? lead.next_followup_at.slice(0, 16) : '',
-      followup_notes: lead.followup_notes || '',
-    });
-    setShowEditLeadModal(lead);
-  };
-
-  // Save Edit Lead
-  const handleSaveEditLead = async (e) => {
-    e.preventDefault();
-    if (!editLeadForm.name.trim() || !editLeadForm.phone.trim() || !editLeadForm.city.trim()) {
-      toast.error('Name, Phone, and City are required');
-      return;
-    }
-    setSavingEditLead(true);
-    try {
-      const payload = {
-        name: editLeadForm.name.trim(),
-        phone: editLeadForm.phone.trim(),
-        email: editLeadForm.email.trim(),
-        city: editLeadForm.city.trim(),
-        state: editLeadForm.state.trim(),
-        occupation: editLeadForm.occupation.trim(),
-        has_space: editLeadForm.has_space,
-        investment_budget: editLeadForm.investment_budget,
-        details: editLeadForm.details.trim(),
-        status: editLeadForm.status,
-        demo_session_scheduled: editLeadForm.demo_session_scheduled,
-        scheduled_demo_at: editLeadForm.demo_session_scheduled && editLeadForm.scheduled_demo_at ? editLeadForm.scheduled_demo_at : null,
-        demo_type: editLeadForm.demo_type,
-        followup_scheduled: editLeadForm.followup_scheduled,
-        next_followup_at: editLeadForm.followup_scheduled && editLeadForm.next_followup_at ? editLeadForm.next_followup_at : null,
-        followup_notes: editLeadForm.followup_notes ? editLeadForm.followup_notes.trim() : '',
-      };
-      await axios.put(`${API}/franchise-crm/leads/${editLeadForm.id}`, payload, {
-        headers: getAuthHeaders(),
-      });
-      toast.success('Lead details updated successfully!');
-      setShowEditLeadModal(null);
-      fetchLeads();
-      if (activeLeadDetails && activeLeadDetails.id === editLeadForm.id) {
-        handleOpenLeadDetails({ ...activeLeadDetails, ...payload });
-      }
-    } catch (err) {
-      console.error('Failed to update lead:', err);
-      toast.error(err?.response?.data?.detail || 'Failed to update lead');
-    } finally {
-      setSavingEditLead(false);
-    }
-  };
-
-  // Open Schedule Demo Modal directly
-  const openScheduleDemo = (lead) => {
-    setDemoModalLead(lead);
-    setDemoModalMode('schedule');
-    setDemoScheduleTime(lead.scheduled_demo_at ? lead.scheduled_demo_at.slice(0, 16) : '');
-    setDemoType(lead.demo_type || 'online_meet');
-    setDemoLink(lead.demo_link || '');
-    setDemoNotes('');
-  };
-
-  // Open Demo Done Modal directly
-  const openDemoDone = (lead) => {
-    setDemoModalLead(lead);
-    setDemoModalMode('log');
-    setDemoOutcomeStatus('completed');
-    setDemoInterestLevel('high');
-    setDemoNotes('');
-  };
-
-  // Confirm Lost Lead
-  const handleConfirmLost = async (e) => {
-    e.preventDefault();
-    if (!showLostModal) return;
-    setSavingLost(true);
-    try {
-      await axios.patch(
-        `${API}/franchise-crm/leads/${showLostModal.id}/status`,
-        { status: 'lost', notes: lostReason.trim() || 'Marked as lost lead' },
-        { headers: getAuthHeaders() }
-      );
-      toast.success('Lead marked as Lost');
-      setShowLostModal(null);
-      setLostReason('');
-      fetchLeads();
-      if (activeLeadDetails && activeLeadDetails.id === showLostModal.id) {
-        setActiveLeadDetails(prev => ({ ...prev, status: 'lost' }));
-      }
-    } catch (err) {
-      console.error('Failed to mark lead as lost:', err);
-      toast.error(err?.response?.data?.detail || 'Failed to update lead status');
-    } finally {
-      setSavingLost(false);
-    }
-  };
-
-  // Open Delete Modal
-  const handleDeleteLead = (lead) => {
-    if (!lead) return;
-    setShowDeleteModal(lead);
-  };
-
-  // Confirm Delete Lead
-  const handleConfirmDelete = async () => {
-    if (!showDeleteModal) return;
-    setDeletingLead(true);
-    try {
-      await axios.delete(`${API}/franchise-crm/leads/${showDeleteModal.id}`, {
-        headers: getAuthHeaders(),
-      });
-      toast.success('Lead deleted successfully');
-      setShowDeleteModal(null);
-      if (activeLeadDetails && activeLeadDetails.id === showDeleteModal.id) {
-        setActiveLeadDetails(null);
-      }
-      fetchLeads();
-    } catch (err) {
-      console.error('Failed to delete lead:', err);
-      toast.error(err?.response?.data?.detail || 'Failed to delete lead');
-    } finally {
-      setDeletingLead(false);
-    }
-  };
-
-  // Helper for status badge
-  const renderStatusBadge = (status) => {
-    const s = STAGES.find(x => x.value === status) || { label: status, color: 'bg-slate-100 text-slate-700' };
-    return (
-      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${s.color}`}>
-        {s.label}
-      </span>
-    );
-  };
-
   return (
     <AdminLayout title="Franchise CRM">
-      <div className="max-w-7xl mx-auto space-y-6 pb-12">
-        {/* Top Header & Navigation Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="max-w-[1600px] mx-auto space-y-4 pb-16 px-1 sm:px-2">
+
+        {/* ── Top Header Row ────────────────────────────────────────── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
-                <Building2 className="w-6 h-6" />
-              </span>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Franchise CRM</h1>
-                <p className="text-xs text-slate-500">
-                  Manage inquiries, assign leads to B2C/BDE telecallers, schedule calls & demos, and inspect track sheet performance.
-                </p>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold text-[#1E3A5F] tracking-tight">Franchise CRM</h1>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/gp-onboarding')}
+              className="bg-[#1E3A5F] hover:bg-[#152a45] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition"
+              data-testid="onboarding-tracker-btn"
+            >
+              <ClipboardList className="w-3.5 h-3.5" /> ONBOARDING TRACKER
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/pricing')}
+              className="bg-[#D63031] hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition"
+              data-testid="pricing-btn"
+            >
+              <DollarSign className="w-3.5 h-3.5" /> PRICING
+            </button>
+            {isManager && (
               <button
                 type="button"
-                onClick={() => setActiveTab('pipeline')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  activeTab === 'pipeline'
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setActiveSubTab(activeSubTab === 'tracksheet' ? 'leads' : 'tracksheet')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition"
+                data-testid="tracksheet-btn"
               >
-                <Users className="w-3.5 h-3.5" /> Leads Pipeline ({totalLeads})
+                <BarChart3 className="w-3.5 h-3.5" /> TRACK SHEET
               </button>
-              {isManager && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('tracksheet')}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                    activeTab === 'tracksheet'
-                      ? 'bg-white text-indigo-700 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" /> Track Sheet Report
-                </button>
-              )}
-            </div>
-
-            <Button
-              onClick={() => setShowImportModal(true)}
-              variant="outline"
-              className="text-xs font-semibold px-3 py-2 rounded-xl border-slate-300 hover:bg-slate-50 flex items-center gap-1.5"
-              data-testid="franchise-import-excel-btn"
-            >
-              <Upload className="w-3.5 h-3.5 text-slate-600" /> Import Excel
-            </Button>
-
-            <Button
-              onClick={() => setShowAddLeadModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add Franchise Lead
-            </Button>
+            )}
           </div>
         </div>
 
-        {/* ── KPI Stat Highlights (Click to Filter) ──────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div
-            onClick={() => setSelectedStage('all')}
-            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
-              selectedStage === 'all'
-                ? 'bg-slate-800 text-white border-slate-900 ring-2 ring-slate-400'
-                : 'bg-white border-slate-200 hover:border-slate-400'
+        {/* ── Sub Navigation Tabs ───────────────────────────────────── */}
+        <div className="border-b border-slate-200 flex items-center gap-6 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('dashboard')}
+            className={`pb-2.5 flex items-center gap-1.5 transition ${
+              activeSubTab === 'dashboard'
+                ? 'text-slate-900 border-b-2 border-slate-900 font-bold'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
-            title="Show All Leads"
           >
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'all' ? 'text-slate-300' : 'text-slate-500'}`}>Total Leads</p>
-            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'all' ? 'text-white' : 'text-slate-900'}`}>{totalLeads}</p>
-          </div>
-          <div
-            onClick={() => setSelectedStage('new')}
-            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
-              selectedStage === 'new'
-                ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300'
-                : 'bg-white border-blue-200 bg-blue-50/20 hover:border-blue-400'
+            <BarChart3 className="w-4 h-4" /> Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('leads')}
+            className={`pb-2.5 flex items-center gap-1.5 transition ${
+              activeSubTab === 'leads'
+                ? 'text-slate-900 border-b-2 border-slate-900 font-bold'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
-            title="Filter by New Leads"
           >
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'new' ? 'text-blue-100' : 'text-blue-700'}`}>New / Fresh</p>
-            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'new' ? 'text-white' : 'text-blue-900'}`}>{statusCounts.new || 0}</p>
-          </div>
-          <div
-            onClick={() => setSelectedStage('call_scheduled')}
-            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
-              selectedStage === 'call_scheduled'
-                ? 'bg-indigo-600 text-white border-indigo-700 ring-2 ring-indigo-300'
-                : 'bg-white border-indigo-200 bg-indigo-50/20 hover:border-indigo-400'
+            <Users className="w-4 h-4" /> Leads & Franchises
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('tracksheet')}
+            className={`pb-2.5 flex items-center gap-1.5 transition ${
+              activeSubTab === 'tracksheet'
+                ? 'text-slate-900 border-b-2 border-slate-900 font-bold'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
-            title="Filter by Calls Scheduled"
           >
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'call_scheduled' ? 'text-indigo-100' : 'text-indigo-700'}`}>Calls Scheduled</p>
-            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'call_scheduled' ? 'text-white' : 'text-indigo-900'}`}>{statusCounts.call_scheduled || 0}</p>
-          </div>
-          <div
-            onClick={() => setSelectedStage('demo_scheduled')}
-            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
-              selectedStage === 'demo_scheduled'
-                ? 'bg-purple-600 text-white border-purple-700 ring-2 ring-purple-300'
-                : 'bg-white border-purple-200 bg-purple-50/20 hover:border-purple-400'
-            }`}
-            title="Filter by Demos Scheduled"
-          >
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'demo_scheduled' ? 'text-purple-100' : 'text-purple-700'}`}>Demos Scheduled</p>
-            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'demo_scheduled' ? 'text-white' : 'text-purple-900'}`}>{statusCounts.demo_scheduled || 0}</p>
-          </div>
-          <div
-            onClick={() => setSelectedStage('follow_up')}
-            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
-              selectedStage === 'follow_up'
-                ? 'bg-orange-600 text-white border-orange-700 ring-2 ring-orange-300'
-                : 'bg-white border-orange-200 bg-orange-50/20 hover:border-orange-400'
-            }`}
-            title="Filter by Follow-ups"
-          >
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'follow_up' ? 'text-orange-100' : 'text-orange-700'}`}>Follow-ups</p>
-            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'follow_up' ? 'text-white' : 'text-orange-900'}`}>{statusCounts.follow_up || 0}</p>
-          </div>
-          <div
-            onClick={() => setSelectedStage('converted')}
-            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
-              selectedStage === 'converted'
-                ? 'bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-300'
-                : 'bg-white border-emerald-200 bg-emerald-50/30 hover:border-emerald-400'
-            }`}
-            title="Filter by Converted Partners"
-          >
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'converted' ? 'text-emerald-100' : 'text-emerald-700'}`}>Converted (Won)</p>
-            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'converted' ? 'text-white' : 'text-emerald-800'}`}>{statusCounts.converted || 0}</p>
-          </div>
+            <UserCheck className="w-4 h-4" /> Contact Management
+          </button>
         </div>
 
-        {/* ════════════════════ TAB 1: LEADS PIPELINE ════════════════════ */}
-        {activeTab === 'pipeline' && (
-          <div className="space-y-4">
-            {/* Filter & Search Bar */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-              <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
-                <div className="relative flex-1 w-full">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    placeholder="Search by lead name, phone, city, email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 text-xs h-9 bg-slate-50 border-slate-200 w-full"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-                  {/* Stage filter */}
-                  <select
-                    value={selectedStage}
-                    onChange={(e) => setSelectedStage(e.target.value)}
-                    className="h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium"
-                  >
-                    {STAGES.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-
-                  {/* Assignee filter (managers only) */}
-                  {isManager && (
-                    <select
-                      value={selectedAssignee}
-                      onChange={(e) => setSelectedAssignee(e.target.value)}
-                      className="h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium max-w-xs"
-                    >
-                      <option value="all">All Assignees</option>
-                      <option value="unassigned">⚠️ Unassigned Leads</option>
-                      {assignees.map(a => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({a.category} · {a.assigned_leads_count})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
+        {/* ════════════════════ VIEW: TRACKSHEET / REPORT ════════════════════ */}
+        {activeSubTab === 'tracksheet' && (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-indigo-600" /> Executive Calling & Demo Performance Track Sheet
+              </h2>
+              <div className="flex items-center gap-2">
+                {['today', 'week', 'month'].map(r => (
                   <button
-                    type="button"
-                    onClick={() => fetchLeads()}
-                    className="h-9 px-3 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600 text-xs flex items-center gap-1 font-medium"
-                    title="Refresh list"
+                    key={r}
+                    onClick={() => setTrackDateFilter(r)}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg capitalize border ${
+                      trackDateFilter === r
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
+                    {r}
                   </button>
-                </div>
+                ))}
               </div>
-
-              {/* Manager Bulk Actions Banner */}
-              {isManager && selectedLeadIds.length > 0 && (
-                <div className="p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-between text-xs animate-in fade-in">
-                  <span className="font-semibold text-indigo-900">
-                    {selectedLeadIds.length} lead{selectedLeadIds.length > 1 ? 's' : ''} selected
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => setShowAssignModal('bulk')}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-7 px-3"
-                    >
-                      <UserPlus className="w-3 h-3 mr-1" /> Bulk Assign to Executive
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedLeadIds([])}
-                      className="text-slate-500 hover:text-slate-700 underline text-[11px]"
-                    >
-                      Deselect
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Leads Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              {loading ? (
-                <div className="py-16 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
-                  <RefreshCw className="w-5 h-5 animate-spin text-indigo-600" />
-                  <span>Loading franchise leads…</span>
-                </div>
-              ) : leads.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-500">
-                  <p className="font-medium text-slate-700 text-sm">No franchise leads found</p>
-                  <p className="text-slate-400 mt-1">Try adjusting filters or add a new franchise lead.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold sticky top-0">
-                      <tr>
-                        {isManager && (
-                          <th className="px-3 py-3 w-8">
-                            <input
-                              type="checkbox"
-                              checked={leads.length > 0 && selectedLeadIds.length === leads.length}
-                              onChange={(e) => {
-                                if (e.target.checked) setSelectedLeadIds(leads.map(l => l.id));
-                                else setSelectedLeadIds([]);
-                              }}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                          </th>
-                        )}
-                        <th className="px-4 py-3">Lead Details</th>
-                        <th className="px-4 py-3">Location & Space</th>
-                        <th className="px-4 py-3">Assigned Executive</th>
-                        <th className="px-4 py-3">Stage</th>
-                        <th className="px-4 py-3">Next Action</th>
-                        <th className="px-4 py-3 text-right">Quick Actions</th>
+            {tracksheetLoading ? (
+              <div className="py-12 text-center text-slate-400 text-xs">Loading Track Sheet...</div>
+            ) : tracksheetData ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 border-b text-slate-600 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-2.5 px-3">Sales Executive</th>
+                      <th className="py-2.5 px-3 text-center">Total Assigned</th>
+                      <th className="py-2.5 px-3 text-center">Calls Made</th>
+                      <th className="py-2.5 px-3 text-center">Calls Picked</th>
+                      <th className="py-2.5 px-3 text-center">Demos Sched.</th>
+                      <th className="py-2.5 px-3 text-center">Demos Done</th>
+                      <th className="py-2.5 px-3 text-center">Follow-ups</th>
+                      <th className="py-2.5 px-3 text-center">Converted</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(tracksheetData.per_user || []).map(u => (
+                      <tr key={u.user_id} className="hover:bg-slate-50">
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">{u.name} <span className="text-[10px] text-slate-400">({u.role})</span></td>
+                        <td className="py-2.5 px-3 text-center font-bold">{u.leads_assigned}</td>
+                        <td className="py-2.5 px-3 text-center">{u.calls_made}</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-medium">{u.calls_picked}</td>
+                        <td className="py-2.5 px-3 text-center text-purple-600 font-medium">{u.demos_scheduled}</td>
+                        <td className="py-2.5 px-3 text-center font-bold text-teal-600">{u.demos_completed}</td>
+                        <td className="py-2.5 px-3 text-center text-orange-600">{u.followups_scheduled}</td>
+                        <td className="py-2.5 px-3 text-center font-bold text-emerald-600">{u.converted}</td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {leads.map((lead) => {
-                        const isSelected = selectedLeadIds.includes(lead.id);
-                        return (
-                          <tr
-                            key={lead.id}
-                            className={`hover:bg-slate-50/80 transition ${isSelected ? 'bg-indigo-50/30' : ''}`}
-                          >
-                            {isManager && (
-                              <td className="px-3 py-3">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={(e) => {
-                                    if (e.target.checked) setSelectedLeadIds(prev => [...prev, lead.id]);
-                                    else setSelectedLeadIds(prev => prev.filter(x => x !== lead.id));
-                                  }}
-                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                />
-                              </td>
-                            )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        )}
 
-                            {/* Lead Name & Contact */}
-                            <td className="px-4 py-3">
-                              <div className="flex flex-col">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenLeadDetails(lead)}
-                                  className="font-bold text-slate-900 hover:text-indigo-600 text-left text-sm"
-                                >
-                                  {lead.name}
-                                </button>
-                                <div className="flex items-center gap-2 mt-0.5 text-slate-500 text-[11px]">
-                                  <span className="flex items-center gap-0.5">
-                                    <Phone className="w-3 h-3 text-slate-400" /> {lead.phone}
-                                  </span>
-                                  {lead.email && (
-                                    <span className="flex items-center gap-0.5 text-slate-400 truncate max-w-[140px]" title={lead.email}>
-                                      · {lead.email}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-slate-400 mt-0.5">
-                                  Source: {lead.source || 'Website'} · Added {new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* Location, Space & Budget */}
-                            <td className="px-4 py-3 text-slate-600">
-                              <div className="flex flex-col gap-0.5">
-                                <div className="flex items-center gap-1 font-medium text-slate-800">
-                                  <MapPin className="w-3 h-3 text-slate-400" />
-                                  <span>{lead.city || 'City N/A'}</span>
-                                  {lead.state && <span className="text-slate-400">({lead.state})</span>}
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                    lead.has_space === 'yes'
-                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                      : lead.has_space === 'looking'
-                                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                      : 'bg-slate-100 text-slate-600'
-                                  }`}>
-                                    Space: {lead.has_space === 'yes' ? 'Has Space' : lead.has_space === 'looking' ? 'Looking' : 'No Space'}
-                                  </span>
-                                  {lead.investment_budget && (
-                                    <span className="text-[10px] text-slate-500 font-mono">
-                                      {lead.investment_budget}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Assigned Executive */}
-                            <td className="px-4 py-3">
-                              {lead.assigned_to_name ? (
-                                <div className="flex flex-col">
-                                  <span className="font-semibold text-slate-800">{lead.assigned_to_name}</span>
-                                  {lead.assigned_to_role && (
-                                    <span className="text-[10px] text-indigo-700 font-medium">
-                                      {lead.assigned_to_role}
-                                    </span>
-                                  )}
-                                  {isManager && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowAssignModal(lead)}
-                                      className="text-[10px] text-indigo-600 hover:underline mt-0.5 text-left"
-                                    >
-                                      Reassign
-                                    </button>
-                                  )}
-                                </div>
-                              ) : (
-                                <div>
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                                    Unassigned
-                                  </span>
-                                  {isManager && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowAssignModal(lead)}
-                                      className="block mt-1 text-[11px] font-semibold text-indigo-600 hover:underline"
-                                    >
-                                      + Assign Person
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Stage Badge */}
-                            <td className="px-4 py-3">
-                              {renderStatusBadge(lead.status)}
-                            </td>
-
-                            {/* Next Action Scheduled */}
-                            <td className="px-4 py-3">
-                              <div className="flex flex-col gap-0.5 text-[11px]">
-                                {lead.scheduled_call_at && (
-                                  <div className="flex items-center gap-1 text-indigo-700 font-medium">
-                                    <Phone className="w-3 h-3" />
-                                    <span>Call: {new Date(lead.scheduled_call_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                )}
-                                {lead.scheduled_demo_at && (
-                                  <div className="flex items-center gap-1 text-purple-700 font-medium">
-                                    <Video className="w-3 h-3" />
-                                    <span>Demo: {new Date(lead.scheduled_demo_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                )}
-                                {lead.next_followup_at && (
-                                  <div className="flex items-center gap-1 text-orange-700 font-medium">
-                                    <Clock className="w-3 h-3" />
-                                    <span>Follow-up: {new Date(lead.next_followup_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                )}
-                                {!lead.scheduled_call_at && !lead.scheduled_demo_at && !lead.next_followup_at && (
-                                  <span className="text-slate-400 italic text-[11px]">None scheduled</span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Actions (School CRM Style) */}
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                {/* Edit Lead */}
-                                <button
-                                  type="button"
-                                  onClick={() => openEditLead(lead)}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 font-semibold transition"
-                                  title="Edit Lead Details"
-                                >
-                                  <Edit className="w-3 h-3 text-amber-600" />
-                                  <span>Edit</span>
-                                </button>
-
-                                {/* Demo Schedule */}
-                                <button
-                                  type="button"
-                                  onClick={() => openScheduleDemo(lead)}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 font-semibold transition"
-                                  title="Schedule Demo Session"
-                                >
-                                  <CalendarClock className="w-3 h-3 text-purple-600" />
-                                  <span>Demo Schedule</span>
-                                </button>
-
-                                {/* Demo Done */}
-                                <button
-                                  type="button"
-                                  onClick={() => openDemoDone(lead)}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1 font-semibold transition"
-                                  title="Mark Demo Completed"
-                                >
-                                  <CheckCircle2 className="w-3 h-3 text-teal-600" />
-                                  <span>Demo Done</span>
-                                </button>
-
-                                {/* Follow-up */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setFollowupModalLead(lead);
-                                    setFollowupTime(lead.next_followup_at ? lead.next_followup_at.slice(0, 16) : '');
-                                    setFollowupNotes(lead.followup_notes || '');
-                                    setFollowupMode(lead.next_followup_at ? 'complete' : 'schedule');
-                                    setCompleteNotes('');
-                                  }}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 flex items-center gap-1 font-semibold transition"
-                                  title="Schedule or Complete Follow-up"
-                                >
-                                  <Clock className="w-3 h-3 text-orange-600" />
-                                  <span>Follow-up</span>
-                                </button>
-
-                                {/* Lost Lead */}
-                                {lead.status !== 'lost' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setShowLostModal(lead);
-                                      setLostReason('');
-                                    }}
-                                    className="text-[11px] px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 font-semibold transition"
-                                    title="Mark Lead as Lost"
-                                  >
-                                    <X className="w-3 h-3 text-rose-600" />
-                                    <span>Lost Lead</span>
-                                  </button>
-                                )}
-
-                                {/* Call */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCallModalLead(lead);
-                                    setCallModalMode(lead.scheduled_call_at ? 'log' : 'schedule');
-                                  }}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1 font-semibold transition"
-                                  title="Schedule or Log Call"
-                                >
-                                  <Phone className="w-3 h-3 text-indigo-600" />
-                                  <span>Call</span>
-                                </button>
-
-                                {/* Delete (Admins & GP Managers) */}
-                                {isManager && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteLead(lead)}
-                                    className="text-[11px] px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center gap-1 font-semibold transition"
-                                    title="Delete Lead"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-red-600" />
-                                    <span>Delete</span>
-                                  </button>
-                                )}
-
-                                {/* View Details */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenLeadDetails(lead)}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1 font-semibold transition"
-                                  title="View Full Profile & Timeline"
-                                >
-                                  <Eye className="w-3 h-3 text-slate-500" />
-                                  <span>View</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+        {/* ════════════════════ VIEW: DASHBOARD KPI SUMMARY ════════════════════ */}
+        {activeSubTab === 'dashboard' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+              <p className="text-xs text-slate-500 font-medium uppercase">Total Franchise Leads</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{totalLeads}</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl border border-blue-200 bg-blue-50/20 shadow-sm">
+              <p className="text-xs text-blue-700 font-medium uppercase">New Leads</p>
+              <p className="text-2xl font-bold text-blue-900 mt-1">{statusCounts.new || 0}</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl border border-purple-200 bg-purple-50/20 shadow-sm">
+              <p className="text-xs text-purple-700 font-medium uppercase">Demos Completed</p>
+              <p className="text-2xl font-bold text-purple-900 mt-1">{statusCounts.demo_completed || 0}</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-sm">
+              <p className="text-xs text-emerald-700 font-medium uppercase">Converted Partners</p>
+              <p className="text-2xl font-bold text-emerald-800 mt-1">{statusCounts.converted || 0}</p>
             </div>
           </div>
         )}
 
-        {/* ════════════════════ TAB 2: TRACK SHEET REPORT ════════════════════ */}
-        {activeTab === 'tracksheet' && isManager && (
-          <div className="space-y-6">
-            {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-slate-700 mr-1 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-600" /> Date Range:
-                </span>
-                {[
-                  { value: 'today', label: 'Today' },
-                  { value: 'week', label: 'Last 7 Days' },
-                  { value: 'month', label: 'This Month' },
-                  { value: 'custom', label: 'Custom' },
-                ].map(b => (
-                  <button
-                    key={b.value}
-                    type="button"
-                    onClick={() => setTrackDateFilter(b.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                      trackDateFilter === b.value
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
+        {/* ════════════════════ VIEW: LEADS & FRANCHISES (MAIN) ════════════════════ */}
+        {activeSubTab === 'leads' && (
+          <div className="space-y-3">
 
-                {trackDateFilter === 'custom' && (
-                  <div className="flex items-center gap-1 ml-2">
-                    <Input
-                      type="date"
-                      value={customFrom}
-                      onChange={(e) => setCustomFrom(e.target.value)}
-                      className="text-xs h-8 w-32"
-                    />
-                    <span className="text-slate-400 text-xs">to</span>
-                    <Input
-                      type="date"
-                      value={customTo}
-                      onChange={(e) => setCustomTo(e.target.value)}
-                      className="text-xs h-8 w-32"
-                    />
-                    <Button size="sm" onClick={fetchTracksheet} className="h-8 text-xs bg-indigo-600 text-white">
-                      Apply
-                    </Button>
-                  </div>
-                )}
+            {/* 1. Search Bar Row with 'Search this stage only' */}
+            <div className="relative flex items-center bg-white rounded-xl border border-slate-200 shadow-sm px-3 py-2">
+              <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search by franchise name, contact or phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full text-xs text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none"
+                data-testid="lead-search-input"
+              />
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 font-medium ml-3 shrink-0 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={searchStageOnly}
+                  onChange={(e) => setSearchStageOnly(e.target.checked)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-0"
+                />
+                Search this stage only
+              </label>
+            </div>
+
+            {/* 2. Filters Row: All people | All Cities | All Offerings | Bulk Import | Newest first */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Assignee Filter */}
+                <select
+                  value={selectedAssignee}
+                  onChange={(e) => setSelectedAssignee(e.target.value)}
+                  className="h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-medium shadow-sm focus:outline-none"
+                >
+                  <option value="all">All people</option>
+                  <option value="unassigned">Unassigned</option>
+                  {assignees.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+
+                {/* Cities Filter */}
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className="h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-medium shadow-sm focus:outline-none"
+                >
+                  <option value="all">All Cities</option>
+                  {uniqueCities.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+
+                {/* Offerings / Investment Budget Filter */}
+                <select
+                  value={selectedOffering}
+                  onChange={(e) => setSelectedOffering(e.target.value)}
+                  className="h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-medium shadow-sm focus:outline-none"
+                >
+                  <option value="all">All Offerings</option>
+                  <option value="₹2.5 Lakhs">₹2.5 Lakhs Center</option>
+                  <option value="₹5 Lakhs">₹5 Lakhs Center</option>
+                  <option value="looking">Looking for Space</option>
+                  <option value="yes">Has Space</option>
+                </select>
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Bulk Import */}
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(true)}
+                  className="h-8 px-3 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-semibold shadow-sm flex items-center gap-1.5 transition"
+                  data-testid="bulk-import-btn"
+                >
+                  <Upload className="w-3.5 h-3.5 text-slate-500" /> Bulk Import
+                </button>
+
+                {/* Sort dropdown */}
                 <select
-                  value={trackUserFilter}
-                  onChange={(e) => setTrackUserFilter(e.target.value)}
-                  className="h-8 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-medium shadow-sm focus:outline-none"
                 >
-                  <option value="all">All Executives</option>
-                  {assignees.map(a => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.category})</option>
-                  ))}
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="name_asc">Name A-Z</option>
                 </select>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={fetchTracksheet}
-                  className="h-8 text-xs flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" /> Refresh
-                </Button>
               </div>
             </div>
 
-            {/* Tracksheet Summary Cards */}
-            {tracksheetData?.summary && (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase">Assigned Leads</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{tracksheetData.summary.total_leads_assigned}</p>
-                  <span className="text-[10px] text-slate-400">across {tracksheetData.summary.total_team_members} executives</span>
+            {/* 3. Action Buttons Bar: Grid/List | Sync LMS | Export CSV | + Add Lead */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+              <div className="flex items-center gap-2">
+                {/* Grid / List Toggle */}
+                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={`px-3 py-1 text-xs font-semibold rounded flex items-center gap-1 transition ${
+                      viewMode === 'grid'
+                        ? 'bg-slate-100 text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" /> Grid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    className={`px-3 py-1 text-xs font-semibold rounded flex items-center gap-1 transition ${
+                      viewMode === 'list'
+                        ? 'bg-slate-100 text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" /> List
+                  </button>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-indigo-200 bg-indigo-50/20 shadow-sm">
-                  <p className="text-[11px] font-semibold text-indigo-700 uppercase">Calls Completed</p>
-                  <p className="text-2xl font-bold text-indigo-900 mt-1">{tracksheetData.summary.total_calls_completed}</p>
-                  <span className="text-[10px] text-indigo-600/80">successful connects</span>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-purple-200 bg-purple-50/20 shadow-sm">
-                  <p className="text-[11px] font-semibold text-purple-700 uppercase">Demos Conducted</p>
-                  <p className="text-2xl font-bold text-purple-900 mt-1">{tracksheetData.summary.total_demos_completed}</p>
-                  <span className="text-[10px] text-purple-600/80">completed presentations</span>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-orange-200 bg-orange-50/20 shadow-sm">
-                  <p className="text-[11px] font-semibold text-orange-700 uppercase">Follow-ups Done</p>
-                  <p className="text-2xl font-bold text-orange-900 mt-1">{tracksheetData.summary.total_followups}</p>
-                  <span className="text-[10px] text-orange-600/80">pipeline progression</span>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-sm">
-                  <p className="text-[11px] font-semibold text-emerald-800 uppercase">Converted Franchises</p>
-                  <p className="text-2xl font-bold text-emerald-900 mt-1">{tracksheetData.summary.total_conversions}</p>
-                  <span className="text-[10px] text-emerald-700 font-semibold">
-                    {tracksheetData.summary.overall_conversion_rate}% conversion rate
-                  </span>
-                </div>
-              </div>
-            )}
 
-            {/* Performance by Person Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">Franchise CRM Executive Track Sheet</h3>
-                  <p className="text-xs text-slate-500">Breakdown of calls, demos, follow-ups and franchise conversion performance per executive.</p>
-                </div>
+                {/* Sync LMS / Sync Telecalling */}
+                <button
+                  type="button"
+                  onClick={handleSyncTelecalling}
+                  disabled={syncingTelecalling}
+                  className="h-8 px-3 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-semibold shadow-sm flex items-center gap-1.5 transition"
+                  data-testid="sync-telecalling-btn"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${syncingTelecalling ? 'animate-spin' : ''}`} />
+                  Sync LMS
+                </button>
+
+                {/* Export CSV */}
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="h-8 px-3 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-semibold shadow-sm flex items-center gap-1.5 transition"
+                  data-testid="export-csv-btn"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" /> Export CSV
+                </button>
               </div>
 
-              {tracksheetLoading ? (
-                <div className="py-12 text-center text-xs text-slate-500">Loading performance data…</div>
-              ) : !tracksheetData?.executives || tracksheetData.executives.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">No activity logged for this time period.</div>
-              ) : (
+              {/* + Add Lead (Red Button) */}
+              <button
+                type="button"
+                onClick={() => setShowAddLeadModal(true)}
+                className="bg-[#D63031] hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition"
+                data-testid="add-lead-btn"
+              >
+                <Plus className="w-4 h-4" /> Add Lead
+              </button>
+            </div>
+
+            {/* 4. Stage Pills Row */}
+            <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+              {STAGES.map((s) => {
+                const isActive = selectedStage === s.value;
+                const count = s.value === 'all'
+                  ? totalLeads
+                  : s.value === 'new'
+                  ? (statusCounts.new || 0)
+                  : s.value === 'meeting_done'
+                  ? (statusCounts.demo_completed || 0)
+                  : s.value === 'converted'
+                  ? (statusCounts.converted || 0)
+                  : s.value === 'active'
+                  ? (statusCounts.converted || 0)
+                  : s.value === 'call_scheduled'
+                  ? (statusCounts.call_scheduled || 0)
+                  : s.value === 'follow_up'
+                  ? (statusCounts.follow_up || 0)
+                  : s.value === 'lost'
+                  ? (statusCounts.lost || 0)
+                  : (statusCounts[s.value] || 0);
+
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => setSelectedStage(s.value)}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition border shadow-xs ${
+                      isActive
+                        ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${s.dotColor}`} />
+                    <span>{s.label}</span>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.2 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 5. Main Content: Grid or List */}
+            {loading ? (
+              <div className="py-20 text-center text-slate-400 text-sm">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
+                Loading leads...
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="py-16 text-center bg-white rounded-2xl border border-slate-200 p-8">
+                <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-700">No leads found in this view</p>
+                <p className="text-xs text-slate-400 mt-1">Try clearing filters or search query</p>
+              </div>
+            ) : viewMode === 'grid' ? (
+              /* ── Grid View Cards (3 Columns - Just Like School CRM Screenshot) ── */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    className="border border-slate-200/90 rounded-2xl bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between text-left"
+                    data-testid={`lead-card-${lead.id}`}
+                  >
+                    <div>
+                      {/* Title & Contact */}
+                      <h3
+                        onClick={() => setActiveLeadDetails(lead)}
+                        className="font-bold text-slate-900 text-base leading-snug hover:text-indigo-600 cursor-pointer truncate"
+                        title={lead.name}
+                      >
+                        {lead.name}
+                      </h3>
+                      <p className="text-xs text-slate-600 font-medium mt-0.5">{lead.occupation || 'Franchise Partner'}</p>
+
+                      {/* Badges Row */}
+                      <div className="flex items-center gap-1.5 flex-wrap my-2">
+                        <span className="text-[10px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded">
+                          {lead.source || 'website'}
+                        </span>
+                        <span className="text-[10px] font-medium px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-100 rounded">
+                          {lead.has_space === 'yes' ? 'Offline Center' : 'Space Needed'}
+                        </span>
+                        <span className="text-[10px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded ml-auto">
+                          {lead.assigned_to_name ? `👤 ${lead.assigned_to_name}` : 'Viewer Only'}
+                        </span>
+                      </div>
+
+                      {/* Lead Details */}
+                      <div className="space-y-1 text-xs text-slate-600 my-2.5">
+                        <p className="flex items-center gap-1.5 font-medium">
+                          <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{lead.phone}</span>
+                        </p>
+                        {lead.city && (
+                          <p className="flex items-center gap-1.5 truncate">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{lead.city}{lead.state ? `, ${lead.state}` : ''}</span>
+                          </p>
+                        )}
+                        <p className="text-slate-500">
+                          <span className="text-slate-400">Budget:</span> <span className="font-semibold text-slate-700">{lead.investment_budget || '₹2.5 Lakhs'}</span>
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Added {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'}
+                        </p>
+                      </div>
+
+                      {/* Tag pill */}
+                      <div className="my-2">
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded text-[10px] font-semibold">
+                          Franchise Opportunity
+                        </span>
+                      </div>
+
+                      {/* Latest Note Box */}
+                      {lead.notes && (
+                        <div className="bg-slate-50 border border-slate-100 rounded-lg p-2.5 my-2">
+                          <p className="text-[11px] text-slate-500 font-semibold mb-0.5 flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3 text-slate-400" /> Latest Note
+                          </p>
+                          <p className="text-xs text-slate-700 line-clamp-2">{lead.notes}</p>
+                        </div>
+                      )}
+
+                      {/* Next follow-up / action */}
+                      {lead.next_followup_at && (
+                        <div className="bg-blue-50/60 rounded px-2.5 py-1 my-2 flex items-center justify-between text-[11px] font-semibold text-blue-800">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Next: {new Date(lead.next_followup_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                          </span>
+                          <span className="text-[10px] text-blue-500">(0/4)</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Action Section */}
+                    <div className="pt-3 border-t border-slate-100 mt-2 space-y-2">
+                      {/* View Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveLeadDetails(lead)}
+                        className="w-full h-7 text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-50"
+                        data-testid={`view-lead-btn-${lead.id}`}
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </Button>
+
+                      {/* Action Button Pills Grid (Just Like School CRM Screenshot) */}
+                      <div className="flex gap-1.5 flex-wrap items-center">
+                        {/* Row 1 */}
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1 font-medium transition"
+                          data-testid={`edit-lead-${lead.id}`}
+                        >
+                          <Edit className="w-3 h-3" /> Edit / Proposal
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openMeetingDoneModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white flex items-center gap-1 font-medium transition"
+                          data-testid={`meeting-done-${lead.id}`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" /> Meeting Done
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openScheduleMeetingModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`schedule-meeting-${lead.id}`}
+                        >
+                          <CalendarClock className="w-3 h-3" /> Schedule Meeting
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openTicketModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`ticket-${lead.id}`}
+                        >
+                          <Ticket className="w-3 h-3" /> Ticket
+                        </button>
+
+                        {/* Row 2 */}
+                        <button
+                          type="button"
+                          onClick={() => openFollowupModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`followup-${lead.id}`}
+                        >
+                          <Clock className="w-3 h-3" /> Followup
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowDocsModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`docs-${lead.id}`}
+                        >
+                          <Paperclip className="w-3 h-3" /> Docs
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openMailModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`mail-${lead.id}`}
+                        >
+                          <Mail className="w-3 h-3" /> Mail
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openAssignModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`assign-${lead.id}`}
+                        >
+                          <UserPlus className="w-3 h-3" /> Assign
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openNoteModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`note-${lead.id}`}
+                        >
+                          <MessageSquare className="w-3 h-3" /> Note
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openDeleteModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`delete-${lead.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+
+                        {/* Row 3 */}
+                        <button
+                          type="button"
+                          onClick={() => openLostModal(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium transition"
+                          data-testid={`lost-${lead.id}`}
+                        >
+                          <X className="w-3 h-3" /> Lost Lead
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleArchiveLead(lead)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium transition"
+                          data-testid={`archive-${lead.id}`}
+                        >
+                          <Archive className="w-3 h-3" /> Archive
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* ── List View Table ── */
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
                       <tr>
-                        <th className="px-4 py-3">Executive Name</th>
-                        <th className="px-4 py-3">Role / Designation</th>
-                        <th className="px-4 py-3 text-center">Assigned Leads</th>
-                        <th className="px-4 py-3 text-center">Calls (Sched / Done)</th>
-                        <th className="px-4 py-3 text-center">Demos (Sched / Done)</th>
-                        <th className="px-4 py-3 text-center">Follow-ups Done</th>
-                        <th className="px-4 py-3 text-center">Won Franchises</th>
-                        <th className="px-4 py-3 text-center">Conv. Rate</th>
-                        <th className="px-4 py-3 text-center">Total Activities</th>
+                        <th className="py-3 px-4">Franchise Lead</th>
+                        <th className="py-3 px-4">Contact</th>
+                        <th className="py-3 px-4">Location</th>
+                        <th className="py-3 px-4">Budget</th>
+                        <th className="py-3 px-4">Assigned To</th>
+                        <th className="py-3 px-4">Stage</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {tracksheetData.executives.map((exec) => (
-                        <tr key={exec.user_id} className="hover:bg-slate-50/80">
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-900">{exec.name}</span>
-                              <span className="text-[11px] text-slate-400">{exec.email}</span>
-                            </div>
+                      {filteredLeads.map(lead => (
+                        <tr key={lead.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-3 px-4">
+                            <span
+                              onClick={() => setActiveLeadDetails(lead)}
+                              className="font-bold text-slate-900 hover:text-indigo-600 cursor-pointer"
+                            >
+                              {lead.name}
+                            </span>
+                            <span className="block text-[11px] text-slate-400">{lead.occupation || 'Partner'}</span>
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                              {exec.role}
+                          <td className="py-3 px-4 text-slate-600">
+                            <div>{lead.phone}</div>
+                            {lead.email && <div className="text-[11px] text-slate-400">{lead.email}</div>}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{lead.city || 'N/A'}</td>
+                          <td className="py-3 px-4 font-semibold text-slate-800">{lead.investment_budget || '₹2.5L'}</td>
+                          <td className="py-3 px-4 text-slate-600">{lead.assigned_to_name || 'Unassigned'}</td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              {lead.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-center font-semibold text-slate-800">
-                            {exec.assigned_leads}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="font-medium text-slate-700">{exec.calls_scheduled}</span>
-                            <span className="text-slate-400 mx-1">/</span>
-                            <span className="font-bold text-indigo-700">{exec.calls_completed}</span>
-                            {exec.calls_no_answer > 0 && (
-                              <span className="text-[10px] text-rose-500 ml-1">({exec.calls_no_answer} NA)</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="font-medium text-slate-700">{exec.demos_scheduled}</span>
-                            <span className="text-slate-400 mx-1">/</span>
-                            <span className="font-bold text-purple-700">{exec.demos_completed}</span>
-                          </td>
-                          <td className="px-4 py-3 text-center font-medium text-orange-700">
-                            {exec.followups_done}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full font-bold text-xs bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              {exec.conversions}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold">
-                            <span className={exec.conversion_rate > 10 ? 'text-emerald-700' : 'text-slate-700'}>
-                              {exec.conversion_rate}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center font-mono font-semibold text-slate-600">
-                            {exec.total_activities}
+                          <td className="py-3 px-4 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setActiveLeadDetails(lead)}
+                              className="h-7 text-xs font-semibold"
+                            >
+                              <Eye className="w-3 h-3 mr-1" /> View
+                            </Button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-              )}
-            </div>
-
-            {/* Live Activities Stream */}
-            {tracksheetData?.recent_activities && tracksheetData.recent_activities.length > 0 && (
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-indigo-600" /> Recent Track Sheet Activity Log
-                </h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {tracksheetData.recent_activities.map((act, i) => (
-                    <div key={act.id || i} className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-lg text-xs flex items-center justify-between">
-                      <div>
-                        <span className="font-bold text-slate-800 mr-2">{act.user_name}</span>
-                        <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded text-[10px] font-semibold mr-2">
-                          {act.action.replace('_', ' ').toUpperCase()}
-                        </span>
-                        <span className="text-slate-600 font-medium">on {act.lead_name}</span>
-                        {act.details?.notes && (
-                          <span className="text-slate-500 italic ml-2">"{act.details.notes}"</span>
-                        )}
-                        {act.details?.call_notes && (
-                          <span className="text-slate-500 italic ml-2">"{act.details.call_notes}"</span>
-                        )}
-                        {act.details?.demo_notes && (
-                          <span className="text-slate-500 italic ml-2">"{act.details.demo_notes}"</span>
-                        )}
-                      </div>
-                      <span className="text-slate-400 text-[11px] whitespace-nowrap ml-4">
-                        {act.timestamp ? new Date(act.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -1542,1120 +1439,559 @@ export default function AdminFranchiseCRM() {
 
         {/* ════════════════════ MODALS ════════════════════ */}
 
-        {/* 1. Add Franchise Lead Modal */}
-        <Dialog open={showAddLeadModal} onOpenChange={setShowAddLeadModal}>
-          <DialogContent className="max-w-lg">
+        {/* 1. Modal: Edit / Proposal */}
+        <Dialog open={!!showEditLeadModal} onOpenChange={() => setShowEditLeadModal(null)}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Building2 className="w-5 h-5 text-indigo-600" /> Add New Franchise Lead
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Edit className="w-5 h-5 text-amber-600" /> Edit Franchise Lead & Proposal
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateNewLead} className="space-y-3 text-xs mt-2">
+
+            <form onSubmit={handleSaveEditLead} className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700">Full Name *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Lead Name *</label>
                   <Input
+                    value={editLeadForm.name}
+                    onChange={e => setEditLeadForm(f => ({ ...f, name: e.target.value }))}
+                    className="h-8 text-xs"
                     required
-                    value={newLeadForm.name}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Candidate / Owner Name"
-                    className="mt-1 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">Phone Number *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
                   <Input
+                    value={editLeadForm.phone}
+                    onChange={e => setEditLeadForm(f => ({ ...f, phone: e.target.value }))}
+                    className="h-8 text-xs"
                     required
-                    value={newLeadForm.phone}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="10 digit mobile"
-                    className="mt-1 text-xs"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700">Email Address</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
                   <Input
-                    type="email"
-                    value={newLeadForm.email}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@example.com"
-                    className="mt-1 text-xs"
+                    value={editLeadForm.email}
+                    onChange={e => setEditLeadForm(f => ({ ...f, email: e.target.value }))}
+                    className="h-8 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">City *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
                   <Input
-                    required
-                    value={newLeadForm.city}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, city: e.target.value }))}
-                    placeholder="e.g. Pune, Jaipur"
-                    className="mt-1 text-xs"
+                    value={editLeadForm.city}
+                    onChange={e => setEditLeadForm(f => ({ ...f, city: e.target.value }))}
+                    className="h-8 text-xs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700">Current Occupation</label>
-                  <Input
-                    value={newLeadForm.occupation}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, occupation: e.target.value }))}
-                    placeholder="Business, Teacher, etc."
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700">Has Commercial Space?</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Investment Budget</label>
                   <select
-                    value={newLeadForm.has_space}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, has_space: e.target.value }))}
-                    className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
+                    value={editLeadForm.investment_budget}
+                    onChange={e => setEditLeadForm(f => ({ ...f, investment_budget: e.target.value }))}
+                    className="w-full h-8 text-xs border border-slate-200 rounded px-2"
                   >
-                    <option value="yes">Yes, have space</option>
-                    <option value="looking">Currently looking</option>
-                    <option value="no">No space</option>
+                    <option value="₹2.5 Lakhs">₹2.5 Lakhs</option>
+                    <option value="₹5 Lakhs">₹5 Lakhs</option>
+                    <option value="₹10 Lakhs+">₹10 Lakhs+</option>
                   </select>
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">Investment Budget</label>
-                  <Input
-                    value={newLeadForm.investment_budget}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, investment_budget: e.target.value }))}
-                    placeholder="₹2.5 Lakhs"
-                    className="mt-1 text-xs"
-                  />
-                </div>
-              </div>
-
-              {isManager && (
-                <div>
-                  <label className="font-semibold text-slate-700">Assign To (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Commercial Space</label>
                   <select
-                    value={newLeadForm.assigned_to}
-                    onChange={(e) => setNewLeadForm(prev => ({ ...prev, assigned_to: e.target.value }))}
-                    className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
+                    value={editLeadForm.has_space}
+                    onChange={e => setEditLeadForm(f => ({ ...f, has_space: e.target.value }))}
+                    className="w-full h-8 text-xs border border-slate-200 rounded px-2"
                   >
-                    <option value="">Leave Unassigned</option>
-                    {assignees.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} ({a.category})</option>
-                    ))}
+                    <option value="looking">Looking for Space</option>
+                    <option value="yes">Has Commercial Space</option>
+                    <option value="no">No Space</option>
                   </select>
                 </div>
-              )}
-
-              {/* Demo Session Scheduled */}
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={newLeadForm.demo_session_scheduled}
-                      onChange={(e) => setNewLeadForm(prev => ({ ...prev, demo_session_scheduled: e.target.checked }))}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Demo Session is Scheduled?</span>
-                  </label>
-                  {newLeadForm.demo_session_scheduled && (
-                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                      Demo Scheduled
-                    </span>
-                  )}
-                </div>
-
-                {newLeadForm.demo_session_scheduled && (
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Demo Date & Time (Optional)</label>
-                      <Input
-                        type="datetime-local"
-                        value={newLeadForm.scheduled_demo_at}
-                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, scheduled_demo_at: e.target.value }))}
-                        className="mt-1 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Demo Mode</label>
-                      <select
-                        value={newLeadForm.demo_type}
-                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, demo_type: e.target.value }))}
-                        className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
-                      >
-                        <option value="online_meet">Online Google Meet / Zoom</option>
-                        <option value="in_person_center">In-Person at Center</option>
-                        <option value="presentation">Presentation / Phone Walkthrough</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Follow-up Scheduled */}
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={newLeadForm.followup_scheduled}
-                      onChange={(e) => setNewLeadForm(prev => ({ ...prev, followup_scheduled: e.target.checked }))}
-                      className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-                    />
-                    <span>Schedule Follow-up for this lead?</span>
-                  </label>
-                  {newLeadForm.followup_scheduled && (
-                    <span className="text-[10px] font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
-                      Follow-up Scheduled
-                    </span>
-                  )}
-                </div>
-
-                {newLeadForm.followup_scheduled && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Date & Time *</label>
-                      <Input
-                        type="datetime-local"
-                        value={newLeadForm.next_followup_at}
-                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, next_followup_at: e.target.value }))}
-                        className="mt-1 text-xs"
-                        required={newLeadForm.followup_scheduled}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Note (Optional)</label>
-                      <Input
-                        type="text"
-                        placeholder="e.g. Discuss center investment terms"
-                        value={newLeadForm.followup_notes}
-                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, followup_notes: e.target.value }))}
-                        className="mt-1 text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Details / Background</label>
-                <Textarea
-                  value={newLeadForm.details}
-                  onChange={(e) => setNewLeadForm(prev => ({ ...prev, details: e.target.value }))}
-                  placeholder="Notes, background or specific requirements..."
-                  rows={2}
-                  className="mt-1 text-xs"
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Proposal / Quote Amount (₹)</label>
+                <Input
+                  placeholder="e.g. 2,50,000"
+                  value={editLeadForm.proposal_amount}
+                  onChange={e => setEditLeadForm(f => ({ ...f, proposal_amount: e.target.value }))}
+                  className="h-8 text-xs"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" type="button" onClick={() => setShowAddLeadModal(false)}>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Internal Notes & Proposal Details</label>
+                <Textarea
+                  rows={3}
+                  value={editLeadForm.notes}
+                  onChange={e => setEditLeadForm(f => ({ ...f, notes: e.target.value }))}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" type="button" onClick={() => setShowEditLeadModal(null)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={savingNewLead} className="bg-indigo-600 text-white">
-                  {savingNewLead ? 'Saving…' : 'Save Lead'}
+                <Button size="sm" type="submit" disabled={savingEditLead} className="bg-amber-600 hover:bg-amber-700 text-white">
+                  {savingEditLead ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
-        {/* 2. Assign Lead Modal (Single or Bulk) */}
-        <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
+        {/* 2. Modal: Meeting Done */}
+        <Dialog open={!!showMeetingDoneModal} onOpenChange={() => setShowMeetingDoneModal(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <UserCheck className="w-5 h-5 text-indigo-600" />
-                {showAssignModal === 'bulk'
-                  ? `Assign ${selectedLeadIds.length} Leads to Salesperson`
-                  : `Assign Lead: ${showAssignModal?.name}`}
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <CheckCircle2 className="w-5 h-5 text-purple-600" /> Log Meeting / Demo Done
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 text-xs mt-2">
-              <p className="text-slate-500">
-                Select an executive (B2C, B2B, Business Development Executive or Telecaller) to assign this lead to:
+
+            <div className="space-y-4 pt-2">
+              <p className="text-xs text-slate-600">
+                Log meeting completion for <span className="font-bold text-slate-900">{showMeetingDoneModal?.name}</span>.
               </p>
 
               <div>
-                <label className="font-semibold text-slate-700">Choose Salesperson / Telecaller *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Outcome</label>
+                <select
+                  value={meetingDoneData.outcome}
+                  onChange={e => setMeetingDoneData(d => ({ ...d, outcome: e.target.value }))}
+                  className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                >
+                  <option value="completed">Completed Successfully</option>
+                  <option value="no_show">Client Did Not Show Up</option>
+                  <option value="rescheduled">Needs Reschedule</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Partner Interest Level</label>
+                <select
+                  value={meetingDoneData.interest_level}
+                  onChange={e => setMeetingDoneData(d => ({ ...d, interest_level: e.target.value }))}
+                  className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                >
+                  <option value="high">High - Ready to proceed</option>
+                  <option value="medium">Medium - Thinking</option>
+                  <option value="low">Low - Not interested right now</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Notes & Next Steps</label>
+                <Textarea
+                  rows={3}
+                  placeholder="Key discussion points, objections, timeline..."
+                  value={meetingDoneData.notes}
+                  onChange={e => setMeetingDoneData(d => ({ ...d, notes: e.target.value }))}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowMeetingDoneModal(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleMeetingDoneSubmit} disabled={savingMeetingDone} className="bg-purple-600 hover:bg-purple-700 text-white">
+                  {savingMeetingDone ? 'Saving...' : 'Mark Meeting Done'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 3. Modal: Schedule Meeting */}
+        <Dialog open={!!showScheduleMeetingModal} onOpenChange={() => setShowScheduleMeetingModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <CalendarClock className="w-5 h-5 text-blue-600" /> Schedule Franchise Meeting / Demo
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date *</label>
+                  <Input
+                    type="date"
+                    value={scheduleMeetingData.date}
+                    onChange={e => setScheduleMeetingData(d => ({ ...d, date: e.target.value }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Time</label>
+                  <Input
+                    type="time"
+                    value={scheduleMeetingData.time}
+                    onChange={e => setScheduleMeetingData(d => ({ ...d, time: e.target.value }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Type</label>
+                <select
+                  value={scheduleMeetingData.type}
+                  onChange={e => setScheduleMeetingData(d => ({ ...d, type: e.target.value }))}
+                  className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                >
+                  <option value="online_meet">Online Video Meet (Google Meet)</option>
+                  <option value="offline_visit">Offline Meeting / Center Visit</option>
+                  <option value="phone_discussion">Detailed Phone Presentation</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Link / Location</label>
+                <Input
+                  value={scheduleMeetingData.link}
+                  onChange={e => setScheduleMeetingData(d => ({ ...d, link: e.target.value }))}
+                  placeholder="https://meet.google.com/..."
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Agenda / Discussion Points</label>
+                <Textarea
+                  rows={2}
+                  value={scheduleMeetingData.agenda}
+                  onChange={e => setScheduleMeetingData(d => ({ ...d, agenda: e.target.value }))}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowScheduleMeetingModal(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleScheduleMeetingSubmit} disabled={savingScheduleMeeting} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  {savingScheduleMeeting ? 'Scheduling...' : 'Confirm Meeting'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 4. Modal: Ticket */}
+        <Dialog open={!!showTicketModal} onOpenChange={() => setShowTicketModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Ticket className="w-5 h-5 text-orange-600" /> Raise Internal Support Ticket
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Ticket Subject *</label>
+                <Input
+                  value={ticketData.subject}
+                  onChange={e => setTicketData(d => ({ ...d, subject: e.target.value }))}
+                  className="h-8 text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
+                <select
+                  value={ticketData.priority}
+                  onChange={e => setTicketData(d => ({ ...d, priority: e.target.value }))}
+                  className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High - Urgent</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Description & Issue Details</label>
+                <Textarea
+                  rows={3}
+                  value={ticketData.description}
+                  onChange={e => setTicketData(d => ({ ...d, description: e.target.value }))}
+                  placeholder="Explain requirements, assistance needed..."
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowTicketModal(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleTicketSubmit} disabled={savingTicket} className="bg-orange-600 hover:bg-orange-700 text-white">
+                  {savingTicket ? 'Raising...' : 'Raise Ticket'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 5. Modal: Followup */}
+        <Dialog open={!!showFollowupModal} onOpenChange={() => setShowFollowupModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Clock className="w-5 h-5 text-teal-600" /> Schedule Next Follow-up
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Follow-up Date & Time *</label>
+                <Input
+                  type="datetime-local"
+                  value={followupTime}
+                  onChange={e => setFollowupTime(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Follow-up Notes / Agenda</label>
+                <Textarea
+                  rows={3}
+                  value={followupNotes}
+                  onChange={e => setFollowupNotes(e.target.value)}
+                  placeholder="e.g. Call back after territory inspection with partner..."
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowFollowupModal(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleFollowupSubmit} disabled={savingFollowup} className="bg-teal-600 hover:bg-teal-700 text-white">
+                  {savingFollowup ? 'Saving...' : 'Set Follow-up'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 6. Modal: Docs */}
+        <Dialog open={!!showDocsModal} onOpenChange={() => setShowDocsModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Paperclip className="w-5 h-5 text-cyan-600" /> Documents & Attachments
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 pt-2 text-xs">
+              <p className="text-slate-600">
+                Documents for <span className="font-semibold text-slate-900">{showDocsModal?.name}</span>
+              </p>
+              <div className="border border-dashed border-slate-300 rounded-xl p-4 text-center text-slate-500">
+                <Upload className="w-6 h-6 mx-auto text-slate-400 mb-1" />
+                <p className="font-medium">Drag & drop partner KYC or MoU files</p>
+                <p className="text-[10px] text-slate-400">PDF, JPG, PNG up to 10MB</p>
+              </div>
+              <div className="flex justify-end pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowDocsModal(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 7. Modal: Mail */}
+        <Dialog open={!!showMailModal} onOpenChange={() => setShowMailModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Mail className="w-5 h-5 text-sky-600" /> Send Email to Franchise Partner
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">To</label>
+                <Input
+                  value={mailData.to}
+                  onChange={e => setMailData(d => ({ ...d, to: e.target.value }))}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Subject</label>
+                <Input
+                  value={mailData.subject}
+                  onChange={e => setMailData(d => ({ ...d, subject: e.target.value }))}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Body</label>
+                <Textarea
+                  rows={4}
+                  value={mailData.body}
+                  onChange={e => setMailData(d => ({ ...d, body: e.target.value }))}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowMailModal(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleMailSubmit} disabled={sendingMail} className="bg-sky-600 hover:bg-sky-700 text-white">
+                  {sendingMail ? 'Sending...' : 'Send Email'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 8. Modal: Add Note */}
+        <Dialog open={!!showNoteModal} onOpenChange={() => setShowNoteModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <MessageSquare className="w-5 h-5 text-slate-700" /> Add Note / Comment
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 pt-2">
+              <Textarea
+                rows={4}
+                placeholder="Write observation, update or call notes here..."
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                className="text-xs"
+              />
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowNoteModal(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleNoteSubmit} disabled={savingComment} className="bg-slate-800 hover:bg-slate-900 text-white">
+                  {savingComment ? 'Saving...' : 'Add Note'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 9. Modal: Assign Executive */}
+        <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <UserPlus className="w-5 h-5 text-indigo-600" /> Assign Franchise Executive
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Select Team Member</label>
                 <select
                   value={selectedAssigneeId}
-                  onChange={(e) => setSelectedAssigneeId(e.target.value)}
-                  className="mt-1 w-full h-10 border border-slate-200 rounded-lg px-3 text-xs bg-white font-medium"
+                  onChange={e => setSelectedAssigneeId(e.target.value)}
+                  className="w-full h-9 px-3 text-xs border border-slate-200 rounded-lg bg-white"
                 >
-                  <option value="">-- Select Executive --</option>
+                  <option value="">Choose salesperson...</option>
                   {assignees.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} · {a.category} ({a.assigned_leads_count} active leads)
-                    </option>
+                    <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Assignment Instruction / Note</label>
-                <Textarea
-                  value={assignmentNote}
-                  onChange={(e) => setAssignmentNote(e.target.value)}
-                  placeholder="e.g. Please call before 2 PM, candidate has furnished space in Pune..."
-                  rows={2}
-                  className="mt-1 text-xs"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowAssignModal(null)}>Cancel</Button>
-                <Button onClick={handleExecuteAssign} disabled={savingAssign} className="bg-indigo-600 text-white">
-                  {savingAssign ? 'Assigning…' : 'Confirm Assignment'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* 3. Call Modal (Schedule or Log) */}
-        <Dialog open={!!callModalLead} onOpenChange={() => setCallModalLead(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Phone className="w-5 h-5 text-indigo-600" />
-                {callModalMode === 'schedule' ? 'Schedule Call' : 'Log Call Outcome'} · {callModalLead?.name}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="flex border-b border-slate-200 mb-3 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setCallModalMode('schedule')}
-                className={`pb-2 px-3 border-b-2 transition ${callModalMode === 'schedule' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}
-              >
-                Schedule Call
-              </button>
-              <button
-                type="button"
-                onClick={() => setCallModalMode('log')}
-                className={`pb-2 px-3 border-b-2 transition ${callModalMode === 'log' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}
-              >
-                Log Call Outcome
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {callModalMode === 'schedule' ? (
-                <>
-                  <div>
-                    <label className="font-semibold text-slate-700">Call Date & Time *</label>
-                    <Input
-                      type="datetime-local"
-                      value={callScheduleTime}
-                      onChange={(e) => setCallScheduleTime(e.target.value)}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Purpose / Agenda</label>
-                    <Input
-                      value={callPurpose}
-                      onChange={(e) => setCallPurpose(e.target.value)}
-                      placeholder="e.g. Discovery & Space Discussion"
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Preparation Notes</label>
-                    <Textarea
-                      value={callNotes}
-                      onChange={(e) => setCallNotes(e.target.value)}
-                      placeholder="Key questions or points to discuss..."
-                      rows={2}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="font-semibold text-slate-700">Call Outcome *</label>
-                    <select
-                      value={callOutcomeStatus}
-                      onChange={(e) => setCallOutcomeStatus(e.target.value)}
-                      className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
-                    >
-                      <option value="completed">Completed (Call Connected & Discussed)</option>
-                      <option value="no_answer">No Answer / Ringing / Busy</option>
-                      <option value="rescheduled">Rescheduled / Requested Callback</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Call Duration (Minutes)</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={callDuration}
-                      onChange={(e) => setCallDuration(e.target.value)}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Call Discussion Notes *</label>
-                    <Textarea
-                      value={callNotes}
-                      onChange={(e) => setCallNotes(e.target.value)}
-                      placeholder="Summary of discussion, client reaction, objections, next steps..."
-                      rows={3}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setCallModalLead(null)}>Cancel</Button>
-                <Button onClick={handleExecuteCall} disabled={savingCall} className="bg-indigo-600 text-white">
-                  {savingCall ? 'Saving…' : callModalMode === 'schedule' ? 'Schedule Call' : 'Log Outcome'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* 4. Demo Modal (Schedule or Log) */}
-        <Dialog open={!!demoModalLead} onOpenChange={() => setDemoModalLead(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Video className="w-5 h-5 text-purple-600" />
-                {demoModalMode === 'schedule' ? 'Schedule Franchise Demo' : 'Log Demo Outcome'} · {demoModalLead?.name}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="flex border-b border-slate-200 mb-3 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setDemoModalMode('schedule')}
-                className={`pb-2 px-3 border-b-2 transition ${demoModalMode === 'schedule' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500'}`}
-              >
-                Schedule Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoModalMode('log')}
-                className={`pb-2 px-3 border-b-2 transition ${demoModalMode === 'log' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500'}`}
-              >
-                Log Demo Outcome
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {demoModalMode === 'schedule' ? (
-                <>
-                  <div>
-                    <label className="font-semibold text-slate-700">Demo Date & Time *</label>
-                    <Input
-                      type="datetime-local"
-                      value={demoScheduleTime}
-                      onChange={(e) => setDemoScheduleTime(e.target.value)}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Demo Format</label>
-                    <select
-                      value={demoType}
-                      onChange={(e) => setDemoType(e.target.value)}
-                      className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
-                    >
-                      <option value="online_meet">Online Meeting (Google Meet / Zoom)</option>
-                      <option value="in_person_center">In-Person Center Visit</option>
-                      <option value="presentation">Presentation & Commercials</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Meeting Link / Location</label>
-                    <Input
-                      value={demoLink}
-                      onChange={(e) => setDemoLink(e.target.value)}
-                      placeholder="e.g. https://meet.google.com/xyz or Center address"
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Agenda / Demo Notes</label>
-                    <Textarea
-                      value={demoNotes}
-                      onChange={(e) => setDemoNotes(e.target.value)}
-                      placeholder="Curriculum overview, ROI sheet, student fee model..."
-                      rows={2}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="font-semibold text-slate-700">Demo Outcome Status *</label>
-                    <select
-                      value={demoOutcomeStatus}
-                      onChange={(e) => setDemoOutcomeStatus(e.target.value)}
-                      className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
-                    >
-                      <option value="completed">Conducted Successfully</option>
-                      <option value="no_show">Candidate Did Not Show Up</option>
-                      <option value="rescheduled">Rescheduled</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Candidate Interest Level</label>
-                    <select
-                      value={demoInterestLevel}
-                      onChange={(e) => setDemoInterestLevel(e.target.value)}
-                      className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
-                    >
-                      <option value="high">🔥 High Interest (Ready to proceed)</option>
-                      <option value="medium">Medium Interest (Evaluating location/funds)</option>
-                      <option value="low">Low Interest / Skeptical</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Demo Feedback & Next Steps *</label>
-                    <Textarea
-                      value={demoNotes}
-                      onChange={(e) => setDemoNotes(e.target.value)}
-                      placeholder="Questions asked, space availability confirmed, agreement shared..."
-                      rows={3}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setDemoModalLead(null)}>Cancel</Button>
-                <Button onClick={handleExecuteDemo} disabled={savingDemo} className="bg-purple-600 hover:bg-purple-700 text-white">
-                  {savingDemo ? 'Saving…' : demoModalMode === 'schedule' ? 'Schedule Demo' : 'Log Demo'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* 5. Follow-up Modal */}
-        <Dialog open={!!followupModalLead} onOpenChange={() => setFollowupModalLead(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Clock className="w-5 h-5 text-orange-600" />
-                {followupMode === 'complete' ? 'Complete Follow-up' : 'Schedule Follow-up'} · {followupModalLead?.name}
-              </DialogTitle>
-            </DialogHeader>
-
-            {/* Segmented Mode Tabs */}
-            <div className="flex border-b border-slate-200 mb-3 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setFollowupMode('schedule')}
-                className={`pb-2 px-3 border-b-2 transition ${followupMode === 'schedule' ? 'border-orange-600 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              >
-                Schedule / Reschedule
-              </button>
-              <button
-                type="button"
-                onClick={() => setFollowupMode('complete')}
-                className={`pb-2 px-3 border-b-2 transition ${followupMode === 'complete' ? 'border-orange-600 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              >
-                Mark as Completed
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {followupMode === 'schedule' ? (
-                <>
-                  {/* Quick Presets */}
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-600 mb-1.5 block">Quick Presets</label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          d.setDate(d.getDate() + 1);
-                          d.setHours(11, 0, 0, 0);
-                          const pad = (n) => String(n).padStart(2, '0');
-                          setFollowupTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T11:00`);
-                        }}
-                        className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 rounded-md transition font-medium text-slate-700"
-                      >
-                        Tomorrow 11 AM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          d.setDate(d.getDate() + 2);
-                          d.setHours(11, 0, 0, 0);
-                          const pad = (n) => String(n).padStart(2, '0');
-                          setFollowupTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T11:00`);
-                        }}
-                        className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 rounded-md transition font-medium text-slate-700"
-                      >
-                        In 2 Days
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          d.setDate(d.getDate() + 7);
-                          d.setHours(11, 0, 0, 0);
-                          const pad = (n) => String(n).padStart(2, '0');
-                          setFollowupTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T11:00`);
-                        }}
-                        className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 rounded-md transition font-medium text-slate-700"
-                      >
-                        Next Week
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-slate-700">Follow-up Date & Time *</label>
-                    <Input
-                      type="datetime-local"
-                      value={followupTime}
-                      onChange={(e) => setFollowupTime(e.target.value)}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700">Follow-up Purpose / Reminder Note *</label>
-                    <Textarea
-                      value={followupNotes}
-                      onChange={(e) => setFollowupNotes(e.target.value)}
-                      placeholder="e.g. Check on bank sanction, confirm lease agreement signing..."
-                      rows={3}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={() => setFollowupModalLead(null)}>Cancel</Button>
-                    <Button onClick={handleExecuteFollowup} disabled={savingFollowup} className="bg-orange-600 hover:bg-orange-700 text-white">
-                      {savingFollowup ? 'Scheduling…' : 'Save Follow-up'}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {followupModalLead?.next_followup_at && (
-                    <div className="p-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-900 text-xs">
-                      <p className="font-semibold flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-orange-600" />
-                        Pending Follow-up: {new Date(followupModalLead.next_followup_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                      {followupModalLead.followup_notes && (
-                        <p className="text-slate-600 mt-1 italic">"{followupModalLead.followup_notes}"</p>
-                      )}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="font-semibold text-slate-700">Follow-up Discussion / Outcome Notes *</label>
-                    <Textarea
-                      value={completeNotes}
-                      onChange={(e) => setCompleteNotes(e.target.value)}
-                      placeholder="e.g. Spoke with candidate, center location finalized at Vashi, sending draft franchise agreement today..."
-                      rows={4}
-                      className="mt-1 text-xs"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={() => setFollowupModalLead(null)}>Cancel</Button>
-                    <Button
-                      onClick={handleExecuteCompleteFollowup}
-                      disabled={completingFollowup}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                      {completingFollowup ? 'Completing…' : 'Mark as Completed'}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* 6. Lead Details & Timeline Drawer / Modal */}
-        <Dialog open={!!activeLeadDetails} onOpenChange={() => setActiveLeadDetails(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center justify-between text-base font-bold text-slate-800 border-b pb-3">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-indigo-600" />
-                  <span>{activeLeadDetails?.name}</span>
-                  {activeLeadDetails?.status && renderStatusBadge(activeLeadDetails.status)}
-                </div>
-              </DialogTitle>
-            </DialogHeader>
-
-            {loadingDetails ? (
-              <div className="py-8 text-center text-xs text-slate-500">Loading details…</div>
-            ) : activeLeadDetails ? (
-              <div className="space-y-4 text-xs mt-2">
-                {/* Contact and details grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Phone</span>
-                    <p className="font-medium text-slate-900 mt-0.5">{activeLeadDetails.phone}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Email</span>
-                    <p className="font-medium text-slate-900 mt-0.5 truncate">{activeLeadDetails.email || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Location</span>
-                    <p className="font-medium text-slate-900 mt-0.5">{activeLeadDetails.city || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Commercial Space</span>
-                    <p className="font-medium text-slate-900 mt-0.5 capitalize">{activeLeadDetails.has_space || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Investment Budget</span>
-                    <p className="font-medium text-slate-900 mt-0.5">{activeLeadDetails.investment_budget || '₹2.5 Lakhs'}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Assigned Executive</span>
-                    <p className="font-medium text-indigo-700 mt-0.5">{activeLeadDetails.assigned_to_name || 'Unassigned'}</p>
-                  </div>
-                </div>
-
-                {activeLeadDetails.details && (
-                  <div className="p-3 bg-amber-50/50 border border-amber-200/60 rounded-xl">
-                    <span className="text-[10px] font-semibold text-amber-800 uppercase">Enquiry Notes / Reason</span>
-                    <p className="text-slate-700 mt-1 whitespace-pre-wrap">{activeLeadDetails.details}</p>
-                  </div>
-                )}
-
-                {/* Actions Bar (School CRM Style) */}
-                <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between flex-wrap gap-2">
-                  <span className="font-semibold text-slate-700 text-xs">Actions:</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* Edit */}
-                    <button
-                      type="button"
-                      onClick={() => openEditLead(activeLeadDetails)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 font-semibold transition"
-                    >
-                      <Edit className="w-3 h-3 text-amber-600" />
-                      <span>Edit</span>
-                    </button>
-
-                    {/* Demo Schedule */}
-                    <button
-                      type="button"
-                      onClick={() => openScheduleDemo(activeLeadDetails)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 font-semibold transition"
-                    >
-                      <CalendarClock className="w-3 h-3 text-purple-600" />
-                      <span>Demo Schedule</span>
-                    </button>
-
-                    {/* Demo Done */}
-                    <button
-                      type="button"
-                      onClick={() => openDemoDone(activeLeadDetails)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1 font-semibold transition"
-                    >
-                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
-                      <span>Demo Done</span>
-                    </button>
-
-                    {/* Lost Lead */}
-                    {activeLeadDetails.status !== 'lost' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowLostModal(activeLeadDetails);
-                          setLostReason('');
-                        }}
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 font-semibold transition"
-                      >
-                        <X className="w-3 h-3 text-rose-600" />
-                        <span>Lost Lead</span>
-                      </button>
-                    )}
-
-                    {/* Call */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCallModalLead(activeLeadDetails);
-                        setCallModalMode(activeLeadDetails.scheduled_call_at ? 'log' : 'schedule');
-                      }}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1 font-semibold transition"
-                    >
-                      <Phone className="w-3 h-3 text-indigo-600" />
-                      <span>Call</span>
-                    </button>
-
-                    {/* Followup */}
-                    <button
-                      type="button"
-                      onClick={() => setFollowupModalLead(activeLeadDetails)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 flex items-center gap-1 font-semibold transition"
-                    >
-                      <Clock className="w-3 h-3 text-orange-600" />
-                      <span>Follow-up</span>
-                    </button>
-
-                    {/* Convert */}
-                    {activeLeadDetails.status !== 'converted' && (
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateStatus(activeLeadDetails.id, 'converted')}
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 font-semibold transition"
-                      >
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span>Convert</span>
-                      </button>
-                    )}
-
-                    {/* Delete */}
-                    {isManager && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLead(activeLeadDetails)}
-                        className="text-[11px] px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center gap-1 font-semibold transition"
-                      >
-                        <Trash2 className="w-3 h-3 text-red-600" />
-                        <span>Delete</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Activity & Comment Timeline */}
-                <div className="space-y-2">
-                  <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-indigo-600" /> Activity History & Comments
-                  </h4>
-
-                  {/* Add note */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add an internal note or update..."
-                      value={newCommentText}
-                      onChange={(e) => setNewCommentText(e.target.value)}
-                      className="text-xs h-8"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleAddComment}
-                      disabled={savingComment || !newCommentText.trim()}
-                      className="h-8 bg-indigo-600 text-white"
-                    >
-                      <Send className="w-3 h-3" />
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2 mt-2 max-h-56 overflow-y-auto">
-                    {/* Comments */}
-                    {(activeLeadDetails.comments || []).slice().reverse().map((c, idx) => (
-                      <div key={c.id || idx} className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px]">
-                        <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                          <span className="font-bold text-slate-700">{c.user_name || 'Team'}</span>
-                          <span>{c.created_at ? new Date(c.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                        </div>
-                        <p className="text-slate-800 mt-1">{c.text}</p>
-                      </div>
-                    ))}
-
-                    {/* Historical Activities from DB */}
-                    {leadActivities.map((act, idx) => (
-                      <div key={act.id || idx} className="p-2 bg-indigo-50/40 border border-indigo-100 rounded-lg text-[11px]">
-                        <div className="flex items-center justify-between text-indigo-600 text-[10px]">
-                          <span className="font-bold">{act.user_name} · {act.action.replace('_', ' ').toUpperCase()}</span>
-                          <span>{act.timestamp ? new Date(act.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                        </div>
-                        {act.details?.notes && <p className="text-slate-700 mt-0.5">{act.details.notes}</p>}
-                        {act.details?.call_notes && <p className="text-slate-700 mt-0.5">{act.details.call_notes}</p>}
-                        {act.details?.demo_notes && <p className="text-slate-700 mt-0.5">{act.details.demo_notes}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </DialogContent>
-        </Dialog>
-
-        {/* 7. Edit Franchise Lead Modal */}
-        <Dialog open={!!showEditLeadModal} onOpenChange={() => setShowEditLeadModal(null)}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Edit className="w-5 h-5 text-amber-600" /> Edit Franchise Lead · {showEditLeadModal?.name}
-              </DialogTitle>
-            </DialogHeader>
-
-            <form onSubmit={handleSaveEditLead} className="space-y-3 text-xs mt-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700">Full Name *</label>
-                  <Input
-                    required
-                    value={editLeadForm.name}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700">Phone Number *</label>
-                  <Input
-                    required
-                    value={editLeadForm.phone}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, phone: e.target.value }))}
-                    className="mt-1 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700">Email Address</label>
-                  <Input
-                    type="email"
-                    value={editLeadForm.email}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700">City / Town *</label>
-                  <Input
-                    required
-                    value={editLeadForm.city}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, city: e.target.value }))}
-                    className="mt-1 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700">State</label>
-                  <Input
-                    value={editLeadForm.state}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, state: e.target.value }))}
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700">Current Occupation</label>
-                  <Input
-                    value={editLeadForm.occupation}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, occupation: e.target.value }))}
-                    placeholder="e.g. Business Owner, Educator"
-                    className="mt-1 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700">Pipeline Stage / Status</label>
-                  <select
-                    value={editLeadForm.status}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, status: e.target.value }))}
-                    className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white font-medium"
-                  >
-                    {STAGES.filter(s => s.value !== 'all').map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700">Has Commercial Space?</label>
-                  <select
-                    value={editLeadForm.has_space}
-                    onChange={(e) => setEditLeadForm(prev => ({ ...prev, has_space: e.target.value }))}
-                    className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
-                  >
-                    <option value="owned">Owned space (500+ sq ft)</option>
-                    <option value="rented">Rented / Leased</option>
-                    <option value="looking">Actively Looking</option>
-                    <option value="none">No Space Yet</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Investment Budget</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Assignment Note</label>
                 <Input
-                  value={editLeadForm.investment_budget}
-                  onChange={(e) => setEditLeadForm(prev => ({ ...prev, investment_budget: e.target.value }))}
-                  placeholder="₹2.5 Lakhs"
-                  className="mt-1 text-xs"
+                  placeholder="Optional instruction for the salesperson..."
+                  value={assignmentNote}
+                  onChange={e => setAssignmentNote(e.target.value)}
+                  className="h-8 text-xs"
                 />
               </div>
 
-              {/* Demo Session Scheduled */}
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={editLeadForm.demo_session_scheduled}
-                      onChange={(e) => setEditLeadForm(prev => ({ ...prev, demo_session_scheduled: e.target.checked }))}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Demo Session is Scheduled?</span>
-                  </label>
-                  {editLeadForm.demo_session_scheduled && (
-                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                      Demo Scheduled
-                    </span>
-                  )}
-                </div>
-
-                {editLeadForm.demo_session_scheduled && (
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Demo Date & Time (Optional)</label>
-                      <Input
-                        type="datetime-local"
-                        value={editLeadForm.scheduled_demo_at}
-                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, scheduled_demo_at: e.target.value }))}
-                        className="mt-1 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Demo Mode</label>
-                      <select
-                        value={editLeadForm.demo_type}
-                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, demo_type: e.target.value }))}
-                        className="mt-1 w-full h-9 border border-slate-200 rounded-md px-2 text-xs bg-white"
-                      >
-                        <option value="online_meet">Online Google Meet / Zoom</option>
-                        <option value="in_person_center">In-Person at Center</option>
-                        <option value="presentation">Presentation / Phone Walkthrough</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Follow-up Scheduled */}
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={editLeadForm.followup_scheduled}
-                      onChange={(e) => setEditLeadForm(prev => ({ ...prev, followup_scheduled: e.target.checked }))}
-                      className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-                    />
-                    <span>Schedule / Update Follow-up?</span>
-                  </label>
-                  {editLeadForm.followup_scheduled && (
-                    <span className="text-[10px] font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
-                      Follow-up Scheduled
-                    </span>
-                  )}
-                </div>
-
-                {editLeadForm.followup_scheduled && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Date & Time</label>
-                      <Input
-                        type="datetime-local"
-                        value={editLeadForm.next_followup_at}
-                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, next_followup_at: e.target.value }))}
-                        className="mt-1 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Note</label>
-                      <Input
-                        type="text"
-                        placeholder="e.g. Space lease agreement status"
-                        value={editLeadForm.followup_notes}
-                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, followup_notes: e.target.value }))}
-                        className="mt-1 text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Details / Background Notes</label>
-                <Textarea
-                  value={editLeadForm.details}
-                  onChange={(e) => setEditLeadForm(prev => ({ ...prev, details: e.target.value }))}
-                  placeholder="Notes, background or specific requirements..."
-                  rows={2}
-                  className="mt-1 text-xs"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" type="button" onClick={() => setShowEditLeadModal(null)}>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowAssignModal(null)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={savingEditLead} className="bg-amber-600 hover:bg-amber-700 text-white">
-                  {savingEditLead ? 'Saving…' : 'Update Lead'}
+                <Button size="sm" onClick={handleConfirmAssign} disabled={savingAssign} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                  {savingAssign ? 'Assigning...' : 'Confirm Assignment'}
                 </Button>
               </div>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* 8. Lost Lead Reason Modal */}
+        {/* 10. Modal: Lost Lead */}
         <Dialog open={!!showLostModal} onOpenChange={() => setShowLostModal(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-rose-800">
-                <X className="w-5 h-5 text-rose-600" /> Mark Lead as Lost · {showLostModal?.name}
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <X className="w-5 h-5 text-red-600" /> Mark Lead as Lost
               </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={handleConfirmLost} className="space-y-3 text-xs mt-2">
-              <p className="text-slate-600">
-                Are you sure you want to mark <span className="font-semibold text-slate-800">{showLostModal?.name}</span> as lost? Please specify the reason below for tracking purposes.
-              </p>
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Primary Lost Reason</label>
+                <select
+                  value={lostReason}
+                  onChange={e => setLostReason(e.target.value)}
+                  className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                >
+                  <option value="Not interested">Not interested</option>
+                  <option value="Investment budget too high">Investment budget too high</option>
+                  <option value="Commercial space unavailable">Commercial space unavailable</option>
+                  <option value="Competitor franchise chosen">Competitor franchise chosen</option>
+                  <option value="No response after 5+ attempts">No response after 5+ attempts</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Reason for Lost Lead *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Detailed Explanation</label>
                 <Textarea
-                  required
-                  value={lostReason}
-                  onChange={(e) => setLostReason(e.target.value)}
-                  placeholder="e.g. Budget constraints, opted for competitor, space unavailable, unreachable after multiple attempts..."
                   rows={3}
-                  className="mt-1 text-xs"
+                  value={lostNotes}
+                  onChange={e => setLostNotes(e.target.value)}
+                  placeholder="Any extra feedback from the lead..."
+                  className="text-xs"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" type="button" onClick={() => setShowLostModal(null)}>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" onClick={() => setShowLostModal(null)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={savingLost} className="bg-rose-600 hover:bg-rose-700 text-white">
-                  {savingLost ? 'Marking Lost…' : 'Confirm Lost Lead'}
+                <Button size="sm" onClick={handleConfirmLost} disabled={savingLost} className="bg-red-600 hover:bg-red-700 text-white">
+                  {savingLost ? 'Marking Lost...' : 'Confirm Lost Lead'}
                 </Button>
               </div>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* 9. Delete Confirmation Modal */}
+        {/* 11. Modal: Delete Lead */}
         <Dialog open={!!showDeleteModal} onOpenChange={() => setShowDeleteModal(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base font-bold text-red-600">
+              <DialogTitle className="flex items-center gap-2 text-slate-900 text-base font-bold text-red-600">
                 <Trash2 className="w-5 h-5 text-red-600" /> Delete Franchise Lead
               </DialogTitle>
             </DialogHeader>
@@ -2665,59 +2001,45 @@ export default function AdminFranchiseCRM() {
                 Are you sure you want to permanently delete lead <span className="font-semibold text-slate-900">{showDeleteModal?.name}</span> ({showDeleteModal?.phone})?
               </p>
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[11px]">
-                <strong>Warning:</strong> This will permanently delete the lead record along with all associated call logs, scheduled demos, and activity timeline entries.
+                <strong>Warning:</strong> This cannot be undone.
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" type="button" onClick={() => setShowDeleteModal(null)}>
                   Cancel
                 </Button>
-                <Button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  disabled={deletingLead}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {deletingLead ? 'Deleting…' : 'Permanently Delete'}
+                <Button type="button" onClick={handleConfirmDelete} disabled={deletingLead} className="bg-red-600 hover:bg-red-700 text-white">
+                  {deletingLead ? 'Deleting...' : 'Permanently Delete'}
                 </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* 10. Import Excel Modal (Franchise Leads) */}
+        {/* 12. Modal: Excel Import */}
         <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-          <DialogContent className="max-w-md" data-testid="franchise-import-modal">
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-slate-900">
-                <Upload className="w-5 h-5 text-indigo-600" />
-                Import Franchise Leads from Excel (.xlsx)
+                <Upload className="w-5 h-5 text-indigo-600" /> Import Franchise Leads (.xlsx)
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 p-2.5 rounded-xl">
-                <span className="text-xs text-indigo-900 font-medium">Download the standard Franchise Excel template</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={downloadSampleTemplate}
-                  className="h-7 text-xs bg-white text-indigo-700 border-indigo-200"
-                >
+                <span className="text-xs text-indigo-900 font-medium">Download standard Excel template</span>
+                <Button size="sm" variant="outline" onClick={downloadSampleTemplate} className="h-7 text-xs bg-white text-indigo-700 border-indigo-200">
                   <Download className="w-3.5 h-3.5 mr-1" /> Template
                 </Button>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Spreadsheet File (.xlsx) <span className="text-rose-500">*</span>
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Spreadsheet File (.xlsx) *</label>
                 <input
                   type="file"
                   accept=".xlsx"
                   onChange={e => setImportFile(e.target.files?.[0] || null)}
                   className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1.5"
-                  data-testid="franchise-import-file-input"
                 />
               </div>
 
@@ -2727,81 +2049,13 @@ export default function AdminFranchiseCRM() {
                   placeholder="e.g. Pune Franchise Drive 2026"
                   value={importBatchName}
                   onChange={e => setImportBatchName(e.target.value)}
-                  className="h-9 text-xs"
+                  className="h-8 text-xs"
                 />
               </div>
 
-              {isManager && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign Imported Leads</label>
-                  <div className="flex gap-2">
-                    {[
-                      ['unassigned', 'Leave Unassigned'],
-                      ['single', 'Single Salesperson'],
-                      ['auto', 'Round-Robin Pool'],
-                    ].map(([m, label]) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setImportAssignMode(m)}
-                        className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg border transition ${
-                          importAssignMode === m
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-400'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {importAssignMode === 'single' && (
-                    <div className="mt-2">
-                      <select
-                        value={importAssignedTo}
-                        onChange={e => setImportAssignedTo(e.target.value)}
-                        className="w-full h-9 px-3 text-xs border rounded-lg bg-white"
-                      >
-                        <option value="">Select team member...</option>
-                        {assignees.map(a => (
-                          <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {importAssignMode === 'auto' && (
-                    <div className="mt-2 max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1">
-                      {assignees.map(a => (
-                        <label key={a.id} className="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={importAutoPool.includes(a.id)}
-                            onChange={() => setImportAutoPool(prev => prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id])}
-                            className="rounded text-indigo-600"
-                          />
-                          <span>{a.name}</span>
-                          <span className="text-[10px] text-slate-400">({a.category})</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <p className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                ⚡ All imported Franchise leads will automatically appear in <b>Telecalling</b> under the Franchise tab and will be synced two-way.
-              </p>
-
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <Button variant="outline" size="sm" onClick={() => setShowImportModal(false)}>Cancel</Button>
-                <Button
-                  size="sm"
-                  onClick={handleExcelImportSubmit}
-                  disabled={uploadingImport || !importFile}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  data-testid="franchise-import-submit-btn"
-                >
+                <Button size="sm" onClick={handleExcelImportSubmit} disabled={uploadingImport || !importFile} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                   {uploadingImport ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
                   Import Franchise Leads
                 </Button>
@@ -2809,6 +2063,244 @@ export default function AdminFranchiseCRM() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* 13. Modal: Add Lead (with Demo date & scheduled or not) */}
+        <Dialog open={showAddLeadModal} onOpenChange={setShowAddLeadModal}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-900">
+                <Plus className="w-5 h-5 text-red-600" /> Add New Franchise Lead
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleAddLeadSubmit} className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                  <Input
+                    required
+                    value={newLeadForm.name}
+                    onChange={e => setNewLeadForm(f => ({ ...f, name: e.target.value }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
+                  <Input
+                    required
+                    value={newLeadForm.phone}
+                    onChange={e => setNewLeadForm(f => ({ ...f, phone: e.target.value }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                  <Input
+                    type="email"
+                    value={newLeadForm.email}
+                    onChange={e => setNewLeadForm(f => ({ ...f, email: e.target.value }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
+                  <Input
+                    value={newLeadForm.city}
+                    onChange={e => setNewLeadForm(f => ({ ...f, city: e.target.value }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Investment Budget</label>
+                  <select
+                    value={newLeadForm.investment_budget}
+                    onChange={e => setNewLeadForm(f => ({ ...f, investment_budget: e.target.value }))}
+                    className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                  >
+                    <option value="₹2.5 Lakhs">₹2.5 Lakhs</option>
+                    <option value="₹5 Lakhs">₹5 Lakhs</option>
+                    <option value="₹10 Lakhs+">₹10 Lakhs+</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Commercial Space</label>
+                  <select
+                    value={newLeadForm.has_space}
+                    onChange={e => setNewLeadForm(f => ({ ...f, has_space: e.target.value }))}
+                    className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                  >
+                    <option value="looking">Looking for Space</option>
+                    <option value="yes">Has Commercial Space</option>
+                    <option value="no">No Space</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Demo Session Scheduled or Not */}
+              <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-2">
+                <label className="flex items-center gap-2 text-xs font-bold text-purple-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newLeadForm.demo_session_scheduled}
+                    onChange={e => setNewLeadForm(f => ({ ...f, demo_session_scheduled: e.target.checked }))}
+                    className="rounded text-purple-600"
+                  />
+                  Is Demo / Presentation Session Scheduled?
+                </label>
+                {newLeadForm.demo_session_scheduled && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Demo Date & Time</label>
+                    <Input
+                      type="datetime-local"
+                      value={newLeadForm.scheduled_demo_at}
+                      onChange={e => setNewLeadForm(f => ({ ...f, scheduled_demo_at: e.target.value }))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Assign to Executive */}
+              {isManager && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Assign to Sales Executive</label>
+                  <select
+                    value={newLeadForm.assigned_to}
+                    onChange={e => setNewLeadForm(f => ({ ...f, assigned_to: e.target.value }))}
+                    className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                  >
+                    <option value="">Leave unassigned</option>
+                    {assignees.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Initial Notes</label>
+                <Textarea
+                  rows={2}
+                  value={newLeadForm.details}
+                  onChange={e => setNewLeadForm(f => ({ ...f, details: e.target.value }))}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" type="button" onClick={() => setShowAddLeadModal(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" type="submit" disabled={savingNewLead} className="bg-[#D63031] hover:bg-red-700 text-white">
+                  {savingNewLead ? 'Adding...' : 'Add Lead'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* 14. Lead Details Drawer (Slide-Over from Right) */}
+        {activeLeadDetails && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex justify-end">
+            <div className="w-full max-w-lg bg-white h-full shadow-2xl overflow-y-auto flex flex-col justify-between p-6">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">{activeLeadDetails.name}</h2>
+                    <p className="text-xs text-slate-500">{activeLeadDetails.occupation || 'Franchise Applicant'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveLeadDetails(null)}
+                    className="p-1 rounded-lg hover:bg-slate-100 text-slate-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl text-xs">
+                  <div>
+                    <p className="text-slate-400 font-medium">Phone</p>
+                    <p className="font-semibold text-slate-800">{activeLeadDetails.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Email</p>
+                    <p className="font-semibold text-slate-800 truncate">{activeLeadDetails.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">City & State</p>
+                    <p className="font-semibold text-slate-800">{activeLeadDetails.city || 'N/A'} {activeLeadDetails.state ? `(${activeLeadDetails.state})` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Investment Budget</p>
+                    <p className="font-semibold text-slate-800">{activeLeadDetails.investment_budget || '₹2.5 Lakhs'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Stage</p>
+                    <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                      {activeLeadDetails.status}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Assigned To</p>
+                    <p className="font-semibold text-slate-800">{activeLeadDetails.assigned_to_name || 'Unassigned'}</p>
+                  </div>
+                </div>
+
+                {activeLeadDetails.notes && (
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 uppercase mb-1">Notes</p>
+                    <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-700 whitespace-pre-line border border-slate-100">
+                      {activeLeadDetails.notes}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-bold text-slate-700 uppercase mb-2">Activity & Comments</p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {(activeLeadDetails.comments || []).length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">No notes or comments logged yet</p>
+                    ) : (
+                      (activeLeadDetails.comments || []).map((c, i) => (
+                        <div key={i} className="p-2.5 bg-slate-50 rounded-lg text-xs border border-slate-100">
+                          <div className="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                            <span className="font-semibold text-slate-600">{c.user_name || 'User'}</span>
+                            <span>{new Date(c.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-slate-700">{c.text}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t flex gap-2">
+                <Button
+                  onClick={() => openEditModal(activeLeadDetails)}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs"
+                >
+                  <Edit className="w-3.5 h-3.5 mr-1" /> Edit Lead / Proposal
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveLeadDetails(null)}
+                  className="text-xs"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </AdminLayout>
   );

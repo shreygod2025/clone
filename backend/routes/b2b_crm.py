@@ -178,6 +178,12 @@ async def _sync_initial_b2b_leads() -> None:
         docs = []
         now_iso = datetime.now(timezone.utc).isoformat()
         for c in contacts:
+            name_lower = (c.get("name") or "").strip().lower()
+            if any(t in name_lower for t in ["tester", "dummy", "qwerty", "test contact"]):
+                continue
+            raw_phone = str(c.get("phone") or "")
+            if raw_phone in ["9876543214", "8645177177", "1234567890", "+910987654321"]:
+                continue
             lead_doc = {
                 "id":                     c.get("id") or str(uuid.uuid4()),
                 "school_name":            c.get("school_name") or "",
@@ -332,6 +338,14 @@ class CompleteFollowupRequest(BaseModel):
 class UpdateStatusRequest(BaseModel):
     status: str
     notes: Optional[str] = ""
+    lost_reason: Optional[str] = None
+
+
+class RaiseTicketRequest(BaseModel):
+    subject: str
+    description: str
+    priority: Optional[str] = "medium"
+    related_to: Optional[str] = "b2b_crm"
 
 
 class CommentCreate(BaseModel):
@@ -1132,6 +1146,8 @@ async def update_b2b_status(
         "status":     payload.status,
         "updated_at": now_iso,
     }
+    if payload.lost_reason:
+        up["lost_reason"] = payload.lost_reason
     if payload.notes:
         up["notes"] = (lead.get("notes") or "") + f"\n[{now_iso[:10]}] Status -> {payload.status}: {payload.notes}"
 
@@ -1186,6 +1202,40 @@ async def add_b2b_comment(
     )
 
     return {"ok": True, "comment": comment_entry}
+
+
+@router.post("/leads/{lead_id}/ticket")
+async def raise_b2b_lead_ticket(
+    lead_id: str,
+    payload: RaiseTicketRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Raise a support/internal ticket for a B2B lead."""
+    _require_b2b_access(user)
+    lead = await db.b2b_leads.find_one({"id": lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    ticket_id = f"TICK-{int(datetime.now(timezone.utc).timestamp())}"
+    ticket_doc = {
+        "id": ticket_id,
+        "ticket_id": ticket_id,
+        "subject": payload.subject,
+        "description": payload.description,
+        "priority": payload.priority or "medium",
+        "related_to": payload.related_to or "b2b_crm",
+        "lead_id": lead_id,
+        "lead_name": lead.get("name", "") or lead.get("school_name", ""),
+        "lead_phone": lead.get("phone", ""),
+        "lead_email": lead.get("email", ""),
+        "status": "open",
+        "created_by": user.get("email", ""),
+        "created_by_name": user.get("name", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.support_tickets.insert_one(ticket_doc)
+    return {"ok": True, "ticket_id": ticket_id}
 
 
 # ── Assignees List ──────────────────────────────────────────────────────
