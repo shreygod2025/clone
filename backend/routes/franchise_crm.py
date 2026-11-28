@@ -179,9 +179,12 @@ async def _sync_growth_partners_franchise_leads() -> None:
         # Check partners collection
         partner_items = await db.partners.find({}).to_list(100)
         for p in partner_items:
+            name_lower = (p.get("name") or "").strip().lower()
+            if any(t in name_lower for t in ["tester", "qwerty", "dummy", "test lead"]):
+                continue
             raw_phone = str(p.get("phone") or "")
             norm = _norm_phone(raw_phone)
-            if not norm or len(norm) < 7:
+            if not norm or len(norm) < 7 or norm in ["8645177177", "0987654321", "9876543214", "1234567890"]:
                 continue
             q = {"$or": [{"id": p.get("id")}, {"phone": {"$regex": norm + "$" if norm else ""}}]}
             existing = await db.franchise_leads.find_one(q)
@@ -233,9 +236,12 @@ async def _sync_growth_partners_franchise_leads() -> None:
         # Check telecalling contacts with call_type='franchise'
         tc_franchise = await db.telecalling_contacts.find({"call_type": "franchise"}).to_list(100)
         for tc in tc_franchise:
+            name_lower = (tc.get("name") or "").strip().lower()
+            if any(t in name_lower for t in ["tester", "qwerty", "dummy", "test lead"]):
+                continue
             raw_phone = str(tc.get("phone") or "")
             norm = _norm_phone(raw_phone)
-            if not norm or len(norm) < 7:
+            if not norm or len(norm) < 7 or norm in ["8645177177", "0987654321", "9876543214", "1234567890"]:
                 continue
             existing = await db.franchise_leads.find_one({"$or": [{"id": tc.get("id")}, {"phone": {"$regex": norm + "$"}}]})
             if not existing:
@@ -390,6 +396,14 @@ class AddCommentRequest(BaseModel):
 class UpdateStatusRequest(BaseModel):
     status: str
     notes: Optional[str] = ""
+    lost_reason: Optional[str] = None
+
+
+class RaiseTicketRequest(BaseModel):
+    subject: str
+    description: str
+    priority: Optional[str] = "medium"
+    related_to: Optional[str] = "franchise_crm"
 
 
 # ── Sample Excel Template ───────────────────────────────────────────────
@@ -1366,20 +1380,30 @@ async def update_franchise_lead_status(
         raise HTTPException(status_code=404, detail="Franchise lead not found")
 
     now_iso = datetime.now(timezone.utc).isoformat()
+    comment_text = f"Status updated to '{payload.status}'."
+    if payload.lost_reason:
+        comment_text += f" Reason: {payload.lost_reason}."
+    if payload.notes:
+        comment_text += f" Notes: {payload.notes}"
+
     comment_entry = {
         "id": str(uuid.uuid4()),
         "user_name": user.get("name") or user.get("email"),
-        "text": f"Status updated to '{payload.status}'. {payload.notes or ''}".strip(),
+        "text": comment_text.strip(),
         "created_at": now_iso,
     }
+
+    update_fields = {
+        "status": payload.status,
+        "updated_at": now_iso,
+    }
+    if payload.lost_reason:
+        update_fields["lost_reason"] = payload.lost_reason
 
     await db.franchise_leads.update_one(
         {"id": lead_id},
         {
-            "$set": {
-                "status": payload.status,
-                "updated_at": now_iso,
-            },
+            "$set": update_fields,
             "$push": {"comments": comment_entry},
         }
     )
@@ -1438,6 +1462,40 @@ async def add_franchise_lead_comment(
     )
 
     return {"ok": True, "comment": comment_entry}
+
+
+@router.post("/leads/{lead_id}/ticket")
+async def raise_franchise_lead_ticket(
+    lead_id: str,
+    payload: RaiseTicketRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Raise a support/internal ticket for a lead."""
+    _require_franchise_access(user)
+    lead = await db.franchise_leads.find_one({"id": lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Franchise lead not found")
+
+    ticket_id = f"TICK-{int(datetime.now(timezone.utc).timestamp())}"
+    ticket_doc = {
+        "id": ticket_id,
+        "ticket_id": ticket_id,
+        "subject": payload.subject,
+        "description": payload.description,
+        "priority": payload.priority or "medium",
+        "related_to": payload.related_to or "franchise_crm",
+        "lead_id": lead_id,
+        "lead_name": lead.get("name", ""),
+        "lead_phone": lead.get("phone", ""),
+        "lead_email": lead.get("email", ""),
+        "status": "open",
+        "created_by": user.get("email", ""),
+        "created_by_name": user.get("name", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.support_tickets.insert_one(ticket_doc)
+    return {"ok": True, "ticket_id": ticket_id}
 
 
 @router.get("/assignees")
