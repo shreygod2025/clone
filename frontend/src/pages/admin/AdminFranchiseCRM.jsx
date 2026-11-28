@@ -24,11 +24,10 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STAGES = [
   { value: 'all', label: 'All Leads', dotColor: 'bg-slate-400' },
   { value: 'new', label: 'New Leads', dotColor: 'bg-blue-500' },
-  { value: 'meeting_done', label: 'Meeting Done', dotColor: 'bg-purple-500' },
+  { value: 'demo_scheduled', label: 'Demo Scheduled', dotColor: 'bg-amber-500' },
+  { value: 'demo_completed', label: 'Demo Done', dotColor: 'bg-purple-500' },
+  { value: 'follow_up', label: 'Follow Up', dotColor: 'bg-teal-500' },
   { value: 'converted', label: 'Converted', dotColor: 'bg-emerald-500' },
-  { value: 'active', label: 'Active Franchises', dotColor: 'bg-green-600' },
-  { value: 'call_scheduled', label: 'Renewal Meeting', dotColor: 'bg-teal-500' },
-  { value: 'follow_up', label: 'Renewed', dotColor: 'bg-amber-500' },
   { value: 'lost', label: 'Lost', dotColor: 'bg-rose-500' },
   { value: 'archived', label: 'Archived', dotColor: 'bg-slate-500' },
 ];
@@ -264,16 +263,14 @@ export default function AdminFranchiseCRM() {
 
     // Stage filtering helper
     if (selectedStage !== 'all') {
-      if (selectedStage === 'meeting_done') {
-        result = result.filter(l => ['demo_completed', 'meeting_done'].includes(l.status));
+      if (selectedStage === 'demo_scheduled' || selectedStage === 'call_scheduled') {
+        result = result.filter(l => ['demo_scheduled', 'call_scheduled'].includes(l.status) || Boolean(l.scheduled_demo_at));
+      } else if (selectedStage === 'demo_completed' || selectedStage === 'meeting_done') {
+        result = result.filter(l => ['demo_completed', 'meeting_done'].includes(l.status) || l.demo_status === 'completed');
       } else if (selectedStage === 'converted') {
-        result = result.filter(l => ['converted', 'won'].includes(l.status));
-      } else if (selectedStage === 'active') {
-        result = result.filter(l => ['active', 'converted'].includes(l.status));
-      } else if (selectedStage === 'call_scheduled') {
-        result = result.filter(l => ['call_scheduled', 'renewal_meeting'].includes(l.status));
+        result = result.filter(l => ['converted', 'won', 'active'].includes(l.status));
       } else if (selectedStage === 'follow_up') {
-        result = result.filter(l => ['follow_up', 'renewed'].includes(l.status));
+        result = result.filter(l => ['follow_up', 'followup'].includes(l.status));
       } else if (selectedStage === 'lost') {
         result = result.filter(l => ['lost', 'lost_lead'].includes(l.status));
       } else if (selectedStage === 'archived') {
@@ -489,6 +486,23 @@ export default function AdminFranchiseCRM() {
       toast.error(err?.response?.data?.detail || 'Failed to schedule meeting');
     } finally {
       setSavingScheduleMeeting(false);
+    }
+  };
+
+  // Toggle Demo Mode (Online vs Offline)
+  const handleToggleDemoMode = async (lead) => {
+    const isCurrentlyOnline = lead.demo_type === 'online' || lead.demo_type === 'online_meet';
+    const newDemoType = isCurrentlyOnline ? 'offline' : 'online';
+    try {
+      await axios.put(
+        `${API}/franchise-crm/leads/${lead.id}`,
+        { demo_type: newDemoType },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(`Demo mode updated to ${newDemoType === 'online' ? 'Online Video Meet' : 'Offline Center Visit'}`);
+      fetchLeads();
+    } catch {
+      toast.error('Failed to update demo mode');
     }
   };
 
@@ -1092,29 +1106,31 @@ export default function AdminFranchiseCRM() {
             {/* 3. Action Buttons Bar: Grid/List | Sync LMS | Export CSV | + Add Lead */}
             <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
               <div className="flex items-center gap-2">
-                {/* Grid / List Toggle */}
-                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                {/* Format Switcher: Cards Format vs Table Format */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setViewMode('grid')}
-                    className={`px-3 py-1 text-xs font-semibold rounded flex items-center gap-1 transition ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition ${
                       viewMode === 'grid'
-                        ? 'bg-slate-100 text-slate-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <LayoutGrid className="w-3.5 h-3.5" /> Grid
+                    <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Cards Format</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMode('list')}
-                    className={`px-3 py-1 text-xs font-semibold rounded flex items-center gap-1 transition ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition ${
                       viewMode === 'list'
-                        ? 'bg-slate-100 text-slate-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <List className="w-3.5 h-3.5" /> List
+                    <List className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Table Format</span>
                   </button>
                 </div>
 
@@ -1148,16 +1164,14 @@ export default function AdminFranchiseCRM() {
                   ? totalLeads
                   : s.value === 'new'
                   ? (statusCounts.new || 0)
-                  : s.value === 'meeting_done'
-                  ? (statusCounts.demo_completed || 0)
-                  : s.value === 'converted'
-                  ? (statusCounts.converted || 0)
-                  : s.value === 'active'
-                  ? (statusCounts.converted || 0)
-                  : s.value === 'call_scheduled'
-                  ? (statusCounts.call_scheduled || 0)
+                  : s.value === 'demo_scheduled'
+                  ? (statusCounts.demo_scheduled || statusCounts.call_scheduled || 0)
+                  : s.value === 'demo_completed'
+                  ? (statusCounts.demo_completed || statusCounts.meeting_done || 0)
                   : s.value === 'follow_up'
                   ? (statusCounts.follow_up || 0)
+                  : s.value === 'converted'
+                  ? (statusCounts.converted || 0)
                   : s.value === 'lost'
                   ? (statusCounts.lost || 0)
                   : (statusCounts[s.value] || 0);
@@ -1321,188 +1335,296 @@ export default function AdminFranchiseCRM() {
                       )}
                     </div>
 
-                    {/* Bottom Action Section */}
-                    <div className="pt-3 border-t border-slate-100 mt-2 space-y-2">
-                      {/* View Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setActiveLeadDetails(lead)}
-                        className="w-full h-7 text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-50"
-                        data-testid={`view-lead-btn-${lead.id}`}
-                      >
-                        <Eye className="w-3 h-3 mr-1" /> View
-                      </Button>
+                    {/* Bottom Action Section: Executive Assignment + Demo + Demo Done + Online/Offline + Lost Lead + View */}
+                    <div className="pt-3 border-t border-slate-100 mt-2 space-y-2.5">
+                      {/* Assigned to person name or not assigned button */}
+                      <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span className="text-[11px] font-bold text-slate-500">Executive:</span>
+                        {lead.assigned_to_name ? (
+                          <button
+                            type="button"
+                            onClick={() => openAssignModal(lead)}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 flex items-center gap-1.5 transition"
+                            title="Click to reassign executive"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                            <span className="truncate max-w-[140px]">{lead.assigned_to_name}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openAssignModal(lead)}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-300 flex items-center gap-1.5 transition"
+                            title="Click to assign executive"
+                          >
+                            <UserPlus className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Not Assigned</span>
+                          </button>
+                        )}
+                      </div>
 
-                      {/* Action Button Pills Grid (Just Like School CRM Screenshot) */}
-                      <div className="flex gap-1.5 flex-wrap items-center">
-                        {/* Row 1 */}
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1 font-medium transition"
-                          data-testid={`edit-lead-${lead.id}`}
-                        >
-                          <Edit className="w-3 h-3" /> Edit / Proposal
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openMeetingDoneModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white flex items-center gap-1 font-medium transition"
-                          data-testid={`meeting-done-${lead.id}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" /> Meeting Done
-                        </button>
-
+                      {/* Core Action Buttons: Demo, Demo Done, Online/Offline, Lost Lead */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {/* Demo / Schedule Demo */}
                         <button
                           type="button"
                           onClick={() => openScheduleMeetingModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`schedule-meeting-${lead.id}`}
+                          className="text-xs py-2 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1.5 font-bold shadow-xs transition"
+                          data-testid={`demo-btn-${lead.id}`}
                         >
-                          <CalendarClock className="w-3 h-3" /> Schedule Meeting
+                          <CalendarClock className="w-3.5 h-3.5" />
+                          <span>{lead.scheduled_demo_at ? 'Reschedule' : 'Demo'}</span>
                         </button>
 
+                        {/* Demo Done */}
                         <button
                           type="button"
-                          onClick={() => openTicketModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`ticket-${lead.id}`}
+                          onClick={() => openMeetingDoneModal(lead)}
+                          className={`text-xs py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 font-bold shadow-xs transition ${
+                            lead.status === 'demo_completed'
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-200'
+                              : 'bg-purple-600 hover:bg-purple-700 text-white'
+                          }`}
+                          data-testid={`demo-done-btn-${lead.id}`}
                         >
-                          <Ticket className="w-3 h-3" /> Ticket
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{lead.status === 'demo_completed' ? 'Demo Done ✓' : 'Demo Done'}</span>
                         </button>
 
-                        {/* Row 2 */}
+                        {/* Online / Offline Toggle */}
                         <button
                           type="button"
-                          onClick={() => openFollowupModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`followup-${lead.id}`}
+                          onClick={() => handleToggleDemoMode(lead)}
+                          className={`text-xs py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1.5 font-semibold border transition ${
+                            lead.demo_type === 'online' || lead.demo_type === 'online_meet'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-orange-50 text-orange-800 border-orange-300 hover:bg-orange-100'
+                          }`}
+                          title="Click to toggle Online / Offline mode"
                         >
-                          <Clock className="w-3 h-3" /> Followup
+                          {lead.demo_type === 'online' || lead.demo_type === 'online_meet' ? (
+                            <>
+                              <Video className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Online Demo</span>
+                            </>
+                          ) : (
+                            <>
+                              <Users className="w-3.5 h-3.5 text-orange-600" />
+                              <span>Offline Demo</span>
+                            </>
+                          )}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setShowDocsModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`docs-${lead.id}`}
-                        >
-                          <Paperclip className="w-3 h-3" /> Docs
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openMailModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`mail-${lead.id}`}
-                        >
-                          <Mail className="w-3 h-3" /> Mail
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openAssignModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`assign-${lead.id}`}
-                        >
-                          <UserPlus className="w-3 h-3" /> Assign
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openNoteModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`note-${lead.id}`}
-                        >
-                          <MessageSquare className="w-3 h-3" /> Note
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`delete-${lead.id}`}
-                        >
-                          <Trash2 className="w-3 h-3" /> Delete
-                        </button>
-
-                        {/* Row 3 */}
+                        {/* Lost Lead */}
                         <button
                           type="button"
                           onClick={() => openLostModal(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium transition"
-                          data-testid={`lost-${lead.id}`}
+                          className="text-xs py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold border border-rose-200 flex items-center justify-center gap-1.5 transition"
+                          data-testid={`lost-btn-${lead.id}`}
                         >
-                          <X className="w-3 h-3" /> Lost Lead
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleArchiveLead(lead)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium transition"
-                          data-testid={`archive-${lead.id}`}
-                        >
-                          <Archive className="w-3 h-3" /> Archive
+                          <X className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Lost Lead</span>
                         </button>
                       </div>
+
+                      {/* View Lead Details Button */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveLeadDetails(lead)}
+                        className="w-full h-7 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition"
+                        data-testid={`view-lead-btn-${lead.id}`}
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-500" />
+                        <span>View Details</span>
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              /* ── List View Table ── */
+              /* ── List View: Table Format ── */
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                       <tr>
-                        <th className="py-3 px-4">Franchise Lead</th>
-                        <th className="py-3 px-4">Contact</th>
-                        <th className="py-3 px-4">Location</th>
-                        <th className="py-3 px-4">Budget</th>
-                        <th className="py-3 px-4">Assigned To</th>
-                        <th className="py-3 px-4">Stage</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-3.5 px-4">Franchise Lead</th>
+                        <th className="py-3.5 px-4">Contact</th>
+                        <th className="py-3.5 px-4">Location & Space</th>
+                        <th className="py-3.5 px-4">Budget</th>
+                        <th className="py-3.5 px-4">Demo Mode</th>
+                        <th className="py-3.5 px-4">Demo Schedule</th>
+                        <th className="py-3.5 px-4">Assigned To</th>
+                        <th className="py-3.5 px-4">Stage</th>
+                        <th className="py-3.5 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredLeads.map(lead => (
-                        <tr key={lead.id} className="hover:bg-slate-50/80 transition">
-                          <td className="py-3 px-4">
-                            <span
-                              onClick={() => setActiveLeadDetails(lead)}
-                              className="font-bold text-slate-900 hover:text-indigo-600 cursor-pointer"
-                            >
-                              {lead.name}
-                            </span>
-                            <span className="block text-[11px] text-slate-400">{lead.occupation || 'Partner'}</span>
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            <div>{lead.phone}</div>
-                            {lead.email && <div className="text-[11px] text-slate-400">{lead.email}</div>}
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">{lead.city || 'N/A'}</td>
-                          <td className="py-3 px-4 font-semibold text-slate-800">{lead.investment_budget || '₹2.5L'}</td>
-                          <td className="py-3 px-4 text-slate-600">{lead.assigned_to_name || 'Unassigned'}</td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                              {lead.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setActiveLeadDetails(lead)}
-                              className="h-7 text-xs font-semibold"
-                            >
-                              <Eye className="w-3 h-3 mr-1" /> View
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredLeads.map((lead) => {
+                        const isOnline = lead.demo_type === 'online' || lead.demo_type === 'online_meet';
+                        return (
+                          <tr key={lead.id} className="hover:bg-slate-50/80 transition">
+                            {/* Franchise Lead */}
+                            <td className="py-3 px-4">
+                              <span
+                                onClick={() => setActiveLeadDetails(lead)}
+                                className="font-bold text-slate-900 hover:text-indigo-600 cursor-pointer text-sm block"
+                              >
+                                {lead.name}
+                              </span>
+                              <span className="text-[11px] text-slate-500">{lead.occupation || 'Franchise Partner'}</span>
+                            </td>
+
+                            {/* Contact */}
+                            <td className="py-3 px-4 text-slate-700">
+                              <div className="font-semibold flex items-center gap-1">
+                                <Phone className="w-3 h-3 text-slate-400" />
+                                <span>{lead.phone}</span>
+                              </div>
+                              {lead.email && <div className="text-[11px] text-slate-500 truncate max-w-[150px]">{lead.email}</div>}
+                            </td>
+
+                            {/* Location & Space */}
+                            <td className="py-3 px-4 text-slate-700">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-slate-400" />
+                                <span>{lead.city || 'India'}</span>
+                              </div>
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                lead.has_space === 'yes' ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {lead.has_space === 'yes' ? 'Space Ready' : 'Looking for Space'}
+                              </span>
+                            </td>
+
+                            {/* Budget */}
+                            <td className="py-3 px-4 font-bold text-slate-900">
+                              {lead.investment_budget || '₹2.5 Lakhs'}
+                            </td>
+
+                            {/* Demo Mode: Online / Offline Button */}
+                            <td className="py-3 px-4">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleDemoMode(lead)}
+                                className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 border transition ${
+                                  isOnline
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                                }`}
+                                title="Click to toggle Online / Offline"
+                              >
+                                {isOnline ? (
+                                  <>
+                                    <Video className="w-3 h-3 text-emerald-600" /> Online
+                                  </>
+                                ) : (
+                                  <>
+                                    <Users className="w-3 h-3 text-orange-600" /> Offline
+                                  </>
+                                )}
+                              </button>
+                            </td>
+
+                            {/* Demo Schedule */}
+                            <td className="py-3 px-4">
+                              {lead.scheduled_demo_at ? (
+                                <div className="text-xs">
+                                  <div className="font-semibold text-purple-900 flex items-center gap-1">
+                                    <CalendarClock className="w-3 h-3 text-purple-600" />
+                                    <span>{new Date(lead.scheduled_demo_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500">
+                                    {lead.scheduled_demo_at.includes('T') ? lead.scheduled_demo_at.slice(11, 16) : ''}
+                                  </span>
+                                </div>
+                              ) : lead.status === 'demo_completed' ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                  Demo Done
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-slate-400">Not Scheduled</span>
+                              )}
+                            </td>
+
+                            {/* Assigned Executive */}
+                            <td className="py-3 px-4">
+                              {lead.assigned_to_name ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openAssignModal(lead)}
+                                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 text-xs flex items-center gap-1 transition"
+                                  title="Click to reassign"
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                  <span className="truncate max-w-[120px]">{lead.assigned_to_name}</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openAssignModal(lead)}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-300 text-xs flex items-center gap-1 transition"
+                                  title="Click to assign executive"
+                                >
+                                  <UserPlus className="w-3 h-3 text-amber-600" />
+                                  <span>Not Assigned</span>
+                                </button>
+                              )}
+                            </td>
+
+                            {/* Stage */}
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                {lead.status === 'new' ? 'New Lead' : lead.status === 'demo_scheduled' ? 'Demo Scheduled' : lead.status === 'demo_completed' ? 'Demo Done' : lead.status}
+                              </span>
+                            </td>
+
+                            {/* Actions: Demo, Demo Done, Lost Lead, View */}
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  size="sm"
+                                  onClick={() => openScheduleMeetingModal(lead)}
+                                  className="h-7 px-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                                  title="Schedule Demo"
+                                >
+                                  <CalendarClock className="w-3 h-3 mr-1" /> Demo
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => openMeetingDoneModal(lead)}
+                                  className={`h-7 px-2.5 text-xs font-bold text-white ${
+                                    lead.status === 'demo_completed'
+                                      ? 'bg-purple-800 hover:bg-purple-900'
+                                      : 'bg-purple-600 hover:bg-purple-700'
+                                  }`}
+                                  title="Mark Demo Done"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" /> Demo Done
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openLostModal(lead)}
+                                  className="h-7 px-2 text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50"
+                                  title="Mark Lost Lead"
+                                >
+                                  <X className="w-3 h-3 mr-0.5" /> Lost
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setActiveLeadDetails(lead)}
+                                  className="h-7 px-2 text-xs text-slate-600 hover:bg-slate-100"
+                                  title="View Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1713,17 +1835,17 @@ export default function AdminFranchiseCRM() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-slate-900">
-                <CheckCircle2 className="w-5 h-5 text-purple-600" /> Log Meeting / Demo Done
+                <CheckCircle2 className="w-5 h-5 text-purple-600" /> Log Franchise Demo Outcome
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 pt-2">
               <p className="text-xs text-slate-600">
-                Log meeting completion for <span className="font-bold text-slate-900">{showMeetingDoneModal?.name}</span>.
+                Log demo completion for <span className="font-bold text-slate-900">{showMeetingDoneModal?.name}</span>.
               </p>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Outcome</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Demo Outcome</label>
                 <select
                   value={meetingDoneData.outcome}
                   onChange={e => setMeetingDoneData(d => ({ ...d, outcome: e.target.value }))}
@@ -1749,7 +1871,7 @@ export default function AdminFranchiseCRM() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Notes & Next Steps</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Demo Notes & Discussion Points</label>
                 <Textarea
                   rows={3}
                   placeholder="Key discussion points, objections, timeline..."
@@ -1764,7 +1886,7 @@ export default function AdminFranchiseCRM() {
                   Cancel
                 </Button>
                 <Button size="sm" onClick={handleMeetingDoneSubmit} disabled={savingMeetingDone} className="bg-purple-600 hover:bg-purple-700 text-white">
-                  {savingMeetingDone ? 'Saving...' : 'Mark Meeting Done'}
+                  {savingMeetingDone ? 'Saving...' : 'Mark Demo Done'}
                 </Button>
               </div>
             </div>
@@ -1776,7 +1898,7 @@ export default function AdminFranchiseCRM() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-slate-900">
-                <CalendarClock className="w-5 h-5 text-blue-600" /> Schedule Franchise Meeting / Demo
+                <CalendarClock className="w-5 h-5 text-blue-600" /> Schedule Franchise Demo
               </DialogTitle>
             </DialogHeader>
 
@@ -1884,7 +2006,7 @@ export default function AdminFranchiseCRM() {
                   Cancel
                 </Button>
                 <Button size="sm" onClick={handleScheduleMeetingSubmit} disabled={savingScheduleMeeting} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  {savingScheduleMeeting ? 'Scheduling...' : 'Confirm Meeting'}
+                  {savingScheduleMeeting ? 'Scheduling...' : 'Confirm Demo'}
                 </Button>
               </div>
             </div>
