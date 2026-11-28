@@ -89,7 +89,8 @@ export default function AdminB2BCRM() {
   const [editLeadForm, setEditLeadForm] = useState({
     school_name: '', name: '', phone: '', alt_phone: '', email: '',
     city: '', state: '', role: '', board: '', deal_size: '', status: 'new',
-    proposal_amount: '', notes: ''
+    proposal_amount: '', notes: '',
+    demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'offline', demo_link: '',
   });
   const [savingEditLead, setSavingEditLead] = useState(false);
 
@@ -162,7 +163,7 @@ export default function AdminB2BCRM() {
     school_name: '', name: '', phone: '', alt_phone: '', email: '',
     city: '', state: '', role: 'Principal', board: 'CBSE',
     deal_size: '', source: 'manual', notes: '', assigned_to: '',
-    demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'online_meet',
+    demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'offline', demo_link: '',
     followup_scheduled: false, next_followup_at: '', followup_notes: '',
   });
   const [savingNewLead, setSavingNewLead] = useState(false);
@@ -363,6 +364,7 @@ export default function AdminB2BCRM() {
 
   // Open Edit Modal
   const openEditModal = (lead) => {
+    const isOnline = lead.demo_type === 'online' || lead.demo_type === 'online_meet';
     setEditLeadForm({
       id: lead.id,
       school_name: lead.school_name || lead.name || '',
@@ -376,8 +378,12 @@ export default function AdminB2BCRM() {
       board: lead.board || 'CBSE',
       deal_size: lead.deal_size || '',
       status: lead.status || 'new',
-      proposal_amount: lead.proposal_amount || '',
+      proposal_amount: lead.proposal_amount || lead.deal_size || '',
       notes: lead.notes || '',
+      demo_session_scheduled: !!lead.scheduled_demo_at,
+      scheduled_demo_at: lead.scheduled_demo_at ? (lead.scheduled_demo_at.length > 16 ? lead.scheduled_demo_at.slice(0, 16) : lead.scheduled_demo_at) : '',
+      demo_type: isOnline ? 'online' : 'offline',
+      demo_link: lead.demo_link || '',
     });
     setShowEditLeadModal(lead);
   };
@@ -388,14 +394,20 @@ export default function AdminB2BCRM() {
     if (!showEditLeadModal) return;
     setSavingEditLead(true);
     try {
-      await axios.put(`${API}/b2b-crm/leads/${showEditLeadModal.id}`, editLeadForm, {
+      const payload = {
+        ...editLeadForm,
+        scheduled_demo_at: editLeadForm.demo_session_scheduled && editLeadForm.scheduled_demo_at ? editLeadForm.scheduled_demo_at : null,
+        demo_type: editLeadForm.demo_type || 'offline',
+        demo_link: editLeadForm.demo_link || '',
+      };
+      await axios.put(`${API}/b2b-crm/leads/${showEditLeadModal.id}`, payload, {
         headers: getAuthHeaders(),
       });
       toast.success('B2B lead updated successfully');
       setShowEditLeadModal(null);
       fetchLeads();
       if (activeLeadDetails?.id === showEditLeadModal.id) {
-        setActiveLeadDetails(prev => ({ ...prev, ...editLeadForm }));
+        setActiveLeadDetails(prev => ({ ...prev, ...payload }));
       }
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to update lead');
@@ -435,12 +447,13 @@ export default function AdminB2BCRM() {
 
   // Schedule Meeting / Demo
   const openScheduleMeetingModal = (lead) => {
+    const isOnline = lead?.demo_type === 'online' || lead?.demo_type === 'online_meet';
     setShowScheduleMeetingModal(lead);
     setScheduleMeetingData({
       date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
       time: '11:00',
-      type: 'online_meet',
-      link: 'https://meet.google.com/oll-b2b-schools',
+      type: isOnline ? 'online' : 'offline',
+      link: isOnline ? (lead?.demo_link || 'https://meet.google.com/oll-b2b-schools') : (lead?.demo_link || ''),
       agenda: 'School Robotics & AI Lab Presentation',
     });
   };
@@ -724,6 +737,8 @@ export default function AdminB2BCRM() {
         email: newLeadForm.email.trim(),
         city: newLeadForm.city.trim(),
         scheduled_demo_at: newLeadForm.demo_session_scheduled && newLeadForm.scheduled_demo_at ? newLeadForm.scheduled_demo_at : null,
+        demo_type: newLeadForm.demo_type || 'offline',
+        demo_link: newLeadForm.demo_link || '',
         next_followup_at: newLeadForm.followup_scheduled && newLeadForm.next_followup_at ? newLeadForm.next_followup_at : null,
       };
       await axios.post(`${API}/b2b-crm/leads`, payload, { headers: getAuthHeaders() });
@@ -733,7 +748,7 @@ export default function AdminB2BCRM() {
         school_name: '', name: '', phone: '', alt_phone: '', email: '',
         city: '', state: '', role: 'Principal', board: 'CBSE',
         deal_size: '', source: 'manual', notes: '', assigned_to: '',
-        demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'online_meet',
+        demo_session_scheduled: false, scheduled_demo_at: '', demo_type: 'offline', demo_link: '',
         followup_scheduled: false, next_followup_at: '', followup_notes: '',
       });
       fetchLeads();
@@ -1193,9 +1208,17 @@ export default function AdminB2BCRM() {
                         <span className="text-[10px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded">
                           {lead.source || 'telecalling'}
                         </span>
-                        <span className="text-[10px] font-medium px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-100 rounded">
-                          Offline School
-                        </span>
+                        {(() => {
+                          const isOnline = lead.demo_type === 'online' || lead.demo_type === 'online_meet';
+                          return (
+                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded border flex items-center gap-1 ${
+                              isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-orange-50 text-orange-700 border-orange-200'
+                            }`}>
+                              {isOnline ? <Video className="w-2.5 h-2.5" /> : <Users className="w-2.5 h-2.5" />}
+                              {isOnline ? 'Online' : 'Offline'}
+                            </span>
+                          );
+                        })()}
                         <span className="text-[10px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded ml-auto">
                           {lead.assigned_to_name ? `👤 ${lead.assigned_to_name}` : 'Viewer Only'}
                         </span>
@@ -1229,6 +1252,36 @@ export default function AdminB2BCRM() {
                           Agentic AI & Coding
                         </span>
                       </div>
+
+                      {/* Scheduled Demo Banner */}
+                      {lead.scheduled_demo_at && (
+                        <div className="bg-purple-50/70 border border-purple-100 rounded-lg p-2 my-2 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5 text-purple-900 font-semibold text-[11px]">
+                            <CalendarClock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                            <span>
+                              Demo: {new Date(lead.scheduled_demo_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                              {lead.scheduled_demo_at.includes('T') ? `, ${lead.scheduled_demo_at.slice(11, 16)}` : ''}
+                            </span>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                              lead.demo_type === 'online' || lead.demo_type === 'online_meet'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {lead.demo_type === 'online' || lead.demo_type === 'online_meet' ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
+                          {lead.demo_link && (lead.demo_type === 'online' || lead.demo_type === 'online_meet') && (
+                            <a
+                              href={lead.demo_link.startsWith('http') ? lead.demo_link : `https://${lead.demo_link}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-purple-700 hover:text-purple-900 underline flex items-center gap-0.5"
+                            >
+                              Link <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
+                        </div>
+                      )}
 
                       {/* Latest Note Box */}
                       {lead.notes && (
@@ -1546,6 +1599,92 @@ export default function AdminB2BCRM() {
                 />
               </div>
 
+              {/* Demo Session Scheduled with Online/Offline Option */}
+              <div className="p-3.5 bg-purple-50/60 border border-purple-100 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-bold text-purple-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editLeadForm.demo_session_scheduled}
+                      onChange={e => setEditLeadForm(f => ({ ...f, demo_session_scheduled: e.target.checked }))}
+                      className="rounded text-purple-600"
+                    />
+                    Is Demo / School Presentation Scheduled?
+                  </label>
+                  {editLeadForm.demo_session_scheduled && (
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                      {editLeadForm.demo_type === 'online' ? 'Online' : 'Offline'}
+                    </span>
+                  )}
+                </div>
+
+                {editLeadForm.demo_session_scheduled && (
+                  <div className="space-y-3 pt-1 border-t border-purple-100">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Demo Mode: Online or Offline? *
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditLeadForm(f => ({ ...f, demo_type: 'online' }))}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                            editLeadForm.demo_type === 'online' || editLeadForm.demo_type === 'online_meet'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Video className="w-3.5 h-3.5" /> Online Demo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditLeadForm(f => ({ ...f, demo_type: 'offline' }))}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                            editLeadForm.demo_type === 'offline' || editLeadForm.demo_type === 'offline_visit'
+                              ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5" /> Offline Demo (School Visit)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Presentation Date & Time</label>
+                      <Input
+                        type="datetime-local"
+                        value={editLeadForm.scheduled_demo_at}
+                        onChange={e => setEditLeadForm(f => ({ ...f, scheduled_demo_at: e.target.value }))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    {editLeadForm.demo_type === 'online' || editLeadForm.demo_type === 'online_meet' ? (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Online Meeting Link (Google Meet / Zoom)</label>
+                        <Input
+                          placeholder="https://meet.google.com/..."
+                          value={editLeadForm.demo_link}
+                          onChange={e => setEditLeadForm(f => ({ ...f, demo_link: e.target.value }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Offline School Campus Address / Venue</label>
+                        <Input
+                          placeholder="e.g. School Campus, Sector 4, Delhi"
+                          value={editLeadForm.demo_link}
+                          onChange={e => setEditLeadForm(f => ({ ...f, demo_link: e.target.value }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <Button variant="outline" size="sm" type="button" onClick={() => setShowEditLeadModal(null)}>
                   Cancel
@@ -1653,27 +1792,54 @@ export default function AdminB2BCRM() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Mode</label>
-                <select
-                  value={scheduleMeetingData.type}
-                  onChange={e => setScheduleMeetingData(d => ({ ...d, type: e.target.value }))}
-                  className="w-full h-8 text-xs border border-slate-200 rounded px-2"
-                >
-                  <option value="online_meet">Online Video Meet (Google Meet / Zoom)</option>
-                  <option value="in_person_school">School Campus Visit (Offline Presentation)</option>
-                  <option value="phone_discussion">Phone Discussion with Management</option>
-                </select>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Demo Mode: Online or Offline? *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMeetingData(d => ({ ...d, type: 'online' }))}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                      scheduleMeetingData.type === 'online' || scheduleMeetingData.type === 'online_meet'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" /> Online Video Meet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMeetingData(d => ({ ...d, type: 'offline' }))}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                      scheduleMeetingData.type === 'offline' || scheduleMeetingData.type === 'offline_visit' || scheduleMeetingData.type === 'in_person_school'
+                        ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" /> Offline School Visit
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Meeting Link / Address</label>
-                <Input
-                  value={scheduleMeetingData.link}
-                  onChange={e => setScheduleMeetingData(d => ({ ...d, link: e.target.value }))}
-                  placeholder="https://meet.google.com/..."
-                  className="h-8 text-xs"
-                />
-              </div>
+              {scheduleMeetingData.type === 'online' || scheduleMeetingData.type === 'online_meet' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Online Google Meet / Video Link</label>
+                  <Input
+                    value={scheduleMeetingData.link}
+                    onChange={e => setScheduleMeetingData(d => ({ ...d, link: e.target.value }))}
+                    placeholder="https://meet.google.com/..."
+                    className="h-8 text-xs"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Offline School Campus Address / Venue</label>
+                  <Input
+                    value={scheduleMeetingData.link}
+                    onChange={e => setScheduleMeetingData(d => ({ ...d, link: e.target.value }))}
+                    placeholder="e.g. School Campus, Main Road, City"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Agenda & Presentation Topic</label>
@@ -2158,26 +2324,88 @@ export default function AdminB2BCRM() {
                 </div>
               </div>
 
-              {/* Demo Session Scheduled or Not */}
-              <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-2">
-                <label className="flex items-center gap-2 text-xs font-bold text-purple-900 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newLeadForm.demo_session_scheduled}
-                    onChange={e => setNewLeadForm(f => ({ ...f, demo_session_scheduled: e.target.checked }))}
-                    className="rounded text-purple-600"
-                  />
-                  Is Demo / School Presentation Scheduled?
-                </label>
-                {newLeadForm.demo_session_scheduled && (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Presentation Date & Time</label>
-                    <Input
-                      type="datetime-local"
-                      value={newLeadForm.scheduled_demo_at}
-                      onChange={e => setNewLeadForm(f => ({ ...f, scheduled_demo_at: e.target.value }))}
-                      className="h-8 text-xs"
+              {/* Demo Session Scheduled or Not with Online/Offline Option */}
+              <div className="p-3.5 bg-purple-50/60 border border-purple-100 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-bold text-purple-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newLeadForm.demo_session_scheduled}
+                      onChange={e => setNewLeadForm(f => ({ ...f, demo_session_scheduled: e.target.checked }))}
+                      className="rounded text-purple-600"
                     />
+                    Is Demo / School Presentation Scheduled?
+                  </label>
+                  {newLeadForm.demo_session_scheduled && (
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                      {newLeadForm.demo_type === 'online' ? 'Online' : 'Offline'}
+                    </span>
+                  )}
+                </div>
+
+                {newLeadForm.demo_session_scheduled && (
+                  <div className="space-y-3 pt-1 border-t border-purple-100">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Demo Mode: Online or Offline? *
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNewLeadForm(f => ({ ...f, demo_type: 'online' }))}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                            newLeadForm.demo_type === 'online' || newLeadForm.demo_type === 'online_meet'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Video className="w-3.5 h-3.5" /> Online Demo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewLeadForm(f => ({ ...f, demo_type: 'offline' }))}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                            newLeadForm.demo_type === 'offline' || newLeadForm.demo_type === 'offline_visit' || newLeadForm.demo_type === 'in_person_school'
+                              ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5" /> Offline Demo (School Visit)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Presentation Date & Time</label>
+                      <Input
+                        type="datetime-local"
+                        value={newLeadForm.scheduled_demo_at}
+                        onChange={e => setNewLeadForm(f => ({ ...f, scheduled_demo_at: e.target.value }))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    {newLeadForm.demo_type === 'online' || newLeadForm.demo_type === 'online_meet' ? (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Online Meeting Link (Google Meet / Zoom)</label>
+                        <Input
+                          placeholder="https://meet.google.com/..."
+                          value={newLeadForm.demo_link}
+                          onChange={e => setNewLeadForm(f => ({ ...f, demo_link: e.target.value }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Offline School Campus Address / Venue</label>
+                        <Input
+                          placeholder="e.g. School Campus, Main Road, City"
+                          value={newLeadForm.demo_link}
+                          onChange={e => setNewLeadForm(f => ({ ...f, demo_link: e.target.value }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2263,6 +2491,59 @@ export default function AdminB2BCRM() {
                     <p className="text-slate-400 font-medium">Assigned To</p>
                     <p className="font-semibold text-slate-800">{activeLeadDetails.assigned_to_name || 'Unassigned'}</p>
                   </div>
+                </div>
+
+                {/* Demo / Presentation Info */}
+                <div className="bg-purple-50/70 border border-purple-100 p-3.5 rounded-xl text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-900 flex items-center gap-1.5">
+                      <CalendarClock className="w-4 h-4 text-purple-600" /> Demo / Presentation Details
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                      activeLeadDetails.demo_type === 'online' || activeLeadDetails.demo_type === 'online_meet'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {activeLeadDetails.demo_type === 'online' || activeLeadDetails.demo_type === 'online_meet' ? (
+                        <><Video className="w-3 h-3" /> Online Demo</>
+                      ) : (
+                        <><Users className="w-3 h-3" /> Offline Demo</>
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-slate-700">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Scheduled Time</p>
+                      <p className="font-semibold text-slate-900">
+                        {activeLeadDetails.scheduled_demo_at
+                          ? new Date(activeLeadDetails.scheduled_demo_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          : 'Not scheduled yet'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Demo Status</p>
+                      <p className="font-semibold text-slate-900 capitalize">{activeLeadDetails.demo_status || 'none'}</p>
+                    </div>
+                  </div>
+                  {activeLeadDetails.demo_link && (
+                    <div className="pt-1 border-t border-purple-100/80">
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase">
+                        {activeLeadDetails.demo_type === 'online' || activeLeadDetails.demo_type === 'online_meet' ? 'Meeting Link' : 'Location / Campus Venue'}
+                      </p>
+                      {activeLeadDetails.demo_type === 'online' || activeLeadDetails.demo_type === 'online_meet' ? (
+                        <a
+                          href={activeLeadDetails.demo_link.startsWith('http') ? activeLeadDetails.demo_link : `https://${activeLeadDetails.demo_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-purple-700 hover:underline flex items-center gap-1"
+                        >
+                          {activeLeadDetails.demo_link} <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <p className="font-semibold text-slate-800">{activeLeadDetails.demo_link}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {activeLeadDetails.notes && (
