@@ -53,6 +53,7 @@ XLSX_COLUMNS = [
     ("board",       ["board", "curriculum"]),
     ("notes",       ["notes", "remarks", "comments"]),
     ("source",      ["source", "lead_source", "campaign"]),
+    ("call_type",   ["call_type", "type", "lead_type", "category", "segment"]),
 ]
 
 def _now() -> str:
@@ -97,6 +98,7 @@ class ContactPatch(BaseModel):
     school_name:        Optional[str] = None
     city:               Optional[str] = None
     board:              Optional[str] = None
+    call_type:          Optional[str] = None   # 'b2b' | 'b2c' | 'franchise'
     notes:              Optional[str] = None
     status:             Optional[str] = None   # 'new' | 'follow_up' | 'no_answer' | 'interested'
     call_picked:        Optional[str] = None   # 'yes' | 'no'
@@ -120,6 +122,7 @@ class ContactCreate(BaseModel):
     school_name:         Optional[str] = ""
     city:                Optional[str] = ""
     board:               Optional[str] = ""
+    call_type:           Optional[str] = "b2b"  # 'b2b' | 'b2c' | 'franchise'
     notes:               Optional[str] = ""
     source:              Optional[str] = "Manual Entry"
     status:              Optional[str] = "new"
@@ -169,6 +172,7 @@ async def import_contacts(
     assigned_to:   Optional[str] = Form(None),
     auto_pool:     str = Form(""),           # comma-separated user_ids
     default_source: Optional[str] = Form(None),
+    default_call_type: str = Form("b2b"),
     batch_name:    Optional[str] = Form(None),
     user: dict = Depends(get_current_user),
 ):
@@ -285,6 +289,12 @@ async def import_contacts(
             if s:
                 extra_fields[label] = s
 
+        row_call_type = _cell("call_type").strip().lower()
+        if row_call_type not in {"b2b", "b2c", "franchise"}:
+            row_call_type = (default_call_type or "b2b").strip().lower()
+        if row_call_type not in {"b2b", "b2c", "franchise"}:
+            row_call_type = "b2b"
+
         docs.append({
             "id":               str(uuid.uuid4()),
             "name":             _cell("name"),
@@ -294,6 +304,7 @@ async def import_contacts(
             "school_name":      _cell("school_name"),
             "city":             _cell("city"),
             "board":            _cell("board"),
+            "call_type":         row_call_type,
             "notes":            _cell("notes"),
             "source":           _cell("source") or (default_source or ""),
             "status":           "new",
@@ -473,6 +484,10 @@ async def create_contact(payload: ContactCreate, user: dict = Depends(get_curren
                 "created_by": _uid(user),
             })
 
+    call_type = (payload.call_type or "b2b").strip().lower()
+    if call_type not in {"b2b", "b2c", "franchise"}:
+        call_type = "b2b"
+
     doc = {
         "id": str(uuid.uuid4()),
         "name": (payload.name or "").strip(),
@@ -483,6 +498,7 @@ async def create_contact(payload: ContactCreate, user: dict = Depends(get_curren
         "school_name": (payload.school_name or "").strip(),
         "city": (payload.city or "").strip(),
         "board": (payload.board or "").strip(),
+        "call_type": call_type,
         "notes": (payload.notes or "").strip(),
         "source": (payload.source or "Manual Entry").strip(),
         "status": payload.status or "new",
@@ -572,39 +588,77 @@ async def list_contacts(
     status:      Optional[str] = None,   # 'unworked' | 'picked' | 'interested' | 'not_interested'
     search:      Optional[str] = None,
     batch_id:    Optional[str] = None,
-    limit:       int = 500,
+    call_type:   Optional[str] = None,   # 'all' | 'b2b' | 'b2c' | 'franchise'
+    limit:       int = 2000,
     user: dict = Depends(get_current_user),
 ):
-    q: dict = {}
+    conditions: List[dict] = []
+    base_scope: List[dict] = []
+
     if not _is_admin(user):
-        q["assigned_to"] = _uid(user)
+        base_scope.append({"assigned_to": _uid(user)})
     elif assigned_to:
-        q["assigned_to"] = assigned_to if assigned_to != "unassigned" else None
+        base_scope.append({"assigned_to": assigned_to if assigned_to != "unassigned" else None})
 
     if batch_id and batch_id != "all":
-        q["batch_id"] = batch_id
+        base_scope.append({"batch_id": batch_id})
+
+    conditions.extend(base_scope)
 
     if status in {"new", "follow_up", "no_answer", "interested"}:
-        q["status"] = status
+        conditions.append({"status": status})
     elif status == "unworked":
-        q["call_picked"] = None
+        conditions.append({"call_picked": None})
     elif status == "picked":
-        q["call_picked"] = "yes"
+        conditions.append({"call_picked": "yes"})
     elif status == "not_picked":
-        q["call_picked"] = "no"
+        conditions.append({"call_picked": "no"})
     elif status == "not_interested":
-        q["lead_interested"] = "no"
+        conditions.append({"lead_interested": "no"})
 
     if search:
-        q["$or"] = [
-            {"name":        {"$regex": search, "$options": "i"}},
-            {"phone":       {"$regex": search, "$options": "i"}},
-            {"school_name": {"$regex": search, "$options": "i"}},
-            {"city":        {"$regex": search, "$options": "i"}},
-        ]
+        s = search.strip()
+        conditions.append({
+            "$or": [
+                {"name":        {"$regex": s, "$options": "i"}},
+                {"phone":       {"$regex": s, "$options": "i"}},
+                {"school_name": {"$regex": s, "$options": "i"}},
+                {"city":        {"$regex": s, "$options": "i"}},
+            ]
+        })
 
+    if call_type and call_type != "all":
+        ct = call_type.strip().lower()
+        if ct == "b2b":
+            conditions.append({
+                "$or": [
+                    {"call_type": "b2b"},
+                    {"call_type": None},
+                    {"call_type": {"$exists": False}},
+                    {"call_type": ""},
+                ]
+            })
+        else:
+            conditions.append({"call_type": ct})
+
+    q = {"$and": conditions} if conditions else {}
     rows = await db.telecalling_contacts.find(q, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
-    return {"contacts": rows}
+
+    scope_q = {"$and": base_scope} if base_scope else {}
+    total_count = await db.telecalling_contacts.count_documents(scope_q)
+    b2c_count = await db.telecalling_contacts.count_documents({"$and": [*base_scope, {"call_type": "b2c"}]} if base_scope else {"call_type": "b2c"})
+    franchise_count = await db.telecalling_contacts.count_documents({"$and": [*base_scope, {"call_type": "franchise"}]} if base_scope else {"call_type": "franchise"})
+    b2b_count = total_count - b2c_count - franchise_count
+
+    return {
+        "contacts": rows,
+        "type_counts": {
+            "all": total_count,
+            "b2b": b2b_count,
+            "b2c": b2c_count,
+            "franchise": franchise_count,
+        }
+    }
 
 
 # ── Update ───────────────────────────────────────────────────────

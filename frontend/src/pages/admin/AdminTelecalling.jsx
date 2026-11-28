@@ -82,12 +82,13 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
   const [assignedTo, setAssignedTo] = useState('');
   const [autoPool, setAutoPool] = useState([]);
   const [defaultSource, setDefaultSource] = useState('');
+  const [defaultCallType, setDefaultCallType] = useState('b2b');
   const [batchName, setBatchName] = useState('');
   const [uploading, setUploading] = useState(false);
   const { getAuthHeaders } = useAuth();
 
   useEffect(() => {
-    if (open) { setFile(null); setAssignMode('single'); setAssignedTo(''); setAutoPool([]); setDefaultSource(''); setBatchName(''); }
+    if (open) { setFile(null); setAssignMode('single'); setAssignedTo(''); setAutoPool([]); setDefaultSource(''); setDefaultCallType('b2b'); setBatchName(''); }
   }, [open]);
 
   const togglePool = (id) => setAutoPool(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
@@ -115,6 +116,7 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
       if (assignMode === 'single') fd.append('assigned_to', assignedTo);
       if (assignMode === 'auto') fd.append('auto_pool', autoPool.join(','));
       if (defaultSource) fd.append('default_source', defaultSource);
+      fd.append('default_call_type', defaultCallType);
       if (batchName) fd.append('batch_name', batchName);
       const r = await axios.post(`${API}/telecalling/import`, fd, { headers: getAuthHeaders() });
       const dupPart = r.data.duplicates ? `, ${r.data.duplicates} duplicate${r.data.duplicates === 1 ? '' : 's'} skipped` : '';
@@ -186,6 +188,20 @@ const ImportModal = ({ open, onClose, onDone, users }) => {
             </div>
           )}
           <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Target Call Type Segment</label>
+            <select
+              value={defaultCallType}
+              onChange={(e) => setDefaultCallType(e.target.value)}
+              className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-700"
+              data-testid="tc-import-call-type"
+            >
+              <option value="b2b">B2B (Schools &amp; Educational Institutions)</option>
+              <option value="b2c">B2C (Students &amp; Direct Learners)</option>
+              <option value="franchise">Franchise (Growth Partners &amp; Centers)</option>
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">If spreadsheet lacks a &lsquo;call_type&rsquo; column, rows will default to this segment.</p>
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">Default source (optional)</label>
             <Input value={defaultSource} onChange={(e) => setDefaultSource(e.target.value)} placeholder="e.g. Winter Campaign 2026" data-testid="tc-default-source" />
           </div>
@@ -222,6 +238,7 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
     school_name: '',
     city: '',
     board: '',
+    call_type: 'b2b',
     assigned_to: '',
     source: 'Direct Entry',
     batch_name: 'Direct Calling Sheet',
@@ -239,6 +256,7 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
         school_name: '',
         city: '',
         board: '',
+        call_type: 'b2b',
         assigned_to: isAdmin ? '' : (currentUserId || ''),
         source: 'Direct Entry',
         batch_name: 'Direct Calling Sheet',
@@ -263,6 +281,7 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
         school_name: form.school_name.trim() || undefined,
         city: form.city.trim() || undefined,
         board: form.board.trim() || undefined,
+        call_type: form.call_type || 'b2b',
         assigned_to: form.assigned_to || undefined,
         source: form.source.trim() || 'Direct Entry',
         batch_name: form.batch_name.trim() || 'Direct Calling Sheet',
@@ -340,6 +359,21 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
 
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Lead / Call Type <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={form.call_type || 'b2b'}
+                onChange={e => setForm({ ...form, call_type: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800"
+                data-testid="tc-add-call-type"
+              >
+                <option value="b2b">B2B (School / Institutional Lead)</option>
+                <option value="b2c">B2C (Student / Parent Lead)</option>
+                <option value="franchise">Franchise (Growth Partner / Center)</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">School / Organization</label>
               <Input
                 value={form.school_name}
@@ -348,6 +382,9 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
                 data-testid="tc-add-school"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Role / Designation</label>
               <select
@@ -814,6 +851,17 @@ const ContactRow = React.memo(({ row, idx, isAdmin, users, onPatch, onOpenIntere
         </td>
       )}
       <td className={`${CELL} text-slate-400 font-mono w-8 text-right`}>{idx + 1}</td>
+      <td className={CELL}>
+        <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+          (row.call_type || 'b2b') === 'franchise'
+            ? 'bg-amber-50 text-amber-800 border-amber-300'
+            : (row.call_type || 'b2b') === 'b2c'
+            ? 'bg-purple-50 text-purple-800 border-purple-300'
+            : 'bg-blue-50 text-blue-800 border-blue-300'
+        }`} data-testid={`tc-type-badge-${row.id}`}>
+          {(row.call_type || 'b2b') === 'franchise' ? 'Franchise' : (row.call_type || 'b2b') === 'b2c' ? 'B2C' : 'B2B'}
+        </span>
+      </td>
       <td className={`${CELL} whitespace-nowrap`}>
         <div className="font-medium text-slate-800">{row.name || <span className="text-slate-400 italic">—</span>}</div>
         <div className="text-[10px] text-slate-500">{row.source || ''}</div>
@@ -1354,6 +1402,8 @@ export default function AdminTelecalling() {
   const [pageSize, setPageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [callTypeFilter, setCallTypeFilter] = useState('all'); // 'all' | 'b2b' | 'b2c' | 'franchise'
+  const [typeCounts, setTypeCounts] = useState({ all: 0, b2b: 0, b2c: 0, franchise: 0 });
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [sortDesc, setSortDesc] = useState(true);   // Date Added sort direction
   const [showImport, setShowImport] = useState(false);
@@ -1377,7 +1427,7 @@ export default function AdminTelecalling() {
   // Reset to first page whenever search or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, assigneeFilter, activeBatch, pageSize]);
+  }, [debouncedSearch, statusFilter, callTypeFilter, assigneeFilter, activeBatch, pageSize]);
 
   const loadBatches = useCallback(async () => {
     try {
@@ -1398,16 +1448,18 @@ export default function AdminTelecalling() {
     try {
       const params = new URLSearchParams();
       params.set('limit', '2000');
+      if (callTypeFilter !== 'all') params.set('call_type', callTypeFilter);
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (isAdmin && assigneeFilter !== 'all') params.set('assigned_to', assigneeFilter);
       if (activeBatch && activeBatch !== 'all') params.set('batch_id', activeBatch);
       const r = await axios.get(`${API}/telecalling/contacts?${params}`, { headers: getAuthHeaders() });
       setContacts(r.data.contacts || []);
+      if (r.data.type_counts) setTypeCounts(r.data.type_counts);
       setSelected(new Set());   // clear selection whenever the list changes
     } catch { toast.error('Failed to load contacts'); }
     finally { setLoading(false); }
-  }, [getAuthHeaders, statusFilter, debouncedSearch, isAdmin, assigneeFilter, activeBatch]);
+  }, [getAuthHeaders, callTypeFilter, statusFilter, debouncedSearch, isAdmin, assigneeFilter, activeBatch]);
 
   const loadUsers = useCallback(async () => {
     if (!isAdmin) return;
@@ -1810,12 +1862,57 @@ export default function AdminTelecalling() {
               </div>
             )}
 
+            {/* Call Segment Filter Pills (All, B2B, B2C, Franchise) */}
+            <div className="flex items-center justify-between flex-wrap gap-2 bg-white rounded-xl border border-slate-200 p-2.5 shadow-sm" data-testid="tc-type-filter-bar">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5 mr-1">
+                  <Filter className="w-3.5 h-3.5 text-indigo-600" /> Call Segment:
+                </span>
+                {[
+                  { id: 'all', label: 'All Calls', count: typeCounts.all, activeColor: 'bg-indigo-600 text-white shadow-sm', badgeColor: 'bg-slate-200 text-slate-700' },
+                  { id: 'b2b', label: 'B2B (Schools)', count: typeCounts.b2b, activeColor: 'bg-blue-600 text-white shadow-sm', badgeColor: 'bg-blue-100 text-blue-800' },
+                  { id: 'b2c', label: 'B2C (Students)', count: typeCounts.b2c, activeColor: 'bg-purple-600 text-white shadow-sm', badgeColor: 'bg-purple-100 text-purple-800' },
+                  { id: 'franchise', label: 'Franchise', count: typeCounts.franchise, activeColor: 'bg-amber-600 text-white shadow-sm', badgeColor: 'bg-amber-100 text-amber-800' },
+                ].map(seg => {
+                  const active = callTypeFilter === seg.id;
+                  return (
+                    <button
+                      key={seg.id}
+                      onClick={() => setCallTypeFilter(seg.id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
+                        active ? seg.activeColor : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                      data-testid={`tc-type-filter-${seg.id}`}
+                    >
+                      <span>{seg.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        active ? 'bg-white/25 text-white' : seg.badgeColor
+                      }`}>
+                        {seg.count ?? 0}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2 items-center bg-white rounded-lg border border-slate-200 p-2">
               <div className="relative flex-1 min-w-[180px] max-w-xs">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name / phone / school..."
                   className="w-full pl-8 pr-2 h-9 border border-slate-200 rounded text-sm" data-testid="tc-search" />
               </div>
+              <select
+                value={callTypeFilter}
+                onChange={(e) => setCallTypeFilter(e.target.value)}
+                className="h-9 px-2 border border-slate-200 rounded text-xs bg-white font-medium text-slate-700"
+                data-testid="tc-select-call-type"
+              >
+                <option value="all">All Types ({typeCounts.all})</option>
+                <option value="b2b">B2B - Schools ({typeCounts.b2b})</option>
+                <option value="b2c">B2C - Students ({typeCounts.b2c})</option>
+                <option value="franchise">Franchise ({typeCounts.franchise})</option>
+              </select>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
                 className="h-9 px-2 border border-slate-200 rounded text-xs bg-white" data-testid="tc-filter-status">
                 <option value="all">All statuses</option>
@@ -1884,6 +1981,7 @@ export default function AdminTelecalling() {
                         </th>
                       )}
                       <th className={`${HEAD} w-8`}>#</th>
+                      <th className={HEAD}>Type</th>
                       <th className={HEAD}>Contact</th>
                       <th className={HEAD}>Phone</th>
                       <th className={HEAD}>Email</th>
