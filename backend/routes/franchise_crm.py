@@ -137,6 +137,8 @@ async def _sync_to_telecalling(lead_doc: dict) -> None:
 
         if lead_doc.get("scheduled_demo_at"):
             update_fields["meeting_at"] = lead_doc.get("scheduled_demo_at")
+            demo_t = lead_doc.get("demo_type") or ""
+            update_fields["meeting_mode"] = "online" if demo_t in ("online", "online_meet") else "offline"
         if lead_doc.get("next_followup_at"):
             update_fields["followup_at"] = lead_doc.get("next_followup_at")
         if lead_doc.get("call_status") == "completed":
@@ -306,6 +308,7 @@ class FranchiseLeadCreate(BaseModel):
     source: Optional[str] = "manual"
     details: Optional[str] = ""
     assigned_to: Optional[str] = ""
+    proposal_amount: Optional[str] = None
     demo_session_scheduled: Optional[bool] = False
     scheduled_demo_at: Optional[str] = None
     demo_type: Optional[str] = "online_meet"
@@ -327,6 +330,7 @@ class FranchiseLeadUpdate(BaseModel):
     investment_budget: Optional[str] = None
     source: Optional[str] = None
     details: Optional[str] = None
+    proposal_amount: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
     demo_session_scheduled: Optional[bool] = None
@@ -713,6 +717,7 @@ async def create_franchise_lead(
         "investment_budget": payload.investment_budget or "₹2.5 Lakhs",
         "source": payload.source or "manual",
         "details": (payload.details or "").strip(),
+        "proposal_amount": payload.proposal_amount or "",
         "notes": "",
         "status": initial_status,
         "assigned_to": payload.assigned_to or "",
