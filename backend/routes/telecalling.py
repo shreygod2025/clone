@@ -121,9 +121,11 @@ class ContactCreate(BaseModel):
     role:                Optional[str] = ""
     school_name:         Optional[str] = ""
     city:                Optional[str] = ""
+    address:             Optional[str] = ""
     board:               Optional[str] = ""
     call_type:           Optional[str] = "b2b"  # 'b2b' | 'b2c' | 'franchise'
     notes:               Optional[str] = ""
+    comments:            Optional[str] = ""
     source:              Optional[str] = "Manual Entry"
     status:              Optional[str] = "new"
     call_picked:         Optional[str] = None
@@ -132,6 +134,11 @@ class ContactCreate(BaseModel):
     assigned_to:         Optional[str] = None
     followup_at:         Optional[str] = None
     meeting_at:          Optional[str] = None
+    date:                Optional[str] = None
+    meeting_mode:        Optional[str] = "offline"
+    demo_type:           Optional[str] = "offline"
+    meeting_link:        Optional[str] = ""
+    meeting_address:     Optional[str] = ""
     batch_name:          Optional[str] = None
     batch_id:            Optional[str] = None
     extra_fields:        Optional[Dict[str, Any]] = None
@@ -511,6 +518,11 @@ async def create_contact(payload: ContactCreate, user: dict = Depends(get_curren
     if call_type not in {"b2b", "b2c", "franchise"}:
         call_type = "b2b"
 
+    meeting_at_val = payload.meeting_at or payload.date or None
+    meeting_mode_val = (payload.meeting_mode or payload.demo_type or "offline").strip().lower()
+    address_val = (payload.address or payload.city or "").strip()
+    notes_val = (payload.comments or payload.notes or "").strip()
+
     doc = {
         "id": str(uuid.uuid4()),
         "name": (payload.name or "").strip(),
@@ -519,17 +531,22 @@ async def create_contact(payload: ContactCreate, user: dict = Depends(get_curren
         "email": (payload.email or "").strip().lower(),
         "role": (payload.role or "").strip(),
         "school_name": (payload.school_name or "").strip(),
-        "city": (payload.city or "").strip(),
+        "city": (payload.city or address_val).strip(),
+        "address": address_val,
         "board": (payload.board or "").strip(),
         "call_type": call_type,
-        "notes": (payload.notes or "").strip(),
+        "notes": notes_val,
         "source": (payload.source or "Manual Entry").strip(),
-        "status": payload.status or "new",
+        "status": payload.status or ("demo_scheduled" if meeting_at_val else "new"),
         "call_picked": payload.call_picked,
-        "lead_interested": payload.lead_interested,
+        "lead_interested": payload.lead_interested or ("yes" if payload.status in ("interested", "demo_scheduled", "demo_completed", "converted") else None),
         "products_interested": payload.products_interested or [],
         "followup_at": payload.followup_at,
-        "meeting_at": payload.meeting_at,
+        "meeting_at": meeting_at_val,
+        "meeting_mode": meeting_mode_val,
+        "demo_type": meeting_mode_val,
+        "meeting_link": payload.meeting_link or "",
+        "meeting_address": payload.meeting_address or address_val,
         "school_inquiry_id": None,
         "batch_id": batch_id,
         "batch_name": batch_name,
@@ -540,6 +557,38 @@ async def create_contact(payload: ContactCreate, user: dict = Depends(get_curren
         "updated_at": _now(),
     }
     await db.telecalling_contacts.insert_one(doc)
+
+    if call_type == "b2b":
+        b2b_doc = {
+            "id": doc["id"],
+            "school_name": doc["school_name"] or doc["name"],
+            "organization_name": doc["school_name"] or doc["name"],
+            "name": doc["name"],
+            "phone": doc["phone"],
+            "email": doc["email"],
+            "city": doc["city"],
+            "address": doc["address"],
+            "role": doc["role"],
+            "board": doc["board"],
+            "deal_size": "",
+            "proposal_amount": "",
+            "source": doc["source"],
+            "notes": doc["notes"],
+            "status": "demo_scheduled" if doc.get("meeting_at") else (doc.get("status") or "new"),
+            "assigned_to": assigned_to or "",
+            "assigned_to_name": assigned_to_name or "",
+            "call_status": "none",
+            "demo_status": "scheduled" if doc.get("meeting_at") else "none",
+            "scheduled_demo_at": doc.get("meeting_at"),
+            "demo_type": doc.get("meeting_mode", "offline"),
+            "demo_link": doc.get("meeting_link", ""),
+            "demo_notes": doc.get("notes", ""),
+            "lead_interested": doc.get("lead_interested"),
+            "created_at": doc["created_at"],
+            "updated_at": doc["updated_at"],
+        }
+        await db.b2b_leads.update_one({"id": doc["id"]}, {"$set": b2b_doc}, upsert=True)
+
     doc.pop("_id", None)
     return {"ok": True, "contact": doc}
 
