@@ -465,7 +465,7 @@ export const AppRoutes = () => {
           <Route path="/admin/competitions" element={<ProtectedRoute permission="competitions"><AdminCompetitions /></ProtectedRoute>} />
           <Route path="/admin/growth-partners" element={<ProtectedRoute permission="growth_partners"><AdminGrowthPartners /></ProtectedRoute>} />
           <Route path="/admin/franchise-crm" element={<ProtectedRoute><AdminFranchiseCRM /></ProtectedRoute>} />
-          <Route path="/admin/b2b-crm" element={<ProtectedRoute><AdminB2BCRM /></ProtectedRoute>} />
+          <Route path="/admin/b2b-crm" element={<Navigate to="/admin/telecalling" replace />} />
           <Route path="/admin/gp-onboarding" element={<ProtectedRoute permission="growth_partners"><AdminGPOnboarding /></ProtectedRoute>} />
           <Route path="/admin/team-applications" element={<ProtectedRoute permission="team_applications"><AdminTeamApplications /></ProtectedRoute>} />
           <Route path="/admin/team-onboarding" element={<ProtectedRoute permission="team_applications"><AdminTeamOnboarding /></ProtectedRoute>} />

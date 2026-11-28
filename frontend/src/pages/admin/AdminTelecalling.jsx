@@ -24,7 +24,7 @@ import {
   Building2, Calendar, BarChart3, ChevronDown, ChevronRight, ChevronLeft,
   ChevronsLeft, ChevronsRight, Loader2, Plus,
   UserPlus, MessageSquare, Mail, MapPin, AlertTriangle, PenSquare, Trash2,
-  Clock, RefreshCw,
+  Clock, RefreshCw, Video,
 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
@@ -231,36 +231,48 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: '',
+    school_name: '',
     phone: '',
     alt_phone: '',
     email: '',
-    role: '',
-    school_name: '',
+    role: 'Principal',
+    date: new Date().toISOString().slice(0, 10),
+    meeting_mode: 'offline', // 'offline' or 'online'
+    lead_interested: 'yes',
+    comments: '',
+    notes: '',
+    address: '',
     city: '',
-    board: '',
+    board: 'CBSE',
+    status: 'new',
     call_type: 'b2b',
     assigned_to: '',
-    source: 'Direct Entry',
+    source: 'Direct B2B Entry',
     batch_name: 'Direct Calling Sheet',
-    notes: '',
   });
 
   useEffect(() => {
     if (open) {
       setForm({
         name: '',
+        school_name: '',
         phone: '',
         alt_phone: '',
         email: '',
-        role: '',
-        school_name: '',
+        role: 'Principal',
+        date: new Date().toISOString().slice(0, 10),
+        meeting_mode: 'offline',
+        lead_interested: 'yes',
+        comments: '',
+        notes: '',
+        address: '',
         city: '',
-        board: '',
+        board: 'CBSE',
+        status: 'new',
         call_type: 'b2b',
         assigned_to: isAdmin ? '' : (currentUserId || ''),
-        source: 'Direct Entry',
+        source: 'Direct B2B Entry',
         batch_name: 'Direct Calling Sheet',
-        notes: '',
       });
     }
   }, [open, isAdmin, currentUserId]);
@@ -268,27 +280,36 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
   const submit = async (e) => {
     e?.preventDefault();
     if (!form.name.trim()) return toast.error('Contact person name is required');
-    if (!form.phone.trim()) return toast.error('Phone number is required');
+    if (!form.school_name.trim()) return toast.error('School name is required');
+    if (!form.phone.trim()) return toast.error('Contact number is required');
 
     setSubmitting(true);
     try {
       const payload = {
         name: form.name.trim(),
+        school_name: form.school_name.trim(),
         phone: form.phone.trim(),
         alt_phone: form.alt_phone.trim() || undefined,
         email: form.email.trim() || undefined,
-        role: form.role.trim() || undefined,
-        school_name: form.school_name.trim() || undefined,
-        city: form.city.trim() || undefined,
+        role: form.role.trim() || 'Principal',
+        date: form.date || undefined,
+        meeting_at: form.date || undefined,
+        meeting_mode: form.meeting_mode || 'offline',
+        demo_type: form.meeting_mode || 'offline',
+        lead_interested: form.lead_interested || 'yes',
+        comments: form.comments.trim() || form.notes.trim() || undefined,
+        notes: form.comments.trim() || form.notes.trim() || undefined,
+        address: form.address.trim() || form.city.trim() || undefined,
+        city: form.city.trim() || form.address.trim() || undefined,
         board: form.board.trim() || undefined,
+        status: form.status || 'new',
         call_type: form.call_type || 'b2b',
         assigned_to: form.assigned_to || undefined,
-        source: form.source.trim() || 'Direct Entry',
+        source: form.source.trim() || 'Direct B2B Entry',
         batch_name: form.batch_name.trim() || 'Direct Calling Sheet',
-        notes: form.notes.trim() || undefined,
       };
       await axios.post(`${API}/telecalling/contacts`, payload, { headers: getAuthHeaders() });
-      toast.success('Client added to calling sheet successfully');
+      toast.success('B2B Client added successfully');
       onDone();
       onClose();
     } catch (err) {
@@ -304,14 +325,15 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5 text-emerald-600" />
-            Add B2B Client / Lead to Calling Sheet
+            Add B2B Client to Telecalling
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-3 mt-2">
+        <form onSubmit={submit} className="space-y-3.5 mt-2">
+          {/* 1. Contact Person & 2. School Name */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Contact Person Name <span className="text-rose-500">*</span>
+                Contact Person <span className="text-rose-500">*</span>
               </label>
               <Input
                 value={form.name}
@@ -323,7 +345,23 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Phone Number <span className="text-rose-500">*</span>
+                School Name <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={form.school_name}
+                onChange={e => setForm({ ...form, school_name: e.target.value })}
+                placeholder="e.g. Delhi Public School"
+                required
+                data-testid="tc-add-school"
+              />
+            </div>
+          </div>
+
+          {/* 3. Contact No. & 4. Designation like principal */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Contact No. <span className="text-rose-500">*</span>
               </label>
               <Input
                 value={form.phone}
@@ -333,104 +371,167 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
                 data-testid="tc-add-phone"
               />
             </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Designation <span className="text-rose-500">*</span>
+              </label>
+              <div className="space-y-1.5">
+                <Input
+                  value={form.role}
+                  onChange={e => setForm({ ...form, role: e.target.value })}
+                  placeholder="e.g. Principal, Director..."
+                  required
+                  data-testid="tc-add-role"
+                />
+                <div className="flex flex-wrap gap-1">
+                  {['Principal', 'Director', 'Trustee', 'Vice Principal', 'Coordinator'].map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setForm({ ...form, role: r })}
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                        form.role === r
+                          ? 'bg-blue-100 border-blue-400 text-blue-800 font-semibold'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Alternate Phone</label>
-              <Input
-                value={form.alt_phone}
-                onChange={e => setForm({ ...form, alt_phone: e.target.value })}
-                placeholder="e.g. 022-28475892"
-                data-testid="tc-add-alt-phone"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="e.g. principal@school.edu"
-                data-testid="tc-add-email"
-              />
-            </div>
-          </div>
-
+          {/* 5. Date & 6. Demo offline/ online */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Lead / Call Type <span className="text-rose-500">*</span>
+                Date <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                type="date"
+                value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })}
+                required
+                data-testid="tc-add-date"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Demo (Offline / Online) <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2 h-10">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, meeting_mode: 'offline' })}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-all ${
+                    form.meeting_mode === 'offline'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm font-semibold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                  data-testid="tc-demo-offline"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  Offline Demo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, meeting_mode: 'online' })}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-all ${
+                    form.meeting_mode === 'online'
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-sm font-semibold'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                  data-testid="tc-demo-online"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  Online Demo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 7. Interested & 10. Status */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Interested <span className="text-rose-500">*</span>
               </label>
               <select
-                value={form.call_type || 'b2b'}
-                onChange={e => setForm({ ...form, call_type: e.target.value })}
+                value={form.lead_interested}
+                onChange={e => setForm({ ...form, lead_interested: e.target.value })}
                 className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800"
-                data-testid="tc-add-call-type"
+                data-testid="tc-add-interested"
               >
-                <option value="b2b">B2B (School / Institutional Lead)</option>
-                <option value="b2c">B2C (Student / Parent Lead)</option>
-                <option value="franchise">Franchise (Growth Partner / Center)</option>
+                <option value="yes">Yes (Interested)</option>
+                <option value="moderate">Moderate Interest</option>
+                <option value="followup">Follow-up Required</option>
+                <option value="no">Not Interested / Closed</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">School / Organization</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Status <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={form.status}
+                onChange={e => setForm({ ...form, status: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800"
+                data-testid="tc-add-status"
+              >
+                <option value="new">New Lead</option>
+                <option value="contacted">Contacted</option>
+                <option value="demo_scheduled">Demo Scheduled</option>
+                <option value="meeting_done">Demo Done</option>
+                <option value="followup">Follow-up</option>
+                <option value="converted">Converted</option>
+                <option value="lost">Lost</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 9. Address */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Address <span className="text-slate-400 font-normal">(School / Center Location)</span>
+            </label>
+            <div className="relative">
+              <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
               <Input
-                value={form.school_name}
-                onChange={e => setForm({ ...form, school_name: e.target.value })}
-                placeholder="e.g. Delhi Public School"
-                data-testid="tc-add-school"
+                value={form.address}
+                onChange={e => setForm({ ...form, address: e.target.value, city: form.city || e.target.value })}
+                placeholder="e.g. Sector 14, Navi Mumbai, Maharashtra"
+                className="pl-9"
+                data-testid="tc-add-address"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Role / Designation</label>
-              <select
-                value={form.role}
-                onChange={e => setForm({ ...form, role: e.target.value })}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
-                data-testid="tc-add-role"
-              >
-                <option value="">Select role</option>
-                {SCHOOL_CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
+          {/* 8. Comments */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Comments <span className="text-slate-400 font-normal">(Discussion, Requirements & Next Steps)</span>
+            </label>
+            <textarea
+              rows={3}
+              value={form.comments}
+              onChange={e => setForm({ ...form, comments: e.target.value, notes: e.target.value })}
+              placeholder="Enter discussion notes, demo feedback, client requirements or next steps..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              data-testid="tc-add-comments"
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
-              <Input
-                value={form.city}
-                onChange={e => setForm({ ...form, city: e.target.value })}
-                placeholder="e.g. Mumbai, Pune, Bangalore"
-                data-testid="tc-add-city"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Board</label>
-              <select
-                value={form.board}
-                onChange={e => setForm({ ...form, board: e.target.value })}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
-                data-testid="tc-add-board"
-              >
-                <option value="">Select board</option>
-                {BOARDS.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          {/* Additional details (Email, Alt Phone, Caller Assignment for Admin) */}
+          <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-100">
             {isAdmin ? (
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assign to Caller</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Assign to Caller</label>
                 <select
                   value={form.assigned_to}
                   onChange={e => setForm({ ...form, assigned_to: e.target.value })}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                  className="w-full h-9 px-3 border border-slate-200 rounded-lg text-xs bg-white"
                   data-testid="tc-add-assigned-to"
                 >
                   <option value="">Auto / Unassigned</option>
@@ -443,36 +544,27 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
               </div>
             ) : (
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Source</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Alternate Phone (Optional)</label>
                 <Input
-                  value={form.source}
-                  onChange={e => setForm({ ...form, source: e.target.value })}
-                  placeholder="e.g. Direct Entry, Inbound, Referral"
-                  data-testid="tc-add-source"
+                  value={form.alt_phone}
+                  onChange={e => setForm({ ...form, alt_phone: e.target.value })}
+                  placeholder="e.g. 022-28475892"
+                  className="h-9 text-xs"
+                  data-testid="tc-add-alt-phone"
                 />
               </div>
             )}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Calling Sheet / Batch Name</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Email (Optional)</label>
               <Input
-                value={form.batch_name}
-                onChange={e => setForm({ ...form, batch_name: e.target.value })}
-                placeholder="e.g. Direct Calling Sheet"
-                data-testid="tc-add-batch-name"
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="e.g. principal@school.edu"
+                className="h-9 text-xs"
+                data-testid="tc-add-email"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Initial Notes</label>
-            <textarea
-              rows={2}
-              value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
-              placeholder="Initial context, reference, or call notes..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-              data-testid="tc-add-notes"
-            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t">
@@ -480,11 +572,11 @@ const AddClientModal = ({ open, onClose, onDone, users, isAdmin, currentUserId, 
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
               data-testid="tc-add-client-submit"
             >
               {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
-              Add to Calling Sheet
+              Save B2B Client
             </Button>
           </div>
         </form>
@@ -864,7 +956,10 @@ const ContactRow = React.memo(({ row, idx, isAdmin, users, onPatch, onOpenIntere
       </td>
       <td className={`${CELL} whitespace-nowrap`}>
         <div className="font-medium text-slate-800">{row.name || <span className="text-slate-400 italic">—</span>}</div>
-        <div className="text-[10px] text-slate-500">{row.source || ''}</div>
+        <div className="text-[10px] text-slate-500">
+          {row.role ? <span className="font-semibold text-indigo-600 mr-1">{row.role} •</span> : null}
+          {row.source || ''}
+        </div>
       </td>
       <td className={`${CELL} font-mono whitespace-nowrap`}>
         <a href={`tel:${row.phone}`} className="text-indigo-700 hover:underline" data-testid={`tc-phone-${row.id}`}>{row.phone}</a>
@@ -876,8 +971,19 @@ const ContactRow = React.memo(({ row, idx, isAdmin, users, onPatch, onOpenIntere
           <span className="text-slate-400 italic">—</span>
         )}
       </td>
-      <td className={CELL}>{row.school_name || <span className="text-slate-400 italic">—</span>}</td>
-      <td className={CELL}>{row.city || <span className="text-slate-400 italic">—</span>}</td>
+      <td className={CELL}>
+        <div className="font-medium text-slate-800">{row.school_name || <span className="text-slate-400 italic">—</span>}</div>
+        {(row.demo_type || row.meeting_mode) ? (
+          <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
+            (row.demo_type || row.meeting_mode) === 'online'
+              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+              : 'bg-amber-50 text-amber-700 border border-amber-200'
+          }`}>
+            {(row.demo_type || row.meeting_mode) === 'online' ? 'Online Demo' : 'Offline Demo'}
+          </span>
+        ) : null}
+      </td>
+      <td className={CELL}>{row.address || row.city || <span className="text-slate-400 italic">—</span>}</td>
       <td className={`${CELL} text-slate-500 whitespace-nowrap`}>{createdAt}</td>
       <td className={CELL}>
         <select

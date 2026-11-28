@@ -42,7 +42,6 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/competitions', icon: Trophy, label: 'Competitions', permission: 'competitions' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/franchise-crm', icon: Building, label: 'Franchise CRM', permission: 'franchise_crm' },
-    { path: '/admin/b2b-crm', icon: Building2, label: 'B2B CRM', permission: 'b2b_crm' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
     { path: '/admin/success-stories', icon: Trophy, label: 'Success Stories', permission: null },
@@ -105,18 +104,6 @@ const AdminLayout = ({ children, title }) => {
         userPermissions.includes('franchise_crm') ||
         userPermissions.includes('telecalling') ||
         ['franchise', 'b2b', 'sales', 'bde', 'telecall'].some(r => (user?.role || '').toLowerCase().includes(r))
-      ) {
-        return true;
-      }
-    }
-
-    // B2B CRM: visible to Admins, or users with b2b_crm / schools / telecalling permission or B2B/Franchise/Sales roles
-    if (item.path === '/admin/b2b-crm') {
-      if (
-        userPermissions.includes('b2b_crm') ||
-        userPermissions.includes('schools') ||
-        userPermissions.includes('telecalling') ||
-        ['b2b', 'franchise', 'sales', 'bde', 'telecall'].some(r => (user?.role || '').toLowerCase().includes(r))
       ) {
         return true;
       }
