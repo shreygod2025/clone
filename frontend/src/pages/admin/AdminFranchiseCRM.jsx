@@ -10,7 +10,7 @@ import {
   MapPin, Mail, Briefcase, FileText, ChevronDown, Send, ArrowRight,
   Edit, Trash2, CalendarClock, Upload, Download, LayoutGrid, List,
   Ticket, Paperclip, Archive, History, RefreshCcw, DollarSign,
-  ClipboardList, CheckSquare, Tag, Globe, Sparkles
+  ClipboardList, CheckSquare, Tag, Globe, Sparkles, Headphones, Bell
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -459,6 +459,7 @@ export default function AdminFranchiseCRM() {
       type: isOnline ? 'online' : 'offline',
       link: isOnline ? (lead?.demo_link || 'https://meet.google.com/oll-franchise') : (lead?.demo_link || ''),
       agenda: 'Franchise Business Discussion & Lab Setup',
+      assigned_to: lead?.assigned_to || '',
     });
   };
 
@@ -477,10 +478,11 @@ export default function AdminFranchiseCRM() {
           demo_type: scheduleMeetingData.type,
           demo_link: scheduleMeetingData.link,
           demo_notes: scheduleMeetingData.agenda,
+          assigned_to: scheduleMeetingData.assigned_to || undefined,
         },
         { headers: getAuthHeaders() }
       );
-      toast.success('Meeting scheduled successfully!');
+      toast.success('Meeting scheduled & assigned executive notified in Support Center!');
       setShowScheduleMeetingModal(null);
       fetchLeads();
     } catch (err) {
@@ -702,18 +704,18 @@ export default function AdminFranchiseCRM() {
       if (showAssignModal === 'bulk') {
         await axios.post(
           `${API}/franchise-crm/leads/bulk-assign`,
-          { lead_ids: selectedLeadIds, assigned_to: selectedAssigneeId, notes: assignmentNote },
+          { lead_ids: selectedLeadIds, assigned_to: selectedAssigneeId, notes: assignmentNote, assignment_note: assignmentNote },
           { headers: getAuthHeaders() }
         );
-        toast.success(`Assigned ${selectedLeadIds.length} leads`);
+        toast.success(`Assigned ${selectedLeadIds.length} leads & added to Support Center queue`);
         setSelectedLeadIds([]);
       } else {
         await axios.post(
           `${API}/franchise-crm/leads/${showAssignModal.id}/assign`,
-          { assigned_to: selectedAssigneeId, notes: assignmentNote },
+          { assigned_to: selectedAssigneeId, notes: assignmentNote, assignment_note: assignmentNote },
           { headers: getAuthHeaders() }
         );
-        toast.success('Lead assigned successfully');
+        toast.success('Lead assigned & dispatched to Support Center queue');
       }
       setShowAssignModal(null);
       fetchLeads();
@@ -1851,6 +1853,23 @@ export default function AdminFranchiseCRM() {
               )}
 
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Assign Meeting / Call To</label>
+                <select
+                  value={scheduleMeetingData.assigned_to || ''}
+                  onChange={e => setScheduleMeetingData(d => ({ ...d, assigned_to: e.target.value }))}
+                  className="w-full h-8 px-2.5 text-xs border border-slate-200 rounded-lg bg-white"
+                >
+                  <option value="">Keep current ({showScheduleMeetingModal?.assigned_to_name || 'Unassigned'})</option>
+                  {assignees.map(a => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.role})</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-blue-600 mt-1">
+                  Assignee will automatically receive this call in their Support Center queue.
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Agenda / Discussion Points</label>
                 <Textarea
                   rows={2}
@@ -2087,6 +2106,13 @@ export default function AdminFranchiseCRM() {
             </DialogHeader>
 
             <div className="space-y-4 pt-2">
+              <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-100 flex items-start gap-2">
+                <Headphones className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-indigo-900 leading-relaxed">
+                  <strong>Support Center Queue:</strong> The selected executive will automatically receive a high-priority call ticket in their <strong>Support Center queue</strong> along with an in-app notification.
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Select Team Member</label>
                 <select
