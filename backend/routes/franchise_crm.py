@@ -172,6 +172,9 @@ class FranchiseLeadCreate(BaseModel):
     demo_type: Optional[str] = "online_meet"
     demo_link: Optional[str] = ""
     demo_notes: Optional[str] = ""
+    followup_scheduled: Optional[bool] = False
+    next_followup_at: Optional[str] = None
+    followup_notes: Optional[str] = ""
 
 
 class FranchiseLeadUpdate(BaseModel):
@@ -193,6 +196,10 @@ class FranchiseLeadUpdate(BaseModel):
     demo_link: Optional[str] = None
     demo_status: Optional[str] = None
     demo_notes: Optional[str] = None
+    followup_scheduled: Optional[bool] = None
+    next_followup_at: Optional[str] = None
+    followup_notes: Optional[str] = None
+    followup_status: Optional[str] = None
 
 
 class AssignLeadRequest(BaseModel):
@@ -359,6 +366,13 @@ async def create_franchise_lead(
     demo_link = payload.demo_link or ""
     demo_notes = payload.demo_notes or ""
 
+    followup_is_scheduled = bool(payload.followup_scheduled or payload.next_followup_at)
+    next_followup_at = payload.next_followup_at if followup_is_scheduled else None
+    followup_notes = (payload.followup_notes or "").strip()
+    followup_status = "scheduled" if followup_is_scheduled else "none"
+    if initial_status == "new" and followup_is_scheduled:
+        initial_status = "follow_up"
+
     doc = {
         "id": lead_id,
         "name": payload.name.strip(),
@@ -392,14 +406,14 @@ async def create_franchise_lead(
         "demo_notes": demo_notes,
         "demos_count": 0,
         "last_demo_at": None,
-        "followup_status": "none",
-        "next_followup_at": None,
-        "followup_notes": "",
+        "followup_status": followup_status,
+        "next_followup_at": next_followup_at,
+        "followup_notes": followup_notes,
         "followups_count": 0,
         "comments": [{
             "id": str(uuid.uuid4()),
             "user_name": user.get("name") or user.get("email"),
-            "text": f"Lead created via {payload.source or 'manual entry'}" + (f" (Demo scheduled on {scheduled_demo_at})" if demo_is_scheduled else ""),
+            "text": f"Lead created via {payload.source or 'manual entry'}" + (f" (Demo scheduled on {scheduled_demo_at})" if demo_is_scheduled else "") + (f" (Follow-up scheduled on {next_followup_at})" if followup_is_scheduled else ""),
             "created_at": now_iso,
         }],
         "created_at": now_iso,
@@ -413,7 +427,12 @@ async def create_franchise_lead(
         lead_phone=doc["phone"],
         user=user,
         action="lead_created",
-        details={"source": doc["source"], "assigned_to": assigned_name, "demo_scheduled": demo_is_scheduled},
+        details={
+            "source": doc["source"],
+            "assigned_to": assigned_name,
+            "demo_scheduled": demo_is_scheduled,
+            "followup_scheduled": followup_is_scheduled,
+        },
     )
 
     if demo_is_scheduled and scheduled_demo_at:
@@ -427,6 +446,19 @@ async def create_franchise_lead(
                 "scheduled_demo_at": scheduled_demo_at,
                 "demo_type": demo_type,
                 "notes": "Demo scheduled at lead creation",
+            },
+        )
+
+    if followup_is_scheduled and next_followup_at:
+        await _log_activity(
+            lead_id=lead_id,
+            lead_name=doc["name"],
+            lead_phone=doc["phone"],
+            user=user,
+            action="followup_scheduled",
+            details={
+                "next_followup_at": next_followup_at,
+                "notes": followup_notes or "Follow-up scheduled at lead creation",
             },
         )
 
@@ -490,6 +522,20 @@ async def update_franchise_lead(
         updates["demo_status"] = "scheduled"
         if not updates.get("status") and lead.get("status") in ("new", "contacted"):
             updates["status"] = "demo_scheduled"
+
+    # Handle follow-up updates
+    if "followup_scheduled" in updates:
+        if updates["followup_scheduled"]:
+            updates["followup_status"] = "scheduled"
+            if not updates.get("status") and lead.get("status") in ("new", "contacted"):
+                updates["status"] = "follow_up"
+        else:
+            updates["followup_status"] = "none"
+            updates["next_followup_at"] = None
+    elif updates.get("next_followup_at"):
+        updates["followup_status"] = "scheduled"
+        if not updates.get("status") and lead.get("status") in ("new", "contacted"):
+            updates["status"] = "follow_up"
 
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 

@@ -122,6 +122,7 @@ const FranchiseLandingPage = lazy(() => import('../pages/franchise/FranchiseLand
 
 // Admin Pages
 const AdminLogin = lazy(() => import('../pages/admin/AdminLogin'));
+const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'));
 const AdminStudentCRM = lazy(() => import('../pages/admin/AdminStudentCRM'));
 const AdminLinkPreviewTester = lazy(() => import('../pages/admin/AdminLinkPreviewTester'));
@@ -370,6 +371,8 @@ export const AppRoutes = () => {
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<><NoIndexMeta /><AdminLogin /></>} />
+          <Route path="/admin/forgot-password" element={<><NoIndexMeta /><ForgotPassword /></>} />
+          <Route path="/forgot-password" element={<><NoIndexMeta /><ForgotPassword /></>} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute permission="students"><AdminStudentCRM /></ProtectedRoute>} />
           <Route path="/admin/link-preview-tester" element={<ProtectedRoute permission="settings"><AdminLinkPreviewTester /></ProtectedRoute>} />

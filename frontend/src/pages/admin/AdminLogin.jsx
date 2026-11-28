@@ -105,6 +105,16 @@ const AdminLogin = () => {
               </div>
             </div>
 
+            <div className="flex items-center justify-end pt-1">
+              <Link
+                to={`/admin/forgot-password${formData.email ? `?email=${encodeURIComponent(formData.email.trim())}` : ''}`}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                data-testid="admin-forgot-password-link"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <Button
               type="submit"
               disabled={loading}

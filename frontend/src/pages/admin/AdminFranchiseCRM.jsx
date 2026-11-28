@@ -107,7 +107,7 @@ export default function AdminFranchiseCRM() {
   const [newCommentText, setNewCommentText] = useState('');
   const [savingComment, setSavingComment] = useState(false);
 
-  // New Lead Form state (includes optional demo scheduling)
+  // New Lead Form state (includes optional demo & follow-up scheduling)
   const [newLeadForm, setNewLeadForm] = useState({
     name: '',
     phone: '',
@@ -123,6 +123,9 @@ export default function AdminFranchiseCRM() {
     demo_session_scheduled: false,
     scheduled_demo_at: '',
     demo_type: 'online_meet',
+    followup_scheduled: false,
+    next_followup_at: '',
+    followup_notes: '',
   });
   const [savingNewLead, setSavingNewLead] = useState(false);
 
@@ -144,8 +147,16 @@ export default function AdminFranchiseCRM() {
     demo_session_scheduled: false,
     scheduled_demo_at: '',
     demo_type: 'online_meet',
+    followup_scheduled: false,
+    next_followup_at: '',
+    followup_notes: '',
   });
   const [savingEditLead, setSavingEditLead] = useState(false);
+
+  // Follow-up Modal states
+  const [followupMode, setFollowupMode] = useState('schedule'); // 'schedule' | 'complete'
+  const [completingFollowup, setCompletingFollowup] = useState(false);
+  const [completeNotes, setCompleteNotes] = useState('');
 
   // Lost Lead Modal state
   const [showLostModal, setShowLostModal] = useState(null);
@@ -430,7 +441,7 @@ export default function AdminFranchiseCRM() {
     }
   };
 
-  // Execute Follow-up
+  // Execute Follow-up (Schedule or Reschedule)
   const handleExecuteFollowup = async () => {
     if (!followupModalLead) return;
     if (!followupTime || !followupNotes.trim()) {
@@ -452,10 +463,41 @@ export default function AdminFranchiseCRM() {
       setFollowupTime('');
       setFollowupNotes('');
       fetchLeads();
+      if (activeLeadDetails?.id === followupModalLead.id) {
+        handleOpenLeadDetails(followupModalLead);
+      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to schedule follow-up');
     } finally {
       setSavingFollowup(false);
+    }
+  };
+
+  // Execute Complete Follow-up
+  const handleExecuteCompleteFollowup = async () => {
+    if (!followupModalLead) return;
+    if (!completeNotes.trim()) {
+      toast.error('Please enter follow-up discussion summary / notes');
+      return;
+    }
+    setCompletingFollowup(true);
+    try {
+      await axios.post(
+        `${API}/franchise-crm/leads/${followupModalLead.id}/complete-followup`,
+        { notes: completeNotes.trim() },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Follow-up marked as completed');
+      setFollowupModalLead(null);
+      setCompleteNotes('');
+      fetchLeads();
+      if (activeLeadDetails?.id === followupModalLead.id) {
+        handleOpenLeadDetails(followupModalLead);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to complete follow-up');
+    } finally {
+      setCompletingFollowup(false);
     }
   };
 
@@ -494,6 +536,9 @@ export default function AdminFranchiseCRM() {
         city: newLeadForm.city.trim(),
         demo_session_scheduled: newLeadForm.demo_session_scheduled,
         scheduled_demo_at: newLeadForm.demo_session_scheduled && newLeadForm.scheduled_demo_at ? newLeadForm.scheduled_demo_at : null,
+        followup_scheduled: newLeadForm.followup_scheduled,
+        next_followup_at: newLeadForm.followup_scheduled && newLeadForm.next_followup_at ? newLeadForm.next_followup_at : null,
+        followup_notes: newLeadForm.followup_notes ? newLeadForm.followup_notes.trim() : '',
       };
       await axios.post(`${API}/franchise-crm/leads`, payload, { headers: getAuthHeaders() });
       toast.success('Franchise lead added successfully');
@@ -513,6 +558,9 @@ export default function AdminFranchiseCRM() {
         demo_session_scheduled: false,
         scheduled_demo_at: '',
         demo_type: 'online_meet',
+        followup_scheduled: false,
+        next_followup_at: '',
+        followup_notes: '',
       });
       fetchLeads();
     } catch (err) {
@@ -540,6 +588,9 @@ export default function AdminFranchiseCRM() {
       demo_session_scheduled: Boolean(lead.scheduled_demo_at || lead.demo_status === 'scheduled'),
       scheduled_demo_at: lead.scheduled_demo_at ? lead.scheduled_demo_at.slice(0, 16) : '',
       demo_type: lead.demo_type || 'online_meet',
+      followup_scheduled: Boolean(lead.next_followup_at || lead.followup_status === 'scheduled'),
+      next_followup_at: lead.next_followup_at ? lead.next_followup_at.slice(0, 16) : '',
+      followup_notes: lead.followup_notes || '',
     });
     setShowEditLeadModal(lead);
   };
@@ -567,6 +618,9 @@ export default function AdminFranchiseCRM() {
         demo_session_scheduled: editLeadForm.demo_session_scheduled,
         scheduled_demo_at: editLeadForm.demo_session_scheduled && editLeadForm.scheduled_demo_at ? editLeadForm.scheduled_demo_at : null,
         demo_type: editLeadForm.demo_type,
+        followup_scheduled: editLeadForm.followup_scheduled,
+        next_followup_at: editLeadForm.followup_scheduled && editLeadForm.next_followup_at ? editLeadForm.next_followup_at : null,
+        followup_notes: editLeadForm.followup_notes ? editLeadForm.followup_notes.trim() : '',
       };
       await axios.put(`${API}/franchise-crm/leads/${editLeadForm.id}`, payload, {
         headers: getAuthHeaders(),
@@ -724,31 +778,79 @@ export default function AdminFranchiseCRM() {
           </div>
         </div>
 
-        {/* ── KPI Stat Highlights ──────────────────────────────────── */}
+        {/* ── KPI Stat Highlights (Click to Filter) ──────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Leads</p>
-            <p className="text-xl font-bold text-slate-900 mt-0.5">{totalLeads}</p>
+          <div
+            onClick={() => setSelectedStage('all')}
+            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
+              selectedStage === 'all'
+                ? 'bg-slate-800 text-white border-slate-900 ring-2 ring-slate-400'
+                : 'bg-white border-slate-200 hover:border-slate-400'
+            }`}
+            title="Show All Leads"
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'all' ? 'text-slate-300' : 'text-slate-500'}`}>Total Leads</p>
+            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'all' ? 'text-white' : 'text-slate-900'}`}>{totalLeads}</p>
           </div>
-          <div className="bg-white p-3.5 rounded-xl border border-blue-200 bg-blue-50/20 shadow-sm">
-            <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">New / Unassigned</p>
-            <p className="text-xl font-bold text-blue-900 mt-0.5">{statusCounts.new || 0}</p>
+          <div
+            onClick={() => setSelectedStage('new')}
+            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
+              selectedStage === 'new'
+                ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300'
+                : 'bg-white border-blue-200 bg-blue-50/20 hover:border-blue-400'
+            }`}
+            title="Filter by New Leads"
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'new' ? 'text-blue-100' : 'text-blue-700'}`}>New / Fresh</p>
+            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'new' ? 'text-white' : 'text-blue-900'}`}>{statusCounts.new || 0}</p>
           </div>
-          <div className="bg-white p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/20 shadow-sm">
-            <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">Calls Scheduled</p>
-            <p className="text-xl font-bold text-indigo-900 mt-0.5">{statusCounts.call_scheduled || 0}</p>
+          <div
+            onClick={() => setSelectedStage('call_scheduled')}
+            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
+              selectedStage === 'call_scheduled'
+                ? 'bg-indigo-600 text-white border-indigo-700 ring-2 ring-indigo-300'
+                : 'bg-white border-indigo-200 bg-indigo-50/20 hover:border-indigo-400'
+            }`}
+            title="Filter by Calls Scheduled"
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'call_scheduled' ? 'text-indigo-100' : 'text-indigo-700'}`}>Calls Scheduled</p>
+            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'call_scheduled' ? 'text-white' : 'text-indigo-900'}`}>{statusCounts.call_scheduled || 0}</p>
           </div>
-          <div className="bg-white p-3.5 rounded-xl border border-purple-200 bg-purple-50/20 shadow-sm">
-            <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Demos Scheduled</p>
-            <p className="text-xl font-bold text-purple-900 mt-0.5">{statusCounts.demo_scheduled || 0}</p>
+          <div
+            onClick={() => setSelectedStage('demo_scheduled')}
+            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
+              selectedStage === 'demo_scheduled'
+                ? 'bg-purple-600 text-white border-purple-700 ring-2 ring-purple-300'
+                : 'bg-white border-purple-200 bg-purple-50/20 hover:border-purple-400'
+            }`}
+            title="Filter by Demos Scheduled"
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'demo_scheduled' ? 'text-purple-100' : 'text-purple-700'}`}>Demos Scheduled</p>
+            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'demo_scheduled' ? 'text-white' : 'text-purple-900'}`}>{statusCounts.demo_scheduled || 0}</p>
           </div>
-          <div className="bg-white p-3.5 rounded-xl border border-orange-200 bg-orange-50/20 shadow-sm">
-            <p className="text-[11px] font-semibold text-orange-700 uppercase tracking-wider">Follow-ups</p>
-            <p className="text-xl font-bold text-orange-900 mt-0.5">{statusCounts.follow_up || 0}</p>
+          <div
+            onClick={() => setSelectedStage('follow_up')}
+            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
+              selectedStage === 'follow_up'
+                ? 'bg-orange-600 text-white border-orange-700 ring-2 ring-orange-300'
+                : 'bg-white border-orange-200 bg-orange-50/20 hover:border-orange-400'
+            }`}
+            title="Filter by Follow-ups"
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'follow_up' ? 'text-orange-100' : 'text-orange-700'}`}>Follow-ups</p>
+            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'follow_up' ? 'text-white' : 'text-orange-900'}`}>{statusCounts.follow_up || 0}</p>
           </div>
-          <div className="bg-white p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/30 shadow-sm">
-            <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Converted (Won)</p>
-            <p className="text-xl font-bold text-emerald-800 mt-0.5">{statusCounts.converted || 0}</p>
+          <div
+            onClick={() => setSelectedStage('converted')}
+            className={`p-3.5 rounded-xl border shadow-sm cursor-pointer transition ${
+              selectedStage === 'converted'
+                ? 'bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-300'
+                : 'bg-white border-emerald-200 bg-emerald-50/30 hover:border-emerald-400'
+            }`}
+            title="Filter by Converted Partners"
+          >
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${selectedStage === 'converted' ? 'text-emerald-100' : 'text-emerald-700'}`}>Converted (Won)</p>
+            <p className={`text-xl font-bold mt-0.5 ${selectedStage === 'converted' ? 'text-white' : 'text-emerald-800'}`}>{statusCounts.converted || 0}</p>
           </div>
         </div>
 
@@ -1051,6 +1153,23 @@ export default function AdminFranchiseCRM() {
                                 >
                                   <CheckCircle2 className="w-3 h-3 text-teal-600" />
                                   <span>Demo Done</span>
+                                </button>
+
+                                {/* Follow-up */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFollowupModalLead(lead);
+                                    setFollowupTime(lead.next_followup_at ? lead.next_followup_at.slice(0, 16) : '');
+                                    setFollowupNotes(lead.followup_notes || '');
+                                    setFollowupMode(lead.next_followup_at ? 'complete' : 'schedule');
+                                    setCompleteNotes('');
+                                  }}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 flex items-center gap-1 font-semibold transition"
+                                  title="Schedule or Complete Follow-up"
+                                >
+                                  <Clock className="w-3 h-3 text-orange-600" />
+                                  <span>Follow-up</span>
                                 </button>
 
                                 {/* Lost Lead */}
@@ -1496,6 +1615,51 @@ export default function AdminFranchiseCRM() {
                 )}
               </div>
 
+              {/* Follow-up Scheduled */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newLeadForm.followup_scheduled}
+                      onChange={(e) => setNewLeadForm(prev => ({ ...prev, followup_scheduled: e.target.checked }))}
+                      className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                    />
+                    <span>Schedule Follow-up for this lead?</span>
+                  </label>
+                  {newLeadForm.followup_scheduled && (
+                    <span className="text-[10px] font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                      Follow-up Scheduled
+                    </span>
+                  )}
+                </div>
+
+                {newLeadForm.followup_scheduled && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Date & Time *</label>
+                      <Input
+                        type="datetime-local"
+                        value={newLeadForm.next_followup_at}
+                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, next_followup_at: e.target.value }))}
+                        className="mt-1 text-xs"
+                        required={newLeadForm.followup_scheduled}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Note (Optional)</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Discuss center investment terms"
+                        value={newLeadForm.followup_notes}
+                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, followup_notes: e.target.value }))}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="font-semibold text-slate-700">Details / Background</label>
                 <Textarea
@@ -1805,35 +1969,141 @@ export default function AdminFranchiseCRM() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Clock className="w-5 h-5 text-orange-600" /> Schedule Follow-up · {followupModalLead?.name}
+                <Clock className="w-5 h-5 text-orange-600" />
+                {followupMode === 'complete' ? 'Complete Follow-up' : 'Schedule Follow-up'} · {followupModalLead?.name}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 text-xs mt-2">
-              <div>
-                <label className="font-semibold text-slate-700">Follow-up Date & Time *</label>
-                <Input
-                  type="datetime-local"
-                  value={followupTime}
-                  onChange={(e) => setFollowupTime(e.target.value)}
-                  className="mt-1 text-xs"
-                />
-              </div>
-              <div>
-                <label className="font-semibold text-slate-700">Follow-up Purpose / Reminder Note *</label>
-                <Textarea
-                  value={followupNotes}
-                  onChange={(e) => setFollowupNotes(e.target.value)}
-                  placeholder="e.g. Check on bank sanction, confirm lease agreement signing..."
-                  rows={3}
-                  className="mt-1 text-xs"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setFollowupModalLead(null)}>Cancel</Button>
-                <Button onClick={handleExecuteFollowup} disabled={savingFollowup} className="bg-orange-600 text-white">
-                  {savingFollowup ? 'Scheduling…' : 'Save Follow-up'}
-                </Button>
-              </div>
+
+            {/* Segmented Mode Tabs */}
+            <div className="flex border-b border-slate-200 mb-3 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setFollowupMode('schedule')}
+                className={`pb-2 px-3 border-b-2 transition ${followupMode === 'schedule' ? 'border-orange-600 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              >
+                Schedule / Reschedule
+              </button>
+              <button
+                type="button"
+                onClick={() => setFollowupMode('complete')}
+                className={`pb-2 px-3 border-b-2 transition ${followupMode === 'complete' ? 'border-orange-600 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              >
+                Mark as Completed
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {followupMode === 'schedule' ? (
+                <>
+                  {/* Quick Presets */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 mb-1.5 block">Quick Presets</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + 1);
+                          d.setHours(11, 0, 0, 0);
+                          const pad = (n) => String(n).padStart(2, '0');
+                          setFollowupTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T11:00`);
+                        }}
+                        className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 rounded-md transition font-medium text-slate-700"
+                      >
+                        Tomorrow 11 AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + 2);
+                          d.setHours(11, 0, 0, 0);
+                          const pad = (n) => String(n).padStart(2, '0');
+                          setFollowupTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T11:00`);
+                        }}
+                        className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 rounded-md transition font-medium text-slate-700"
+                      >
+                        In 2 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + 7);
+                          d.setHours(11, 0, 0, 0);
+                          const pad = (n) => String(n).padStart(2, '0');
+                          setFollowupTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T11:00`);
+                        }}
+                        className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 rounded-md transition font-medium text-slate-700"
+                      >
+                        Next Week
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700">Follow-up Date & Time *</label>
+                    <Input
+                      type="datetime-local"
+                      value={followupTime}
+                      onChange={(e) => setFollowupTime(e.target.value)}
+                      className="mt-1 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700">Follow-up Purpose / Reminder Note *</label>
+                    <Textarea
+                      value={followupNotes}
+                      onChange={(e) => setFollowupNotes(e.target.value)}
+                      placeholder="e.g. Check on bank sanction, confirm lease agreement signing..."
+                      rows={3}
+                      className="mt-1 text-xs"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setFollowupModalLead(null)}>Cancel</Button>
+                    <Button onClick={handleExecuteFollowup} disabled={savingFollowup} className="bg-orange-600 hover:bg-orange-700 text-white">
+                      {savingFollowup ? 'Scheduling…' : 'Save Follow-up'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {followupModalLead?.next_followup_at && (
+                    <div className="p-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-900 text-xs">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-orange-600" />
+                        Pending Follow-up: {new Date(followupModalLead.next_followup_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {followupModalLead.followup_notes && (
+                        <p className="text-slate-600 mt-1 italic">"{followupModalLead.followup_notes}"</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="font-semibold text-slate-700">Follow-up Discussion / Outcome Notes *</label>
+                    <Textarea
+                      value={completeNotes}
+                      onChange={(e) => setCompleteNotes(e.target.value)}
+                      placeholder="e.g. Spoke with candidate, center location finalized at Vashi, sending draft franchise agreement today..."
+                      rows={4}
+                      className="mt-1 text-xs"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setFollowupModalLead(null)}>Cancel</Button>
+                    <Button
+                      onClick={handleExecuteCompleteFollowup}
+                      disabled={completingFollowup}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      {completingFollowup ? 'Completing…' : 'Mark as Completed'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>
@@ -2194,6 +2464,50 @@ export default function AdminFranchiseCRM() {
                         <option value="in_person_center">In-Person at Center</option>
                         <option value="presentation">Presentation / Phone Walkthrough</option>
                       </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Follow-up Scheduled */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700 text-xs flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editLeadForm.followup_scheduled}
+                      onChange={(e) => setEditLeadForm(prev => ({ ...prev, followup_scheduled: e.target.checked }))}
+                      className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                    />
+                    <span>Schedule / Update Follow-up?</span>
+                  </label>
+                  {editLeadForm.followup_scheduled && (
+                    <span className="text-[10px] font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                      Follow-up Scheduled
+                    </span>
+                  )}
+                </div>
+
+                {editLeadForm.followup_scheduled && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Date & Time</label>
+                      <Input
+                        type="datetime-local"
+                        value={editLeadForm.next_followup_at}
+                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, next_followup_at: e.target.value }))}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600">Follow-up Note</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Space lease agreement status"
+                        value={editLeadForm.followup_notes}
+                        onChange={(e) => setEditLeadForm(prev => ({ ...prev, followup_notes: e.target.value }))}
+                        className="mt-1 text-xs"
+                      />
                     </div>
                   </div>
                 )}
